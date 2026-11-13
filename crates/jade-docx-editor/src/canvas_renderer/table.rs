@@ -1107,6 +1107,7 @@ struct TableVisualGrid<'a> {
     table_x: f64,
     column_positions: &'a [f64],
     column_widths: &'a [f64],
+    content_width: Option<f64>,
     bidi_visual: bool,
 }
 
@@ -2874,6 +2875,36 @@ where
                 .rows
                 .iter()
                 .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
+        let unequal_auto_percentage = (word_mac_column_table
+            && !self.measuring_keep_next
+            && self.footnote_reserve_px == 0.0
+            && !table.bidi_visual
+            && self.document_east_asian_rules.compatibility_mode == Some(14)
+            && column_count == 1
+            && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
+            && !table.style.contains_key("width")
+            && centered_table
+            && leading_header_row_count(&table.rows) > 0
+            && self
+                .column_layout
+                .widths
+                .iter()
+                .any(|&width| width != available_width)
+            && table.rows.iter().all(|row| {
+                row.height_rule == Some(TableRowHeightRule::Exact)
+                    && row.height.is_some()
+                    && resolve_cell_spacing_px(row, table) == 0.0
+                    && !table_row_has_note_references(row)
+                    && row.cells.iter().all(|cell| {
+                        cell.vertical_merge.is_none()
+                            && cell
+                                .blocks
+                                .iter()
+                                .all(|block| matches!(block, BodyElement::Paragraph(_)))
+                    })
+            }))
+        .then(|| uniform_single_column_cell_percentage(table))
+        .flatten();
         let last_column_width = self.column_layout.width(self.column_layout.count() - 1);
         // Word keeps the same percentage grid through the section. For a
         // separated autofit grid in right-to-left flow it sizes to the final
@@ -2936,6 +2967,32 @@ where
                 rtl_merged_percentage_grid,
             )?;
 
+        // In unequal newspaper columns Word lays out the cell text against
+        // each column's text area. On the opening page the visible grid takes
+        // the final fragment's frame, with a natural-width cap for 100% cells.
+        let natural_grid_cap = if unequal_auto_percentage == Some(1.0) {
+            Some(
+                autofit_content_widths(
+                    &table_wrap_context,
+                    table,
+                    &column_widths,
+                    padding_x,
+                    &|paragraph| layout_config.line_height_for(paragraph),
+                    &|field| self.resolve_run_field(field),
+                    Some(&layout_config),
+                )?
+                .preferred[0],
+            )
+        } else {
+            None
+        };
+        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
+        let section_frame_width =
+            |width| word_pre_2013_table_sizing_width_px(table, width, compatibility_mode);
+        if unequal_auto_percentage.is_some() {
+            column_widths[0] = section_frame_width(available_width);
+            table_width = column_widths[0];
+        }
         adjust_windows_negative_spacing_columns(table, &mut column_widths);
         let original_widths = if !self.rendering_header_footer_story && !self.rendering_note_story {
             self.last_document
@@ -3014,17 +3071,28 @@ where
         let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
-        let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>| {
+        let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>, opening_page| {
             let (left, width) = if use_column_frame {
                 (renderer.current_column_x(), renderer.current_column_width())
             } else {
                 (inline_left, available_width)
             };
+            let alignment_width = alignment_width.unwrap_or(width);
+            let frame_width = if unequal_auto_percentage.is_some() {
+                let frame = section_frame_width(alignment_width);
+                if opening_page {
+                    natural_grid_cap.map_or(frame, |cap| frame.min(cap))
+                } else {
+                    frame
+                }
+            } else {
+                table_width
+            };
             let x = floating_table_x.unwrap_or_else(|| {
                 compute_inline_body_table_x(
                     left,
-                    alignment_width.unwrap_or(width),
-                    table_width,
+                    alignment_width,
+                    frame_width,
                     table,
                     text_inset,
                     compatibility_mode,
@@ -3056,9 +3124,9 @@ where
             } else {
                 x
             };
-            (x, x, x + table_width)
+            (x, x, x + frame_width)
         };
-        let (mut table_x, _, _) = table_segment_edges(self, None);
+        let (mut table_x, _, _) = table_segment_edges(self, None, true);
         let at_table_frame_top = |renderer: &Self| {
             let top = if use_column_frame {
                 renderer.current_column_top()
@@ -3252,7 +3320,7 @@ where
             if height <= page_content_height
                 && self.ensure_table_row_space(height, use_column_frame)?
             {
-                (table_x, _, _) = table_segment_edges(self, None);
+                (table_x, _, _) = table_segment_edges(self, None, true);
                 self.configure_table_context();
             }
         }
@@ -3406,9 +3474,74 @@ where
         let (mut table_x, mut left_edge, mut right_edge) = table_segment_edges(
             self,
             alignment_width(self, header_start_page, header_start_width),
+            self.current_page_number == header_start_page,
         );
 
         let header_height = repeated_header_height(&header_heights_snapshot, header_row_count);
+        let draw_headers = |renderer: &mut Self,
+                            table_x,
+                            paint_width,
+                            layout_config: &LayoutConfig|
+         -> Result<(), JsValue> {
+            let mut rewrapped_headers;
+            let active_widths;
+            let active_positions;
+            let (headers, widths, positions, content_width) = if unequal_auto_percentage.is_some() {
+                let frame = section_frame_width(renderer.current_column_width());
+                let headers = if frame != wrapping_widths[0] {
+                    rewrapped_headers = header_rows_snapshot.clone();
+                    let mut natural_layouts = NaturalParagraphLayoutCache::default();
+                    for (row_index, cells) in rewrapped_headers.iter_mut().enumerate() {
+                        let (hint, visible_index) = row_prepare_inputs[row_index];
+                        let fresh = prepare_row_layout(
+                            &table_wrap_context,
+                            &table.rows[row_index],
+                            table,
+                            &[frame],
+                            layout_config,
+                            hint,
+                            visible_index,
+                            total_row_count,
+                            &mut natural_layouts,
+                            None,
+                            &|field| renderer.resolve_run_field(field),
+                        )?;
+                        replace_prepared_cell_layouts(cells, fresh);
+                    }
+                    rewrapped_headers.as_slice()
+                } else {
+                    header_rows_snapshot.as_slice()
+                };
+                active_widths = [paint_width];
+                active_positions = [0.0, paint_width];
+                (
+                    headers,
+                    &active_widths[..],
+                    &active_positions[..],
+                    Some(frame),
+                )
+            } else {
+                (
+                    header_rows_snapshot.as_slice(),
+                    column_widths.as_slice(),
+                    col_positions.as_slice(),
+                    None,
+                )
+            };
+            renderer.draw_repeated_header_rows(
+                headers,
+                &header_heights_snapshot,
+                table,
+                TableVisualGrid {
+                    table_x,
+                    column_positions: positions,
+                    column_widths: widths,
+                    content_width,
+                    bidi_visual: table.bidi_visual,
+                },
+                line_height,
+            )
+        };
         let advance_past_short_header_frames = |renderer: &mut Self,
                                                 cells: &[PreparedCell]|
          -> Result<(), JsValue> {
@@ -3712,6 +3845,7 @@ where
                                 column_count,
                                 &col_positions,
                                 &column_widths,
+                                None,
                                 &row_spans,
                                 &row_heights,
                                 line_height,
@@ -3762,20 +3896,15 @@ where
                                 (table_x, left_edge, right_edge) = table_segment_edges(
                                     self,
                                     alignment_width(self, header_start_page, header_start_width),
+                                    self.current_page_number == header_start_page,
                                 );
                                 self.configure_table_context();
                                 if repeat_header {
-                                    self.draw_repeated_header_rows(
-                                        &header_rows_snapshot,
-                                        &header_heights_snapshot,
-                                        table,
-                                        TableVisualGrid {
-                                            table_x,
-                                            column_positions: &col_positions,
-                                            column_widths: &column_widths,
-                                            bidi_visual: table.bidi_visual,
-                                        },
-                                        line_height,
+                                    draw_headers(
+                                        self,
+                                        table_x,
+                                        right_edge - left_edge,
+                                        &layout_config,
                                     )?;
                                 }
                             }
@@ -3836,22 +3965,12 @@ where
                     (table_x, left_edge, right_edge) = table_segment_edges(
                         self,
                         alignment_width(self, header_start_page, header_start_width),
+                        self.current_page_number == header_start_page,
                     );
                     self.configure_table_context();
                     segment_starts_page = true;
                     if repeat_header {
-                        self.draw_repeated_header_rows(
-                            &header_rows_snapshot,
-                            &header_heights_snapshot,
-                            table,
-                            TableVisualGrid {
-                                table_x,
-                                column_positions: &col_positions,
-                                column_widths: &column_widths,
-                                bidi_visual: table.bidi_visual,
-                            },
-                            line_height,
-                        )?;
+                        draw_headers(self, table_x, right_edge - left_edge, &layout_config)?;
                         segment_starts_page = at_table_frame_top(self);
                     } else if row_start
                         && first_visible_row != Some(row_index)
@@ -3928,15 +4047,47 @@ where
                     }
                 }
                 pending_height += continued_row_opening_rule;
-                if rtl_repeated_header_auto_grid && first_visible_row == Some(row_index) {
+                if (rtl_repeated_header_auto_grid || unequal_auto_percentage.is_some())
+                    && first_visible_row == Some(row_index)
+                {
                     header_start_page = self.current_page_number;
                     header_start_width = self.current_column_width();
                     (table_x, left_edge, right_edge) = table_segment_edges(
                         self,
                         alignment_width(self, header_start_page, header_start_width),
+                        self.current_page_number == header_start_page,
                     );
                 }
                 let mut render_cells = pending_cells;
+                let active_widths;
+                let active_positions;
+                let (paint_widths, paint_positions, content_width) =
+                    if unequal_auto_percentage.is_some() {
+                        let frame = section_frame_width(self.current_column_width());
+                        if frame != wrapping_widths[0] {
+                            let (hint, visible_index) = row_prepare_inputs[row_index];
+                            let fresh = prepare_row_layout(
+                                &table_wrap_context,
+                                row,
+                                table,
+                                &[frame],
+                                &layout_config,
+                                hint,
+                                visible_index,
+                                total_row_count,
+                                &mut natural_paragraph_layouts,
+                                None,
+                                &|field| self.resolve_run_field(field),
+                            )?;
+                            replace_prepared_cell_layouts(&mut render_cells, fresh);
+                        }
+                        let paint_width = right_edge - left_edge;
+                        active_widths = [paint_width];
+                        active_positions = [0.0, paint_width];
+                        (&active_widths[..], &active_positions[..], Some(frame))
+                    } else {
+                        (column_widths.as_slice(), col_positions.as_slice(), None)
+                    };
                 let slot_scale =
                     prepared_spacing_slot_scale(row, table, &render_cells, table_width);
                 let absolute_bottom = self.render_prepared_table_row_segment(
@@ -3951,8 +4102,9 @@ where
                     left_edge,
                     right_edge,
                     column_count,
-                    &col_positions,
-                    &column_widths,
+                    paint_positions,
+                    paint_widths,
+                    content_width,
                     &row_spans,
                     &row_heights,
                     line_height,
@@ -4140,6 +4292,7 @@ where
         column_count: usize,
         col_positions: &[f64],
         column_widths: &[f64],
+        content_width: Option<f64>,
         row_spans: &[Vec<usize>],
         row_heights: &[f64],
         line_height: f64,
@@ -4439,7 +4592,7 @@ where
                 cell,
                 cell_rect.x,
                 cell_rect.y,
-                cell_rect.width,
+                content_width.unwrap_or(cell_rect.width),
                 cell_rect.height,
                 line_height,
                 numbering_part,
@@ -4480,7 +4633,8 @@ where
                     text_bounds: cell_ink_projection_is_horizontal(cell.text_direction).then_some(
                         (
                             cell_rect.x + cell.padding.left,
-                            cell_rect.x + cell_rect.width - cell.padding.right,
+                            cell_rect.x + content_width.unwrap_or(cell_rect.width)
+                                - cell.padding.right,
                         ),
                     ),
                     paragraphs: paragraph_indices,
@@ -5736,7 +5890,7 @@ where
                         cell,
                         rect.x,
                         rect.y,
-                        rect.width,
+                        grid.content_width.unwrap_or(rect.width),
                         rect.height,
                         line_height,
                         bands,
@@ -10349,6 +10503,21 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
 /// against which to resolve a cell percentage. Word for Mac instead derives
 /// the frame by scaling its 12pt cell minimum by the reciprocal percentage.
 fn word_mac_automatic_fixed_percentage_column(table: &Table) -> Option<f64> {
+    uniform_single_column_cell_percentage(table).map(|fraction| points_to_px(12.0) / fraction)
+}
+
+// Preserve editing indices and resolved borders from the original row.
+fn replace_prepared_cell_layouts(cells: &mut [PreparedCell], fresh: Vec<PreparedCell>) {
+    for (cell, fresh_cell) in cells.iter_mut().zip(fresh) {
+        cell.height = fresh_cell.height;
+        for (block, fresh_block) in cell.blocks.iter_mut().zip(fresh_cell.blocks) {
+            block.height = fresh_block.height;
+            block.kind = fresh_block.kind;
+        }
+    }
+}
+
+fn uniform_single_column_cell_percentage(table: &Table) -> Option<f64> {
     let percentage = |row: &TableRow| {
         let [cell] = row.cells.as_slice() else {
             return None;
@@ -10368,7 +10537,7 @@ fn word_mac_automatic_fixed_percentage_column(table: &Table) -> Option<f64> {
         .rows
         .iter()
         .all(|row| percentage(row) == Some(fraction))
-        .then(|| points_to_px(12.0) / fraction)
+        .then_some(fraction)
 }
 
 fn word_mac_constrained_fixed_grid(
@@ -25374,6 +25543,7 @@ mod tests {
                                 table_x: 100.0,
                                 column_positions: &layout.column_positions,
                                 column_widths: &layout.column_widths,
+                                content_width: None,
                                 bidi_visual: false,
                             },
                             20.0,
@@ -25589,6 +25759,7 @@ mod tests {
                                     table_x: 100.0,
                                     column_positions: &layout.column_positions,
                                     column_widths: &layout.column_widths,
+                                    content_width: None,
                                     bidi_visual: false,
                                 },
                                 20.0,
@@ -25764,6 +25935,7 @@ mod tests {
                                 table_x: 100.0,
                                 column_positions: &layout.column_positions,
                                 column_widths: &layout.column_widths,
+                                content_width: None,
                                 bidi_visual: false,
                             },
                             20.0,
@@ -25932,6 +26104,7 @@ mod tests {
                                     table_x: 100.0,
                                     column_positions: &layout.column_positions,
                                     column_widths: &layout.column_widths,
+                                    content_width: None,
                                     bidi_visual: false,
                                 },
                                 20.0,
@@ -26142,6 +26315,7 @@ mod tests {
                     table_x: 100.0,
                     column_positions: &spaced.column_positions,
                     column_widths: &spaced.column_widths,
+                    content_width: None,
                     bidi_visual: false,
                 },
                 20.0,

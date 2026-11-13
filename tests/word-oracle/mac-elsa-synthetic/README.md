@@ -19,6 +19,11 @@ The automatic-width fixed-table fixtures cover one-column tables with
 25%, 50%, and 100% cell widths, varying stored grids and page columns.
 They check text origins and the visible glyphs inside the narrow cells.
 
+The automatic-width autofit fixtures cover repeated headers and percentage
+cell widths in single, equal, and unequal newspaper columns. The eight-page
+matrix reverses the unequal columns and compares 25%, 50%, and 100% cells,
+including text that extends past the grid drawn from the last column.
+
 The right-to-left repeated table-header fixtures vary the header height
 and starting column across unequal columns in a continuous section.
 They check where the first header and repeated headers land and where
