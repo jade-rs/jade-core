@@ -42563,11 +42563,11 @@ struct PreservedRunChild {
 }
 
 /// Computes the total text length of a paragraph by summing all runs.
-fn paragraph_text_len(paragraph: &Paragraph) -> usize {
+pub(crate) fn paragraph_text_len(paragraph: &Paragraph) -> usize {
     paragraph.runs.iter().map(|run| run.text.len()).sum()
 }
 
-fn paragraph_text_is_char_boundary(paragraph: &Paragraph, offset: usize) -> bool {
+pub(crate) fn paragraph_text_is_char_boundary(paragraph: &Paragraph, offset: usize) -> bool {
     let mut cursor = 0usize;
     for run in &paragraph.runs {
         let end = cursor + run.text.len();

@@ -365,13 +365,16 @@ fn validate_text_offset(
     paragraph: usize,
     offset: usize,
 ) -> Result<(), HeadlessApiApplyError> {
-    let text =
-        paragraph_text(word_doc, paragraph).ok_or_else(|| HeadlessApiApplyError::Command {
-            index,
-            source: CommandError::Custom(format!("paragraph {paragraph} does not exist")),
-        })?;
+    let model_paragraph =
+        word_doc
+            .paragraph(paragraph)
+            .ok_or_else(|| HeadlessApiApplyError::Command {
+                index,
+                source: CommandError::Custom(format!("paragraph {paragraph} does not exist")),
+            })?;
+    let text_len = crate::word_document::paragraph_text_len(model_paragraph);
     let rendered_len = word_doc
-        .model_to_rendered_text_position(TextPosition::new(paragraph, text.len()))
+        .model_to_rendered_text_position(TextPosition::new(paragraph, text_len))
         .offset;
     if offset > rendered_len {
         return Err(HeadlessApiApplyError::Command {
@@ -384,7 +387,7 @@ fn validate_text_offset(
     let model_offset = word_doc
         .rendered_to_model_text_position(TextPosition::new(paragraph, offset))
         .offset;
-    if !text.is_char_boundary(model_offset) {
+    if !crate::word_document::paragraph_text_is_char_boundary(model_paragraph, model_offset) {
         return Err(HeadlessApiApplyError::Command {
             index,
             source: CommandError::Custom(format!(
@@ -1961,7 +1964,9 @@ fn try_apply_headless_text_command(
             text,
         } => {
             validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
-            validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
+            if (start_paragraph, start_offset) != (end_paragraph, end_offset) {
+                validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
+            }
             // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
             // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
             let original_end_offset = *end_offset;
@@ -6166,7 +6171,7 @@ fn trimmed_replacement<'a>(
     end: usize,
     replacement: &'a str,
 ) -> (usize, usize, &'a str) {
-    if start_paragraph != end_paragraph || start > end {
+    if start_paragraph != end_paragraph || start >= end || replacement.is_empty() {
         return (start, end, replacement);
     }
     let Some(paragraph) = word_doc.paragraph(start_paragraph) else {
