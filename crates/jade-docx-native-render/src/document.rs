@@ -2424,6 +2424,11 @@ impl NativeDocument {
         self.rendered_pages.get()
     }
 
+    /// Identifies the current raster contents of a rendered page.
+    pub fn page_raster_generation(&self, page_index: usize) -> Option<u32> {
+        self.pages.borrow().get(page_index)?.raster_generation()
+    }
+
     /// A page's pixels as BGRA with premultiplied alpha, plus its size.
     pub fn page_pixels(&self, page_index: usize) -> Option<(Vec<u8>, i32, i32)> {
         self.pages
