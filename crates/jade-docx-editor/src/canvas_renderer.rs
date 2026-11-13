@@ -2124,6 +2124,8 @@ impl ParagraphWrapCacheStats {
 struct ColumnLayout {
     widths: Vec<f64>,
     offsets: Vec<f64>,
+    /// Top of a continuous section on the page where it begins.
+    section_top: Option<(usize, f64)>,
     /// Whether a vertical separator rule should be drawn in each gutter
     /// (`w:cols w:sep="true"`, ECMA-376 Part 1 §17.6.4).
     separator: bool,
@@ -2191,7 +2193,15 @@ impl ColumnLayout {
         Self {
             widths,
             offsets,
+            section_top: None,
             separator: false,
+        }
+    }
+
+    fn mirror_offsets(&mut self, left: f64, width: f64) {
+        let right = left + width;
+        for (offset, column_width) in self.offsets.iter_mut().zip(&self.widths) {
+            *offset = right - (*offset - left) - column_width;
         }
     }
 
@@ -2204,9 +2214,12 @@ impl ColumnLayout {
         }
         let mut positions = Vec::with_capacity(self.widths.len() - 1);
         for idx in 0..self.widths.len() - 1 {
-            let gutter_start = self.offsets[idx] + self.widths[idx];
-            let next_start = self.offsets[idx + 1];
-            positions.push((gutter_start + next_start) / 2.0);
+            let first_left = self.offsets[idx];
+            let second_left = self.offsets[idx + 1];
+            let gutter_left =
+                (first_left + self.widths[idx]).min(second_left + self.widths[idx + 1]);
+            let gutter_right = first_left.max(second_left);
+            positions.push((gutter_left + gutter_right) / 2.0);
         }
         positions
     }
@@ -15588,12 +15601,18 @@ where
                         0,
                         options,
                     );
-                    // For a page-starting section break, Word for Mac excludes
-                    // the line box of the empty section mark from page vAlign.
-                    // Keep laying it out normally for pagination and editing.
+                    // Word for Mac omits the empty section mark from page
+                    // vAlign and from the vertical flow at a continuous column
+                    // change. Keep its layout available for editing.
                     let empty_section_mark = body_element_index + 1 == end
-                        && index + 1 < sections.len()
-                        && self.section_valign_enabled()
+                        && sections.get(index + 1).is_some_and(|next| {
+                            self.section_valign_enabled()
+                                || next
+                                    .properties
+                                    .as_ref()
+                                    .and_then(|props| props.section_type.as_deref())
+                                    == Some("continuous")
+                        })
                         && jade_docx_layout::line_metrics::word_layout_platform()
                             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         && matches!(element, BodyElement::Paragraph(paragraph)
@@ -17454,7 +17473,19 @@ where
                 // A continuous section keeps the current Y. Applying the new
                 // column definition here preserves the historical renderer
                 // behavior for continuous column-layout changes.
+                let previous_layout = section_mark_top.map(|_| self.column_layout.clone());
                 self.apply_columns(section_props, document);
+                if let Some((top, previous)) = section_mark_top.zip(previous_layout) {
+                    if previous.widths != self.column_layout.widths
+                        || previous.offsets != self.column_layout.offsets
+                    {
+                        self.current_y = top;
+                    }
+                }
+                if self.column_layout.count() > 1 {
+                    self.column_layout.section_top =
+                        Some((self.current_page_number, self.current_y));
+                }
                 self.column_index = 0;
                 self.current_text_direction = resolved_direction;
                 self.odd_page_margin_left_pt = odd_page_margins.left;
@@ -17470,14 +17501,16 @@ where
                 // prove a column remained; equivalent Word sections normally
                 // retain their column count, while clamping keeps malformed or
                 // asymmetric documents inside the target layout.
+                let section_top = self.column_layout.section_top;
                 self.apply_columns(section_props, document);
+                self.column_layout.section_top = section_top;
                 self.column_index =
                     (previous_column_index + 1).min(self.column_layout.count().saturating_sub(1));
                 // The shared physical page is owned by the target section
                 // after the column break, so resolve its vAlign offset before
                 // positioning the first line in that column.
                 self.active_section_index = target_section_index;
-                self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+                self.current_y = self.current_column_top();
                 self.last_line_baseline = self.current_y;
                 self.current_text_direction = resolved_direction;
                 self.odd_page_margin_left_pt = odd_page_margins.left;
@@ -17631,12 +17664,18 @@ where
 
     fn apply_columns(&mut self, section_props: Option<&SectionProperties>, document: &Document) {
         let available_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
-        let new_layout =
+        let mut new_layout =
             if let Some(columns) = Self::resolve_section_columns(section_props, document) {
                 ColumnLayout::from_section(columns, available_width, self.margin_left)
             } else {
                 ColumnLayout::single(available_width, self.margin_left)
             };
+        let right_to_left = section_props
+            .or(document.default_section.as_ref())
+            .is_some_and(|props| props.bidi);
+        if right_to_left && new_layout.count() > 1 {
+            new_layout.mirror_offsets(self.margin_left, available_width);
+        }
 
         let previous_count = self.column_layout.count();
         self.column_layout = new_layout;
@@ -17646,6 +17685,14 @@ where
         } else if self.column_index >= self.column_layout.count() {
             self.column_index = self.column_layout.count().saturating_sub(1);
         }
+    }
+
+    fn current_column_top(&self) -> f64 {
+        let page_top = self.effective_body_top() + self.current_page_valign_offset();
+        self.column_layout
+            .section_top
+            .filter(|(page, _)| *page == self.current_page_number)
+            .map_or(page_top, |(_, top)| top.max(page_top))
     }
 
     fn current_column_x(&self) -> f64 {
@@ -17718,7 +17765,7 @@ where
             if self.column_layout.count() > 1 && self.column_index + 1 < self.column_layout.count()
             {
                 self.column_index += 1;
-                self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+                self.current_y = self.current_column_top();
                 self.last_line_baseline = self.current_y;
                 return Ok(());
             }
@@ -25627,7 +25674,7 @@ where
             && self.column_index + 1 < self.column_layout.count()
         {
             self.column_index += 1;
-            self.current_y = self.effective_body_top() + self.current_page_valign_offset();
+            self.current_y = self.current_column_top();
             self.last_line_baseline = self.current_y;
             return Ok(());
         }
@@ -69506,6 +69553,17 @@ mod tests {
         assert!(ColumnLayout::from_section(&single, 600.0, 40.0)
             .separator_positions()
             .is_empty());
+    }
+
+    #[test]
+    fn right_to_left_columns_keep_logical_widths_and_gutters() {
+        let mut layout = ColumnLayout::from_widths(vec![70.0, 100.0, 140.0], 40.0, &[10.0, 20.0]);
+        layout.separator = true;
+        layout.mirror_offsets(40.0, 340.0);
+
+        assert_eq!(layout.widths, [70.0, 100.0, 140.0]);
+        assert_eq!(layout.offsets, [310.0, 200.0, 40.0]);
+        assert_eq!(layout.separator_positions(), [305.0, 190.0]);
     }
 
     #[test]
