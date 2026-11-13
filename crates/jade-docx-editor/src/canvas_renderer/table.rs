@@ -3478,7 +3478,11 @@ where
         );
 
         let header_height = repeated_header_height(&header_heights_snapshot, header_row_count);
-        let draw_headers = |renderer: &mut Self, table_x, paint_width| -> Result<(), JsValue> {
+        let draw_headers = |renderer: &mut Self,
+                            table_x,
+                            paint_width,
+                            layout_config: &LayoutConfig|
+         -> Result<(), JsValue> {
             let mut rewrapped_headers;
             let active_widths;
             let active_positions;
@@ -3494,7 +3498,7 @@ where
                             &table.rows[row_index],
                             table,
                             &[frame],
-                            &layout_config,
+                            layout_config,
                             hint,
                             visible_index,
                             total_row_count,
@@ -3896,7 +3900,12 @@ where
                                 );
                                 self.configure_table_context();
                                 if repeat_header {
-                                    draw_headers(self, table_x, right_edge - left_edge)?;
+                                    draw_headers(
+                                        self,
+                                        table_x,
+                                        right_edge - left_edge,
+                                        &layout_config,
+                                    )?;
                                 }
                             }
                             pending_cells = split.tail_cells;
@@ -3961,7 +3970,7 @@ where
                     self.configure_table_context();
                     segment_starts_page = true;
                     if repeat_header {
-                        draw_headers(self, table_x, right_edge - left_edge)?;
+                        draw_headers(self, table_x, right_edge - left_edge, &layout_config)?;
                         segment_starts_page = at_table_frame_top(self);
                     } else if row_start
                         && first_visible_row != Some(row_index)
