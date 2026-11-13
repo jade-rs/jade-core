@@ -2972,13 +2972,7 @@ where
             let x = floating_table_x.unwrap_or_else(|| {
                 compute_inline_body_table_x(
                     left,
-                    alignment_width.map_or(width, |width| {
-                        if rtl_merged_percentage_grid {
-                            word_pre_2013_table_sizing_width_px(table, width, compatibility_mode)
-                        } else {
-                            width
-                        }
-                    }),
+                    alignment_width.unwrap_or(width),
                     table_width,
                     table,
                     text_inset,
