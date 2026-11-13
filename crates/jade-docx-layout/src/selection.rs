@@ -900,6 +900,44 @@ impl SelectionManager {
         }
     }
 
+    /// Restore cells skipped by a page seek. Saved cells already have
+    /// normalized bounds and sorted, unique paragraph ids.
+    pub fn replay_cell_prefix(
+        &mut self,
+        registry: &CellRegistry,
+        table_limit: usize,
+        paragraph_limit: usize,
+    ) {
+        if self.frozen {
+            return;
+        }
+        self.cells
+            .reserve(registry.cells.len().min(paragraph_limit));
+        self.paragraph_to_cell
+            .reserve(registry.paragraph_to_cell.len().min(paragraph_limit));
+        for cell in &registry.cells {
+            let Some(&last) = cell.paragraphs.last() else {
+                continue;
+            };
+            if cell.table_id >= table_limit || last >= paragraph_limit {
+                continue;
+            }
+            let id = self.cells.len();
+            match self.paragraph_to_cell.entry(cell.paragraphs[0]) {
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    entry.insert(id);
+                    for &paragraph in &cell.paragraphs[1..] {
+                        self.paragraph_to_cell.insert(paragraph, id);
+                    }
+                    self.cells.push(cell.clone());
+                }
+                std::collections::hash_map::Entry::Occupied(_) => {
+                    self.record_table_cell_fragment(cell.clone());
+                }
+            }
+        }
+    }
+
     /// Move the cell registry aside before an incremental render clears it.
     /// Frozen bitmap-only passes keep their authoritative registry in place.
     pub fn take_cell_layouts(&mut self) -> Vec<CellLayout> {
@@ -6218,6 +6256,42 @@ mod tests {
                     proptest::prop_assert_eq!(manager.cell_text_bounds_for_paragraph(paragraph, y), reference.cell_text_bounds_for_paragraph(paragraph, y));
                 }
             }
+        }
+    }
+
+    #[test]
+    fn replayed_cell_prefix_matches_fragment_registration() {
+        let mut source = SelectionManager::default();
+        for (table_id, paragraphs, top) in [
+            (0, vec![0, 1], 10.0),
+            (0, vec![0, 1], 30.0),
+            (0, vec![2, 7], 50.0),
+            (1, vec![3], 70.0),
+        ] {
+            source.record_table_cell_fragment(CellLayout {
+                paragraphs,
+                table_id,
+                top,
+                bottom: top + 15.0,
+                right: 10.0,
+                ..CellLayout::default()
+            });
+        }
+        let registry = source.take_cell_registry();
+        let mut expected = SelectionManager::default();
+        for cell in registry.cells() {
+            if cell.table_id < 1 && cell.paragraphs.iter().all(|&paragraph| paragraph < 7) {
+                expected.record_table_cell_fragment(cell.clone());
+            }
+        }
+        let mut replay = SelectionManager::default();
+        replay.replay_cell_prefix(&registry, 1, 7);
+        assert_eq!(replay.cells.len(), 2);
+        assert_eq!(replay.paragraph_to_cell, expected.paragraph_to_cell);
+        for (actual, expected) in replay.cells.iter().zip(&expected.cells) {
+            assert_eq!(actual.paragraphs, expected.paragraphs);
+            assert_eq!(actual.order, expected.order);
+            assert_eq!((actual.top, actual.bottom), (expected.top, expected.bottom));
         }
     }
 
