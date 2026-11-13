@@ -3253,7 +3253,7 @@ pub(crate) fn word_mac_join_control_line_height_px(
     let units = match (control, family) {
         // Word uses the Arial line box for an isolated Geeza Pro zero-width space.
         ("\u{200b}", "Geeza Pro") => {
-            let (ascent, descent) = word_latin_font_vertical_units("Arial")?;
+            let (ascent, descent) = word_latin_font_vertical_units("Arial", None)?;
             ascent + descent
         }
         // These ZWJ lines use the same effective box as Calibri.
