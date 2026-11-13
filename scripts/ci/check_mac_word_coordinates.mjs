@@ -16,7 +16,7 @@ const finalRevisionView = new Set([
   'numbering-del-mac', 'numbering-del2-mac',
 ]);
 const hyphenGlyph = /^[-\u00ad\u2010\u2011]$/u;
-const arabicPattern = /\p{Script=Arabic}|(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
+const arabicPattern = /،|\p{Script=Arabic}|(?=\p{Mark})\p{Script_Extensions=Arabic}/u;
 const isArabic = text => arabicPattern.test(text);
 const textBoxes = new Map([
   ['numbering-textbox-overflow-mac', 1],

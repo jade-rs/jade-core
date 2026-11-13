@@ -6503,6 +6503,7 @@ fn apply_bidi_visual_order(
     word_platform: crate::line_metrics::WordLayoutPlatform,
     run_styles: &[RunStyle],
     base_offset: usize,
+    mac_arabic_neutrals: bool,
 ) {
     if line.clusters.len() < 2 || !requires_bidi_resolution(line, base_rtl) {
         return;
@@ -6550,7 +6551,31 @@ fn apply_bidi_visual_order(
         .iter()
         .map(|(start, _)| resolved_levels[*start])
         .collect::<Vec<_>>();
-    let visual_order = BidiInfo::reorder_visual(&levels);
+    let mut visual_order = BidiInfo::reorder_visual(&levels);
+    if mac_arabic_neutrals && run_directions.is_none() {
+        // Word keeps ASCII punctuation and its following spaces in logical
+        // order within the surrounding RTL run. The space before the
+        // punctuation keeps its RTL order.
+        let mut punctuation_run = false;
+        let punctuation = line
+            .clusters
+            .iter()
+            .zip(&levels)
+            .map(|(cluster, level)| {
+                punctuation_run = level.is_rtl()
+                    && (cluster.text.chars().all(|ch| ch.is_ascii_punctuation())
+                        || (punctuation_run && cluster.text == " "));
+                punctuation_run
+            })
+            .collect::<Vec<_>>();
+        for indices in visual_order.chunk_by_mut(|left, right| {
+            punctuation[*left] && punctuation[*right] && left.abs_diff(*right) == 1
+        }) {
+            if indices.first() > indices.last() {
+                indices.reverse();
+            }
+        }
+    }
     let logical_indices = visual_order
         .into_iter()
         .filter_map(|index| entries[index].1);
@@ -8935,6 +8960,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         &mut snap_to_chars_cell_width_cache,
     )?;
 
+    let single_line = lines.len() == 1;
     for (epoch, line) in lines.iter_mut().enumerate() {
         let reorder_gaps =
             !fitted_visual_gaps.is_empty() && requires_bidi_resolution(line, paragraph_style.bidi);
@@ -8987,14 +9013,31 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         .iter()
                         .all(|cluster| is_arabic_letter_cluster(&cluster.text))
             });
+        // A single unmarked run beginning with Arabic after neutral
+        // punctuation uses Arabic visual order even in a left-aligned paragraph.
+        let mac_arabic_first = SHAPE_ARABIC
+            && single_line
+            && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+            && paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+            && matches!(run_styles, [run] if run.properties.as_ref().and_then(|p| p.rtl).is_none())
+            && line
+                .clusters
+                .iter()
+                .flat_map(|cluster| cluster.text.chars())
+                .find(|&ch| matches!(bidi_class(ch), BidiClass::L | BidiClass::R | BidiClass::AL))
+                .is_some_and(|ch| ch.script() == UnicodeScriptKind::Arabic)
+            && text
+                .chars()
+                .any(|ch| matches!(bidi_class(ch), BidiClass::L | BidiClass::EN));
         apply_bidi_visual_order(
             line,
-            (paragraph_style.bidi || arabic_trailing_nbsp)
+            (paragraph_style.bidi || arabic_trailing_nbsp || mac_arabic_first)
                 && !unmarked_latin_first
                 && !arabic_leading_nbsp,
             paragraph_style.word_platform,
             run_styles,
             base_offset,
+            mac_arabic_first && text.trim_end().ends_with(|ch: char| ch.is_ascii_digit()),
         );
         if reorder_gaps {
             reorder_fitted_visual_gaps(line, &mut fitted_visual_gaps, epoch);
@@ -26818,6 +26861,7 @@ mod tests {
                 crate::line_metrics::WordLayoutPlatform::Windows,
                 &[],
                 0,
+                false,
             );
 
             let base = if base_rtl { Level::rtl() } else { Level::ltr() };
