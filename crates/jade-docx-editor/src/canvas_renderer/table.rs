@@ -2960,6 +2960,29 @@ where
                     compatibility_mode,
                 )
             });
+            let x = if word_mac_column_table
+                && percentage_width
+                && floating_table_x.is_none()
+                && table.style.get("text-align").is_some_and(|alignment| {
+                    alignment.eq_ignore_ascii_case("center")
+                        || alignment.eq_ignore_ascii_case("centre")
+                }) {
+                table
+                    .rows
+                    .iter()
+                    .find(|row| !table_row_is_hidden(row))
+                    .filter(|row| row.height_rule == Some(TableRowHeightRule::Exact))
+                    .map_or(x, |row| {
+                        let spacing = resolve_cell_spacing_px(row, table);
+                        // Word includes the exposed leading gap in the centered
+                        // width of a fixed-height table with separate borders.
+                        x - (spacing - spacing_frame_width(row, table, TableBorderSide::Left))
+                            .max(0.0)
+                            * 0.5
+                    })
+            } else {
+                x
+            };
             (x, x, x + table_width)
         };
         let (mut table_x, _, _) = table_segment_edges(self, None);
@@ -3866,6 +3889,23 @@ where
                 self.current_y += spacing;
                 if row_grows_for_borders(row) && row_uses_separate_cell_borders(row, table) {
                     self.current_y += spacing_frame_width(row, table, TableBorderSide::Bottom);
+                }
+            }
+        }
+        if word_mac_column_table {
+            if let Some(row) = last_visible_row_index.and_then(|index| table.rows.get(index)) {
+                let spacing = resolve_cell_spacing_px(row, table);
+                if spacing > 0.0
+                    && table.rows.iter().any(|row| {
+                        !table_row_is_hidden(row)
+                            && row.height_rule == Some(TableRowHeightRule::Exact)
+                    })
+                {
+                    // The final gutter separates the last cell from the table frame.
+                    self.current_y += spacing;
+                    if row_grows_for_borders(row) {
+                        self.current_y += spacing_frame_width(row, table, TableBorderSide::Bottom);
+                    }
                 }
             }
         }
@@ -11955,7 +11995,11 @@ fn add_border_extents(
         // borders of two-line rows around a 50pt exact one).
         let exact_below_growing =
             mac && !row_grows_for_borders(row) && previous.is_some_and(|(_, _, grows)| grows);
-        if mac && row_grows_for_borders(row) && previous.is_some_and(|(_, _, grows)| !grows) {
+        if mac
+            && row_grows_for_borders(row)
+            && !row_uses_separate_cell_borders(row, table)
+            && previous.is_some_and(|(_, _, grows)| !grows)
+        {
             first_visible = true;
         }
         if exact_below_growing {
@@ -12128,12 +12172,15 @@ fn add_row_border_extents(
     } else {
         0.0
     };
+    let platform = jade_docx_layout::line_metrics::word_layout_platform();
+    let spacing = resolve_cell_spacing_px(row, table);
     if !grows
-        && jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         && row_uses_separate_cell_borders(row, table)
+        && (platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            || (platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                && spacing > 0.0
+                && row.height_rule == Some(TableRowHeightRule::Exact)))
     {
-        let spacing = resolve_cell_spacing_px(row, table);
         let row_top = cells
             .iter()
             .filter(|cell| !cell.skip_render)
@@ -12177,9 +12224,14 @@ fn add_row_border_extents(
             .iter()
             .map(|&index| cells[index].height)
             .fold(0.0_f64, f64::max);
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            && row_uses_separate_cell_borders(row, table)
+        if row_uses_separate_cell_borders(row, table)
+            && (platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                || (platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    && spacing > 0.0
+                    && table
+                        .rows
+                        .iter()
+                        .any(|row| row.height_rule == Some(TableRowHeightRule::Exact))))
         {
             // The minimum includes the closing cell rule. Natural content
             // needs that rule added here; both reserve the opening cell rule
@@ -12662,11 +12714,12 @@ fn split_prepared_row_for_available_height(
             tail_cell.selection_paragraph_indices = head_cell.selection_paragraph_indices.clone();
         }
         tail_cell.padding.top -= tail_cell.page_top_inset;
-        tail_cell.page_top_inset = if tail_has_header {
-            0.0
-        } else {
-            tail_cell.top_border_extent()
-        };
+        tail_cell.page_top_inset =
+            if tail_has_header && !(keep_after_spacing && tail_cell.cell_spacing > 0.0) {
+                0.0
+            } else {
+                tail_cell.top_border_extent()
+            };
         tail_cell.padding.top += tail_cell.page_top_inset;
         if !cell_has_tail {
             tail_cell.hidden_end_marker_paragraph_count = 0;
