@@ -1138,6 +1138,14 @@ impl SkiaPainter {
         true
     }
 
+    /// Identifies the current raster contents without reading the pixels.
+    pub fn raster_generation(&self) -> Option<u32> {
+        match &mut *self.shared.surface.borrow_mut() {
+            PaintSurface::Raster(surface) => Some(surface.generation_id()),
+            _ => None,
+        }
+    }
+
     /// The surface's pixels as BGRA with premultiplied alpha, plus its size.
     ///
     /// That layout is not arbitrary: it is what a GPU compositor wants on
