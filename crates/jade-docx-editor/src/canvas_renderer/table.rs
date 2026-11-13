@@ -2928,7 +2928,7 @@ where
         let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
-        let table_segment_edges = |renderer: &Self| {
+        let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>| {
             let (left, width) = if use_column_frame {
                 (renderer.current_column_x(), renderer.current_column_width())
             } else {
@@ -2937,7 +2937,7 @@ where
             let x = floating_table_x.unwrap_or_else(|| {
                 compute_inline_body_table_x(
                     left,
-                    width,
+                    alignment_width.unwrap_or(width),
                     table_width,
                     table,
                     text_inset,
@@ -2946,7 +2946,7 @@ where
             });
             (x, x, x + table_width)
         };
-        let (mut table_x, mut left_edge, mut right_edge) = table_segment_edges(self);
+        let (mut table_x, _, _) = table_segment_edges(self, None);
         let at_table_frame_top = |renderer: &Self| {
             let top = if use_column_frame {
                 renderer.current_column_top()
@@ -3126,7 +3126,7 @@ where
             if height <= page_content_height
                 && self.ensure_table_row_space(height, use_column_frame)?
             {
-                (table_x, left_edge, right_edge) = table_segment_edges(self);
+                (table_x, _, _) = table_segment_edges(self, None);
                 self.configure_table_context();
             }
         }
@@ -3198,6 +3198,76 @@ where
         } else {
             None
         };
+
+        let table_start_page = self.current_page_number;
+        let alignment_widths = (word_mac_column_table
+            && !self.pageless_mode
+            && self.paragraph_frame_column.is_none()
+            && !self.measuring_keep_next
+            && !has_merge_owners
+            && self.footnote_reserve_px == 0.0
+            && self
+                .column_layout
+                .widths
+                .iter()
+                .any(|&width| width != self.current_column_width())
+            && table.rows.iter().zip(&hidden_rows).all(|(row, &hidden)| {
+                hidden
+                    || (row.height_rule == Some(TableRowHeightRule::Exact)
+                        && row.height.is_some()
+                        && !table_row_has_note_references(row))
+            }))
+        .then(|| {
+            let initial_column = self.column_index;
+            let mut last_column = initial_column;
+            if header_row_count > 0 {
+                // Word aligns all fragments on the opening page using the last
+                // column reached there when it repeats the table header.
+                let header_height = repeated_header_height(&row_heights, header_row_count);
+                let bottom = self.table_row_bottom_limit();
+                let column_top = self.current_column_top();
+                let mut y = self.current_y;
+                for (row_index, (&height, &hidden)) in
+                    row_heights.iter().zip(&hidden_rows).enumerate()
+                {
+                    if hidden {
+                        continue;
+                    }
+                    if y + height > bottom {
+                        if last_column + 1 == self.column_layout.count() {
+                            break;
+                        }
+                        let next_y = column_top
+                            + if row_index >= header_row_count {
+                                header_height
+                            } else {
+                                0.0
+                            };
+                        if next_y + height > bottom {
+                            break;
+                        }
+                        last_column += 1;
+                        y = next_y;
+                    }
+                    y += height;
+                }
+            }
+            (
+                self.column_layout.width(last_column),
+                self.column_layout.width(initial_column),
+            )
+        });
+        let alignment_width = |renderer: &Self| {
+            alignment_widths.map(|(opening, continuation)| {
+                if renderer.current_page_number == table_start_page {
+                    opening
+                } else {
+                    continuation
+                }
+            })
+        };
+        let (mut table_x, mut left_edge, mut right_edge) =
+            table_segment_edges(self, alignment_width(self));
 
         let last_visible_row = hidden_rows.iter().rposition(|hidden| !hidden);
         let mut last_visible_row_index = None;
@@ -3491,7 +3561,8 @@ where
                             )?;
                             self.current_y += split.head_height;
                             if self.advance_table_flow(use_column_frame)? {
-                                (table_x, left_edge, right_edge) = table_segment_edges(self);
+                                (table_x, left_edge, right_edge) =
+                                    table_segment_edges(self, alignment_width(self));
                                 self.configure_table_context();
                                 // The row was split across a page boundary: redraw
                                 // the header block above the continued (tail)
@@ -3568,7 +3639,8 @@ where
                     }
                 }
                 if can_advance && self.ensure_table_row_space(required_height, use_column_frame)? {
-                    (table_x, left_edge, right_edge) = table_segment_edges(self);
+                    (table_x, left_edge, right_edge) =
+                        table_segment_edges(self, alignment_width(self));
                     self.configure_table_context();
                     segment_starts_page = true;
                     // A page boundary was crossed mid-table: redraw the header
@@ -3593,7 +3665,12 @@ where
                             line_height,
                         )?;
                         segment_starts_page = at_table_frame_top(self);
-                    } else if row_start && first_visible_row != Some(row_index) {
+                    } else if row_start
+                        && first_visible_row != Some(row_index)
+                        // Word Mac keeps the collapsed rule inside the exact
+                        // row box when continuing in an unequal column frame.
+                        && (alignment_widths.is_none() || row_uses_separate_cell_borders(row, table))
+                    {
                         // A fresh page has no preceding row to reserve its
                         // opening rule. Repeated headers already provide it.
                         let opening_rule = pending_cells

@@ -2168,8 +2168,14 @@ impl ColumnLayout {
                 .collect();
             let total_declared: f64 = collected.iter().sum();
             if total_declared > 0.0 {
-                let scale = available_for_columns / total_declared;
-                collected.iter_mut().for_each(|w| *w *= scale);
+                // Word for Mac uses the authored column widths even when
+                // their sum differs from the available body width.
+                if jade_docx_layout::line_metrics::word_layout_platform()
+                    != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                {
+                    let scale = available_for_columns / total_declared;
+                    collected.iter_mut().for_each(|w| *w *= scale);
+                }
                 collected
             } else {
                 vec![available_for_columns / count.max(1) as f64; count]
