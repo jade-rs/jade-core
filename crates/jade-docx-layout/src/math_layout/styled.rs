@@ -664,6 +664,7 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
         style,
         base_size: style.size_px,
         fraction_equation_size: None,
+        word_fraction_line_metrics: false,
         level: 0,
         display: options.display,
         cramped: false,
@@ -705,6 +706,7 @@ pub(crate) struct Builder<'c, 'a, C> {
     pub(crate) base_size: f64,
     /// Word Mac uses the opening run size for spacing a display fraction.
     fraction_equation_size: Option<f64>,
+    word_fraction_line_metrics: bool,
     pub(crate) level: u32,
     pub(crate) display: bool,
     pub(crate) cramped: bool,
@@ -820,7 +822,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
 
     fn line_metrics(&self, ink: MathMetrics) -> MathMetrics {
         #[cfg(feature = "opentype-math")]
-        if let Some(font) = self.context.font_parameters(self.style) {
+        if let Some(font) = self
+            .context
+            .font_parameters(self.style)
+            .filter(|_| !self.word_fraction_line_metrics)
+        {
             return font.line_metrics(ink);
         }
         ink
@@ -1135,7 +1141,15 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 let info = GlyphInfo {
                     italic: glyph.italic_correction_px,
                 };
-                return Ok((glyph.metrics(), info, Some(glyph)));
+                let mut metrics = glyph.metrics();
+                if self.fraction_equation_size.is_some()
+                    && self.level == 0
+                    && self.depth <= 1
+                    && style.family.eq_ignore_ascii_case("Cambria Math")
+                {
+                    metrics.width = self.context.measure_glyph(text, style)?.width;
+                }
+                return Ok((metrics, info, Some(glyph)));
             }
         }
         let metrics = self.context.measure_glyph(text, style)?;
