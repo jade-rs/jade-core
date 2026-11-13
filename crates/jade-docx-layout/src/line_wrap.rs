@@ -6139,10 +6139,25 @@ fn measure_arabic_wrap_clusters<C: LineWrapContext>(
             // Use that width for wrapping and retain the cluster boundaries.
             let shaped_width = ctx.measure_text(text, font)?;
             if shaped_width.is_finite() && shaped_width > 0.0 {
-                let scale = shaped_width / isolated_width;
-                for (_, width) in &mut clusters {
-                    *width *= scale;
+                let split = starts.windows(2).enumerate().rfind(|(index, range)| {
+                    let cluster = &text[range[0]..range[1]];
+                    *index > 0
+                        && range[1] < text.len()
+                        && cluster.starts_with('ل')
+                        && cluster.ends_with(['ا', 'أ', 'إ', 'آ'])
+                });
+                if let Some((index, range)) = split {
+                    // An emergency line ending at lam-alef fits on the
+                    // shaped prefix width, including its preceding letters.
+                    let width = ctx.measure_text(&text[..range[1]], font)?;
+                    if width.is_finite() && width > 0.0 && width < shaped_width {
+                        let (left, right) = clusters.split_at_mut(index + 1);
+                        scale_arabic_cluster_advances(left, width);
+                        scale_arabic_cluster_advances(right, shaped_width - width);
+                        return Ok(Some(clusters));
+                    }
                 }
+                scale_arabic_cluster_advances(&mut clusters, shaped_width);
             }
         }
         return Ok(Some(clusters));
@@ -6161,6 +6176,16 @@ fn measure_arabic_wrap_clusters<C: LineWrapContext>(
     }
     clusters.truncate(retained);
     Ok(Some(clusters))
+}
+
+fn scale_arabic_cluster_advances(clusters: &mut [(usize, f64)], width: f64) {
+    let isolated_width: f64 = clusters.iter().map(|(_, width)| width).sum();
+    if isolated_width > f64::EPSILON {
+        let scale = width / isolated_width;
+        for (_, advance) in clusters {
+            *advance *= scale;
+        }
+    }
 }
 
 #[derive(Default)]
