@@ -68,7 +68,34 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
             .is_some_and(|child| child.kind == MathElementKind::EquationArray)
             && content.next().is_none()
     });
+    let saved_fraction_size = b.fraction_equation_size.take();
+    if b.display
+        && !b.options.uniform
+        && !b.options.settings.small_fractions
+        && b.style.family.eq_ignore_ascii_case("Cambria Math")
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac
+        && !b.font_bound()
+        && math.children.iter().any(|child| {
+            !is_skipped(child)
+                && child.kind == MathElementKind::Fraction
+                && matches!(
+                    super::property(super::property_element(child, "fPr"), "type"),
+                    None | Some("bar" | "noBar")
+                )
+        })
+    {
+        b.fraction_equation_size = math
+            .children
+            .iter()
+            .find(|child| !is_skipped(child) && super::has_content(child))
+            .filter(|child| child.kind == MathElementKind::Run)
+            .map(|run| super::run_properties(run, b.style, b.options.text_family))
+            .filter(|run| !run.normal && run.style.family.eq_ignore_ascii_case("Cambria Math"))
+            .map(|run| run.style.size_px);
+    }
     let metrics = b.sequence_with_array_width(&math.children, max_array_width)?;
+    b.fraction_equation_size = saved_fraction_size;
     let breaks = b.breaks.take().unwrap_or_default();
     b.depth = saved.0;
     b.prev = saved.1;
@@ -482,13 +509,27 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             // Optical scripts get MATH leading. A taller structure such as
             // a fraction still reserves the standalone typographic gap.
             if metrics.ascent > tall_ascent && metrics.ascent > optical_ascent {
-                let line_size = b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                let has_fraction = b.options.display
+                    && b.plan.boxes[line.start.boxes..line.end.boxes]
+                        .iter()
+                        .any(|element| element.kind == MathElementKind::Fraction);
+                let mut baseline_sizes = b.plan.glyphs[line.start.glyphs..line.end.glyphs]
                     .iter()
                     .filter(|glyph| glyph.visible && glyph.baseline == 0.0)
-                    .map(|glyph| glyph.style.size_px)
-                    .reduce(f64::max)
-                    .unwrap_or(size);
+                    .map(|glyph| glyph.style.size_px);
+                let line_size = if has_fraction {
+                    baseline_sizes.next()
+                } else {
+                    baseline_sizes.reduce(f64::max)
+                }
+                .unwrap_or(size);
                 metrics.ascent += line_size * (353.0 / 2048.0);
+                if has_fraction {
+                    // Word Mac reserves slightly less space below a display
+                    // fraction than the fallback ink metrics. Keep the
+                    // baseline placement and use the measured line pitch.
+                    metrics.descent = (metrics.descent - line_size * (18.0 / 2048.0)).max(0.0);
+                }
             }
             if optical_ascent > 0.0 {
                 metrics.ascent = metrics

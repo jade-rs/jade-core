@@ -663,6 +663,7 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
         justify,
         style,
         base_size: style.size_px,
+        fraction_equation_size: None,
         level: 0,
         display: options.display,
         cramped: false,
@@ -702,6 +703,8 @@ pub(crate) struct Builder<'c, 'a, C> {
     pub(crate) style: MathTextStyle<'a>,
     /// The size scripts are scaled from: the run size at the top level.
     pub(crate) base_size: f64,
+    /// Word Mac uses the opening run size for spacing a display fraction.
+    fraction_equation_size: Option<f64>,
     pub(crate) level: u32,
     pub(crate) display: bool,
     pub(crate) cramped: bool,
@@ -978,7 +981,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 };
                 let class = alphabet::resolve_binary(self.prev, raw);
                 if let Some(prev) = self.prev {
-                    space = alphabet::atom_space(prev, class, self.level > 0) * self.size() / 18.0;
+                    let size = self
+                        .fraction_equation_size
+                        .filter(|_| self.level == 0 && self.depth <= 1)
+                        .unwrap_or_else(|| self.size());
+                    space = alphabet::atom_space(prev, class, self.level > 0) * size / 18.0;
                 }
                 if self.first.is_none() {
                     self.first = Some(class);
@@ -1192,6 +1199,15 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             self.first,
             std::mem::take(&mut self.pending_italic),
         );
+        let saved_fraction_size = self.fraction_equation_size;
+        if self.depth != 0
+            || !matches!(
+                element.kind,
+                MathElementKind::Numerator | MathElementKind::Denominator
+            )
+        {
+            self.fraction_equation_size = None;
+        }
         if !self.options.uniform {
             self.level += level_up;
         }
@@ -1225,6 +1241,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         self.prev = saved.3;
         self.first = saved.4;
         self.pending_italic = saved.5;
+        self.fraction_equation_size = saved_fraction_size;
         Ok(metrics)
     }
 
@@ -1252,7 +1269,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 let left = class.0;
                 let left = alphabet::resolve_binary(Some(prev), left);
                 atom_space = alphabet::atom_space(prev, left, self.level > 0);
-                lead = atom_space * self.size() / 18.0;
+                let size = self
+                    .fraction_equation_size
+                    .filter(|_| self.depth == 0)
+                    .unwrap_or_else(|| self.size());
+                lead = atom_space * size / 18.0;
             }
             lead += std::mem::take(&mut self.pending_italic);
             if e.kind != Fraction {
@@ -1277,7 +1298,9 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
             }
             Fraction => {
                 let (metrics, fraction_size) = self.fraction(e)?;
-                if let Some(size) = fraction_size {
+                if let Some(size) = fraction_size
+                    .filter(|_| self.depth != 0 || self.fraction_equation_size.is_none())
+                {
                     lead += atom_space * (size - self.size()) / 18.0;
                 }
                 self.note_space_after_operator(lead, start.glyphs);
