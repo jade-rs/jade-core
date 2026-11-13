@@ -7145,20 +7145,19 @@ pub fn apply_paragraph_indent_with_char_unit(
     // Word for Mac uses the legacy left and right values as the leading
     // and trailing indents in a right-to-left paragraph.
     let mac_bidi_indent;
-    let indent = if bidi
-        && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-    {
-        mac_bidi_indent = Indent {
-            left: indent.right,
-            right: indent.left,
-            left_chars: indent.right_chars,
-            right_chars: indent.left_chars,
-            ..indent.clone()
+    let indent =
+        if bidi && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac {
+            mac_bidi_indent = Indent {
+                left: indent.right,
+                right: indent.left,
+                left_chars: indent.right_chars,
+                right_chars: indent.left_chars,
+                ..indent.clone()
+            };
+            &mac_bidi_indent
+        } else {
+            indent
         };
-        &mac_bidi_indent
-    } else {
-        indent
-    };
     let mut applied_left_indent = 0.0;
     if let Some(left_pt) = resolve_indent_left_pt(indent, bidi, char_unit_pt) {
         let left_px = points_to_px(left_pt as f32);
@@ -8110,7 +8109,8 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         stops.iter().find(|stop| stop.ordinal == ordinal).copied()
                     });
                 let mirror_tab = paragraph_style.bidi
-                    && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                    && paragraph_style.word_platform
+                        == crate::line_metrics::WordLayoutPlatform::Mac
                     && positional.is_none();
                 let tab_target = |cursor_x: f64, line_origin: f64| match &positional {
                     Some(stop) => {
@@ -9853,7 +9853,9 @@ fn measure_tab_segment<C: LineWrapContext>(
                 Some(grapheme_start_abs),
             )?;
             let mut advance = computed.advance.total_advance;
-            if shape_arabic && script == ScriptCategory::Complex && is_arabic_letter_cluster(grapheme)
+            if shape_arabic
+                && script == ScriptCategory::Complex
+                && is_arabic_letter_cluster(grapheme)
             {
                 let offset = run_start_aligned + rel_offset;
                 let shaping_end = if offset >= arabic_span.end {
