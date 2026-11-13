@@ -2715,7 +2715,18 @@ where
             jade_docx_layout::line_metrics::word_layout_platform(),
         );
         let padding_y = points_to_px(CELL_VERTICAL_PADDING_PT);
-        let available_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
+        let page_content_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
+        let use_column_frame = !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+            && !table_floats(table)
+            && self.column_layout.count() > 1;
+        let available_width = if use_column_frame {
+            self.current_column_width()
+        } else {
+            page_content_width
+        };
         // Notes referenced from cells get their marks here, before the cells
         // are laid out, so the mark takes part in wrapping and the note body
         // is drawn at the page bottom like one referenced from a body
@@ -2780,6 +2791,27 @@ where
             self.document_east_asian_rules.compatibility_mode,
         );
         let mut column_widths = compute_column_widths(table, column_count, sizing_width);
+        if use_column_frame
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        {
+            // A percentage preferred width in a Word column replaces the
+            // saved grid total. Keep the grid's relative column widths.
+            if let Some(width) = table
+                .style
+                .get("width")
+                .filter(|value| value.trim().ends_with('%'))
+                .and_then(|value| preferred_width_px(value, sizing_width))
+                .filter(|width| *width > 0.0)
+            {
+                let total: f64 = column_widths.iter().sum();
+                if total > 0.0 {
+                    for column_width in &mut column_widths {
+                        *column_width *= width / total;
+                    }
+                }
+            }
+        }
         let (mut table_width, mut natural_paragraph_layouts) =
             apply_table_layout_width_for_table_with_content(
                 &table_wrap_context,
@@ -2847,28 +2879,50 @@ where
             self.current_y += mt;
         }
 
+        let inline_left = if use_column_frame {
+            self.current_column_x()
+        } else {
+            self.margin_left
+        };
         let floating_table_x = compute_floating_body_table_x(
             self.margin_left,
-            available_width,
+            page_content_width,
             self.page_width,
             table_width,
             table,
             self.current_page_number,
             self.document_east_asian_rules.compatibility_mode,
         );
-        let table_x = floating_table_x.unwrap_or_else(|| {
-            compute_inline_body_table_x(
-                self.margin_left,
-                available_width,
-                table_width,
-                table,
-                pre_2013_table_text_inset_px(
+        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
+        let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
+            - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
+        let table_segment_edges = |renderer: &Self| {
+            let (left, width) = if use_column_frame {
+                (renderer.current_column_x(), renderer.current_column_width())
+            } else {
+                (inline_left, available_width)
+            };
+            let x = floating_table_x.unwrap_or_else(|| {
+                compute_inline_body_table_x(
+                    left,
+                    width,
+                    table_width,
                     table,
-                    self.document_east_asian_rules.compatibility_mode,
-                ) - modern_leading_border_half_px(table, layout_config.word_modern_border_insets),
-                self.document_east_asian_rules.compatibility_mode,
-            )
-        });
+                    text_inset,
+                    compatibility_mode,
+                )
+            });
+            (x, x, x + table_width)
+        };
+        let (mut table_x, mut left_edge, mut right_edge) = table_segment_edges(self);
+        let at_table_frame_top = |renderer: &Self| {
+            let top = if use_column_frame {
+                renderer.current_column_top()
+            } else {
+                renderer.margin_top
+            };
+            !renderer.pageless_mode && (renderer.current_y - top).abs() <= ROW_SPLIT_EPSILON
+        };
         // A zero legacy cell margin can move the text frame by half a rule.
         // Word keeps the painted grid at the original border position.
         let border_x_offset = if floating_table_x.is_none()
@@ -2880,7 +2934,7 @@ where
                 .is_some_and(|mode| matches!(mode, 12 | 14))
         {
             compute_inline_body_table_x_inner(
-                self.margin_left,
+                inline_left,
                 available_width,
                 table_width,
                 table,
@@ -2894,8 +2948,6 @@ where
         } else {
             0.0
         };
-        let left_edge = table_x;
-        let right_edge = table_x + table_width;
 
         let margin_bottom = table
             .style
@@ -3039,7 +3091,10 @@ where
             // Otherwise a heading can appear alone at the foot of a page and
             // be repeated above the first body row on the following page.
             let page_content_height = self.page_height - self.margin_top - self.margin_bottom;
-            if height <= page_content_height && self.ensure_table_row_space(height)? {
+            if height <= page_content_height
+                && self.ensure_table_row_space(height, use_column_frame)?
+            {
+                (table_x, left_edge, right_edge) = table_segment_edges(self);
                 self.configure_table_context();
             }
         }
@@ -3359,9 +3414,7 @@ where
                                 row_index,
                                 split.head_height,
                                 row_start,
-                                !self.pageless_mode
-                                    && (self.current_y - self.margin_top).abs()
-                                        <= ROW_SPLIT_EPSILON,
+                                at_table_frame_top(self),
                                 table_index,
                                 table_x,
                                 left_edge,
@@ -3399,15 +3452,14 @@ where
                                     draw_top: (row_start && first_visible_row == Some(row_index))
                                         || (jade_docx_layout::line_metrics::word_layout_platform()
                                             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-                                            && !self.pageless_mode
-                                            && (self.current_y - self.margin_top).abs()
-                                                <= ROW_SPLIT_EPSILON),
+                                            && at_table_frame_top(self)),
                                     draw_bottom: jade_docx_layout::line_metrics::word_layout_platform()
                                         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
                                 },
                             )?;
                             self.current_y += split.head_height;
-                            if self.force_table_page_break()? {
+                            if self.advance_table_flow(use_column_frame)? {
+                                (table_x, left_edge, right_edge) = table_segment_edges(self);
                                 self.configure_table_context();
                                 // The row was split across a page boundary: redraw
                                 // the header block above the continued (tail)
@@ -3452,13 +3504,20 @@ where
                 } else {
                     pending_height
                 };
-                let mut segment_starts_page = fresh_page_segment.unwrap_or(
-                    !self.pageless_mode
-                        && (self.current_y - self.margin_top).abs() <= ROW_SPLIT_EPSILON,
-                );
+                let mut segment_starts_page =
+                    fresh_page_segment.unwrap_or(at_table_frame_top(self));
                 let mut continued_row_opening_rule = 0.0;
-                if fresh_page_segment.is_none() && self.table_row_needs_page_break(required_height)
-                {
+                // A continuous section can leave every column on its first page
+                // too short for even one line after a repeated header. Keep trying
+                // until we reach a full-height frame, where oversized rows retain
+                // the existing fallback placement.
+                let can_advance = fresh_page_segment.is_none()
+                    || (use_column_frame
+                        && self.current_column_top()
+                            > self.effective_body_top()
+                                + self.current_page_valign_offset()
+                                + ROW_SPLIT_EPSILON);
+                if can_advance && self.table_row_needs_page_break(required_height) {
                     if let Some((previous_row, page, bottom)) = previous_spaced_frame {
                         if page == self.current_page_number {
                             self.draw_spaced_table_frame_segment(
@@ -3476,7 +3535,8 @@ where
                         }
                     }
                 }
-                if fresh_page_segment.is_none() && self.ensure_table_row_space(required_height)? {
+                if can_advance && self.ensure_table_row_space(required_height, use_column_frame)? {
+                    (table_x, left_edge, right_edge) = table_segment_edges(self);
                     self.configure_table_context();
                     segment_starts_page = true;
                     // A page boundary was crossed mid-table: redraw the header
@@ -3500,8 +3560,7 @@ where
                             },
                             line_height,
                         )?;
-                        segment_starts_page = !self.pageless_mode
-                            && (self.current_y - self.margin_top).abs() <= ROW_SPLIT_EPSILON;
+                        segment_starts_page = at_table_frame_top(self);
                     } else if row_start && first_visible_row != Some(row_index) {
                         // A fresh page has no preceding row to reserve its
                         // opening rule. Repeated headers already provide it.
@@ -7780,9 +7839,12 @@ where
             && self.current_y + height > self.table_row_bottom_limit()
     }
 
-    /// Ensures that the current page has enough space for a table row; starts a new page when
-    /// the remaining height is insufficient. Returns `true` when a page break occurred.
-    fn ensure_table_row_space(&mut self, height: f64) -> Result<bool, JsValue> {
+    /// Advances table flow when a row will not fit in the remaining height.
+    fn ensure_table_row_space(
+        &mut self,
+        height: f64,
+        use_column_frame: bool,
+    ) -> Result<bool, JsValue> {
         if self.rendering_header_footer_story {
             return Ok(false);
         }
@@ -7796,10 +7858,21 @@ where
 
         // Rows stop above the page's footnote area (#294).
         if self.table_row_needs_page_break(height) {
-            self.force_table_page_break()?;
-            return Ok(true);
+            return self.advance_table_flow(use_column_frame);
         }
         Ok(false)
+    }
+
+    fn advance_table_flow(&mut self, use_column_frame: bool) -> Result<bool, JsValue> {
+        if use_column_frame
+            && !self.measuring_keep_next
+            && self.paragraph_frame_column.is_none()
+            && self.column_index + 1 < self.column_layout.count()
+        {
+            self.force_column_break()?;
+            return Ok(true);
+        }
+        self.force_table_page_break()
     }
 
     pub(super) fn force_table_page_break(&mut self) -> Result<bool, JsValue> {
