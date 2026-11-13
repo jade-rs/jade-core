@@ -17834,8 +17834,15 @@ impl OffscreenDocumentView {
     }
 
     #[wasm_bindgen(js_name = beginPdfTextCapture)]
-    pub fn begin_pdf_text_capture(&self, capture_digit_offsets: Option<bool>) {
-        jade_canvas_painter::text_batch::begin_text_capture(capture_digit_offsets.unwrap_or(false));
+    pub fn begin_pdf_text_capture(
+        &self,
+        capture_digit_offsets: Option<bool>,
+        visibility_filter: Option<js_sys::Function>,
+    ) {
+        jade_canvas_painter::text_batch::begin_text_capture(
+            capture_digit_offsets.unwrap_or(false),
+            visibility_filter,
+        );
     }
 
     #[wasm_bindgen(js_name = endPdfTextCapture)]

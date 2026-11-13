@@ -35,11 +35,16 @@ pub(crate) const MIN_GLYPH_RUN_BATCH_LEN: usize = 4;
 #[wasm_bindgen(inline_js = r#"
 let textCapture = null;
 let captureDigitOffsets = false;
-export function __jadeBeginTextCapture(withDigitOffsets) {
+let textVisibilityFilter;
+export function __jadeBeginTextCapture(withDigitOffsets, visibilityFilter) {
+  textVisibilityFilter = visibilityFilter;
   textCapture = new WeakMap();
   captureDigitOffsets = withDigitOffsets;
 }
-export function __jadeEndTextCapture() { textCapture = null; }
+export function __jadeEndTextCapture() {
+  textCapture = null;
+  textVisibilityFilter = undefined;
+}
 // A numeric run can be painted by one fillText. Recover its glyph origins
 // only when its measured prefixes and full width agree with individual
 // advances. Leave shaped or otherwise non-additive text as a single run.
@@ -64,6 +69,7 @@ export function __jadeCaptureText(ctx, text, x, y, shapedText = text) {
   let metrics = state.metrics.get(key);
   if (!metrics) { metrics = ctx.measureText(shapedText); state.metrics.set(key, metrics); }
   const m = ctx.getTransform();
+  if (textVisibilityFilter && !textVisibilityFilter(ctx, shapedText, x, y, m)) return;
   const offset = ctx.textAlign === "center" ? -metrics.width / 2 :
     ctx.textAlign === "right" || (ctx.textAlign === "end" && ctx.direction !== "rtl") ||
     (ctx.textAlign === "start" && ctx.direction === "rtl") ? -metrics.width : 0;
@@ -114,7 +120,10 @@ export function __jadeFillTextGlyphRunSingleFont(ctx, text, xPositions, y, len) 
 "#)]
 extern "C" {
     #[wasm_bindgen(js_name = __jadeBeginTextCapture)]
-    fn begin_text_capture_js(capture_digit_offsets: bool);
+    fn begin_text_capture_js(
+        capture_digit_offsets: bool,
+        visibility_filter: Option<js_sys::Function>,
+    );
     #[wasm_bindgen(js_name = __jadeEndTextCapture)]
     fn end_text_capture_js();
     #[wasm_bindgen(js_name = __jadeCaptureText)]
@@ -180,9 +189,12 @@ thread_local! {
 }
 
 #[cfg(target_arch = "wasm32")]
-pub fn begin_text_capture(capture_digit_offsets: bool) {
+pub fn begin_text_capture(
+    capture_digit_offsets: bool,
+    visibility_filter: Option<js_sys::Function>,
+) {
     TEXT_CAPTURE_ENABLED.with(|enabled| enabled.set(true));
-    begin_text_capture_js(capture_digit_offsets);
+    begin_text_capture_js(capture_digit_offsets, visibility_filter);
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -192,7 +204,11 @@ pub fn end_text_capture() {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn begin_text_capture(_capture_digit_offsets: bool) {}
+pub fn begin_text_capture(
+    _capture_digit_offsets: bool,
+    _visibility_filter: Option<js_sys::Function>,
+) {
+}
 #[cfg(not(target_arch = "wasm32"))]
 pub fn end_text_capture() {}
 #[cfg(not(target_arch = "wasm32"))]
