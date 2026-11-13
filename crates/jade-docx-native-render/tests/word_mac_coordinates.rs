@@ -480,6 +480,60 @@ fn spatial_order(layout: &Value) -> Value {
     json!({"page_count": layout["page_count"], "glyphs": glyphs})
 }
 
+#[test]
+#[ignore = "requires JADE_OFFICE_FONT_DIR pointing to Word for Mac's DFonts"]
+fn mac_office_display_fractions_match_word() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    for fixture in [
+        "probe-math-display-fraction-explicit-sizes",
+        "probe-math-display-fraction-line-box-10",
+        "probe-math-display-fraction-line-box-12",
+        "probe-math-display-fraction-line-box-16",
+        "probe-math-fraction-first-vs-prev",
+        "probe-math-fraction-larger-neighbors",
+        "probe-math-fraction-leading",
+        "probe-math-fraction-neighbors",
+        "probe-math-repeat-bar-fraction-32",
+        "probe-math-repeat-fraction-24",
+        "probe-math-repeat-fraction-40",
+        "probe-math-standalone-fractions-12",
+        "probe-math-standalone-fractions-explicit-sizes",
+    ] {
+        let root = repo_path(&format!("tests/word-oracle/mac-elsa-synthetic/{fixture}"));
+        let bytes = std::fs::read(root.join("source.docx")).unwrap();
+        let compressed = std::fs::read(root.join("pages.json.gz")).unwrap();
+        let manifest: Value =
+            serde_json::from_slice(&std::fs::read(root.join("manifest.json")).unwrap()).unwrap();
+        assert_eq!(manifest["sourceSha256"], sha256(&bytes), "{fixture}");
+        assert_eq!(
+            manifest["coordinatesSha256"],
+            sha256(&compressed),
+            "{fixture}"
+        );
+        let decoder = flate2::read::GzDecoder::new(compressed.as_slice());
+        let pages: Vec<Value> = serde_json::from_reader(decoder).unwrap();
+        let mut glyphs = Vec::new();
+        for (page_index, page) in pages.iter().enumerate() {
+            for glyph in page["body"].as_array().unwrap() {
+                glyphs.push(json!([page_index + 1, glyph[0], glyph[1], glyph[2]]));
+            }
+        }
+        let expected = spatial_order(&json!({"page_count": pages.len(), "glyphs": glyphs}));
+        let faces = jade_docx_native_render::system_fonts::word_document_faces(&bytes, &[]);
+        assert!(
+            faces.iter().any(|face| face.family == "Cambria Math"),
+            "{fixture}: missing Cambria Math"
+        );
+        let doc = NativeDocument::open_with_font_faces(&bytes, 816.0, 1056.0, &faces).unwrap();
+        compare(
+            &expected,
+            &spatial_order(&capture_coordinates(&doc)),
+            manifest["axisTolerancePt"].as_f64().unwrap(),
+        )
+        .unwrap_or_else(|error| panic!("{fixture}: {error}"));
+    }
+}
+
 fn word_layout(reference: &Value) -> Value {
     let mut glyphs = Vec::new();
     for page in reference["pages"].as_array().unwrap() {
