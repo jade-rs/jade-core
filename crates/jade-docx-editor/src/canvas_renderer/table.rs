@@ -10113,7 +10113,7 @@ impl WindowsPositiveSpacingGrid {
 }
 
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
-    if let Some(widths) = word_mac_constrained_fixed_grid(table, column_count) {
+    if let Some(widths) = word_mac_constrained_fixed_grid(table, column_count, available_width) {
         return widths;
     }
 
@@ -10188,13 +10188,43 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
     widths
 }
 
-fn word_mac_constrained_fixed_grid(table: &Table, column_count: usize) -> Option<Vec<f64>> {
+fn word_mac_constrained_fixed_grid(
+    table: &Table,
+    column_count: usize,
+    available_width: f64,
+) -> Option<Vec<f64>> {
     if jade_docx_layout::line_metrics::word_layout_platform()
         != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         || resolve_table_layout_mode(table) != TableLayoutMode::Fixed
         || column_count == 0
     {
         return None;
+    }
+    // In a one-column fixed table Word can use tblW even when every row
+    // and the saved grid still declare a smaller preferred cell width.
+    let single_column_budget = table
+        .style
+        .get("width")
+        .and_then(|width| preferred_width_px(width, available_width))
+        .filter(|width| width.is_finite() && *width > 0.0);
+    if let Some(budget) = single_column_budget.filter(|_| column_count == 1) {
+        if !table.rows.is_empty()
+            && table.rows.iter().all(|row| {
+                let [cell] = row.cells.as_slice() else {
+                    return false;
+                };
+                row.grid_before.unwrap_or_default() == 0
+                    && row.grid_after.unwrap_or_default() == 0
+                    && cell.span.unwrap_or(1) == 1
+                    && cell
+                        .style
+                        .get("width")
+                        .and_then(|width| preferred_width_px(width, budget))
+                        .is_some_and(|width| width > 0.0 && width <= budget + 0.01)
+            })
+        {
+            return Some(vec![budget]);
+        }
     }
     let budget = absolute_table_width(table)?;
     if let [row] = table.rows.as_slice() {
