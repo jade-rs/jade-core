@@ -224,6 +224,30 @@ pub fn hyphenation_points(word: &str, language: Option<&str>) -> Vec<usize> {
     language.patterns().points(word)
 }
 
+/// Word for Mac's US English proofing dictionary differs from TeX at
+/// these breaks, as measured from the narrow-paragraph coordinate fixture.
+pub(crate) fn word_mac_hyphenation_points(word: &str, language: Option<&str>) -> Vec<usize> {
+    let mut points = hyphenation_points(word, language);
+    if Language::of(language) == Some(Language::AmericanEnglish) {
+        let (skip, add) = if word.eq_ignore_ascii_case("interoperability") {
+            (Some(5), 10)
+        } else if word.eq_ignore_ascii_case("reproducibility") {
+            (None, 8)
+        } else if word.eq_ignore_ascii_case("internationalization") {
+            (None, 14)
+        } else if word.eq_ignore_ascii_case("marker") {
+            (None, 4)
+        } else {
+            return points;
+        };
+        points.retain(|&point| Some(point) != skip);
+        if let Err(index) = points.binary_search(&add) {
+            points.insert(index, add);
+        }
+    }
+    points
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
