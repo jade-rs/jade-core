@@ -32132,7 +32132,6 @@ where
                 && left.properties == right.properties
                 && left.revision == right.revision
                 && left.hyperlink == right.hyperlink
-                && left.leading_width == 0.0
                 && right.leading_width == 0.0
         };
         let Some(first) = segments
@@ -32171,7 +32170,12 @@ where
         line_clusters: &'a [jade_docx_layout::line_wrap::InlineCluster],
         cursor: &mut usize,
     ) -> &'a [jade_docx_layout::line_wrap::InlineCluster] {
-        while *cursor < line_clusters.len() && line_clusters[*cursor].end <= segment.start {
+        while *cursor < line_clusters.len()
+            && (line_clusters[*cursor].end <= segment.start
+                || (line_clusters[*cursor].kind
+                    == jade_docx_layout::line_wrap::InlineClusterKind::Tab
+                    && line_clusters[*cursor].start >= segment.end))
+        {
             *cursor += 1;
         }
         let start = *cursor;
