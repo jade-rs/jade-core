@@ -207,7 +207,10 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         Ok(0.0)
     }
 
-    pub(crate) fn fraction(&mut self, e: &'a MathElement) -> Result<MathMetrics, C::Error> {
+    pub(crate) fn fraction(
+        &mut self,
+        e: &'a MathElement,
+    ) -> Result<(MathMetrics, Option<f64>), C::Error> {
         use MathElementKind::*;
         let pr = property_element(e, "fPr");
         let kind = property(pr, "type").unwrap_or("bar");
@@ -227,7 +230,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 total.include(slash, n.width, 0.0);
                 total.include(d, n.width + slash.width, 0.0);
                 total.width = n.width + slash.width + d.width;
-                Ok(total)
+                Ok((total, None))
             }
             "skw" => {
                 let (n0, n1, n) = self.piece(|b| b.slot(num, 1, false, false))?;
@@ -255,11 +258,14 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     stroke: Some(thickness),
                     color: self.style.color,
                 });
-                Ok(MathMetrics {
-                    width: d_x + d.width,
-                    ascent: -top,
-                    descent: bottom,
-                })
+                Ok((
+                    MathMetrics {
+                        width: d_x + d.width,
+                        ascent: -top,
+                        descent: bottom,
+                    },
+                    None,
+                ))
             }
             _ => {
                 let bar = kind != "noBar";
@@ -270,8 +276,8 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     && crate::line_metrics::word_layout_platform()
                         == crate::line_metrics::WordLayoutPlatform::Mac;
                 // Explicit sizing on both parts of a display fraction also
-                // sets its vertical separation and rule metrics in Word.
-                let c = if word_mac_cambria && !self.font_bound() {
+                // sets its vertical separation, rule metrics and leading space.
+                let fraction_size = if word_mac_cambria && !self.font_bound() {
                     let mut glyphs = self.plan.glyphs[n0.glyphs..d1.glyphs]
                         .iter()
                         .filter(|glyph| glyph.visible);
@@ -285,10 +291,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                             }) && first.style.family.eq_ignore_ascii_case("Cambria Math")
                                 && first.baseline == 0.0
                         })
-                        .map_or(c, |glyph| MathConstants::cambria(glyph.style.size_px))
+                        .map(|glyph| glyph.style.size_px)
                 } else {
-                    c
+                    None
                 };
+                let c = fraction_size.map_or(c, MathConstants::cambria);
                 let axis = c.axis_height;
                 let t = if bar { self.rule_thickness(&c) } else { 0.0 };
                 let (up, down) = if bar {
@@ -366,7 +373,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 total.include(n, 0.0, -up);
                 total.include(d, 0.0, down);
                 total.width = width;
-                Ok(total)
+                Ok((total, fraction_size))
             }
         }
     }
