@@ -288,12 +288,14 @@ impl DocumentParser {
         self.parse_document_events(&mut reader)
     }
 
-    /// Parses `word/document.xml` once for both consumers: the layout
+    /// Parses ordinary `word/document.xml` once for both consumers: the layout
     /// [`Document`] this parser builds and the lossless [`DocxXmlDocument`]
     /// the editor patches on save. Every quick-xml event the semantic parser
     /// consumes is mirrored into a [`DocxXmlTreeBuilder`], so the raw tree has
     /// the same element ids and node paths as parsing the namespace-normalized
-    /// XML separately, without tokenizing the part a second time.
+    /// XML separately, without tokenizing the part a second time. Drawing
+    /// namespace aliases require separate events to preserve their spelling
+    /// in the editable tree.
     ///
     /// A malformed raw tree is reported alongside the semantic document
     /// instead of failing the load: rendering does not need it, only save and
@@ -302,8 +304,18 @@ impl DocumentParser {
         &self,
         xml_content: &str,
     ) -> Result<(Document, Result<DocxXmlDocument, DocxXmlError>), Box<dyn std::error::Error>> {
-        let xml_content = crate::word_namespaces::normalize(xml_content)?;
-        let xml_content = crate::field_runs::normalize(&xml_content)?;
+        let normalized = crate::word_namespaces::normalize(xml_content)?;
+        if matches!(normalized, std::borrow::Cow::Owned(_)) {
+            let editable = crate::word_namespaces::normalize_word_only(xml_content)?;
+            if normalized != editable {
+                let semantic = crate::field_runs::normalize(&normalized)?;
+                let mut reader = SliceXmlReader::new(&semantic);
+                let document = self.parse_document_events(&mut reader)?;
+                let editable = crate::field_runs::normalize(&editable)?;
+                return Ok((document, DocxXmlDocument::parse(&editable)));
+            }
+        }
+        let xml_content = crate::field_runs::normalize(&normalized)?;
         let mut reader = RawTreeTeeReader::new(&xml_content);
         let document = self.parse_document_events(&mut reader)?;
         Ok((document, reader.finish()))
@@ -435,7 +447,10 @@ impl DocumentParser {
                                 )
                                 .into());
                             }
-                            container_stack.push(ContainerContext::Table(Box::default()));
+                            let mut table = Box::<Table>::default();
+                            // Initial rendering can defer the raw XML tree and its node IDs.
+                            table.style.insert("ooxml-table".into(), "true".into());
+                            container_stack.push(ContainerContext::Table(table));
                         }
                         b"w:altChunk" => {
                             Self::record_alt_chunk(&mut document, e.attributes());
@@ -1378,6 +1393,19 @@ impl DocumentParser {
                                     &mut current_run_props,
                                     |props| {
                                         props.italic = Some(flag);
+                                    },
+                                );
+                            }
+                        }
+                        b"w:rtl" => {
+                            if parsing_run_props {
+                                let flag = parse_run_on_off(e.attributes());
+                                Self::apply_to_active_run_props(
+                                    parsing_paragraph_run_props,
+                                    &mut current_paragraph_run_props,
+                                    &mut current_run_props,
+                                    |props| {
+                                        props.rtl = Some(flag);
                                     },
                                 );
                             }
@@ -3014,6 +3042,19 @@ impl DocumentParser {
                                 &mut current_run_props,
                                 |props| {
                                     props.italic = Some(flag);
+                                },
+                            );
+                        }
+                    }
+                    b"w:rtl" => {
+                        if parsing_run_props {
+                            let flag = parse_run_on_off(e.attributes());
+                            Self::apply_to_active_run_props(
+                                parsing_paragraph_run_props,
+                                &mut current_paragraph_run_props,
+                                &mut current_run_props,
+                                |props| {
+                                    props.rtl = Some(flag);
                                 },
                             );
                         }
@@ -7954,6 +7995,18 @@ impl DocumentParser {
                         traces: Vec::new(),
                     }));
                     *has_embed = true;
+                }
+            }
+            b"wp:effectExtent" if image.layout.kind == RunImageKind::Inline => {
+                if let Some(bottom) = element
+                    .attributes()
+                    .flatten()
+                    .find(|attr| attr.key.as_ref() == b"b")
+                    .and_then(|attr| Self::parse_f64_attr(&attr))
+                    .filter(|value| value.is_finite() && *value > 0.0)
+                    .map(Self::emu_to_px)
+                {
+                    image.layout.options_mut().inline_effect_bottom = Some(bottom);
                 }
             }
             b"wp:extent" | b"a:ext" => {

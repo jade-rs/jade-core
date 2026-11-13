@@ -101,6 +101,7 @@ impl crate::render_host::CanvasRenderHost for RecordingHost {
             font_bounding_box_descent: 2.0,
             actual_bounding_box_ascent: 8.0,
             actual_bounding_box_descent: 2.0,
+            actual_bounding_box_left: 0.0,
             actual_bounding_box_right: width,
         })
     }

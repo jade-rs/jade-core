@@ -22,6 +22,10 @@ pub(crate) struct BreakCandidate {
     pub(crate) align_point: bool,
     /// A subtraction character in a run, rather than a whole operator box.
     pub(crate) subtraction: bool,
+    /// Space before this operator, omitted at the preceding line end.
+    pub(crate) preceding_space: f64,
+    /// Space before the next atom, omitted at the continuation's start.
+    pub(crate) following_space: f64,
 }
 
 /// A laid-out line before stacking: the plan items in `start..end`, on a
@@ -129,10 +133,16 @@ fn break_lines<'a, C: StyledMathMeasure>(
     }
     let max_width = b.options.max_width.filter(|w| *w > 0.0);
     let settings = b.options.settings;
+    let word_mac_rtl = b.options.word_mac_rtl();
+    let prefers_relation = !word_mac_rtl
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    let breaks_after_operator =
+        |class| class == AtomClass::Bin || prefers_relation && class == AtomClass::Rel;
     let substitute_start = settings.break_binary_subtraction == BreakBinarySubtraction::MinusPlus;
     let substitute_end = settings.break_binary_subtraction == BreakBinarySubtraction::PlusMinus;
     let repeats = |c: BreakCandidate| {
-        settings.break_binary == BreakBinary::Repeat && !c.manual && c.class == AtomClass::Bin
+        settings.break_binary == BreakBinary::Repeat && !c.manual && breaks_after_operator(c.class)
     };
     let mut plus_signs = HashMap::new();
     if max_width.is_some_and(|width| metrics.width > width) && (substitute_start || substitute_end)
@@ -174,14 +184,40 @@ fn break_lines<'a, C: StyledMathMeasure>(
     let mut leading_delta = 0.0;
     let mut indent = 0.0;
     let mut last_fit: Option<(BreakCandidate, f64)> = None;
-    for c in &candidates {
+    let mut candidates_to_scan = candidates.as_slice();
+    if let Some(width) = max_width.filter(|width| word_mac_rtl && metrics.width > *width) {
+        let first_segment_width = candidates
+            .iter()
+            .find(|c| c.manual)
+            .and_then(|c| x_of(b, c.mark).map(|x| x - c.preceding_space))
+            .unwrap_or(metrics.width);
+        // Word starts the continuation at the first relation when an RTL
+        // equation inherits the text paragraph's display settings.
+        if let Some((index, relation, x)) = candidates
+            .iter()
+            .enumerate()
+            .take_while(|(_, c)| !c.manual)
+            .filter(|(_, c)| c.class == AtomClass::Rel)
+            .filter_map(|(i, c)| x_of(b, c.mark).map(|x| (i, *c, x)))
+            .find(|(_, c, x)| first_segment_width > width && x - c.preceding_space <= width)
+        {
+            chosen.push((relation, x));
+            line_start_x = x;
+            candidates_to_scan = &candidates[index + 1..];
+        }
+    }
+    let after = settings.break_binary == BreakBinary::After;
+    let mut preferred_relation = None;
+    let mut saw_binary = false;
+    for c in candidates_to_scan {
         let Some(operator_x) = x_of(b, c.mark) else {
             continue;
         };
         // Both `after` and `repeat` leave an operator on the preceding line.
         // With `repeat`, the continuation still starts at the operator.
-        let keeps_operator =
-            settings.break_binary != BreakBinary::Before && !c.manual && c.class == AtomClass::Bin;
+        let keeps_operator = !c.manual
+            && settings.break_binary != BreakBinary::Before
+            && breaks_after_operator(c.class);
         let fit_x = if keeps_operator {
             let glyph = &b.plan.glyphs[c.mark.glyphs];
             let width = if substitute_end {
@@ -193,10 +229,10 @@ fn break_lines<'a, C: StyledMathMeasure>(
             };
             operator_x + width
         } else {
-            operator_x
+            operator_x - c.preceding_space
         };
-        let x = if settings.break_binary == BreakBinary::After {
-            fit_x
+        let x = if settings.break_binary == BreakBinary::After && keeps_operator {
+            fit_x + c.following_space
         } else {
             operator_x
         };
@@ -206,11 +242,13 @@ fn break_lines<'a, C: StyledMathMeasure>(
             leading_delta = 0.0;
             indent = 0.0;
             last_fit = None;
+            preferred_relation = None;
+            saw_binary = false;
             continue;
         }
         if let Some(width) = max_width {
             if fit_x - line_start_x + leading_delta + indent > width {
-                if let Some((fit, fit_x)) = last_fit.take() {
+                if let Some((fit, fit_x)) = preferred_relation.take().or(last_fit.take()) {
                     chosen.push((fit, fit_x));
                     line_start_x = fit_x;
                     leading_delta = start_delta(fit, b);
@@ -222,10 +260,16 @@ fn break_lines<'a, C: StyledMathMeasure>(
                 }
             }
         }
+        // Word prefers a relation within the expression over a later binary
+        // operator. An initial assignment such as x= stays with its right side.
+        if prefers_relation && c.class == AtomClass::Rel && saw_binary {
+            preferred_relation = Some((*c, x));
+        }
+        saw_binary |= c.class == AtomClass::Bin;
         last_fit = Some((*c, x));
     }
     // The end of the equation may still overflow the last line.
-    if let (Some(width), Some((fit, fit_x))) = (max_width, last_fit) {
+    if let (Some(width), Some((fit, fit_x))) = (max_width, preferred_relation.or(last_fit)) {
         if metrics.width - line_start_x + leading_delta + indent > width
             && chosen
                 .last()
@@ -246,18 +290,13 @@ fn break_lines<'a, C: StyledMathMeasure>(
         }]);
     }
     // brkBin="after" keeps the operator at the end of the line above.
-    let after = settings.break_binary == BreakBinary::After;
     let mut bounds: Vec<(Mark, f64, Option<BreakCandidate>)> = vec![(start, 0.0, None)];
     for (c, x) in &chosen {
         let mut mark = c.mark;
-        let mut at = *x;
-        if after && !c.manual && c.class == AtomClass::Bin {
-            if let Some(g) = b.plan.glyphs.get(mark.glyphs) {
-                at = g.x + g.width;
-                mark.glyphs += 1;
-            }
+        if after && !c.manual && breaks_after_operator(c.class) {
+            mark.glyphs += 1;
         }
-        bounds.push((mark, at, Some(*c)));
+        bounds.push((mark, *x, Some(*c)));
     }
     let mut lines = Vec::new();
     // The x of every operator on the first line, for alnAt and the default
@@ -399,6 +438,23 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     if lines.is_empty() {
         return MathMetrics::default();
     }
+    let size = b.base_size;
+    let word_mac_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac;
+    // A standalone tall display line reserves Cambria Math’s OS/2
+    // typographic line gap. Wrapped displays use MATH leading.
+    let tall_ascent = size * (1946.0 / 2048.0);
+    let needs_top_leading = word_mac_cambria && (b.options.display || lines.len() > 1) && {
+        #[cfg(feature = "opentype-math")]
+        {
+            b.context.font_parameters(b.style).is_none()
+        }
+        #[cfg(not(feature = "opentype-math"))]
+        {
+            true
+        }
+    };
     if lines.len() == 1 && lines[0].x == 0.0 {
         let line = &lines[0];
         b.plan.lines.push(MathLine {
@@ -408,7 +464,31 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             ascent: line.metrics.ascent,
             descent: line.metrics.descent,
         });
-        return line.metrics;
+        let mut metrics = line.metrics;
+        if needs_top_leading {
+            let optical_ascent = b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                .iter()
+                .filter(|glyph| glyph.visible && glyph.optical_script && glyph.baseline < 0.0)
+                .map(|glyph| glyph.ascent - glyph.baseline)
+                .fold(0.0, f64::max);
+            // Optical scripts get MATH leading. A taller structure such as
+            // a fraction still reserves the standalone typographic gap.
+            if metrics.ascent > tall_ascent && metrics.ascent > optical_ascent {
+                let line_size = b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                    .iter()
+                    .filter(|glyph| glyph.visible && glyph.baseline == 0.0)
+                    .map(|glyph| glyph.style.size_px)
+                    .reduce(f64::max)
+                    .unwrap_or(size);
+                metrics.ascent += line_size * (353.0 / 2048.0);
+            }
+            if optical_ascent > 0.0 {
+                metrics.ascent = metrics
+                    .ascent
+                    .max(optical_ascent + super::MathConstants::cambria(size).leading);
+            }
+        }
+        return metrics;
     }
     // Alignment points line up within a group.
     let groups = lines.iter().map(|l| l.group).max().unwrap_or(0) + 1;
@@ -432,14 +512,41 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
     }
     let width = group_widths.iter().copied().fold(0.0, f64::max);
     let justification = b.justification();
-    let size = b.base_size;
-    let gap = super::MathConstants::cambria(size).leading;
+    // Repeated wrapped Cambria Math rows in Word for Mac use about 14.10 pt
+    // between baselines at 12 pt, including across multiple display equations.
+    let mac_wrapped = word_mac_cambria && lines.len() > 1;
     let mut baseline = 0.0;
-    let mut previous: Option<MathMetrics> = None;
+    let mut previous: Option<(MathMetrics, f64)> = None;
     let mut total = MathMetrics::default();
     for line in lines {
-        if let Some(prev) = previous {
-            baseline += (prev.descent + line.metrics.ascent + gap).max(size * 1.2);
+        let row_size = if mac_wrapped {
+            b.plan.glyphs[line.start.glyphs..line.end.glyphs]
+                .iter()
+                .filter(|glyph| glyph.visible && glyph.baseline == 0.0)
+                .map(|glyph| glyph.style.size_px)
+                .reduce(f64::max)
+                .unwrap_or(size)
+        } else {
+            size
+        };
+        let tall_row = line.metrics.ascent > row_size * (1946.0 / 2048.0);
+        if let Some((prev, prev_size)) = previous {
+            let mut ascent = line.metrics.ascent;
+            let mut descent = prev.descent;
+            // Ink alone underestimates the adjoining text row when a tall
+            // formula expands the baseline interval beyond the usual pitch.
+            if mac_wrapped && prev.ascent > prev_size * (1946.0 / 2048.0) {
+                ascent = ascent.max(row_size * 0.8);
+            }
+            if mac_wrapped && ascent > row_size * (1946.0 / 2048.0) {
+                descent = descent.max(prev_size * 0.25);
+            }
+            let interval_size = row_size.max(prev_size);
+            let gap = super::MathConstants::cambria(interval_size).leading;
+            let min_gap = interval_size * if word_mac_cambria { 1.175 } else { 1.2 };
+            baseline += (descent + ascent + gap).max(min_gap);
+        } else if needs_top_leading && tall_row {
+            total.ascent = line.metrics.ascent + super::MathConstants::cambria(row_size).leading;
         }
         let group_w = group_widths[line.group];
         let group_x = match justification {
@@ -448,6 +555,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             _ => (width - group_w) / 2.0,
         };
         let x = match justification {
+            MathJustification::Right if b.options.word_mac_rtl() => width - line.metrics.width,
             MathJustification::Center => group_x + (group_w - line.metrics.width) / 2.0,
             _ => group_x + line.x,
         };
@@ -468,7 +576,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
         });
         total.ascent = total.ascent.max(line.metrics.ascent - baseline);
         total.descent = total.descent.max(line.metrics.descent + baseline);
-        previous = Some(line.metrics);
+        previous = Some((line.metrics, row_size));
     }
     total.width = width;
     total

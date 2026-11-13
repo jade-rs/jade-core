@@ -1923,6 +1923,136 @@ pub fn plain_text_paste_commands(caret: TextPosition, text: &str) -> Vec<Headles
     commands
 }
 
+fn try_apply_headless_text_command(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    selection: &mut Option<SelectionRange>,
+    index: usize,
+    command: &HeadlessCommand,
+) -> Result<bool, HeadlessApiApplyError> {
+    match command {
+        HeadlessCommand::InsertText {
+            paragraph,
+            offset,
+            text,
+        } => {
+            validate_text_offset(word_doc, index, *paragraph, *offset)?;
+            let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
+            *selection = Some(range);
+            // An empty insertion still validates and moves the caret,
+            // but must not record an edit or discard the redo branch.
+            if text.is_empty() {
+                return Ok(true);
+            }
+
+            let mut ctx = CommandContext::new(word_doc, selection);
+            command_executor
+                .execute(
+                    Box::new(InsertTextCommand::new(range, text.clone(), None)),
+                    &mut ctx,
+                )
+                .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+        }
+        HeadlessCommand::ReplaceRange {
+            start_paragraph,
+            start_offset,
+            end_paragraph,
+            end_offset,
+            text,
+        } => {
+            validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
+            validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
+            // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
+            // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
+            let original_end_offset = *end_offset;
+            let (start_offset, end_offset, text) = trimmed_replacement(
+                word_doc,
+                *start_paragraph,
+                *start_offset,
+                *end_paragraph,
+                *end_offset,
+                text,
+            );
+            let range =
+                range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
+            if start_paragraph == end_paragraph && start_offset == end_offset && text.is_empty() {
+                // Even when the document needs no mutation, typing has
+                // consumed the selection. Leaving it active makes the
+                // following keystroke overwrite the unchanged text.
+                *selection = Some(SelectionRange::collapsed(TextPosition::new(
+                    *start_paragraph,
+                    start_offset,
+                )));
+                return Ok(true);
+            }
+            *selection = Some(range);
+
+            // A replacement that spans paragraphs removes the ones in
+            // between, and any comment anchored there goes with them.
+            let spans_paragraphs = start_paragraph != end_paragraph;
+            let command: Box<dyn Command> = Box::new(
+                InsertTextCommand::new(range, text.to_owned(), None)
+                    .deleting_selected_tables()
+                    .with_retained_suffix_len(if spans_paragraphs {
+                        0
+                    } else {
+                        original_end_offset.saturating_sub(end_offset)
+                    }),
+            );
+            let command: Box<dyn Command> = if spans_paragraphs {
+                Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
+            } else {
+                command
+            };
+            // The notes whose reference marks the range holds go with
+            // them, as in Word.
+            let notes = crate::commands::range_notes::notes_in_rendered_range(word_doc, range);
+            let command: Box<dyn Command> = if notes.is_empty() {
+                command
+            } else {
+                Box::new(crate::commands::range_notes::DeleteRangeNotesCommand::new(
+                    command, notes,
+                ))
+            };
+            let mut ctx = CommandContext::new(word_doc, selection);
+            command_executor
+                .execute(command, &mut ctx)
+                .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+        }
+        _ => return Ok(false),
+    }
+    Ok(true)
+}
+
+/// Applies the interactive editor's single text replacement with the same
+/// validation and placeholder handling as a headless request.
+#[inline(never)]
+#[allow(
+    dead_code,
+    reason = "The document-core crate shares this module without the canvas editor"
+)]
+pub(crate) fn apply_headless_text_replacement(
+    word_doc: &mut WordDocument,
+    command_executor: &mut CommandExecutor,
+    mut selection: Option<SelectionRange>,
+    command: &HeadlessCommand,
+) -> Result<Option<SelectionRange>, HeadlessApiApplyError> {
+    let commands = std::slice::from_ref(command);
+    refuse_locked_edits(word_doc, commands)?;
+    if let Some(selection) = type_over_placeholder(word_doc, command_executor, selection, commands)?
+    {
+        return Ok(selection);
+    }
+    assert!(try_apply_headless_text_command(
+        word_doc,
+        command_executor,
+        &mut selection,
+        0,
+        command,
+    )?);
+    Ok(selection)
+}
+
 pub fn apply_headless_commands_with_executor_to_document(
     word_doc: &mut WordDocument,
     command_executor: &mut CommandExecutor,
@@ -1967,29 +2097,14 @@ fn apply_headless_commands(
             validate_protected_edit(word_doc, index, command)?;
         }
         match command {
-            HeadlessCommand::InsertText {
-                paragraph,
-                offset,
-                text,
-            } => {
-                if !protected {
-                    validate_text_offset(word_doc, index, *paragraph, *offset)?;
-                }
-                let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
-                selection = Some(range);
-                // An empty insertion still validates and moves the caret,
-                // but must not record an edit or discard the redo branch.
-                if text.is_empty() {
-                    continue;
-                }
-
-                let mut ctx = CommandContext::new(word_doc, &mut selection);
-                command_executor
-                    .execute(
-                        Box::new(InsertTextCommand::new(range, text.clone(), None)),
-                        &mut ctx,
-                    )
-                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+            HeadlessCommand::InsertText { .. } | HeadlessCommand::ReplaceRange { .. } => {
+                try_apply_headless_text_command(
+                    word_doc,
+                    command_executor,
+                    &mut selection,
+                    index,
+                    command,
+                )?;
             }
             HeadlessCommand::InsertPositionalTab {
                 paragraph,
@@ -2061,75 +2176,6 @@ fn apply_headless_commands(
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(Box::new(ChangeCaseCommand::new(range, *mode)), &mut ctx)
-                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
-            }
-            HeadlessCommand::ReplaceRange {
-                start_paragraph,
-                start_offset,
-                end_paragraph,
-                end_offset,
-                text,
-            } => {
-                if !protected {
-                    validate_text_offset(word_doc, index, *start_paragraph, *start_offset)?;
-                    validate_text_offset(word_doc, index, *end_paragraph, *end_offset)?;
-                }
-                // 同じままの前後の文字を変更履歴や書式変更に巻き込まない。
-                // 削除済み文字がある選択は、既存履歴を保護する通常の経路に渡す。
-                let original_end_offset = *end_offset;
-                let (start_offset, end_offset, text) = trimmed_replacement(
-                    word_doc,
-                    *start_paragraph,
-                    *start_offset,
-                    *end_paragraph,
-                    *end_offset,
-                    text,
-                );
-                let range =
-                    range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
-                if start_paragraph == end_paragraph && start_offset == end_offset && text.is_empty()
-                {
-                    // Even when the document needs no mutation, typing has
-                    // consumed the selection. Leaving it active makes the
-                    // following keystroke overwrite the unchanged text.
-                    selection = Some(SelectionRange::collapsed(TextPosition::new(
-                        *start_paragraph,
-                        start_offset,
-                    )));
-                    continue;
-                }
-                selection = Some(range);
-
-                // A replacement that spans paragraphs removes the ones in
-                // between, and any comment anchored there goes with them.
-                let spans_paragraphs = start_paragraph != end_paragraph;
-                let command: Box<dyn Command> = Box::new(
-                    InsertTextCommand::new(range, text.to_owned(), None)
-                        .deleting_selected_tables()
-                        .with_retained_suffix_len(if spans_paragraphs {
-                            0
-                        } else {
-                            original_end_offset.saturating_sub(end_offset)
-                        }),
-                );
-                let command: Box<dyn Command> = if spans_paragraphs {
-                    Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
-                } else {
-                    command
-                };
-                // The notes whose reference marks the range holds go with
-                // them, as in Word.
-                let notes = crate::commands::range_notes::notes_in_rendered_range(word_doc, range);
-                let command: Box<dyn Command> = if notes.is_empty() {
-                    command
-                } else {
-                    Box::new(crate::commands::range_notes::DeleteRangeNotesCommand::new(
-                        command, notes,
-                    ))
-                };
-                let mut ctx = CommandContext::new(word_doc, &mut selection);
-                command_executor
-                    .execute(command, &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
             HeadlessCommand::ReplacePlaceholder {
@@ -9777,6 +9823,86 @@ mod tests {
         apply_headless_commands_to_document(&mut word_doc, &request).expect("apply succeeds");
 
         assert_eq!(paragraph_text(&word_doc, 0), "abXYZf");
+    }
+
+    #[test]
+    fn interactive_text_replacement_matches_headless_edit_and_history() {
+        let bytes = include_bytes!("../../../public/fixtures/hello.docx");
+        let original =
+            executor::block_on(WordDocument::load(bytes, &Options::default())).expect("load");
+        let paragraph = 1;
+        assert_eq!(paragraph_text(&original, paragraph), "World");
+        for tracking in [false, true] {
+            for (start_offset, end_offset, text) in [(1, 1, "かな"), (1, 3, "o語"), (1, 3, "or")]
+            {
+                let mut headless_doc = original.clone();
+                if tracking {
+                    headless_doc.set_revision_session(Some(RevisionSession {
+                        author: Some("jade".to_string()),
+                        date: Some("2026-02-24T00:00:00Z".to_string()),
+                        date_utc: None,
+                    }));
+                }
+                let mut interactive_doc = headless_doc.clone();
+                let mut headless_executor = CommandExecutor::new();
+                let mut interactive_executor = CommandExecutor::new();
+                let command = HeadlessCommand::ReplaceRange {
+                    start_paragraph: paragraph,
+                    start_offset,
+                    end_paragraph: paragraph,
+                    end_offset,
+                    text: text.to_string(),
+                };
+                let before = Some(range_from_bounds(
+                    paragraph,
+                    start_offset,
+                    paragraph,
+                    end_offset,
+                ));
+                let mut interactive_selection = apply_headless_text_replacement(
+                    &mut interactive_doc,
+                    &mut interactive_executor,
+                    before,
+                    &command,
+                )
+                .unwrap();
+                let mut headless_selection = apply_headless_commands_with_executor_to_document(
+                    &mut headless_doc,
+                    &mut headless_executor,
+                    before,
+                    &HeadlessEditRequest {
+                        commands: vec![command],
+                    },
+                )
+                .unwrap();
+                let mut interactive =
+                    CommandContext::new(&mut interactive_doc, &mut interactive_selection);
+                let mut headless = CommandContext::new(&mut headless_doc, &mut headless_selection);
+                assert_eq!(*interactive.selection, *headless.selection);
+                assert_eq!(
+                    toc_document_xml(interactive.document),
+                    toc_document_xml(headless.document)
+                );
+                assert_eq!(
+                    interactive_executor.undo(&mut interactive).unwrap(),
+                    headless_executor.undo(&mut headless).unwrap()
+                );
+                assert_eq!(*interactive.selection, *headless.selection);
+                assert_eq!(
+                    toc_document_xml(interactive.document),
+                    toc_document_xml(headless.document)
+                );
+                assert_eq!(
+                    interactive_executor.redo(&mut interactive).unwrap(),
+                    headless_executor.redo(&mut headless).unwrap()
+                );
+                assert_eq!(*interactive.selection, *headless.selection);
+                assert_eq!(
+                    toc_document_xml(interactive.document),
+                    toc_document_xml(headless.document)
+                );
+            }
+        }
     }
 
     #[test]

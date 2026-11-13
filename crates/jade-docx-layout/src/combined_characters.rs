@@ -12,6 +12,9 @@ use std::rc::Rc;
 
 use jade_docx_reader::RunProperties;
 
+use crate::line_metrics::{
+    word_ascii_metrics, word_layout_platform, WordAsciiMetrics, WordLayoutPlatform,
+};
 use crate::line_wrap::{wrap_text_into_lines, LineWrapContext, ParagraphStyle, RunStyle};
 
 /// `w:combineBrackets`' opening and closing brackets.
@@ -23,6 +26,18 @@ pub fn combine_brackets(brackets: Option<&str>) -> Option<(&'static str, &'stati
         "curly" => Some(("{", "}")),
         _ => None,
     }
+}
+
+/// Word for Mac's Yu Mincho bracket advance at the given font size.
+pub fn word_combined_bracket_advance_px(font: &str, bracket: &str) -> Option<f64> {
+    let &[mark @ (b'(' | b')' | b'[' | b']' | b'<' | b'>' | b'{' | b'}')] = bracket.as_bytes()
+    else {
+        return None;
+    };
+    let metrics @ WordAsciiMetrics::YuMincho(_, true) = word_ascii_metrics(font)? else {
+        return None;
+    };
+    metrics.advance_px(mark)
 }
 
 /// The natural width of `text` set in `properties`, on one line.
@@ -97,7 +112,21 @@ pub fn combined_run_properties<C: LineWrapContext>(
     }
     let bracket_width = match combine_brackets(layout.combine_brackets.as_deref()) {
         Some((open, close)) => {
-            natural_width(ctx, open, properties)? + natural_width(ctx, close, properties)?
+            let mut bracket_properties = properties.clone();
+            if word_layout_platform() == WordLayoutPlatform::Mac {
+                if let Some(fonts) = bracket_properties.fonts.as_mut() {
+                    // Word uses the East Asian face for combine punctuation,
+                    // even though these bracket characters are ASCII.
+                    if let Some(face) = fonts.east_asia.clone() {
+                        fonts.ascii = Some(Rc::clone(&face));
+                        fonts.h_ansi = Some(face);
+                        fonts.ascii_theme = None;
+                        fonts.h_ansi_theme = None;
+                    }
+                }
+            }
+            natural_width(ctx, open, &bracket_properties)?
+                + natural_width(ctx, close, &bracket_properties)?
         }
         None => 0.0,
     };
@@ -126,6 +155,22 @@ mod tests {
         fn measure_text(&self, text: &str, _font: &str) -> Result<f64, ()> {
             Ok(crate::graphemes::grapheme_indices(text).count() as f64 * 8.0)
         }
+    }
+
+    #[test]
+    fn combined_brackets_use_word_mac_yu_mincho_advances() {
+        crate::line_metrics::set_word_layout_platform(WordLayoutPlatform::Mac);
+        let font = "6pt Yu Mincho";
+        for (bracket, units) in [("(", 883.0), ("]", 883.0), ("{", 883.0), (">", 1454.0)] {
+            assert_eq!(
+                word_combined_bracket_advance_px(font, bracket),
+                Some(8.0 * units / 2048.0)
+            );
+        }
+        assert_eq!(word_combined_bracket_advance_px("6pt Arial", "("), None);
+        assert_eq!(word_combined_bracket_advance_px(font, "()"), None);
+        crate::line_metrics::set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(word_combined_bracket_advance_px(font, "("), None);
     }
 
     #[test]

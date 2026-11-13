@@ -1481,6 +1481,7 @@ dependencies = [
 name = "jade-docx-native-render"
 version = "0.1.0"
 dependencies = [
+ "flate2",
  "fontdb",
  "futures",
  "image",
@@ -1511,6 +1512,7 @@ dependencies = [
  "jade-ink",
  "jade-number-format",
  "jade-opc",
+ "memchr",
  "quick-xml 0.41.0",
  "serde",
  "sha2",

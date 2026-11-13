@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "bb00b6b23f92982f556a1032b0d167d341d9c2d0dd29d89cd3b7614443815b52",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "fff0a4f77f2391c5370f396e0a15eaf2f30c9d7fca3b5605fe1fb44303aa06be",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-squeeze-conditions-nocompress.json"
+  },
+  "pages": 3,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "ab483351cfd5a5a85b1cfeba9634d33edf83943843bd5ef66b6005ed9a06ff92"
+}

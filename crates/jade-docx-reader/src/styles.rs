@@ -3024,6 +3024,9 @@ pub fn merge_run_properties_override(target: &mut RunProperties, source: &RunPro
     if source.bold_complex.is_some() {
         target.bold_complex = source.bold_complex;
     }
+    if source.rtl.is_some() {
+        target.rtl = source.rtl;
+    }
     if source.italic_complex.is_some() {
         target.italic_complex = source.italic_complex;
     }
@@ -3392,7 +3395,7 @@ fn ensure_numbering(style: &mut StyleDefinition) {
     }
 }
 
-fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
+pub(crate) fn parse_tab_definition(element: &BytesStart) -> Option<TabStop> {
     let mut stop = TabStop::default();
     for attr in element.attributes().flatten() {
         match attr.key.as_ref() {

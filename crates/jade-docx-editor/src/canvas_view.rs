@@ -13,7 +13,9 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
-use web_sys::{self, ImageBitmap, OffscreenCanvas, WorkerGlobalScope};
+use web_sys::{
+    self, ImageBitmap, OffscreenCanvas, OffscreenCanvasRenderingContext2d, WorkerGlobalScope,
+};
 
 use crate::canvas_renderer::{
     CanvasRenderer, FieldDateTime, TableResizeHandleKind, TableResizeMetadata,
@@ -55,9 +57,9 @@ use crate::document::{
     WrapMode, WrapTextSide, DEFAULT_VERTICAL_CELL_MARGIN_PT,
 };
 use crate::headless_api::{
-    apply_headless_commands_with_executor_to_document, next_revision_from,
-    plain_text_paste_commands, rebase_position_after_decision, revision_snapshots,
-    revision_targets_for, select_revisions, RevisionSelector,
+    apply_headless_commands_with_executor_to_document, apply_headless_text_replacement,
+    next_revision_from, plain_text_paste_commands, rebase_position_after_decision,
+    revision_snapshots, revision_targets_for, select_revisions, RevisionSelector,
 };
 use crate::render_host::{BoxedRenderHost, OffscreenRenderHost};
 use crate::styles::{merge_paragraph_properties_override, merge_run_properties_override};
@@ -79,6 +81,7 @@ use jade_docx_headless_api::{
 };
 use jade_docx_layout::layout_cache::{DirtyRect, SelectionRect};
 use jade_docx_layout::selection::{CaretMovement, SelectionRange, TextPosition};
+use jade_docx_reader::docx_xml::DocxXmlIncrementalParser;
 
 /// Tracks which document area is currently being edited.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, Serialize)]
@@ -197,6 +200,7 @@ struct CanvasDocumentState {
     /// The equation being edited in place, its caret inside the structure.
     equation_editor: Option<crate::word::equation::EquationEditor>,
     word_doc: Option<WordDocument>,
+    roundtrip_parser: Option<DocxXmlIncrementalParser>,
     crdt: Option<crate::crdt_live::LiveDocument>,
     crdt_actor: String,
     crdt_checkpoint: Option<WordDocument>,
@@ -1622,12 +1626,36 @@ impl OffscreenDocumentView {
     }
 
     fn clear_composition_preview(&self) -> Result<Option<SelectionRange>, JsValue> {
-        if self.state.borrow().composition_preview.is_none() {
-            return Ok(None);
-        }
+        // A local preview and its rollback touch only the original body paragraph.
+        let edit_cache = {
+            let state = self.state.borrow();
+            let Some(preview) = state.composition_preview.as_ref() else {
+                return Ok(None);
+            };
+            preview
+                .base_selection
+                .filter(|_| preview.preserves_auxiliary_story_surfaces)
+                .zip(state.word_doc.as_ref())
+                .and_then(|(selection, word_doc)| {
+                    let index = selection.focus.paragraph;
+                    word_doc.is_body_paragraph_surface(index).then(|| {
+                        let cache = self
+                            .renderer
+                            .borrow()
+                            .local_text_edit_cache_for_paragraph(word_doc, index);
+                        (cache, index)
+                    })
+                })
+        };
         let _document_cache = self.drop_renderer_document_cache();
         let mut state = self.state.borrow_mut();
-        Self::clear_composition_preview_in_state(&mut state)
+        let selection = Self::clear_composition_preview_in_state(&mut state)?;
+        if let Some(((cache, index), word_doc)) = edit_cache.zip(state.word_doc.as_ref()) {
+            self.renderer
+                .borrow_mut()
+                .restore_local_text_edit_cache(cache, word_doc, index);
+        }
+        Ok(selection)
     }
 
     fn ensure_visible_page_range_for_edit(
@@ -8266,9 +8294,14 @@ impl OffscreenDocumentView {
             && commands.len() == 1
             && !text.contains(['\r', '\n']))
         .then(|| {
+            let state = self.state.borrow();
+            let renderer = self.renderer.borrow();
             (
-                self.renderer.borrow().local_text_edit_cache(),
-                self.state.borrow().command_executor.history_revision(),
+                state.word_doc.as_ref().map_or_else(
+                    || renderer.local_text_edit_cache(),
+                    |doc| renderer.local_text_edit_cache_for_paragraph(doc, edited_paragraph_index),
+                ),
+                state.command_executor.history_revision(),
             )
         });
 
@@ -8291,12 +8324,23 @@ impl OffscreenDocumentView {
                 if grouped_autoformat {
                     command_executor.begin_group();
                 }
-                let apply_result = apply_headless_commands_with_executor_to_document(
-                    &mut word_doc,
-                    &mut command_executor,
-                    state.selection,
-                    &request,
-                );
+                let apply_result = if let [replacement @ HeadlessCommand::ReplaceRange { .. }] =
+                    request.commands.as_slice()
+                {
+                    apply_headless_text_replacement(
+                        &mut word_doc,
+                        &mut command_executor,
+                        state.selection,
+                        replacement,
+                    )
+                } else {
+                    apply_headless_commands_with_executor_to_document(
+                        &mut word_doc,
+                        &mut command_executor,
+                        state.selection,
+                        &request,
+                    )
+                };
                 if grouped_autoformat {
                     if apply_result.is_ok() {
                         command_executor.end_group();
@@ -9123,7 +9167,20 @@ impl OffscreenDocumentView {
         // owner so `make_mut` is a no-op, mirroring the insert/paragraph-break
         // edit paths. The guard outlives the block so a failed or no-op action
         // leaves the renderer pointed at the document again.
-        let edit_cache = self.renderer.borrow().local_text_edit_cache();
+        let edit_cache = {
+            let state = self.state.borrow();
+            let renderer = self.renderer.borrow();
+            let footprint = match action {
+                HistoryAction::Undo => state.command_executor.next_undo_render_footprint(),
+                HistoryAction::Redo => state.command_executor.next_redo_render_footprint(),
+            };
+            match (footprint, state.word_doc.as_ref()) {
+                (Some(HistoryRenderFootprint::SingleParagraph { index }), Some(doc)) => {
+                    renderer.local_text_edit_cache_for_paragraph(doc, index)
+                }
+                _ => renderer.local_text_edit_cache(),
+            }
+        };
         let _document_cache = self.drop_renderer_document_cache();
         let maybe_context = {
             let mut state_mut = self.state.borrow_mut();
@@ -10440,6 +10497,7 @@ impl OffscreenDocumentView {
             word_autocorrect: None,
             equation_editor: None,
             word_doc: None,
+            roundtrip_parser: None,
             crdt: None,
             crdt_actor: String::new(),
             crdt_checkpoint: None,
@@ -10811,6 +10869,7 @@ impl OffscreenDocumentView {
                     state_mut.paged_images = paged_images.unwrap_or_default();
                     state_mut.command_executor = CommandExecutor::new();
                     state_mut.outline_display = Default::default();
+                    state_mut.roundtrip_parser = None;
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -10949,6 +11008,7 @@ impl OffscreenDocumentView {
                     state_mut.paged_images = Vec::new(); // Don't store ImageBitmaps
                     state_mut.command_executor = CommandExecutor::new();
                     state_mut.outline_display = Default::default();
+                    state_mut.roundtrip_parser = None;
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -11173,6 +11233,7 @@ impl OffscreenDocumentView {
                     state_mut.paged_images = Vec::new();
                     state_mut.command_executor = CommandExecutor::new();
                     state_mut.outline_display = Default::default();
+                    state_mut.roundtrip_parser = None;
                     state_mut.composition_preview = None;
                     state_mut.selection = None;
                     state_mut.hf_body_selection = None;
@@ -16207,17 +16268,89 @@ impl OffscreenDocumentView {
     }
 
     /// Ensures edit/export preservation metadata is ready after a deferred
-    /// initial load. Returns true only when this call performed the parse.
+    /// initial load. Returns true only when this call completed preparation.
     #[wasm_bindgen(js_name = prepareRoundtripDocument)]
     pub fn prepare_roundtrip_document(&self) -> Result<bool, JsValue> {
+        self.prepare_roundtrip_document_with_budget(None)
+    }
+
+    /// Advances idle preservation work by a bounded number of XML events.
+    #[wasm_bindgen(js_name = prepareRoundtripDocumentStep)]
+    pub fn prepare_roundtrip_document_step(&self, event_budget: u32) -> Result<bool, JsValue> {
+        self.prepare_roundtrip_document_with_budget(Some(event_budget as usize))
+    }
+
+    fn prepare_roundtrip_document_with_budget(
+        &self,
+        event_budget: Option<usize>,
+    ) -> Result<bool, JsValue> {
+        let raw_xml = {
+            let mut state = self.state.borrow_mut();
+            let state = &mut *state;
+            let word_doc = state
+                .word_doc
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("document is not loaded"))?;
+            if word_doc.raw_document.is_some() {
+                state.roundtrip_parser = None;
+                return Ok(event_budget.is_some());
+            }
+            let source = &word_doc
+                .document_part
+                .as_ref()
+                .ok_or_else(|| JsValue::from_str("main document part is not loaded"))?
+                .content;
+            if let Some(budget) = event_budget {
+                if state.roundtrip_parser.is_none() {
+                    state.roundtrip_parser = Some(DocxXmlIncrementalParser::new(source.clone()));
+                }
+                let parser = state.roundtrip_parser.as_mut().expect("parser initialized");
+                match parser.advance(budget) {
+                    Ok(None) => return Ok(false),
+                    Ok(Some(xml)) if parser.source() == source => {
+                        state.roundtrip_parser = None;
+                        Some(xml)
+                    }
+                    Ok(Some(_)) => {
+                        state.roundtrip_parser = None;
+                        return Ok(false);
+                    }
+                    Err(error) => {
+                        state.roundtrip_parser = None;
+                        return Err(JsValue::from_str(&error.to_string()));
+                    }
+                }
+            } else if let Some(mut parser) = state
+                .roundtrip_parser
+                .take()
+                .filter(|parser| parser.source() == source)
+            {
+                parser
+                    .advance(usize::MAX)
+                    .map_err(|error| JsValue::from_str(&error.to_string()))?
+            } else {
+                None
+            }
+        };
+
+        // Linking only changes preservation metadata. Drop the renderer's
+        // snapshot during this final phase so the semantic model stays in place.
+        let _document_cache = self.drop_renderer_document_cache();
         let mut state = self.state.borrow_mut();
         let word_doc = state
             .word_doc
             .as_mut()
             .ok_or_else(|| JsValue::from_str("document is not loaded"))?;
-        word_doc
-            .ensure_roundtrip_xml()
-            .map_err(|err| JsValue::from_str(&err.to_string()))
+        if let Some(raw_xml) = raw_xml {
+            word_doc
+                .attach_roundtrip_xml(raw_xml)
+                .map_err(|error| JsValue::from_str(&error.to_string()))?;
+            Ok(true)
+        } else {
+            word_doc
+                .ensure_roundtrip_xml()
+                .map_err(|error| JsValue::from_str(&error.to_string()))
+        }
     }
 
     #[wasm_bindgen]
@@ -17701,8 +17834,8 @@ impl OffscreenDocumentView {
     }
 
     #[wasm_bindgen(js_name = beginPdfTextCapture)]
-    pub fn begin_pdf_text_capture(&self) {
-        jade_canvas_painter::text_batch::begin_text_capture();
+    pub fn begin_pdf_text_capture(&self, capture_digit_offsets: Option<bool>) {
+        jade_canvas_painter::text_batch::begin_text_capture(capture_digit_offsets.unwrap_or(false));
     }
 
     #[wasm_bindgen(js_name = endPdfTextCapture)]
@@ -18744,6 +18877,19 @@ impl OffscreenDocumentView {
         renderer.create_page_bitmap(page_index)
     }
 
+    /// Copies a rendered page into a separate, dedicated offscreen 2D context.
+    /// The caller must complete pending image draws before copying the page.
+    #[wasm_bindgen(js_name = copyPagePixelsTo)]
+    pub fn copy_page_pixels_to(
+        &self,
+        page_index: usize,
+        target: &OffscreenCanvasRenderingContext2d,
+    ) -> Result<(), JsValue> {
+        self.renderer
+            .borrow()
+            .copy_page_pixels_to(page_index, target)
+    }
+
     /// Transfers an ImageBitmap for a specific page using `transferToImageBitmap()`.
     /// Synchronous and ~10x faster than `create_page_bitmap`, but **clears the
     /// canvas**. The page must be re-rendered before another bitmap can be taken.
@@ -19294,8 +19440,11 @@ impl OffscreenDocumentView {
     /// revision display does.
     #[wasm_bindgen(js_name = clearDecorationCache)]
     pub fn clear_decoration_cache(&self) -> Result<JsValue, JsValue> {
-        self.renderer.borrow().clear_decoration_cache();
-        self.rerender_after_display_change(|_| {})
+        self.rerender_after_display_change(|renderer| {
+            renderer.clear_decoration_cache();
+            // Cached drawing commands include plugin ink and bypass decoration lookup.
+            renderer.clear_paragraph_render_cache();
+        })
     }
 
     #[wasm_bindgen(js_name = applyDecorationResults)]

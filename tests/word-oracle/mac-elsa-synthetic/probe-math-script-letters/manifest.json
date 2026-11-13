@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "sourceSha256": "287e522c9ed304b1e6c1e9c231261667088321a93f45cf8bc95354b7d0188aa0",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "export": "Save As > PDF",
+    "pdfSha256": "6c0a04c15cbde3c1136541e5d12f864dfc2f3ec8b39d9f8fb1495727dab03488",
+    "extractor": "PyMuPDF 1.26.5; mapped Cambria Math script glyphs to their source letters by matching PDF subset outlines and advances to Office font alternates"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "bodyOnly": true,
+  "coordinatesSha256": "977dce94a5b4983df04d124bdf3086dd30ceda2dc7e48860c30d56261235444c"
+}

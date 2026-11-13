@@ -4,7 +4,7 @@ use crate::document::{MathElement, MathElementKind};
 pub(crate) use jade_docx_layout::math_layout::math_text;
 use jade_docx_layout::math_layout::MathMetrics;
 use jade_docx_layout::units::points_to_px;
-use jade_docx_reader::{StylesPart, ThemePart};
+use jade_docx_reader::{ParagraphProperties, StylesPart, ThemePart};
 use jade_painter::Painter;
 #[cfg(feature = "opentype-math")]
 use std::rc::Rc;
@@ -16,6 +16,86 @@ struct StyledPainterMeasure<'a, P> {
     painter: &'a P,
     font: RefCell<Option<(String, f64)>>,
 }
+fn cambria_math_metrics(text: &str, style: MathTextStyle<'_>) -> Option<(f64, f64)> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if !style.family.eq_ignore_ascii_case("Cambria Math")
+        || word_layout_platform() != WordLayoutPlatform::Mac
+    {
+        return None;
+    }
+    // Cambria Math advances in 2048 units per em, also observed in Word's
+    // printed display equations. Canvas may be measuring a substituted face.
+    const ITALIC_LATIN: [(u16, u16); 52] = [
+        (1297, 20), // A
+        (1344, 55), // B
+        (1222, 90), // C
+        (1418, 60), // D
+        (1279, 80), // E
+        (1251, 80), // F
+        (1290, 90), // G
+        (1491, 60), // H
+        (776, 65),  // I
+        (782, 40),  // J
+        (1430, 62), // K
+        (1089, 42), // L
+        (1743, 50), // M
+        (1500, 50), // N
+        (1385, 50), // O
+        (1270, 50), // P
+        (1385, 60), // Q
+        (1305, 60), // R
+        (1084, 40), // S
+        (1219, 45), // T
+        (1411, 40), // U
+        (1281, 65), // V
+        (1945, 80), // W
+        (1321, 50), // X
+        (1234, 50), // Y
+        (1213, 50), // Z
+        (1141, 50), // a
+        (1104, 45), // b
+        (942, 65),  // c
+        (1187, 65), // d
+        (1016, 45), // e
+        (1126, 60), // f
+        (1253, 35), // g
+        (1136, 35), // h
+        (649, 65),  // i
+        (736, 35),  // j
+        (1130, 60), // k
+        (647, 65),  // l
+        (1717, 35), // m
+        (1175, 35), // n
+        (1091, 45), // o
+        (1142, 25), // p
+        (1103, 62), // q
+        (974, 45),  // r
+        (946, 42),  // s
+        (808, 50),  // t
+        (1175, 52), // u
+        (1114, 60), // v
+        (1513, 60), // w
+        (1090, 62), // x
+        (1146, 35), // y
+        (990, 35),  // z
+    ];
+    let mut characters = text.chars();
+    let character = characters.next()?;
+    if characters.next().is_some() {
+        return None;
+    }
+    let (advance, italic) = match character {
+        '0'..='9' => (1134, 0),
+        '+' | '−' | '=' => (1530, 0),
+        // Unicode uses the earlier PLANCK CONSTANT codepoint for italic h.
+        'ℎ' => ITALIC_LATIN[33],
+        '𝐴'..='𝑔' | '𝑖'..='𝑧' => ITALIC_LATIN[(character as u32 - 0x1D434) as usize],
+        _ => return None,
+    };
+    let scale = style.size_px / 2048.0;
+    Some((f64::from(advance) * scale, f64::from(italic) * scale))
+}
+
 impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
     type Error = P::Error;
     fn measure_glyph(
@@ -48,11 +128,15 @@ impl<P: Painter> StyledMathMeasure for StyledPainterMeasure<'_, P> {
             style.size_px * 0.2
         };
         Ok(MathMetrics {
-            width: measured.width,
+            width: cambria_math_metrics(text, style).map_or(measured.width, |(advance, _)| advance),
             ascent,
             descent,
         })
     }
+    fn fallback_italic_correction(&self, text: &str, style: MathTextStyle<'_>) -> f64 {
+        cambria_math_metrics(text, style).map_or(0.0, |(_, italic)| italic)
+    }
+
     fn script_scale(&self, style: MathTextStyle<'_>, level: u32) -> f64 {
         match level {
             0 => 1.0,
@@ -532,6 +616,34 @@ pub(super) struct DisplayMathStyle<'a> {
 }
 
 impl DisplayMathStyle<'_> {
+    pub(super) fn line_properties(
+        styles: Option<&StylesPart>,
+        math: &MathParagraph,
+    ) -> ParagraphProperties {
+        let mut properties = math.properties.as_deref().cloned().unwrap_or_default();
+        let Some(styles) = styles else {
+            return properties;
+        };
+        let style = properties
+            .style
+            .as_deref()
+            .or_else(|| styles.default_paragraph_style_id())
+            .and_then(|id| styles.resolve_paragraph_properties(id));
+        let defaults = styles.doc_default_paragraph_properties();
+        for spacing in [style.as_ref(), defaults]
+            .into_iter()
+            .flatten()
+            .filter_map(|properties| properties.spacing.as_ref())
+        {
+            if let Some(direct) = properties.spacing.as_mut() {
+                crate::word_document::WordDocument::fill_missing_spacing(direct, spacing);
+            } else {
+                properties.spacing = Some(spacing.clone());
+            }
+        }
+        properties
+    }
+
     /// The text face inherited by `m:nor` (normal text) runs from the
     /// containing paragraph style and document defaults.
     pub(super) fn math_text_family(&self, paragraph_style: Option<&str>) -> String {
@@ -565,8 +677,17 @@ impl DisplayMathStyle<'_> {
         let mut style = self.boxed_math_style(family);
         if let Some(properties) = math.properties.as_deref() {
             let mark = properties.mark_run_properties.as_ref();
-            if let Some(size) = mark
-                .and_then(|p| p.font_size)
+            let word_mac = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+            // The paragraph mark has its own font size. Word for Mac
+            // leaves the equation at the inherited size unless its runs
+            // specify their own sizes.
+            let mark_size = if word_mac {
+                None
+            } else {
+                mark.and_then(|p| p.font_size)
+            };
+            if let Some(size) = mark_size
                 .or_else(|| {
                     properties
                         .style
@@ -594,8 +715,7 @@ impl DisplayMathStyle<'_> {
         use jade_docx_layout::math_layout::styled::MathJustification;
         let mut settings = self.settings;
         if !settings.use_display_defaults {
-            // dispDef=false uses text paragraph settings instead of defJc,
-            // wrapIndent and wrapRight. Explicit m:jc still wins in the planner.
+            // dispDef=false inherits paragraph settings for alignment and wrapping.
             let properties = math.properties.as_deref();
             let styles = self.styles;
             let inherited = styles.and_then(|styles| {
@@ -613,15 +733,20 @@ impl DisplayMathStyle<'_> {
                 .and_then(|p| p.alignment.as_deref())
                 .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))
                 .or_else(|| defaults.and_then(|p| p.alignment.as_deref()));
+            let word_mac = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             settings.default_justification = match alignment {
                 Some("center") => MathJustification::Center,
                 Some("right") => MathJustification::Right,
                 Some("left") => MathJustification::Left,
-                Some("end") if !bidi => MathJustification::Right,
+                Some("start") if word_mac => MathJustification::Left,
+                Some("end") if word_mac || !bidi => MathJustification::Right,
                 Some("end") => MathJustification::Left,
                 _ if bidi => MathJustification::Right,
                 _ => MathJustification::Left,
             };
+            settings.word_mac_rtl_paragraph =
+                word_mac && bidi && settings.default_justification == MathJustification::Right;
             settings.wrap_indent_px = 0.0;
             settings.wrap_right = false;
         }
@@ -684,7 +809,7 @@ mod tests {
     }
 
     #[test]
-    fn repeated_subtraction_settings_reach_both_math_painters() {
+    fn repeated_subtraction_settings_reach_available_math_painters() {
         use jade_docx_layout::math_layout::styled::MathLayoutOptions;
         use jade_docx_reader::{parser::math::parse_math_paragraph, settings::DocumentSettings};
         use jade_painter::recording::{Op, RecordingPainter};
@@ -721,11 +846,16 @@ mod tests {
             assert!(plan.lines.len() > 1);
             assert_eq!(plan.text, "11−22−33−44−55−66");
             let owned = OwnedMathPlan::from_plan(&plan);
-            for draw_owned in [false, true] {
+            for draw_owned in [
+                #[cfg(feature = "opentype-math")]
+                false,
+                true,
+            ] {
                 painter.clear();
                 if draw_owned {
                     owned.paint(&painter, 0.0, 0.0).unwrap();
                 } else {
+                    #[cfg(feature = "opentype-math")]
                     paint_boxed_math(&painter, &plan, 0.0, 0.0).unwrap();
                 }
                 let ops = painter.ops();

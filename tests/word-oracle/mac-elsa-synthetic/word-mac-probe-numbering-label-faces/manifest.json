@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "479980ec5ec700c26c6cc63aa732fde9296d6e169fc0669dac0491a71423ab3d",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "5c886713bc1dcafdbcc559e94a28c465b017b1d4e8ff624b00bfdfd6c83d6c69",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-numbering-label-faces.json"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "665bb426c1724196fa900ede94e7909efcc9ee572e316227d03f5de6dc8fce2a"
+}

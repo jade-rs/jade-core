@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "sourceSha256": "b2a89a7118a4cb181a68ec8748f567b4d7f787eaaa909c068f1dc5f5d02b5ab9",
+  "reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114",
+    "build": "16.114.26101123",
+    "export": "Save As > PDF",
+    "pdfSha256": "0b3d02e00e4a4047f47a079f20f5d238b83ff6f1cefa3d957f5dec85297b7cc1",
+    "coordinateSource": "tests/word-oracle/mac-probes-16114/word-mac-probe-tab-shrink-comma.json"
+  },
+  "pages": 1,
+  "axisTolerancePt": 0.65,
+  "coordinatesSha256": "20831805560212c525abcaaad1f04917cfbd88f8530590098f26f5f545282829"
+}

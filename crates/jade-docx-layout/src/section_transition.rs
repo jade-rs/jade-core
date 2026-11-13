@@ -3,6 +3,17 @@ pub const DEFAULT_PAGE_WIDTH_PT: f32 = 595.0;
 pub const DEFAULT_PAGE_HEIGHT_PT: f32 = 842.0;
 pub const DEFAULT_MARGIN_PT: f32 = 72.0;
 
+/// Word uses the same section direction for tbRlV and tbLrV (MS-OE376 §2.1.590).
+pub fn word_section_text_direction(
+    direction: jade_docx_reader::document::TextDirection,
+) -> jade_docx_reader::document::TextDirection {
+    use jade_docx_reader::document::TextDirection;
+    match direction {
+        TextDirection::TbRlV => TextDirection::TbLrV,
+        direction => direction,
+    }
+}
+
 /// Word section break behavior from `w:sectPr/w:type`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SectionBreakType {

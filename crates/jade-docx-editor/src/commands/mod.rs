@@ -555,6 +555,13 @@ impl CommandExecutor {
         self.redo_stack.last().map(|command| command.name())
     }
 
+    /// Render footprint of the edit at the top of the redo stack.
+    pub fn next_redo_render_footprint(&self) -> Option<HistoryRenderFootprint> {
+        self.redo_stack
+            .last()
+            .map(|command| command.history_render_footprint())
+    }
+
     pub fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<bool> {
         Ok(self.undo_with_footprint(ctx)?.is_some())
     }

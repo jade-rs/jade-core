@@ -3026,20 +3026,25 @@ impl WordDocument {
             .as_ref()
             .ok_or("main document part is not loaded")?;
         let raw_xml = DocxXmlDocument::parse(&doc_part.content)?;
-        let mut parsed_doc = self
-            .document
-            .as_deref()
-            .cloned()
+        self.attach_roundtrip_xml(raw_xml)?;
+        Ok(true)
+    }
+
+    pub(crate) fn attach_roundtrip_xml(
+        &mut self,
+        raw_xml: DocxXmlDocument,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let parsed_doc = self
+            .document_mut()
             .ok_or("semantic document is not loaded")?;
 
-        let _ = attach_document_xml_ids(&mut parsed_doc, &raw_xml);
-        attach_text_box_xml_ids(&mut parsed_doc, &raw_xml);
-        content_controls::forms::annotate_form_check_boxes(&mut parsed_doc, &raw_xml);
+        let _ = attach_document_xml_ids(parsed_doc, &raw_xml);
+        attach_text_box_xml_ids(parsed_doc, &raw_xml);
+        content_controls::forms::annotate_form_check_boxes(parsed_doc, &raw_xml);
         if let Some(body) = parsed_doc.body.as_mut() {
-            Self::capture_preserved_run_props(&mut body.elements, &raw_xml);
+            Self::capture_preserved_run_props_from_fresh_xml(&mut body.elements, &raw_xml);
         }
 
-        self.document = Some(Rc::new(parsed_doc));
         self.raw_document = Some(raw_xml);
         // Attaching XML node ids does not change body text or paragraph
         // ordering. Preserve status-bar counts so the first keystroke after a
@@ -3048,7 +3053,7 @@ impl WordDocument {
         let text_metrics_cache = self.text_metrics_cache.get_mut().clone();
         self.rebuild_paragraph_surfaces();
         *self.text_metrics_cache.get_mut() = text_metrics_cache;
-        Ok(true)
+        Ok(())
     }
 
     fn normalize_document_property_name(name: &str) -> String {
@@ -5090,7 +5095,7 @@ impl WordDocument {
     /// that `target` leaves unset from `fallback`: a paragraph that sets only
     /// `w:after` keeps the line spacing it inherits. Each is taken whole, so an
     /// inherited `w:beforeLines` never sits beside a nearer `w:before`.
-    fn fill_missing_spacing(target: &mut Spacing, fallback: &Spacing) {
+    pub(crate) fn fill_missing_spacing(target: &mut Spacing, fallback: &Spacing) {
         target.inherit_spacing_sides_from(fallback);
         if target.line.is_none() && target.line_rule.is_none() {
             target.line = fallback.line;
@@ -7038,6 +7043,31 @@ impl WordDocument {
 
     pub(crate) fn body_index_for_surface(&self, surface_index: usize) -> Option<usize> {
         self.body_surface_indices.binary_search(&surface_index).ok()
+    }
+
+    /// Replacing this paragraph leaves the existing surface paths and note
+    /// cross-references intact.
+    pub(crate) fn can_restore_body_paragraph_in_place(
+        &self,
+        index: usize,
+        previous: &Paragraph,
+    ) -> bool {
+        let has_no_hosted_surfaces = |paragraph: &Paragraph| {
+            paragraph.runs.iter().all(|run| {
+                run.text_box.is_none()
+                    && run.footnote_reference_ids.is_empty()
+                    && run.endnote_reference_ids.is_empty()
+            })
+        };
+        matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        ) && self
+            .document
+            .as_ref()
+            .is_some_and(|document| document.bookmarks.is_empty())
+            && has_no_hosted_surfaces(previous)
+            && self.paragraph(index).is_some_and(has_no_hosted_surfaces)
     }
 
     pub(crate) fn body_paragraph_count(&self) -> usize {
@@ -36601,13 +36631,17 @@ impl WordDocument {
         }
     }
 
-    fn sync_paragraph_xml(&mut self, paragraph_index: usize, preserve_drawings: bool) {
+    pub(crate) fn mark_paragraph_text_metrics_dirty(&mut self, paragraph_index: usize) {
         if let Some(body_index) = self.body_index_for_surface(paragraph_index) {
             self.text_metrics_cache
                 .get_mut()
                 .dirty_body_indices
                 .insert(body_index);
         }
+    }
+
+    fn sync_paragraph_xml(&mut self, paragraph_index: usize, preserve_drawings: bool) {
+        self.mark_paragraph_text_metrics_dirty(paragraph_index);
         let edited_paragraph_id = self
             .paragraph(paragraph_index)
             .and_then(|paragraph| paragraph.node_id);
@@ -40295,23 +40329,66 @@ impl WordDocument {
     /// unmodeled `w:rPr` children from the raw XML onto its model
     /// `RunProperties::preserved_rpr`.
     fn capture_preserved_run_props(elements: &mut [BodyElement], raw: &DocxXmlDocument) {
+        Self::capture_preserved_run_props_with_lookup(elements, &|id| raw.element(id));
+    }
+
+    fn capture_preserved_run_props_from_fresh_xml(
+        elements: &mut [BodyElement],
+        raw: &DocxXmlDocument,
+    ) {
+        fn index_elements<'a>(element: &'a XmlElement, index: &mut Vec<Option<&'a XmlElement>>) {
+            if matches!(element.name.as_str(), "w:p" | "w:r") {
+                let slot = element.id.raw() as usize;
+                if slot >= index.len() {
+                    index.resize(slot + 1, None);
+                }
+                index[slot] = Some(element);
+            }
+            for child in &element.children {
+                if let XmlNode::Element(child) = child {
+                    index_elements(child, index);
+                }
+            }
+        }
+
+        // A freshly parsed tree has dense parser-assigned IDs. Resolve the
+        // body paragraph and run elements in one walk, then read them directly
+        // while capturing formatting. Other node kinds use the ordinary path.
+        let mut index = Vec::new();
+        index_elements(raw.root(), &mut index);
+        Self::capture_preserved_run_props_with_lookup(elements, &|id| {
+            index
+                .get(id.raw() as usize)
+                .copied()
+                .flatten()
+                .or_else(|| raw.element(id))
+        });
+    }
+
+    fn capture_preserved_run_props_with_lookup<'a>(
+        elements: &mut [BodyElement],
+        lookup: &impl Fn(XmlNodeId) -> Option<&'a XmlElement>,
+    ) {
         for element in elements.iter_mut() {
             match element {
                 BodyElement::Paragraph(paragraph) => {
-                    Self::capture_preserved_run_props_in_paragraph(paragraph, raw);
+                    Self::capture_preserved_run_props_in_paragraph(paragraph, lookup);
                     // A text box's runs are bound to its `w:txbxContent` like
                     // any other: left out, every font they inherit counted as
                     // their own, and typing in the box wrote it into them.
                     for run in paragraph.runs.iter_mut() {
                         if let Some(text_box) = run.text_box.as_mut() {
-                            Self::capture_preserved_run_props(&mut text_box.blocks, raw);
+                            Self::capture_preserved_run_props_with_lookup(
+                                &mut text_box.blocks,
+                                lookup,
+                            );
                         }
                     }
                 }
                 BodyElement::Table(table) => {
                     for row in table.rows.iter_mut() {
                         for cell in row.cells.iter_mut() {
-                            Self::capture_preserved_run_props(&mut cell.blocks, raw);
+                            Self::capture_preserved_run_props_with_lookup(&mut cell.blocks, lookup);
                         }
                     }
                 }
@@ -40383,24 +40460,23 @@ impl WordDocument {
         }
     }
 
-    fn capture_preserved_run_props_in_paragraph(paragraph: &mut Paragraph, raw: &DocxXmlDocument) {
+    fn capture_preserved_run_props_in_paragraph<'a>(
+        paragraph: &mut Paragraph,
+        lookup: &impl Fn(XmlNodeId) -> Option<&'a XmlElement>,
+    ) {
         // Paragraph marks have their own run properties. Keep the same raw
         // properties as text runs so editing and undo can round-trip them.
-        if let Some(rpr) = paragraph
-            .node_id
-            .and_then(|id| raw.element(id))
-            .and_then(|p| {
-                p.children.iter().find_map(|child| match child {
-                    XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
-                        ppr.children.iter().find_map(|child| match child {
-                            XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
-                            _ => None,
-                        })
-                    }
-                    _ => None,
-                })
+        if let Some(rpr) = paragraph.node_id.and_then(lookup).and_then(|p| {
+            p.children.iter().find_map(|child| match child {
+                XmlNode::Element(ppr) if ppr.name == "w:pPr" => {
+                    ppr.children.iter().find_map(|child| match child {
+                        XmlNode::Element(rpr) if rpr.name == "w:rPr" => Some(rpr),
+                        _ => None,
+                    })
+                }
+                _ => None,
             })
-        {
+        }) {
             let preserved = rpr
                 .children
                 .iter()
@@ -40429,7 +40505,7 @@ impl WordDocument {
             let Some(node_id) = run.node_id else {
                 continue;
             };
-            let Some(run_element) = raw.element(node_id) else {
+            let Some(run_element) = lookup(node_id) else {
                 continue;
             };
             let Some(rpr) = run_element.children.iter().find_map(|child| match child {
@@ -66599,9 +66675,10 @@ mod tests {
         let mut doc = executor::block_on(WordDocument::load_for_initial_render(&data, &options))
             .expect("load semantic document");
 
-        assert!(doc.document.is_some());
+        let document = Rc::as_ptr(doc.document.as_ref().expect("semantic document"));
         assert!(doc.raw_document.is_none());
         assert!(doc.ensure_roundtrip_xml().expect("prepare round-trip XML"));
+        assert_eq!(document, Rc::as_ptr(doc.document.as_ref().unwrap()));
         assert!(doc.raw_document.is_some());
         assert!(!doc.ensure_roundtrip_xml().expect("prepare is idempotent"));
         assert!(!doc.export_docx().expect("export docx").is_empty());

@@ -38,7 +38,7 @@ pub use document::{
     PdfExportOptions, PdfRenderingMode, SearchHit, TableCell,
 };
 
-use jade_docx_editor::render_host::{CanvasRenderHost, ImageCropMapping};
+use jade_docx_editor::render_host::{ArabicClusterMeasurer, CanvasRenderHost, ImageCropMapping};
 use jade_docx_layout::shaping_measurer::{ShapingMeasurer, ShapingOptions};
 use jade_painter::{Painter, TextMetrics};
 use jade_skia_painter::SkiaPainter;
@@ -455,6 +455,13 @@ impl CanvasRenderHost for SkiaRenderHost {
         Ok(width)
     }
 
+    fn arabic_cluster_measurer(&self) -> Option<ArabicClusterMeasurer> {
+        let measurer = Rc::clone(&self.measurer);
+        Some(Rc::new(move |text, font| {
+            measurer.measure_arabic_clusters(text, font)
+        }))
+    }
+
     fn measure_text_metrics(&self, text: &str) -> Result<TextMetrics, JsValue> {
         let descriptor = self.painter().font_descriptor();
         let width = self.measure_text_width(text)?;
@@ -472,6 +479,7 @@ impl CanvasRenderHost for SkiaRenderHost {
             font_bounding_box_descent: font_descent,
             actual_bounding_box_ascent: ink_ascent,
             actual_bounding_box_descent: ink_descent,
+            actual_bounding_box_left: 0.0,
             actual_bounding_box_right: width,
         })
     }

@@ -40,6 +40,31 @@ fn break_after_reserves_the_trailing_operator_width() {
 }
 
 #[test]
+fn break_after_keeps_a_fraction_inside_the_continuation() {
+    let math = parse(concat!(
+        "<m:r><m:t>1234+</m:t></m:r>",
+        "<m:f><m:num><m:r><m:t>1</m:t></m:r></m:num>",
+        "<m:den><m:r><m:t>23456</m:t></m:r></m:den></m:f>",
+    ));
+    let plan = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(58.0),
+            settings: MathSettings {
+                break_binary: BreakBinary::After,
+                wrap_indent_px: 8.0,
+                ..Default::default()
+            },
+            ..display()
+        },
+    );
+    assert_eq!(plan.lines.len(), 2);
+    let continuation = &plan.lines[1];
+    assert!(plan.rules[0].x >= continuation.x - 1e-9);
+    assert!(plan.glyphs[5].x > plan.glyphs[6].x);
+}
+
+#[test]
 fn break_repeat_places_the_same_operator_on_both_lines() {
     let math = parse("<m:r><m:t>aa+bb+cc+dd+ee+ff+gg+hh</m:t></m:r>");
     // A continuation between two plus signs is about 34 px before indent.
@@ -619,6 +644,57 @@ fn display_lines_break_where_asked_and_where_they_overflow() {
     }
     let p = plan_with(&long, MathLayoutOptions::inline());
     assert_eq!(p.lines.len(), 1);
+}
+
+#[test]
+fn mac_rtl_display_math_uses_the_first_relation_and_the_right_edge() {
+    let math = parse("<m:r><m:t>a=b+c+d+e+f+g+h</m:t></m:r>");
+    let settings = MathSettings {
+        use_display_defaults: false,
+        word_mac_rtl_paragraph: true,
+        wrap_indent_px: 0.0,
+        default_justification: MathJustification::Left,
+        ..Default::default()
+    };
+    let wrapped = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(80.0),
+            settings,
+            ..display()
+        },
+    );
+    let unwrapped = plan_with(
+        &math,
+        MathLayoutOptions {
+            max_width: Some(400.0),
+            settings,
+            ..display()
+        },
+    );
+    let manual_break =
+        parse("<m:r><m:t>a=b+c</m:t></m:r><m:r><m:rPr><m:brk/></m:rPr><m:t>+d+e</m:t></m:r>");
+    let manual = plan_with(
+        &manual_break,
+        MathLayoutOptions {
+            max_width: Some(80.0),
+            settings,
+            ..display()
+        },
+    );
+
+    assert_eq!(wrapped.alignment, MathParagraphAlignment::Right);
+    assert_eq!(unwrapped.alignment, MathParagraphAlignment::Right);
+    assert!(wrapped.lines.len() >= 3);
+    assert_eq!(unwrapped.lines.len(), 1);
+    assert_eq!(manual.lines.len(), 2);
+    assert_eq!(glyph(&manual, "=").baseline, manual.lines[0].baseline);
+    assert_eq!(glyph(&wrapped, "𝑎").baseline, wrapped.lines[0].baseline);
+    assert_eq!(glyph(&wrapped, "=").baseline, wrapped.lines[1].baseline);
+    for line in &wrapped.lines {
+        assert!((line.x + line.width - wrapped.metrics.width).abs() < 1e-9);
+        assert!(line.width <= 80.0);
+    }
 }
 
 #[test]
