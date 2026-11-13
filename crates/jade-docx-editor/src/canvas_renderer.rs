@@ -1224,18 +1224,18 @@ struct ObjectTransformPreview {
     anchor_paragraph_index: Option<usize>,
 }
 
-enum FloatingPaintObject {
+enum FloatingPaintObject<'a> {
     Image {
         run_index: usize,
-        image: RunImage,
+        image: &'a RunImage,
     },
     TextBox {
         run_index: usize,
-        text_box: RunTextBox,
+        text_box: &'a RunTextBox,
     },
 }
 
-impl FloatingPaintObject {
+impl FloatingPaintObject<'_> {
     fn run_index(&self) -> usize {
         match self {
             Self::Image { run_index, .. } | Self::TextBox { run_index, .. } => *run_index,
@@ -7691,7 +7691,7 @@ where
         layout_text: &mut String,
         debug_text: &mut Option<String>,
         run_styles: &mut [RunStyle],
-        inline_images: &mut HashMap<usize, (usize, RunImage)>,
+        inline_images: &mut HashMap<usize, (usize, &RunImage)>,
         inline_text_boxes: &mut HashMap<usize, (usize, RunTextBox)>,
         inline_maths: &mut InlineMaths,
         neutral_ranges: &mut [(usize, usize)],
@@ -19663,9 +19663,10 @@ where
         let initial_first_line_indent = paragraph_style.first_line_indent;
         let first_line_consumed = false;
         let numbering_consumed = pending_numbering.is_none();
-        let mut floating_text_boxes: Vec<(usize, RunTextBox)> = Vec::new();
-        let mut floating_images: Vec<(usize, RunImage)> = Vec::new();
-        let mut inline_images: HashMap<usize, (usize, RunImage)> = HashMap::new();
+        let mut floating_text_boxes: Vec<(usize, &RunTextBox)> = Vec::new();
+        // Keep image metadata (including potentially large data URIs) in the runs.
+        let mut floating_images: Vec<(usize, &RunImage)> = Vec::new();
+        let mut inline_images: HashMap<usize, (usize, &RunImage)> = HashMap::new();
         let mut inline_maths: InlineMaths = HashMap::new();
         let mut inline_text_boxes: HashMap<usize, (usize, RunTextBox)> = HashMap::new();
         let mut segment = String::new();
@@ -19922,7 +19923,7 @@ where
 
             if let Some(text_box) = run.text_box.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(text_box.layout.kind, RunImageKind::Floating) {
-                    floating_text_boxes.push((run_index, text_box.clone()));
+                    floating_text_boxes.push((run_index, text_box));
                     continue;
                 }
 
@@ -19956,7 +19957,7 @@ where
 
             if let Some(image) = run.image.as_ref().filter(|_| field_code.is_none()) {
                 if matches!(image.layout.kind, RunImageKind::Floating) {
-                    floating_images.push((run_index, image.clone()));
+                    floating_images.push((run_index, image));
                     continue;
                 }
 
@@ -19967,7 +19968,7 @@ where
                 layout_text.push('\u{fffc}');
                 current_pos = layout_text.len();
                 let (width, height) = inline_picture_size(image, line_height);
-                inline_images.insert(start_pos, (run_index, image.clone()));
+                inline_images.insert(start_pos, (run_index, image));
                 run_styles.push(RunStyle {
                     start: start_pos,
                     end: current_pos,
@@ -21065,7 +21066,7 @@ where
             match object {
                 FloatingPaintObject::Image { run_index, image } => {
                     let _ = self.render_floating_image(
-                        &image,
+                        image,
                         paragraph_index,
                         run_index,
                         float_anchor_top,
@@ -21078,7 +21079,7 @@ where
                     text_box,
                 } => {
                     let _ = self.render_floating_text_box(
-                        &text_box,
+                        text_box,
                         paragraph_index,
                         run_index,
                         float_anchor_top,
@@ -22896,7 +22897,7 @@ where
         minimum_picture_line: bool,
         run_styles: &[RunStyle],
         line_height_neutral_ranges: &[(usize, usize)],
-        inline_images: &HashMap<usize, (usize, RunImage)>,
+        inline_images: &HashMap<usize, (usize, &RunImage)>,
         inline_text_boxes: &HashMap<usize, (usize, RunTextBox)>,
         inline_maths: &InlineMaths,
         column_right_edge: f64,
@@ -24501,7 +24502,7 @@ where
             line_layout.start_x = line_start_x;
 
             let mut positions = Vec::with_capacity(segment_count);
-            let mut inline_image_draws: Vec<(usize, RunImage, f64, f64, f64, f64)> = Vec::new();
+            let mut inline_image_draws: Vec<(usize, &RunImage, f64, f64, f64, f64)> = Vec::new();
             let mut inline_math_draws: Vec<(usize, usize, Rc<math::OwnedMathPlan>, f64, f64)> =
                 Vec::new();
             let mut inline_text_box_draws: Vec<(usize, RunTextBox, FloatingObjectTransform)> =
@@ -24549,14 +24550,7 @@ where
                                 object.width.max(1.0),
                                 object.height.max(1.0),
                             );
-                            inline_image_draws.push((
-                                *run_index,
-                                image.clone(),
-                                x,
-                                y,
-                                width,
-                                height,
-                            ));
+                            inline_image_draws.push((*run_index, *image, x, y, width, height));
                         }
                         if let (Some((run_index, text_box)), Some(object)) =
                             (inline_text_boxes.get(&cluster.start), cluster.inline_object)
@@ -32193,7 +32187,7 @@ where
 
     fn remap_line_selection_offsets_for_inline_objects(
         line: &mut SelectionLineLayout,
-        inline_images: &HashMap<usize, (usize, RunImage)>,
+        inline_images: &HashMap<usize, (usize, &RunImage)>,
         inline_text_boxes: &HashMap<usize, (usize, RunTextBox)>,
     ) {
         if inline_images.is_empty() && inline_text_boxes.is_empty() {
@@ -73248,21 +73242,21 @@ mod tests {
         let mut objects = [
             FloatingPaintObject::Image {
                 run_index: 4,
-                image: RunImage {
+                image: &RunImage {
                     layout: layout(300),
                     ..RunImage::default()
                 },
             },
             FloatingPaintObject::TextBox {
                 run_index: 2,
-                text_box: RunTextBox {
+                text_box: &RunTextBox {
                     layout: layout(100),
                     ..RunTextBox::default()
                 },
             },
             FloatingPaintObject::Image {
                 run_index: 3,
-                image: RunImage {
+                image: &RunImage {
                     layout: layout(200),
                     ..RunImage::default()
                 },
