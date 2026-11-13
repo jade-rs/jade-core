@@ -10345,6 +10345,32 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
     widths
 }
 
+/// A fixed one-column table with an automatic table width has no frame
+/// against which to resolve a cell percentage. Word for Mac instead derives
+/// the frame by scaling its 12pt cell minimum by the reciprocal percentage.
+fn word_mac_automatic_fixed_percentage_column(table: &Table) -> Option<f64> {
+    let percentage = |row: &TableRow| {
+        let [cell] = row.cells.as_slice() else {
+            return None;
+        };
+        if row.grid_before.unwrap_or_default() != 0
+            || row.grid_after.unwrap_or_default() != 0
+            || cell.span.unwrap_or(1) != 1
+        {
+            return None;
+        }
+        let width = cell.style.get("width")?.trim();
+        width.strip_suffix('%')?;
+        preferred_width_px(width, 1.0).filter(|fraction| (0.25..=1.0).contains(fraction))
+    };
+    let fraction = percentage(table.rows.first()?)?;
+    table
+        .rows
+        .iter()
+        .all(|row| percentage(row) == Some(fraction))
+        .then(|| points_to_px(12.0) / fraction)
+}
+
 fn word_mac_constrained_fixed_grid(
     table: &Table,
     column_count: usize,
@@ -10356,6 +10382,11 @@ fn word_mac_constrained_fixed_grid(
         || column_count == 0
     {
         return None;
+    }
+    if column_count == 1 && !table.style.contains_key("width") {
+        if let Some(width) = word_mac_automatic_fixed_percentage_column(table) {
+            return Some(vec![width]);
+        }
     }
     // In a one-column fixed table Word can use tblW even when every row
     // and the saved grid still declare a smaller preferred cell width.
