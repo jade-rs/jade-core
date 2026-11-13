@@ -8609,7 +8609,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
     if text.contains('\u{ad}') {
         hyphenate::show_discretionary_hyphens(ctx, &mut lines, paragraph_style, base_available)?;
     }
-    hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available)?;
+    if let Some(settings) = paragraph_style.hyphenation {
+        hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available, settings)?;
+    }
     // Border detection already checked every original segment. Ordinary text
     // cannot acquire a border while clusters move, so reuse that result and
     // avoid another full segment walk (and one more during justification).

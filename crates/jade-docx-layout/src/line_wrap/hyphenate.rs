@@ -255,18 +255,16 @@ fn refit_word_continuation(
     }
 }
 
-/// Hyphenates `lines` as `paragraph_style.hyphenation` asks, and reflows the
-/// lines after each hyphen. Does nothing when hyphenation is off, or for
-/// layouts this pass does not handle (text around floats, right-to-left).
+/// Hyphenates and reflows lines in eligible paragraphs with automatic
+/// hyphenation enabled.
+#[inline(never)]
 pub(super) fn hyphenate_lines<C: LineWrapContext>(
     ctx: &C,
     lines: &mut Vec<WrappedLine>,
     paragraph_style: &ParagraphStyle,
     base_available: f64,
+    settings: ParagraphHyphenation,
 ) -> Result<(), C::Error> {
-    let Some(settings) = paragraph_style.hyphenation else {
-        return Ok(());
-    };
     if lines.len() < 2 || !paragraph_style.float_line_segments.is_empty() || paragraph_style.bidi {
         return Ok(());
     }
