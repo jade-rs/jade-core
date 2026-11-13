@@ -4,9 +4,9 @@ use std::rc::Rc;
 use js_sys::{Array as JsArray, Float64Array, Uint16Array};
 #[cfg(target_arch = "wasm32")]
 use std::cell::RefCell;
-use wasm_bindgen::JsValue;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsValue;
 use web_sys::CanvasRenderingContext2d;
 
 /// Minimum glyph-run length (in UTF-16 code units) for the batched
