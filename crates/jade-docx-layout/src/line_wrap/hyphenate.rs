@@ -12,7 +12,8 @@
 use super::{
     classify_script, detach_leading_cluster, detach_trailing_cluster,
     prepend_cluster_to_line_preserving_rules, InlineCluster, InlineClusterKind, LineBreakKind,
-    LineHyphen, LineWrapContext, ParagraphStyle, TextSegment, WrappedLine, WRAP_FIT_TOLERANCE_PX,
+    LineHyphen, LineWrapContext, ParagraphHyphenation, ParagraphStyle, TextSegment, WrappedLine,
+    WRAP_FIT_TOLERANCE_PX,
 };
 
 /// An authored soft hyphen is a preferred break within a word when its
@@ -286,13 +287,13 @@ pub(super) fn hyphenate_lines<C: LineWrapContext>(
             .consecutive_limit
             .is_some_and(|limit| consecutive >= limit);
         if !limited
-            && hyphenate_line_end(
+            && hyphenate_at_wrap(
                 ctx,
                 lines,
                 index,
-                available(index),
-                settings.zone_px,
-                settings.hyphenate_caps,
+                &available,
+                settings,
+                paragraph_style.word_platform,
             )?
         {
             reflow_after(lines, index + 1, &available);
@@ -300,6 +301,44 @@ pub(super) fn hyphenate_lines<C: LineWrapContext>(
         index += 1;
     }
     Ok(())
+}
+
+// Keep dictionary work outside the regular wrapping path.
+#[inline(never)]
+fn hyphenate_at_wrap<C: LineWrapContext>(
+    ctx: &C,
+    lines: &mut Vec<WrappedLine>,
+    index: usize,
+    available: &impl Fn(usize) -> f64,
+    settings: ParagraphHyphenation,
+    platform: crate::line_metrics::WordLayoutPlatform,
+) -> Result<bool, C::Error> {
+    let width = available(index);
+    if hyphenate_line_end(
+        ctx,
+        lines,
+        index,
+        width,
+        settings.zone_px,
+        settings.hyphenate_caps,
+        platform,
+    )? {
+        return Ok(true);
+    }
+    if platform == crate::line_metrics::WordLayoutPlatform::Mac
+        && (hyphenate_split_word(
+            ctx,
+            lines,
+            index,
+            width,
+            settings.zone_px,
+            settings.hyphenate_caps,
+        )? || hyphenate_emergency_break(ctx, lines, index, width, settings)?)
+    {
+        refit_word_continuation(lines, index + 1, available, true);
+        return Ok(true);
+    }
+    Ok(false)
 }
 
 /// Hyphenates the word starting line `index + 1` onto the end of line
@@ -311,6 +350,7 @@ fn hyphenate_line_end<C: LineWrapContext>(
     available: f64,
     zone_px: f64,
     hyphenate_caps: bool,
+    platform: crate::line_metrics::WordLayoutPlatform,
 ) -> Result<bool, C::Error> {
     let (head, tail) = lines.split_at_mut(index + 1);
     let line = &mut head[index];
@@ -368,7 +408,11 @@ fn hyphenate_line_end<C: LineWrapContext>(
     let language = properties
         .as_deref()
         .and_then(|properties| properties.language.as_deref());
-    let points = crate::hyphenation::hyphenation_points(&word, language);
+    let points = if platform == crate::line_metrics::WordLayoutPlatform::Mac {
+        crate::hyphenation::word_mac_hyphenation_points(&word, language)
+    } else {
+        crate::hyphenation::hyphenation_points(&word, language)
+    };
     if points.is_empty() {
         return Ok(false);
     }
@@ -390,6 +434,244 @@ fn hyphenate_line_end<C: LineWrapContext>(
     }
     mark_hyphen(line, hyphen);
     Ok(true)
+}
+
+/// Finds a Mac dictionary break in a word already split across soft wraps.
+#[inline(never)]
+fn hyphenate_split_word<C: LineWrapContext>(
+    ctx: &C,
+    lines: &mut [WrappedLine],
+    index: usize,
+    available: f64,
+    zone_px: f64,
+    hyphenate_caps: bool,
+) -> Result<bool, C::Error> {
+    let (head, tail) = lines.split_at_mut(index + 1);
+    let line = &mut head[index];
+    let next = &tail[0];
+    let is_word_cluster = |cluster: &InlineCluster| {
+        cluster.kind == InlineClusterKind::Grapheme && is_word_letter(&cluster.text)
+    };
+    if line.break_kind != LineBreakKind::Soft
+        || line.hyphen.is_some()
+        || next.hyphen.is_some()
+        || !line
+            .clusters
+            .last()
+            .is_some_and(|cluster| cluster.is_whitespace)
+    {
+        return Ok(false);
+    }
+    if next.break_kind != LineBreakKind::Soft
+        || next.clusters.is_empty()
+        || !next.clusters.iter().all(is_word_cluster)
+    {
+        return Ok(false);
+    }
+    let first_line_letters = next.clusters.len();
+    let mut word: String = next
+        .clusters
+        .iter()
+        .map(|cluster| cluster.text.as_str())
+        .collect();
+    for following in &tail[1..] {
+        if following.hyphen.is_some() {
+            return Ok(false);
+        }
+        let letters = following
+            .clusters
+            .iter()
+            .take_while(|cluster| is_word_cluster(cluster))
+            .count();
+        word.extend(
+            following.clusters[..letters]
+                .iter()
+                .map(|cluster| cluster.text.as_str()),
+        );
+        if let Some(cluster) = following.clusters.get(letters) {
+            // Apostrophes, hyphens and digits can be part of the same word.
+            if matches!(cluster.text.as_str(), "'" | "’" | "-" | "_")
+                || cluster.text.chars().all(|ch| ch.is_ascii_digit())
+            {
+                return Ok(false);
+            }
+            break;
+        }
+        if following.break_kind != LineBreakKind::Soft {
+            break;
+        }
+        if letters == 0 {
+            return Ok(false);
+        }
+    }
+    let width =
+        |clusters: &[InlineCluster]| clusters.iter().map(|cluster| cluster.width).sum::<f64>();
+    let trailing_space: f64 = line
+        .clusters
+        .iter()
+        .rev()
+        .take_while(|cluster| cluster.is_whitespace)
+        .map(|cluster| cluster.width)
+        .sum();
+    let used = width(&line.clusters);
+    if available - (used - trailing_space) < zone_px {
+        return Ok(false);
+    }
+    if !hyphenate_caps && word.chars().all(|ch| ch.is_uppercase()) {
+        return Ok(false);
+    }
+    let segment = segment_of(next, next.clusters[0].start);
+    let properties = segment.and_then(|segment| segment.properties.clone());
+    let language = properties
+        .as_deref()
+        .and_then(|properties| properties.language.as_deref());
+    let points = crate::hyphenation::word_mac_hyphenation_points(&word, language);
+    if points.is_empty() {
+        return Ok(false);
+    }
+    let hyphen = measure_hyphen(ctx, properties.as_deref())?;
+    let room = available - used;
+    let Some(kept) = points.iter().rev().copied().find(|&kept| {
+        // Word advances to this break once the prefix and the next
+        // letter fit, while still leaving room for the painted hyphen.
+        kept < first_line_letters
+            && width(&next.clusters[..kept]) + hyphen.max(next.clusters[kept].width)
+                <= room + WRAP_FIT_TOLERANCE_PX
+    }) else {
+        return Ok(false);
+    };
+    let next = &mut tail[0];
+    for _ in 0..kept {
+        let Some((cluster, segment)) = detach_leading_cluster(next) else {
+            return Ok(false);
+        };
+        append_preserving_rules(line, cluster, segment);
+    }
+    mark_hyphen(line, hyphen);
+    Ok(true)
+}
+
+/// Use a dictionary break when emergency wrapping has already split a word.
+fn hyphenate_emergency_break<C: LineWrapContext>(
+    ctx: &C,
+    lines: &mut [WrappedLine],
+    index: usize,
+    available: f64,
+    settings: ParagraphHyphenation,
+) -> Result<bool, C::Error> {
+    let (head, tail) = lines.split_at_mut(index + 1);
+    let line = &mut head[index];
+    let is_letter = |cluster: &InlineCluster| {
+        cluster.kind == InlineClusterKind::Grapheme && is_word_letter(&cluster.text)
+    };
+    if line.break_kind != LineBreakKind::Soft
+        || line.hyphen.is_some()
+        || tail[0].hyphen.is_some()
+        || !tail[0].clusters.first().is_some_and(is_letter)
+    {
+        return Ok(false);
+    }
+    let left = line
+        .clusters
+        .iter()
+        .rev()
+        .take_while(|cluster| is_letter(cluster))
+        .count();
+    if left == 0 {
+        return Ok(false);
+    }
+    let start = line.clusters.len() - left;
+    if start > 0 && has_word_connector(&line.clusters[start - 1]) {
+        return Ok(false);
+    }
+    let mut first_line_letters = 0;
+    let used: f64 = line.clusters[..start]
+        .iter()
+        .map(|cluster| cluster.width)
+        .sum();
+    if available - used < settings.zone_px {
+        return Ok(false);
+    }
+    let mut word: String = line.clusters[start..]
+        .iter()
+        .map(|cluster| cluster.text.as_str())
+        .collect();
+    let mut word_end = line.clusters[start + left - 1].end;
+    for (offset, following) in tail.iter().enumerate() {
+        if following.hyphen.is_some() {
+            return Ok(false);
+        }
+        let mut letters = 0;
+        for cluster in &following.clusters {
+            if cluster.start != word_end || !is_letter(cluster) {
+                break;
+            }
+            word.push_str(&cluster.text);
+            word_end = cluster.end;
+            letters += 1;
+        }
+        if offset == 0 {
+            if letters == 0 {
+                return Ok(false);
+            }
+            first_line_letters = letters;
+        }
+        if let Some(cluster) = following.clusters.get(letters) {
+            if has_word_connector(cluster) {
+                return Ok(false);
+            }
+            break;
+        }
+        if following.break_kind != LineBreakKind::Soft {
+            break;
+        }
+    }
+    if !settings.hyphenate_caps && word.chars().all(char::is_uppercase) {
+        return Ok(false);
+    }
+    let properties = segment_of(line, line.clusters[start].start)
+        .and_then(|segment| segment.properties.as_deref());
+    let language = properties.and_then(|properties| properties.language.as_deref());
+    let points = crate::hyphenation::word_mac_hyphenation_points(&word, language);
+    if points.is_empty() {
+        return Ok(false);
+    }
+    let hyphen = measure_hyphen(ctx, properties)?;
+    let advances = line.clusters[start..]
+        .iter()
+        .chain(&tail[0].clusters[..first_line_letters])
+        .map(|cluster| cluster.width);
+    let fit = advances
+        .scan(used, |width, advance| {
+            *width += advance;
+            Some(*width)
+        })
+        .take_while(|width| *width + hyphen <= available + WRAP_FIT_TOLERANCE_PX)
+        .count();
+    let Some(kept) = points
+        .into_iter()
+        .rev()
+        .find(|&point| point <= fit && point < left + first_line_letters)
+    else {
+        return Ok(false);
+    };
+    let next = &mut tail[0];
+    if kept < left {
+        move_discretionary_suffix(line, next, start + kept);
+    }
+    for _ in left..kept {
+        let Some((cluster, segment)) = detach_leading_cluster(next) else {
+            return Ok(false);
+        };
+        append_preserving_rules(line, cluster, segment);
+    }
+    mark_hyphen(line, hyphen);
+    Ok(true)
+}
+
+fn has_word_connector(cluster: &InlineCluster) -> bool {
+    matches!(cluster.text.as_str(), "'" | "’" | "-" | "‑" | "_")
+        || cluster.text.chars().all(|ch| ch.is_ascii_digit())
 }
 
 fn measure_hyphen<C: LineWrapContext>(
