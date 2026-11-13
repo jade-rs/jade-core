@@ -49,6 +49,8 @@ verifies the PDF's visual-order glyphs and combines their leftmost origin
 and shared baseline into the corresponding logical DOCX cluster.
 `devanagari-mixed-kohinoor` checks Latin and Kohinoor Devanagari sharing
 a line at different point sizes, including a manual line break.
+`probe-devanagari-line-box-devanagari` checks Arial brackets and Devanagari
+Sangam MN sharing a line at 10.5, 14, and 18 pt.
 
 `latin-join-controls-fit-boundaries` covers ZWNJ and ZWJ around Latin
 letters in fixed-width Arial table cells, including controls in separate
