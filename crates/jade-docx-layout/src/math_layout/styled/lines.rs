@@ -528,7 +528,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
                     // Word Mac reserves slightly less space below a display
                     // fraction than the fallback ink metrics. Keep the
                     // baseline placement and use the measured line pitch.
-                    metrics.descent = (metrics.descent - line_size * (18.0 / 2048.0)).max(0.0);
+                    metrics.descent = (metrics.descent - line_size * (15.0 / 2048.0)).max(0.0);
                 }
             }
             if optical_ascent > 0.0 {
