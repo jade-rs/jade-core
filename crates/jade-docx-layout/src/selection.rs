@@ -911,7 +911,8 @@ impl SelectionManager {
         if self.frozen {
             return;
         }
-        self.cells.reserve(registry.cells.len().min(paragraph_limit));
+        self.cells
+            .reserve(registry.cells.len().min(paragraph_limit));
         self.paragraph_to_cell
             .reserve(registry.paragraph_to_cell.len().min(paragraph_limit));
         for cell in &registry.cells {
