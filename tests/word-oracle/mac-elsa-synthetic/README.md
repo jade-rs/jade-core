@@ -13,6 +13,11 @@ Commit the synthetic DOCX, manifest, and generated `pages.json.gz`.
 Fixtures with `capturePaintedGlyphs` compare text draw origins before clipping.
 The extractor reads those origins from the Word PDF text trace.
 
+The right-to-left repeated table-header fixtures vary the header height
+and starting column across unequal columns in a continuous section.
+They check where the first header and repeated headers land and where
+body rows split when a column has limited space.
+
 The discretionary-hyphen fixtures compare the positions of painted dashes
 alongside the other glyphs. The page-origins fixture covers authored soft and
 nonbreaking hyphens across three pages with different widths and indents. The
