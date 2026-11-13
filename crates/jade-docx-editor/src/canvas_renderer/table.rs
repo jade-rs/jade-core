@@ -730,7 +730,7 @@ fn column_boundary_crosses_merged_cell(cells: &[PreparedCell], boundary: usize) 
 fn paragraph_text_align_for_direction(
     paragraph: &Paragraph,
     direction: Option<TextDirection>,
-    legacy_mac_alignment: bool,
+    word_mac_bidi_alignment: bool,
 ) -> Option<TextAlign> {
     // Paragraph jc describes the inline axis. TextAlign here positions the
     // column block on X; applying a vertical paragraph's jc would move the
@@ -738,11 +738,11 @@ fn paragraph_text_align_for_direction(
     if direction.is_some_and(direction_requires_vertical_stack) {
         None
     } else {
-        paragraph_text_align(paragraph, legacy_mac_alignment)
+        paragraph_text_align(paragraph, word_mac_bidi_alignment)
     }
 }
 
-fn paragraph_text_align(paragraph: &Paragraph, legacy_mac_alignment: bool) -> Option<TextAlign> {
+fn paragraph_text_align(paragraph: &Paragraph, word_mac_bidi_alignment: bool) -> Option<TextAlign> {
     use jade_docx_layout::line_wrap::{
         resolve_physical_paragraph_alignment, PhysicalParagraphAlignment,
     };
@@ -752,15 +752,7 @@ fn paragraph_text_align(paragraph: &Paragraph, legacy_mac_alignment: bool) -> Op
         .alignment
         .as_deref()
         .or_else(|| bidi.then_some("start"))?;
-    let alignment = if bidi && legacy_mac_alignment {
-        match alignment {
-            "left" => "start",
-            "right" => "end",
-            _ => alignment,
-        }
-    } else {
-        alignment
-    };
+    let alignment = super::word_bidi_alignment(alignment, bidi, word_mac_bidi_alignment);
     Some(
         match resolve_physical_paragraph_alignment(alignment, bidi) {
             PhysicalParagraphAlignment::Center => TextAlign::Center,
@@ -1734,7 +1726,7 @@ struct LayoutConfig {
     /// The document's `w:useFELayout`.
     document_uses_east_asian_layout: bool,
     word_modern_border_insets: bool,
-    legacy_mac_alignment: bool,
+    word_mac_bidi_alignment: bool,
     /// Auto paragraph spacing collapses like HTML margins (no
     /// `doNotUseHTMLParagraphAutoSpacing`).
     html_auto_spacing: bool,
@@ -2788,12 +2780,8 @@ where
             theme_part: self.theme_part.clone(),
             document_snap_to_grid_default: self.document_snap_to_grid_default,
             document_uses_east_asian_layout: self.document_east_asian_rules.use_east_asian_layout,
-            legacy_mac_alignment: self
-                .document_east_asian_rules
-                .compatibility_mode
-                .is_some_and(|mode| mode < 15)
-                && jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+            word_mac_bidi_alignment: jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
             word_modern_border_insets: word_modern_nested_border_frame_enabled(
                 self.document_east_asian_rules.compatibility_mode,
             ),
@@ -15053,7 +15041,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         cell_paragraph.align = paragraph_text_align_for_direction(
                             paragraph,
                             cell.text_direction,
-                            config.legacy_mac_alignment,
+                            config.word_mac_bidi_alignment,
                         );
                         let line_height_points = (paragraph_line_height * 0.75) as f32;
                         let horizontal = cell
@@ -18129,7 +18117,7 @@ mod tests {
                 document_snap_to_grid_default: false,
                 document_uses_east_asian_layout: false,
                 word_modern_border_insets: false,
-                legacy_mac_alignment: false,
+                word_mac_bidi_alignment: false,
                 html_auto_spacing: true,
                 override_table_style_font_size: false,
                 hyphenation: Default::default(),
@@ -18243,7 +18231,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -20346,7 +20334,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -21785,7 +21773,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -23371,7 +23359,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -24920,7 +24908,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: true,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25045,7 +25033,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25180,7 +25168,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25432,7 +25420,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25576,7 +25564,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -25757,7 +25745,7 @@ mod tests {
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),
@@ -26933,7 +26921,7 @@ mod tests {
             paragraph_east_asian_rules: FxHashMap::default(),
             document_uses_east_asian_layout: false,
             word_modern_border_insets: false,
-            legacy_mac_alignment: false,
+            word_mac_bidi_alignment: false,
             html_auto_spacing: true,
             override_table_style_font_size: false,
             hyphenation: Default::default(),

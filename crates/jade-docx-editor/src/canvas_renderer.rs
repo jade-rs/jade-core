@@ -305,6 +305,16 @@ mod run_style_key;
 mod section_tests;
 mod structure;
 mod table;
+
+// Word for Mac treats left and right as leading and trailing in bidi paragraphs.
+fn word_bidi_alignment(alignment: &str, bidi: bool, mac: bool) -> &str {
+    match (bidi && mac, alignment) {
+        (true, "left") => "start",
+        (true, "right") => "end",
+        _ => alignment,
+    }
+}
+
 mod text_alignment;
 mod text_regions;
 use self::table::{
@@ -19081,7 +19091,13 @@ where
         if let Some(props) = &paragraph.properties {
             paragraph_style.bidi = props.bidi.unwrap_or(false);
             if let Some(alignment) = &props.alignment {
-                paragraph_style.alignment = alignment.to_string();
+                paragraph_style.alignment = word_bidi_alignment(
+                    alignment,
+                    paragraph_style.bidi,
+                    jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+                )
+                .to_owned();
             }
             if let Some(indent) = &props.indent {
                 // `w:numId="0"` switches numbering off: no list, ordinary indents.
