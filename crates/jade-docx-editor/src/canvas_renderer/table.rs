@@ -2855,6 +2855,25 @@ where
                 let frame = spacing_frame_width(row, table, TableBorderSide::Left);
                 (spacing, frame)
             });
+        let rtl_repeated_header_auto_grid = word_mac_column_table
+            && !self.measuring_keep_next
+            && percentage_width
+            && matches!(self.document_east_asian_rules.compatibility_mode, Some(14))
+            && self.column_layout.start_x(0) > self.column_layout.start_x(1)
+            && column_count == 1
+            && word_mac_sizes_without_grid(table, column_count)
+            && table.style.get("text-align").is_some_and(|alignment| {
+                alignment.eq_ignore_ascii_case("right") || alignment.eq_ignore_ascii_case("end")
+            })
+            && leading_header_row_count(&table.rows) > 0
+            && table
+                .rows
+                .iter()
+                .all(|row| resolve_cell_spacing_px(row, table) == 0.0)
+            && table
+                .rows
+                .iter()
+                .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
         let last_column_width = self.column_layout.width(self.column_layout.count() - 1);
         // Word keeps the same percentage grid through the section. For a
         // separated autofit grid in right-to-left flow it sizes to the final
@@ -3114,7 +3133,7 @@ where
             let mut row_layout = row_layout;
             // Word splits the cell paragraph at the last fitting line in
             // this column flow, even when only one line fits.
-            if rtl_spaced_auto_grid.is_some() {
+            if rtl_spaced_auto_grid.is_some() || rtl_repeated_header_auto_grid {
                 for cell in &mut row_layout {
                     for block in &mut cell.blocks {
                         if let CellBlockKind::Paragraph(paragraph) = &mut block.kind {
@@ -3204,6 +3223,7 @@ where
             true,
         );
         let first_visible_row = hidden_rows.iter().position(|hidden| !hidden);
+        let table_anchor_page = self.current_page_number;
         let keep_leading_rows = !self.pageless_mode
             && !table_floats(table)
             && jade_docx_layout::line_metrics::word_layout_platform()
@@ -3363,23 +3383,66 @@ where
                 self.column_layout.width(initial_column),
             )
         });
-        let alignment_widths = if rtl_spaced_auto_grid.is_some() {
+        let alignment_widths = if rtl_spaced_auto_grid.is_some() || rtl_repeated_header_auto_grid {
             Some((last_column_width, self.current_column_width()))
         } else {
             alignment_widths
         };
-        let alignment_width = |renderer: &Self| {
+        // A header that moves to the next page keeps the opening alignment
+        // on that page. Subsequent pages use the column where it landed.
+        let mut header_start_page = table_start_page;
+        let mut header_start_width = self.current_column_width();
+        let alignment_width = |renderer: &Self, header_start_page, header_start_width| {
             alignment_widths.map(|(opening, continuation)| {
-                if renderer.current_page_number == table_start_page {
+                if renderer.current_page_number == header_start_page {
                     opening
+                } else if rtl_repeated_header_auto_grid {
+                    header_start_width
                 } else {
                     continuation
                 }
             })
         };
-        let (mut table_x, mut left_edge, mut right_edge) =
-            table_segment_edges(self, alignment_width(self));
+        let (mut table_x, mut left_edge, mut right_edge) = table_segment_edges(
+            self,
+            alignment_width(self, header_start_page, header_start_width),
+        );
 
+        let header_height = repeated_header_height(&header_heights_snapshot, header_row_count);
+        let advance_past_short_header_frames = |renderer: &mut Self,
+                                                cells: &[PreparedCell]|
+         -> Result<(), JsValue> {
+            if !rtl_repeated_header_auto_grid || renderer.current_page_number != table_anchor_page {
+                return Ok(());
+            }
+            // Word skips a shortened opening column when it cannot
+            // fit a repeated header and the first body line together.
+            let first_body_line = cells
+                .iter()
+                .find(|cell| !cell.skip_render)
+                .and_then(|cell| {
+                    cell.blocks.first().map(|block| {
+                        cell.padding.top
+                            + match &block.kind {
+                                CellBlockKind::Paragraph(paragraph) => {
+                                    paragraph.lines.first().map_or(block.height, |line| {
+                                        paragraph.spacing_before + paragraph.line_advance(line)
+                                    })
+                                }
+                                _ => block.height,
+                            }
+                    })
+                })
+                .unwrap_or(line_height);
+            while renderer.current_page_number == table_anchor_page
+                && renderer.table_row_needs_page_break(header_height + first_body_line)
+            {
+                if !renderer.advance_table_flow(use_column_frame)? {
+                    break;
+                }
+            }
+            Ok(())
+        };
         let last_visible_row = hidden_rows.iter().rposition(|hidden| !hidden);
         let mut last_visible_row_index = None;
         let mut previous_spaced_frame: Option<(usize, usize, f64)> = None;
@@ -3686,24 +3749,22 @@ where
                             )?;
                             self.current_y += split.head_height;
                             if self.advance_table_flow(use_column_frame)? {
-                                (table_x, left_edge, right_edge) =
-                                    table_segment_edges(self, alignment_width(self));
-                                self.configure_table_context();
-                                // The row was split across a page boundary: redraw
-                                // the header block above the continued (tail)
-                                // segment, just like the wholesale-advance path.
-                                let full_page_content_height =
-                                    (self.page_height - self.margin_top - self.margin_bottom)
-                                        .max(0.0);
-                                if should_repeat_header_before_row(
+                                let repeat_header = should_repeat_header_before_row(
                                     header_row_count,
                                     row_index,
                                     true,
-                                ) && repeated_header_height(
-                                    &header_heights_snapshot,
-                                    header_row_count,
-                                ) <= full_page_content_height
-                                {
+                                ) && header_height
+                                    <= (self.page_height - self.margin_top - self.margin_bottom)
+                                        .max(0.0);
+                                if repeat_header {
+                                    advance_past_short_header_frames(self, &split.tail_cells)?;
+                                }
+                                (table_x, left_edge, right_edge) = table_segment_edges(
+                                    self,
+                                    alignment_width(self, header_start_page, header_start_width),
+                                );
+                                self.configure_table_context();
+                                if repeat_header {
                                     self.draw_repeated_header_rows(
                                         &header_rows_snapshot,
                                         &header_heights_snapshot,
@@ -3764,19 +3825,21 @@ where
                     }
                 }
                 if can_advance && self.ensure_table_row_space(required_height, use_column_frame)? {
-                    (table_x, left_edge, right_edge) =
-                        table_segment_edges(self, alignment_width(self));
+                    let repeat_header =
+                        should_repeat_header_before_row(header_row_count, row_index, true)
+                            && header_height
+                                <= (self.page_height - self.margin_top - self.margin_bottom)
+                                    .max(0.0);
+                    if repeat_header {
+                        advance_past_short_header_frames(self, &pending_cells)?;
+                    }
+                    (table_x, left_edge, right_edge) = table_segment_edges(
+                        self,
+                        alignment_width(self, header_start_page, header_start_width),
+                    );
                     self.configure_table_context();
                     segment_starts_page = true;
-                    // A page boundary was crossed mid-table: redraw the header
-                    // block at the top of the new page before this body row,
-                    // provided the header actually fits a fresh page.
-                    let full_page_content_height =
-                        (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
-                    if should_repeat_header_before_row(header_row_count, row_index, true)
-                        && repeated_header_height(&header_heights_snapshot, header_row_count)
-                            <= full_page_content_height
-                    {
+                    if repeat_header {
                         self.draw_repeated_header_rows(
                             &header_rows_snapshot,
                             &header_heights_snapshot,
@@ -3865,6 +3928,14 @@ where
                     }
                 }
                 pending_height += continued_row_opening_rule;
+                if rtl_repeated_header_auto_grid && first_visible_row == Some(row_index) {
+                    header_start_page = self.current_page_number;
+                    header_start_width = self.current_column_width();
+                    (table_x, left_edge, right_edge) = table_segment_edges(
+                        self,
+                        alignment_width(self, header_start_page, header_start_width),
+                    );
+                }
                 let mut render_cells = pending_cells;
                 let slot_scale =
                     prepared_spacing_slot_scale(row, table, &render_cells, table_width);
