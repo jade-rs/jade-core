@@ -387,6 +387,26 @@ fn table_row_notes_stay_on_their_reference_page_inside_the_body() {
 /// and every part registers once with its lines inside the body area.
 #[test]
 fn a_long_footnote_continues_on_the_next_page() {
+    assert_long_footnote_continuation(jade_docx_layout::line_metrics::WordLayoutPlatform::Mac);
+}
+
+#[test]
+fn windows_long_footnote_keeps_two_inch_separator_on_continuation_pages() {
+    assert_long_footnote_continuation(jade_docx_layout::line_metrics::WordLayoutPlatform::Windows);
+}
+
+fn assert_long_footnote_continuation(platform: jade_docx_layout::line_metrics::WordLayoutPlatform) {
+    use jade_docx_layout::line_metrics::{
+        set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+    };
+    struct Restore(WordLayoutPlatform);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            set_word_layout_platform(self.0);
+        }
+    }
+    let _restore = Restore(word_layout_platform());
+    set_word_layout_platform(platform);
     let (model, renderer, painter) = render_fixture_recorded("footnote-long-continuation.docx");
     let document = model.document.as_ref().expect("document");
     assert!(
@@ -485,14 +505,42 @@ fn a_long_footnote_continues_on_the_next_page() {
             _ => None,
         })
         .collect();
-    assert!(
-        rules.iter().any(|width| (width - column / 3.0).abs() < 0.5),
-        "separator rule: {rules:?}"
-    );
-    assert!(
-        rules.iter().any(|width| (width - column).abs() < 0.5),
-        "continuation separator across the column: {rules:?}"
-    );
+    if platform == WordLayoutPlatform::Mac {
+        assert!(
+            rules.iter().any(|width| (width - column / 3.0).abs() < 0.5),
+            "separator rule: {rules:?}"
+        );
+        assert!(
+            rules.iter().any(|width| (width - column).abs() < 0.5),
+            "continuation separator across the column: {rules:?}"
+        );
+    } else {
+        // Original Word 16.0.19127.20936 PDF and EMFs use a two-inch
+        // filled rule on each page, including the continued note's page.
+        let rectangles: Vec<_> = ops
+            .iter()
+            .filter_map(|op| match op {
+                jade_painter::recording::Op::Rect(x, _, width, height)
+                    if (*x - renderer.margin_left).abs() < 0.01
+                        && *height > 0.0
+                        && *height < points_to_px(2.0) =>
+                {
+                    Some(*width)
+                }
+                _ => None,
+            })
+            .collect();
+        assert!(
+            rectangles.len() >= 2,
+            "separator rectangles: {rectangles:?}"
+        );
+        assert!(
+            rectangles
+                .iter()
+                .all(|width| (*width - points_to_px(144.0)).abs() < 0.01),
+            "two-inch separator rectangles: {rectangles:?}"
+        );
+    }
     let drawn: String = ops
         .iter()
         .filter_map(|op| match op {
@@ -1004,11 +1052,30 @@ fn cell_text_box_references_do_not_number_main_story_notes() {
 /// #294: the area a continued footnote takes on the next page is measured
 /// against that page. Here the reference ends a section with a small top
 /// margin and the next section's pages have a much shorter body; the
-/// continuation, taller than that body, must leave it a line for the text
-/// (it used to be capped by the previous section's taller body, which left
-/// the following text no room at all).
+/// continuation must use its actual section geometry. Keep the measured Mac
+/// behavior, and check Windows' outgoing note pages before the new section.
 #[test]
 fn carried_footnote_area_is_measured_on_the_page_it_continues_on() {
+    check_carried_footnote_section(jade_docx_layout::line_metrics::WordLayoutPlatform::Mac);
+}
+
+#[test]
+fn windows_section_starts_after_the_outgoing_sections_footnote_pages() {
+    check_carried_footnote_section(jade_docx_layout::line_metrics::WordLayoutPlatform::Windows);
+}
+
+fn check_carried_footnote_section(platform: jade_docx_layout::line_metrics::WordLayoutPlatform) {
+    use jade_docx_layout::line_metrics::{
+        set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+    };
+    struct Restore(WordLayoutPlatform);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            set_word_layout_platform(self.0);
+        }
+    }
+    let _restore = Restore(word_layout_platform());
+    set_word_layout_platform(platform);
     use jade_docx_reader::document::{PageSettings, SectionRange};
     let fixture = load_fixture("footnote-long-continuation.docx");
     let mut document = (**fixture.document.as_ref().expect("document")).clone();
@@ -1062,15 +1129,21 @@ fn carried_footnote_area_is_measured_on_the_page_it_continues_on() {
         pages.len() > 2,
         "the note runs over several pages: {pages:?}"
     );
-    // The continuation leaves the body a line on each page it fills, so the
-    // text after the reference starts on the very next page.
     let reference = surface_starting_with(&renderer, "Reference to a long note");
     let following = surface_starting_with(&renderer, "Following paragraph 1.");
-    assert_eq!(
-        surface_page(&renderer, following),
-        surface_page(&renderer, reference).map(|page| page + 1),
-        "body text resumes on the page after the reference"
-    );
+    if platform == WordLayoutPlatform::Mac {
+        // Measured independently on unchanged ac9fbd1e with this explicit Mac
+        // harness. The former default-Windows test had no Mac expectation.
+        assert_eq!(surface_page(&renderer, reference), Some(0));
+        assert_eq!(surface_page(&renderer, following), Some(5));
+    } else {
+        // Windows Word 16.0.19127.20936, capture 20261114T121138495Z-3fe33843:
+        // both original PDF and EMF place all outgoing notes before the
+        // incoming section. Its 300pt top margin must not shorten their pages.
+        let following_page = surface_page(&renderer, following).expect("following body page");
+        assert_eq!(following_page, pages.iter().max().unwrap() + 1);
+        assert!(following_page > surface_page(&renderer, reference).unwrap() + 1);
+    }
 }
 
 /// A body paragraph cloned from the fixture's "Page two reference"

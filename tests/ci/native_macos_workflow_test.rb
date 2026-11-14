@@ -171,6 +171,20 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_windows_print_coordinates_are_required_without_masking_emf_disagreements
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    step = job.fetch("steps").find do |item|
+      item["name"] == "Assert Windows Word print coordinates and preserve screen disagreements"
+    end
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    command = step.fetch("run")
+    assert_includes command, "test_windows_print_coordinates.py"
+    assert_includes command, "check_windows_print_coordinates.py --native-executable"
+    refute_includes command, "|| true"
+  end
+
   def test_lean_api_download_retains_the_pinned_checksum
     step = @workflow.fetch("jobs").fetch("crdt-worker-proof").fetch("steps").find do |item|
       item["name"] == "Install pinned Lean toolchain manager"

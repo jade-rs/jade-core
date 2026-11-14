@@ -1,0 +1,104 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T104404068Z-422ee230",
+  "captured_at_utc": "2026-11-14T10:44:04.0813390Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15",
+      "source": "..\\w14-footnote-inside-paragraph-inputs\\word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.docx",
+      "sha256": "d1249e32e6e8980302d4b3364b34cabe10c5e1753b75297a8ec07d09e14b0e1c",
+      "pdf": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.pdf",
+      "pdf_sha256": "ee8b79e0c7701487f267ab43ae4a9be247916b5c56fe969a29892c26f8b73c6a",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.page-001.emf",
+          "sha256": "a70d39daf1284fb3dadd12dccbf3b80ea0151dee10d6a5a0a4e61e9d9fd038d1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.page-002.emf",
+          "sha256": "c6dcf4d27a7cd2ff129b97875c9f4554942eb1bb97199d50248fdd155ea453ae",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.page-003.emf",
+          "sha256": "f00beab536f7a83758cbd7ac3fe4e8ccf6bae94e47a1d9aa38784354d184cb5f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15",
+      "source": "..\\w14-footnote-inside-paragraph-inputs\\word-windows-edge-footnote-inside-paragraph-named-stories-compat15.docx",
+      "sha256": "b150a2041498f572d6a671e7a1568bf3cb61a47ad65d9347e5fdc0f3ce53f855",
+      "pdf": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15.pdf",
+      "pdf_sha256": "f141f2a0aead33aa10886d73395509f4a95de516baa88471c233bd6ea01af7c3",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15.page-001.emf",
+          "sha256": "4fd873fd31f83411f31fd83906e5b59662a64a0174e170b0e8864beb0cc17369",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15.page-002.emf",
+          "sha256": "2cd82729baf400ad0a434ffd8b138f881c1bbaa6972f448c30d6ea6d87f3c812",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15.page-003.emf",
+          "sha256": "36f21ef408b82d438e2213f3115b3fadf789223aa59f6d36375aac20fabe43cc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -114,6 +114,186 @@
       "name": "word-windows-edge-endnote-rule-yu-mincho-size40-compat15",
       "word_product_version": "16.0.19127.20936",
       "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-arial-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-arial-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-arial-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-century-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-century-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-century-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-arial-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-arial-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-arial-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-century-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-century-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-century-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-ms-mincho-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-ms-mincho-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-ms-mincho-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-yu-mincho-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-yu-mincho-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-rule-yu-mincho-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-footnote-story-choice-arial21-yu40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-story-choice-named-stories-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 0
+    },
+    {
+      "name": "word-windows-edge-footnote-story-choice-yu40-arial21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1128-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1130-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1132-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1134-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1136-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1138-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1140-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 3
+    },
+    {
+      "name": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 0
     }
   ]
 }

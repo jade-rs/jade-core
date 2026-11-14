@@ -3086,10 +3086,13 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                             right,
                         )
                     })
-            } else if style.enable_pair_kerning
-                && (style.has_font_features || (left == b'W' && right == b'o'))
-            {
+            } else if style.enable_pair_kerning {
                 match style.ascii_metrics_for_descriptor(font_descriptor) {
+                    Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(unit_px)) => {
+                        crate::line_metrics::word_windows_arial_pair_kerning_px(
+                            unit_px, left, right,
+                        )
+                    }
                     // Windows Word's Century W/o uses legacy kern -113/2048
                     // in plain/tracked runs, but not in its OpenType path.
                     // All three compatibility modes and explicit/default

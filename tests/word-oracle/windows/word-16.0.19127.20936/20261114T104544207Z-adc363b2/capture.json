@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T104544207Z-adc363b2",
+  "captured_at_utc": "2026-11-14T10:45:44.2192786Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-footnote-word-authored-named-stories",
+      "source": "..\\w14-footnote-word-authored-inputs\\word-windows-edge-footnote-word-authored-named-stories.docx",
+      "sha256": "b074625b6c6f3f35819f484ff02ba5892b67ea2627ba8df2769364cf56b0792b",
+      "pdf": "word-windows-edge-footnote-word-authored-named-stories.pdf",
+      "pdf_sha256": "3d883fc4005192f501315ffcc98a8da15050ae61191aff0d3a3a87fa236d4200",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-word-authored-named-stories.page-001.emf",
+          "sha256": "c09443f2663ef24a28376ef674d9144ffdb96a258c376a5f19d6c54ee19e1c89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-word-authored-named-stories.page-002.emf",
+          "sha256": "a2db437a78d1474de2507d39134e9f12ac971072e29a35df750c250d79ef148f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "single-section-continuation"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-word-authored-named-stories.page-003.emf",
+          "sha256": "705477bd5e2717da26018591c0f58044ac645488962447fbe19411109c6165d8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

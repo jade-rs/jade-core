@@ -54,8 +54,8 @@ use jade_docx_layout::line_wrap::{
     DEFAULT_INDENT_CHAR_UNIT_PT,
 };
 use jade_docx_layout::note_area::{
-    fitting_note_prefix_height, note_area_top, note_line_overflows, reserve_note_area,
-    NoteAreaReserve, MIN_NOTE_LINE_PT,
+    fitting_note_prefix_height, fitting_note_prefix_height_strict, note_area_top,
+    note_line_overflows, reserve_note_area, NoteAreaReserve, MIN_NOTE_LINE_PT,
 };
 use jade_docx_layout::section_transition::{
     resolve_page_margins, resolve_section_transition, word_section_text_direction,
@@ -4198,6 +4198,7 @@ where
     /// section), since a note's height depends on its width.
     footnote_height_cache: HashMap<(String, usize, Option<FootnoteCarry>), FootnoteHeightPlan>,
     footnote_height_geometry: Option<(u64, u64, u64, usize)>,
+    windows_footnote_separator_height: Option<f64>,
     measured_note_line_bottoms: Option<MeasuredNoteLineBottoms>,
     /// Set while notes are laid out off-page only to measure them.
     measuring_notes: bool,
@@ -7179,12 +7180,13 @@ where
                 continuation_notice_height =
                     self.continuation_notice(document, options, numbering_part, false)?;
             }
+            self.paint_windows_custom_footnote_separator(document)?;
             // Word separates the footnote area from body text with the
             // `w:separator` rule, a short line spanning roughly a third of the
             // column. An area continuing a note from the previous page uses
             // the `w:continuationSeparator` rule across the whole column.
             // A separator emptied in Word's notes pane draws no rule.
-            let wanted = if continuing {
+            let wanted = if continuing && mac {
                 "continuationSeparator"
             } else {
                 "separator"
@@ -7204,7 +7206,11 @@ where
                         .flat_map(|paragraph| paragraph.runs.iter())
                         .any(|run| run.note_separator.is_some())
                 });
-            if rule_shown && self.should_draw_current_page_for_render() && !self.render_skip_draw {
+            if rule_shown
+                && self.should_draw_current_page_for_render()
+                && !self.render_skip_draw
+                && !self.paint_windows_footnote_separator(document, wanted, separator_height)
+            {
                 let column_width =
                     (self.page_width - self.margin_left - self.margin_right).max(0.0);
                 let separator_width = if continuing {
@@ -7808,6 +7814,30 @@ where
 
     fn page_footnote_separator_height(&self, document: &Document) -> f64 {
         if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            if let Some(height) = self.windows_footnote_separator_height {
+                return height;
+            }
+            if let Some(height) = document
+                .footnotes
+                .values()
+                .find(|note| note.note_type.as_deref() == Some("separator"))
+                .and_then(|note| match note.body.as_slice() {
+                    [BodyElement::Paragraph(paragraph)]
+                        if Self::note_separator_is_one_rule_line(paragraph) =>
+                    {
+                        self.resolve_paragraph_line_height_plan_with_grid(paragraph, None)
+                            .ok()
+                            .map(|(height, _)| points_to_px(height))
+                    }
+                    _ => None,
+                })
+            {
+                return height;
+            }
+        }
+        if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
             && document.resolved_footnote_beneath_text(Some(self.active_section_index))
         {
@@ -7880,6 +7910,24 @@ where
                 fitting_content_height: None,
             });
         }
+        let geometry = (
+            self.page_width.to_bits(),
+            self.margin_left.to_bits(),
+            self.margin_right.to_bits(),
+            self.active_section_index,
+        );
+        if self.footnote_height_geometry != Some(geometry) {
+            self.footnote_height_geometry = Some(geometry);
+            self.footnote_height_cache.clear();
+            self.windows_footnote_separator_height = None;
+        }
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.windows_footnote_separator_height.is_none()
+        {
+            self.windows_footnote_separator_height =
+                Some(self.measure_windows_footnote_separator_height(&document)?);
+        }
         let numbering_part = self.last_numbering_part.clone();
         let saved_resume = self.note_resume;
         let saved_rendering = self.rendering_page_footnotes;
@@ -7894,18 +7942,19 @@ where
         // note's height. Each height is measured once per render pass and
         // page geometry (note width) and reused: re-measuring every pending
         // note for every reference line made layout O(references × notes).
-        let geometry = (
-            self.page_width.to_bits(),
-            self.margin_left.to_bits(),
-            self.margin_right.to_bits(),
-            self.active_section_index,
-        );
-        if self.footnote_height_geometry != Some(geometry) {
-            self.footnote_height_geometry = Some(geometry);
-            self.footnote_height_cache.clear();
-        }
         let mut measured: Result<f64, JsValue> = Ok(0.0);
         let mut fitting_content_height = available_for_fragment.map(|_| 0.0);
+        // Word for Windows carries a complete line to the next page when it
+        // overflows even fractionally; the legacy 0.5px allowance can otherwise
+        // keep one extra line and change the following page's body placement.
+        let fitting_note_prefix_height: fn(f64, &[f64], f64) -> Option<f64> =
+            if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                fitting_note_prefix_height_strict
+            } else {
+                fitting_note_prefix_height
+            };
         let mut fragment_complete = false;
         let mut ids: Vec<(Option<FootnoteCarry>, String)> = Vec::new();
         let mut first = start;
@@ -8236,10 +8285,10 @@ where
         let mac = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
         let separator_height = self.current_page_footnote_separator_height();
-        let bottom_of_page = mac
-            && self.last_document.as_ref().is_some_and(|document| {
-                !document.resolved_footnote_beneath_text(Some(self.active_section_index))
-            });
+        let bottom_position = self.last_document.as_ref().is_some_and(|document| {
+            !document.resolved_footnote_beneath_text(Some(self.active_section_index))
+        });
+        let bottom_of_page = mac && bottom_position;
         if bottom_of_page && full > 0.0 {
             // Keep body text clear of the continuation separator.
             full += separator_height * 0.5;
@@ -8248,7 +8297,10 @@ where
             - (self.effective_body_top() + self.current_page_valign_offset());
         // Keep one body line free for the text: the last body line placed,
         // or the section's empty-paragraph line before any was.
-        let body_line = if bottom_of_page || (mac && full > body_height) {
+        // A bottom-positioned Windows carry longer than the page can fill
+        // that page before body text resumes, as in the Word-authored
+        // 80-paragraph note. Reserving a body line changes both continuations.
+        let body_line = if bottom_of_page || (full > body_height && (mac || bottom_position)) {
             0.0
         } else {
             points_to_px(self.resolve_empty_paragraph_line_height_points()?)
@@ -8317,6 +8369,140 @@ where
         self.rendering_page_furniture = saved_furniture;
         self.skip_layout_cache_update = saved_skip_cache;
         height.map(Some)
+    }
+
+    fn measure_windows_footnote_separator_height(
+        &mut self,
+        document: &Document,
+    ) -> Result<f64, JsValue> {
+        let Some(note) = document.footnotes.values().find(|note| {
+            note.note_type
+                .as_deref()
+                .is_some_and(|kind| kind.eq_ignore_ascii_case("separator"))
+        }) else {
+            return Ok(points_to_px(FOOTNOTE_SEPARATOR_HEIGHT_PT));
+        };
+        if let [BodyElement::Paragraph(paragraph)] = note.body.as_slice() {
+            if Self::note_separator_is_one_rule_line(paragraph) {
+                return self
+                    .resolve_paragraph_line_height_plan_with_grid(paragraph, None)
+                    .map(|(height, _)| points_to_px(height));
+            }
+        }
+        let body = Body {
+            elements: note.body.clone(),
+        };
+        let saved_furniture = self.rendering_page_furniture;
+        let saved_skip_cache = self.skip_layout_cache_update;
+        self.rendering_page_furniture = true;
+        self.skip_layout_cache_update = true;
+        let base = self.auxiliary_story_paragraph_base();
+        let height = self.render_header_footer_body_at(&body, 0.0, base, false, None);
+        self.rendering_page_furniture = saved_furniture;
+        self.skip_layout_cache_update = saved_skip_cache;
+        height
+    }
+
+    fn paint_windows_custom_footnote_separator(
+        &mut self,
+        document: &Document,
+    ) -> Result<(), JsValue> {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            || self.render_skip_draw
+            || !self.should_draw_current_page_for_render()
+        {
+            return Ok(());
+        }
+        let Some(note) = document.footnotes.values().find(|note| {
+            note.note_type
+                .as_deref()
+                .is_some_and(|kind| kind.eq_ignore_ascii_case("separator"))
+        }) else {
+            return Ok(());
+        };
+        if let [BodyElement::Paragraph(paragraph)] = note.body.as_slice() {
+            if Self::note_separator_is_one_rule_line(paragraph) {
+                return Ok(());
+            }
+        }
+        let body = Body {
+            elements: note.body.clone(),
+        };
+        let saved_furniture = self.rendering_page_furniture;
+        let saved_skip_cache = self.skip_layout_cache_update;
+        self.rendering_page_furniture = true;
+        self.skip_layout_cache_update = true;
+        let base = self.auxiliary_story_paragraph_base();
+        let drawn = self.render_header_footer_body_at(
+            &body,
+            self.current_y,
+            base,
+            true,
+            Some("footnote_separator"),
+        );
+        self.rendering_page_furniture = saved_furniture;
+        self.skip_layout_cache_update = saved_skip_cache;
+        drawn.map(|_| ())
+    }
+
+    fn paint_windows_footnote_separator(
+        &mut self,
+        document: &Document,
+        wanted: &str,
+        reserved_height: f64,
+    ) -> bool {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        if word_layout_platform() != WordLayoutPlatform::Windows {
+            return false;
+        }
+        let Some(separator) = document.footnotes.values().find(|note| {
+            note.note_type
+                .as_deref()
+                .is_some_and(|kind| kind.eq_ignore_ascii_case(wanted))
+        }) else {
+            return false;
+        };
+        let [BodyElement::Paragraph(paragraph)] = separator.body.as_slice() else {
+            return false;
+        };
+        if !Self::note_separator_is_one_rule_line(paragraph) {
+            return false;
+        }
+        let Ok((height, _)) = self.resolve_paragraph_line_height_plan_with_grid(paragraph, None)
+        else {
+            return false;
+        };
+        let effective =
+            self.effective_run_properties_rc(paragraph, paragraph.runs[0].properties.as_ref());
+        let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
+        let descriptor = if self.document_east_asian_rules.use_east_asian_layout {
+            &style.resolved.font_descriptor_east_asia
+        } else {
+            &style.resolved.font_descriptor_latin_ascii
+        };
+        let Some((top, thickness)) =
+            jade_docx_layout::line_metrics::word_windows_note_rule_metrics_px(descriptor)
+        else {
+            return false;
+        };
+        let color = self.resolved_style_fill_color(&style, None);
+        {
+            let context = self.host.painter();
+            context.save();
+            context.set_fill_style_str(color.as_ref());
+            context.begin_path();
+            context.rect(
+                self.margin_left,
+                self.current_y + reserved_height - points_to_px(height) + top,
+                points_to_px(144.0),
+                thickness,
+            );
+            context.fill();
+            context.restore();
+        }
+        self.invalidate_context_state_tracking();
+        true
     }
 
     fn paint_windows_endnote_separator(&mut self, document: &Document) -> Result<(), JsValue> {
@@ -9231,6 +9417,7 @@ where
             last_body_line_px: 0.0,
             footnote_height_cache: HashMap::new(),
             footnote_height_geometry: None,
+            windows_footnote_separator_height: None,
             measured_note_line_bottoms: None,
             measuring_notes: false,
             note_measure_layouts: 0,
@@ -15069,6 +15256,7 @@ where
         self.last_body_line_px = 0.0;
         self.footnote_height_cache.clear();
         self.footnote_height_geometry = None;
+        self.windows_footnote_separator_height = None;
         self.measured_note_line_bottoms = None;
         self.measuring_notes = false;
         self.note_measure_layouts = 0;
@@ -17560,7 +17748,33 @@ where
             SectionTransition::NextPage { .. } => {}
         }
 
-        let SectionTransition::NextPage { page_advances } = transition else {
+        let mut page_transition = transition;
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            // A page section break follows the outgoing section's notes.
+            // Word keeps that section's margins on note-only continuation
+            // pages, then starts the incoming section on its own page.
+            // Applying its settings first incorrectly shortens every carry.
+            self.render_footer_simple()?;
+            let mut continuation_pages = 0usize;
+            while self.footnote_carry.is_some()
+                && !self.layout_limit_reached()
+                && continuation_pages < MAX_FOOTNOTE_CONTINUATION_PAGES
+            {
+                continuation_pages += 1;
+                self.force_page_break()?;
+                self.render_footer_simple()?;
+                section_mark_top = None;
+            }
+            page_transition = resolve_section_transition(
+                section_break,
+                self.current_page_number,
+                !same_layout,
+                has_next_column,
+            );
+        }
+        let SectionTransition::NextPage { page_advances } = page_transition else {
             unreachable!("non-page section transitions return above");
         };
 
@@ -20129,7 +20343,13 @@ where
                 .unwrap_or(false);
 
             if !segment.is_empty() {
-                if pending_note_separator == Some(current_pos) && segment.starts_with(' ') {
+                let follows_windows_note_break = paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    && (self.rendering_note_story || self.measuring_notes)
+                    && layout_text.ends_with('\n');
+                if (pending_note_separator == Some(current_pos) || follows_windows_note_break)
+                    && segment.starts_with(' ')
+                {
                     paragraph_style
                         .inline_note_separator_offsets
                         .push(current_pos);
@@ -22045,6 +22265,20 @@ where
         ),
         JsValue,
     > {
+        self.resolve_paragraph_line_height_plan_with_grid(paragraph, self.current_doc_grid.as_ref())
+    }
+
+    fn resolve_paragraph_line_height_plan_with_grid(
+        &self,
+        paragraph: &Paragraph,
+        current_doc_grid: Option<&DocGrid>,
+    ) -> Result<
+        (
+            f32,
+            Option<jade_docx_layout::line_metrics::WordProportionalLineSizing>,
+        ),
+        JsValue,
+    > {
         use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
 
         let base_font_size = Self::estimate_paragraph_font_size(paragraph);
@@ -22052,7 +22286,14 @@ where
             .properties
             .as_ref()
             .and_then(|props| props.spacing.as_ref());
-        let snap_to_grid = self.resolve_paragraph_snap_to_grid(paragraph);
+        let snap_to_grid = resolve_effective_snap_to_grid(
+            paragraph
+                .properties
+                .as_ref()
+                .and_then(|props| props.snap_to_grid),
+            self.document_snap_to_grid_default,
+            current_doc_grid,
+        );
         let body_px = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
         // The horizontal body-height fallback does not apply to vertical columns.
         let section_content_height_pt = (!matches!(
@@ -22066,7 +22307,6 @@ where
             )
         ) || word_layout_platform() != WordLayoutPlatform::Mac)
             .then_some((body_px * 72.0 / 96.0) as f32);
-        let current_doc_grid = self.current_doc_grid.as_ref();
         let word_font_line_box = word_east_asian_font_line_box_applies(
             spacing_ref,
             snap_to_grid,
@@ -23808,8 +24048,45 @@ where
                 } else {
                     0.0
                 };
-                min_top_offset = min_top_offset.min(prepared.top_offset - script_shift);
-                max_bottom_offset = max_bottom_offset.max(prepared.bottom_offset - script_shift);
+                let mut top = prepared.top_offset - script_shift;
+                let mut bottom = prepared.bottom_offset - script_shift;
+                if !mac_line_ignores_script_shift
+                    && prepared.style.script_shift_px != 0.0
+                    && prepared.segment.text.is_ascii()
+                    && jade_docx_layout::line_metrics::word_ignores_script_shift_for_line_height(
+                        prepared.style.families.latin_ascii_stack(),
+                    )
+                {
+                    // Windows keeps the unscaled face's box for a script run.
+                    // A Yu Mincho note mark beside Arial text can therefore
+                    // enlarge the first line even though its glyph is small.
+                    let size = prepared
+                        .segment
+                        .properties
+                        .as_deref()
+                        .and_then(|props| props.font_size)
+                        .unwrap_or(12.0);
+                    let descriptor = format!(
+                        "{}{size:.2}pt {}",
+                        prepared.style.font_style_prefix,
+                        prepared.style.families.latin_ascii_stack()
+                    );
+                    if let Some((ascent, descent)) =
+                        jade_docx_layout::line_metrics::word_font_vertical_metrics_px(&descriptor)
+                    {
+                        let explicit_shift =
+                            prepared.style.baseline_shift_px - prepared.style.script_shift_px;
+                        let border = points_to_px(
+                            jade_docx_layout::line_metrics::word_run_border_extent_pt(
+                                prepared.segment.properties.as_deref(),
+                            ),
+                        );
+                        top = top.min(-ascent + explicit_shift - border);
+                        bottom = bottom.max(descent + explicit_shift + border);
+                    }
+                }
+                min_top_offset = min_top_offset.min(top);
+                max_bottom_offset = max_bottom_offset.max(bottom);
             }
             let mut has_inline_object = false;
             let mut object_top = 0.0_f64;
@@ -68478,6 +68755,58 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn windows_footnote_separator_height_uses_its_font_without_body_grid() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_docx_reader::document::{Note, NoteSeparatorKind};
+        let _platform = RestoreWordPlatform(word_layout_platform());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (mut renderer, _) = recording_renderer();
+        renderer.document_east_asian_rules.use_east_asian_layout = true;
+        renderer.current_y = 100.0;
+        renderer.current_doc_grid = Some(DocGrid {
+            grid_type: Some("lines".into()),
+            line_pitch: Some(36.0),
+            char_space: None,
+        });
+        let mut paragraph = note_test_paragraph("", None);
+        paragraph.runs[0].note_separator = Some(NoteSeparatorKind::Separator);
+        paragraph.runs[0].properties = Some(RunProperties {
+            font_size: Some(20.0),
+            font_family: Some("MS Mincho".into()),
+            fonts: Some(RunFonts {
+                ascii: Some("MS Mincho".into()),
+                h_ansi: Some("MS Mincho".into()),
+                east_asia: Some("MS Mincho".into()),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        let mut document = Document::default();
+        document.footnotes.insert(
+            "-1".into(),
+            Note {
+                id: "-1".into(),
+                note_type: Some("separator".into()),
+                body: vec![BodyElement::from_paragraph(paragraph)],
+            },
+        );
+        let height = renderer.page_footnote_separator_height(&document);
+        assert!((height * 0.75 - 25.9375).abs() < 0.01, "{height}");
+        assert_eq!(renderer.current_y, 100.0);
+        assert_eq!(
+            renderer.current_doc_grid.as_ref().unwrap().line_pitch,
+            Some(36.0)
+        );
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            renderer.page_footnote_separator_height(&document),
+            points_to_px(12.0)
+        );
     }
 
     #[test]

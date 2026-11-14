@@ -96,13 +96,32 @@ pub fn fitting_note_prefix_height(
     line_bottoms: &[f64],
     available: f64,
 ) -> Option<f64> {
-    if height <= available + EPSILON {
+    fitting_note_prefix_height_with_tolerance(height, line_bottoms, available, EPSILON)
+}
+
+/// Fit complete note lines without permitting fractional geometric overflow.
+/// The tiny tolerance only absorbs floating-point arithmetic roundoff.
+pub fn fitting_note_prefix_height_strict(
+    height: f64,
+    line_bottoms: &[f64],
+    available: f64,
+) -> Option<f64> {
+    fitting_note_prefix_height_with_tolerance(height, line_bottoms, available, 1e-6)
+}
+
+fn fitting_note_prefix_height_with_tolerance(
+    height: f64,
+    line_bottoms: &[f64],
+    available: f64,
+    tolerance: f64,
+) -> Option<f64> {
+    if height <= available + tolerance {
         return Some(height);
     }
     if line_bottoms.is_empty() {
         return None;
     }
-    let end = line_bottoms.partition_point(|bottom| *bottom <= available + EPSILON);
+    let end = line_bottoms.partition_point(|bottom| *bottom <= available + tolerance);
     Some(end.checked_sub(1).map_or(0.0, |index| line_bottoms[index]))
 }
 
@@ -135,6 +154,25 @@ mod tests {
         assert_eq!(fitting_note_prefix_height(85.0, &lines, 85.0), Some(85.0));
         assert_eq!(fitting_note_prefix_height(85.0, &[], 65.0), None);
         assert_eq!(fitting_note_prefix_height(85.0, &[], 85.0), Some(85.0));
+    }
+
+    #[test]
+    fn strict_note_capacity_carries_fractionally_overflowing_lines() {
+        let lines = [20.0, 40.0];
+        assert_eq!(fitting_note_prefix_height(40.0, &lines, 39.75), Some(40.0));
+        assert_eq!(
+            fitting_note_prefix_height_strict(40.0, &lines, 39.75),
+            Some(20.0)
+        );
+        assert_eq!(
+            fitting_note_prefix_height_strict(40.0, &lines, 40.0),
+            Some(40.0)
+        );
+        assert_eq!(
+            fitting_note_prefix_height_strict(40.0, &lines, 40.0 - 1e-7),
+            Some(40.0)
+        );
+        assert_eq!(fitting_note_prefix_height_strict(40.0, &[], 39.75), None);
     }
 
     #[test]

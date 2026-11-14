@@ -1,0 +1,319 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T103542955Z-0b02677b",
+  "captured_at_utc": "2026-11-14T10:35:42.9674468Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1128-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1128-compat15.docx",
+      "sha256": "654654ed60ea55407cc2126e471a62d6c47af33af1d5c6cab3a4c6391a9fe8b0",
+      "pdf": "word-windows-edge-footnote-ms20-margin1128-compat15.pdf",
+      "pdf_sha256": "c067b3636847db126e956f2bfcbc38c320a66be12d5626f872a4c05b70fcb372",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1128-compat15.page-001.emf",
+          "sha256": "b83bd03f2a3e680afc153cf0aa34d0f2cc8d867ebcd1757f09c94056292d5786",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1128-compat15.page-002.emf",
+          "sha256": "ded7f4850647295cc97d209eb42356f1e37d71f68f61481ba9579ec56794e099",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1128-compat15.page-003.emf",
+          "sha256": "3abe64cdf801d74199c79eee92c72b454ad4ac2b53ffa9b854ad961c9b63be92",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1130-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1130-compat15.docx",
+      "sha256": "27ddddad14d7e06426cb38a112904ba9b04cabb3844fbb602a2ab550e98ffab8",
+      "pdf": "word-windows-edge-footnote-ms20-margin1130-compat15.pdf",
+      "pdf_sha256": "7ef21361015d47511fba4b5929372806dc6967f9ee414c1feae34aabfd4cc0d1",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1130-compat15.page-001.emf",
+          "sha256": "e538b960912b3b434d759b9497f92c1f1a8826f84079e12125947a92570376b4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1130-compat15.page-002.emf",
+          "sha256": "e3c35567d59ddfa11f6eff0c74615592c8f221de6a83824db2fbf68a691d58f3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1130-compat15.page-003.emf",
+          "sha256": "d9492e0b824819c7ab95aa377f491abb0424eceab73a80cc6b281a0d5d04c2e3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1132-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1132-compat15.docx",
+      "sha256": "e4154e3c76628a8a32e788cbdcd54fec953d8ee0f108f84be4953413f5be5584",
+      "pdf": "word-windows-edge-footnote-ms20-margin1132-compat15.pdf",
+      "pdf_sha256": "10ddd7230498c7f8d6a7e8d4bb9042d57fc1e293512d5265eb15efdb56527f47",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1132-compat15.page-001.emf",
+          "sha256": "c8cfc68b668220349cc2116c12009bf40e561fbd87d74412f92b58f002031794",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1132-compat15.page-002.emf",
+          "sha256": "2e9e59449db540823d94247b177a8d2c3091efdf1dbc7b1aa7794a15292108e7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1132-compat15.page-003.emf",
+          "sha256": "3db2141f1e305ca196bb5485ba8d10b1f9128c1cfd80abba04611b60d3bdf82c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1134-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1134-compat15.docx",
+      "sha256": "93d9a257a8df32b06e8e53a9804d983905cf0fd4a0dffe48a9f1fcbf6ab6e538",
+      "pdf": "word-windows-edge-footnote-ms20-margin1134-compat15.pdf",
+      "pdf_sha256": "0a4b67719866e3f910c40a5564829bab2572124c550a4fc9cec16547aa89740b",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1134-compat15.page-001.emf",
+          "sha256": "ea9fd1555a975bbfe10c1c6f979e8a1424dbd3ae398619347c7f104d94b61d50",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1134-compat15.page-002.emf",
+          "sha256": "8b59c7e3420cca7d60132a88724dcc25c6483921bf11bab104e5c7a054ea274a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1134-compat15.page-003.emf",
+          "sha256": "383248b6a35eb7af4426278c2e58c175611179f3de14d4660d9b1cab49594212",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1136-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1136-compat15.docx",
+      "sha256": "a0b4667674351a70fe3b6ba249ad950237ed75319a7b7f2fb4f4457600926095",
+      "pdf": "word-windows-edge-footnote-ms20-margin1136-compat15.pdf",
+      "pdf_sha256": "aff9161724fde922e92af5795dfac9043fda349136d203c7799628ff65b287ac",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1136-compat15.page-001.emf",
+          "sha256": "b756248201da9f155886e346ba4a84860f07e327022086e51d4f490dd09c0e4d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1136-compat15.page-002.emf",
+          "sha256": "610ec8ab0330d0f6bd1b5458685f4a4a261861b04860b09b6125b2dc902e6ff4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1136-compat15.page-003.emf",
+          "sha256": "aecd5e5fbbc473c70544d0196e40a7ef5c0979ce374022805d8aa377a5518276",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1138-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1138-compat15.docx",
+      "sha256": "6475b8054b3012b75fb1517578e7af02bbf4cb5e413bd5ad96a15b5a9c7480fe",
+      "pdf": "word-windows-edge-footnote-ms20-margin1138-compat15.pdf",
+      "pdf_sha256": "57edb3fe4ecd1003c3db9f33654dacdbc179a84b21338a1bfbe537960d59a344",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1138-compat15.page-001.emf",
+          "sha256": "133ea02259fa2af88c08d7db794e1a46dc805027a1ce94ef8ddba04221223469",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1138-compat15.page-002.emf",
+          "sha256": "cc81df1e3c57d6402b401e8b2895f30a8bfb725b130702ab14e8467b48a6856d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1138-compat15.page-003.emf",
+          "sha256": "7e2c6fd778328fad3706f2e609529ae2cd192fd8a33d11f9634ac7d03d2edce3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-footnote-ms20-margin1140-compat15",
+      "source": "..\\w14-footnote-fit-margin-inputs\\word-windows-edge-footnote-ms20-margin1140-compat15.docx",
+      "sha256": "1292a81f9b67d377d750a203120f8e76eaca5c5a7d771fc262f211873c1f36b1",
+      "pdf": "word-windows-edge-footnote-ms20-margin1140-compat15.pdf",
+      "pdf_sha256": "bd91399031d1a7bed81dcbc0dfed0f68afe0d39e800623ec3946dd6b6df06732",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-footnote-ms20-margin1140-compat15.page-001.emf",
+          "sha256": "ab6b4307d4c3bf170e0570d3d2e732439dabaf0c985c8b095ed34260d6d11d03",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-footnote-ms20-margin1140-compat15.page-002.emf",
+          "sha256": "bcea58e0ad7feb9fbaedfe9293b0c5917d0761fb688d1cd9b319ac00e136cf8b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-footnote-ms20-margin1140-compat15.page-003.emf",
+          "sha256": "39126184d8005c99c0cd1e6dab399447d4ed175db7ae88601f89d972e632f6ba",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
