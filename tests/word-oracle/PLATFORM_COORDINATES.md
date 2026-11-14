@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 91 font/typography
-documents (44,495 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 102 font/typography
+documents (57,904 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -69,3 +69,10 @@ Three earlier probes use the malformed grid type `none` instead of the schema's
 inactive `default`. They remain unpromoted observations, with all original output
 preserved in the first capture. They expose a 0.39–0.45pt discrepancy in how this
 invalid value is handled; the strict 0.375pt gate is unchanged.
+
+Split-footnote coverage adds ten documents varying the body length and
+20/40/60-paragraph notes, plus the unchanged `footnote-long-continuation-mac`
+original. Windows positions the fitting prefix at the body bottom, rather than
+placing the overflowing full note directly below the body. The original output
+is retained under `20261114T072318934Z-aeb89460`. Mac prefix placement and its
+separate split-gap policy remain unchanged.

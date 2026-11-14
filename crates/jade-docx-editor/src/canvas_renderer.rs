@@ -7149,11 +7149,16 @@ where
             let measurement = self.measure_footnote_area_with_fragment(
                 self.note_resume,
                 start_index,
-                mac.then_some(available_bottom - self.current_y - separator_height - split_gap),
+                Some(available_bottom - self.current_y - separator_height - split_gap),
             )?;
             let note_block_height = measurement.height;
-            let fragment_top = (mac
-                && !beneath_text
+            // Windows Word also bottom-aligns the fitting prefix of a split
+            // note. Positioning the full (overflowing) note below the body
+            // instead leaves the first fragment about 2pt too high; the
+            // retained 16.0.19127.20936 split-note matrix traces this across
+            // body lengths and 20/40/60-paragraph notes. The Mac prefix and
+            // its separate split-gap policy remain the same.
+            let fragment_top = (!beneath_text
                 && self.current_y + note_block_height > available_bottom + 0.5)
                 .then_some(measurement.fitting_content_height)
                 .flatten()

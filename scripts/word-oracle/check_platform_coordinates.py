@@ -24,6 +24,7 @@ REQUIRED_CAPTURES = {
     'probe-contextual-paragraph-spacing-mode15': '20261114T023156058Z-d477ae1f',
     'probe-paragraph-border-wrap': '20261114T023201516Z-623785ec',
     'endnote-mac': '20261114T004143028Z-b4cb9887',
+    'footnote-long-continuation-mac': '20261114T004143028Z-b4cb9887',
     'footnote-mac': '20261114T004143028Z-b4cb9887',
     'footnote-table-each-page-mac': '20261114T004143028Z-b4cb9887',
 }
