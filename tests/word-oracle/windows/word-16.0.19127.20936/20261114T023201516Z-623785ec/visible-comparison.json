@@ -1,0 +1,18 @@
+[
+  {
+    "fixture": "source",
+    "table_glyph_projection": "visible",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 975,
+    "native_glyphs": 975,
+    "matched": 975,
+    "within_0_375pt": 975,
+    "x_p50": 0.10813232421878638,
+    "x_p95": 0.21050537109385914,
+    "y_p50": 0.05999755859375,
+    "y_p95": 0.1300048828125,
+    "first_errors": [],
+    "pdf_sha256": "2fea24577a4d2dad4910ecd2d98d28d46cf1764f3811e614d835343d59835a12"
+  }
+]

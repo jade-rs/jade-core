@@ -17,6 +17,13 @@ from extract_windows_emf import extract
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
+REQUIRED_CAPTURES = {
+    'word-mac-probe-floating-horizontal-15': '20261114T015622405Z-203d1791',
+    'probe-hyphenation-split-word-sweep-off': '20261114T020157033Z-88c4d52e',
+    'probe-contextual-paragraph-spacing-mode14': '20261114T023153447Z-6c24de77',
+    'probe-contextual-paragraph-spacing-mode15': '20261114T023156058Z-d477ae1f',
+    'probe-paragraph-border-wrap': '20261114T023201516Z-623785ec',
+}
 
 
 def require(condition, message):
@@ -139,6 +146,10 @@ def verify(root=ROOT):
             fixture = next(f for f in reference['fixtures'] if f['name'] == document['name'])
             require(fixture['docx_sha256'] == case['source']['sha256'], 'Wrong drawing input')
             cases.append((name, source, manifest, document, fixture))
+        if name in REQUIRED_CAPTURES:
+            require(('16.0.19127.20936', REQUIRED_CAPTURES[name]) in captures,
+                    'Previously asserted Word version/capture was removed')
+    require(REQUIRED_CAPTURES.keys() <= names, 'Shared fixture coverage removed')
     return cases
 
 

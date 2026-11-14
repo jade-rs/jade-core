@@ -1,0 +1,181 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T033213092Z-550cd5a8",
+  "captured_at_utc": "2026-11-14T03:32:13.1046722Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-0-compat12",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-0-compat12.docx",
+      "sha256": "28d6f71c21a5777a9386904f296bbba2a532c035c80ccaafd18c39acf7b21bea",
+      "pdf": "word-windows-edge-yu-mincho-opentype-0-compat12.pdf",
+      "pdf_sha256": "a2697c676ece691abe67e5cb38d3eddebd5a45e7999bf961aec4d5876587270e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-0-compat12.page-001.emf",
+          "sha256": "1183eff8c93bb4f28d6ae3f3b48471443d968ac34973f6c15ed74eaf2e36b3c8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-0-compat14",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-0-compat14.docx",
+      "sha256": "46c3e342b48706c71d37ae9c5bcebba3a1dcc1e637188c22b0db0c7c274faa03",
+      "pdf": "word-windows-edge-yu-mincho-opentype-0-compat14.pdf",
+      "pdf_sha256": "c8de430cf8bed951b67479baa427917647974565106f2c5ca23bd14ce847c2ef",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-0-compat14.page-001.emf",
+          "sha256": "f2522771688cec1e7142eb7fbc1502c0a04e4b0a7753697bdfa191f14232751d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-0-compat15",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-0-compat15.docx",
+      "sha256": "1b4921b1caece137541b17dc856452d61b007edf87d5207b2fbc1f4bf6a4bb76",
+      "pdf": "word-windows-edge-yu-mincho-opentype-0-compat15.pdf",
+      "pdf_sha256": "b4faf36b1ebea0b0acc541be72f0dc2767f85883021f3d65928ee1bf05c18450",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-0-compat15.page-001.emf",
+          "sha256": "10d77e32e1b8af3089426f4e8822a2613d60a854311b5071efcfaa288199097d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-1-compat12",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-1-compat12.docx",
+      "sha256": "75f1e63af0b274e569eb3c65f45e13954e8d7a9a3d0a971be242aca7b681e5f6",
+      "pdf": "word-windows-edge-yu-mincho-opentype-1-compat12.pdf",
+      "pdf_sha256": "5321850159949fc98aef855bcd6c0213dbebaf65b05e13211410604e203f1e48",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-1-compat12.page-001.emf",
+          "sha256": "73922a6ac11d283729cea9cf665c7f85dd1ff895b25bdd6c951099744f37f0da",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-1-compat14",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-1-compat14.docx",
+      "sha256": "721a1c2fad9e48ed1b45181cfc8e52aaa5e7a5c0b898e087a853b9ad23c629fb",
+      "pdf": "word-windows-edge-yu-mincho-opentype-1-compat14.pdf",
+      "pdf_sha256": "b32ad28d75838a2b66e9405bb37d8abfe9ed848c799405e7edddeef5799457d9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-1-compat14.page-001.emf",
+          "sha256": "61111a236666daf0b7e3a8653f5e4e865b333e502a97387c27bf49d56793b013",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-1-compat15",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-1-compat15.docx",
+      "sha256": "2498cb38e17a9f33031653d98772ffd309cb0447220b79b5b5a724924bb9b8dd",
+      "pdf": "word-windows-edge-yu-mincho-opentype-1-compat15.pdf",
+      "pdf_sha256": "a0972902efd98adbe916789413cf7855e8e4b2c02215f927f6a86df4af2bebf6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-1-compat15.page-001.emf",
+          "sha256": "73922a6ac11d283729cea9cf665c7f85dd1ff895b25bdd6c951099744f37f0da",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

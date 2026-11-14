@@ -36,6 +36,15 @@ class PlatformCoordinates(unittest.TestCase):
     def test_duplicate_platform_cases_are_rejected(self):
         self.reject_index_edit(lambda c: c['windows'].append(c['windows'][0]), 'Duplicate Word')
 
+    def test_registered_case_cannot_be_removed(self):
+        original = check.read_json
+        index = copy.deepcopy(original(check.ROOT / check.INDEX))
+        index['fixtures'].pop()
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == check.ROOT / check.INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                check.verify()
+
     def test_each_axis_is_checked_without_translation(self):
         reference = dict(page_count=1, glyphs=[[1, 'A', 72., 80.], [1, 'B', 80., 80.]])
         for axis in (2, 3):

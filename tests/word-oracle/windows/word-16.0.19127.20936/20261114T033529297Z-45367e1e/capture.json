@@ -1,0 +1,100 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T033529297Z-45367e1e",
+  "captured_at_utc": "2026-11-14T03:35:29.3095413Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-default-compat12",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-default-compat12.docx",
+      "sha256": "2c11e39e91ce582881f8006523f1e26609f68fe26eabdb85c8f6f6ca92b97bad",
+      "pdf": "word-windows-edge-yu-mincho-opentype-default-compat12.pdf",
+      "pdf_sha256": "3df25cf6f1782da571df6ccef43cca92bfeb4a874ae5129cb47f262675671191",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-default-compat12.page-001.emf",
+          "sha256": "f2522771688cec1e7142eb7fbc1502c0a04e4b0a7753697bdfa191f14232751d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-default-compat14",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-default-compat14.docx",
+      "sha256": "74f48bbe14a45a29bc093d33caac8921cc50f9585daaeca22b31ff0c41ed6e6c",
+      "pdf": "word-windows-edge-yu-mincho-opentype-default-compat14.pdf",
+      "pdf_sha256": "01492391bf2fb57e259ddcad1cfc4c3b4467a532febf1b321f133b3ab3baea4c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-default-compat14.page-001.emf",
+          "sha256": "0e4149d13970a03cee9485aae5c2b5408845bbe610f559c74dce33ff173a4e17",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-opentype-default-compat15",
+      "source": "..\\w14m\\public\\fixtures\\word-windows-edge-yu-mincho-opentype-default-compat15.docx",
+      "sha256": "44944517aeee3a4117515ceccd90f7aa1e62c346957210eea54daa290f2ba589",
+      "pdf": "word-windows-edge-yu-mincho-opentype-default-compat15.pdf",
+      "pdf_sha256": "68093e9c9a729d175d62b9cb943208c2c99a6e9f50df81b05b7dfe40ce7b7ff8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-opentype-default-compat15.page-001.emf",
+          "sha256": "fc9868e83b94e7476052640e9d5f75cbf4ad5c983081d96bd9bbcbb6675ff879",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

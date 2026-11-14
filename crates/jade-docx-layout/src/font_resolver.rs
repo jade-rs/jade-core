@@ -36,6 +36,26 @@ pub fn word_opentype_features_apply(compatibility_mode: Option<u32>) -> bool {
     compatibility_mode.is_none_or(|mode| mode >= 14)
 }
 
+/// Windows Word 16.0.19127.20936 honors enableOpenTypeFeatures even in a
+/// version-12 document. Without that override its default starts at mode 15.
+/// Keep the measured Mac mode policy independent of the Windows switch.
+pub fn word_document_opentype_features_apply(
+    compatibility_mode: Option<u32>,
+    compat: &jade_docx_reader::settings::CompatOptions,
+) -> bool {
+    if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+    {
+        if compat.setting("enableOpenTypeFeatures").is_some() {
+            compat.setting_on("enableOpenTypeFeatures")
+        } else {
+            compatibility_mode.is_none_or(|mode| mode >= 15)
+        }
+    } else {
+        word_opentype_features_apply(compatibility_mode)
+    }
+}
+
 /// Installs whether the current document applies OpenType typography
 /// ([`word_opentype_features_apply`]) for this thread's font resolution.
 /// Returns whether it changed; the resolver's caches are then cleared, and a
@@ -801,6 +821,14 @@ pub fn opentype_features_token(props: &RunProperties, pair_kerning: bool) -> Opt
     use jade_painter::font_features::{token, FontFeature};
     let effects = props.text_effects.as_deref()?;
     if !document_opentype_features_enabled() {
+        return None;
+    }
+    // Windows Word switches tracked runs back to its plain-text path. The
+    // original typography properties remain on the run for round trips.
+    if props.char_spacing.is_some_and(|spacing| spacing != 0.0)
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows
+    {
         return None;
     }
     let on = |tag: &[u8; 4]| FontFeature {
@@ -2295,6 +2323,77 @@ mod tests {
             cached_style_elapsed.as_micros(),
             ITERS,
         );
+    }
+
+    #[test]
+    fn document_opentype_policy_retains_mac_and_matches_windows_word_overrides() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous_platform = crate::line_metrics::word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (mode, flag, windows) in [
+                (12, None, false),
+                (12, Some("0"), false),
+                (12, Some("1"), true),
+                (14, None, false),
+                (14, Some("0"), false),
+                (14, Some("1"), true),
+                (15, None, true),
+                (15, Some("0"), false),
+                (15, Some("1"), true),
+            ] {
+                let compat = jade_docx_reader::settings::CompatOptions {
+                    settings: flag
+                        .into_iter()
+                        .map(|value| ("enableOpenTypeFeatures".into(), value.into()))
+                        .collect(),
+                    ..Default::default()
+                };
+                let expected = if platform == WordLayoutPlatform::Mac {
+                    mode >= 14
+                } else {
+                    windows
+                };
+                assert_eq!(
+                    word_document_opentype_features_apply(Some(mode), &compat),
+                    expected,
+                    "{platform:?}: mode {mode}, override {flag:?}"
+                );
+            }
+        }
+        set_word_layout_platform(previous_platform);
+    }
+
+    #[test]
+    fn tracked_windows_runs_keep_their_properties_without_opentype_shaping() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous_platform = crate::line_metrics::word_layout_platform();
+        let previous = document_opentype_features_enabled();
+        set_document_opentype_features_enabled(true);
+        let mut props = RunProperties {
+            char_spacing: Some(0.5),
+            text_effects: Some(Box::new(jade_docx_reader::document::RunTextEffects {
+                ligatures: Some("standardContextual".into()),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            props.char_spacing = Some(0.5);
+            assert_eq!(
+                opentype_features_token(&props, true).is_some(),
+                platform == WordLayoutPlatform::Mac
+            );
+            props.char_spacing = Some(0.0);
+            assert!(opentype_features_token(&props, true).is_some());
+            assert_eq!(
+                props.text_effects.as_ref().unwrap().ligatures.as_deref(),
+                Some("standardContextual")
+            );
+        }
+        set_document_opentype_features_enabled(previous);
+        set_word_layout_platform(previous_platform);
     }
 
     #[test]

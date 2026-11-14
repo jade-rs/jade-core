@@ -79,6 +79,8 @@ fn plain_runs_stay_on_the_per_character_path() {
 
 #[test]
 fn a_word_2007_compatibility_mode_document_draws_without_its_typography() {
+    let previous_platform = jade_docx_layout::line_metrics::word_layout_platform();
+    let previous_features = jade_docx_layout::font_resolver::document_opentype_features_enabled();
     let ligatures = || {
         Some(RunTextEffects {
             ligatures: Some("standard".into()),
@@ -102,9 +104,19 @@ fn a_word_2007_compatibility_mode_document_draws_without_its_typography() {
             }
         }
     }
-    let render_mode = |mode: u32| {
+    let render_mode = |mode: u32, override_flag: Option<&str>| {
         let mut document = document.clone();
         document.east_asian_line_breaking.compatibility_mode = Some(mode);
+        document
+            .compat
+            .settings
+            .retain(|(name, _)| name != "enableOpenTypeFeatures");
+        if let Some(value) = override_flag {
+            document
+                .compat
+                .settings
+                .push(("enableOpenTypeFeatures".into(), value.into()));
+        }
         let painter = RecordingPainter::new();
         let mut renderer = CanvasRenderer::with_host(
             Box::new(RecordingHost {
@@ -118,10 +130,34 @@ fn a_word_2007_compatibility_mode_document_draws_without_its_typography() {
             .expect("render");
         painter.ops()
     };
-    assert!(
-        shaped(&render_mode(14)),
-        "Word 2010 layout shapes ligatures"
-    );
-    assert!(!shaped(&render_mode(12)), "Word 2007 layout does not");
-    assert!(shaped(&render_mode(15)), "and the setting does not stick");
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+        set_word_layout_platform(platform);
+        let mac = platform == WordLayoutPlatform::Mac;
+        assert_eq!(
+            shaped(&render_mode(14, None)),
+            mac,
+            "{platform:?}: default Word 2010 layout"
+        );
+        assert!(
+            !shaped(&render_mode(12, None)),
+            "Word 2007 default does not shape"
+        );
+        assert!(
+            shaped(&render_mode(15, None)),
+            "and the setting does not stick"
+        );
+        assert_eq!(
+            shaped(&render_mode(12, Some("1"))),
+            !mac,
+            "explicit Windows override"
+        );
+        assert_eq!(
+            shaped(&render_mode(15, Some("0"))),
+            mac,
+            "Mac keeps its measured mode policy"
+        );
+    }
+    jade_docx_layout::line_metrics::set_word_layout_platform(previous_platform);
+    jade_docx_layout::font_resolver::set_document_opentype_features_enabled(previous_features);
 }

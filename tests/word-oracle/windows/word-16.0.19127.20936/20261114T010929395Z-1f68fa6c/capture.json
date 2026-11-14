@@ -1,0 +1,39 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T010929395Z-1f68fa6c",
+  "captured_at_utc": "2026-11-14T01:09:29.4125068Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "ww14-agile-encrypted-d17cdf18",
+      "source": "..\\w14-inputs\\ww14-agile-encrypted-d17cdf18.docx",
+      "sha256": "d17cdf18d3d63c3a0acd5f847e41866aa7901e26962dab8ec4995d6543e3bafe",
+      "pdf": "ww14-agile-encrypted-d17cdf18.pdf",
+      "pdf_sha256": "0ead80f63bd52b97ebebe69d662535cd46204796fff7752ecf058ec0cff70a82",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": true,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-agile-encrypted-d17cdf18.page-001.emf",
+          "sha256": "4350d03233f7237dfc9c108075cc6749eca2b03926eb024b42aa9e1c7069a309",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
