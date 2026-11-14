@@ -10,13 +10,13 @@ import subprocess
 import sys
 
 from check_platform_coordinates import (
-    ROOT, checked_file, compare, pdf_origins, read_json, require,
+    ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require,
 )
 from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = '65e6747838ab0fb55f78761a79d15da370f23fc20ad8979db672e9aa516e632a'
+INDEX_SHA256 = '5fc411f9370b69b3c97122ce0b93ef93d704ae688016457f1eee8588e864b72d'
 
 
 def verify(root=ROOT):
@@ -24,7 +24,7 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 26, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 40, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         name = case['name']
@@ -50,22 +50,8 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 17602, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 27247, 'Total font coverage changed')
     return cases
-
-
-def extract_fonts(pdf, directory):
-    import pymupdf
-    directory.mkdir(parents=True, exist_ok=False)
-    with pymupdf.open(pdf) as document:
-        xrefs = {font[0] for page in document for font in page.get_fonts(full=True)}
-        count = 0
-        for xref in sorted(xrefs):
-            _, extension, _, data = document.extract_font(xref)
-            if data and extension in ('ttf', 'otf', 'ttc'):
-                (directory / f'{xref}.{extension}').write_bytes(data)
-                count += 1
-    require(count > 0, 'Original Word PDF contains no usable embedded fonts')
 
 
 def check_windows(executable, output, root=ROOT):
@@ -110,4 +96,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 17602 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 27247 glyph origins')

@@ -1,0 +1,667 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T043140223Z-f907de54",
+  "captured_at_utc": "2026-11-14T04:31:40.2363726Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-note-separator-arial-balance0-compat12-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance0-compat12-size21.docx",
+      "sha256": "55ca5d8a7780f9ced7719cd329a65f32564665860c79930ddbc1ce4315f45488",
+      "pdf": "word-windows-edge-note-separator-arial-balance0-compat12-size21.pdf",
+      "pdf_sha256": "361a449455409933745937292366fee36e037e0250637d429a17b93ffa475568",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance0-compat12-size21.page-001.emf",
+          "sha256": "96bd11998facd0ff108323e49eb4fe61f9edb3ecee5cf7fad4892f67bf301b72",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance0-compat12-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance0-compat12-size40.docx",
+      "sha256": "45e251fb8f3c74f5b0b67cc592b69c555798cff5c3377d397f90d8321162149b",
+      "pdf": "word-windows-edge-note-separator-arial-balance0-compat12-size40.pdf",
+      "pdf_sha256": "0f73cd6a6fd5877237ac520014ca2f3ac62cccb88903357e165e7271a20778e1",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance0-compat12-size40.page-001.emf",
+          "sha256": "4d2aef9bb08f4566515b2b768b0f44e73a488f71b4c87a62a442f9826409eee7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance0-compat15-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance0-compat15-size21.docx",
+      "sha256": "59257c9b1f540cc60a82498aac937bd3a27223827e892053c69500844823b013",
+      "pdf": "word-windows-edge-note-separator-arial-balance0-compat15-size21.pdf",
+      "pdf_sha256": "b4ef04965caafbc70c19fe3ea9a44917b4c57cb5d1561145b8eef1dc6a9b1777",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance0-compat15-size21.page-001.emf",
+          "sha256": "96bd11998facd0ff108323e49eb4fe61f9edb3ecee5cf7fad4892f67bf301b72",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance0-compat15-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance0-compat15-size40.docx",
+      "sha256": "8d74c8639a8c4a8b8e9ef7eb47d3c6fcafff8d268f9e2068416070e354d374bd",
+      "pdf": "word-windows-edge-note-separator-arial-balance0-compat15-size40.pdf",
+      "pdf_sha256": "e1bc7f8e8b5d96869139ca7d469422e86aef88a605337418e06a9e18bcbf232d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance0-compat15-size40.page-001.emf",
+          "sha256": "4d2aef9bb08f4566515b2b768b0f44e73a488f71b4c87a62a442f9826409eee7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance1-compat12-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance1-compat12-size21.docx",
+      "sha256": "1077e9778fbb72aa717022f85b6d172a2334e884fde2c91930c05f664a648da9",
+      "pdf": "word-windows-edge-note-separator-arial-balance1-compat12-size21.pdf",
+      "pdf_sha256": "9df67fd161961432e3b2afa366a5d58fe5af2e50fae36543e53167851d8ce858",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance1-compat12-size21.page-001.emf",
+          "sha256": "b16982a37ae2eb3a09c47ba7b08fcb59f2ec6160115456dfb35d0e23d3eb4518",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance1-compat12-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance1-compat12-size40.docx",
+      "sha256": "907d7bed25eec1543586166d13ddb7d108bf1e72b2d71b7b9058486c12c2971d",
+      "pdf": "word-windows-edge-note-separator-arial-balance1-compat12-size40.pdf",
+      "pdf_sha256": "01d4247015d30c1fd351441466f7b1296f11101afc15b82815670fcdaebd0fec",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance1-compat12-size40.page-001.emf",
+          "sha256": "94cfd94e25acb049ab8cfaa0d1d856bb27600e8eb8b7175d9c05f42b7dee5a17",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance1-compat15-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance1-compat15-size21.docx",
+      "sha256": "6c089838485b0eb10c0898d58552347ae888367fc9364b09bedd27f6816cdebf",
+      "pdf": "word-windows-edge-note-separator-arial-balance1-compat15-size21.pdf",
+      "pdf_sha256": "af105968a95e344bd1e162b40dc480884db3df0884de78c7d082040cc90d8a0c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance1-compat15-size21.page-001.emf",
+          "sha256": "51739bcf7e170fbe04d79227cad4a2ba79c67cc3babc5560f296513736d05dd5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-arial-balance1-compat15-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-arial-balance1-compat15-size40.docx",
+      "sha256": "183a01ae54cd675aaf0667f5f77a6ccdf671e53df7db1e4ffcfb950d13c4f3a0",
+      "pdf": "word-windows-edge-note-separator-arial-balance1-compat15-size40.pdf",
+      "pdf_sha256": "ad7a1b337787ecdc68b27bf5d3f4ed1cbb6ed28b9b7811f34404c9e819df572b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-arial-balance1-compat15-size40.page-001.emf",
+          "sha256": "0790b926d24ecd0867765c63bfde3e339313d4ab79cc118d18c414e15e0de0b3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance0-compat12-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance0-compat12-size21.docx",
+      "sha256": "f0ae2959528bd6ea7ecb4a4338087eba686f53ca75a3f493d32cc5b35cee486d",
+      "pdf": "word-windows-edge-note-separator-century-balance0-compat12-size21.pdf",
+      "pdf_sha256": "96dee4ca202d2b869b9cf05956d701cbdaaa327f638f4926f7a87333e69824d2",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance0-compat12-size21.page-001.emf",
+          "sha256": "f4a7c69e96789a3cd024ad25c588fa7f41fbf02ff5b2d53ffd14db2ba2446fa4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance0-compat12-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance0-compat12-size40.docx",
+      "sha256": "dffbf3727bad7bf7c402abd4579cf3aea88caa6cd660a119ff1e5d52f58258d7",
+      "pdf": "word-windows-edge-note-separator-century-balance0-compat12-size40.pdf",
+      "pdf_sha256": "234df44e3ca73eef41162ba97ed942f37036e1515c897028470a42adb3a965bb",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance0-compat12-size40.page-001.emf",
+          "sha256": "55008608186fdf80d67b7b8343590c0040030a8f53beb4d291587013774578d5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance0-compat15-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance0-compat15-size21.docx",
+      "sha256": "a4b673da909bd8961030eef6f8737cb33d3e490896edbbc3b8a20e15d824c405",
+      "pdf": "word-windows-edge-note-separator-century-balance0-compat15-size21.pdf",
+      "pdf_sha256": "7a46b7d5b4cef4f88039f4b427de8680d5ac579198da84974136dd42d9c99683",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance0-compat15-size21.page-001.emf",
+          "sha256": "f4a7c69e96789a3cd024ad25c588fa7f41fbf02ff5b2d53ffd14db2ba2446fa4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance0-compat15-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance0-compat15-size40.docx",
+      "sha256": "5f5358396a75e30ee39a02f64717a0293941fe5af35f8497a0c3b7d43f6ff96b",
+      "pdf": "word-windows-edge-note-separator-century-balance0-compat15-size40.pdf",
+      "pdf_sha256": "5573ab467deb69c95f08c5d8c632abf7b67c5568a8f00428c82ece1f0ecc8039",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance0-compat15-size40.page-001.emf",
+          "sha256": "99412c8336d4217d245319bc3893a4be48959889df5ec164548262102b58d1b2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance1-compat12-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance1-compat12-size21.docx",
+      "sha256": "a715a9c523882f253336a6c4fa63d602a96a64257b769c630f7484bd4af8ff52",
+      "pdf": "word-windows-edge-note-separator-century-balance1-compat12-size21.pdf",
+      "pdf_sha256": "599bf520cc8598c701d32f2b11cfa0f22499ce7ed3a4175125ff435e842cb9d8",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance1-compat12-size21.page-001.emf",
+          "sha256": "1c1b05fb21ed56d367bf8ea634622eaaddef34cf0151022650d76fecdd4b2ed3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance1-compat12-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance1-compat12-size40.docx",
+      "sha256": "b565409b51e5faae6cbb94c50467aeb38cdaf01a47f9aef4fc6f89b77fc63a89",
+      "pdf": "word-windows-edge-note-separator-century-balance1-compat12-size40.pdf",
+      "pdf_sha256": "8b1b130eefc0a4477c2a9f6980d1e832eaf618ccb4ca82b3943523c3f2e31eae",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance1-compat12-size40.page-001.emf",
+          "sha256": "23a61966d1ab7969754a5e610b8e43263e003204683abaf26621ef935cb0cf2e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance1-compat15-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance1-compat15-size21.docx",
+      "sha256": "267c544f85a485cff6e605766437a04980395f36e2032d92331880229e0b164b",
+      "pdf": "word-windows-edge-note-separator-century-balance1-compat15-size21.pdf",
+      "pdf_sha256": "363481bcc677b8115d89df64f6a353ac5c07239eeb5bd98a7f7105997539ad0d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance1-compat15-size21.page-001.emf",
+          "sha256": "209ef566ff5dddbcf9b8f432cd0d571ff8c0d5ed1733cc3e11723901eb72e78c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-century-balance1-compat15-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-century-balance1-compat15-size40.docx",
+      "sha256": "c6dfe3b4d42663c4fb9a2c6835826da273a772b5215cba199cb5917d4f9c291f",
+      "pdf": "word-windows-edge-note-separator-century-balance1-compat15-size40.pdf",
+      "pdf_sha256": "7b16ad155f63fb5ae3b0a7df0399ac62e9698adc372cc721855b3e13f55cb679",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-century-balance1-compat15-size40.page-001.emf",
+          "sha256": "be3b2a5613c8dc49ccbd47d0977cb16accf6a03b3e6f98596c485614c0da5732",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance0-compat12-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance0-compat12-size21.docx",
+      "sha256": "dc7d8b0d7da9138d7bd2da4f10f46593e1f5907c5aae295cf3ee6e43bcc97f1b",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance0-compat12-size21.pdf",
+      "pdf_sha256": "8454d56b72d41e8a2a755309602d8fc1a8f444363e9bfd3dfd0f6f0d52f626d0",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance0-compat12-size21.page-001.emf",
+          "sha256": "35127c1fe8e10d136d86cd9328de73e74a33f4d9798e098cc4d497b211a115e3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance0-compat12-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance0-compat12-size40.docx",
+      "sha256": "c18a69b74b30e5574d6329e265b322822cb0ea729d2174fbadec67abcb47cf44",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance0-compat12-size40.pdf",
+      "pdf_sha256": "30da085841d2d6f8e633ccba74e7d993abdcce9097eb85d120dbccdf1d426a3e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance0-compat12-size40.page-001.emf",
+          "sha256": "9d1a591bfeb3cf9d59c203317f99dcb5c1930d0134328491b468caaba4491729",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance0-compat15-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance0-compat15-size21.docx",
+      "sha256": "d70058948066431949f31cf498ab4b41626fdbc58eb8ef0218ff3ca4843daeb5",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance0-compat15-size21.pdf",
+      "pdf_sha256": "d7bdd47aeb9760dcede8f2eaefcbfa72e4599ecb6257b37117cbb9320725ebe0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance0-compat15-size21.page-001.emf",
+          "sha256": "82d2ce47771f50c95ee4ac2920553bb94ccd5189d89b081c94e12b8b20580b78",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance0-compat15-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance0-compat15-size40.docx",
+      "sha256": "a37a81cfcbfadfa667c85d9c079327d6d88a0ae6b11fe6629b15df551bd5a559",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance0-compat15-size40.pdf",
+      "pdf_sha256": "d20f0b56e16b501ec61ac1bc2ab293339df8d8f2dd8172f7ad2a6ed59eb5256d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance0-compat15-size40.page-001.emf",
+          "sha256": "d1743285fb17a63725065e724f917a1e06e93daa7100f1e119f48a490cfd6909",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance1-compat12-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance1-compat12-size21.docx",
+      "sha256": "22e17abdba674d85800f866f463ec043ec8504cf3b637699d3e06b10b7046f04",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance1-compat12-size21.pdf",
+      "pdf_sha256": "119a8d062d9a67500d1b576629acdff890dfaa29d8f2a90ed7e3bc81e37436fd",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance1-compat12-size21.page-001.emf",
+          "sha256": "de7dc978420df5bd06105036806bc0526dba298e1e6ef617924d5c3c6d25224a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance1-compat12-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance1-compat12-size40.docx",
+      "sha256": "7f50753e4296fd1509af404ef2833979ce88f692425f90d2ab698a80895fc8b2",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance1-compat12-size40.pdf",
+      "pdf_sha256": "c4bfa2bf420d0adeb7ab0c3751ad74d776a63895722e6a0a2e4986cd36740ff4",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance1-compat12-size40.page-001.emf",
+          "sha256": "d94a829a54163bb5c22f06700a9c8d7ba212d45a81a6967cbe34ef0bba77528f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance1-compat15-size21",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance1-compat15-size21.docx",
+      "sha256": "994b4862b439230d895b0b9f9ac614470266d3eb78cfe092a6a7d9905137df1d",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance1-compat15-size21.pdf",
+      "pdf_sha256": "57b5b195339e6bb9ffd5874504bdfe73e227bfaad437b9eeb471c23157449cc9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance1-compat15-size21.page-001.emf",
+          "sha256": "de7dc978420df5bd06105036806bc0526dba298e1e6ef617924d5c3c6d25224a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-note-separator-yu-mincho-balance1-compat15-size40",
+      "source": "public\\fixtures\\word-windows-edge-note-separator-yu-mincho-balance1-compat15-size40.docx",
+      "sha256": "65e9e2182dd5710d7df7287930be338876c924f81a0767c45a8d2e7c4ef038e6",
+      "pdf": "word-windows-edge-note-separator-yu-mincho-balance1-compat15-size40.pdf",
+      "pdf_sha256": "b1b5dde8e2af0b9b2f84682048f5169d8dc7ebaba8902d16fc2225666f46bf56",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-note-separator-yu-mincho-balance1-compat15-size40.page-001.emf",
+          "sha256": "504bccb897abb5d506ae1ab8a5d3971494f37c6f5695f7b5cdc82a26a565994c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
