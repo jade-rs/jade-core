@@ -16,7 +16,28 @@ from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = 'da4fa03532489a328cce108253894d50368383731667eca877c16920b2206455'
+INDEX_SHA256 = 'd55e457e55e1a0e6799e0219f1fc4778d4737a355b9bfff6c175f4c140993b98'
+
+
+def has_visible_vector_ink(pdf):
+    """Ignore uniform white paper fills, but retain strokes and filled guides."""
+    import pymupdf
+    with pymupdf.open(pdf) as document:
+        for page in document:
+            for drawing in page.get_drawings():
+                fill = drawing.get('fill')
+                stroke = drawing.get('color')
+                paints_fill = fill is not None and drawing.get('fill_opacity', 0) > 0
+                paints_stroke = stroke is not None and drawing.get('stroke_opacity', 0) > 0
+                if not paints_fill and not paints_stroke:
+                    continue
+                white_paper = (drawing['type'] == 'f' and fill == (1., 1., 1.)
+                               and drawing.get('fill_opacity') == 1
+                               and all(abs(a - b) < .001
+                                       for a, b in zip(drawing['rect'], page.rect)))
+                if not white_paper:
+                    return True
+    return False
 
 
 def verify(root=ROOT):
@@ -24,9 +45,11 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 226, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 303, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
+        require('no_visible_vector_ink' not in case
+                or case['no_visible_vector_ink'] is True, 'Invalid paint expectation')
         name = case['name']
         require(name not in names, 'Duplicate font fixture')
         names.add(name)
@@ -50,7 +73,7 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 99598, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 103235, 'Total font coverage changed')
     return cases
 
 
@@ -82,6 +105,11 @@ def check_windows(executable, output, root=ROOT):
             compare(visible, read_json(visible_path), case['name'] + '/PDF-visible')
             require(painted_path.read_bytes() != original_pdf.read_bytes(), 'Word self-comparison')
             compare(visible, pdf_origins(painted_path), case['name'] + '/painted-PDF')
+            if case.get('no_visible_vector_ink'):
+                require(not has_visible_vector_ink(original_pdf),
+                        case['name'] + ': original Word has unexpected vector paint')
+                require(not has_visible_vector_ink(painted_path),
+                        case['name'] + ': native PDF contains extra border/guide paint')
             print(case['name'], case['word_product_version'], 'four coordinate planes: PASS', flush=True)
         finally:
             password.unlink(missing_ok=True)
@@ -96,4 +124,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 99598 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 103235 glyph origins')

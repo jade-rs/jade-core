@@ -2,7 +2,7 @@ use crate::document::{
     BorderEdge, EastAsianLayout, EastAsianLineBreakingSettings, FontHint, Indent, Numbering,
     ParagraphBorders, ParagraphProperties, RunFitText, RunFonts, RunProperties, Spacing, TabStop,
     TableBorders, TableCellMargins, TableStyleCondition, TableStyleConditionalFormat,
-    TableStyleDisplay, TableStyleFirstRow,
+    TableStyleDisplay, TableStyleFirstRow, TableStyleIndentation, TableStyleIndentationType,
 };
 use crate::numbering::NumberingPart;
 use crate::parser::{parse_character_spacing_points, parse_text_position_points, DocumentParser};
@@ -93,6 +93,13 @@ struct TableStyleDefinition {
     display: TableStyleDisplay,
 }
 
+fn is_word_normal_table_style(style: &TableStyleDefinition) -> bool {
+    std::iter::once(style.style_id.as_str())
+        .chain(style.name.as_deref())
+        .map(normalize_style_lookup_key)
+        .any(|key| matches!(key.as_str(), "tablenormal" | "normaltable"))
+}
+
 #[allow(clippy::too_many_arguments)]
 /// See [`StylesPart::word_default`].
 const WORD_DEFAULT_STYLES_XML: &str = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/><w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/><w:pPr><w:widowControl w:val="0"/><w:jc w:val="both"/></w:pPr></w:style><w:style w:type="character" w:default="1" w:styleId="a0"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style><w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>"#;
@@ -121,6 +128,14 @@ impl StylesPart {
     /// stretches wrapped CJK lines in packages that have no styles part.
     pub fn word_default_windows() -> Self {
         let mut styles = Self::word_default();
+        // With neither styles part present, Windows keeps an omitted table
+        // indentation. An authored Normal Table definition instead selects
+        // the built-in zero; do not invent that authored declaration here.
+        for style in styles.table_styles.values_mut() {
+            if is_word_normal_table_style(style) {
+                style.display.indentation = None;
+            }
+        }
         for style in styles
             .paragraph_styles
             .values_mut()
@@ -163,6 +178,35 @@ impl StylesPart {
         let mut part = Self::new();
         part.parse(xml)?;
         Ok(part)
+    }
+
+    /// Windows retains the built-in default table style from the effects
+    /// part if the primary part does not define it. Custom table styles in
+    /// that copy are not substituted for missing primary definitions.
+    /// Keep ordinary parse/reparse replacement semantics unchanged.
+    pub fn parse_with_windows_table_fallback(&mut self, xml: &str) -> ParseResult<()> {
+        let fallback = self
+            .table_style_order
+            .iter()
+            .filter_map(|id| self.table_styles.get(id))
+            .find(|style| is_word_normal_table_style(style))
+            .cloned();
+        let fallback_margins = fallback
+            .as_ref()
+            .and_then(|style| self.table_cell_margin_styles.get(&style.style_id).cloned());
+        self.parse(xml)?;
+        if let Some(style) = fallback {
+            if !self.table_styles.values().any(is_word_normal_table_style) {
+                if let Some(margins) = fallback_margins {
+                    self.table_cell_margin_styles
+                        .insert(style.style_id.clone(), margins);
+                }
+                // An authored custom default must precede the fallback.
+                self.table_style_order.push(style.style_id.clone());
+                self.table_styles.insert(style.style_id.clone(), style);
+            }
+        }
+        Ok(())
     }
 
     /// Parses style information and stores the result in `self`.
@@ -1922,6 +1966,7 @@ struct TableStyleParseState {
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum TableStyleAncestor {
     Other,
+    TableProperties,
     CellProperties,
     ParagraphProperties,
     RunProperties,
@@ -1935,6 +1980,7 @@ enum TableStyleAncestor {
 impl TableStyleAncestor {
     fn from_name(name: &[u8]) -> Self {
         match name {
+            b"w:tblPr" => Self::TableProperties,
             b"w:tcPr" => Self::CellProperties,
             b"w:pPr" => Self::ParagraphProperties,
             b"w:rPr" => Self::RunProperties,
@@ -2105,6 +2151,27 @@ fn initialize_table_style_metadata(
 
 fn handle_table_style_start(element: &BytesStart, state: &mut TableStyleParseState) {
     match element.name().as_ref() {
+        b"w:tblInd"
+            if state.condition.is_none()
+                && state.path.last() == Some(&TableStyleAncestor::TableProperties) =>
+        {
+            if let Some(style) = state.current.as_mut() {
+                style.display.indentation = Some(TableStyleIndentation {
+                    width_twips: attr_value(element, b"w:w")
+                        .and_then(|value| value.trim().parse::<f32>().ok())
+                        .filter(|value| value.is_finite()),
+                    width_type: attr_value(element, b"w:type").map(|value| {
+                        match value.trim().to_ascii_lowercase().as_str() {
+                            "dxa" => TableStyleIndentationType::Dxa,
+                            "nil" => TableStyleIndentationType::Nil,
+                            "auto" => TableStyleIndentationType::Auto,
+                            "pct" => TableStyleIndentationType::Pct,
+                            _ => TableStyleIndentationType::Other,
+                        }
+                    }),
+                });
+            }
+        }
         b"w:name" => {
             if let Some(style) = state.current.as_mut() {
                 style.name = attr_value(element, b"w:val").map(Cow::into_owned);
@@ -2401,7 +2468,18 @@ fn finish_table_style_element(
     match name {
         b"w:tblStylePr" => state.condition = None,
         b"w:style" => {
-            if let Some(style) = state.current.take() {
+            if let Some(mut style) = state.current.take() {
+                if crate::word_platform::word_layout_platform()
+                    == crate::word_platform::WordLayoutPlatform::Windows
+                    && is_word_normal_table_style(&style)
+                {
+                    // Actual Word controls retain zero for this built-in
+                    // style even if its tblInd is positive, nil, auto or pct.
+                    style.display.indentation = Some(TableStyleIndentation {
+                        width_twips: Some(0.0),
+                        width_type: None,
+                    });
+                }
                 if !styles.contains_key(&style.style_id) {
                     order.push(style.style_id.clone());
                 }
@@ -2451,6 +2529,7 @@ fn merge_table_style_display(
     let mut fonts = parent.fonts;
     fonts.merge_from(&child.fonts);
     TableStyleDisplay {
+        indentation: child.indentation.or(parent.indentation),
         fonts,
         font_size: child.font_size.or(parent.font_size),
         font_size_complex: child.font_size_complex.or(parent.font_size_complex),
@@ -5531,6 +5610,139 @@ mod tests {
         assert_eq!(indent.end, Some(0.0));
         assert_eq!(indent.first_line_chars, Some(100));
         assert!(!format.is_empty());
+    }
+
+    #[test]
+    fn table_style_indentation_inherits_and_ignored_child_types_reset_the_parent() {
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+          <w:style w:type="table" w:styleId="Parent"><w:tblPr><w:tblInd w:w="240" w:type="dxa"/></w:tblPr></w:style>
+          <w:style w:type="table" w:styleId="Inherited"><w:basedOn w:val="Parent"/><w:tblStylePr w:type="firstRow"><w:tblPr><w:tblInd w:w="999" w:type="dxa"/></w:tblPr></w:tblStylePr></w:style>
+          <w:style w:type="table" w:styleId="Zero"><w:basedOn w:val="Parent"/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/></w:tblPr></w:style>
+          <w:style w:type="table" w:styleId="Nil"><w:basedOn w:val="Parent"/><w:tblPr><w:tblInd w:w="800" w:type="nil"/></w:tblPr></w:style>
+          <w:style w:type="table" w:styleId="Auto"><w:basedOn w:val="Parent"/><w:tblPr><w:tblInd w:w="800" w:type="auto"/></w:tblPr></w:style>
+          <w:style w:type="table" w:styleId="Percent"><w:basedOn w:val="Parent"/><w:tblPr><w:tblInd w:w="800" w:type="pct"/></w:tblPr></w:style>
+        </w:styles>"#).unwrap();
+        for (name, width, kind) in [
+            ("Inherited", 240.0, TableStyleIndentationType::Dxa),
+            ("Zero", 0.0, TableStyleIndentationType::Dxa),
+            ("Nil", 800.0, TableStyleIndentationType::Nil),
+            ("Auto", 800.0, TableStyleIndentationType::Auto),
+            ("Percent", 800.0, TableStyleIndentationType::Pct),
+        ] {
+            let indent = styles
+                .resolve_table_style(name)
+                .unwrap()
+                .indentation
+                .unwrap();
+            assert_eq!(indent.width_twips, Some(width), "{name}");
+            assert_eq!(indent.width_type, Some(kind), "{name}");
+        }
+    }
+
+    #[test]
+    fn normal_table_implicit_indent_does_not_create_a_missing_default_style() {
+        let absent = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Normal"/></w:styles>"#).unwrap();
+        assert!(absent.default_table_style().is_none());
+        let normal = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/></w:style><w:style w:type="table" w:styleId="Child"><w:basedOn w:val="TableNormal"/></w:style></w:styles>"#).unwrap();
+        assert_eq!(
+            normal
+                .default_table_style()
+                .unwrap()
+                .indentation
+                .unwrap()
+                .width_twips,
+            Some(0.0)
+        );
+        assert_eq!(
+            normal
+                .resolve_table_style("Child")
+                .unwrap()
+                .indentation
+                .unwrap()
+                .width_twips,
+            Some(0.0)
+        );
+    }
+
+    #[test]
+    fn windows_normal_table_zero_is_distinct_from_implicit_missing_styles() {
+        use crate::word_platform::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for kind in ["dxa", "nil", "auto", "pct"] {
+            let xml = format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="240" w:type="{kind}"/></w:tblPr></w:style></w:styles>"#
+            );
+            let styles = StylesPart::from_xml(&xml).unwrap();
+            assert_eq!(
+                styles
+                    .default_table_style()
+                    .unwrap()
+                    .indentation
+                    .unwrap()
+                    .width_twips,
+                Some(0.0),
+                "{kind}"
+            );
+        }
+        assert!(StylesPart::word_default_windows()
+            .default_table_style()
+            .unwrap()
+            .indentation
+            .is_none());
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let styles = StylesPart::from_xml(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:styleId="TableNormal"><w:tblPr><w:tblInd w:w="240" w:type="dxa"/></w:tblPr></w:style></w:styles>"#).unwrap();
+        assert_eq!(
+            styles
+                .resolve_table_style("TableNormal")
+                .unwrap()
+                .indentation
+                .unwrap()
+                .width_twips,
+            Some(240.0)
+        );
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_effects_fallback_keeps_normal_table_and_primary_default_precedence() {
+        use crate::word_platform::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let effects = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:styleId="TableNormal"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="480" w:type="dxa"/></w:tblPr></w:style><w:style w:type="table" w:styleId="EffectsOnly"><w:tblPr><w:tblInd w:w="480" w:type="dxa"/></w:tblPr></w:style></w:styles>"#;
+        let mut styles = StylesPart::from_xml(effects).unwrap();
+        styles.parse_with_windows_table_fallback(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:styleId="CustomDefault"><w:tblPr><w:tblInd w:w="240" w:type="dxa"/></w:tblPr></w:style></w:styles>"#).unwrap();
+        assert_eq!(styles.default_table_style_id(), Some("CustomDefault"));
+        assert_eq!(
+            styles
+                .default_table_style()
+                .unwrap()
+                .indentation
+                .unwrap()
+                .width_twips,
+            Some(240.0)
+        );
+        assert!(styles.resolve_table_style("EffectsOnly").is_none());
+        assert_eq!(
+            styles
+                .resolve_table_style("TableNormal")
+                .unwrap()
+                .indentation
+                .unwrap()
+                .width_twips,
+            Some(0.0)
+        );
+        let mut styles = StylesPart::from_xml(effects).unwrap();
+        styles.parse_with_windows_table_fallback(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>"#).unwrap();
+        assert_eq!(styles.default_table_style_id(), Some("TableNormal"));
+        // Ordinary reparsing still replaces removed styles during editing.
+        styles.parse(r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"/>"#).unwrap();
+        assert!(styles.default_table_style().is_none());
+        set_word_layout_platform(previous);
     }
 
     #[test]

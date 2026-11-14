@@ -1,0 +1,153 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T155628362Z-b94002af",
+  "captured_at_utc": "2026-11-14T15:56:28.3744360Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-style-package-old-first-table-auto-row-compat14",
+      "source": "..\\w15-table-style-package-controls-inputs\\word-windows-edge-table-style-package-old-first-table-auto-row-compat14.docx",
+      "sha256": "e2fc5061299a3d320e4930e6f3c1ccc039b808fb20a36e29c1d0a6743ea5d542",
+      "pdf": "word-windows-edge-table-style-package-old-first-table-auto-row-compat14.pdf",
+      "pdf_sha256": "10b47eb37dbc243ac1dc5f7b4d9149e8f5b5894e1729c56f9313818ceef02580",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-package-old-first-table-auto-row-compat14.page-001.emf",
+          "sha256": "976f99b4e4177dcd928c60d43977dadc0991357449228cf88fbf3c1d83744679",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-package-old-first-table-only-compat14",
+      "source": "..\\w15-table-style-package-controls-inputs\\word-windows-edge-table-style-package-old-first-table-only-compat14.docx",
+      "sha256": "f5cdc98e990407d04558c32628c24e518f3687b8438efeded4d8196ee8dee9ac",
+      "pdf": "word-windows-edge-table-style-package-old-first-table-only-compat14.pdf",
+      "pdf_sha256": "2fc7a9bbab227bc59b1950e8f006b46a4d596db0fd12c574e9933a6de377ac8f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-package-old-first-table-only-compat14.page-001.emf",
+          "sha256": "481b985df5a2b64d5eeea66e3d8a6f035d8414efbd138a10c568d43bf626588e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-package-plain-root-compat14",
+      "source": "..\\w15-table-style-package-controls-inputs\\word-windows-edge-table-style-package-plain-root-compat14.docx",
+      "sha256": "7a78dc28f285c0a6a8ee3c25fc5a97960458ae920f035bf8696bea88a3b67857",
+      "pdf": "word-windows-edge-table-style-package-plain-root-compat14.pdf",
+      "pdf_sha256": "472c57db814951199e4e2812af978d1bdafca68c289daa9c80055475a129efdf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-package-plain-root-compat14.page-001.emf",
+          "sha256": "0f50d62c41bc8e2a2706552e95deb9456f1bafe4637668a60ee865f1236080d0",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-package-plain-root-old-section-compat14",
+      "source": "..\\w15-table-style-package-controls-inputs\\word-windows-edge-table-style-package-plain-root-old-section-compat14.docx",
+      "sha256": "1b622a37c924bf20f6ccbd38e2adaf5138776a552cbff63693a293f3dc131e81",
+      "pdf": "word-windows-edge-table-style-package-plain-root-old-section-compat14.pdf",
+      "pdf_sha256": "eaeba381771d9ca4f1adf16d30da8da7ef1b015aec27b0efced2f9391bf055d1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-package-plain-root-old-section-compat14.page-001.emf",
+          "sha256": "ca7218aa74036fe4eeece8d6fbad5f32bfebaa138f3fe94c66d3b4e5f6877e46",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-package-rich-root-compat14",
+      "source": "..\\w15-table-style-package-controls-inputs\\word-windows-edge-table-style-package-rich-root-compat14.docx",
+      "sha256": "cc7e9ade260de643f9eb4ebf3c176372ae804f3a69a768e9d23945cfc19ca655",
+      "pdf": "word-windows-edge-table-style-package-rich-root-compat14.pdf",
+      "pdf_sha256": "12850d7c99753f0501e8040a695c11d0a01749e0fdcdb513e58488a80c2a9130",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-package-rich-root-compat14.page-001.emf",
+          "sha256": "7c8b74d948e385b2f98e9094a7c7c1622ca9dddf043dc21e9c12c3029ca2237d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

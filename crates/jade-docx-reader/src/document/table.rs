@@ -12,6 +12,17 @@ use std::{collections::BTreeMap, str::FromStr};
 /// its rendering behaviour.
 pub type StyleMap = BTreeMap<String, String>;
 
+/// Table-style indentation width kinds. Unknown kinds reset inheritance too.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TableStyleIndentationType {
+    Dxa,
+    Nil,
+    Auto,
+    Pct,
+    Other,
+}
+
 /// Conditional first-row formatting contributed by a package-local table
 /// style. These values are display-only; the source remains in styles.xml.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -25,11 +36,23 @@ pub struct TableStyleFirstRow {
     pub color: Option<String>,
 }
 
-/// Resolved display properties for a `w:style w:type="table"`, including its
-/// `w:basedOn` chain. Direct table/cell formatting remains authoritative.
+/// An authored table-style indentation, including width types that reset an
+/// inherited value without selecting a physical indentation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct TableStyleIndentation {
+    pub width_twips: Option<f32>,
+    pub width_type: Option<TableStyleIndentationType>,
+}
+
+/// Resolved display properties of a table style, below direct formatting.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TableStyleDisplay {
+    /// Keep ignored width types too: a child's nil/auto/percentage declaration
+    /// clears an inherited indentation without becoming an explicit DXA zero.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub indentation: Option<TableStyleIndentation>,
     #[serde(default, skip_serializing_if = "RunFonts::is_empty")]
     pub fonts: RunFonts,
     /// Whole-table font sizes in points (`w:sz` / `w:szCs`).

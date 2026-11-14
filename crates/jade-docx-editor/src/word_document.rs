@@ -2743,7 +2743,13 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         styles_read = true;
                         if let Some(styles_part) = document.styles_part.as_mut() {
-                            styles_part.parse(&part.content)?;
+                            if jade_docx_reader::word_platform::word_layout_platform()
+                                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+                            {
+                                styles_part.parse_with_windows_table_fallback(&part.content)?;
+                            } else {
+                                styles_part.parse(&part.content)?;
+                            }
                         } else {
                             let styles_part = StylesPart::from_xml(&part.content)?;
                             document.styles_part = Some(styles_part);
@@ -23721,7 +23727,7 @@ impl WordDocument {
         // cells' paragraphs lost what their styles give them (Normal's
         // justification, the table style's spacing) until it was reopened.
         let Some(styles) = self.styles_part.clone() else {
-            return table;
+            return Self::with_inserted_table_border_defaults(table);
         };
         let mut elements = [BodyElement::from_table(table)];
         Self::apply_style_paragraph_defaults_to_elements(
@@ -23736,7 +23742,35 @@ impl WordDocument {
         let [BodyElement::Table(table)] = elements else {
             unreachable!("the table was put in")
         };
-        *table
+        Self::with_inserted_table_border_defaults(*table)
+    }
+
+    fn with_inserted_table_border_defaults(mut table: Table) -> Table {
+        if jade_docx_reader::word_platform::word_layout_platform()
+            == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+            && table.resolved_style.is_none()
+            && table.borders.is_none()
+        {
+            // Preserve the editor's existing 1px black insertion grid as
+            // authored OOXML. An undeclared border must remain absent when
+            // reading arbitrary Word documents, including this export.
+            let edge = BorderEdgeSpec {
+                style: Some("single".into()),
+                width: Some(0.75),
+                color: Some("#000000".into()),
+            }
+            .to_border_edge();
+            table.borders = Some(TableBorders {
+                top: Some(edge.clone()),
+                bottom: Some(edge.clone()),
+                left: Some(edge.clone()),
+                right: Some(edge.clone()),
+                inside_h: Some(edge.clone()),
+                inside_v: Some(edge),
+                ..Default::default()
+            });
+        }
+        table
     }
 
     /// Inserts `table` as a top-level body element at `body_insert_index`, in
@@ -25910,23 +25944,10 @@ impl WordDocument {
     }
 
     /// Writes `w:tblBorders` / `w:tcBorders` from a resolved set of edges.
-    /// Raw edges omitted from `borders` survive, except aliases of edited sides.
-    fn sync_borders_xml(
-        &mut self,
-        node_id: Option<XmlNodeId>,
-        properties_name: &str,
-        element_name: &str,
+    fn table_border_xml_children(
+        raw: &mut DocxXmlDocument,
         borders: &TableBorders,
-        bidi_visual: bool,
-    ) -> Result<(), String> {
-        let Some(node_id) = node_id else {
-            return Ok(());
-        };
-        let Some(raw) = self.raw_document.as_mut() else {
-            return Ok(());
-        };
-        let properties_id = Self::ensure_properties_element(raw, node_id, properties_name)?;
-
+    ) -> Vec<XmlNode> {
         // OOXML fixes the order of the edges inside the element.
         let mut children = Vec::new();
         for (name, edge) in [
@@ -25974,6 +25995,28 @@ impl WordDocument {
                 Vec::new(),
             )));
         }
+
+        children
+    }
+
+    /// Raw edges omitted from `borders` survive, except aliases of edited sides.
+    fn sync_borders_xml(
+        &mut self,
+        node_id: Option<XmlNodeId>,
+        properties_name: &str,
+        element_name: &str,
+        borders: &TableBorders,
+        bidi_visual: bool,
+    ) -> Result<(), String> {
+        let Some(node_id) = node_id else {
+            return Ok(());
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return Ok(());
+        };
+        let properties_id = Self::ensure_properties_element(raw, node_id, properties_name)?;
+
+        let mut children = Self::table_border_xml_children(raw, borders);
 
         let existing = raw.element(properties_id).and_then(|properties| {
             properties.children.iter().find_map(|node| match node {
@@ -28500,6 +28543,17 @@ impl WordDocument {
             Vec::new(),
         );
         tbl_pr_children.push(XmlNode::Element(tbl_w));
+        if table.node_id.is_none()
+            && jade_docx_reader::word_platform::word_layout_platform()
+                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+        {
+            if let Some(borders) = table.borders.as_ref() {
+                let children = Self::table_border_xml_children(raw, borders);
+                let borders =
+                    raw.create_element_preserving_child_ids("w:tblBorders", Vec::new(), children);
+                tbl_pr_children.push(XmlNode::Element(borders));
+            }
+        }
         let tbl_layout = raw.create_element(
             "w:tblLayout",
             vec![XmlAttribute {

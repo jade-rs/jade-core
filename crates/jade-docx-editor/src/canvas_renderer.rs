@@ -4444,6 +4444,7 @@ where
     pending_decorations: RefCell<crate::plugins::PendingDecorations>,
     pub(crate) spelling_cache: RefCell<crate::plugins::spelling::SpellingCache>,
     spelling_export_mode: bool,
+    page_export_mode: bool,
     page_start_seek_cache: RefCell<BTreeMap<usize, PageStartSeekSnapshot>>,
     /// Same snapshots indexed by 1-indexed page number.
     page_start_seek_cache_by_page: RefCell<FxHashMap<usize, PageStartSeekSnapshot>>,
@@ -9529,6 +9530,7 @@ where
             pending_decorations: RefCell::new(crate::plugins::PendingDecorations::new()),
             spelling_cache: RefCell::new(crate::plugins::spelling::SpellingCache::default()),
             spelling_export_mode: false,
+            page_export_mode: false,
             page_start_seek_cache: RefCell::new(BTreeMap::new()),
             page_start_seek_cache_by_page: RefCell::new(FxHashMap::default()),
             page_column_seek_cache: RefCell::new(FxHashMap::default()),
@@ -37677,10 +37679,21 @@ where
         changed
     }
 
+    /// Selects a clean page-export surface without nonprinting decorations.
+    pub fn set_page_export_mode(&mut self, enabled: bool) {
+        if self.page_export_mode != enabled || self.spelling_export_mode != enabled {
+            self.page_export_mode = enabled;
+            self.spelling_export_mode = enabled;
+            // Draw commands can contain waves from an earlier editor pass.
+            self.clear_paragraph_render_cache();
+            self.mark_full_repaint();
+        }
+    }
+
+    /// Preserve live raster table guides while hiding nonprinting spelling waves.
     pub fn set_spelling_export_mode(&mut self, enabled: bool) {
         if self.spelling_export_mode != enabled {
             self.spelling_export_mode = enabled;
-            // Draw commands can contain waves from an earlier editor pass.
             self.clear_paragraph_render_cache();
             self.mark_full_repaint();
         }

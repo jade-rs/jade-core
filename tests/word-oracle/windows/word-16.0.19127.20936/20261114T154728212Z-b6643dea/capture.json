@@ -1,0 +1,134 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T154728212Z-b6643dea",
+  "captured_at_utc": "2026-11-14T15:47:28.2259836Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-style-border-before-paragraph-compat14",
+      "source": "..\\w15-table-style-border-controls-inputs\\word-windows-edge-table-style-border-before-paragraph-compat14.docx",
+      "sha256": "706772f6934a6732d1e49040fa313865223e5b93d7018b4f5e414c5430e1bc85",
+      "pdf": "word-windows-edge-table-style-border-before-paragraph-compat14.pdf",
+      "pdf_sha256": "feb881ee0e27f81cddbafb4cd7db230deff535474452cbb1dd72b6e1aca1444c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-border-before-paragraph-compat14.page-001.emf",
+          "sha256": "42357bcc5eacef0ab304a6af224325e3cc7ae46c191abe907860c9b8f87312e0",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-border-nil-compat14",
+      "source": "..\\w15-table-style-border-controls-inputs\\word-windows-edge-table-style-border-nil-compat14.docx",
+      "sha256": "35c5074ef1ed498b590df7c21b6f55dbd994dd7f70eff491b49cfde329208255",
+      "pdf": "word-windows-edge-table-style-border-nil-compat14.pdf",
+      "pdf_sha256": "4ab0d07bddcec2a5936192959b6ddf9ad1492b82b663f36c47109a8c67049841",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-border-nil-compat14.page-001.emf",
+          "sha256": "0f5d629629441ea6bc8dbe92da0cd012dbd73946e24301a82286b044ff666bde",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-border-old-without-borders-compat14",
+      "source": "..\\w15-table-style-border-controls-inputs\\word-windows-edge-table-style-border-old-without-borders-compat14.docx",
+      "sha256": "e1d86cc2f7d1e5a5323586ad56814688227931061a9ecb3d31b5699b4e98f9e0",
+      "pdf": "word-windows-edge-table-style-border-old-without-borders-compat14.pdf",
+      "pdf_sha256": "2023b878fbacc35a1251328a6aa7209853c8191898d776fd639890782a1c8f2c",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-border-old-without-borders-compat14.page-001.emf",
+          "sha256": "baf2421b6040253552fcfc3fa9281a0d53d2e7010a30fd6ade886f5579e00714",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-style-border-old-without-borders-compat14.page-002.emf",
+          "sha256": "e9add165e8120f9ed423f3093dc0f42b9f7a3fb181f33ce55b5699a3836fbe2e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-border-positive-compat14",
+      "source": "..\\w15-table-style-border-controls-inputs\\word-windows-edge-table-style-border-positive-compat14.docx",
+      "sha256": "5757610ef98813a46669348f134a7146a90d9f20474b11da943ecf4b691485de",
+      "pdf": "word-windows-edge-table-style-border-positive-compat14.pdf",
+      "pdf_sha256": "98809e2fbb3102b5d65b271cb53ff3ace49782638c8c108afe6e1eef50f4b81d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-border-positive-compat14.page-001.emf",
+          "sha256": "ee5db58059c83f0fcfcca4401ecf24a05ccf4344238fda906f2798202c3c0ae5",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
