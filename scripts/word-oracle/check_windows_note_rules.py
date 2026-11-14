@@ -10,7 +10,7 @@ from compare_windows_borders import rectangles
 from extract_windows_emf import emf_glyphs
 
 INDEX = Path('tests/word-oracle/windows/note-rules.json')
-INDEX_SHA256 = '4fb8a2fa0172334c6f1c0403df1b131b3bfec27799dfa688536bac5ef9fac863'
+INDEX_SHA256 = '3f292341c02940520e0543e3af2b9a1684829878a9d3005fd7439e808db67a06'
 TOLERANCE = .375
 
 
@@ -91,8 +91,8 @@ def pdf_rules(path):
     return [[page, *box] for page, boxes in enumerate(rectangles(path), 1) for box in boxes]
 
 
-def compare_rules(expected, actual, label):
-    require(len(actual) == len(expected) and bool(expected), f'{label}: missing/extra rule paint')
+def compare_rules(expected, actual, label, *, allow_empty=False):
+    require(len(actual) == len(expected) and (bool(expected) or allow_empty), f'{label}: missing/extra rule paint')
     expected, actual = sorted(expected), sorted(actual)
     for word, native in zip(expected, actual):
         require(word[0] == native[0], f'{label}: rule page changed')
@@ -107,7 +107,7 @@ def verify(root=ROOT):
     require(hashlib.sha256(index_path.read_bytes()).hexdigest() == INDEX_SHA256,
             'Note-rule coverage/expectations changed')
     index = read_json(index_path)
-    require(index['schema'] == 1 and len(index['fixtures']) == 22, 'Note-rule coverage removed')
+    require(index['schema'] == 1 and len(index['fixtures']) == 58, 'Note-rule coverage removed')
     fonts = {row[0]['name']: row for row in verify_fonts(root)}
     cases, names = [], set()
     checked_file(root, index['font_tables'])
@@ -119,12 +119,13 @@ def verify(root=ROOT):
         require(case['word_product_version'] == entry['word_product_version'], 'Wrong rule Word version')
         pdf = manifest.parent / document['pdf']
         word = pdf_rules(pdf)
-        require(len(word) == entry['rule_count'] == 1, 'Original rule count changed')
+        require(len(word) == entry['rule_count'] and isinstance(entry['rule_count'], int)
+                and entry['rule_count'] >= 0, 'Original rule count changed')
         emf = []
         for page in document['metafiles']:
             emf += emf_rules((manifest.parent / page['file']).read_bytes(), page['page'],
                              page['width_pt'], page['height_pt'])
-        compare_rules(word, emf, name + '/original-EMF')
+        compare_rules(word, emf, name + '/original-EMF', allow_empty=entry['rule_count'] == 0)
         cases.append((case, source, manifest, document, word, emf))
     return cases
 
@@ -135,8 +136,8 @@ def check(native_directory, root=ROOT):
         actual = read_json(target / 'native.json')
         require(actual['input_sha256'] == case['source']['sha256'], 'Wrong rule rendered input')
         native = pdf_rules(target / 'native.pdf')
-        compare_rules(word, native, case['name'] + '/PDF-rule')
-        compare_rules(emf, native, case['name'] + '/EMF-rule')
+        compare_rules(word, native, case['name'] + '/PDF-rule', allow_empty=not word)
+        compare_rules(emf, native, case['name'] + '/EMF-rule', allow_empty=not emf)
         print(case['name'], case['word_product_version'], 'PDF/EMF rule paint: PASS', flush=True)
 
 

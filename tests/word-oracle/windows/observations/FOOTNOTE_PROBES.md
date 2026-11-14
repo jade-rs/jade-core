@@ -26,8 +26,29 @@ actual captures, Word paints the ordinary story on the continuation pages too,
 including in the Word-authored document. This observation must not be replaced
 by an inferred expected line or by a general description of Word's default.
 
-The Word-authored case exposes remaining text/page-placement differences.
-Retain it while fixing the renderer; do not promote the current Jade output.
+Two further captures preserve the same Word-authored input after selecting
+print layout before PDF export (`20261114T120021549Z-c32eac41`), and a new
+157-paragraph note followed by a section with a 300pt top margin
+(`20261114T121138495Z-3fe33843`). Original coverage is now 237 captures / 870
+documents. The latter input is also reproduced by the probe generator.
+
+Word's own PDF and EMF disagree for these two inputs. In the Word-authored
+case, note line 69 is on PDF page two and EMF page three. Selecting print
+layout before exporting does not resolve that discrepancy. In the section
+case, both outputs place the following section on page six, but their
+continuation coordinates differ. All original outputs remain unchanged.
+
+The 42 consistent inputs are registered in `font-coordinates.json`: 189
+cases / 95,561 glyph origins must match all four coordinate planes. The
+58 `note-rules.json` cases also check actual PDF paint, including explicit
+zero-rule expectations for the two custom text separators. Unregistered
+empty references remain errors.
+
+`print-coordinates.json` separately requires the two inconsistent inputs to
+match Word's actual PDF text origins and rule paint. Those checks also assert
+that the original PDF/EMF disagreement remains present; they do not declare
+the EMF coordinates matched or put these cases in the four-plane registry.
+The renderer receives only DOCX bytes and embedded font programs.
 The independently extracted Arial Regular 7.07 kerning facts record the full
 font's identity and numeric table entries. The Word PDF's embedded subset omits
 that kerning table. Font-table facts are separate from expected glyph origins.

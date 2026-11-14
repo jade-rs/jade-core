@@ -28,8 +28,8 @@ class NoteRuleTests(unittest.TestCase):
         for found, edge in zip(actual[0][1:], expected[1:]):
             self.assertAlmostEqual(found, edge, places=12)
 
-    def test_versioned_originals_and_all_twenty_two_cases(self):
-        self.assertEqual(len(check.verify()), 22)
+    def test_versioned_originals_and_all_fifty_eight_cases(self):
+        self.assertEqual(len(check.verify()), 58)
 
     def test_patcopy_uses_logical_destination_edges(self):
         self.assert_rule(check.emf_rules(rule_metafile(), 1, 612, 792),
@@ -70,6 +70,13 @@ class NoteRuleTests(unittest.TestCase):
                 check.compare_rules(word, actual, 'paint regression')
         with self.assertRaises(ValueError):
             check.compare_rules([], [], 'empty assertion')
+
+    def test_text_separator_requires_explicit_zero_rule_expectation(self):
+        self.assertEqual(check.compare_rules([], [], 'text story', allow_empty=True), 0)
+        rule = [[1, 72., 84., 216., 84.48]]
+        for expected, actual in (([], rule), (rule, [])):
+            with self.subTest(expected=expected), self.assertRaises(ValueError):
+                check.compare_rules(expected, actual, 'unexpected paint', allow_empty=True)
 
 
 if __name__ == '__main__':

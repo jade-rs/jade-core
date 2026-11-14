@@ -2046,6 +2046,10 @@
     {
       "fixture": "word-windows-edge-arial-kern2-size40-compat15",
       "docx_sha256": "d57372a8dc25323d036fcbb709cc46f45b56a3081a2145a26326b033f1f36856"
+    },
+    {
+      "fixture": "word-windows-edge-footnote-long-carry-section-margin300-compat15",
+      "docx_sha256": "8f597f9f24b4ee97839056a47ffd33945a2ddf66a504120da73e0064f871a5d4"
     }
   ]
 }

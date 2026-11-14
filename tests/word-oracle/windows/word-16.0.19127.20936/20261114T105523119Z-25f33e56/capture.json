@@ -1,0 +1,180 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T105523119Z-25f33e56",
+  "captured_at_utc": "2026-11-14T10:55:23.1310070Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-arial-kern0-size21-compat15",
+      "source": "..\\w14-arial-kern-inputs\\word-windows-edge-arial-kern0-size21-compat15.docx",
+      "sha256": "bc408c9647d6ab51afda982a05e43cf3a4e3c84c0417b04a363f3abb0168c593",
+      "pdf": "word-windows-edge-arial-kern0-size21-compat15.pdf",
+      "pdf_sha256": "e57abecfbe070b7a9a3b5ade61c67b32e4af5294c4069b0188517c9c3808030d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-kern0-size21-compat15.page-001.emf",
+          "sha256": "e9ecd02226253b6e8fab4ffd25b325224fbbd04fcc24210478774392080e45bc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-kern0-size24-compat15",
+      "source": "..\\w14-arial-kern-inputs\\word-windows-edge-arial-kern0-size24-compat15.docx",
+      "sha256": "f2f3c663645451f7e4c5271bf91fc7825aeef84f77c922ee3b31d84f7810f469",
+      "pdf": "word-windows-edge-arial-kern0-size24-compat15.pdf",
+      "pdf_sha256": "357c5b7a21239b90e1aaba3e186b97c7e7c207cef00734f4951673932d5fc0b6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-kern0-size24-compat15.page-001.emf",
+          "sha256": "b2061c83a82ec442528a1bcfeff43c193f4fd359b9de83c159bc8fa2b88c7162",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-kern0-size40-compat15",
+      "source": "..\\w14-arial-kern-inputs\\word-windows-edge-arial-kern0-size40-compat15.docx",
+      "sha256": "30dea8155e49f27c416b2a0e6dfafb284ef6d0e5e79aed5307c0c16bbca9656e",
+      "pdf": "word-windows-edge-arial-kern0-size40-compat15.pdf",
+      "pdf_sha256": "883545a4faaa36e5ed48096d3cb0e280628349146e80ff5d89c6a078257686c2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-kern0-size40-compat15.page-001.emf",
+          "sha256": "1670fa798102b67ffa2423cd383a90ce34d5f84ed5caf0a1004d1cdb22e4eece",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-kern2-size21-compat15",
+      "source": "..\\w14-arial-kern-inputs\\word-windows-edge-arial-kern2-size21-compat15.docx",
+      "sha256": "7b96e113db95895c8c4e780bb10d6c0d119308044a0f7801cfe8e07d0de7f23c",
+      "pdf": "word-windows-edge-arial-kern2-size21-compat15.pdf",
+      "pdf_sha256": "3952b67a329d34d626fb3547b551ad8dddd6f8350c911ecff3ab2267c96e0dbf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-kern2-size21-compat15.page-001.emf",
+          "sha256": "ebfb24be78962e2f189564972e262e8dabc9728b97a5630c0f1af47c3e348869",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-kern2-size24-compat15",
+      "source": "..\\w14-arial-kern-inputs\\word-windows-edge-arial-kern2-size24-compat15.docx",
+      "sha256": "6338b3cd75f12ccc87e1e7b21a54e314841bb6976964c8fb72ebdedccf55e247",
+      "pdf": "word-windows-edge-arial-kern2-size24-compat15.pdf",
+      "pdf_sha256": "69c1af7b233d92d5316710bc2849c0579f58baa1f52c0496cfb67e995181198b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-kern2-size24-compat15.page-001.emf",
+          "sha256": "c05eb69aa3498f3a380880b7f91e1bb90e07db45b8bf3e0de35c1d6e6c600e51",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-kern2-size40-compat15",
+      "source": "..\\w14-arial-kern-inputs\\word-windows-edge-arial-kern2-size40-compat15.docx",
+      "sha256": "d57372a8dc25323d036fcbb709cc46f45b56a3081a2145a26326b033f1f36856",
+      "pdf": "word-windows-edge-arial-kern2-size40-compat15.pdf",
+      "pdf_sha256": "f2f9a8dfffa504682a0add675114151e0a818778ebed5b6f7824ee632ba3acf1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-kern2-size40-compat15.page-001.emf",
+          "sha256": "a96ff30ffa3941366fd469cb8db44f902cf485cb8b9ab7c0d60ea3f92aa29910",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-footnote-word-authored-named-stories",
+      "source": {
+        "file": "public/fixtures/word-windows-edge-footnote-word-authored-named-stories.docx",
+        "sha256": "b074625b6c6f3f35819f484ff02ba5892b67ea2627ba8df2769364cf56b0792b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T104544207Z-adc363b2/capture.json",
+        "sha256": "2eadd51f03b373751d63243d4dd30d945d177553929fa96dcac811922e9d2e2a"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "emf_disagreement": "text or page changed",
+      "rule_count": 0
+    },
+    {
+      "name": "word-windows-edge-footnote-long-carry-section-margin300-compat15",
+      "source": {
+        "file": "public/fixtures/word-windows-edge-footnote-long-carry-section-margin300-compat15.docx",
+        "sha256": "8f597f9f24b4ee97839056a47ffd33945a2ddf66a504120da73e0064f871a5d4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T121138495Z-3fe33843/capture.json",
+        "sha256": "1f11c10aac793c807ea03bff5c679ff97af472999dc8e3f06509b8ab9a696ff0"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "emf_disagreement": "axis mismatch",
+      "rule_count": 6
+    }
+  ]
+}

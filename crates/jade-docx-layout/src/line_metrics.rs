@@ -2,6 +2,12 @@ use jade_docx_reader::document::{
     BorderEdge, DocGrid, ParagraphProperties, Run, RunProperties, Spacing,
 };
 
+mod windows_arial_kern;
+
+pub(crate) fn word_windows_arial_pair_kerning_px(unit_px: f64, left: u8, right: u8) -> Option<f64> {
+    windows_arial_kern::pair_units(left, right).map(|units| unit_px * f64::from(units))
+}
+
 const WORD_DEFAULT_LINE_SPACING_MULTIPLIER: f32 = 1.15;
 
 /// Per-line sizing for Mac paragraphs snapped to an active line grid.
@@ -1139,13 +1145,16 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
         | WordAsciiMetrics::Cambria(_)
         | WordAsciiMetrics::Aptos(_, _)
         | WordAsciiMetrics::Bookman(_)
-        | WordAsciiMetrics::TimesNewRoman(_, _, _) => None,
+        | WordAsciiMetrics::TimesNewRoman(_, _, _)
+        | WordAsciiMetrics::ArialWindows(_) => None,
     }
 }
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum WordAsciiMetrics {
     Fixed(f64),
+    // Kerning-only font facts, consumed exclusively by the Windows branch.
+    ArialWindows(f64),
     // Pixels per font unit, resolved once rather than divided per glyph.
     // Pixels per font unit; whether source-observed Mac upright facts apply.
     YuMincho(f64, bool),
@@ -2118,6 +2127,7 @@ impl WordAsciiMetrics {
         }
         match self {
             Self::Fixed(advance) => Some(advance),
+            Self::ArialWindows(_) => None,
             Self::YuGothicLight(unit_px) => {
                 // Numeric hmtx facts in the unchanged numbering Word PDF.
                 // Unobserved characters and other Yu Gothic faces keep fallback.
@@ -2663,6 +2673,9 @@ fn parse_word_ascii_metrics(
     let em_px = f64::from(size_pt) * 96.0 / 72.0;
     let (bold, italic) = font_descriptor_style(font_descriptor);
     match family {
+        "Arial" if platform == WordLayoutPlatform::Windows && !bold && !italic => {
+            Some(WordAsciiMetrics::ArialWindows(em_px / 2048.0))
+        }
         "ＭＳ 明朝"
         | "MS 明朝"
         | "MS Mincho"
@@ -6640,6 +6653,36 @@ mod tests {
         assert!((ascent * 0.75 - 11.28).abs() <= 0.1);
         assert!((26.0 - descent * 0.75 - 22.97).abs() <= 0.1);
         set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn windows_arial_font_kerning_preserves_nominal_advances_and_mac_fallback() {
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let metrics = word_ascii_metrics("10.5pt 'Arial', sans-serif").expect("Windows Arial");
+        let WordAsciiMetrics::ArialWindows(unit) = metrics else {
+            panic!("kerning-only metrics")
+        };
+        assert_eq!(metrics.advance_px(b'A'), None);
+        // A Mac paragraph can be measured on a Windows-default thread. Its
+        // generic kerning path must still fall back to the original font.
+        assert_eq!(metrics.pair_kerning_px(b'P', b'A'), None);
+        assert_eq!(word_fixed_ascii_advance_px("10.5pt 'Arial'"), None);
+        for (left, right, units) in [
+            (b'P', b'A', -152),
+            (b'A', b'T', -152),
+            (b'T', b'O', -37),
+            (b'S', b'E', 0),
+        ] {
+            assert_eq!(
+                word_windows_arial_pair_kerning_px(unit, left, right),
+                Some(unit * f64::from(units))
+            );
+        }
+        assert_eq!(word_windows_arial_pair_kerning_px(unit, 0, b'A'), None);
+        assert!(word_ascii_metrics("bold 10.5pt 'Arial'").is_none());
+        assert!(word_ascii_metrics("italic 10.5pt 'Arial'").is_none());
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(word_ascii_metrics("10.5pt 'Arial'").is_none());
     }
 
     #[test]
