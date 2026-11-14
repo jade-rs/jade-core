@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "word_version": "16.0.19127.20936",
+  "fonts": [
+    {
+      "family": "Arial",
+      "file": "arial.ttf",
+      "sha256": "edfbd22a3d088fc2f5d7c79b8c9c732df6dc878a60f0a80be0f92a3c7a634404",
+      "face_index": null,
+      "version": "Version 7.07",
+      "units_per_em": 2048,
+      "hhea_ascent": 1854,
+      "hhea_descent": -434,
+      "hhea_line_gap": 67,
+      "win_ascent": 1854,
+      "win_descent": 434,
+      "strikeout_position": 530,
+      "strikeout_size": 102
+    },
+    {
+      "family": "Century",
+      "file": "CENTURY.TTF",
+      "sha256": "21be61ff5289c2125dbb48e2a739fd4dd98c3e58b37abfc22cc0412dd8376d95",
+      "face_index": null,
+      "version": "Version 1.20",
+      "units_per_em": 2048,
+      "hhea_ascent": 2019,
+      "hhea_descent": -443,
+      "hhea_line_gap": 0,
+      "win_ascent": 2019,
+      "win_descent": 442,
+      "strikeout_position": 530,
+      "strikeout_size": 102
+    },
+    {
+      "family": "Yu Mincho",
+      "file": "yumin.ttf",
+      "sha256": "6d16c4f4f33f42f2d427857c207f732c5cd56bad43e31ad435b18758dc4758d7",
+      "face_index": null,
+      "version": "Version 1.92",
+      "units_per_em": 2048,
+      "hhea_ascent": 1802,
+      "hhea_descent": -455,
+      "hhea_line_gap": 1024,
+      "win_ascent": 2038,
+      "win_descent": 598,
+      "strikeout_position": 858,
+      "strikeout_size": 94
+    },
+    {
+      "family": "MS Mincho",
+      "file": "msmincho.ttc",
+      "sha256": "ceb8d745001f56b61ce768d84172d35bdf68e498423c9320dcb22e7c900944c2",
+      "face_index": 0,
+      "version": "Version 5.32",
+      "units_per_em": 256,
+      "hhea_ascent": 220,
+      "hhea_descent": -36,
+      "hhea_line_gap": 0,
+      "win_ascent": 220,
+      "win_descent": 36,
+      "strikeout_position": 66,
+      "strikeout_size": 13
+    }
+  ]
+}

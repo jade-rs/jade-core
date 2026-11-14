@@ -7121,6 +7121,9 @@ where
         let page_footnotes = is_footnote && !self.pageless_mode;
         if !page_footnotes {
             self.ensure_space(spacing)?;
+            if !is_footnote {
+                self.paint_windows_endnote_separator(document)?;
+            }
             self.current_y += spacing;
         }
         let mut continuation_notice_height = 0.0;
@@ -8314,6 +8317,65 @@ where
         self.rendering_page_furniture = saved_furniture;
         self.skip_layout_cache_update = saved_skip_cache;
         height.map(Some)
+    }
+
+    fn paint_windows_endnote_separator(&mut self, document: &Document) -> Result<(), JsValue> {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        if word_layout_platform() != WordLayoutPlatform::Windows
+            || self.render_skip_draw
+            || !self.should_draw_current_page_for_render()
+        {
+            return Ok(());
+        }
+        let Some(separator) = document.endnotes.values().find(|note| {
+            note.note_type
+                .as_deref()
+                .is_some_and(|kind| kind.eq_ignore_ascii_case("separator"))
+        }) else {
+            return Ok(());
+        };
+        let [BodyElement::Paragraph(paragraph)] = separator.body.as_slice() else {
+            return Ok(());
+        };
+        if !Self::note_separator_is_one_rule_line(paragraph) {
+            return Ok(());
+        }
+        let effective =
+            self.effective_run_properties_rc(paragraph, paragraph.runs[0].properties.as_ref());
+        let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
+        let descriptor = if self.document_east_asian_rules.use_east_asian_layout {
+            &style.resolved.font_descriptor_east_asia
+        } else {
+            &style.resolved.font_descriptor_latin_ascii
+        };
+        let Some((top, thickness)) =
+            jade_docx_layout::line_metrics::word_windows_note_rule_metrics_px(descriptor)
+        else {
+            return Ok(());
+        };
+        // A separator is a two-inch rule, independent of the font's size.
+        // Its vertical geometry comes from that face's strikeout metrics.
+        let color = self.resolved_style_fill_color(&style, None);
+        self.suppress_structure(true);
+        {
+            let context = self.host.painter();
+            context.save();
+            context.set_fill_style_str(color.as_ref());
+            // Keep this a true vector rule. fill_rect deliberately encodes
+            // raster edge coverage for paragraph backgrounds in PDF output.
+            context.begin_path();
+            context.rect(
+                self.margin_left,
+                self.current_y + top,
+                points_to_px(144.0),
+                thickness,
+            );
+            context.fill();
+            context.restore();
+        }
+        self.suppress_structure(false);
+        self.invalidate_context_state_tracking();
+        Ok(())
     }
 
     fn note_separator_is_one_rule_line(paragraph: &Paragraph) -> bool {

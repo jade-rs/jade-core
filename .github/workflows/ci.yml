@@ -289,6 +289,10 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_coordinates.py
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert note-rule paint against versioned original Word PDF and EMF
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_note_rules.py
+          python scripts/word-oracle/check_windows_note_rules.py --native-directory target/windows-font-coordinates
       - name: Compare Windows table borders with every registered Word version
         run: python scripts/word-oracle/compare_windows_borders.py --index tests/word-oracle/windows/index.json --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-word-baselines/word-border-comparisons
       - name: Compare every registered Word version's baselines

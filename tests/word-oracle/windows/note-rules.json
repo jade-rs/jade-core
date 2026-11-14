@@ -1,0 +1,119 @@
+{
+  "schema": 1,
+  "font_tables": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T091931923Z-52cf7efc/separator-font-tables.json",
+    "sha256": "90d051fee301a7c141789fb9b72d749fbdc7afc075acbf134a8a6700bc1884f6"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-edge-endnote-separator-grid360-font0-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid360-font21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid360-font40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid480-font0-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid480-font21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid480-font40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "ww14-endnote-06477c7f",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-griddefault-font0-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-griddefault-font21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-griddefault-font40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-arial-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-arial-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-arial-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-century-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-century-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-century-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-ms-mincho-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-ms-mincho-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-ms-mincho-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-yu-mincho-size21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-yu-mincho-size24-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-yu-mincho-size40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    }
+  ]
+}
