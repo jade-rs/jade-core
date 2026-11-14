@@ -1361,6 +1361,36 @@ fn compute_grapheme_advance_with_ascii_width(
     }
 }
 
+// Tracking is uncommon; keep its Windows Yu Mincho policy out of the hot
+// untracked advance function so its state does not spill on every glyph.
+#[cold]
+#[inline(never)]
+fn tracked_yu_mincho_gaps(
+    style: &ParagraphStyle,
+    font_descriptor: Option<&str>,
+    tracking: f64,
+    mut leading: f64,
+    mut trailing: f64,
+) -> (f64, f64) {
+    if style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && matches!(
+            font_descriptor.and_then(crate::line_metrics::word_ascii_metrics),
+            Some(
+                crate::line_metrics::WordAsciiMetrics::YuMincho(..)
+                    | crate::line_metrics::WordAsciiMetrics::YuMinchoBold(..)
+            )
+        )
+    {
+        if leading > 0.0 {
+            leading = (leading + tracking * 0.25).max(0.0);
+        }
+        if trailing > 0.0 {
+            trailing = (trailing + tracking * 0.25).max(0.0);
+        }
+    }
+    (leading, trailing)
+}
+
 fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
     context: GraphemeAdvanceContext<'_>,
     requested_ascii_width: Option<f64>,
@@ -1541,23 +1571,14 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                     // Windows Word's Yu Mincho mixed-script captures use a
                     // quarter of the tracked cell at both script boundaries.
                     // The 9.5–16pt sweeps include -0.5 through +30pt tracking.
-                    if run_letter_spacing != 0.0
-                        && (leading > 0.0 || trailing > 0.0)
-                        && style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
-                        && matches!(
-                            font_descriptor.and_then(crate::line_metrics::word_ascii_metrics),
-                            Some(
-                                crate::line_metrics::WordAsciiMetrics::YuMincho(..)
-                                    | crate::line_metrics::WordAsciiMetrics::YuMinchoBold(..)
-                            )
-                        )
-                    {
-                        if leading > 0.0 {
-                            leading = (leading + run_letter_spacing * 0.25).max(0.0);
-                        }
-                        if trailing > 0.0 {
-                            trailing = (trailing + run_letter_spacing * 0.25).max(0.0);
-                        }
+                    if run_letter_spacing != 0.0 && (leading > 0.0 || trailing > 0.0) {
+                        (leading, trailing) = tracked_yu_mincho_gaps(
+                            style,
+                            font_descriptor,
+                            run_letter_spacing,
+                            leading,
+                            trailing,
+                        );
                     }
                     // Word for Mac leaves a 3.5pt gap after 14pt kanji before
                     // 18pt Arial in table-minimum-line-cjk-mac.
@@ -2920,7 +2941,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // no kerning, so neither the advance nor pair kerning comes from the
     // host, whose face may be a substitute (jlsi/jade#469).
     // Proportional MS PGothic and Mac emoji also have known standalone advances.
-    let (requested_face_width, monospace_cell) = if measured_width_is_oracle {
+    let (mut requested_face_width, monospace_cell) = if measured_width_is_oracle {
         (None, false)
     } else if let Some(width) = crate::line_metrics::word_monospace_cell_em(grapheme)
         .and_then(|cell| style.monospace_em_px(font_descriptor).map(|em| em * cell))
@@ -2941,7 +2962,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     };
     // Requested Windows font facts already own these advances below. Do not
     // measure the substitute face first only to discard its width afterward.
-    let (requested_ascii_measure, windows_yu_mincho_advance) = if !measured_width_is_oracle
+    let requested_ascii_measure = if !measured_width_is_oracle
         && requested_face_width.is_none()
         && script == ScriptCategory::Latin
         && grapheme.len() == 1
@@ -2954,14 +2975,20 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         match style.ascii_metrics_for_descriptor(font_descriptor) {
             Some(
                 metrics @ (WordAsciiMetrics::YuMincho(..) | WordAsciiMetrics::YuMinchoBold(..)),
-            ) if !style.has_font_features => (metrics.advance_px(grapheme.as_bytes()[0]), true),
-            Some(metrics @ WordAsciiMetrics::TimesNewRoman(..)) => {
-                (metrics.advance_px(grapheme.as_bytes()[0]), false)
+            ) if !style.has_font_features => {
+                // These nominal widths own pair kerning too, just like the
+                // fixed-face widths above. Reuse that state rather than carry
+                // a separate flag through every grapheme's hot advance path.
+                requested_face_width = metrics.advance_px(grapheme.as_bytes()[0]);
+                None
             }
-            _ => (None, false),
+            Some(metrics @ WordAsciiMetrics::TimesNewRoman(..)) => {
+                metrics.advance_px(grapheme.as_bytes()[0])
+            }
+            _ => None,
         }
     } else {
-        (None, false)
+        None
     };
     let measured_glyph_width = match (oracle_measured_glyph_width, requested_face_width) {
         (Some(width), _) => width,
@@ -3072,9 +3099,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         };
         let raw_adjustment = if let Some(adjustment) = word_pair_adjustment {
             adjustment
-        } else if requested_face_width.is_some()
-            || (windows_yu_mincho_advance && prev_grapheme.is_ascii())
-        {
+        } else if requested_face_width.is_some() {
             // Windows Word's plain-text path retains nominal Yu Mincho
             // advances even with w:kern. OpenType-feature runs retain their
             // shaping path (the Word-made encrypted original contracts W/o).
