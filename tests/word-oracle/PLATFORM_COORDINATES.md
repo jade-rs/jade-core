@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 76 font/typography
-documents (44,255 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 91 font/typography
+documents (44,495 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -54,15 +54,18 @@ including 1,568 measured script runs. Century OpenType/kerning/tracking probes
 cover modes 12/14/15 and default/explicit typography switches. Script metrics
 are re-extracted from original Word output in CI; Mac policy is unchanged.
 
-Nine endnote separator probes vary body grid pitch (disabled, 18pt, 24pt) and
-separator size (inherited, 10.5pt, 20pt). Windows Word 16.0.19127.20936 measures
-the authored separator story rather than a fixed 12pt gap. Its original PDF,
-raw EMFs and byte-identical inputs are retained under capture
-`20261114T065723961Z-5f5c7857`. Mac measurement and original expectations remain
-unchanged. Regenerate inputs with `generate_windows_endnote_cases.py`; their
-release-corpus hashes must continue to match the captured input bytes.
+Nine valid endnote separator probes vary body grid pitch (inactive `default`,
+18pt, 24pt) and separator size (inherited, 10.5pt, 20pt). Windows Word
+16.0.19127.20936 measures the authored separator story rather than a fixed
+12pt gap. The original endnote and all nine valid probes pass all four planes.
+Twelve inactive-grid controls cover theme, Century, Arial and Yu Mincho at
+10.5/12/20pt with plain, superscript and ordinary marker text. Their original
+PDFs, raw EMFs and byte-identical inputs are retained under captures
+`20261114T065723961Z-5f5c7857` and `20261114T071711373Z-e298d881`.
+Mac measurement and original expectations remain unchanged. Regenerate with
+`generate_windows_endnote_cases.py`; release hashes must match captured inputs.
 
-The six grid-enabled separator probes and the original endnote are asserted.
-The three grid-disabled probes remain unpromoted observations: they expose
-a 0.39–0.45pt vertical discrepancy and must not be accepted by widening the
-0.375pt limit. Their original Word output remains preserved in the same capture.
+Three earlier probes use the malformed grid type `none` instead of the schema's
+inactive `default`. They remain unpromoted observations, with all original output
+preserved in the first capture. They expose a 0.39–0.45pt discrepancy in how this
+invalid value is handled; the strict 0.375pt gate is unchanged.

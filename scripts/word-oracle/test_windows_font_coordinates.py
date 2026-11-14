@@ -9,7 +9,7 @@ from check_platform_coordinates import compare
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 76)
+        self.assertEqual(len(verify()), 91)
 
     def test_removed_case_is_rejected(self):
         data = json.loads((ROOT / INDEX).read_text())
