@@ -12979,13 +12979,12 @@ where
         // can rise above that line's ink. A marker of unknown extent counts as
         // reached, so the scan below decides (and refuses).
         let next = edited.saturating_add(1);
-        let next_marker_top =
-            paragraph_at(next).and_then(|paragraph| {
-                match self.band_numbering_marker_ink(paragraph, next, &layout, false) {
-                    Ok(marker) => marker.map(|(top, _)| top),
-                    Err(()) => Some(f64::NEG_INFINITY),
-                }
-            });
+        let next_marker_top = paragraph_at(next).and_then(|paragraph| {
+            match self.band_numbering_marker_ink(paragraph, next, &layout, false) {
+                Ok(marker) => marker.map(|(top, _)| top),
+                Err(()) => Some(f64::NEG_INFINITY),
+            }
+        });
         let next_ink_top = next_line_ink_top
             .into_iter()
             .chain(next_marker_top)
@@ -13245,15 +13244,16 @@ where
         let mut paint_bottom = local_bottom;
         for index in edited + 1..=edited + BAND_MAX_REPAINTED_NEIGHBORS + 1 {
             let paragraph = paragraph_at(index);
-            let reached = self.band_neighbor_reached_lines(paragraph, index, layout, |top, _| {
-                band_clip_overlaps_neighbor_ink(
-                    0.0,
-                    local_bottom,
-                    device_pixel_ratio,
-                    None,
-                    Some(top),
-                )
-            })?;
+            let reached =
+                self.band_neighbor_reached_lines(paragraph, index, layout, |top, _| {
+                    band_clip_overlaps_neighbor_ink(
+                        0.0,
+                        local_bottom,
+                        device_pixel_ratio,
+                        None,
+                        Some(top),
+                    )
+                })?;
             if reached.is_empty() {
                 return Some(paint_bottom);
             }
