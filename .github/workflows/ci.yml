@@ -267,6 +267,10 @@ jobs:
         run: python -m pip install -r scripts/word-oracle/requirements-borders.txt
       - name: Verify drawing-origin extraction and rejection cases
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_emf.py
+      - name: Verify unpromoted original Windows Word observations
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_observations.py
+          python scripts/word-oracle/check_windows_observations.py
       - name: Reconstruct registered origins from original Word drawing files
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
       - name: Verify border displacement and missing-paint rejection cases
