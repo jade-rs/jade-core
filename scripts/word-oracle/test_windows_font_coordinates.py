@@ -4,12 +4,29 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from check_windows_font_coordinates import INDEX, ROOT, verify
+from check_windows_font_coordinates import INDEX, ROOT, verify, has_visible_vector_ink
 from check_platform_coordinates import compare
 from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_filled_and_stroked_guides_are_detected_without_counting_white_paper(self):
+        import pymupdf
+        with tempfile.TemporaryDirectory() as directory:
+            for kind in ('paper', 'stroke', 'filled-guide'):
+                with self.subTest(kind=kind), pymupdf.open() as document:
+                    page = document.new_page(width=612, height=792)
+                    page.draw_rect(page.rect, color=None, fill=(1, 1, 1))
+                    page.insert_text((72, 90), 'Table text')
+                    if kind == 'stroke':
+                        page.draw_line((72, 72), (180, 72), color=(.6, .6, .6), width=.75)
+                    elif kind == 'filled-guide':
+                        page.draw_rect(pymupdf.Rect(72, 72, 180, 72.75), color=None,
+                                       fill=(.6, .6, .6))
+                    pdf = Path(directory) / (kind + '.pdf')
+                    document.save(pdf)
+                    self.assertEqual(has_visible_vector_ink(pdf), kind != 'paper')
+
     def test_generated_probes_match_original_word_inputs_byte_for_byte(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / 'probes'
@@ -38,7 +55,22 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 226)
+        self.assertEqual(len(verify()), 303)
+
+    def test_table_controls_preserve_original_paint_expectations(self):
+        cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {
+            '20261114T145808245Z-5e0616c6', '20261114T150706450Z-bf0874d1',
+            '20261114T153827842Z-26d28c84', '20261114T154407780Z-238f8f19',
+            '20261114T154728212Z-b6643dea', '20261114T155441810Z-2a8f6bc2',
+            '20261114T155628362Z-b94002af', '20261114T160240896Z-e6021239',
+            '20261114T160607246Z-5c23befe'}]
+        self.assertEqual(len(cases), 77)
+        self.assertEqual(sum(bool(row[0].get('no_visible_vector_ink')) for row in cases), 70)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+                self.assertEqual(bool(case.get('no_visible_vector_ink')),
+                                 not has_visible_vector_ink(manifest.parent / document['pdf']))
 
     def test_removed_case_is_rejected(self):
         data = json.loads((ROOT / INDEX).read_text())

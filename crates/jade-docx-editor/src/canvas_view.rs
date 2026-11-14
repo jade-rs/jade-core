@@ -19605,7 +19605,7 @@ impl OffscreenDocumentView {
             let mut renderer = self.renderer.borrow_mut();
             renderer.set_formatting_mark_kinds_flag(mark_kinds);
             renderer.set_page_export_render_options(show_formatting_marks, show_crop_marks);
-            renderer.set_spelling_export_mode(enabled);
+            renderer.set_page_export_mode(enabled);
             renderer.set_outline_symbols_hidden(enabled);
         }
         if enabled {

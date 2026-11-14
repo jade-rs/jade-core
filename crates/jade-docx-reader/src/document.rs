@@ -18,7 +18,8 @@ pub use preset_geometry::{parse_adjust_formula, PresetGeometry, PresetGeometryId
 pub use table::{
     resolve_cell_margin_edge_points, StyleMap, Table, TableBorders, TableCell, TableCellMargins,
     TableColumn, TableLayoutMode, TableRow, TableRowHeightRule, TableStyleDisplay,
-    TableStyleFirstRow, TextDirection, DEFAULT_VERTICAL_CELL_MARGIN_PT,
+    TableStyleFirstRow, TableStyleIndentation, TableStyleIndentationType, TextDirection,
+    DEFAULT_VERTICAL_CELL_MARGIN_PT,
 };
 pub use table_conditional::{
     table_style_condition_matches, TableLook, TableStyleBandSizes, TableStyleCellBorders,

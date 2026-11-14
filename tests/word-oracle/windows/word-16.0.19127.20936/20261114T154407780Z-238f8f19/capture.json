@@ -1,0 +1,188 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T154407780Z-238f8f19",
+  "captured_at_utc": "2026-11-14T15:44:07.7989894Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-indents-compat14",
+      "source": "..\\w15-table-style-bisect-inputs\\word-windows-edge-table-indents-compat14.docx",
+      "sha256": "ca8e006695ecbc489b9a883003d803d9169c902289a6110937a535bbb762f55e",
+      "pdf": "word-windows-edge-table-indents-compat14.pdf",
+      "pdf_sha256": "4630b2d5e0019337e9952a170a68722e72d74ba30f81924ecf366844adbefbbc",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-indents-compat14.page-001.emf",
+          "sha256": "f1e6065a2209a3803e0bcd87fc64420412c5eabd054ad8b50fe040281a80d34f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-table-indents-compat14.page-002.emf",
+          "sha256": "784b12cd82fe1040dfca8e924ed1fc02f149af7fb49bc55402ad41ab334cf70b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-bisect-settings-minimal-compat14",
+      "source": "..\\w15-table-style-bisect-inputs\\word-windows-edge-table-style-bisect-settings-minimal-compat14.docx",
+      "sha256": "2ae6b859c80cdc4d303701b4d2a5a7d86d04832515db5cc286019b598ee88436",
+      "pdf": "word-windows-edge-table-style-bisect-settings-minimal-compat14.pdf",
+      "pdf_sha256": "f3f6b1136d151adfd62dac4cb7979e30277b4e0a5a234a6860f341cbbbacc1a2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-bisect-settings-minimal-compat14.page-001.emf",
+          "sha256": "03504625c01e2fac683d689e234751914580b9ae5bb90af735fbd815f8e03ad8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-bisect-snap-off-compat14",
+      "source": "..\\w15-table-style-bisect-inputs\\word-windows-edge-table-style-bisect-snap-off-compat14.docx",
+      "sha256": "bcf18c8b533eda38989a5a36b3caa27b5ec26f0ee889f81325600ae7b9d129b5",
+      "pdf": "word-windows-edge-table-style-bisect-snap-off-compat14.pdf",
+      "pdf_sha256": "ee0b7c00eb09c026ce807a95d240aa599a0e66a489e0af9138ab6170fe1c86ff",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-bisect-snap-off-compat14.page-001.emf",
+          "sha256": "03504625c01e2fac683d689e234751914580b9ae5bb90af735fbd815f8e03ad8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-bisect-styles-and-settings-minimal-compat14",
+      "source": "..\\w15-table-style-bisect-inputs\\word-windows-edge-table-style-bisect-styles-and-settings-minimal-compat14.docx",
+      "sha256": "1d2f446f9f4c93d38c9cbd5b64a90027a5fbddb560feb91f438bb1c19145e4af",
+      "pdf": "word-windows-edge-table-style-bisect-styles-and-settings-minimal-compat14.pdf",
+      "pdf_sha256": "d6d2e8d157e0dbc48949eabd0055fed420b2aef39bb1970353cc59a6a806c014",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-bisect-styles-and-settings-minimal-compat14.page-001.emf",
+          "sha256": "5cb8333a144a818220a583b6883020c8956577717cccbbe891d066bd9220a2de",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-bisect-styles-minimal-compat14",
+      "source": "..\\w15-table-style-bisect-inputs\\word-windows-edge-table-style-bisect-styles-minimal-compat14.docx",
+      "sha256": "2d0d38088989fee0d12882ca57c0911130f2da885c1402bbda232a7fc1f6c7ca",
+      "pdf": "word-windows-edge-table-style-bisect-styles-minimal-compat14.pdf",
+      "pdf_sha256": "c1653f72f8288a90c6252ae4b53853d5c569969b94909a393409cb626b791c71",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-bisect-styles-minimal-compat14.page-001.emf",
+          "sha256": "5cb8333a144a818220a583b6883020c8956577717cccbbe891d066bd9220a2de",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-bisect-styles-no-latent-compat14",
+      "source": "..\\w15-table-style-bisect-inputs\\word-windows-edge-table-style-bisect-styles-no-latent-compat14.docx",
+      "sha256": "1c3be29ecbe7ede88836d1b0a5fcaa4caa972e3f6c0e14e9ba29a6b8fe0aed23",
+      "pdf": "word-windows-edge-table-style-bisect-styles-no-latent-compat14.pdf",
+      "pdf_sha256": "16ca18a37d66f797620d670c70613c1561dd674358a0e5ed35a94365b2d75720",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-bisect-styles-no-latent-compat14.page-001.emf",
+          "sha256": "03504625c01e2fac683d689e234751914580b9ae5bb90af735fbd815f8e03ad8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -8907,6 +8907,14 @@ where
         side: super::border_styles::BorderSide,
     ) -> Result<(), JsValue> {
         if matches!(spec.kind, BorderKind::None) {
+            // Windows Word omits editing grid guides from PDF output. Keep
+            // interactive surfaces and the established Mac paint path intact.
+            if self.page_export_mode
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                return Ok(());
+            }
             // Word-like guide line: thin dashed stroke in pale gray so an
             // explicitly hidden border remains visible while editing, but does
             // not get mistaken for a real border in screenshots.
@@ -9511,6 +9519,8 @@ fn compute_inline_body_table_x_inner(
     if !windows {
         return x;
     }
+    let (effective_indent, automatic_indent) = table_leading_indent(table);
+    let has_indent = table.style.contains_key("margin-left") || effective_indent.is_some();
     let first_row = table.rows.iter().find(|row| !table_row_is_hidden(row));
     let separated = first_row.is_some_and(|row| row_uses_separate_cell_borders(row, table));
     // An explicit zero DXA selects separate borders without a physical gap.
@@ -9528,7 +9538,7 @@ fn compute_inline_body_table_x_inner(
     let trailing = alignment.is_some_and(|value| {
         value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end")
     });
-    let unindented = !ignored_indent && !table.style.contains_key("margin-left");
+    let unindented = !ignored_indent && !has_indent;
     if unindented && compatibility_mode.is_some_and(|mode| mode >= 15) {
         if table.bidi_visual {
             if separated {
@@ -9571,7 +9581,7 @@ fn compute_inline_body_table_x_inner(
     if !ignored_indent
         && !table.bidi_visual
         && separated
-        && !table.style.contains_key("margin-left")
+        && !has_indent
         && compatibility_mode.is_some_and(|mode| mode >= 15)
     {
         let row = first_row.expect("spacing requires a row");
@@ -9591,23 +9601,14 @@ fn compute_inline_body_table_x_inner(
     }
     if !compatibility_mode.is_some_and(|mode| matches!(mode, 12 | 14))
         || leading_text_inset < 0.0
-        || (table.bidi_visual
-            && (leading_text_inset == 0.0 || table.style.contains_key("margin-left")))
+        || (table.bidi_visual && (leading_text_inset == 0.0 || has_indent))
         || ignored_indent
-        || (separated
-            && (table.style.contains_key("margin-left") || (table.bidi_visual && positive_spacing)))
-        || table
-            .style
-            .get("margin-left")
-            .is_some_and(|value| value.trim().eq_ignore_ascii_case("auto"))
+        || (separated && (has_indent || (table.bidi_visual && positive_spacing)))
+        || automatic_indent
     {
         return x;
     }
-    let indent = table
-        .style
-        .get("margin-left")
-        .and_then(|value| parse_length_to_px(value))
-        .unwrap_or(0.0);
+    let indent = effective_indent.unwrap_or(0.0);
     let border_bias = if separated || !reserve_border_bias {
         0.0
     } else {
@@ -9633,7 +9634,7 @@ fn compute_inline_body_table_x_inner(
                     leading_text_inset + border_bias + spaced_leading_border
                 }
         }
-        _ if !table.style.contains_key("margin-left") => {
+        _ if !has_indent => {
             x + if table.bidi_visual {
                 -leading_text_inset
             } else {
@@ -9644,6 +9645,37 @@ fn compute_inline_body_table_x_inner(
     }
 }
 
+// Direct formatting remains authoritative. Style indentation is consumed
+// only by Windows until an independent Mac capture establishes its behavior.
+fn table_leading_indent(table: &Table) -> (Option<f64>, bool) {
+    if let Some(value) = table.style.get("margin-left") {
+        return (
+            parse_length_to_px(value),
+            value.trim().eq_ignore_ascii_case("auto"),
+        );
+    }
+    if table.style.contains_key("table-indent-width-type")
+        || jade_docx_layout::line_metrics::word_layout_platform()
+            != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        return (None, false);
+    }
+    let indentation = table
+        .resolved_style
+        .as_ref()
+        .and_then(|style| style.indentation.as_ref());
+    let pixels = indentation.and_then(|indent| {
+        matches!(
+            indent.width_type,
+            None | Some(jade_docx_reader::document::TableStyleIndentationType::Dxa)
+        )
+        .then_some(indent.width_twips)
+        .flatten()
+        .map(|twips| f64::from(twips) / 15.0)
+    });
+    (pixels, false)
+}
+
 fn compute_table_x(
     base_left: f64,
     available_width: f64,
@@ -9651,17 +9683,10 @@ fn compute_table_x(
     table: &Table,
     leading_text_inset: f64,
 ) -> f64 {
-    let indent = table
-        .style
-        .get("margin-left")
-        .and_then(|value| parse_length_to_px(value))
-        .unwrap_or(0.0);
+    let (effective_indent, automatic_indent) = table_leading_indent(table);
+    let indent = effective_indent.unwrap_or(0.0);
 
-    if table
-        .style
-        .get("margin-left")
-        .is_some_and(|left| left.trim().eq_ignore_ascii_case("auto"))
-    {
+    if automatic_indent {
         let centered = base_left + (available_width - table_width) / 2.0;
         return centered.max(base_left);
     }
@@ -14134,14 +14159,12 @@ fn row_exception_inside_edge(
 
 fn has_document_table_border_defaults(row: &TableRow, table: &Table) -> bool {
     // A resolved package style supplies the border default even when its
-    // edges are absent. Word for Mac also leaves an XML-backed table without
-    // borders when the package supplies no table style or border defaults.
+    // edges are absent. Both Word platforms also leave an XML-backed table
+    // without borders when the package supplies no style or border defaults.
     row.borders.is_some()
         || table.borders.is_some()
         || table.resolved_style.is_some()
-        || (table.style.contains_key("ooxml-table")
-            && jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
+        || table.style.contains_key("ooxml-table")
 }
 
 /// Resolve each edge through row exception, direct table and whole-table style.
@@ -24953,6 +24976,41 @@ mod tests {
     }
 
     #[test]
+    fn xml_tables_without_styles_do_not_paint_or_reserve_implicit_borders() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let table = Table {
+            style: [("ooxml-table".into(), "true".into())]
+                .into_iter()
+                .collect(),
+            ..Table::default()
+        };
+        let cell = TableCell::default();
+        let row = TableRow::default();
+        let format = TableStyleCellFormat::default();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            assert!(has_document_table_border_defaults(&row, &table));
+            assert!(!has_document_table_border_defaults(&row, &Table::default()));
+            for (name, side) in [
+                ("top", TableBorderSide::Top),
+                ("bottom", TableBorderSide::Bottom),
+                ("left", TableBorderSide::Left),
+                ("right", TableBorderSide::Right),
+            ] {
+                let border = resolve_cell_border_side(
+                    &cell, &row, &table, &format, name, side, [true; 4], 0.0,
+                );
+                assert_eq!(border.kind, BorderKind::None, "{platform:?}/{name}");
+                assert_eq!(visible_border_width(&border), 0.0, "{platform:?}/{name}");
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn mac_package_table_padding_defaults_do_not_override_declared_margins() {
         use jade_docx_layout::line_metrics::WordLayoutPlatform;
         let bare = Table::default();
@@ -26539,6 +26597,90 @@ mod tests {
                     compute_table_x(100.0, 400.0, 240.0, &table, 8.0)
                 );
                 table.bidi_visual = false;
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_style_indent_preserves_mac_geometry_and_direct_overrides() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_docx_reader::document::{
+            TableStyleDisplay, TableStyleIndentation, TableStyleIndentationType,
+        };
+        let previous = word_layout_platform();
+        let mut table = Table {
+            rows: vec![TableRow {
+                cells: vec![TableCell::default()],
+                ..Default::default()
+            }],
+            resolved_style: Some(TableStyleDisplay {
+                indentation: Some(TableStyleIndentation {
+                    width_twips: Some(240.0),
+                    width_type: Some(TableStyleIndentationType::Dxa),
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for mode in [Some(12), Some(14)] {
+                table.style.clear();
+                table
+                    .resolved_style
+                    .as_mut()
+                    .unwrap()
+                    .indentation
+                    .as_mut()
+                    .unwrap()
+                    .width_type = Some(TableStyleIndentationType::Dxa);
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    if platform == WordLayoutPlatform::Windows {
+                        108.0
+                    } else {
+                        92.0
+                    }
+                );
+                table.style.insert("margin-left".into(), "0pt".into());
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    92.0
+                );
+                table.style.clear();
+                table
+                    .style
+                    .insert("table-indent-width-type".into(), "auto".into());
+                assert_eq!(
+                    compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                    92.0
+                );
+                table.style.clear();
+                for kind in [
+                    TableStyleIndentationType::Nil,
+                    TableStyleIndentationType::Auto,
+                    TableStyleIndentationType::Pct,
+                ] {
+                    table
+                        .resolved_style
+                        .as_mut()
+                        .unwrap()
+                        .indentation
+                        .as_mut()
+                        .unwrap()
+                        .width_type = Some(kind);
+                    assert_eq!(
+                        compute_inline_body_table_x(100.0, 400.0, 240.0, &table, 8.0, mode),
+                        if platform == WordLayoutPlatform::Windows {
+                            100.0
+                        } else {
+                            92.0
+                        }
+                    );
+                }
             }
         }
         set_word_layout_platform(previous);

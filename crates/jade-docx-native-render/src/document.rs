@@ -471,7 +471,7 @@ impl NativeDocument {
                 .map_err(|_| "PDF renderer setup failed".to_string())?;
             register_math_faces(&mut renderer, &self.math_faces);
             renderer.sync_word_document(&self.word_document);
-            renderer.set_spelling_export_mode(true);
+            renderer.set_page_export_mode(true);
             renderer.set_structure_tagging(pdf_options.tagged);
             renderer.mark_full_repaint();
             renderer

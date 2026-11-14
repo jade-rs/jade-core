@@ -2743,7 +2743,13 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         styles_read = true;
                         if let Some(styles_part) = document.styles_part.as_mut() {
-                            styles_part.parse(&part.content)?;
+                            if jade_docx_reader::word_platform::word_layout_platform()
+                                == jade_docx_reader::word_platform::WordLayoutPlatform::Windows
+                            {
+                                styles_part.parse_with_windows_table_fallback(&part.content)?;
+                            } else {
+                                styles_part.parse(&part.content)?;
+                            }
                         } else {
                             let styles_part = StylesPart::from_xml(&part.content)?;
                             document.styles_part = Some(styles_part);
