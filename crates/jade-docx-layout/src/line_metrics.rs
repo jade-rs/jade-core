@@ -4384,7 +4384,8 @@ pub fn doc_grid_has_active_line_grid(doc_grid: Option<&DocGrid>) -> bool {
         return false;
     }
     match grid.grid_type.as_deref() {
-        Some(kind) => !kind.eq_ignore_ascii_case("default"),
+        // Word for Windows lays out the nonstandard "none" like "default".
+        Some(kind) => !kind.eq_ignore_ascii_case("default") && kind != "none",
         // Mac treats an omitted type as saved, inactive grid metadata: the
         // Noto JP Word PDF uses its 19.761pt face line, not body_height/30.5.
         // Keep the existing Windows legacy FE-grid behavior until traced there.
@@ -5559,10 +5560,12 @@ mod tests {
     }
 
     #[test]
-    fn default_doc_grid_type_is_inactive() {
-        let grid = doc_grid("default", Some(24.0), Some(1.0));
-        assert!(!doc_grid_has_active_line_grid(Some(&grid)));
-        assert!(!doc_grid_has_active_char_grid(Some(&grid)));
+    fn default_and_legacy_none_doc_grid_types_are_inactive() {
+        for grid_type in ["default", "none"] {
+            let grid = doc_grid(grid_type, Some(24.0), Some(1.0));
+            assert!(!doc_grid_has_active_line_grid(Some(&grid)));
+            assert!(!doc_grid_has_active_char_grid(Some(&grid)));
+        }
     }
 
     #[test]
