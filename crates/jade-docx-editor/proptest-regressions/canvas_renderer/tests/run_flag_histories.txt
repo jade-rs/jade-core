@@ -8,3 +8,4 @@ cc 45f3764bd54f19ae5c6d92578e0f18aef4a16450a31ebfd904b5adb74d52186f # shrinks to
 cc e8a1c4b9789ddc763ba64390bdb47020a07ba77bd99407b6eb02e9b7b8a110a2 # shrinks to edits = [RunText(2, Some(1))], windows = false
 cc 8baa5b951b74acd8186dbe48f24df22a359f7a8afff9bce91eb187214c9a07e4 # shrinks to edits = [RunText(10, Some(0)), Flag(5, Some(true)), Repaint], windows = false
 cc cf4638578160e2b4fb9a71255a2ba365aa35a8e59bf45a7617c6c95127af8d73 # shrinks to edits = [Metric(4, Some(10.0)), RunText(4, Some(2)), Flag(9, Some(true))], windows = false
+cc c1bd9a5c3f5051b2e67f377bbb102af59500940e87a1b8f16983291aa56abb19 # shrinks to edits = [RunText(8, Some(1)), RunText(2, None), Text(2), Flag(12, Some(true)), RunText(9, Some(2)), Metric(0, None), Flag(10, None), Metric(3, None), Repaint, RunText(9, None)], windows = true

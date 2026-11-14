@@ -16,7 +16,7 @@ from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = '3ee985893d457c9ab168514c7ee7431e03027f124719e7c87368dc9ee543af9d'
+INDEX_SHA256 = '46792a0f21ff4dc740aaeaca11022b6e1b2d7d8a21eca94658aa1381f326ec16'
 
 
 def verify(root=ROOT):
@@ -24,7 +24,7 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 102, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 135, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         name = case['name']
@@ -50,7 +50,7 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 57904, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 64001, 'Total font coverage changed')
     return cases
 
 
@@ -96,4 +96,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 57904 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 64001 glyph origins')

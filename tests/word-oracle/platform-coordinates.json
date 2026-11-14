@@ -229,6 +229,32 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "footnote-table-textbox-order-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-table-textbox-order-mac/source.docx",
+        "sha256": "5c792b1eb9b78b40914c6f35a4b9e5bd0696d66f301d333021cc6343e490ffc7"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-table-textbox-order-mac/manifest.json",
+        "sha256": "31315c0684a76bb563643a8a89b42be3622714e65acd85c9252f0e911b710489"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-footnote-table-textbox-order-5c792b1e",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

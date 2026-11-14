@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 102 font/typography
-documents (57,904 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 135 font/typography
+documents (64,001 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -76,3 +76,20 @@ original. Windows positions the fitting prefix at the body bottom, rather than
 placing the overflowing full note directly below the body. The original output
 is retained under `20261114T072318934Z-aeb89460`. Mac prefix placement and its
 separate split-gap policy remain unchanged.
+
+Textbox coverage adds 32 probes and the unchanged table/textbox/note original.
+Windows uses requested-face font metrics, half-outline stroke clearance and a
+four-fifths baseline for exact 14/28pt lines. Probes cover 0.5/1/2pt outlines,
+0/3.6pt top insets, Arial/Century/Yu Mincho at 10.5/20pt, rectangle/rounded/triangle
+presets, and exact lines. Mac uses the same pre-existing paths and goldens.
+
+The Windows comparator matches each character/page to a distinct glyph origin
+within 0.375pt on each axis. No translation or fitting is permitted. This avoids
+an artificial reading-line grouping boundary when a floating textbox and a
+body superscript differ by only 0.24pt. Missing, duplicate and substituted paint
+still fail, including ambiguous nearby repetitions; a 0.376pt move still fails.
+
+Ten three-line controls additionally assert successive baselines. Windows
+implicit single spacing uses the requested font box, not a font-size estimate.
+Original output is preserved in `20261114T080924812Z-f0e42358`; all fonts and
+14/28pt exact-line controls retain the unchanged per-axis limit.

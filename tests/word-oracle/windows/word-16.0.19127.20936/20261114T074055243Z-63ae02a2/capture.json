@@ -1,0 +1,180 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T074055243Z-63ae02a2",
+  "captured_at_utc": "2026-11-14T07:40:55.2573494Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-textbox-shape-roundrect-border12700-compat15",
+      "source": "..\\w14-textbox-shape-inputs\\word-windows-edge-textbox-shape-roundrect-border12700-compat15.docx",
+      "sha256": "70647f3b6d93dfdf7ef83a7118ae8aa093cd3c6673cb6ce2735385545a0789b1",
+      "pdf": "word-windows-edge-textbox-shape-roundrect-border12700-compat15.pdf",
+      "pdf_sha256": "de2430c8d178ce1e17d4468c95dd79e7f9961d012fb03e5926941f4e54a0e292",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-shape-roundrect-border12700-compat15.page-001.emf",
+          "sha256": "f0e866ca10310acc5cf7f2916c6838632b82acc319b9fa8c4630f3b873b01a6b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-shape-roundrect-border25400-compat15",
+      "source": "..\\w14-textbox-shape-inputs\\word-windows-edge-textbox-shape-roundrect-border25400-compat15.docx",
+      "sha256": "94a7e2965b060235a48fee4cfc8fac7be44d4392414ff868266f0023fcaa7379",
+      "pdf": "word-windows-edge-textbox-shape-roundrect-border25400-compat15.pdf",
+      "pdf_sha256": "316d5bf34c4dd1aea42cdaa70d61c09c6b00fba089ea354ed581f582609f6d94",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-shape-roundrect-border25400-compat15.page-001.emf",
+          "sha256": "c691c298c356ca57172ab0d8fcf0ff9af83d4597789a3fcff1a179c761671031",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-shape-roundrect-border6350-compat15",
+      "source": "..\\w14-textbox-shape-inputs\\word-windows-edge-textbox-shape-roundrect-border6350-compat15.docx",
+      "sha256": "f36bfd9cab30de5a6b93b7d95785e0aff85b262368e586ce66b349945ddec5ae",
+      "pdf": "word-windows-edge-textbox-shape-roundrect-border6350-compat15.pdf",
+      "pdf_sha256": "d9f6def734dc3e25d1007cf4acfb400ced25f75352519ff24046712a2f2f3ef7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-shape-roundrect-border6350-compat15.page-001.emf",
+          "sha256": "d93d7a256efac85f9b45c774103b691ea69fda813fabd2a96c11161d8664d28e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-shape-triangle-border12700-compat15",
+      "source": "..\\w14-textbox-shape-inputs\\word-windows-edge-textbox-shape-triangle-border12700-compat15.docx",
+      "sha256": "d34f3f41a6d1d964758153b9e1122385bb76844f69d4f33c8c9601ac668f23d6",
+      "pdf": "word-windows-edge-textbox-shape-triangle-border12700-compat15.pdf",
+      "pdf_sha256": "606ed7b74e94ccc125c5be2543419378ad9cd3376213d1a8e6f828a43e80f433",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-shape-triangle-border12700-compat15.page-001.emf",
+          "sha256": "d9cee558a20b2d6baf81b7cf432ee70b69d08091cfb1086afc3b988b777076d0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-shape-triangle-border25400-compat15",
+      "source": "..\\w14-textbox-shape-inputs\\word-windows-edge-textbox-shape-triangle-border25400-compat15.docx",
+      "sha256": "cd78049f5471f4eb0cd1f8794fd61d51b3e2e5eff2cb5008696c308dff3484e8",
+      "pdf": "word-windows-edge-textbox-shape-triangle-border25400-compat15.pdf",
+      "pdf_sha256": "2139fbc9066a6d4ede5acaf666567fdd189aff18d3b6e28dc216d7b41669287f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-shape-triangle-border25400-compat15.page-001.emf",
+          "sha256": "1d2878658f6de3b3aee6e03955020861dd3e104857853cd826901aece75aad63",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-shape-triangle-border6350-compat15",
+      "source": "..\\w14-textbox-shape-inputs\\word-windows-edge-textbox-shape-triangle-border6350-compat15.docx",
+      "sha256": "2b342fd14b0ddca1ab227b7d74f040beeb2c8e8df6c6e8010a05c3d1dafd2457",
+      "pdf": "word-windows-edge-textbox-shape-triangle-border6350-compat15.pdf",
+      "pdf_sha256": "57122c24051d99015565afc862067e6be7f0a36eb12a9164bb075b7b0a3b0efa",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-shape-triangle-border6350-compat15.page-001.emf",
+          "sha256": "77a6e395b0514ebd2279fb5ab0e9ef5889cc2aca47abe71a31694051889aa55e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

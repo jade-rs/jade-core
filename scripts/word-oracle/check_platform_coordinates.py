@@ -5,6 +5,7 @@ registry also runs the Windows native renderer against every Windows capture,
 including raw EMF, PDF text and independently painted native PDF origins.
 """
 import argparse
+from collections import Counter, defaultdict, deque
 import gzip
 import hashlib
 import json
@@ -25,6 +26,7 @@ REQUIRED_CAPTURES = {
     'probe-paragraph-border-wrap': '20261114T023201516Z-623785ec',
     'endnote-mac': '20261114T004143028Z-b4cb9887',
     'footnote-long-continuation-mac': '20261114T004143028Z-b4cb9887',
+    'footnote-table-textbox-order-mac': '20261114T004143028Z-b4cb9887',
     'footnote-mac': '20261114T004143028Z-b4cb9887',
     'footnote-table-each-page-mac': '20261114T004143028Z-b4cb9887',
 }
@@ -71,14 +73,58 @@ def ordered(glyphs):
 
 def compare(expected, actual, label):
     require(actual['page_count'] == expected['page_count'], f'{label}: page count')
-    expected_glyphs, actual_glyphs = ordered(expected['glyphs']), ordered(actual['glyphs'])
+    expected_glyphs = [g for g in expected['glyphs'] if not g[1].isspace()]
+    actual_glyphs = [g for g in actual['glyphs'] if not g[1].isspace()]
     require(bool(expected_glyphs), f'{label}: empty reference')
     require(len(expected_glyphs) == len(actual_glyphs), f'{label}: missing/extra glyphs')
-    for i, (word, jade) in enumerate(zip(expected_glyphs, actual_glyphs)):
-        require(word[:2] == jade[:2], f'{label}/{i}: text, order or page changed')
-        for axis in (2, 3):
-            require(math.isfinite(jade[axis]) and abs(word[axis] - jade[axis]) <= .375,
-                    f'{label}/{i}: axis {axis}: Word {word}, Jade {jade}')
+    require(Counter(tuple(g[:2]) for g in expected_glyphs)
+            == Counter(tuple(g[:2]) for g in actual_glyphs),
+            f'{label}: text or page changed')
+    # Floating text and a superscript can be only 0.24pt apart vertically.
+    # Grouping baselines at 0.25pt changes reading order after harmless Word
+    # rounding. Match the same character/page at its actual XY origin instead;
+    # every origin still needs a distinct partner within 0.375pt on BOTH axes.
+    tolerance = .375
+    buckets = defaultdict(list)
+    for i, glyph in enumerate(actual_glyphs):
+        require(all(math.isfinite(glyph[axis]) for axis in (2, 3)),
+                f'{label}/{i}: nonfinite axis')
+        buckets[(glyph[0], glyph[1], math.floor(glyph[2] / tolerance),
+                 math.floor(glyph[3] / tolerance))].append(i)
+    candidates = []
+    for i, word in enumerate(expected_glyphs):
+        x, y = math.floor(word[2] / tolerance), math.floor(word[3] / tolerance)
+        nearby = [j for dx in (-1, 0, 1) for dy in (-1, 0, 1)
+                  for j in buckets.get((word[0], word[1], x + dx, y + dy), ())
+                  if all(abs(word[axis] - actual_glyphs[j][axis]) <= tolerance
+                         for axis in (2, 3))]
+        require(bool(nearby), f'{label}/{i}: axis mismatch: Word {word}')
+        nearby.sort(key=lambda j: sum((word[axis] - actual_glyphs[j][axis]) ** 2
+                                      for axis in (2, 3)))
+        candidates.append(nearby)
+    word_match, jade_match = {}, {}
+    for start in sorted(range(len(candidates)), key=lambda i: len(candidates[i])):
+        queue, seen, predecessor = deque([start]), {start}, {}
+        free = None
+        while queue and free is None:
+            word_index = queue.popleft()
+            for jade_index in candidates[word_index]:
+                if jade_index in predecessor:
+                    continue
+                predecessor[jade_index] = word_index
+                if jade_index not in jade_match:
+                    free = jade_index
+                    break
+                other = jade_match[jade_index]
+                if other not in seen:
+                    seen.add(other)
+                    queue.append(other)
+        require(free is not None, f'{label}/{start}: missing distinct glyph at expected axes')
+        while free is not None:
+            word_index = predecessor[free]
+            previous = word_match.get(word_index)
+            word_match[word_index], jade_match[free] = free, word_index
+            free = previous
     return len(expected_glyphs)
 
 

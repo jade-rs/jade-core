@@ -1,0 +1,126 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T074235824Z-333646d8",
+  "captured_at_utc": "2026-11-14T07:42:35.8381438Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-textbox-exact14-size21-compat15",
+      "source": "..\\w14-textbox-exact-inputs\\word-windows-edge-textbox-exact14-size21-compat15.docx",
+      "sha256": "f0e7bed56207a0c171985483346070bb462cfc63946a81314453b3dd5060996d",
+      "pdf": "word-windows-edge-textbox-exact14-size21-compat15.pdf",
+      "pdf_sha256": "d2291d5da7d5910832d528e016d63d39762502ef8881020d9b75033a3680b8ed",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-exact14-size21-compat15.page-001.emf",
+          "sha256": "af0863cf5ef524a63a655c4f7aff9f54063629f653f1af1558fd5afff074d7b0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-exact14-size40-compat15",
+      "source": "..\\w14-textbox-exact-inputs\\word-windows-edge-textbox-exact14-size40-compat15.docx",
+      "sha256": "d491b7bb9d5da8a5a793514284a9a8321e8c143c84f9f5b7a563634721bad537",
+      "pdf": "word-windows-edge-textbox-exact14-size40-compat15.pdf",
+      "pdf_sha256": "7e45e71be23d235652c06e43cfba6cc0a6b36c658d5f6908c158695d9433be9a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-exact14-size40-compat15.page-001.emf",
+          "sha256": "dde18e65dcd5d3241b73b00638fed763e658fc86bd0aa30d8d02786e94b54437",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-exact28-size21-compat15",
+      "source": "..\\w14-textbox-exact-inputs\\word-windows-edge-textbox-exact28-size21-compat15.docx",
+      "sha256": "bc05bfabc7dc47a5f2ffff9a146a3cbbcce0c6efceba0002e97e57da28fe1414",
+      "pdf": "word-windows-edge-textbox-exact28-size21-compat15.pdf",
+      "pdf_sha256": "9d0d0a26bc21f816fb4b34c15ecf3666c691776340730dd3e3122fe85f0ec6f7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-exact28-size21-compat15.page-001.emf",
+          "sha256": "641bac0eb9f332a55eedb6613ed7796466bffa48bc557c76031e2e7aee307c5d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-exact28-size40-compat15",
+      "source": "..\\w14-textbox-exact-inputs\\word-windows-edge-textbox-exact28-size40-compat15.docx",
+      "sha256": "69012ace25294b852dbd2127699f8c55f59f5cad1c4bba1993addaf921bed357",
+      "pdf": "word-windows-edge-textbox-exact28-size40-compat15.pdf",
+      "pdf_sha256": "4dc9fc9520fa9a7b8c313e071b33afa9483ed13cac89cd43f7f6284f438f4f53",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-exact28-size40-compat15.page-001.emf",
+          "sha256": "a815d3e3eda001baefd28fc7278cb52bcb9e4a2217c3a34375491e052e8189a7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
