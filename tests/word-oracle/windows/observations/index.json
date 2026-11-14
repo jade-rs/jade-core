@@ -12743,6 +12743,634 @@
           "opened_filename": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T195153941Z-3fc093f1.zip",
+      "archive_sha256": "5eeaff2dbd66c0cc5a2199760093b43cc214dd84016e5d65aa15880af2287f20",
+      "capture_id": "20261114T195153941Z-3fc093f1",
+      "capture_sha256": "f5e92cf0a9296ddbb37014d093feee60a911d8b100ec5e3c766161e6d31f4426",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-table-identity-idnormal-namenormal-custom0-compat14",
+          "source_sha256": "09bf746633985a490fe2be78a0ae045bf52855203eecf72a5262b273930b9c85",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-namenormal-custom0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-namenormal-custom0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-namenormal-custom1-compat14",
+          "source_sha256": "265e824695588f3351d1dc092bca685bb4e26e28f13f03b497347cf5a8d28c53",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-namenormal-custom1-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-namenormal-custom1-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-namenormal-customomitted-compat14",
+          "source_sha256": "38197b685752fc3be47b82f79d8d0d6b8e792d95def79a44516df0af2405f377",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-namenormal-customomitted-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-namenormal-customomitted-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-nameprobe-custom0-compat14",
+          "source_sha256": "d39401ea96286bb12c85def4d437e491849519f48c56998311ba8957e9a7af7d",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-nameprobe-custom0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-nameprobe-custom0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-nameprobe-custom1-compat14",
+          "source_sha256": "8948f47008db54aaf419d902a1133056e3b214b6e610875f8f145e7046b3abbd",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-nameprobe-custom1-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-nameprobe-custom1-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-nameprobe-customomitted-compat14",
+          "source_sha256": "26936bfb46d1facbd6043ce14a51ebea116d7f34326f085bf4f63fcf345fa65d",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-nameprobe-customomitted-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-nameprobe-customomitted-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-namenormal-custom0-compat14",
+          "source_sha256": "e98c5aaf832f2a6abdc5b5889f1edf5442e5fc2de3cb395cffb8d2abed144aa8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-namenormal-custom0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-namenormal-custom0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-namenormal-custom1-compat14",
+          "source_sha256": "d071d549721ec32e156eefb8b84e1e586f742bcc13cf7e6410b3701c93e589a0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-namenormal-custom1-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-namenormal-custom1-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-namenormal-customomitted-compat14",
+          "source_sha256": "fda6d323dbb2246d0fd8b4c0d0d9ff48150827deba8b181a4bb1283fb7f54c91",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-namenormal-customomitted-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-namenormal-customomitted-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-nameprobe-custom0-compat14",
+          "source_sha256": "b99502b1d97f809bd36650e9da465a88cd3b0f0300a2fb8656fe50ae0fcb9cf5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-nameprobe-custom0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-nameprobe-custom0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-nameprobe-custom1-compat14",
+          "source_sha256": "2abc9d8148aaea5fbda8d35c6cfb3dc05888c758bc5eb6e4abb01d7491909b74",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-nameprobe-custom1-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-nameprobe-custom1-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-nameprobe-customomitted-compat14",
+          "source_sha256": "a60a2fdd76487c16c8f6ab3400d10654cabc7c0e2d8f21ed4fd2d7fe4601bdc0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-nameprobe-customomitted-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-nameprobe-customomitted-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-auto800-left-compat14",
+          "source_sha256": "d06af8b5f5afe6f4cdc603a5bc05307b7fb103e4aef9087e9b8ea5fa1f3c8b14",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-auto800-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-auto800-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat14",
+          "source_sha256": "c9c40112cf3a6b9d796cce08313aac5cbd92977edf5e49a813784a77e022a18d",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat12",
+          "source_sha256": "e1fe61c057d0f2c98034aa6337fb62042e2404b56c3c74798bd871581c346486",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat14",
+          "source_sha256": "09bb0de07deacbad217f680da416e131905f8c62b5a9c3fafddc6742427f9bc4",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat15",
+          "source_sha256": "b7e19f9018f4365999568baf2ed4ae63e82f777bf4ca5291c41a1b1743f7a2b0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-left-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat14",
+          "source_sha256": "061307d3a8c837e8d7af8adbcf6bdc1a7e722218b59fba958e67b810906230f1",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat14",
+          "source_sha256": "7868c5df2a973a6173096132ef98c30bd6054b2fea878f3a4e54ca64b1a35932",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat12",
+          "source_sha256": "8a3c5ddb4d86ce9894a1ffcf57f4abffd5ad656da6b87c13e8d6a48425fea060",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat14",
+          "source_sha256": "9b028d42d6696a479b7617bd9db6b1b27a6ead5fcbaf1fb8dbc936ed3ae3d27f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat15",
+          "source_sha256": "572564b4082dfac84565178df2ce611b18b2925048c7b42ce162d88608092361",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-left-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat14",
+          "source_sha256": "8ca334b2facac56f7ea4153a7e2b675b23f03af2e7f6791bc9f66c51ff88f512",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-nil800-left-compat14",
+          "source_sha256": "ef3e5e21a9eae95c55b2ad49226aacd8ff66410017c03f0b8ceee22399612a71",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-nil800-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-nil800-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-pct800-left-compat14",
+          "source_sha256": "adc8ce347d90441c97129faa3b7ac9c10a593d9486704c6cf236fd10a915b2f1",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-pct800-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-pct800-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row2-dxa240-center-compat14",
+          "source_sha256": "4666f9ce251b89a2394077a819821a750d642466a5233d96e4f35adeaaf621fa",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row2-dxa240-center-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row2-dxa240-center-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat12",
+          "source_sha256": "3f66621b8883ba4507507907ee9c6aa1b0c573180472aae22ba3a8f769a3ac9f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat14",
+          "source_sha256": "d3233b3737bff6ada751d16c33b7f8f009beabb268bce0e8833990b9828cad06",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat15",
+          "source_sha256": "8bbb9cd99ec117cc1b24f0cbe4d7034bff663eca6c39edae276631519dd9d4f2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row2-dxa240-left-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row2-dxa240-right-compat14",
+          "source_sha256": "0aa0a1829ceb1c51545aa000b66d951f64781b5d3db60fd928e4635c0c396ba7",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row2-dxa240-right-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row2-dxa240-right-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-auto800-left-compat14",
+          "source_sha256": "ddd0ada59dfcccbb2c15e772d88c81fc7d5346a083d62b9f39e97bfe04a7937f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-auto800-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-auto800-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat12",
+          "source_sha256": "b1328609d97d0ea17c7e24b1d817f8f778d222aa4032144e8436ad1a3347f9f6",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat14",
+          "source_sha256": "d0ef1897b9066a5b24fb41f9c24d1c7367055c5850c5a3e0250ae845e5104732",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat15",
+          "source_sha256": "7462b246b2d6e073480fcf5651c9a800adbdf863390796b8ae33ebca967a7d63",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-left-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat12",
+          "source_sha256": "0f7e33fbc3355881860a94093bbb5c41387eef3db43ed9b78b2c633395fea114",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat14",
+          "source_sha256": "6fe8ba8653b60a1c24bd882706512a31ac93b232ac6026e0a9c500de9db21aee",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat15",
+          "source_sha256": "6174b09e489d51ef3b72e4e898d11adbab57d5f124f21e6b8d0419f3d9d8079c",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-left-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-nil800-left-compat14",
+          "source_sha256": "6c1457e9bcae62913dab6cc686f7f3fd1eb9af01a8cdc1ce70b71a031652a0b1",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-nil800-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-nil800-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-pct800-left-compat14",
+          "source_sha256": "e0371c84e55ac22b0c71cacb4d33bd457f81bd6efd6580e9a03f46db83ea0333",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-pct800-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-pct800-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat12",
+          "source_sha256": "ac825b162d1a5f5c05c3827d0de38259837fc7049c8e77de5405e2af832165b4",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat14",
+          "source_sha256": "1e979358cefba8e05b4ab6d51d5b33e07cac1cbb0f7d7a0f2f0e4e2faa7cfa75",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat15",
+          "source_sha256": "9d6ba4fe0b8901754779d0d4a6ca9e38343a40087b953fd972c507e1d8f595f2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-style-dual-normal240-no-effects-implicit-compat14",
+          "source_sha256": "38197b685752fc3be47b82f79d8d0d6b8e792d95def79a44516df0af2405f377",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-style-dual-normal240-no-effects-implicit-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-style-dual-normal240-no-effects-implicit-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T200241643Z-226501da.zip",
+      "archive_sha256": "9d100e89e12887d500c3c2577c36d7bd392f0f0807649d9de7cb733086ee0ccb",
+      "capture_id": "20261114T200241643Z-226501da",
+      "capture_sha256": "0cb23d54dc46ad55aa4e0ef8226bb98777e9bc9bba8d1b7f37d7c572d29b63ad",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directauto800-compat14",
+          "source_sha256": "ea16e4cf8cf9d28a9e9f6fbfa1b3e65e60875b6ea112c4f3fc939aed13a67066",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-direct-parent0-row1-dxa240-directauto800-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directauto800-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa0-compat14",
+          "source_sha256": "03f419e935d4232dff1a28ab4e03deeb7c03ec871e2f98f882bdff9b4036068e",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa120-compat14",
+          "source_sha256": "ff339dcddf670f8c01e5f4204ac36cd71792040314550cae859edbb3ca2cb609",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa120-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa120-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directauto800-compat14",
+          "source_sha256": "aa77e1683458110d6cb95bc74b3291b5214f7c39dc88faa97db5b166dd3a99dc",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-direct-parent240-row1-dxa240-directauto800-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directauto800-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa0-compat14",
+          "source_sha256": "babf174faf84de0f36974f28d90f6eda909e59574ed875b98489c05e7e04a3e0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa120-compat14",
+          "source_sha256": "efedf561e04ca6106f091ac7e5d0e3e2d332af17647fe017e8657e2a6fe3af22",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa120-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa120-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T200434720Z-56b2954e.zip",
+      "archive_sha256": "4170b3233be576d3bb5faffe90d90d9ca6e977003f7afc999b8d9480495ee6c9",
+      "capture_id": "20261114T200434720Z-56b2954e",
+      "capture_sha256": "fc4b190790433fd348a198f788d635e27029f8473114dbef91506c2fdaf64689",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-table-identity-idnormal-nameomitted-custom0-compat14",
+          "source_sha256": "fd90a232765d560f8ec219de029e752c3183cde786b2db10787c12c99ebd374b",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-nameomitted-custom0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-nameomitted-custom0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-nameomitted-custom1-compat14",
+          "source_sha256": "4f539b8ff4416e879b9d451d7d776f9d2ee75ce6a319a2f018f0bd4ec8cea7d8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-nameomitted-custom1-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-nameomitted-custom1-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idnormal-nameomitted-customomitted-compat14",
+          "source_sha256": "cc109d65faee9e186477e2b3ce6ef24c0e33e98e7793ad5183f4cd54877cb410",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idnormal-nameomitted-customomitted-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idnormal-nameomitted-customomitted-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-nameomitted-custom0-compat14",
+          "source_sha256": "20811bccc24512c093d6eb5493180dc6e81996a7324abfcd4bc40ff718306c35",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-nameomitted-custom0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-nameomitted-custom0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-nameomitted-custom1-compat14",
+          "source_sha256": "7fb06a618c0bd3573f1dc68268936059990ffd7aa08ffd0882719526fe7d5537",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-nameomitted-custom1-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-nameomitted-custom1-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-table-identity-idprobe-nameomitted-customomitted-compat14",
+          "source_sha256": "6a49976188bfea3b925a375d1b1e5b69ffd4cf88d9d6ed4b1de0aee84dcb5039",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-identity-idprobe-nameomitted-customomitted-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-identity-idprobe-nameomitted-customomitted-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T200901748Z-eb28e42c.zip",
+      "archive_sha256": "694b985c3aade0709901bd3d9484c3d985622bfe04a80fe37908a90cb3832b98",
+      "capture_id": "20261114T200901748Z-eb28e42c",
+      "capture_sha256": "16b419f58425e82fc91b41f5e93a2a9710a23fc47595a5cc4edaf6fc3fc6b868",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat12",
+          "source_sha256": "fb634abd9878c7a949fdbf9d9bd2b2db74b6444f53c1a8176b7753b9a51ae051",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat15",
+          "source_sha256": "35f1498093ede3a2dcad5d5f6a203ca4f9a66e1965957fbce3e42ed6e818765d",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-center-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat12",
+          "source_sha256": "1db0d66c5d23f4d1f5b11358a88b186fcc3197675b787b0c8b9d68769f53c6ee",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat15",
+          "source_sha256": "99162aa13931f4e6fa7d6a2ec37e6bfea012dd81e40073b014cb1aaa0c165596",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa0-right-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat12",
+          "source_sha256": "3e3712c31ff2046b115161b4df13d876e7fd7bea7602531c62b9f4e4e18fecc2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat15",
+          "source_sha256": "52a09597e6b05abbbff0d6c401d27545863535c23150636122708f6697523c7f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-center-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat12",
+          "source_sha256": "cd8bb144bfb852562c956de54d8767865c712c679f0dab47520d57237bfa9aa0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat15",
+          "source_sha256": "6ce4c55e7413a4a5abc15c876aad2f1a65da07e373ebc74a7f1fc0a8d8688f25",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent0-row1-dxa240-right-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-center-compat12",
+          "source_sha256": "000ccb73b346e0ffd7c96323561374c7ca1a9fc207d5a028b2f1a2d7f2b3f170",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-center-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-center-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-center-compat15",
+          "source_sha256": "b35a2a3c29d40e11e4ca66c8a56fa0e2d20f7cb7d3a41de4608fd0becd6c0b0f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-center-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-center-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-right-compat12",
+          "source_sha256": "b1627c42c30f57357949fea0c00df1aa6c4df4c0e2d047e2a74b1202ba9623aa",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-right-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-right-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa0-right-compat15",
+          "source_sha256": "070769677065e9072c383d89f715676be4296c2308241aa9b6ef97e54dccf258",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa0-right-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa0-right-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-center-compat12",
+          "source_sha256": "03a8dc6fa8f807748883474368a9f7c7d1e37678d1ff11f5ff1f70a1a1577d75",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-center-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-center-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-center-compat15",
+          "source_sha256": "8a782bd061751a051fae87181e43f6b706fda98bd47b1536c6c9312f183d2afb",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-center-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-center-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-right-compat12",
+          "source_sha256": "5dce8de3553816b159638348630a50ade0b33f380c9c57eb368420cf46d7db9e",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-right-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-right-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-table-row-indent-parent240-row1-dxa240-right-compat15",
+          "source_sha256": "eeaf5b98c1fa3db69cb227e3eb2d915c7705a170e1c85d844f1a2ed549138b4f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-table-row-indent-parent240-row1-dxa240-right-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-table-row-indent-parent240-row1-dxa240-right-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

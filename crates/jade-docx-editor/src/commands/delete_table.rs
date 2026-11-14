@@ -322,6 +322,7 @@ mod tests {
                 width_after: None,
                 cell_spacing: None,
                 cell_spacing_exception: None,
+                indentation_exception: None,
                 cell_margins: None,
                 borders: None,
                 height: None,

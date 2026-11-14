@@ -55,7 +55,7 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 329)
+        self.assertEqual(len(verify()), 399)
 
     def test_all_original_paragraph_only_break_controls_remain_registered(self):
         cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {
@@ -65,6 +65,22 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         for case, _, manifest, document, _ in cases:
             with self.subTest(name=case['name']):
                 self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+                self.assertTrue(case['no_visible_vector_ink'])
+                self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
+
+    def test_table_identity_and_row_exceptions_keep_original_word_evidence(self):
+        cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {
+            '20261114T195153941Z-3fc093f1', '20261114T200241643Z-226501da',
+            '20261114T200434720Z-56b2954e', '20261114T200901748Z-eb28e42c'}]
+        self.assertEqual(len(cases), 70)
+        self.assertEqual(sum(row[0]['glyph_count'] for row in cases), 560)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                capture = json.loads(manifest.read_text())
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(document['open_mode'], 'normal-read-only')
                 self.assertTrue(case['no_visible_vector_ink'])
                 self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
 

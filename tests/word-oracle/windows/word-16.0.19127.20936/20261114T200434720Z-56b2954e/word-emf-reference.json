@@ -1,0 +1,421 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261114T200434720Z-56b2954e",
+  "captured_at_utc": "2026-11-14T20:04:34.7320752Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-table-identity-idnormal-nameomitted-custom0-compat14",
+      "docx_sha256": "fd90a232765d560f8ec219de029e752c3183cde786b2db10787c12c99ebd374b",
+      "pdf_sha256": "0909d53901077b0919519da07e0f9a1340fe12c69025b451375257171c1457f5",
+      "pdf_file": "word-windows-edge-table-identity-idnormal-nameomitted-custom0-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-idnormal-nameomitted-custom0-compat14.page-001.emf",
+          "sha256": "15b714dcb5f40c767887caadd4ac44ca930763e0c5bf52afdfc8402773268f70",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-idnormal-nameomitted-custom1-compat14",
+      "docx_sha256": "4f539b8ff4416e879b9d451d7d776f9d2ee75ce6a319a2f018f0bd4ec8cea7d8",
+      "pdf_sha256": "f10bcf4cec46c7a05a3d106882d2069c993eaa891c3c3829c2cac247807753bf",
+      "pdf_file": "word-windows-edge-table-identity-idnormal-nameomitted-custom1-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-idnormal-nameomitted-custom1-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-idnormal-nameomitted-customomitted-compat14",
+      "docx_sha256": "cc109d65faee9e186477e2b3ce6ef24c0e33e98e7793ad5183f4cd54877cb410",
+      "pdf_sha256": "e89805504b9498d0fecc5b9ede7dda30921716e016f9c68fdf77a041b3880606",
+      "pdf_file": "word-windows-edge-table-identity-idnormal-nameomitted-customomitted-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-idnormal-nameomitted-customomitted-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-idprobe-nameomitted-custom0-compat14",
+      "docx_sha256": "20811bccc24512c093d6eb5493180dc6e81996a7324abfcd4bc40ff718306c35",
+      "pdf_sha256": "a53062ededc336135851312c8f2b061f10472a3beb8389f50ba6982814252932",
+      "pdf_file": "word-windows-edge-table-identity-idprobe-nameomitted-custom0-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-idprobe-nameomitted-custom0-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-idprobe-nameomitted-custom1-compat14",
+      "docx_sha256": "7fb06a618c0bd3573f1dc68268936059990ffd7aa08ffd0882719526fe7d5537",
+      "pdf_sha256": "0fad23e8672af7af175cf6f3836cfda127d849b4ce844a16c16c74c6c938518a",
+      "pdf_file": "word-windows-edge-table-identity-idprobe-nameomitted-custom1-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-idprobe-nameomitted-custom1-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-idprobe-nameomitted-customomitted-compat14",
+      "docx_sha256": "6a49976188bfea3b925a375d1b1e5b69ffd4cf88d9d6ed4b1de0aee84dcb5039",
+      "pdf_sha256": "d043e7ff22f37d159af7e0b14cc94ec6d8104bb75829baea2a75be28adadc05c",
+      "pdf_file": "word-windows-edge-table-identity-idprobe-nameomitted-customomitted-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-idprobe-nameomitted-customomitted-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    }
+  ]
+}

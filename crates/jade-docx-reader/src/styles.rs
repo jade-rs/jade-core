@@ -87,6 +87,8 @@ pub struct TableStyleInfo {
 struct TableStyleDefinition {
     style_id: String,
     name: Option<String>,
+    #[serde(default)]
+    is_custom: bool,
     based_on: Option<String>,
     /// `w:default="1"`: the style Word applies to tables without `w:tblStyle`.
     is_default: bool,
@@ -94,6 +96,17 @@ struct TableStyleDefinition {
 }
 
 fn is_word_normal_table_style(style: &TableStyleDefinition) -> bool {
+    if crate::word_platform::word_layout_platform()
+        == crate::word_platform::WordLayoutPlatform::Windows
+    {
+        // Word recognizes the built-in by its name and customStyle flag;
+        // the package-local style id alone does not select its behavior.
+        return !style.is_custom
+            && style
+                .name
+                .as_deref()
+                .is_some_and(|name| normalize_style_lookup_key(name) == "normaltable");
+    }
     std::iter::once(style.style_id.as_str())
         .chain(style.name.as_deref())
         .map(normalize_style_lookup_key)
@@ -246,6 +259,7 @@ impl StylesPart {
                     if e.name().as_ref() == b"w:style" {
                         initialize_table_style_metadata(
                             current_style.as_ref().filter(|_| state.in_table_style),
+                            state.in_custom_style,
                             &mut current_table_margins,
                             &mut in_cell_margins,
                             &mut table_state,
@@ -266,6 +280,7 @@ impl StylesPart {
                     if e.name().as_ref() == b"w:style" {
                         initialize_table_style_metadata(
                             current_style.as_ref().filter(|_| state.in_table_style),
+                            state.in_custom_style,
                             &mut current_table_margins,
                             &mut in_cell_margins,
                             &mut table_state,
@@ -2130,6 +2145,7 @@ fn set_table_style_margin(display: &mut TableStyleDisplay, element: &BytesStart)
 // views from it before an empty style's end handler consumes the definition.
 fn initialize_table_style_metadata(
     style: Option<&StyleDefinition>,
+    is_custom: bool,
     current_margins: &mut Option<(String, TableCellMarginStyleDefinition)>,
     in_cell_margins: &mut bool,
     state: &mut TableStyleParseState,
@@ -2144,6 +2160,7 @@ fn initialize_table_style_metadata(
     state.condition = None;
     state.current = style.map(|style| TableStyleDefinition {
         style_id: style.style_id.clone(),
+        is_custom,
         is_default: style.is_default,
         ..TableStyleDefinition::default()
     });
@@ -5662,6 +5679,45 @@ mod tests {
                 .width_twips,
             Some(0.0)
         );
+    }
+
+    #[test]
+    fn windows_builtin_table_identity_uses_name_and_custom_flag_without_changing_mac() {
+        use crate::word_platform::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for id in ["TableNormal", "ProbeIdentity"] {
+                for name in [None, Some("Normal Table"), Some("Probe Named Table")] {
+                    for custom in [None, Some("0"), Some("1")] {
+                        let name_xml = name
+                            .map(|name| format!(r#"<w:name w:val="{name}"/>"#))
+                            .unwrap_or_default();
+                        let flag = custom
+                            .map(|value| format!(r#" w:customStyle="{value}""#))
+                            .unwrap_or_default();
+                        let xml = format!(
+                            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:styleId="{id}"{flag}>{name_xml}<w:tblPr><w:tblInd w:w="240" w:type="dxa"/></w:tblPr></w:style></w:styles>"#
+                        );
+                        let style = StylesPart::from_xml(&xml)
+                            .unwrap()
+                            .default_table_style()
+                            .unwrap();
+                        let builtin = platform == WordLayoutPlatform::Windows
+                            && name == Some("Normal Table")
+                            && custom != Some("1");
+                        assert_eq!(
+                            style.indentation.unwrap().width_twips,
+                            Some(if builtin { 0.0 } else { 240.0 }),
+                            "{platform:?}/{id}/{name:?}/{custom:?}"
+                        );
+                    }
+                }
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
