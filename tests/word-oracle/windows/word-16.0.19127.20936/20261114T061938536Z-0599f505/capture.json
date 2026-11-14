@@ -1,0 +1,262 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T061938536Z-0599f505",
+  "captured_at_utc": "2026-11-14T06:19:38.5511125Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-century-opentype-0-compat12",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-0-compat12.docx",
+      "sha256": "d0b1128e57de35be6411132f54650b71b5d4b4e18cb75446c82d5390e9f9d6e5",
+      "pdf": "word-windows-edge-century-opentype-0-compat12.pdf",
+      "pdf_sha256": "a6dd7b25aa860aa848adfe10c58a1f7121546797ed2b6a64946ef8d0a059e7cf",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-0-compat12.page-001.emf",
+          "sha256": "39386d25e4758c8acad6bab235fd75c80efa19a155a6d1108cdbb3f671a15873",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-0-compat14",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-0-compat14.docx",
+      "sha256": "b51d7c9ed1ad18329e4c2111b5509ebdd8287f4f4f34bf54230ce3d208346f75",
+      "pdf": "word-windows-edge-century-opentype-0-compat14.pdf",
+      "pdf_sha256": "6fbdaa1163e0d1881d11348867c8b4b5c6a230b637e73202b13de82f737fa36b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-0-compat14.page-001.emf",
+          "sha256": "32154f562ec5cedafbea9747fea3891e8ec43c68fe7517313504bb060fc76764",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-0-compat15",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-0-compat15.docx",
+      "sha256": "25cba43526bd5ff6d82c0e7a9c8e1460ab0e6e0dde032d43ca07f46e94210764",
+      "pdf": "word-windows-edge-century-opentype-0-compat15.pdf",
+      "pdf_sha256": "7b479716f9db44efd2f8e678ba4e5f637fa354ba9585cadce9aa50eb6ee206c9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-0-compat15.page-001.emf",
+          "sha256": "7ad588c87609be1e321cdc4ee47b6f87c0d094ba37266666a160726f3e2b24b0",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-1-compat12",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-1-compat12.docx",
+      "sha256": "ec8bb72a8b3de20fe65be93c4194da28d4c141415a3f31ef37878521d9e641a4",
+      "pdf": "word-windows-edge-century-opentype-1-compat12.pdf",
+      "pdf_sha256": "cef35721ce6c82e825bddc52885afc416865c4b2cf5c992fd268dc6be1359684",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-1-compat12.page-001.emf",
+          "sha256": "2f2ceccc6e970194b4de00a82d36bf2afc2d26c56ce6dd1b23bd5100b367d311",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-1-compat14",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-1-compat14.docx",
+      "sha256": "20b0287f09d6aec1d50479ad9010ac86db7334964d68d8c6f021bc5e1a01e3f6",
+      "pdf": "word-windows-edge-century-opentype-1-compat14.pdf",
+      "pdf_sha256": "80bdf54970ef041d73c03edb119fd9e4581f90cbb0e6f7ae0b5b4a37e2679192",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-1-compat14.page-001.emf",
+          "sha256": "7e5374ce51a0c8d5eb37221c00d931c2cc9e26d01f265b1ef7ca4da7fc4ca28e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-1-compat15",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-1-compat15.docx",
+      "sha256": "a0bdd9e9f43c2be62850a6240f5def27edfa798e942ec6957f9b5ffb49a2ac48",
+      "pdf": "word-windows-edge-century-opentype-1-compat15.pdf",
+      "pdf_sha256": "5c2119ec462c4f5a7f8a0d442c947b210ff0c2d9b7590f3d5b56b52ee9ae5ecc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-1-compat15.page-001.emf",
+          "sha256": "ca2612ada859ac61a4c71672a1c43b14a01ec06bab023b8f44550232dfc634d5",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-default-compat12",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-default-compat12.docx",
+      "sha256": "e6cc3ac05d99c306d27c470aabb172592b6b2cc331a7476552dd738df636e842",
+      "pdf": "word-windows-edge-century-opentype-default-compat12.pdf",
+      "pdf_sha256": "60d1c349630bd2dcc824330d514f0c7b835c8d32d3c9c2d474fc4944bd4f8d3a",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-default-compat12.page-001.emf",
+          "sha256": "54d8b101007050f85109caf6d50b8764f578ad40dc4fcab7c0d9ab0ba9302594",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-default-compat14",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-default-compat14.docx",
+      "sha256": "4f5ed1ea18dc986ca852d74e9c357e501f8eb9ad25ff9631414571c7a53e61a6",
+      "pdf": "word-windows-edge-century-opentype-default-compat14.pdf",
+      "pdf_sha256": "8991e125ce5c521b7352fcccb70327f24cff6c3ea87e048694bccbb5b013ef33",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-default-compat14.page-001.emf",
+          "sha256": "83b691e5500adc3598aa4272a25e7cc45741eb3a31395f33a43eb4d67c3bf1af",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-century-opentype-default-compat15",
+      "source": "public\\fixtures\\word-windows-edge-century-opentype-default-compat15.docx",
+      "sha256": "a4fa33b16ba8481b438cf325f574597268982f051fae2b6b83481b7c5714780d",
+      "pdf": "word-windows-edge-century-opentype-default-compat15.pdf",
+      "pdf_sha256": "acc5233d6012164ed57715c799119cd843827fa9efc08d3a8b685f5e0b9accff",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-century-opentype-default-compat15.page-001.emf",
+          "sha256": "5448404096b89c6caf0c67bbaa58bd726ddb4c3e5bcde8017f95254b544ac1e7",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

@@ -3086,12 +3086,27 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                             right,
                         )
                     })
-            } else if style.has_font_features && style.enable_pair_kerning {
+            } else if style.enable_pair_kerning
+                && (style.has_font_features || (left == b'W' && right == b'o'))
+            {
                 match style.ascii_metrics_for_descriptor(font_descriptor) {
+                    // Windows Word's Century W/o uses legacy kern -113/2048
+                    // in plain/tracked runs, but not in its OpenType path.
+                    // All three compatibility modes and explicit/default
+                    // typography switches are captured in the Century matrix.
+                    Some(crate::line_metrics::WordAsciiMetrics::Century(unit_px))
+                        if left == b'W' && right == b'o' =>
+                    {
+                        Some(if style.has_font_features {
+                            0.0
+                        } else {
+                            -113.0 * unit_px
+                        })
+                    }
                     Some(
                         metrics @ (crate::line_metrics::WordAsciiMetrics::YuMincho(..)
                         | crate::line_metrics::WordAsciiMetrics::YuMinchoBold(..)),
-                    ) => metrics.pair_kerning_px(left, right),
+                    ) if style.has_font_features => metrics.pair_kerning_px(left, right),
                     _ => None,
                 }
             } else {

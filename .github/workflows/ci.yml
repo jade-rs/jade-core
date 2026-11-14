@@ -281,6 +281,10 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
           python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Reconstruct versioned Windows script metrics from original Word output
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_script_metrics.py
+          python scripts/word-oracle/check_windows_script_metrics.py
       - name: Assert Windows font coordinates with original Word embedded fonts
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_coordinates.py

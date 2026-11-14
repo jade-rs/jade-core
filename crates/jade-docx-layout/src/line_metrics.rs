@@ -388,8 +388,7 @@ fn word_mac_script_face(latin_ascii_stack: &str) -> Option<MacScriptFace> {
     }
 }
 
-/// Word for Windows' superscript raise and subscript drop, as shares of the
-/// run's own size: what jade has always drawn.
+/// The established Windows fallback outside the captured font/size ranges.
 const WINDOWS_SUPERSCRIPT_RAISE_EM: f32 = 0.35;
 const WINDOWS_SUBSCRIPT_LOWER_EM: f32 = 0.15;
 
@@ -445,6 +444,249 @@ const WINDOWS_ARIAL_SCRIPT_MOVES: [[[u8; 49]; 2]; 4] = [
     ],
 ];
 
+// Windows Word 16.0.19127.20936: independent 6–30pt sweeps, all four
+// weights/slants. Families: Century, Calibri, Yu Mincho, MS Mincho.
+// Sizes and moves are half points; never use these Windows traces on Mac.
+const WINDOWS_MEASURED_SCRIPT_SIZES: [[u8; 49]; 4] = [
+    [
+        8, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 16, 16, 17, 18, 18, 19, 19, 20, 21, 21, 22,
+        23, 23, 24, 25, 25, 26, 27, 27, 28, 29, 29, 30, 31, 31, 32, 32, 33, 34, 34, 35, 36, 36, 37,
+        38, 38, 39,
+    ],
+    [
+        8, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15, 16, 16, 17, 18, 18, 19, 19, 20, 21, 21, 22,
+        23, 23, 24, 25, 25, 26, 27, 27, 28, 29, 29, 30, 31, 31, 32, 32, 33, 34, 34, 35, 36, 36, 37,
+        38, 38, 39,
+    ],
+    [
+        7, 8, 8, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 16, 16, 17, 17, 18, 19, 19, 20, 20, 21,
+        22, 22, 23, 23, 24, 25, 25, 26, 26, 27, 28, 28, 29, 29, 30, 31, 31, 32, 32, 33, 34, 34, 35,
+        35, 36,
+    ],
+    [
+        7, 8, 8, 9, 10, 10, 11, 11, 12, 13, 13, 14, 14, 15, 16, 16, 17, 17, 18, 19, 19, 20, 20, 21,
+        22, 22, 23, 23, 24, 25, 25, 26, 26, 27, 28, 28, 29, 29, 30, 31, 31, 32, 32, 33, 34, 34, 35,
+        35, 36,
+    ],
+];
+const WINDOWS_MEASURED_SCRIPT_MOVES: [[[[u8; 49]; 2]; 4]; 4] = [
+    [
+        [
+            [
+                3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10,
+                10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15,
+                15,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
+            ],
+        ],
+        [
+            [
+                3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10,
+                10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15,
+                15,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
+            ],
+        ],
+        [
+            [
+                3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10,
+                10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15,
+                15,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
+            ],
+        ],
+        [
+            [
+                3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 10, 10,
+                10, 10, 11, 11, 11, 11, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 14, 14, 15, 15, 15,
+                15,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4,
+            ],
+        ],
+    ],
+    [
+        [
+            [
+                5, 5, 4, 4, 5, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 10, 11, 11, 11, 12,
+                12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 17, 18, 18, 18, 18, 18, 18, 19, 19,
+                19, 20, 20,
+            ],
+            [
+                1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 3, 4,
+                4, 4, 4, 5, 4, 4, 4, 5, 5, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 5,
+            ],
+        ],
+        [
+            [
+                5, 5, 4, 4, 5, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 10, 11, 11, 11, 12,
+                12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 17, 18, 18, 18, 18, 18, 18, 19, 19,
+                19, 20, 20,
+            ],
+            [
+                1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 3, 4,
+                4, 4, 4, 5, 4, 4, 4, 5, 5, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 5,
+            ],
+        ],
+        [
+            [
+                5, 5, 4, 4, 5, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 10, 11, 11, 11, 12,
+                12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 17, 18, 18, 18, 18, 18, 18, 19, 19,
+                19, 20, 20,
+            ],
+            [
+                1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 3, 4,
+                4, 4, 4, 5, 4, 4, 4, 5, 5, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 5,
+            ],
+        ],
+        [
+            [
+                5, 5, 4, 4, 5, 5, 5, 6, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 10, 11, 11, 11, 12,
+                12, 12, 13, 13, 13, 14, 14, 14, 15, 15, 15, 16, 17, 18, 18, 18, 18, 18, 18, 19, 19,
+                19, 20, 20,
+            ],
+            [
+                1, 2, 2, 1, 1, 2, 2, 2, 1, 2, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 4, 4, 3, 4,
+                4, 4, 4, 5, 4, 4, 4, 5, 5, 4, 4, 5, 5, 5, 5, 5, 5, 5, 6, 6, 5,
+            ],
+        ],
+    ],
+    [
+        [
+            [
+                4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13,
+                13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 19, 20, 20,
+                20, 21, 21,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+            ],
+        ],
+        [
+            [
+                4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13,
+                13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 19, 20, 20,
+                20, 21, 21,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+            ],
+        ],
+        [
+            [
+                4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13,
+                13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 19, 20, 20,
+                20, 21, 21,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+            ],
+        ],
+        [
+            [
+                4, 5, 5, 5, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 12, 13,
+                13, 13, 14, 14, 14, 15, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 19, 20, 20,
+                20, 21, 21,
+            ],
+            [
+                1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3,
+                3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5,
+            ],
+        ],
+    ],
+    [
+        [
+            [
+                5, 5, 6, 6, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14,
+                14, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 20, 21, 21, 22, 22, 22,
+                23, 23, 24, 24,
+            ],
+            [
+                2, 2, 2, 1, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 3, 3, 3, 4, 3, 3, 4, 4, 4, 5, 5, 4, 4,
+                5, 5, 5, 5, 6, 5, 5, 6, 6, 6, 5, 6, 6, 6, 7, 6, 6, 7, 7, 7, 7,
+            ],
+        ],
+        [
+            [
+                5, 5, 6, 6, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14,
+                14, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 20, 21, 21, 22, 22, 22,
+                23, 23, 24, 24,
+            ],
+            [
+                2, 2, 2, 1, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 3, 3, 3, 4, 3, 3, 4, 4, 4, 5, 5, 4, 4,
+                5, 5, 5, 5, 6, 5, 5, 6, 6, 6, 5, 6, 6, 6, 7, 6, 6, 7, 7, 7, 7,
+            ],
+        ],
+        [
+            [
+                5, 5, 6, 6, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14,
+                14, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 20, 21, 21, 22, 22, 22,
+                23, 23, 24, 24,
+            ],
+            [
+                2, 2, 2, 1, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 3, 3, 3, 4, 3, 3, 4, 4, 4, 5, 5, 4, 4,
+                5, 5, 5, 5, 6, 5, 5, 6, 6, 6, 5, 6, 6, 6, 7, 6, 6, 7, 7, 7, 7,
+            ],
+        ],
+        [
+            [
+                5, 5, 6, 6, 6, 7, 7, 8, 8, 8, 9, 9, 10, 10, 10, 11, 11, 12, 12, 12, 13, 13, 14, 14,
+                14, 15, 15, 16, 16, 16, 17, 17, 18, 18, 18, 19, 19, 20, 20, 20, 21, 21, 22, 22, 22,
+                23, 23, 24, 24,
+            ],
+            [
+                2, 2, 2, 1, 2, 2, 2, 3, 2, 2, 2, 3, 3, 3, 2, 3, 3, 3, 4, 3, 3, 4, 4, 4, 5, 5, 4, 4,
+                5, 5, 5, 5, 6, 5, 5, 6, 6, 6, 5, 6, 6, 6, 7, 6, 6, 7, 7, 7, 7,
+            ],
+        ],
+    ],
+];
+
+fn windows_measured_script_face(stack: &str) -> Option<usize> {
+    let family = stack
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(['\'', '"'])
+        .to_ascii_lowercase();
+    match family.as_str() {
+        "century" => Some(0),
+        "calibri" => Some(1),
+        "yu mincho" | "yumincho" | "游明朝" => Some(2),
+        "ms mincho" | "ＭＳ 明朝" | "ＭＳ明朝" | "ms 明朝" => Some(3),
+        _ => None,
+    }
+}
+
+fn windows_measured_script_cell(size_pt: f32, stack: &str) -> Option<(usize, usize)> {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+    let half = size_pt * 2.0;
+    if !(12.0..=60.0).contains(&half) || (half - half.round()).abs() >= 1e-4 {
+        return None;
+    }
+    Some((
+        windows_measured_script_face(stack)?,
+        half.round() as usize - 12,
+    ))
+}
+
 fn is_windows_arial_script(latin_ascii_stack: &str) -> bool {
     word_layout_platform() == WordLayoutPlatform::Windows
         && latin_ascii_stack
@@ -456,10 +698,14 @@ fn is_windows_arial_script(latin_ascii_stack: &str) -> bool {
             .eq_ignore_ascii_case("Arial")
 }
 
-/// The Windows Arial sweep keeps the same line pitch for ordinary, raised
-/// and lowered text. Explicit `w:position` still contributes to line height.
+/// Windows Arial and the four-family 16.0.19127.20936 sweeps retain normal
+/// line pitch for raised/lowered text. All 1,568 script rows have exactly
+/// the same baseline/page as their controls. Explicit `w:position` still
+/// contributes to line height; the established Mac policy is unchanged.
 pub fn word_ignores_script_shift_for_line_height(latin_ascii_stack: &str) -> bool {
-    word_layout_platform() == WordLayoutPlatform::Mac || is_windows_arial_script(latin_ascii_stack)
+    word_layout_platform() == WordLayoutPlatform::Mac
+        || is_windows_arial_script(latin_ascii_stack)
+        || windows_measured_script_face(latin_ascii_stack).is_some()
 }
 
 /// How far a superscript (`superscript`) or subscript run moves off the
@@ -501,6 +747,12 @@ pub fn word_script_baseline_offset_for_style_pt(
         return f32::from(
             WINDOWS_ARIAL_SCRIPT_MOVES[face][usize::from(!superscript)]
                 [half_points.round() as usize - 12],
+        ) / 2.0;
+    }
+    if let Some((family, size)) = windows_measured_script_cell(size_pt, latin_ascii_stack) {
+        let face = usize::from(bold) + 2 * usize::from(italic);
+        return f32::from(
+            WINDOWS_MEASURED_SCRIPT_MOVES[family][face][usize::from(!superscript)][size],
         ) / 2.0;
     }
     match word_layout_platform() {
@@ -572,15 +824,17 @@ fn word_mac_clamped_script_move_half_points(
         .map(|(_, _, moves)| moves[half_points as usize - 12])
 }
 
-/// The size a superscript or subscript run of `size_pt` is drawn at: two
-/// thirds on Word for Windows (0.66, as jade has always drawn it) and the
-/// face-dependent half-point size of [`word_mac_shifted_script_size_pt`] on
-/// Word for Mac.
+/// The source-matched script size. Windows Arial and the four captured
+/// families use their measured half points; other Windows faces/sizes retain
+/// the established 0.66 fallback. Mac retains its face-dependent half points.
 pub fn word_shifted_script_size_pt(size_pt: f32, latin_ascii_stack: &str) -> f32 {
     if is_windows_arial_script(latin_ascii_stack) {
         // Arial's 1331/2048 OS/2 script size, rounded to a half point, is
         // shared by both Word platforms; their baseline moves differ.
         return word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack);
+    }
+    if let Some((family, size)) = windows_measured_script_cell(size_pt, latin_ascii_stack) {
+        return f32::from(WINDOWS_MEASURED_SCRIPT_SIZES[family][size]) / 2.0;
     }
     match word_layout_platform() {
         WordLayoutPlatform::Mac => word_mac_shifted_script_size_pt(size_pt, latin_ascii_stack),
@@ -4342,6 +4596,56 @@ mod monospace_tests;
 #[cfg(test)]
 mod tests {
     #[test]
+    fn windows_scripts_match_original_word_sizes_moves_and_all_measured_styles() {
+        use super::*;
+        let reference: serde_json::Value = serde_json::from_str(include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/word-oracle/windows/word-16.0.19127.20936/",
+            "20261114T050826030Z-cc248634/script-metrics.json"
+        )))
+        .unwrap();
+        assert_eq!(reference["word"]["product_version"], "16.0.19127.20936");
+        let rows = reference["facts"].as_array().unwrap();
+        assert_eq!(rows.len(), 1568);
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for row in rows {
+            let size = row["size_pt"].as_f64().unwrap() as f32;
+            let family = row["family"].as_str().unwrap();
+            assert_eq!(
+                word_shifted_script_size_pt(size, family),
+                row["script_size_pt"].as_f64().unwrap() as f32,
+                "{row}"
+            );
+            assert_eq!(
+                word_script_baseline_offset_for_style_pt(
+                    size,
+                    family,
+                    row["kind"] == "superscript",
+                    row["bold"].as_bool().unwrap(),
+                    row["italic"].as_bool().unwrap(),
+                ),
+                row["move_pt"].as_f64().unwrap() as f32,
+                "{row}"
+            );
+            assert!(word_ignores_script_shift_for_line_height(family));
+        }
+        // Unmeasured sizes/faces retain the established Windows fallback.
+        for size in [5.5_f32, 30.5, 40.0] {
+            assert_eq!(word_shifted_script_size_pt(size, "Century"), size * 0.66);
+            assert_eq!(
+                word_script_baseline_offset_pt(size, "Century", true),
+                size * 0.35
+            );
+        }
+        assert_eq!(
+            word_shifted_script_size_pt(20.0, "Unknown Test Face"),
+            20.0 * 0.66
+        );
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn descriptor_cache_matches_parser_after_replacement_and_eviction() {
         let descriptors = [
             "italic 700 10.5pt 'ＭＳ 明朝', serif",
@@ -4535,13 +4839,14 @@ mod tests {
             7.0
         ));
         set_word_layout_platform(WordLayoutPlatform::Windows);
+        // The independent Windows 16.0.19127.20936 sweep confirms these.
         assert!(near(
             word_script_baseline_offset_pt(20.0, "Century", true),
-            7.0
+            5.0
         ));
         assert!(near(
             word_script_baseline_offset_pt(20.0, "Century", false),
-            3.0
+            1.5
         ));
         set_word_layout_platform(previous);
     }
