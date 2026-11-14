@@ -2090,6 +2090,118 @@
     {
       "fixture": "word-windows-edge-header-table-right-indentomitted-ordered-compat14",
       "docx_sha256": "cdd7d1cc5c73e14336f98adeb61f087cc7825c332b91df9c5c35813bae28dc5f"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-arial-size21-indent0-compat12",
+      "docx_sha256": "18ac494886adfa86aea214b92fa9b81f1a13926022bf60354f205e2d2dee7260"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-arial-size24-indent0-compat12",
+      "docx_sha256": "59087553cc38d7a24398e1cb637935b33de39d3231a9844d8c02e279399590b9"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-arial-size40-indent0-compat12",
+      "docx_sha256": "801a93a66a20fbfa6ab8de6252a64aa561913a3be3afefba097b161bd3e216ed"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-century-size21-indent0-compat12",
+      "docx_sha256": "2e5f1fc32883c494ea77d024c179bba0c018351cab7dd508a0a1fe420e02ed39"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-century-size24-indent0-compat12",
+      "docx_sha256": "f9b03537018ceb0ae25a277223a59aed07f11abaa29200a492b18321fc524880"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-century-size40-indent0-compat12",
+      "docx_sha256": "dc85de0c1cba661308d3181f966e617cea21333165a019ce600233face6ea458"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-ms-mincho-size21-indent0-compat12",
+      "docx_sha256": "85052f6a9da81e5f68a37e8919e9e9bddde3f8622e0459b5704d9d2e633f17a3"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-ms-mincho-size24-indent0-compat12",
+      "docx_sha256": "568c3654f22d097de53f3e94df28410a3f691d2686d48a481e579e1563a3d133"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-ms-mincho-size40-indent0-compat12",
+      "docx_sha256": "20078cb1bbe2a1a72c6688763d51228cc8a707fa2a28946446f1231b977e0071"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-indent0-compat12",
+      "docx_sha256": "e7bb663a675862337118e85b3bab3fb3d18798949ee938dde7307b2d96f9c8ed"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-indent120-compat12",
+      "docx_sha256": "e902a950911c59f902a6d91e79247637074956f2fcc793616741bd1175a752de"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-indent240-compat12",
+      "docx_sha256": "95f4e4ea4f5892385119d19aac294b536868d9e7421e42670d2877c841ba1b4f"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-indent63-compat12",
+      "docx_sha256": "c0067248b23176ac7133aa06784f80fef6be4e18c9ca77867866a7ceaca75a95"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size24-indent0-compat12",
+      "docx_sha256": "c38b2e314b5f94c1f5c4315dd03e8dbfff0b36f5c5e26611df617c8c770ccade"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size40-indent0-compat12",
+      "docx_sha256": "3c10e25ec0989f09c55dd840b6697f2561dfe2009aa3bd7f7655e197dea7479c"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop7988-compat12",
+      "docx_sha256": "f22fce89901ab4acfdca984650c697039e56730834b86693bbad312b2769de5b"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop7990-compat12",
+      "docx_sha256": "11910fb2df4410b3bd4e946cb6f5225014ec65188bfa0975e1fdc9a471eeb017"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop7992-compat12",
+      "docx_sha256": "cb283359163dbfa292f0ca4ba293ac2413098b2ee5b6a6a04bcb5ac4c537f8ad"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop7994-compat12",
+      "docx_sha256": "f6bfe5d6e3636f1fd71a8975ece392dbc4c3c06bfa3b484ce72b4e5d8e798b44"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop7996-compat12",
+      "docx_sha256": "9962dfabcdbb1520621daf78bea60b40aba03ea18c81b3e90f3c80f190ba988b"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop7998-compat12",
+      "docx_sha256": "f5294fa078897f9aa6768074f927593fd4d65d7711dc88a9ded56d439952557a"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8000-compat12",
+      "docx_sha256": "e7bb663a675862337118e85b3bab3fb3d18798949ee938dde7307b2d96f9c8ed"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8002-compat12",
+      "docx_sha256": "8146ec8b57fa33c146055e049eef05a2179bb8b999ac9d7c02e98ef726ac518f"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8004-compat12",
+      "docx_sha256": "90aef87573d203245ad995b9ff0cb94e6e98c73db34bd11a0e2585c68a82a21c"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8006-compat12",
+      "docx_sha256": "4728b749bea868bceb81a1e9b12697ff73f9a8dad102545db64cc2ea53371fe4"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8008-compat12",
+      "docx_sha256": "c616b9a14c9c88cd22e5fbc14690a1d5ea526114726435cd27902d2ddff9092e"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8010-compat12",
+      "docx_sha256": "0c5818df17d4c4028614234abffbd544c5af358b4f7fe076d77340c14604ab9b"
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12",
+      "docx_sha256": "7b3ffa0e2ea96342d66063e6d868e8ba97473174b20c8e4df987f010518052bd"
     }
   ]
 }

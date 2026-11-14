@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T130556208Z-6d6ad7b2",
+  "captured_at_utc": "2026-11-14T13:05:56.2213685Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "tabs",
+      "source": "public\\fixtures\\tabs.docx",
+      "sha256": "4b2ab628789bfb0502aa779951fe4f94358a782b5e8f1fdf9b2e8d90deb358de",
+      "pdf": "tabs.pdf",
+      "pdf_sha256": "0b6b2f0f6f55481793599ebf37ec82a34b5b7bd426cf4b154c5a04e409e85e0e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "tabs.page-001.emf",
+          "sha256": "f3c63853cbf2aa2e1b71ebd63b677ad750a389cd6487713426419597a210dfb8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

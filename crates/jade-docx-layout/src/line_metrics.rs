@@ -8,6 +8,27 @@ pub(crate) fn word_windows_arial_pair_kerning_px(unit_px: f64, left: u8, right: 
     windows_arial_kern::pair_units(left, right).map(|units| unit_px * f64::from(units))
 }
 
+pub(crate) fn word_windows_dot_leader_advance_px(font_descriptor: &str) -> Option<f64> {
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    if bold || italic || !size_pt.is_finite() || size_pt <= 0.0 {
+        return None;
+    }
+    // Original PDF font programs: period hmtx / unitsPerEm. MS Mincho's
+    // 128/256 is represented here on the same 2048-unit scale.
+    let units = match family.trim_matches(['\'', '"']) {
+        "Arial" | "Century" => 569.0,
+        "Yu Mincho" | "游明朝" | "游明朝体" | "YuMincho" => 559.0,
+        "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "MSMincho" => 1024.0,
+        _ => return None,
+    };
+    // Windows Word realizes the requested em on its 600dpi drawing grid,
+    // then rounds the period advance on that grid. Rounding only the final
+    // requested-size advance differs at 20pt (MS Mincho and Yu Mincho).
+    let em = (f64::from(size_pt) * 600.0 / 72.0).round();
+    Some((em * units / 2048.0).round() * 96.0 / 600.0)
+}
+
 const WORD_DEFAULT_LINE_SPACING_MULTIPLIER: f32 = 1.15;
 
 /// Per-line sizing for Mac paragraphs snapped to an active line grid.

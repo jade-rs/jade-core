@@ -5937,6 +5937,16 @@ fn tab_leader_positions_with_grid(
     advance: f64,
     on_grid: bool,
 ) -> Rc<[f64]> {
+    tab_leader_positions_with_tolerance(start_x, end_x, advance, on_grid, 0.5)
+}
+
+fn tab_leader_positions_with_tolerance(
+    start_x: f64,
+    end_x: f64,
+    advance: f64,
+    on_grid: bool,
+    tolerance: f64,
+) -> Rc<[f64]> {
     let mut positions = Vec::new();
     if ![start_x, end_x, advance]
         .iter()
@@ -5950,7 +5960,7 @@ fn tab_leader_positions_with_grid(
     } else {
         start_x
     };
-    while x + advance <= end_x + 0.5 {
+    while x + advance <= end_x + tolerance {
         positions.push(x);
         let next = x + advance;
         if next <= x {
@@ -8347,14 +8357,27 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     let mac_dot = leader_kind == TabLeader::Dot
                         && crate::line_metrics::word_layout_platform()
                             == crate::line_metrics::WordLayoutPlatform::Mac;
-                    let requested_advance = mac_dot
+                    let windows_dot_advance = (leader_kind == TabLeader::Dot
+                        && paragraph_style.word_platform
+                            == crate::line_metrics::WordLayoutPlatform::Windows
+                        && style.text_scale_x == 1.0
+                        && style.letter_spacing_px == 0.0)
                         .then(|| {
-                            crate::line_metrics::word_ascii_metrics(
+                            crate::line_metrics::word_windows_dot_leader_advance_px(
                                 &style.font_descriptor_latin_ascii,
                             )
-                            .and_then(|metrics| metrics.advance_px(b'.'))
                         })
                         .flatten();
+                    let requested_advance = windows_dot_advance.or_else(|| {
+                        mac_dot
+                            .then(|| {
+                                crate::line_metrics::word_ascii_metrics(
+                                    &style.font_descriptor_latin_ascii,
+                                )
+                                .and_then(|metrics| metrics.advance_px(b'.'))
+                            })
+                            .flatten()
+                    });
                     let glyph_advance = match requested_advance {
                         Some(advance) => advance,
                         None => ctx.measure_text_with_font_key(
@@ -8370,12 +8393,25 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                         leader: leader_kind,
                         properties: run_style.properties.clone(),
                         glyph_advance,
-                        glyph_positions: tab_leader_positions_with_grid(
-                            gap_start,
-                            gap_end,
-                            glyph_advance,
-                            mac_dot,
-                        ),
+                        glyph_positions: if windows_dot_advance.is_some() {
+                            // Windows ends on a complete grid advance. The
+                            // legacy 0.5px allowance adds a dot just past the
+                            // tab target at fractional twip boundaries.
+                            tab_leader_positions_with_tolerance(
+                                gap_start,
+                                gap_end,
+                                glyph_advance,
+                                true,
+                                1e-6,
+                            )
+                        } else {
+                            tab_leader_positions_with_grid(
+                                gap_start,
+                                gap_end,
+                                glyph_advance,
+                                mac_dot,
+                            )
+                        },
                     });
                 }
 

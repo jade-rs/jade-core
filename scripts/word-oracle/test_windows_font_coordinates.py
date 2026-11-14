@@ -38,7 +38,7 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 189)
+        self.assertEqual(len(verify()), 218)
 
     def test_removed_case_is_rejected(self):
         data = json.loads((ROOT / INDEX).read_text())
