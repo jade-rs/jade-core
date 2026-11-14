@@ -15072,8 +15072,9 @@ where
             self.clear_paragraph_render_cache();
         }
         if jade_docx_layout::font_resolver::set_document_opentype_features_enabled(
-            jade_docx_layout::font_resolver::word_opentype_features_apply(
+            jade_docx_layout::font_resolver::word_document_opentype_features_apply(
                 document.east_asian_line_breaking.compatibility_mode,
+                &document.compat,
             ),
         ) {
             // The same run properties now resolve to other descriptors.

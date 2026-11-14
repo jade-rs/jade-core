@@ -1,0 +1,23 @@
+[
+  {
+    "fixture": "source",
+    "table_glyph_projection": "unclipped",
+    "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+    "word_pages": 2,
+    "native_pages": 2,
+    "word_glyphs": 975,
+    "native_glyphs": 975,
+    "matched": 975,
+    "within_0_375pt": 975,
+    "x_p50": 0.08092042024472335,
+    "x_p95": 0.1707553835939848,
+    "y_p50": 0.03425028506271133,
+    "y_p95": 0.08282497149372148,
+    "first_errors": [],
+    "pdf_sha256": "2fea24577a4d2dad4910ecd2d98d28d46cf1764f3811e614d835343d59835a12",
+    "metafile_sha256": [
+      "3787bf83c84fa4c01399a732d6de9fb9220f45d32bf0758bffb2189e32294395",
+      "84001e875d506a7c5a32f8d895966e1320924870f15c3cd64b61cd37f81a2e79"
+    ]
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "engine_commit": "529ad57f110c9ce55f5e77f3a4a5b4366dd73ba7",
+  "word_product_version": "16.0.19127.20936",
+  "capture_id": "20261114T023201516Z-623785ec",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [
+    "source"
+  ],
+  "pending_fixtures": [],
+  "table_glyph_projection": "unclipped",
+  "native_executable_sha256": "cdaec8ec37c78baac8212e7a3d71d4e921e588f0696de2ded81589c6b5260ae9",
+  "platform_registry_case": "probe-paragraph-border-wrap"
+}

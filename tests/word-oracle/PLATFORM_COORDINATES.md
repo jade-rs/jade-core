@@ -21,11 +21,26 @@ the independently painted native PDF. Page count, text/order and glyph count
 must also match. Missing evidence or a mismatched platform, Word version,
 source hash or reference hash fails CI.
 
-The initial shared cases cover floating horizontal table placement and disabled
-hyphenation with Windows Word 16.0.19127.20936. The floating-table Mac original
+The shared cases cover floating horizontal table placement, disabled hyphenation,
+contextual paragraph spacing in compatibility modes 14/15, and paragraph-border
+wrapping with Windows Word 16.0.19127.20936. The floating-table Mac original
 records Word 16.114.2; the older hyphenation Mac capture does not record a Word
 version. Its original PDF/coordinate hashes remain pinned; no version is inferred.
 The full existing Mac corpus
 and previous Windows version gates remain enabled. New cases should be added
 only after all four Windows comparisons pass; failing captures remain evidence
 for fixes, never new accepted coordinates.
+
+The checker also requires every previously asserted shared case and its original
+Windows version/capture ID. Adding newer Word versions cannot silently remove an
+older version's assertion.
+
+The separate `windows/font-coordinates.json` registry asserts 26 font/typography
+documents (17,602 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+gate extracts font programs from the preserved original Word PDFs and passes
+only those fonts and the original DOCX to the renderer. Expected coordinates
+are never renderer inputs. This permits exact font testing on hosted runners
+without installing Office fonts. The same four comparisons and 0.375 pt limit
+apply. Coverage, source hashes, version metadata, original PDFs and EMFs are
+checked before rendering. The public encrypted fixture uses its documented test
+password and retains the encrypted source hash separately from decrypted bytes.

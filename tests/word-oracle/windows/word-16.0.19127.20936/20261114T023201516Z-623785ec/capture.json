@@ -1,0 +1,54 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T023201516Z-623785ec",
+  "captured_at_utc": "2026-11-14T02:32:01.5202686Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "source",
+      "source": "..\\decimal-anchor-core\\tests\\word-oracle\\mac-elsa-synthetic\\probe-paragraph-border-wrap\\source.docx",
+      "sha256": "cfbfeb70c4951af05e7086d38cf7c2278645ee5cda51b3ed77ffd3ee37c9dd49",
+      "pdf": "source.pdf",
+      "pdf_sha256": "2fea24577a4d2dad4910ecd2d98d28d46cf1764f3811e614d835343d59835a12",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "source.page-001.emf",
+          "sha256": "3787bf83c84fa4c01399a732d6de9fb9220f45d32bf0758bffb2189e32294395",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "source.page-002.emf",
+          "sha256": "84001e875d506a7c5a32f8d895966e1320924870f15c3cd64b61cd37f81a2e79",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

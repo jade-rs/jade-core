@@ -564,7 +564,10 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
     document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
     document.compat = settings.compat.clone();
     crate::font_resolver::set_document_opentype_features_enabled(
-        crate::font_resolver::word_opentype_features_apply(settings.compatibility_mode),
+        crate::font_resolver::word_document_opentype_features_apply(
+            settings.compatibility_mode,
+            &settings.compat,
+        ),
     );
     document.gutter_at_top = settings.gutter_at_top;
     document.mirror_margins = settings.mirror_margins;
@@ -2828,7 +2831,10 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
         document.adjust_line_height_in_table = settings.adjust_line_height_in_table;
         document.compat = settings.compat.clone();
         crate::font_resolver::set_document_opentype_features_enabled(
-            crate::font_resolver::word_opentype_features_apply(settings.compatibility_mode),
+            crate::font_resolver::word_document_opentype_features_apply(
+                settings.compatibility_mode,
+                &settings.compat,
+            ),
         );
         document.gutter_at_top = settings.gutter_at_top;
         document.mirror_margins = settings.mirror_margins;

@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "source_commit": "529ad57f110c9ce55f5e77f3a4a5b4366dd73ba7",
+  "engine_source_worktree_dirty": false,
+  "executable_sha256": "cdaec8ec37c78baac8212e7a3d71d4e921e588f0696de2ded81589c6b5260ae9",
+  "rustc": "1.99.1 stable-x86_64-pc-windows-msvc",
+  "capture_tools_repository": "jade-rs/jade-office",
+  "proof_kind": "four independent coordinate planes without fitting"
+}

@@ -1,0 +1,54 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T023156058Z-d477ae1f",
+  "captured_at_utc": "2026-11-14T02:31:56.0627876Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "source",
+      "source": "..\\decimal-anchor-core\\tests\\word-oracle\\mac-elsa-synthetic\\probe-contextual-paragraph-spacing-mode15\\source.docx",
+      "sha256": "c897824e5745395c5f216aa905efd91a2464285adcd1487073912fe80bb0b9c9",
+      "pdf": "source.pdf",
+      "pdf_sha256": "f39774b24a6efe679d51f2676c3a0dc159b13a446a0548b09061304963861dc0",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "source.page-001.emf",
+          "sha256": "82381570bc908bb55433887c213a703645530a395b32b8ea29c44a11fc6f3138",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "source.page-002.emf",
+          "sha256": "3f7f3271ab1acd50ba9858756521d424303a68ac0ed6d7d34643c3402f3bc0f4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
