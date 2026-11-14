@@ -1,0 +1,234 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T141251318Z-71154518",
+  "captured_at_utc": "2026-11-14T14:12:51.3311933Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-calibri-kern0-size21-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern0-size21-compat15.docx",
+      "sha256": "ad7f473172a7e5c726abf9c601c8d2d6c560aae5c70bf4fb28639a801cb37344",
+      "pdf": "word-windows-edge-calibri-kern0-size21-compat15.pdf",
+      "pdf_sha256": "92805e050a75bb6a7e8ed9901d53c4b466fb1de2b916128d2e0572c0870df5ce",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern0-size21-compat15.page-001.emf",
+          "sha256": "e0abeac1b2e6e0d70219de20d290ec10de1f1d8d6f74a7d3e3cf5942f9ca4bc1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size24-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern0-size24-compat15.docx",
+      "sha256": "b54a90ce08db23fa18e4106b985c7c4aea7e693fed42efb40e5c54a4433467a0",
+      "pdf": "word-windows-edge-calibri-kern0-size24-compat15.pdf",
+      "pdf_sha256": "41c0b3b59409ffaf8f28e3695c4b05c9d56ca225aea6aa9bb603f52f7463a205",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern0-size24-compat15.page-001.emf",
+          "sha256": "013cb30a6bbb0d09220814cf2b060209ff6d6d6603aba57cb3ddb0da760e63fc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size40-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern0-size40-compat15.docx",
+      "sha256": "172a8c4c5f4404bea6c5acb5c34dc62288d49f26e3bd59afbea7c25c3945b46f",
+      "pdf": "word-windows-edge-calibri-kern0-size40-compat15.pdf",
+      "pdf_sha256": "edd616037b226dd9428fd1c6b81e4962b30906168d0e44b12661bb751633b975",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern0-size40-compat15.page-001.emf",
+          "sha256": "5a8331f0eefdb55d79883f3e48d90288bcf1027834dea20b6569d8e1da623b41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size44-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern0-size44-compat15.docx",
+      "sha256": "ea3b1fdc1e6f53b0f47fec7070f01e0dd121c74c442cd32b505812e979e703b7",
+      "pdf": "word-windows-edge-calibri-kern0-size44-compat15.pdf",
+      "pdf_sha256": "1a3b81b8002f33b94cc87b556c5219f550701a0d03edd0a391f458beab735512",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern0-size44-compat15.page-001.emf",
+          "sha256": "f3b2f02c9a7cea580e5869c26b69fc3b6feef72c820c962fb2c0e693c5f8ff3e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size21-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern2-size21-compat15.docx",
+      "sha256": "c19e657d40aa1b5b41145e824c6cdb18f04caf36f12914ebfc2bc56856578db6",
+      "pdf": "word-windows-edge-calibri-kern2-size21-compat15.pdf",
+      "pdf_sha256": "7e9ca0b3cd8e1c2b910026b54199d55d0466837b988c07941e31300f62c354be",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern2-size21-compat15.page-001.emf",
+          "sha256": "dd71fc4a753b634a6502b1f2e58e764f5068e1c5002c183e045968237c116995",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size24-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern2-size24-compat15.docx",
+      "sha256": "85b2f034604da90909f6a7f383f9b5348b6615e222286d6101d6633caa9c97f5",
+      "pdf": "word-windows-edge-calibri-kern2-size24-compat15.pdf",
+      "pdf_sha256": "a86c3f77c62f665e85e83e19c5aa9a41a14188be5983dd5ec4f21dfb3ebecab1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern2-size24-compat15.page-001.emf",
+          "sha256": "c9dd62d19c11478de2ecb749ee0ec229653f66dd498b95d4ae88d4f0e92dd971",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size40-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern2-size40-compat15.docx",
+      "sha256": "364aea75d167d9ce2d1db726331c09de2c961848cd8d57b1c4e389b84bee77b0",
+      "pdf": "word-windows-edge-calibri-kern2-size40-compat15.pdf",
+      "pdf_sha256": "e420fec98b2e503ab865267988145b1fc3df533c2a63425425e83cc1d78a8903",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern2-size40-compat15.page-001.emf",
+          "sha256": "8b908cbbb3efe15fbefa33bbdd7eb9ac28290ad0045ae650fe3924c217e78efe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size44-compat15",
+      "source": "..\\w14-calibri-inputs\\word-windows-edge-calibri-kern2-size44-compat15.docx",
+      "sha256": "3515969564c0d39a0ccac7f4c4f100bc838797e6cef76d082c6dceb7a62a1b62",
+      "pdf": "word-windows-edge-calibri-kern2-size44-compat15.pdf",
+      "pdf_sha256": "a5629cf560f8e8afd200cd38fadc399485276699337c8f872a374a77ead67569",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-kern2-size44-compat15.page-001.emf",
+          "sha256": "cea7aec722c99a6041e7bffb135498956e17fe7f75c3f2287c398dd65cf7c926",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

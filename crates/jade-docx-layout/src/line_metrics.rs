@@ -3,9 +3,18 @@ use jade_docx_reader::document::{
 };
 
 mod windows_arial_kern;
+mod windows_calibri_kern;
 
 pub(crate) fn word_windows_arial_pair_kerning_px(unit_px: f64, left: u8, right: u8) -> Option<f64> {
     windows_arial_kern::pair_units(left, right).map(|units| unit_px * f64::from(units))
+}
+
+pub(crate) fn word_windows_calibri_pair_kerning_px(
+    unit_px: f64,
+    left: u8,
+    right: u8,
+) -> Option<f64> {
+    windows_calibri_kern::pair_units(left, right).map(|units| unit_px * f64::from(units))
 }
 
 pub(crate) fn word_windows_dot_leader_advance_px(font_descriptor: &str) -> Option<f64> {

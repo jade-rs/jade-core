@@ -3093,6 +3093,11 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                             unit_px, left, right,
                         )
                     }
+                    Some(crate::line_metrics::WordAsciiMetrics::Calibri(unit_px, false)) => {
+                        crate::line_metrics::word_windows_calibri_pair_kerning_px(
+                            unit_px, left, right,
+                        )
+                    }
                     // Windows Word's Century W/o uses legacy kern -113/2048
                     // in plain/tracked runs, but not in its OpenType path.
                     // All three compatibility modes and explicit/default

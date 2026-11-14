@@ -290,6 +290,7 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_coordinates.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert note-rule paint against versioned original Word PDF and EMF
         run: |

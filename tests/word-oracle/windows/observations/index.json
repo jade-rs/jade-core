@@ -11401,6 +11401,134 @@
           "opened_filename": "word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T141251318Z-71154518.zip",
+      "archive_sha256": "4ca6051105e7ed5168c56d6628024d406f3f359f282b5394ab51102738cf091d",
+      "capture_id": "20261114T141251318Z-71154518",
+      "capture_sha256": "1f877a0f96208f5704b4d7bb6ff7aff6c9b22909258173397076bb18bcaebf38",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "8f20b4802c75fd372a447bac529a20606c0eaedd",
+      "documents": [
+        {
+          "name": "word-windows-edge-calibri-kern0-size21-compat15",
+          "source_sha256": "ad7f473172a7e5c726abf9c601c8d2d6c560aae5c70bf4fb28639a801cb37344",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern0-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern0-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern0-size24-compat15",
+          "source_sha256": "b54a90ce08db23fa18e4106b985c7c4aea7e693fed42efb40e5c54a4433467a0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern0-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern0-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern0-size40-compat15",
+          "source_sha256": "172a8c4c5f4404bea6c5acb5c34dc62288d49f26e3bd59afbea7c25c3945b46f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern0-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern0-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern0-size44-compat15",
+          "source_sha256": "ea3b1fdc1e6f53b0f47fec7070f01e0dd121c74c442cd32b505812e979e703b7",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern0-size44-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern0-size44-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern2-size21-compat15",
+          "source_sha256": "c19e657d40aa1b5b41145e824c6cdb18f04caf36f12914ebfc2bc56856578db6",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern2-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern2-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern2-size24-compat15",
+          "source_sha256": "85b2f034604da90909f6a7f383f9b5348b6615e222286d6101d6633caa9c97f5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern2-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern2-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern2-size40-compat15",
+          "source_sha256": "364aea75d167d9ce2d1db726331c09de2c961848cd8d57b1c4e389b84bee77b0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern2-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern2-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern2-size44-compat15",
+          "source_sha256": "3515969564c0d39a0ccac7f4c4f100bc838797e6cef76d082c6dceb7a62a1b62",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern2-size44-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern2-size44-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T142114395Z-08d9c370.zip",
+      "archive_sha256": "e47f6a27d79ce63dc9de8840de7452d9733e3cf0e52bc48322247a39e3cd84e4",
+      "capture_id": "20261114T142114395Z-08d9c370",
+      "capture_sha256": "187004a7946a93b15306aa80ef5c09f40d1bfaa8da63a7810142d01a29e7e78f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "8f20b4802c75fd372a447bac529a20606c0eaedd",
+      "documents": [
+        {
+          "name": "word-windows-edge-calibri-kern0-size44-spacing10-compat15",
+          "source_sha256": "adf594dcff86bccd43e4fcb0ba1a5a95311c86ae6df14516385719d2cd3d9331",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern0-size44-spacing10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern0-size44-spacing10-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern0-size44-spacing5-compat15",
+          "source_sha256": "7523a36465a920458ad756e4d8bc91610468acb830d5e6122eac88f8966e2bcc",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern0-size44-spacing5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern0-size44-spacing5-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern2-size44-spacing10-compat15",
+          "source_sha256": "94d0a35169709f70e7d10861810eae4b8685d1bec6f34072d7cab337be1286f2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern2-size44-spacing10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern2-size44-spacing10-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-calibri-kern2-size44-spacing5-compat15",
+          "source_sha256": "d3e6fcd40b41d47ba5060e780cf6639591cce831a6c474a3d82275c074a479cc",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-calibri-kern2-size44-spacing5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-calibri-kern2-size44-spacing5-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -11419,6 +11547,10 @@
     {
       "file": "tests/word-oracle/windows/dot-leader-font-facts.json",
       "sha256": "647ace81eae26298769c6c6069060844d6f3b36d68694bb44a3b8beafa719c00"
+    },
+    {
+      "file": "tests/word-oracle/windows/calibri-kerning-font-facts.json",
+      "sha256": "68593c4e3bcdd2b8d949348b4eb9a3637f4beabd87dbad590fe1be935e1053f5"
     }
   ]
 }

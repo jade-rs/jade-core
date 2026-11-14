@@ -1,0 +1,3068 @@
+{
+  "schema": 1,
+  "family": "Calibri",
+  "style": "Regular",
+  "font_sha256": "57e93ff143572bcc092c1f56202d43ddc07bb119aa104c6d7af163470fb551f6",
+  "font_version": "Version 6.27",
+  "units_per_em": 2048,
+  "source": "GPOS latn DefaultLangSys feature21 kern lookup1 IgnoreMarks(8), PairPos XAdvance only",
+  "pairs": [
+    {
+      "left": "(",
+      "right": "g",
+      "units": 10
+    },
+    {
+      "left": "(",
+      "right": "j",
+      "units": 63
+    },
+    {
+      "left": "+",
+      "right": "+",
+      "units": 15
+    },
+    {
+      "left": ",",
+      "right": "A",
+      "units": 17
+    },
+    {
+      "left": ",",
+      "right": "J",
+      "units": 22
+    },
+    {
+      "left": ",",
+      "right": "T",
+      "units": -133
+    },
+    {
+      "left": ",",
+      "right": "V",
+      "units": -139
+    },
+    {
+      "left": ",",
+      "right": "W",
+      "units": -150
+    },
+    {
+      "left": ",",
+      "right": "X",
+      "units": 10
+    },
+    {
+      "left": ",",
+      "right": "Y",
+      "units": -147
+    },
+    {
+      "left": ",",
+      "right": "t",
+      "units": -43
+    },
+    {
+      "left": "-",
+      "right": "Y",
+      "units": -101
+    },
+    {
+      "left": "-",
+      "right": "f",
+      "units": -18
+    },
+    {
+      "left": "-",
+      "right": "v",
+      "units": -18
+    },
+    {
+      "left": "-",
+      "right": "x",
+      "units": -38
+    },
+    {
+      "left": "-",
+      "right": "y",
+      "units": -20
+    },
+    {
+      "left": ".",
+      "right": "-",
+      "units": -113
+    },
+    {
+      "left": ".",
+      "right": "A",
+      "units": 12
+    },
+    {
+      "left": ".",
+      "right": "C",
+      "units": -38
+    },
+    {
+      "left": ".",
+      "right": "G",
+      "units": -38
+    },
+    {
+      "left": ".",
+      "right": "J",
+      "units": 19
+    },
+    {
+      "left": ".",
+      "right": "O",
+      "units": -22
+    },
+    {
+      "left": ".",
+      "right": "Q",
+      "units": -22
+    },
+    {
+      "left": ".",
+      "right": "T",
+      "units": -153
+    },
+    {
+      "left": ".",
+      "right": "U",
+      "units": -18
+    },
+    {
+      "left": ".",
+      "right": "V",
+      "units": -151
+    },
+    {
+      "left": ".",
+      "right": "W",
+      "units": -144
+    },
+    {
+      "left": ".",
+      "right": "Y",
+      "units": -188
+    },
+    {
+      "left": ".",
+      "right": "f",
+      "units": -40
+    },
+    {
+      "left": ".",
+      "right": "g",
+      "units": 22
+    },
+    {
+      "left": ".",
+      "right": "t",
+      "units": -44
+    },
+    {
+      "left": ".",
+      "right": "v",
+      "units": -77
+    },
+    {
+      "left": ".",
+      "right": "w",
+      "units": -68
+    },
+    {
+      "left": ".",
+      "right": "y",
+      "units": -77
+    },
+    {
+      "left": ".",
+      "right": "z",
+      "units": 10
+    },
+    {
+      "left": "/",
+      "right": "A",
+      "units": -71
+    },
+    {
+      "left": "/",
+      "right": "J",
+      "units": -37
+    },
+    {
+      "left": "/",
+      "right": "a",
+      "units": -37
+    },
+    {
+      "left": "/",
+      "right": "c",
+      "units": -37
+    },
+    {
+      "left": "/",
+      "right": "e",
+      "units": -37
+    },
+    {
+      "left": "/",
+      "right": "g",
+      "units": -35
+    },
+    {
+      "left": "/",
+      "right": "o",
+      "units": -35
+    },
+    {
+      "left": "/",
+      "right": "s",
+      "units": -39
+    },
+    {
+      "left": "A",
+      "right": ",",
+      "units": 15
+    },
+    {
+      "left": "A",
+      "right": "-",
+      "units": -15
+    },
+    {
+      "left": "A",
+      "right": ".",
+      "units": 12
+    },
+    {
+      "left": "A",
+      "right": "?",
+      "units": -68
+    },
+    {
+      "left": "A",
+      "right": "C",
+      "units": -15
+    },
+    {
+      "left": "A",
+      "right": "G",
+      "units": -15
+    },
+    {
+      "left": "A",
+      "right": "J",
+      "units": 23
+    },
+    {
+      "left": "A",
+      "right": "O",
+      "units": -23
+    },
+    {
+      "left": "A",
+      "right": "Q",
+      "units": -23
+    },
+    {
+      "left": "A",
+      "right": "T",
+      "units": -160
+    },
+    {
+      "left": "A",
+      "right": "U",
+      "units": -32
+    },
+    {
+      "left": "A",
+      "right": "V",
+      "units": -89
+    },
+    {
+      "left": "A",
+      "right": "W",
+      "units": -80
+    },
+    {
+      "left": "A",
+      "right": "Y",
+      "units": -150
+    },
+    {
+      "left": "A",
+      "right": "t",
+      "units": -52
+    },
+    {
+      "left": "A",
+      "right": "v",
+      "units": -38
+    },
+    {
+      "left": "A",
+      "right": "y",
+      "units": -41
+    },
+    {
+      "left": "B",
+      "right": ",",
+      "units": -28
+    },
+    {
+      "left": "B",
+      "right": "A",
+      "units": -20
+    },
+    {
+      "left": "B",
+      "right": "T",
+      "units": -48
+    },
+    {
+      "left": "B",
+      "right": "V",
+      "units": -25
+    },
+    {
+      "left": "B",
+      "right": "W",
+      "units": -24
+    },
+    {
+      "left": "B",
+      "right": "X",
+      "units": -44
+    },
+    {
+      "left": "B",
+      "right": "Y",
+      "units": -57
+    },
+    {
+      "left": "B",
+      "right": "Z",
+      "units": -20
+    },
+    {
+      "left": "B",
+      "right": "f",
+      "units": -20
+    },
+    {
+      "left": "B",
+      "right": "t",
+      "units": -20
+    },
+    {
+      "left": "B",
+      "right": "v",
+      "units": -20
+    },
+    {
+      "left": "B",
+      "right": "x",
+      "units": -15
+    },
+    {
+      "left": "B",
+      "right": "y",
+      "units": -20
+    },
+    {
+      "left": "C",
+      "right": ",",
+      "units": -9
+    },
+    {
+      "left": "C",
+      "right": "G",
+      "units": -18
+    },
+    {
+      "left": "C",
+      "right": "J",
+      "units": 12
+    },
+    {
+      "left": "C",
+      "right": "O",
+      "units": -18
+    },
+    {
+      "left": "C",
+      "right": "Q",
+      "units": -18
+    },
+    {
+      "left": "C",
+      "right": "T",
+      "units": 10
+    },
+    {
+      "left": "D",
+      "right": ",",
+      "units": -55
+    },
+    {
+      "left": "D",
+      "right": ".",
+      "units": -48
+    },
+    {
+      "left": "D",
+      "right": "A",
+      "units": -30
+    },
+    {
+      "left": "D",
+      "right": "J",
+      "units": -22
+    },
+    {
+      "left": "D",
+      "right": "T",
+      "units": -23
+    },
+    {
+      "left": "D",
+      "right": "V",
+      "units": -24
+    },
+    {
+      "left": "D",
+      "right": "W",
+      "units": -14
+    },
+    {
+      "left": "D",
+      "right": "X",
+      "units": -31
+    },
+    {
+      "left": "D",
+      "right": "Y",
+      "units": -39
+    },
+    {
+      "left": "D",
+      "right": "Z",
+      "units": -22
+    },
+    {
+      "left": "E",
+      "right": "-",
+      "units": -27
+    },
+    {
+      "left": "E",
+      "right": "A",
+      "units": -22
+    },
+    {
+      "left": "E",
+      "right": "C",
+      "units": -24
+    },
+    {
+      "left": "E",
+      "right": "G",
+      "units": -24
+    },
+    {
+      "left": "E",
+      "right": "O",
+      "units": -32
+    },
+    {
+      "left": "E",
+      "right": "Q",
+      "units": -32
+    },
+    {
+      "left": "E",
+      "right": "S",
+      "units": -20
+    },
+    {
+      "left": "E",
+      "right": "Z",
+      "units": -10
+    },
+    {
+      "left": "E",
+      "right": "a",
+      "units": -34
+    },
+    {
+      "left": "E",
+      "right": "c",
+      "units": -28
+    },
+    {
+      "left": "E",
+      "right": "d",
+      "units": -30
+    },
+    {
+      "left": "E",
+      "right": "e",
+      "units": -37
+    },
+    {
+      "left": "E",
+      "right": "f",
+      "units": -64
+    },
+    {
+      "left": "E",
+      "right": "o",
+      "units": -37
+    },
+    {
+      "left": "E",
+      "right": "q",
+      "units": -30
+    },
+    {
+      "left": "E",
+      "right": "t",
+      "units": -24
+    },
+    {
+      "left": "E",
+      "right": "v",
+      "units": -48
+    },
+    {
+      "left": "E",
+      "right": "w",
+      "units": -34
+    },
+    {
+      "left": "E",
+      "right": "y",
+      "units": -48
+    },
+    {
+      "left": "F",
+      "right": ",",
+      "units": -204
+    },
+    {
+      "left": "F",
+      "right": ".",
+      "units": -193
+    },
+    {
+      "left": "F",
+      "right": "/",
+      "units": -65
+    },
+    {
+      "left": "F",
+      "right": "A",
+      "units": -115
+    },
+    {
+      "left": "F",
+      "right": "C",
+      "units": -18
+    },
+    {
+      "left": "F",
+      "right": "G",
+      "units": -18
+    },
+    {
+      "left": "F",
+      "right": "J",
+      "units": -109
+    },
+    {
+      "left": "F",
+      "right": "O",
+      "units": -18
+    },
+    {
+      "left": "F",
+      "right": "Q",
+      "units": -18
+    },
+    {
+      "left": "F",
+      "right": "S",
+      "units": -29
+    },
+    {
+      "left": "F",
+      "right": "X",
+      "units": -22
+    },
+    {
+      "left": "F",
+      "right": "Z",
+      "units": -11
+    },
+    {
+      "left": "F",
+      "right": "a",
+      "units": -55
+    },
+    {
+      "left": "F",
+      "right": "c",
+      "units": -28
+    },
+    {
+      "left": "F",
+      "right": "d",
+      "units": -20
+    },
+    {
+      "left": "F",
+      "right": "e",
+      "units": -30
+    },
+    {
+      "left": "F",
+      "right": "o",
+      "units": -28
+    },
+    {
+      "left": "F",
+      "right": "q",
+      "units": -20
+    },
+    {
+      "left": "F",
+      "right": "s",
+      "units": -35
+    },
+    {
+      "left": "G",
+      "right": "T",
+      "units": -10
+    },
+    {
+      "left": "G",
+      "right": "V",
+      "units": -10
+    },
+    {
+      "left": "G",
+      "right": "W",
+      "units": -9
+    },
+    {
+      "left": "G",
+      "right": "Y",
+      "units": -30
+    },
+    {
+      "left": "G",
+      "right": "v",
+      "units": -29
+    },
+    {
+      "left": "G",
+      "right": "w",
+      "units": -22
+    },
+    {
+      "left": "G",
+      "right": "x",
+      "units": -14
+    },
+    {
+      "left": "G",
+      "right": "y",
+      "units": -30
+    },
+    {
+      "left": "J",
+      "right": ",",
+      "units": -27
+    },
+    {
+      "left": "J",
+      "right": ".",
+      "units": -18
+    },
+    {
+      "left": "J",
+      "right": "A",
+      "units": -35
+    },
+    {
+      "left": "J",
+      "right": "X",
+      "units": -20
+    },
+    {
+      "left": "K",
+      "right": "-",
+      "units": -34
+    },
+    {
+      "left": "K",
+      "right": "C",
+      "units": -78
+    },
+    {
+      "left": "K",
+      "right": "G",
+      "units": -80
+    },
+    {
+      "left": "K",
+      "right": "O",
+      "units": -97
+    },
+    {
+      "left": "K",
+      "right": "Q",
+      "units": -97
+    },
+    {
+      "left": "K",
+      "right": "S",
+      "units": -18
+    },
+    {
+      "left": "K",
+      "right": "U",
+      "units": -29
+    },
+    {
+      "left": "K",
+      "right": "W",
+      "units": -34
+    },
+    {
+      "left": "K",
+      "right": "a",
+      "units": -34
+    },
+    {
+      "left": "K",
+      "right": "c",
+      "units": -40
+    },
+    {
+      "left": "K",
+      "right": "d",
+      "units": -33
+    },
+    {
+      "left": "K",
+      "right": "e",
+      "units": -37
+    },
+    {
+      "left": "K",
+      "right": "f",
+      "units": -25
+    },
+    {
+      "left": "K",
+      "right": "m",
+      "units": -32
+    },
+    {
+      "left": "K",
+      "right": "n",
+      "units": -32
+    },
+    {
+      "left": "K",
+      "right": "o",
+      "units": -37
+    },
+    {
+      "left": "K",
+      "right": "p",
+      "units": -32
+    },
+    {
+      "left": "K",
+      "right": "q",
+      "units": -33
+    },
+    {
+      "left": "K",
+      "right": "r",
+      "units": -32
+    },
+    {
+      "left": "K",
+      "right": "s",
+      "units": -18
+    },
+    {
+      "left": "K",
+      "right": "t",
+      "units": -38
+    },
+    {
+      "left": "K",
+      "right": "u",
+      "units": -32
+    },
+    {
+      "left": "K",
+      "right": "v",
+      "units": -101
+    },
+    {
+      "left": "K",
+      "right": "w",
+      "units": -95
+    },
+    {
+      "left": "K",
+      "right": "y",
+      "units": -85
+    },
+    {
+      "left": "L",
+      "right": ",",
+      "units": 17
+    },
+    {
+      "left": "L",
+      "right": "C",
+      "units": -22
+    },
+    {
+      "left": "L",
+      "right": "G",
+      "units": -47
+    },
+    {
+      "left": "L",
+      "right": "J",
+      "units": 25
+    },
+    {
+      "left": "L",
+      "right": "O",
+      "units": -45
+    },
+    {
+      "left": "L",
+      "right": "Q",
+      "units": -45
+    },
+    {
+      "left": "L",
+      "right": "T",
+      "units": -150
+    },
+    {
+      "left": "L",
+      "right": "U",
+      "units": -44
+    },
+    {
+      "left": "L",
+      "right": "V",
+      "units": -147
+    },
+    {
+      "left": "L",
+      "right": "W",
+      "units": -118
+    },
+    {
+      "left": "L",
+      "right": "Y",
+      "units": -167
+    },
+    {
+      "left": "L",
+      "right": "f",
+      "units": -23
+    },
+    {
+      "left": "L",
+      "right": "t",
+      "units": -38
+    },
+    {
+      "left": "L",
+      "right": "v",
+      "units": -78
+    },
+    {
+      "left": "L",
+      "right": "w",
+      "units": -72
+    },
+    {
+      "left": "L",
+      "right": "y",
+      "units": -79
+    },
+    {
+      "left": "O",
+      "right": ",",
+      "units": -48
+    },
+    {
+      "left": "O",
+      "right": ".",
+      "units": -30
+    },
+    {
+      "left": "O",
+      "right": "A",
+      "units": -23
+    },
+    {
+      "left": "O",
+      "right": "J",
+      "units": -27
+    },
+    {
+      "left": "O",
+      "right": "T",
+      "units": -55
+    },
+    {
+      "left": "O",
+      "right": "V",
+      "units": -25
+    },
+    {
+      "left": "O",
+      "right": "W",
+      "units": -22
+    },
+    {
+      "left": "O",
+      "right": "X",
+      "units": -64
+    },
+    {
+      "left": "O",
+      "right": "Y",
+      "units": -55
+    },
+    {
+      "left": "O",
+      "right": "Z",
+      "units": -38
+    },
+    {
+      "left": "O",
+      "right": "x",
+      "units": -12
+    },
+    {
+      "left": "O",
+      "right": "z",
+      "units": -10
+    },
+    {
+      "left": "P",
+      "right": ",",
+      "units": -254
+    },
+    {
+      "left": "P",
+      "right": "-",
+      "units": -61
+    },
+    {
+      "left": "P",
+      "right": ".",
+      "units": -261
+    },
+    {
+      "left": "P",
+      "right": "/",
+      "units": -108
+    },
+    {
+      "left": "P",
+      "right": "A",
+      "units": -151
+    },
+    {
+      "left": "P",
+      "right": "J",
+      "units": -140
+    },
+    {
+      "left": "P",
+      "right": "T",
+      "units": -9
+    },
+    {
+      "left": "P",
+      "right": "V",
+      "units": -10
+    },
+    {
+      "left": "P",
+      "right": "X",
+      "units": -35
+    },
+    {
+      "left": "P",
+      "right": "Y",
+      "units": -11
+    },
+    {
+      "left": "P",
+      "right": "Z",
+      "units": -29
+    },
+    {
+      "left": "P",
+      "right": "a",
+      "units": -44
+    },
+    {
+      "left": "P",
+      "right": "c",
+      "units": -43
+    },
+    {
+      "left": "P",
+      "right": "d",
+      "units": -34
+    },
+    {
+      "left": "P",
+      "right": "e",
+      "units": -41
+    },
+    {
+      "left": "P",
+      "right": "f",
+      "units": 12
+    },
+    {
+      "left": "P",
+      "right": "o",
+      "units": -41
+    },
+    {
+      "left": "P",
+      "right": "q",
+      "units": -34
+    },
+    {
+      "left": "P",
+      "right": "s",
+      "units": -32
+    },
+    {
+      "left": "P",
+      "right": "t",
+      "units": 12
+    },
+    {
+      "left": "P",
+      "right": "y",
+      "units": 12
+    },
+    {
+      "left": "Q",
+      "right": ")",
+      "units": 30
+    },
+    {
+      "left": "Q",
+      "right": ",",
+      "units": 105
+    },
+    {
+      "left": "Q",
+      "right": "/",
+      "units": 136
+    },
+    {
+      "left": "Q",
+      "right": ";",
+      "units": 60
+    },
+    {
+      "left": "Q",
+      "right": "J",
+      "units": 41
+    },
+    {
+      "left": "Q",
+      "right": "T",
+      "units": -47
+    },
+    {
+      "left": "Q",
+      "right": "V",
+      "units": -25
+    },
+    {
+      "left": "Q",
+      "right": "W",
+      "units": -12
+    },
+    {
+      "left": "Q",
+      "right": "X",
+      "units": 12
+    },
+    {
+      "left": "Q",
+      "right": "Y",
+      "units": -46
+    },
+    {
+      "left": "Q",
+      "right": "]",
+      "units": 32
+    },
+    {
+      "left": "Q",
+      "right": "g",
+      "units": 59
+    },
+    {
+      "left": "Q",
+      "right": "j",
+      "units": 79
+    },
+    {
+      "left": "Q",
+      "right": "x",
+      "units": 31
+    },
+    {
+      "left": "Q",
+      "right": "}",
+      "units": 30
+    },
+    {
+      "left": "R",
+      "right": ".",
+      "units": 10
+    },
+    {
+      "left": "R",
+      "right": "C",
+      "units": -18
+    },
+    {
+      "left": "R",
+      "right": "G",
+      "units": -19
+    },
+    {
+      "left": "R",
+      "right": "O",
+      "units": -20
+    },
+    {
+      "left": "R",
+      "right": "Q",
+      "units": -20
+    },
+    {
+      "left": "R",
+      "right": "S",
+      "units": -27
+    },
+    {
+      "left": "R",
+      "right": "T",
+      "units": -20
+    },
+    {
+      "left": "R",
+      "right": "V",
+      "units": -28
+    },
+    {
+      "left": "R",
+      "right": "W",
+      "units": -18
+    },
+    {
+      "left": "R",
+      "right": "Y",
+      "units": -30
+    },
+    {
+      "left": "R",
+      "right": "e",
+      "units": -36
+    },
+    {
+      "left": "R",
+      "right": "o",
+      "units": -42
+    },
+    {
+      "left": "R",
+      "right": "v",
+      "units": -26
+    },
+    {
+      "left": "R",
+      "right": "w",
+      "units": -33
+    },
+    {
+      "left": "R",
+      "right": "y",
+      "units": -33
+    },
+    {
+      "left": "S",
+      "right": "-",
+      "units": -9
+    },
+    {
+      "left": "S",
+      "right": "A",
+      "units": -15
+    },
+    {
+      "left": "S",
+      "right": "J",
+      "units": -9
+    },
+    {
+      "left": "S",
+      "right": "T",
+      "units": -14
+    },
+    {
+      "left": "S",
+      "right": "V",
+      "units": -14
+    },
+    {
+      "left": "S",
+      "right": "W",
+      "units": -15
+    },
+    {
+      "left": "S",
+      "right": "X",
+      "units": -13
+    },
+    {
+      "left": "S",
+      "right": "Y",
+      "units": -20
+    },
+    {
+      "left": "S",
+      "right": "v",
+      "units": -23
+    },
+    {
+      "left": "S",
+      "right": "w",
+      "units": -17
+    },
+    {
+      "left": "S",
+      "right": "y",
+      "units": -25
+    },
+    {
+      "left": "T",
+      "right": ",",
+      "units": -210
+    },
+    {
+      "left": "T",
+      "right": "-",
+      "units": -160
+    },
+    {
+      "left": "T",
+      "right": ".",
+      "units": -203
+    },
+    {
+      "left": "T",
+      "right": "/",
+      "units": -107
+    },
+    {
+      "left": "T",
+      "right": ":",
+      "units": -134
+    },
+    {
+      "left": "T",
+      "right": ";",
+      "units": -114
+    },
+    {
+      "left": "T",
+      "right": "A",
+      "units": -160
+    },
+    {
+      "left": "T",
+      "right": "C",
+      "units": -42
+    },
+    {
+      "left": "T",
+      "right": "G",
+      "units": -59
+    },
+    {
+      "left": "T",
+      "right": "J",
+      "units": -65
+    },
+    {
+      "left": "T",
+      "right": "O",
+      "units": -58
+    },
+    {
+      "left": "T",
+      "right": "Q",
+      "units": -58
+    },
+    {
+      "left": "T",
+      "right": "S",
+      "units": -10
+    },
+    {
+      "left": "T",
+      "right": "T",
+      "units": 28
+    },
+    {
+      "left": "T",
+      "right": "a",
+      "units": -160
+    },
+    {
+      "left": "T",
+      "right": "c",
+      "units": -177
+    },
+    {
+      "left": "T",
+      "right": "d",
+      "units": -147
+    },
+    {
+      "left": "T",
+      "right": "e",
+      "units": -182
+    },
+    {
+      "left": "T",
+      "right": "g",
+      "units": -151
+    },
+    {
+      "left": "T",
+      "right": "m",
+      "units": -127
+    },
+    {
+      "left": "T",
+      "right": "n",
+      "units": -127
+    },
+    {
+      "left": "T",
+      "right": "o",
+      "units": -182
+    },
+    {
+      "left": "T",
+      "right": "p",
+      "units": -127
+    },
+    {
+      "left": "T",
+      "right": "q",
+      "units": -147
+    },
+    {
+      "left": "T",
+      "right": "r",
+      "units": -127
+    },
+    {
+      "left": "T",
+      "right": "s",
+      "units": -153
+    },
+    {
+      "left": "T",
+      "right": "u",
+      "units": -127
+    },
+    {
+      "left": "T",
+      "right": "v",
+      "units": -92
+    },
+    {
+      "left": "T",
+      "right": "w",
+      "units": -86
+    },
+    {
+      "left": "T",
+      "right": "x",
+      "units": -90
+    },
+    {
+      "left": "T",
+      "right": "y",
+      "units": -93
+    },
+    {
+      "left": "T",
+      "right": "z",
+      "units": -142
+    },
+    {
+      "left": "U",
+      "right": ",",
+      "units": -28
+    },
+    {
+      "left": "U",
+      "right": ".",
+      "units": -36
+    },
+    {
+      "left": "U",
+      "right": "A",
+      "units": -45
+    },
+    {
+      "left": "U",
+      "right": "J",
+      "units": -40
+    },
+    {
+      "left": "V",
+      "right": ",",
+      "units": -166
+    },
+    {
+      "left": "V",
+      "right": "-",
+      "units": -101
+    },
+    {
+      "left": "V",
+      "right": ".",
+      "units": -205
+    },
+    {
+      "left": "V",
+      "right": "/",
+      "units": -106
+    },
+    {
+      "left": "V",
+      "right": ":",
+      "units": -73
+    },
+    {
+      "left": "V",
+      "right": ";",
+      "units": -108
+    },
+    {
+      "left": "V",
+      "right": "A",
+      "units": -96
+    },
+    {
+      "left": "V",
+      "right": "C",
+      "units": -18
+    },
+    {
+      "left": "V",
+      "right": "G",
+      "units": -25
+    },
+    {
+      "left": "V",
+      "right": "J",
+      "units": -80
+    },
+    {
+      "left": "V",
+      "right": "O",
+      "units": -27
+    },
+    {
+      "left": "V",
+      "right": "Q",
+      "units": -27
+    },
+    {
+      "left": "V",
+      "right": "S",
+      "units": -12
+    },
+    {
+      "left": "V",
+      "right": "V",
+      "units": 9
+    },
+    {
+      "left": "V",
+      "right": "a",
+      "units": -114
+    },
+    {
+      "left": "V",
+      "right": "c",
+      "units": -103
+    },
+    {
+      "left": "V",
+      "right": "d",
+      "units": -87
+    },
+    {
+      "left": "V",
+      "right": "e",
+      "units": -102
+    },
+    {
+      "left": "V",
+      "right": "g",
+      "units": -100
+    },
+    {
+      "left": "V",
+      "right": "m",
+      "units": -50
+    },
+    {
+      "left": "V",
+      "right": "n",
+      "units": -50
+    },
+    {
+      "left": "V",
+      "right": "o",
+      "units": -86
+    },
+    {
+      "left": "V",
+      "right": "p",
+      "units": -50
+    },
+    {
+      "left": "V",
+      "right": "q",
+      "units": -87
+    },
+    {
+      "left": "V",
+      "right": "r",
+      "units": -50
+    },
+    {
+      "left": "V",
+      "right": "s",
+      "units": -90
+    },
+    {
+      "left": "V",
+      "right": "u",
+      "units": -50
+    },
+    {
+      "left": "V",
+      "right": "y",
+      "units": -35
+    },
+    {
+      "left": "V",
+      "right": "z",
+      "units": -82
+    },
+    {
+      "left": "W",
+      "right": ",",
+      "units": -216
+    },
+    {
+      "left": "W",
+      "right": "-",
+      "units": -88
+    },
+    {
+      "left": "W",
+      "right": ".",
+      "units": -206
+    },
+    {
+      "left": "W",
+      "right": ";",
+      "units": -156
+    },
+    {
+      "left": "W",
+      "right": "A",
+      "units": -93
+    },
+    {
+      "left": "W",
+      "right": "C",
+      "units": -22
+    },
+    {
+      "left": "W",
+      "right": "G",
+      "units": -22
+    },
+    {
+      "left": "W",
+      "right": "J",
+      "units": -88
+    },
+    {
+      "left": "W",
+      "right": "O",
+      "units": -22
+    },
+    {
+      "left": "W",
+      "right": "Q",
+      "units": -22
+    },
+    {
+      "left": "W",
+      "right": "S",
+      "units": -10
+    },
+    {
+      "left": "W",
+      "right": "X",
+      "units": -13
+    },
+    {
+      "left": "W",
+      "right": "a",
+      "units": -71
+    },
+    {
+      "left": "W",
+      "right": "c",
+      "units": -78
+    },
+    {
+      "left": "W",
+      "right": "d",
+      "units": -72
+    },
+    {
+      "left": "W",
+      "right": "e",
+      "units": -75
+    },
+    {
+      "left": "W",
+      "right": "g",
+      "units": -54
+    },
+    {
+      "left": "W",
+      "right": "m",
+      "units": -60
+    },
+    {
+      "left": "W",
+      "right": "n",
+      "units": -60
+    },
+    {
+      "left": "W",
+      "right": "o",
+      "units": -86
+    },
+    {
+      "left": "W",
+      "right": "p",
+      "units": -60
+    },
+    {
+      "left": "W",
+      "right": "q",
+      "units": -72
+    },
+    {
+      "left": "W",
+      "right": "r",
+      "units": -60
+    },
+    {
+      "left": "W",
+      "right": "s",
+      "units": -73
+    },
+    {
+      "left": "W",
+      "right": "u",
+      "units": -60
+    },
+    {
+      "left": "W",
+      "right": "v",
+      "units": -34
+    },
+    {
+      "left": "W",
+      "right": "y",
+      "units": -53
+    },
+    {
+      "left": "X",
+      "right": "-",
+      "units": -81
+    },
+    {
+      "left": "X",
+      "right": "C",
+      "units": -57
+    },
+    {
+      "left": "X",
+      "right": "G",
+      "units": -65
+    },
+    {
+      "left": "X",
+      "right": "O",
+      "units": -57
+    },
+    {
+      "left": "X",
+      "right": "Q",
+      "units": -57
+    },
+    {
+      "left": "X",
+      "right": "S",
+      "units": -20
+    },
+    {
+      "left": "X",
+      "right": "d",
+      "units": -44
+    },
+    {
+      "left": "X",
+      "right": "e",
+      "units": -39
+    },
+    {
+      "left": "X",
+      "right": "g",
+      "units": -9
+    },
+    {
+      "left": "X",
+      "right": "o",
+      "units": -38
+    },
+    {
+      "left": "X",
+      "right": "q",
+      "units": -44
+    },
+    {
+      "left": "X",
+      "right": "t",
+      "units": -31
+    },
+    {
+      "left": "X",
+      "right": "u",
+      "units": -38
+    },
+    {
+      "left": "X",
+      "right": "v",
+      "units": -55
+    },
+    {
+      "left": "X",
+      "right": "w",
+      "units": -49
+    },
+    {
+      "left": "X",
+      "right": "y",
+      "units": -43
+    },
+    {
+      "left": "Y",
+      "right": ",",
+      "units": -252
+    },
+    {
+      "left": "Y",
+      "right": "-",
+      "units": -117
+    },
+    {
+      "left": "Y",
+      "right": ".",
+      "units": -237
+    },
+    {
+      "left": "Y",
+      "right": "/",
+      "units": -125
+    },
+    {
+      "left": "Y",
+      "right": ":",
+      "units": -154
+    },
+    {
+      "left": "Y",
+      "right": ";",
+      "units": -138
+    },
+    {
+      "left": "Y",
+      "right": "A",
+      "units": -152
+    },
+    {
+      "left": "Y",
+      "right": "C",
+      "units": -67
+    },
+    {
+      "left": "Y",
+      "right": "G",
+      "units": -67
+    },
+    {
+      "left": "Y",
+      "right": "J",
+      "units": -112
+    },
+    {
+      "left": "Y",
+      "right": "O",
+      "units": -66
+    },
+    {
+      "left": "Y",
+      "right": "Q",
+      "units": -66
+    },
+    {
+      "left": "Y",
+      "right": "S",
+      "units": -17
+    },
+    {
+      "left": "Y",
+      "right": "Z",
+      "units": -10
+    },
+    {
+      "left": "Y",
+      "right": "a",
+      "units": -134
+    },
+    {
+      "left": "Y",
+      "right": "c",
+      "units": -159
+    },
+    {
+      "left": "Y",
+      "right": "d",
+      "units": -131
+    },
+    {
+      "left": "Y",
+      "right": "e",
+      "units": -147
+    },
+    {
+      "left": "Y",
+      "right": "f",
+      "units": -62
+    },
+    {
+      "left": "Y",
+      "right": "g",
+      "units": -142
+    },
+    {
+      "left": "Y",
+      "right": "i",
+      "units": -32
+    },
+    {
+      "left": "Y",
+      "right": "j",
+      "units": -49
+    },
+    {
+      "left": "Y",
+      "right": "m",
+      "units": -94
+    },
+    {
+      "left": "Y",
+      "right": "n",
+      "units": -94
+    },
+    {
+      "left": "Y",
+      "right": "o",
+      "units": -153
+    },
+    {
+      "left": "Y",
+      "right": "p",
+      "units": -94
+    },
+    {
+      "left": "Y",
+      "right": "q",
+      "units": -131
+    },
+    {
+      "left": "Y",
+      "right": "r",
+      "units": -94
+    },
+    {
+      "left": "Y",
+      "right": "s",
+      "units": -115
+    },
+    {
+      "left": "Y",
+      "right": "t",
+      "units": -44
+    },
+    {
+      "left": "Y",
+      "right": "u",
+      "units": -94
+    },
+    {
+      "left": "Y",
+      "right": "v",
+      "units": -69
+    },
+    {
+      "left": "Y",
+      "right": "w",
+      "units": -62
+    },
+    {
+      "left": "Y",
+      "right": "x",
+      "units": -70
+    },
+    {
+      "left": "Y",
+      "right": "y",
+      "units": -65
+    },
+    {
+      "left": "Y",
+      "right": "z",
+      "units": -100
+    },
+    {
+      "left": "Z",
+      "right": "-",
+      "units": -45
+    },
+    {
+      "left": "Z",
+      "right": "A",
+      "units": -11
+    },
+    {
+      "left": "Z",
+      "right": "C",
+      "units": -25
+    },
+    {
+      "left": "Z",
+      "right": "G",
+      "units": -24
+    },
+    {
+      "left": "Z",
+      "right": "O",
+      "units": -24
+    },
+    {
+      "left": "Z",
+      "right": "Q",
+      "units": -24
+    },
+    {
+      "left": "Z",
+      "right": "W",
+      "units": -7
+    },
+    {
+      "left": "Z",
+      "right": "Y",
+      "units": -7
+    },
+    {
+      "left": "Z",
+      "right": "a",
+      "units": -10
+    },
+    {
+      "left": "Z",
+      "right": "c",
+      "units": -12
+    },
+    {
+      "left": "Z",
+      "right": "d",
+      "units": -18
+    },
+    {
+      "left": "Z",
+      "right": "e",
+      "units": -31
+    },
+    {
+      "left": "Z",
+      "right": "o",
+      "units": -29
+    },
+    {
+      "left": "Z",
+      "right": "q",
+      "units": -18
+    },
+    {
+      "left": "Z",
+      "right": "v",
+      "units": -45
+    },
+    {
+      "left": "Z",
+      "right": "w",
+      "units": -38
+    },
+    {
+      "left": "Z",
+      "right": "y",
+      "units": -37
+    },
+    {
+      "left": "a",
+      "right": "f",
+      "units": -12
+    },
+    {
+      "left": "a",
+      "right": "t",
+      "units": -19
+    },
+    {
+      "left": "a",
+      "right": "v",
+      "units": -34
+    },
+    {
+      "left": "a",
+      "right": "w",
+      "units": -14
+    },
+    {
+      "left": "a",
+      "right": "x",
+      "units": -19
+    },
+    {
+      "left": "a",
+      "right": "y",
+      "units": -38
+    },
+    {
+      "left": "b",
+      "right": "f",
+      "units": -17
+    },
+    {
+      "left": "b",
+      "right": "s",
+      "units": -10
+    },
+    {
+      "left": "b",
+      "right": "t",
+      "units": -9
+    },
+    {
+      "left": "b",
+      "right": "v",
+      "units": -10
+    },
+    {
+      "left": "b",
+      "right": "w",
+      "units": -10
+    },
+    {
+      "left": "b",
+      "right": "x",
+      "units": -41
+    },
+    {
+      "left": "b",
+      "right": "y",
+      "units": -10
+    },
+    {
+      "left": "b",
+      "right": "z",
+      "units": -28
+    },
+    {
+      "left": "c",
+      "right": "a",
+      "units": -17
+    },
+    {
+      "left": "c",
+      "right": "o",
+      "units": -17
+    },
+    {
+      "left": "e",
+      "right": "f",
+      "units": -18
+    },
+    {
+      "left": "e",
+      "right": "t",
+      "units": -11
+    },
+    {
+      "left": "e",
+      "right": "v",
+      "units": -10
+    },
+    {
+      "left": "e",
+      "right": "w",
+      "units": -10
+    },
+    {
+      "left": "e",
+      "right": "x",
+      "units": -31
+    },
+    {
+      "left": "e",
+      "right": "y",
+      "units": -13
+    },
+    {
+      "left": "e",
+      "right": "z",
+      "units": -20
+    },
+    {
+      "left": "f",
+      "right": ")",
+      "units": 30
+    },
+    {
+      "left": "f",
+      "right": ",",
+      "units": -126
+    },
+    {
+      "left": "f",
+      "right": "-",
+      "units": -55
+    },
+    {
+      "left": "f",
+      "right": ".",
+      "units": -136
+    },
+    {
+      "left": "f",
+      "right": "a",
+      "units": -40
+    },
+    {
+      "left": "f",
+      "right": "c",
+      "units": -45
+    },
+    {
+      "left": "f",
+      "right": "d",
+      "units": -53
+    },
+    {
+      "left": "f",
+      "right": "e",
+      "units": -51
+    },
+    {
+      "left": "f",
+      "right": "f",
+      "units": -20
+    },
+    {
+      "left": "f",
+      "right": "g",
+      "units": -60
+    },
+    {
+      "left": "f",
+      "right": "o",
+      "units": -43
+    },
+    {
+      "left": "f",
+      "right": "q",
+      "units": -53
+    },
+    {
+      "left": "f",
+      "right": "s",
+      "units": -27
+    },
+    {
+      "left": "f",
+      "right": "v",
+      "units": 13
+    },
+    {
+      "left": "f",
+      "right": "w",
+      "units": 6
+    },
+    {
+      "left": "f",
+      "right": "y",
+      "units": 10
+    },
+    {
+      "left": "f",
+      "right": "z",
+      "units": -20
+    },
+    {
+      "left": "g",
+      "right": ",",
+      "units": 23
+    },
+    {
+      "left": "g",
+      "right": "/",
+      "units": 73
+    },
+    {
+      "left": "g",
+      "right": "a",
+      "units": -38
+    },
+    {
+      "left": "g",
+      "right": "c",
+      "units": -12
+    },
+    {
+      "left": "g",
+      "right": "d",
+      "units": -19
+    },
+    {
+      "left": "g",
+      "right": "e",
+      "units": -17
+    },
+    {
+      "left": "g",
+      "right": "g",
+      "units": 19
+    },
+    {
+      "left": "g",
+      "right": "o",
+      "units": -14
+    },
+    {
+      "left": "g",
+      "right": "q",
+      "units": -19
+    },
+    {
+      "left": "g",
+      "right": "t",
+      "units": -31
+    },
+    {
+      "left": "h",
+      "right": "f",
+      "units": -12
+    },
+    {
+      "left": "h",
+      "right": "t",
+      "units": -19
+    },
+    {
+      "left": "h",
+      "right": "v",
+      "units": -34
+    },
+    {
+      "left": "h",
+      "right": "w",
+      "units": -14
+    },
+    {
+      "left": "h",
+      "right": "x",
+      "units": -19
+    },
+    {
+      "left": "h",
+      "right": "y",
+      "units": -38
+    },
+    {
+      "left": "k",
+      "right": "-",
+      "units": -77
+    },
+    {
+      "left": "k",
+      "right": "a",
+      "units": -35
+    },
+    {
+      "left": "k",
+      "right": "c",
+      "units": -48
+    },
+    {
+      "left": "k",
+      "right": "d",
+      "units": -56
+    },
+    {
+      "left": "k",
+      "right": "e",
+      "units": -66
+    },
+    {
+      "left": "k",
+      "right": "o",
+      "units": -69
+    },
+    {
+      "left": "k",
+      "right": "q",
+      "units": -56
+    },
+    {
+      "left": "k",
+      "right": "s",
+      "units": -19
+    },
+    {
+      "left": "k",
+      "right": "t",
+      "units": -10
+    },
+    {
+      "left": "k",
+      "right": "u",
+      "units": -26
+    },
+    {
+      "left": "m",
+      "right": "f",
+      "units": -12
+    },
+    {
+      "left": "m",
+      "right": "t",
+      "units": -19
+    },
+    {
+      "left": "m",
+      "right": "v",
+      "units": -34
+    },
+    {
+      "left": "m",
+      "right": "w",
+      "units": -14
+    },
+    {
+      "left": "m",
+      "right": "x",
+      "units": -19
+    },
+    {
+      "left": "m",
+      "right": "y",
+      "units": -38
+    },
+    {
+      "left": "n",
+      "right": "f",
+      "units": -12
+    },
+    {
+      "left": "n",
+      "right": "t",
+      "units": -19
+    },
+    {
+      "left": "n",
+      "right": "v",
+      "units": -34
+    },
+    {
+      "left": "n",
+      "right": "w",
+      "units": -14
+    },
+    {
+      "left": "n",
+      "right": "x",
+      "units": -19
+    },
+    {
+      "left": "n",
+      "right": "y",
+      "units": -38
+    },
+    {
+      "left": "o",
+      "right": ",",
+      "units": -37
+    },
+    {
+      "left": "o",
+      "right": "v",
+      "units": -9
+    },
+    {
+      "left": "o",
+      "right": "w",
+      "units": -8
+    },
+    {
+      "left": "o",
+      "right": "x",
+      "units": -40
+    },
+    {
+      "left": "o",
+      "right": "y",
+      "units": -11
+    },
+    {
+      "left": "o",
+      "right": "z",
+      "units": -27
+    },
+    {
+      "left": "p",
+      "right": "f",
+      "units": -17
+    },
+    {
+      "left": "p",
+      "right": "s",
+      "units": -10
+    },
+    {
+      "left": "p",
+      "right": "t",
+      "units": -9
+    },
+    {
+      "left": "p",
+      "right": "v",
+      "units": -10
+    },
+    {
+      "left": "p",
+      "right": "w",
+      "units": -10
+    },
+    {
+      "left": "p",
+      "right": "x",
+      "units": -41
+    },
+    {
+      "left": "p",
+      "right": "y",
+      "units": -10
+    },
+    {
+      "left": "p",
+      "right": "z",
+      "units": -28
+    },
+    {
+      "left": "q",
+      "right": "g",
+      "units": 10
+    },
+    {
+      "left": "r",
+      "right": ",",
+      "units": -176
+    },
+    {
+      "left": "r",
+      "right": "-",
+      "units": -60
+    },
+    {
+      "left": "r",
+      "right": ".",
+      "units": -206
+    },
+    {
+      "left": "r",
+      "right": "a",
+      "units": -42
+    },
+    {
+      "left": "r",
+      "right": "c",
+      "units": -30
+    },
+    {
+      "left": "r",
+      "right": "d",
+      "units": -28
+    },
+    {
+      "left": "r",
+      "right": "e",
+      "units": -27
+    },
+    {
+      "left": "r",
+      "right": "g",
+      "units": -28
+    },
+    {
+      "left": "r",
+      "right": "o",
+      "units": -33
+    },
+    {
+      "left": "r",
+      "right": "q",
+      "units": -28
+    },
+    {
+      "left": "r",
+      "right": "s",
+      "units": -35
+    },
+    {
+      "left": "r",
+      "right": "v",
+      "units": 19
+    },
+    {
+      "left": "r",
+      "right": "w",
+      "units": 11
+    },
+    {
+      "left": "r",
+      "right": "y",
+      "units": 10
+    },
+    {
+      "left": "s",
+      "right": "f",
+      "units": -19
+    },
+    {
+      "left": "s",
+      "right": "t",
+      "units": -23
+    },
+    {
+      "left": "s",
+      "right": "v",
+      "units": -31
+    },
+    {
+      "left": "s",
+      "right": "w",
+      "units": -10
+    },
+    {
+      "left": "s",
+      "right": "x",
+      "units": -22
+    },
+    {
+      "left": "s",
+      "right": "y",
+      "units": -37
+    },
+    {
+      "left": "s",
+      "right": "z",
+      "units": -18
+    },
+    {
+      "left": "t",
+      "right": "-",
+      "units": -63
+    },
+    {
+      "left": "t",
+      "right": "a",
+      "units": -25
+    },
+    {
+      "left": "t",
+      "right": "c",
+      "units": -25
+    },
+    {
+      "left": "t",
+      "right": "d",
+      "units": -23
+    },
+    {
+      "left": "t",
+      "right": "e",
+      "units": -22
+    },
+    {
+      "left": "t",
+      "right": "o",
+      "units": -20
+    },
+    {
+      "left": "t",
+      "right": "q",
+      "units": -23
+    },
+    {
+      "left": "t",
+      "right": "t",
+      "units": -29
+    },
+    {
+      "left": "v",
+      "right": ",",
+      "units": -159
+    },
+    {
+      "left": "v",
+      "right": "-",
+      "units": -47
+    },
+    {
+      "left": "v",
+      "right": ".",
+      "units": -168
+    },
+    {
+      "left": "v",
+      "right": "a",
+      "units": -30
+    },
+    {
+      "left": "v",
+      "right": "c",
+      "units": -25
+    },
+    {
+      "left": "v",
+      "right": "d",
+      "units": -20
+    },
+    {
+      "left": "v",
+      "right": "e",
+      "units": -20
+    },
+    {
+      "left": "v",
+      "right": "f",
+      "units": 11
+    },
+    {
+      "left": "v",
+      "right": "g",
+      "units": -28
+    },
+    {
+      "left": "v",
+      "right": "o",
+      "units": -19
+    },
+    {
+      "left": "v",
+      "right": "q",
+      "units": -20
+    },
+    {
+      "left": "v",
+      "right": "s",
+      "units": -9
+    },
+    {
+      "left": "v",
+      "right": "t",
+      "units": 10
+    },
+    {
+      "left": "v",
+      "right": "v",
+      "units": 12
+    },
+    {
+      "left": "v",
+      "right": "w",
+      "units": 12
+    },
+    {
+      "left": "v",
+      "right": "y",
+      "units": 12
+    },
+    {
+      "left": "v",
+      "right": "z",
+      "units": -26
+    },
+    {
+      "left": "w",
+      "right": ",",
+      "units": -176
+    },
+    {
+      "left": "w",
+      "right": "-",
+      "units": -43
+    },
+    {
+      "left": "w",
+      "right": ".",
+      "units": -131
+    },
+    {
+      "left": "w",
+      "right": "a",
+      "units": -23
+    },
+    {
+      "left": "w",
+      "right": "c",
+      "units": -20
+    },
+    {
+      "left": "w",
+      "right": "d",
+      "units": -18
+    },
+    {
+      "left": "w",
+      "right": "e",
+      "units": -18
+    },
+    {
+      "left": "w",
+      "right": "f",
+      "units": 6
+    },
+    {
+      "left": "w",
+      "right": "g",
+      "units": -18
+    },
+    {
+      "left": "w",
+      "right": "o",
+      "units": -19
+    },
+    {
+      "left": "w",
+      "right": "q",
+      "units": -18
+    },
+    {
+      "left": "w",
+      "right": "s",
+      "units": -18
+    },
+    {
+      "left": "w",
+      "right": "t",
+      "units": 4
+    },
+    {
+      "left": "w",
+      "right": "v",
+      "units": 12
+    },
+    {
+      "left": "w",
+      "right": "w",
+      "units": 8
+    },
+    {
+      "left": "w",
+      "right": "y",
+      "units": 12
+    },
+    {
+      "left": "w",
+      "right": "z",
+      "units": -17
+    },
+    {
+      "left": "x",
+      "right": "-",
+      "units": -62
+    },
+    {
+      "left": "x",
+      "right": "a",
+      "units": -37
+    },
+    {
+      "left": "x",
+      "right": "c",
+      "units": -46
+    },
+    {
+      "left": "x",
+      "right": "d",
+      "units": -44
+    },
+    {
+      "left": "x",
+      "right": "e",
+      "units": -54
+    },
+    {
+      "left": "x",
+      "right": "o",
+      "units": -55
+    },
+    {
+      "left": "x",
+      "right": "q",
+      "units": -44
+    },
+    {
+      "left": "x",
+      "right": "s",
+      "units": -12
+    },
+    {
+      "left": "x",
+      "right": "t",
+      "units": 6
+    },
+    {
+      "left": "x",
+      "right": "u",
+      "units": -20
+    },
+    {
+      "left": "y",
+      "right": ",",
+      "units": -146
+    },
+    {
+      "left": "y",
+      "right": "-",
+      "units": -45
+    },
+    {
+      "left": "y",
+      "right": ".",
+      "units": -135
+    },
+    {
+      "left": "y",
+      "right": "a",
+      "units": -31
+    },
+    {
+      "left": "y",
+      "right": "c",
+      "units": -26
+    },
+    {
+      "left": "y",
+      "right": "d",
+      "units": -24
+    },
+    {
+      "left": "y",
+      "right": "e",
+      "units": -25
+    },
+    {
+      "left": "y",
+      "right": "f",
+      "units": 10
+    },
+    {
+      "left": "y",
+      "right": "g",
+      "units": -26
+    },
+    {
+      "left": "y",
+      "right": "o",
+      "units": -24
+    },
+    {
+      "left": "y",
+      "right": "q",
+      "units": -24
+    },
+    {
+      "left": "y",
+      "right": "s",
+      "units": -19
+    },
+    {
+      "left": "y",
+      "right": "t",
+      "units": 10
+    },
+    {
+      "left": "y",
+      "right": "v",
+      "units": 12
+    },
+    {
+      "left": "y",
+      "right": "w",
+      "units": 8
+    },
+    {
+      "left": "y",
+      "right": "y",
+      "units": 10
+    },
+    {
+      "left": "y",
+      "right": "z",
+      "units": -17
+    },
+    {
+      "left": "z",
+      "right": "a",
+      "units": -34
+    },
+    {
+      "left": "z",
+      "right": "c",
+      "units": -45
+    },
+    {
+      "left": "z",
+      "right": "d",
+      "units": -46
+    },
+    {
+      "left": "z",
+      "right": "e",
+      "units": -46
+    },
+    {
+      "left": "z",
+      "right": "f",
+      "units": -10
+    },
+    {
+      "left": "z",
+      "right": "g",
+      "units": -17
+    },
+    {
+      "left": "z",
+      "right": "o",
+      "units": -45
+    },
+    {
+      "left": "z",
+      "right": "q",
+      "units": -46
+    },
+    {
+      "left": "z",
+      "right": "s",
+      "units": -22
+    },
+    {
+      "left": "z",
+      "right": "u",
+      "units": -10
+    },
+    {
+      "left": "z",
+      "right": "v",
+      "units": -18
+    },
+    {
+      "left": "z",
+      "right": "w",
+      "units": -22
+    },
+    {
+      "left": "z",
+      "right": "y",
+      "units": -18
+    }
+  ],
+  "word_product_version": "16.0.19127.20936",
+  "font_file": "calibri.ttf"
+}
