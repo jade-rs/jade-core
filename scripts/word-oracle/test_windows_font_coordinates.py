@@ -10,6 +10,30 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_fractional_white_paper_is_invisible_but_later_white_erasure_is_rejected(self):
+        import pymupdf
+        with tempfile.TemporaryDirectory() as directory:
+            for kind in ('fractional-paper', 'text-erasure', 'image-erasure'):
+                with self.subTest(kind=kind), pymupdf.open() as document:
+                    page = document.new_page(width=595.5, height=842.25)
+                    page.draw_rect(page.rect, color=None, fill=(1, 1, 1))
+                    authored_paper = pymupdf.Rect(0, 0, 595.3, 841.9)
+                    if kind == 'fractional-paper':
+                        page.draw_rect(authored_paper, color=None, fill=(1, 1, 1))
+                    if kind == 'image-erasure':
+                        pixel = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 1, 1), False)
+                        pixel.clear_with(0)
+                        page.insert_image(pymupdf.Rect(72, 72, 82, 82), pixmap=pixel)
+                    else:
+                        page.insert_text((72, 90), 'Visible text')
+                    if kind != 'fractional-paper':
+                        # A page-sized white fill after text/images is erasure,
+                        # even though the previous check treated it as paper.
+                        page.draw_rect(page.rect, color=None, fill=(1, 1, 1))
+                    pdf = Path(directory) / (kind + '.pdf')
+                    document.save(pdf)
+                    self.assertEqual(has_visible_vector_ink(pdf), kind != 'fractional-paper')
+
     def test_filled_and_stroked_guides_are_detected_without_counting_white_paper(self):
         import pymupdf
         with tempfile.TemporaryDirectory() as directory:

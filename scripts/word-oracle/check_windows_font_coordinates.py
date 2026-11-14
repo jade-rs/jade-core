@@ -24,6 +24,7 @@ def has_visible_vector_ink(pdf):
     import pymupdf
     with pymupdf.open(pdf) as document:
         for page in document:
+            leading_white_fills = 0
             for drawing in page.get_drawings():
                 fill = drawing.get('fill')
                 stroke = drawing.get('color')
@@ -33,8 +34,13 @@ def has_visible_vector_ink(pdf):
                     continue
                 white_paper = (drawing['type'] == 'f' and fill == (1., 1., 1.)
                                and drawing.get('fill_opacity') == 1
-                               and all(abs(a - b) < .001
-                                       for a, b in zip(drawing['rect'], page.rect)))
+                               and drawing['seqno'] == leading_white_fills)
+                # Leading opaque white fills cannot mark white paper, even
+                # when the authored fractional-point size is smaller than the
+                # raster-aligned PDF canvas. seqno counts text/images too:
+                # a later white fill may erase ink and must still be rejected.
+                if white_paper:
+                    leading_white_fills += 1
                 if not white_paper:
                     return True
     return False
