@@ -40,6 +40,27 @@ class PlatformCoordinates(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, message):
                 check.verify()
 
+    def test_all_shared_originals_pass_independently_and_reject_xy_drift(self):
+        # Exercise every imported pair, not just the example whose OS origins
+        # differ. The native/Browser CI jobs render these same source bytes.
+        for name, _, _, _, windows, _ in check.verify():
+            directory = check.ROOT / 'tests/word-oracle/mac-elsa-synthetic' / name
+            pages = json.loads(gzip.decompress((directory / 'pages.json.gz').read_bytes()))
+            mac = dict(page_count=len(pages), glyphs=[
+                [number, *glyph]
+                for number, page in enumerate(pages, 1)
+                for story in ('header', 'body', 'footer')
+                for glyph in page[story]])
+            for platform, reference in (('mac', mac), ('windows', windows)):
+                with self.subTest(case=name, platform=platform):
+                    self.assertGreater(check.compare(reference, reference, platform), 0)
+                    for axis in (2, 3):
+                        shifted = copy.deepcopy(reference)
+                        for glyph in shifted['glyphs']:
+                            glyph[axis] += 2
+                        with self.assertRaisesRegex(ValueError, 'axis mismatch'):
+                            check.compare(reference, shifted, f'{name}/{platform}/{axis}')
+
     def test_windows_reference_cannot_replace_mac_reference(self):
         self.reject_index_edit(lambda c: c.update(mac_manifest=c['windows'][0]['capture']),
                                'Wrong Mac manifest')

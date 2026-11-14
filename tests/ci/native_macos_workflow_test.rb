@@ -130,6 +130,41 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute_includes editing.fetch("run"), "--ignored"
   end
 
+  def test_shared_originals_use_independent_required_platform_comparisons
+    {
+      "word-mac-browser-coordinates" => [
+        "macos-latest", "Compare synthetic DOCX layouts with Word coordinates",
+        ["test_platform_coordinates.py", "check_platform_coordinates.py",
+         "node scripts/ci/check_mac_word_coordinates.mjs"]
+      ],
+      "windows-word-baselines" => [
+        "windows-latest", "Assert shared Mac originals against Windows Word version expectations",
+        ["test_platform_coordinates.py",
+         "check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"]
+      ]
+    }.each do |name, (runner, step_name, commands)|
+      job = @workflow.fetch("jobs").fetch(name)
+      assert_equal runner, job.fetch("runs-on"), name
+      refute job.key?("if"), name
+      refute job.key?("needs"), name
+      refute job.fetch("continue-on-error", false), name
+      step = job.fetch("steps").find { |item| item["name"] == step_name }
+      refute_nil step, name
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      command = step.fetch("run")
+      commands.each { |required| assert_includes command, required, name }
+      refute_includes command, "|| true", name
+      refute_includes command, "--skip", name
+      refute_includes command, "--ignored", name
+      # The Mac command must enumerate the whole imported corpus. Positional
+      # case names would silently stop asserting the other shared originals.
+      if name == "word-mac-browser-coordinates"
+        assert_includes command.lines.map(&:strip), "node scripts/ci/check_mac_word_coordinates.mjs"
+      end
+    end
+  end
+
   def test_windows_editing_and_font_reuse_cannot_silently_stop_running
     job = @workflow.fetch("jobs").fetch("windows-native-editing")
     assert_equal "windows-latest", job.fetch("runs-on")

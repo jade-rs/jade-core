@@ -24,6 +24,11 @@ renderer is separately compared with its own original by these PR jobs:
   remains **0.375 pt**, with no origin translation.
 
 These jobs run on every PR; coordinate assertion failures fail the job.
+The workflow contract test also requires the Mac browser and shared Windows
+comparison steps to remain unconditional, on their respective OS runners,
+without allowing failures or narrowing the Mac command to selected cases.
+The platform regression suite checks every registered pair independently and
+rejects deliberate X and Y displacement in each original coordinate set.
 The original DOCX and reference hashes are verified, and the existing Mac
 tolerances are preserved. Windows captures retain Word version/build and
 capture identity rather than overwriting the Mac goldens.
