@@ -1,0 +1,493 @@
+{
+  "schema": 1,
+  "word_product_version": "16.0.19127.20936",
+  "family": "Arial",
+  "style": "Regular",
+  "font_file": "arial.ttf",
+  "font_sha256": "edfbd22a3d088fc2f5d7c79b8c9c732df6dc878a60f0a80be0f92a3c7a634404",
+  "font_version": "Version 7.07",
+  "units_per_em": 2048,
+  "pairs": [
+    {
+      "left": " ",
+      "right": "A",
+      "units": -113
+    },
+    {
+      "left": " ",
+      "right": "T",
+      "units": -37
+    },
+    {
+      "left": " ",
+      "right": "Y",
+      "units": -37
+    },
+    {
+      "left": "1",
+      "right": "1",
+      "units": -152
+    },
+    {
+      "left": "A",
+      "right": " ",
+      "units": -113
+    },
+    {
+      "left": "A",
+      "right": "T",
+      "units": -152
+    },
+    {
+      "left": "A",
+      "right": "V",
+      "units": -152
+    },
+    {
+      "left": "A",
+      "right": "W",
+      "units": -76
+    },
+    {
+      "left": "A",
+      "right": "Y",
+      "units": -152
+    },
+    {
+      "left": "A",
+      "right": "v",
+      "units": -37
+    },
+    {
+      "left": "A",
+      "right": "w",
+      "units": -37
+    },
+    {
+      "left": "A",
+      "right": "y",
+      "units": -37
+    },
+    {
+      "left": "F",
+      "right": ",",
+      "units": -227
+    },
+    {
+      "left": "F",
+      "right": ".",
+      "units": -227
+    },
+    {
+      "left": "F",
+      "right": "A",
+      "units": -113
+    },
+    {
+      "left": "L",
+      "right": " ",
+      "units": -76
+    },
+    {
+      "left": "L",
+      "right": "T",
+      "units": -152
+    },
+    {
+      "left": "L",
+      "right": "V",
+      "units": -152
+    },
+    {
+      "left": "L",
+      "right": "W",
+      "units": -152
+    },
+    {
+      "left": "L",
+      "right": "Y",
+      "units": -152
+    },
+    {
+      "left": "L",
+      "right": "y",
+      "units": -76
+    },
+    {
+      "left": "P",
+      "right": " ",
+      "units": -37
+    },
+    {
+      "left": "P",
+      "right": ",",
+      "units": -264
+    },
+    {
+      "left": "P",
+      "right": ".",
+      "units": -264
+    },
+    {
+      "left": "P",
+      "right": "A",
+      "units": -152
+    },
+    {
+      "left": "R",
+      "right": "T",
+      "units": -37
+    },
+    {
+      "left": "R",
+      "right": "V",
+      "units": -37
+    },
+    {
+      "left": "R",
+      "right": "W",
+      "units": -37
+    },
+    {
+      "left": "R",
+      "right": "Y",
+      "units": -37
+    },
+    {
+      "left": "T",
+      "right": " ",
+      "units": -37
+    },
+    {
+      "left": "T",
+      "right": ",",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "-",
+      "units": -113
+    },
+    {
+      "left": "T",
+      "right": ".",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": ":",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": ";",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "A",
+      "units": -152
+    },
+    {
+      "left": "T",
+      "right": "O",
+      "units": -37
+    },
+    {
+      "left": "T",
+      "right": "a",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "c",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "e",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "i",
+      "units": -76
+    },
+    {
+      "left": "T",
+      "right": "o",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "r",
+      "units": -76
+    },
+    {
+      "left": "T",
+      "right": "s",
+      "units": -227
+    },
+    {
+      "left": "T",
+      "right": "u",
+      "units": -76
+    },
+    {
+      "left": "T",
+      "right": "w",
+      "units": -113
+    },
+    {
+      "left": "T",
+      "right": "y",
+      "units": -113
+    },
+    {
+      "left": "V",
+      "right": ",",
+      "units": -188
+    },
+    {
+      "left": "V",
+      "right": "-",
+      "units": -113
+    },
+    {
+      "left": "V",
+      "right": ".",
+      "units": -188
+    },
+    {
+      "left": "V",
+      "right": ":",
+      "units": -76
+    },
+    {
+      "left": "V",
+      "right": ";",
+      "units": -76
+    },
+    {
+      "left": "V",
+      "right": "A",
+      "units": -152
+    },
+    {
+      "left": "V",
+      "right": "a",
+      "units": -152
+    },
+    {
+      "left": "V",
+      "right": "e",
+      "units": -113
+    },
+    {
+      "left": "V",
+      "right": "i",
+      "units": -37
+    },
+    {
+      "left": "V",
+      "right": "o",
+      "units": -113
+    },
+    {
+      "left": "V",
+      "right": "r",
+      "units": -76
+    },
+    {
+      "left": "V",
+      "right": "u",
+      "units": -76
+    },
+    {
+      "left": "V",
+      "right": "y",
+      "units": -76
+    },
+    {
+      "left": "W",
+      "right": ",",
+      "units": -113
+    },
+    {
+      "left": "W",
+      "right": "-",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": ".",
+      "units": -113
+    },
+    {
+      "left": "W",
+      "right": ":",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": ";",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": "A",
+      "units": -76
+    },
+    {
+      "left": "W",
+      "right": "a",
+      "units": -76
+    },
+    {
+      "left": "W",
+      "right": "e",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": "o",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": "r",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": "u",
+      "units": -37
+    },
+    {
+      "left": "W",
+      "right": "y",
+      "units": -18
+    },
+    {
+      "left": "Y",
+      "right": " ",
+      "units": -37
+    },
+    {
+      "left": "Y",
+      "right": ",",
+      "units": -264
+    },
+    {
+      "left": "Y",
+      "right": "-",
+      "units": -188
+    },
+    {
+      "left": "Y",
+      "right": ".",
+      "units": -264
+    },
+    {
+      "left": "Y",
+      "right": ":",
+      "units": -113
+    },
+    {
+      "left": "Y",
+      "right": ";",
+      "units": -133
+    },
+    {
+      "left": "Y",
+      "right": "A",
+      "units": -152
+    },
+    {
+      "left": "Y",
+      "right": "a",
+      "units": -152
+    },
+    {
+      "left": "Y",
+      "right": "e",
+      "units": -188
+    },
+    {
+      "left": "Y",
+      "right": "i",
+      "units": -76
+    },
+    {
+      "left": "Y",
+      "right": "o",
+      "units": -188
+    },
+    {
+      "left": "Y",
+      "right": "p",
+      "units": -152
+    },
+    {
+      "left": "Y",
+      "right": "q",
+      "units": -188
+    },
+    {
+      "left": "Y",
+      "right": "u",
+      "units": -113
+    },
+    {
+      "left": "Y",
+      "right": "v",
+      "units": -113
+    },
+    {
+      "left": "f",
+      "right": "f",
+      "units": -37
+    },
+    {
+      "left": "r",
+      "right": ",",
+      "units": -113
+    },
+    {
+      "left": "r",
+      "right": ".",
+      "units": -113
+    },
+    {
+      "left": "v",
+      "right": ",",
+      "units": -152
+    },
+    {
+      "left": "v",
+      "right": ".",
+      "units": -152
+    },
+    {
+      "left": "w",
+      "right": ",",
+      "units": -113
+    },
+    {
+      "left": "w",
+      "right": ".",
+      "units": -113
+    },
+    {
+      "left": "y",
+      "right": ",",
+      "units": -152
+    },
+    {
+      "left": "y",
+      "right": ".",
+      "units": -152
+    }
+  ],
+  "zero_pairs": "all remaining printable ASCII pairs in the original kern table"
+}

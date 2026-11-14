@@ -10305,6 +10305,446 @@
           "opened_filename": "word-windows-edge-yu-mincho-opentype-default-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T095940292Z-d0b413d9.zip",
+      "archive_sha256": "e82316ccc51a29ae8d0cf91aee43ca0fc5f5be776427268dd7382b9d666aa7dc",
+      "capture_id": "20261114T095940292Z-d0b413d9",
+      "capture_sha256": "d642be3dfc3da01f4d23e62d313b7a84ea7ef1da330bc084a55fefbaa523d269",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "0303c3da222f0bb2f46ba89b69beaef086fc1b24",
+      "documents": [
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-arial-size21-compat15",
+          "source_sha256": "a5e3b6492bef71562bdd96d548605d9e103bbdb27cf82f1e903a3320c7406987",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-arial-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-arial-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-arial-size24-compat15",
+          "source_sha256": "839cbea9540ef5d3041338421e3158647f3a4bcaef177152f0cd55bd92441dea",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-arial-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-arial-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-arial-size40-compat15",
+          "source_sha256": "d54b39a976166ef2c21e0fb8c6fe2a3ed8faba07192c851949b795d5987609b7",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-arial-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-arial-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-century-size21-compat15",
+          "source_sha256": "0c86254adac8dbc25958aa5d0fe4f2bf15f88eb4c3a18ceee2432e13029284a7",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-century-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-century-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-century-size24-compat15",
+          "source_sha256": "afc9cad95d8cfc9388da2dd32e179bce21f26b3a22a41954d6a42d277b7eb9d8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-century-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-century-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-century-size40-compat15",
+          "source_sha256": "d0a16e4e6b4c993f35652de9009e77a2f3fc999eed897473e774eef08a1ce7f5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-century-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-century-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size21-compat15",
+          "source_sha256": "26db846c6f371e5a575226619c60036ccf0ca7197124b6369ed1f5188a48ec66",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-ms-mincho-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size24-compat15",
+          "source_sha256": "43db5e9893bba01e45f3a977ab789b48890017824053d6cdcd25cc74e62ee455",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-ms-mincho-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size40-compat15",
+          "source_sha256": "93d9a257a8df32b06e8e53a9804d983905cf0fd4a0dffe48a9f1fcbf6ab6e538",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-ms-mincho-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-ms-mincho-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size21-compat15",
+          "source_sha256": "f673cbddbb994334b3230f2babcf36638f16637e8732ce078e2add06993ce5b6",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-yu-mincho-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size24-compat15",
+          "source_sha256": "3a502f36a3f6b60cfae99a323c216dce7a44a2769ff0812d088e181202ae081d",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-yu-mincho-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size40-compat15",
+          "source_sha256": "90d87e036da098d7b25206e56e00a1012c511d46c799fadd04df2a30519651cd",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-long-continuation-rule-yu-mincho-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-long-continuation-rule-yu-mincho-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-arial-size21-compat15",
+          "source_sha256": "cf3cde56922f2282cfbe36702ef12f5228b2c2e42318164165cd555c2a8e7c1a",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-arial-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-arial-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-arial-size24-compat15",
+          "source_sha256": "ef7f23747ae8509c1313c66e6f7e4ca0baa29f6d327b182bead122121be3f437",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-arial-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-arial-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-arial-size40-compat15",
+          "source_sha256": "0d8ee24fcab61441bdd1a24810987e15d4705222d4e4411eb754edf41a0db7f3",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-arial-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-arial-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-century-size21-compat15",
+          "source_sha256": "9983fa572f74480dd80d5df7ea888f0f4fd8dd9ee875e9e5278bc0042ca40abd",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-century-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-century-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-century-size24-compat15",
+          "source_sha256": "7f5c88f2423ecb34afbe416a677a0f4d5b690b93d4c0f34cfded350fe2436247",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-century-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-century-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-century-size40-compat15",
+          "source_sha256": "3cb1f088a2cc662d2eccb57c22c8d190e05db3fb06ecea8c062988a99f654a1b",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-century-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-century-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-ms-mincho-size21-compat15",
+          "source_sha256": "e5ff76c4cf408207143f9436338e38100c5a963e7758ae451a578dcda3068144",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-ms-mincho-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-ms-mincho-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-ms-mincho-size24-compat15",
+          "source_sha256": "3f0b7697ebfdfc7443905c37d0640d4c43734ea3f30f8553d5578c7c01847003",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-ms-mincho-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-ms-mincho-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-ms-mincho-size40-compat15",
+          "source_sha256": "b62c20341c68992b29b7f5b3b19fe3ffe8fc870fcc1c5cc80dfb26b120cf36b8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-ms-mincho-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-ms-mincho-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-yu-mincho-size21-compat15",
+          "source_sha256": "61d19a12948405dd6368f4c6767d5db46b8c1a0cf2e822b76740ce6a07a6aded",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-yu-mincho-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-yu-mincho-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-yu-mincho-size24-compat15",
+          "source_sha256": "dfae2f2eaa1d67b38cf6387a338a7faf86cd4101e9789d99116b604427039549",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-yu-mincho-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-yu-mincho-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-rule-yu-mincho-size40-compat15",
+          "source_sha256": "08258a9ead6b282d84610b06aae22384d50e76ad0f8b31aad8f4a9687adb17cf",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-rule-yu-mincho-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-rule-yu-mincho-size40-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T102909672Z-a3c76d0d.zip",
+      "archive_sha256": "c576e9165d969b341b20bba8af47c154f69c056d8686aa12627aeb00d420536b",
+      "capture_id": "20261114T102909672Z-a3c76d0d",
+      "capture_sha256": "36627c866c58dd631612639e47ec37140a0e26661989adc74ef0726d576db54a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "0303c3da222f0bb2f46ba89b69beaef086fc1b24",
+      "documents": [
+        {
+          "name": "word-windows-edge-footnote-story-choice-arial21-yu40-compat15",
+          "source_sha256": "e130df64b54ff6fd92f3760ca29f00e3157fd3eb603c8b902c26a29de48703a6",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-story-choice-arial21-yu40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-story-choice-arial21-yu40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-story-choice-named-stories-compat15",
+          "source_sha256": "33e9015f49d1d7fc6d81b51c5c65c3f02e8acb89f9b586e380aa385c4be83e0c",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-story-choice-named-stories-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-story-choice-named-stories-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-story-choice-yu40-arial21-compat15",
+          "source_sha256": "b51f6d49d5ff681cf21c35ad9ebbbccb675e86f7e978d5f6c9fa72d34ba2f95f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-story-choice-yu40-arial21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-story-choice-yu40-arial21-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T103542955Z-0b02677b.zip",
+      "archive_sha256": "9ae562b522b0363942bab0ad2d8efe6b3f947e4fee72580a1aa3912250fe6a16",
+      "capture_id": "20261114T103542955Z-0b02677b",
+      "capture_sha256": "b744183fa80d460ed2e8d0c1ea4f79531ccba30da4b5a7228ff412875c5a54e4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "0303c3da222f0bb2f46ba89b69beaef086fc1b24",
+      "documents": [
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1128-compat15",
+          "source_sha256": "654654ed60ea55407cc2126e471a62d6c47af33af1d5c6cab3a4c6391a9fe8b0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1128-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1128-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1130-compat15",
+          "source_sha256": "27ddddad14d7e06426cb38a112904ba9b04cabb3844fbb602a2ab550e98ffab8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1130-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1130-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1132-compat15",
+          "source_sha256": "e4154e3c76628a8a32e788cbdcd54fec953d8ee0f108f84be4953413f5be5584",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1132-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1132-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1134-compat15",
+          "source_sha256": "93d9a257a8df32b06e8e53a9804d983905cf0fd4a0dffe48a9f1fcbf6ab6e538",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1134-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1134-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1136-compat15",
+          "source_sha256": "a0b4667674351a70fe3b6ba249ad950237ed75319a7b7f2fb4f4457600926095",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1136-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1136-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1138-compat15",
+          "source_sha256": "6475b8054b3012b75fb1517578e7af02bbf4cb5e413bd5ad96a15b5a9c7480fe",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1138-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1138-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-ms20-margin1140-compat15",
+          "source_sha256": "1292a81f9b67d377d750a203120f8e76eaca5c5a7d771fc262f211873c1f36b1",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-ms20-margin1140-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-ms20-margin1140-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T104404068Z-422ee230.zip",
+      "archive_sha256": "f0bf0b6695cf84bfb9ff13688a6928f719b7ff7612ed54075d37bf2d77ffb3bb",
+      "capture_id": "20261114T104404068Z-422ee230",
+      "capture_sha256": "e3ff718d54433116972d2061ec53eef8adbe3817eacbd9bf148d2db8f815c58f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "0303c3da222f0bb2f46ba89b69beaef086fc1b24",
+      "documents": [
+        {
+          "name": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15",
+          "source_sha256": "d1249e32e6e8980302d4b3364b34cabe10c5e1753b75297a8ec07d09e14b0e1c",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-inside-paragraph-mixed-fonts-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15",
+          "source_sha256": "b150a2041498f572d6a671e7a1568bf3cb61a47ad65d9347e5fdc0f3ce53f855",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-inside-paragraph-named-stories-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T104544207Z-adc363b2.zip",
+      "archive_sha256": "8f297037469de8787d04ef93d429c7024c90756afbac1a12e4bd8d77ffd48ca8",
+      "capture_id": "20261114T104544207Z-adc363b2",
+      "capture_sha256": "29278e9df59b9cc2a9276c9140d27b5d6efeb188a06b1407bcfe20c561f9035c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "0303c3da222f0bb2f46ba89b69beaef086fc1b24",
+      "documents": [
+        {
+          "name": "word-windows-edge-footnote-word-authored-named-stories",
+          "source_sha256": "b074625b6c6f3f35819f484ff02ba5892b67ea2627ba8df2769364cf56b0792b",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-footnote-word-authored-named-stories.docx"
+          ],
+          "opened_filename": "word-windows-edge-footnote-word-authored-named-stories.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T105523119Z-25f33e56.zip",
+      "archive_sha256": "2e461767c39b694887d6776866528bb398947ac1cb44a856828072b640665253",
+      "capture_id": "20261114T105523119Z-25f33e56",
+      "capture_sha256": "9cbfbe67c9a3456edc1d699084f1ba6187dc1a125499259276352abcf680ecc6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_core_commit": "0303c3da222f0bb2f46ba89b69beaef086fc1b24",
+      "documents": [
+        {
+          "name": "word-windows-edge-arial-kern0-size21-compat15",
+          "source_sha256": "bc408c9647d6ab51afda982a05e43cf3a4e3c84c0417b04a363f3abb0168c593",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-arial-kern0-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-arial-kern0-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-arial-kern0-size24-compat15",
+          "source_sha256": "f2f3c663645451f7e4c5271bf91fc7825aeef84f77c922ee3b31d84f7810f469",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-arial-kern0-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-arial-kern0-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-arial-kern0-size40-compat15",
+          "source_sha256": "30dea8155e49f27c416b2a0e6dfafb284ef6d0e5e79aed5307c0c16bbca9656e",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-arial-kern0-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-arial-kern0-size40-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-arial-kern2-size21-compat15",
+          "source_sha256": "7b96e113db95895c8c4e780bb10d6c0d119308044a0f7801cfe8e07d0de7f23c",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-arial-kern2-size21-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-arial-kern2-size21-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-arial-kern2-size24-compat15",
+          "source_sha256": "6338b3cd75f12ccc87e1e7b21a54e314841bb6976964c8fb72ebdedccf55e247",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-arial-kern2-size24-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-arial-kern2-size24-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-arial-kern2-size40-compat15",
+          "source_sha256": "d57372a8dc25323d036fcbb709cc46f45b56a3081a2145a26326b033f1f36856",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-arial-kern2-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-arial-kern2-size40-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -10313,6 +10753,12 @@
       "source_sha256": "027b0eed0c02e0daf5eb3303b3a6c419f5e5ed3cbc5abdd228ad69d31e35f5c4",
       "word_product_version": "16.0.19127.20936",
       "reason": "Windows Word rejects the unchanged original as corrupt in normal read-only and explicit read-only repair opens; no Windows coordinates invented."
+    }
+  ],
+  "font_facts": [
+    {
+      "file": "tests/word-oracle/windows/arial-kerning-font-facts.json",
+      "sha256": "36489f75ca9e79ee263e54e2a7bf91840b143ebff628f125df8941d937830240"
     }
   ]
 }

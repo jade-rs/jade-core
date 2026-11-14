@@ -8,13 +8,15 @@ import zipfile
 from check_platform_coordinates import ROOT, checked_file, read_json, require, repo_file
 
 INDEX = Path('tests/word-oracle/windows/observations/index.json')
-INDEX_SHA256 = '875d8170f26cbfafc151a0a2edc48e7549616ec227973745d79c8b8836edb0d2'
+INDEX_SHA256 = '20827e69e1b0e692c0fac843a628e1363a2d576702c3017e48dacf9e8c123e60'
 
 
 def verify(root=ROOT):
     require(hashlib.sha256((root / INDEX).read_bytes()).hexdigest() == INDEX_SHA256,
             'Original Word observation coverage changed')
     index = read_json(root / INDEX)
+    for record in index.get('font_facts', []):
+        checked_file(root, record)
     require(index['schema'] == 1, 'Unknown observation schema')
     identities, source_hashes, count = set(), set(), 0
     for record in index['captures']:
@@ -66,7 +68,7 @@ def verify(root=ROOT):
                 count += 1
             require(len(bundle.namelist()) == len(members) and set(bundle.namelist()) == members,
                     'Unexpected/duplicate/missing archive files')
-    require(len(identities) == 229 and count == 825, 'Original observation coverage removed')
+    require(len(identities) == 235 and count == 868, 'Original observation coverage removed')
     for rejection in index['rejected_sources']:
         checked_file(root, dict(file=rejection['source'], sha256=rejection['source_sha256']))
         require(bool(rejection['word_product_version']) and bool(rejection['reason']),
