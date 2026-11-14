@@ -209,7 +209,12 @@ impl StylesPart {
             .and_then(|style| self.table_cell_margin_styles.get(&style.style_id).cloned());
         self.parse(xml)?;
         if let Some(style) = fallback {
-            if !self.table_styles.values().any(is_word_normal_table_style) {
+            let primary_is_authoritative = crate::word_platform::word_layout_platform()
+                == crate::word_platform::WordLayoutPlatform::Windows
+                && self.table_styles.contains_key(&style.style_id);
+            if !primary_is_authoritative
+                && !self.table_styles.values().any(is_word_normal_table_style)
+            {
                 if let Some(margins) = fallback_margins {
                     self.table_cell_margin_styles
                         .insert(style.style_id.clone(), margins);
@@ -5759,6 +5764,37 @@ mod tests {
                 .width_twips,
             Some(240.0)
         );
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_effects_fallback_does_not_replace_a_primary_style_with_the_same_id() {
+        use crate::word_platform::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // The localized package id is deliberately not a built-in name.
+        // Mac keeps the pre-existing fallback behavior even for this collision.
+        let effects = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:tblPr><w:tblInd w:w="480" w:type="dxa"/></w:tblPr></w:style></w:styles>"#;
+        let primary = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="table" w:default="1" w:customStyle="1" w:styleId="a1"><w:name w:val="Probe Table"/><w:tblPr><w:tblInd w:w="240" w:type="dxa"/></w:tblPr></w:style></w:styles>"#;
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let mut styles = StylesPart::from_xml(effects).unwrap();
+            styles.parse_with_windows_table_fallback(primary).unwrap();
+            assert_eq!(
+                styles
+                    .resolve_table_style("a1")
+                    .unwrap()
+                    .indentation
+                    .unwrap()
+                    .width_twips,
+                Some(if platform == WordLayoutPlatform::Windows {
+                    240.0
+                } else {
+                    480.0
+                })
+            );
+        }
         set_word_layout_platform(previous);
     }
 
