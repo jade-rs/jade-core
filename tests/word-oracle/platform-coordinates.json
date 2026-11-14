@@ -25,6 +25,31 @@
           "fixture": "source"
         }
       ]
+    },
+    {
+      "mac_case": "probe-hyphenation-split-word-sweep-off",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-hyphenation-split-word-sweep-off/source.docx",
+        "sha256": "80bc8678ccd818c51e9e72c73427d8578a3e20515bc51fb8ef32c1e5af4d1009"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-hyphenation-split-word-sweep-off/manifest.json",
+        "sha256": "b4bf8c830ca84f2b9b7cdb64bd38146254b48c7e2a5bdb7dd1eb792e0302f0d5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T020157033Z-88c4d52e/capture.json",
+            "sha256": "853e82ccdcb3efa3affb0cceb61df94f4766cfa66595941c59783d426d6973ad"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T020157033Z-88c4d52e/word-emf-reference.json",
+            "sha256": "2b9406ba7088ccfe4f3bfafb0c781f35c9e0553324a8fb7d41e69ff4644b2529"
+          },
+          "fixture": "source"
+        }
+      ]
     }
   ]
 }

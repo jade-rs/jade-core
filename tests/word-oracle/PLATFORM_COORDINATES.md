@@ -21,8 +21,11 @@ the independently painted native PDF. Page count, text/order and glyph count
 must also match. Missing evidence or a mismatched platform, Word version,
 source hash or reference hash fails CI.
 
-The initial shared case covers floating horizontal table placement with
-Mac Word 16.114.2 and Windows Word 16.0.19127.20936. The full existing Mac corpus
+The initial shared cases cover floating horizontal table placement and disabled
+hyphenation with Windows Word 16.0.19127.20936. The floating-table Mac original
+records Word 16.114.2; the older hyphenation Mac capture does not record a Word
+version. Its original PDF/coordinate hashes remain pinned; no version is inferred.
+The full existing Mac corpus
 and previous Windows version gates remain enabled. New cases should be added
 only after all four Windows comparisons pass; failing captures remain evidence
 for fixes, never new accepted coordinates.

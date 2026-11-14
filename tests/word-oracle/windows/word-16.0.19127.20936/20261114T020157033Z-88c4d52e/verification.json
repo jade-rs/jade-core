@@ -1,0 +1,13 @@
+{
+  "engine_commit": "d948cb44d4cbae401f3a5fe06b1e9ebdfafe5f7b",
+  "word_product_version": "16.0.19127.20936",
+  "capture_id": "20261114T020157033Z-88c4d52e",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [
+    "source"
+  ],
+  "pending_fixtures": [],
+  "table_glyph_projection": "unclipped"
+}

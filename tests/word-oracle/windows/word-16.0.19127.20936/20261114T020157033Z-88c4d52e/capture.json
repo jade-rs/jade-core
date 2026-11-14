@@ -1,0 +1,47 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T020157033Z-88c4d52e",
+  "captured_at_utc": "2026-11-14T02:01:57.0456182Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "source",
+      "source": "..\\decimal-anchor-core\\tests\\word-oracle\\mac-elsa-synthetic\\probe-hyphenation-split-word-sweep-off\\source.docx",
+      "sha256": "80bc8678ccd818c51e9e72c73427d8578a3e20515bc51fb8ef32c1e5af4d1009",
+      "pdf": "source.pdf",
+      "pdf_sha256": "0016119c0cfc6c51035af884c24971a857beb35fb2e56ae601818c1140248432",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "source.page-001.emf",
+          "sha256": "4d892fb999abd57b293dfa0aba588b4be39267d0612f55b6dbcd2a944a76c598",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "source.page-002.emf",
+          "sha256": "fa0f73091ef71bb6ca1892175b4e362c2f6da4710464ea06b3c08bb526ecaf33",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
