@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-arial-latin-advances-bold-compat15",
+      "file": "inputs/word-windows-edge-arial-latin-advances-bold-compat15.docx",
+      "sha256": "a462fcf63e2e03a6d12828f8770b310b0978ecf05f9569bb67dcb3a8c2805f7f"
+    },
+    {
+      "name": "word-windows-edge-arial-latin-advances-bold-italic-compat15",
+      "file": "inputs/word-windows-edge-arial-latin-advances-bold-italic-compat15.docx",
+      "sha256": "a1f9260915b810ac448aed1fb20e90b311a24fd4cc35b276f7f859c21ab77fc2"
+    },
+    {
+      "name": "word-windows-edge-arial-latin-advances-italic-compat15",
+      "file": "inputs/word-windows-edge-arial-latin-advances-italic-compat15.docx",
+      "sha256": "e5135c6f8d7f44c729b50222d621cd4db6d8c8824c1d36200cd1683eaedee285"
+    },
+    {
+      "name": "word-windows-edge-arial-latin-advances-regular-compat15",
+      "file": "inputs/word-windows-edge-arial-latin-advances-regular-compat15.docx",
+      "sha256": "6dfb455140ecdea66145b20884edc859ced59eaf8f12f412868a72d43668618d"
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-bold-compat15",
+      "file": "inputs/word-windows-edge-ms-mincho-latin-advances-bold-compat15.docx",
+      "sha256": "199ec945681f815a42349dae45c8351b0d4a59cbff3ab60dd487207e8d7a741d"
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15",
+      "file": "inputs/word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15.docx",
+      "sha256": "c3c76307c73070a4597f81e8e4a2ef9ba53a1cda48090730f113b9ba6751b432"
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-italic-compat15",
+      "file": "inputs/word-windows-edge-ms-mincho-latin-advances-italic-compat15.docx",
+      "sha256": "25e18ce4d5928e2d433be1cdf118581b6d7688d8c8de1ff574c8e70eb18cdf16"
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-regular-compat15",
+      "file": "inputs/word-windows-edge-ms-mincho-latin-advances-regular-compat15.docx",
+      "sha256": "133f66045850d5067e47572c4614d214bf9ef0056699264c1f26c0fdd5841afd"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-bold-compat15",
+      "file": "inputs/word-windows-edge-yu-mincho-latin-advances-bold-compat15.docx",
+      "sha256": "dc9f102fde284f8d03baea1e15c1da0dba08d7b9539b7cc4a904dae30cc294b9"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15",
+      "file": "inputs/word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15.docx",
+      "sha256": "6da42f7fc7a9d7dedf329a202fcb33a62ff4a3021b7fdc3da78b9be421643495"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-italic-compat15",
+      "file": "inputs/word-windows-edge-yu-mincho-latin-advances-italic-compat15.docx",
+      "sha256": "7e75417eb631c62eb88851f9d9a503595fa2c883115250983eb090f2c87e65e6"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-regular-compat15",
+      "file": "inputs/word-windows-edge-yu-mincho-latin-advances-regular-compat15.docx",
+      "sha256": "3dd7d5518b0d20dc407b26394aedf36cb4b16a889d6dd849eba5a856b7679cb5"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-tracking-mixed-compat12",
+      "file": "inputs/word-windows-edge-yu-mincho-tracking-mixed-compat12.docx",
+      "sha256": "373e19735bc92a5b92658921af9851ed9b55c56d8fc44150ce5d2286fe123ae5"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-tracking-mixed-compat14",
+      "file": "inputs/word-windows-edge-yu-mincho-tracking-mixed-compat14.docx",
+      "sha256": "3e3598c1cf5f7a5ac988280bb371ba35cc4ae84918dbf4355751d3ebbd9e2ea1"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-tracking-mixed-compat15",
+      "file": "inputs/word-windows-edge-yu-mincho-tracking-mixed-compat15.docx",
+      "sha256": "7771939e8807a8f152dcfa1229a061384f89723144a65cc7cd3cead30ad87703"
+    },
+    {
+      "name": "ww14-merged-table-over-page-1fd9d10f",
+      "file": "inputs/ww14-merged-table-over-page-1fd9d10f.docx",
+      "sha256": "1fd9d10fde0a7acfb986e9381db4bf99f93d0219d8b6e705bfa788d083fdf9fe"
+    },
+    {
+      "name": "ww14-footnote-anchor-19-length-35-mac-3010334e",
+      "file": "inputs/ww14-footnote-anchor-19-length-35-mac-3010334e.docx",
+      "sha256": "3010334ec651c631718a9259bdc4379126991a742cf5d94c80b819325e3f0ad7"
+    }
+  ]
+}

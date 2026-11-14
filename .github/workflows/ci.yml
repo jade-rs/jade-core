@@ -186,6 +186,8 @@ jobs:
           "$RUNNER_TEMP/word-coordinate-tools/node_modules/.bin/playwright" install chromium
       - name: Compare synthetic DOCX layouts with Word coordinates
         run: |
+          python3 -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
+          python3 scripts/word-oracle/check_platform_coordinates.py
           export NODE_PATH="$RUNNER_TEMP/word-coordinate-tools/node_modules"
           node --test scripts/ci/word_coordinate_matching.test.mjs
           node scripts/ci/check_mac_word_coordinates.mjs
@@ -271,6 +273,10 @@ jobs:
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_borders.py
       - name: Build vector drawing probe
         run: cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+      - name: Assert shared Mac originals against Windows Word version expectations
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
+          python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Compare Windows table borders with every registered Word version
         run: python scripts/word-oracle/compare_windows_borders.py --index tests/word-oracle/windows/index.json --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-word-baselines/word-border-comparisons
       - name: Compare every registered Word version's baselines

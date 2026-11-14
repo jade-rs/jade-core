@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "source",
+      "file": "inputs/source.docx",
+      "sha256": "80bc8678ccd818c51e9e72c73427d8578a3e20515bc51fb8ef32c1e5af4d1009"
+    }
+  ]
+}

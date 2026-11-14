@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "documents": [
+    {
+      "name": "word-windows-edge-yu-mincho-kerning-tracking-compat12",
+      "file": "inputs/word-windows-edge-yu-mincho-kerning-tracking-compat12.docx",
+      "sha256": "a4b8ff60cde2b84d39ad9310fb52b5ec13914e85de4313577ce8669831248ede"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-kerning-tracking-compat14",
+      "file": "inputs/word-windows-edge-yu-mincho-kerning-tracking-compat14.docx",
+      "sha256": "6e24b9b25ce87b122ecb9a7278900322ebfb39be13976cc696afc8d1a5544721"
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-kerning-tracking-compat15",
+      "file": "inputs/word-windows-edge-yu-mincho-kerning-tracking-compat15.docx",
+      "sha256": "cd1bf86b440ecb1712eca68a2df298277fd04183ba378ca8d90835c71d0b64bb"
+    }
+  ]
+}

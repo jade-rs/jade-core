@@ -1,0 +1,100 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T010002993Z-e49e4c97",
+  "captured_at_utc": "2026-11-14T01:00:03.0179211Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-yu-mincho-kerning-tracking-compat12",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-kerning-tracking-compat12.docx",
+      "sha256": "a4b8ff60cde2b84d39ad9310fb52b5ec13914e85de4313577ce8669831248ede",
+      "pdf": "word-windows-edge-yu-mincho-kerning-tracking-compat12.pdf",
+      "pdf_sha256": "a529050c88053377addce8800c658c07639d301f14fe4bba45e626fea8cc5418",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-kerning-tracking-compat12.page-001.emf",
+          "sha256": "04195b377c8bb183a0e7c78d2ee5d12f60fd4449c0a42aa94bc20f5a655c5ce5",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-kerning-tracking-compat12.page-002.emf",
+          "sha256": "1e5979bcbbbfaf1fbd1d70186d96dd4045aa600f20e7e142dfcb498be57efdc1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-kerning-tracking-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-kerning-tracking-compat14.docx",
+      "sha256": "6e24b9b25ce87b122ecb9a7278900322ebfb39be13976cc696afc8d1a5544721",
+      "pdf": "word-windows-edge-yu-mincho-kerning-tracking-compat14.pdf",
+      "pdf_sha256": "1311cbea4981fbb169120f2db93357fe501c795a031300eb3720b951e7bc1ec3",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-kerning-tracking-compat14.page-001.emf",
+          "sha256": "5cf2a4dc3075b6bbe0de2f76b147aae2d668871abb6be25961a0dee5a57eb010",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-kerning-tracking-compat14.page-002.emf",
+          "sha256": "5c8d87b12aca8ed3d84d24555e6da5c83c095ae51dc62a09529b53921c6f10c6",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-kerning-tracking-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-kerning-tracking-compat15.docx",
+      "sha256": "cd1bf86b440ecb1712eca68a2df298277fd04183ba378ca8d90835c71d0b64bb",
+      "pdf": "word-windows-edge-yu-mincho-kerning-tracking-compat15.pdf",
+      "pdf_sha256": "6fc7283c67e1b2da3e8c6b30b697190e060b3c4dffae7f31a35a709aa25831ee",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-kerning-tracking-compat15.page-001.emf",
+          "sha256": "d3eb9d072cfe9d0a2b292336c414aacaf93e302f06b3975c7558e5e3e323b3ed",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-kerning-tracking-compat15.page-002.emf",
+          "sha256": "f5ce8e7c910cda9a985fdcb9c10241ac004da1b44c1e9c086cd00c6f9ca03caf",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
