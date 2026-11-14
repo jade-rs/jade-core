@@ -12,7 +12,25 @@ use jade_docx_editor::commands::{CommandContext, CommandExecutor};
 use jade_docx_editor::word_document::WordDocument;
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
+#[cfg(not(target_os = "windows"))]
 fn main() -> Result<(), Box<dyn Error>> {
+    run()
+}
+
+#[cfg(target_os = "windows")]
+fn main() -> Result<(), Box<dyn Error>> {
+    // The Windows main stack is smaller than the macOS audit runner's.
+    // Large DOCX load/edit/export futures need a bounded worker stack here.
+    std::thread::Builder::new()
+        .name("mac-release-roundtrip".into())
+        .stack_size(16 * 1024 * 1024)
+        .spawn(|| run().map_err(|error| error.to_string()))?
+        .join()
+        .map_err(|_| "roundtrip audit worker panicked")?
+        .map_err(Into::into)
+}
+
+fn run() -> Result<(), Box<dyn Error>> {
     let output = PathBuf::from(std::env::args().nth(1).ok_or("output directory required")?);
     fs::create_dir_all(&output)?;
     let fixture_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
