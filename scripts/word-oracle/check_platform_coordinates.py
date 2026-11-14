@@ -23,6 +23,8 @@ REQUIRED_CAPTURES = {
     'probe-contextual-paragraph-spacing-mode14': '20261114T023153447Z-6c24de77',
     'probe-contextual-paragraph-spacing-mode15': '20261114T023156058Z-d477ae1f',
     'probe-paragraph-border-wrap': '20261114T023201516Z-623785ec',
+    'footnote-mac': '20261114T004143028Z-b4cb9887',
+    'footnote-table-each-page-mac': '20261114T004143028Z-b4cb9887',
 }
 
 
@@ -94,6 +96,21 @@ def pdf_origins(path, unclipped=False):
         return dict(page_count=len(document), glyphs=glyphs)
 
 
+def extract_fonts(pdf, directory):
+    """Expose original font programs, never Word's expected text positions."""
+    import pymupdf
+    directory.mkdir(parents=True, exist_ok=False)
+    with pymupdf.open(pdf) as document:
+        xrefs = {font[0] for page in document for font in page.get_fonts(full=True)}
+        count = 0
+        for xref in sorted(xrefs):
+            _, extension, _, data = document.extract_font(xref)
+            if data and extension in ('ttf', 'otf', 'ttc'):
+                (directory / f'{xref}.{extension}').write_bytes(data)
+                count += 1
+    require(count > 0, 'Original Word PDF contains no usable embedded fonts')
+
+
 def verify(root=ROOT):
     index = read_json(root / INDEX)
     require(index['schema'] == 1 and bool(index['fixtures']), 'Empty platform registry')
@@ -145,7 +162,9 @@ def verify(root=ROOT):
                     'Windows platform/tolerance changed')
             fixture = next(f for f in reference['fixtures'] if f['name'] == document['name'])
             require(fixture['docx_sha256'] == case['source']['sha256'], 'Wrong drawing input')
-            cases.append((name, source, manifest, document, fixture))
+            font_source = windows.get('font_source', 'installed')
+            require(font_source in ('installed', 'original-word-pdf'), 'Unknown font source')
+            cases.append((name, source, manifest, document, fixture, font_source))
         if name in REQUIRED_CAPTURES:
             require(('16.0.19127.20936', REQUIRED_CAPTURES[name]) in captures,
                     'Previously asserted Word version/capture was removed')
@@ -158,18 +177,22 @@ def check_windows(executable, output, root=ROOT):
     cases = verify(root)
     output.mkdir(parents=True, exist_ok=True)
     checked = 0
-    for name, source, manifest, document, drawing in cases:
+    for name, source, manifest, document, drawing, font_source in cases:
         target = output / name / manifest.parent.name
         target.mkdir(parents=True, exist_ok=True)
         actual_path, painted_path = target / 'native.json', target / 'native.pdf'
+        original_pdf = manifest.parent / document['pdf']
+        options = []
+        if font_source == 'original-word-pdf':
+            extract_fonts(original_pdf, target / 'fonts')
+            options = ['--fonts-directory', str(target / 'fonts')]
         subprocess.run([str(executable), str(source), str(actual_path), 'windows',
-                        str(painted_path), '--unclipped-tables'], check=True)
+                        str(painted_path), '--unclipped-tables', *options], check=True)
         actual = read_json(actual_path)
         checked += compare(drawing, actual, name + '/EMF')
-        original_pdf = manifest.parent / document['pdf']
         compare(pdf_origins(original_pdf, True), actual, name + '/PDF-unclipped')
         visible_path = target / 'visible.json'
-        subprocess.run([str(executable), str(source), str(visible_path), 'windows'], check=True)
+        subprocess.run([str(executable), str(source), str(visible_path), 'windows', *options], check=True)
         visible = pdf_origins(original_pdf)
         compare(visible, read_json(visible_path), name + '/PDF-visible')
         require(painted_path.read_bytes() != original_pdf.read_bytes(), 'Word self-comparison')

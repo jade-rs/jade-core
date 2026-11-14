@@ -612,7 +612,19 @@ pub fn word_automatic_note_separator_advance_px(
     platform: WordLayoutPlatform,
     font_descriptor: &str,
 ) -> Option<f64> {
-    if platform != WordLayoutPlatform::Mac {
+    word_note_separator_advance_px(platform, font_descriptor, false)
+}
+
+/// Windows Word 16.0.19127.20936 widens the authored note separator to half
+/// an em only with balanceSingleByteDoubleByteWidth. The 24 Word probes cover
+/// Arial, Century and Yu Mincho at 10.5/20pt in modes 12/15 with it on/off.
+/// Mac retains its established half-em separator independently of this flag.
+pub fn word_note_separator_advance_px(
+    platform: WordLayoutPlatform,
+    font_descriptor: &str,
+    balance_single_byte_double_byte_width: bool,
+) -> Option<f64> {
+    if platform == WordLayoutPlatform::Windows && !balance_single_byte_double_byte_width {
         return None;
     }
     let (size_pt, _) = split_font_descriptor(font_descriptor)?;

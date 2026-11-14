@@ -125,6 +125,58 @@
           "fixture": "source"
         }
       ]
+    },
+    {
+      "mac_case": "footnote-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-mac/source.docx",
+        "sha256": "eecd3c87d245794afb8a91116647fb8a79651d39343156d76eb82bb6618badc1"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-mac/manifest.json",
+        "sha256": "4b08b5a07abe553bc522eba7477a0d833b02d2eb184ce3a30b90c27cb8d376f6"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-footnote-eecd3c87",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "footnote-table-each-page-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-table-each-page-mac/source.docx",
+        "sha256": "0c58780723a92f1aee1fa45bfd3e2a70bb69d4d47409777bb932f2caaccc98cb"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-table-each-page-mac/manifest.json",
+        "sha256": "6be6bada931344df8c99b6b5fdf709938a505ca50cb0afcef21d64b69302a56c"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-footnote-table-each-page-0c587807",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

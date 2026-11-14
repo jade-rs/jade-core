@@ -1,0 +1,519 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T004143028Z-b4cb9887",
+  "captured_at_utc": "2026-11-14T00:41:43.0466928Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "ww14-2col-02e7f6a0",
+      "source": "..\\w14-inputs\\ww14-2col-02e7f6a0.docx",
+      "sha256": "02e7f6a0da7e08ab377c854bb0fc1b1085298900266c063a473bcab134e20ff8",
+      "pdf": "ww14-2col-02e7f6a0.pdf",
+      "pdf_sha256": "abe0b7bc81d6fdff35ff9150756196b6505fe2a4599152e4b17930f7a60ab53a",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-2col-02e7f6a0.page-001.emf",
+          "sha256": "48a4ebf9785df233e5bfffcc3a9cd4cd4019c3a155a8b659fc8ed5ac164dbe04",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "ww14-2col-02e7f6a0.page-002.emf",
+          "sha256": "3652c0555deb8ab325f0075da1eb4a753c01cbd9487bb7715e481323686f902b",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-char-spacing-6064f2d4",
+      "source": "..\\w14-inputs\\ww14-char-spacing-6064f2d4.docx",
+      "sha256": "6064f2d4aa131ac92bc583e1e0c119e955b3d32af49222cf640801ab3a04e2c1",
+      "pdf": "ww14-char-spacing-6064f2d4.pdf",
+      "pdf_sha256": "49fa96f0f38502b3ef6b56d4b2c4b280c4a3f243d421d360d875d04da485cd49",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-char-spacing-6064f2d4.page-001.emf",
+          "sha256": "58907a7bae0e3c8057a20656a32ef79939fa99c3d8fb8fa26c0fcf64b9d14b51",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-direction-with-selection-2b02a35f",
+      "source": "..\\w14-inputs\\ww14-direction-with-selection-2b02a35f.docx",
+      "sha256": "2b02a35fad34b190bb88c60c70925b8e38f7331b99a9767b4fbfd4d77082675d",
+      "pdf": "ww14-direction-with-selection-2b02a35f.pdf",
+      "pdf_sha256": "e4a96bbaca5319f444b4d9cff1d5f144e22721a7438873718b8f689d4e535b97",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-direction-with-selection-2b02a35f.page-001.emf",
+          "sha256": "c18a003a9321baee11709ae8eeaf0342bdfd64c5a285860aac96f7fe37ddf657",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "ww14-direction-with-selection-2b02a35f.page-002.emf",
+          "sha256": "1d0d557f571bfad6368bc4ba2502da3d6684249223d4eafe9be11a13fdfa63c7",
+          "width_pt": 841.9,
+          "height_pt": 595.3
+        }
+      ]
+    },
+    {
+      "name": "ww14-document-property-fields-c39cbd16",
+      "source": "..\\w14-inputs\\ww14-document-property-fields-c39cbd16.docx",
+      "sha256": "c39cbd16b3f92c37ec27ed2fb8656db8ac395cfeeef5c7afe6b74adf404af7e7",
+      "pdf": "ww14-document-property-fields-c39cbd16.pdf",
+      "pdf_sha256": "a5427b01598be5af66a05325a94038fb063b8ad82ff3f6bd5d969073c2b0659e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-document-property-fields-c39cbd16.page-001.emf",
+          "sha256": "fa15fd0db267e977a81b97f5f1abe5ac1a2992e178b7494f66415324afc79999",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-endnote-06477c7f",
+      "source": "..\\w14-inputs\\ww14-endnote-06477c7f.docx",
+      "sha256": "06477c7f53f9b7c80147bd15f7db44254b6e72ee5cd7e39af422a7b81b17d19e",
+      "pdf": "ww14-endnote-06477c7f.pdf",
+      "pdf_sha256": "aab054c0aab72684b63435b0fd03ff2bc806d2b638e88da1a5bb0ff6984bc87b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-endnote-06477c7f.page-001.emf",
+          "sha256": "23afe919ca36a2a3a1208f138d4d2ae3168e9c98d5c1c5f10258d7f4ca962290",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-inside-outside-7928b10c",
+      "source": "..\\w14-inputs\\ww14-floating-inside-outside-7928b10c.docx",
+      "sha256": "7928b10c2849bac71a61b74b282cdc700afb1344e77dbc9f1134fdd6c7a79312",
+      "pdf": "ww14-floating-inside-outside-7928b10c.pdf",
+      "pdf_sha256": "6d39feef9b5b63cde0f419fd15b40c49b84393d5f32bcf4d6bd81bfd4bcc65fc",
+      "pages": 4,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-inside-outside-7928b10c.page-001.emf",
+          "sha256": "10b4f4c76abb49c6a1a5f022996b9893a6124fb6f72e960da5bc382c47269796",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "ww14-floating-inside-outside-7928b10c.page-002.emf",
+          "sha256": "225af83aa634206559993f8578a7e933babfe301d291a52d91296cde73e95a4b",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "ww14-floating-inside-outside-7928b10c.page-003.emf",
+          "sha256": "d102870181aca8a6dfc8e137c166992987d0200635bae12557a3fbd86d0a5770",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 4,
+          "file": "ww14-floating-inside-outside-7928b10c.page-004.emf",
+          "sha256": "ee2177fa43d73d48b82f980372ebfa6ce644198dcf946b19b4f670e663b85b4b",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-simple-position-78430251",
+      "source": "..\\w14-inputs\\ww14-floating-simple-position-78430251.docx",
+      "sha256": "78430251c1eee992826b0deeb3c2a4029baf0d223ab10432ed39ef482906c1c4",
+      "pdf": "ww14-floating-simple-position-78430251.pdf",
+      "pdf_sha256": "bee62b10fa624b151bde7b5f67357cc2d76a2048bb5fb29ffb13ac5c069340da",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-simple-position-78430251.page-001.emf",
+          "sha256": "156cc301beb91743fbb68bc7a419da5950c3cb7b8539370c6235bdc1515c7835",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-square-wrap-66004027",
+      "source": "..\\w14-inputs\\ww14-floating-square-wrap-66004027.docx",
+      "sha256": "66004027672929d429fba9659e2cec4f3e648c0311b0e5aba339f1ac4657dff6",
+      "pdf": "ww14-floating-square-wrap-66004027.pdf",
+      "pdf_sha256": "885991b0935fb5e52f36f1a49410738b661160232ba4246cae52bfe17f309454",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-square-wrap-66004027.page-001.emf",
+          "sha256": "1c6d2f07b55feb3c59d4e1e8b703f81877a97b369e3cb9f34c55fd3061296b04",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-through-concave-eed31ff2",
+      "source": "..\\w14-inputs\\ww14-floating-through-concave-eed31ff2.docx",
+      "sha256": "eed31ff26467f552b917fe032a526de1934b033865b6052d4017d46db9cfa993",
+      "pdf": "ww14-floating-through-concave-eed31ff2.pdf",
+      "pdf_sha256": "51eca13a15f47a3c7f8b865b0fc4f906c063a7f8cdb973f828be2e7620e6bab2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-through-concave-eed31ff2.page-001.emf",
+          "sha256": "8ff6619aa2ea4f7ff1d4407ba99e65f446a4ed1d279411ddd9085dfa397d2944",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-tight-polygon-881e9c6a",
+      "source": "..\\w14-inputs\\ww14-floating-tight-polygon-881e9c6a.docx",
+      "sha256": "881e9c6a971ce1a2a8c53b3bf884bb06a44623ca9be809f874ad19e6eddb13f8",
+      "pdf": "ww14-floating-tight-polygon-881e9c6a.pdf",
+      "pdf_sha256": "e452183dab1412891c6d40d81b3af09acce4c5e5ec778ecb1555ff6b4cb5b947",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-tight-polygon-881e9c6a.page-001.emf",
+          "sha256": "8c24b160934a523a8ae4218115594fde6df2a7dd50b4c10379e15b7c55b54a2d",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-top-bottom-offset-326f3eb9",
+      "source": "..\\w14-inputs\\ww14-floating-top-bottom-offset-326f3eb9.docx",
+      "sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+      "pdf": "ww14-floating-top-bottom-offset-326f3eb9.pdf",
+      "pdf_sha256": "cbe8a17b9fde74aa055df05fd8ed19cd23e6557089a62f277140162b8007400b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-top-bottom-offset-326f3eb9.page-001.emf",
+          "sha256": "4f1b8e6f9622979d81526a2d282a2924dfe9f64dacb16300ecb34aaf2596a082",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-wrap-sides-33a9df99",
+      "source": "..\\w14-inputs\\ww14-floating-wrap-sides-33a9df99.docx",
+      "sha256": "33a9df9946ed6df47bca02a13ccc41c829db7332aeb6ec38e5c183dac3c32f46",
+      "pdf": "ww14-floating-wrap-sides-33a9df99.pdf",
+      "pdf_sha256": "eaf5f52048f7ce2e0fec8b6f9b4d035c34541629774c11e4270598d828510fd7",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-wrap-sides-33a9df99.page-001.emf",
+          "sha256": "2c2dc5932b96c52c30664d21f777ffcf1633d59890208ca66d1415ccb5e3406f",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "ww14-floating-wrap-sides-33a9df99.page-002.emf",
+          "sha256": "c7c916857fa87c09601e2231ff99acb106af7e6559d6d1136a9a32afbfd29cc9",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 3,
+          "file": "ww14-floating-wrap-sides-33a9df99.page-003.emf",
+          "sha256": "17bea293d5ae5eb30b5a759344dba24b57f89e79f47065017072529d2d4f3e97",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-floating-z-order-5739f577",
+      "source": "..\\w14-inputs\\ww14-floating-z-order-5739f577.docx",
+      "sha256": "5739f577365ce8b1f0e8d8e39e818db382b1c53d073e43c7478ec83e92742806",
+      "pdf": "ww14-floating-z-order-5739f577.pdf",
+      "pdf_sha256": "2045b8d801d6c0c1edd53090f38a2e9246784df7257d408a9d1f2649aaa67c45",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-floating-z-order-5739f577.page-001.emf",
+          "sha256": "25af18fc1d7359f6e1e423a77e40a892ec5ec28661ff46d31a915953d9583cba",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "ww14-floating-z-order-5739f577.page-002.emf",
+          "sha256": "527f9daec1d78171f7c187b5946d857434b7af0d2d67276ad1a9846e7ed80abf",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-footnote-long-continuation-89839c95",
+      "source": "..\\w14-inputs\\ww14-footnote-long-continuation-89839c95.docx",
+      "sha256": "89839c9589cf3e4e246360340397bb20124331fcd40ebb0305a157d483dafbe2",
+      "pdf": "ww14-footnote-long-continuation-89839c95.pdf",
+      "pdf_sha256": "1882b5112f273b28eecccfeac8bdd8f31d68ada07fecfe544a5cb19068acebe7",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-footnote-long-continuation-89839c95.page-001.emf",
+          "sha256": "ab43318a4f36be2166ed6c44c0e6198cf256dac2b248f48190570dd60259a64c",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "ww14-footnote-long-continuation-89839c95.page-002.emf",
+          "sha256": "3141cbe271abcd28b1091ba7f8267b2d4ce6187a797b5fdf2d0db60f35352bbd",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 3,
+          "file": "ww14-footnote-long-continuation-89839c95.page-003.emf",
+          "sha256": "aecd6c1a5ed9c51b3e621d32acd22867d36b0002a029eb8e2875f853df2068e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-footnote-table-each-page-0c587807",
+      "source": "..\\w14-inputs\\ww14-footnote-table-each-page-0c587807.docx",
+      "sha256": "0c58780723a92f1aee1fa45bfd3e2a70bb69d4d47409777bb932f2caaccc98cb",
+      "pdf": "ww14-footnote-table-each-page-0c587807.pdf",
+      "pdf_sha256": "68bb885dede81c96d3e85d55066614d00f2ab0463f3cf209eb198315bfabf278",
+      "pages": 8,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-footnote-table-each-page-0c587807.page-001.emf",
+          "sha256": "c29a36ed8aa46c8818725399d9500688f6dcd359142d4bcd05736dd9a3fa528e",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "ww14-footnote-table-each-page-0c587807.page-002.emf",
+          "sha256": "0800a9ab7cffa3a89a67a6d71d57bbbb33d74881b77b14d43f6290b3e345afa0",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 3,
+          "file": "ww14-footnote-table-each-page-0c587807.page-003.emf",
+          "sha256": "5484041a6fcc74f8581abd0d03ec72825fd54ec7f1c537ef471102dd03041a16",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 4,
+          "file": "ww14-footnote-table-each-page-0c587807.page-004.emf",
+          "sha256": "65e12bb028cfbcc44badce5b612ffeb0e7288bdcf6c426b0d236390286d070b5",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 5,
+          "file": "ww14-footnote-table-each-page-0c587807.page-005.emf",
+          "sha256": "b4df5efc31773c498d38d9549ca3acccdd161503646eff1e6aee0520b541b2a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 6,
+          "file": "ww14-footnote-table-each-page-0c587807.page-006.emf",
+          "sha256": "a0ec51b64906a9b67a1c3daae07c916520d84c1abc4ced218b725f81f4a1702e",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 7,
+          "file": "ww14-footnote-table-each-page-0c587807.page-007.emf",
+          "sha256": "ac50841d15aac222567deed05345ede4c63109f366905ff216bbde46e4d03099",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 8,
+          "file": "ww14-footnote-table-each-page-0c587807.page-008.emf",
+          "sha256": "49ce3d2a90a5b029c47c727a4fd79458126e58f05885bc39bc2dbea05c6503bd",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-footnote-table-textbox-order-5c792b1e",
+      "source": "..\\w14-inputs\\ww14-footnote-table-textbox-order-5c792b1e.docx",
+      "sha256": "5c792b1eb9b78b40914c6f35a4b9e5bd0696d66f301d333021cc6343e490ffc7",
+      "pdf": "ww14-footnote-table-textbox-order-5c792b1e.pdf",
+      "pdf_sha256": "c84baec2be3e40b6b0208d39e05ea40971b94d3bf2d5043ec43b6bcdc07771ee",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-footnote-table-textbox-order-5c792b1e.page-001.emf",
+          "sha256": "0c0cebac100a87b276c1b4a9fc26a4c6bec8e9051c696eaa0ae0460146a14dba",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-footnote-eecd3c87",
+      "source": "..\\w14-inputs\\ww14-footnote-eecd3c87.docx",
+      "sha256": "eecd3c87d245794afb8a91116647fb8a79651d39343156d76eb82bb6618badc1",
+      "pdf": "ww14-footnote-eecd3c87.pdf",
+      "pdf_sha256": "12dcab35c95672f1670e53d2e5c49c798cced92f1b7dd551a0b0ebba4db9f15b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-footnote-eecd3c87.page-001.emf",
+          "sha256": "c77bade46ee9aa0ba6c4dcff81c59cb43c9c34945cbd86134866426bd424be6d",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    },
+    {
+      "name": "ww14-header-footer-edge-cases-d6c325b8",
+      "source": "..\\w14-inputs\\ww14-header-footer-edge-cases-d6c325b8.docx",
+      "sha256": "d6c325b84a42e5df290543623f000e00eafdbdbe72322b2f56fd391ba7a37d69",
+      "pdf": "ww14-header-footer-edge-cases-d6c325b8.pdf",
+      "pdf_sha256": "9c2c13be8a28b126e6879e4e4aa160a2ef3fe25f940bdde8c38b7b410c2cfab3",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-header-footer-edge-cases-d6c325b8.page-001.emf",
+          "sha256": "ec9f377c599ebeaac4fd42902cdfa5e4425980be7c48e0891a13b396acbc6381",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "ww14-header-footer-edge-cases-d6c325b8.page-002.emf",
+          "sha256": "59de07a1537c5216dad364161f376e491ff8bee2af6de6edf6a78a25235967c9",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-header-footer-sectionpages-9904e5c5",
+      "source": "..\\w14-inputs\\ww14-header-footer-sectionpages-9904e5c5.docx",
+      "sha256": "9904e5c52526c3a8fd897b78747c865a06d17d656f3e7c5a12c891c3d2cbd65f",
+      "pdf": "ww14-header-footer-sectionpages-9904e5c5.pdf",
+      "pdf_sha256": "0770a6c8ec9ca7b0833e4f09ffb1524e2c2cbe0e4b7e6b60840544c0937b706e",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-header-footer-sectionpages-9904e5c5.page-001.emf",
+          "sha256": "6f90c78ef012baece644ac78ee21160b5ebb83995563e78069e5271919f3b580",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        },
+        {
+          "page": 2,
+          "file": "ww14-header-footer-sectionpages-9904e5c5.page-002.emf",
+          "sha256": "8a9ef05c35f65470c1e9b15f6f252a8d2d42cd45cee74ce42e2d250c56b36dce",
+          "width_pt": 612.0,
+          "height_pt": 792.0
+        }
+      ]
+    },
+    {
+      "name": "ww14-header-footer-sections-ad8ebbab",
+      "source": "..\\w14-inputs\\ww14-header-footer-sections-ad8ebbab.docx",
+      "sha256": "ad8ebbab1554d9aa9edf9cac2b995ac98de7519e88d8e51658147028302dc1e2",
+      "pdf": "ww14-header-footer-sections-ad8ebbab.pdf",
+      "pdf_sha256": "acb6a59cc3a3c090c2209f1fbfcd1e3bd034650ad22746f3f947cc608d9c68f8",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-header-footer-sections-ad8ebbab.page-001.emf",
+          "sha256": "00c44197c80d38a016bce30a1c82892cb471011abb08dffa2dc13c24d7a1a645",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        },
+        {
+          "page": 2,
+          "file": "ww14-header-footer-sections-ad8ebbab.page-002.emf",
+          "sha256": "3b6663ff508d42d87d2cbd5a85da733eda47482456fd4cca3780675ae9c8ae90",
+          "width_pt": 595.3,
+          "height_pt": 841.9
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

@@ -1299,9 +1299,12 @@ fn automatic_note_separator_width_px(
     {
         return None;
     }
-    crate::line_metrics::word_automatic_note_separator_advance_px(
+    crate::line_metrics::word_note_separator_advance_px(
         paragraph.word_platform,
         font_descriptor,
+        paragraph
+            .east_asian_rules
+            .balance_single_byte_double_byte_width,
     )
 }
 
@@ -14378,6 +14381,45 @@ mod tests {
             )
             .unwrap();
             assert_eq!(advances, [8.0, 3.0, 3.0, 3.0]);
+        }
+    }
+
+    #[test]
+    fn windows_note_separator_obeys_balance_without_changing_mac_or_ordinary_spaces() {
+        use crate::line_metrics::WordLayoutPlatform;
+        let ctx = TestContext::new(3.0);
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            for balance in [false, true] {
+                let paragraph = ParagraphStyle {
+                    word_platform: platform,
+                    automatic_note_separator_offset: Some(1),
+                    east_asian_rules: EastAsianLineBreakingRules {
+                        balance_single_byte_double_byte_width: balance,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                let lines = wrap_text_into_lines(
+                    &ctx,
+                    "1 A B",
+                    &[make_run("1 A B")],
+                    0.0,
+                    &paragraph,
+                    0,
+                    400.0,
+                )
+                .unwrap();
+                let expected = if platform == WordLayoutPlatform::Mac || balance {
+                    8.0
+                } else {
+                    3.0
+                };
+                assert_eq!(
+                    lines[0].clusters[1].width, expected,
+                    "{platform:?} balance={balance}"
+                );
+                assert_eq!(lines[0].clusters[3].width, 3.0);
+            }
         }
     }
 

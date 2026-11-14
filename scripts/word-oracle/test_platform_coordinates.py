@@ -27,6 +27,10 @@ class PlatformCoordinates(unittest.TestCase):
         self.reject_index_edit(lambda c: c['windows'][0].update(word_product_version='0.0.0.0'),
                                'Windows Word version changed')
 
+    def test_unknown_font_source_is_rejected(self):
+        self.reject_index_edit(lambda c: c['windows'][0].update(font_source='expected-positions'),
+                               'Unknown font source')
+
     def test_mac_source_cannot_be_swapped(self):
         self.reject_index_edit(lambda c: c['source'].update(sha256='0' * 64), 'Evidence changed')
 
