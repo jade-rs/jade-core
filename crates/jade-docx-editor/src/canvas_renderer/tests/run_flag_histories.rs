@@ -895,6 +895,24 @@ fn hidden_runs_after_font_edits_match_fresh_layout() {
     }
 }
 
+#[test]
+fn windows_noop_format_edits_preserve_fresh_line_metrics() {
+    check_history(
+        &[
+            Edit::RunText(8, Some(1)),
+            Edit::RunText(2, None),
+            Edit::Text(2),
+            Edit::Flag(12, Some(true)),
+            Edit::RunText(9, Some(2)),
+            Edit::Metric(0, None),
+            Edit::Flag(10, None),
+            Edit::Metric(3, None),
+            Edit::Repaint,
+        ],
+        true,
+    );
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
     #[test]

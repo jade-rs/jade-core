@@ -1,5 +1,7 @@
 """Regression checks for platform selection, immutable inputs and strict XY gates."""
 import copy
+import gzip
+import json
 import unittest
 from unittest.mock import patch
 
@@ -9,6 +11,25 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         self.assertGreaterEqual(len(check.verify()), 1)
+
+    def test_original_word_platform_differences_are_not_regressions(self):
+        # This identical DOCX has different origins in the two actual Word
+        # exports. A shared golden would incorrectly fail one platform.
+        name, _, _, _, windows, _ = next(
+            case for case in check.verify() if case[0] == 'endnote-mac')
+        directory = check.ROOT / 'tests/word-oracle/mac-elsa-synthetic' / name
+        pages = json.loads(gzip.decompress((directory / 'pages.json.gz').read_bytes()))
+        mac = dict(page_count=len(pages), glyphs=[
+            [number, *glyph]
+            for number, page in enumerate(pages, 1)
+            for story in ('header', 'body', 'footer')
+            for glyph in page[story]])
+        self.assertEqual(check.compare(mac, mac, 'Mac original'), 12)
+        self.assertEqual(check.compare(windows, windows, 'Windows original'), 12)
+        for expected, actual in ((mac, windows), (windows, mac)):
+            with self.subTest(expected=expected['glyphs'][0]), self.assertRaisesRegex(
+                    ValueError, 'axis mismatch'):
+                check.compare(expected, actual, 'wrong platform golden')
 
     def reject_index_edit(self, edit, message):
         original = check.read_json
@@ -69,6 +90,29 @@ class PlatformCoordinates(unittest.TestCase):
                        dict(page_count=1, glyphs=[[1, 'A', float('nan'), 80.]])]:
             with self.subTest(actual=actual), self.assertRaises(ValueError):
                 check.compare(reference, actual, 'negative')
+
+    def test_floating_text_near_a_superscript_keeps_strict_origin_matching(self):
+        # Word's 28pt exact textbox and adjacent body superscript straddle
+        # the old 0.25pt reading-line grouping boundary after PDF rounding.
+        word = dict(page_count=1, glyphs=[[1, 'B', 352.27, 137.18],
+                                         [1, '7', 75.14, 137.42]])
+        jade = dict(page_count=1, glyphs=[[1, 'B', 352.15, 137.14],
+                                         [1, '7', 75.18, 137.43]])
+        self.assertEqual(check.compare(word, jade, 'adjacent origins'), 2)
+        jade['glyphs'][0][3] = 137.18 + .376
+        with self.assertRaisesRegex(ValueError, 'axis'):
+            check.compare(word, jade, 'real displacement')
+
+    def test_overlapping_repeated_characters_need_distinct_partners(self):
+        word = dict(page_count=1, glyphs=[[1, 'A', x, 80] for x in (0, .4, .8)])
+        jade = dict(page_count=1, glyphs=[[1, 'A', x, 80] for x in (.2, .6, -.2)])
+        self.assertEqual(check.compare(word, jade, 'ambiguous nearest origin'), 3)
+        # Every reference has a nearby candidate, but two references would
+        # have to reuse the same actual glyph. An existence-only check fails.
+        word['glyphs'] = [[1, 'A', x, 80] for x in (0, .2, 1)]
+        jade['glyphs'] = [[1, 'A', x, 80] for x in (0, 1, 1)]
+        with self.assertRaisesRegex(ValueError, 'distinct glyph'):
+            check.compare(word, jade, 'duplicate cannot replace missing paint')
 
 
 if __name__ == '__main__':

@@ -28726,7 +28726,9 @@ where
         }
         let mac_layout = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
-        let (content_left, content_top, content_right, box_bottom) = if mac_layout {
+        // Windows Word's 0.5/1/2pt outline probes also reserve half the
+        // visible stroke inside the authored text margins.
+        let (content_left, content_top, content_right, box_bottom) = {
             let bounds = jade_docx_layout::text_box_geometry::text_box_content_bounds(
                 text_box.shape,
                 width,
@@ -28743,15 +28745,6 @@ where
                 draw_y + bounds.top,
                 draw_x + bounds.right,
                 draw_y + bounds.bottom,
-            )
-        } else {
-            let left = (draw_x + text_box.insets.left_px).min(draw_x + width);
-            let top = (draw_y + text_box.insets.top_px).min(draw_y + height);
-            (
-                left,
-                top,
-                (draw_x + width - text_box.insets.right_px).max(left),
-                (draw_y + height - text_box.insets.bottom_px).max(top),
             )
         };
         // Word does not display note references inside a text-box story.
@@ -29334,9 +29327,8 @@ where
         chunk_styles
     }
 
-    /// Mac text-box lines, explicit vertical alignment and ruby consume the
-    /// shared font box and spacing plan. Other lines and missing metric inputs
-    /// retain the scaled 12pt fallback.
+    /// Text-box lines consume the shared requested-face font box and spacing
+    /// plan. Missing metric inputs retain the scaled 12pt fallback.
     fn text_box_line_metrics(
         &self,
         wrapped_line: &WrappedLine,
@@ -29375,12 +29367,10 @@ where
         wrapped_line: &WrappedLine,
         format: &TextBoxParagraphFormat<'_>,
     ) -> (f64, f64) {
-        if format.style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            && matches!(
-                format.style.text_alignment.as_deref(),
-                None | Some("auto" | "baseline")
-            )
-        {
+        if matches!(
+            format.style.text_alignment.as_deref(),
+            None | Some("auto" | "baseline")
+        ) {
             if let Some(line_pt) = format
                 .spacing
                 .filter(|spacing| matches!(spacing.line_rule.as_deref(), Some("exact" | "exactly")))
@@ -29388,7 +29378,8 @@ where
                 .filter(|line| *line > 0.0)
             {
                 let pitch = points_to_px(line_pt);
-                // Word for Mac uses the same four-fifths baseline as in body lines.
+                // Both Word platforms use four fifths of the exact line pitch.
+                // Windows 16.0.19127.20936 confirms 14/28pt at 10.5/20pt sizes.
                 return (pitch * 0.8, pitch);
             }
         }
@@ -29409,46 +29400,45 @@ where
                 .as_ref()
                 .is_some_and(|properties| properties.ruby.is_some())
         });
-        if format.style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            || matches!(
-                format.style.text_alignment.as_deref(),
-                Some("top" | "center" | "bottom")
-            )
-            || has_ruby
-        {
-            if let Some((ascent, descent)) = wrapped_line.font_box_px() {
-                let single = ascent + descent;
-                let mut pitch = if format.style.word_proportional_line_sizing.is_some() {
-                    wrapped_line.line_height_px(&format.style, single)
-                } else {
-                    points_to_px(jade_docx_layout::line_metrics::resolve_line_height_points(
-                        font_size_pt as f32,
-                        format.spacing,
-                        None,
-                        false,
-                        None,
-                        Some((single * 0.75) as f32),
-                    ))
-                };
-                // Ordinary Windows spacing uses a font-size estimate. Ruby
-                // needs the full guide/base box, unless the author fixes the
-                // line pitch explicitly (which may intentionally overlap).
-                let exact = format
-                    .spacing
-                    .and_then(|s| s.line_rule.as_deref())
-                    .is_some_and(|rule| matches!(rule, "exact" | "exactly"));
-                if has_ruby && !exact {
-                    pitch = pitch.max(single);
-                }
-                let leading = (pitch - single).max(0.0);
-                let alignment_leading = match format.style.text_alignment.as_deref() {
-                    Some("top") => 0.0,
-                    Some("center") => leading * 0.5,
-                    Some("bottom") => leading,
-                    _ => 0.0,
-                };
-                return (ascent + alignment_leading, pitch);
+        if let Some((ascent, descent)) = wrapped_line.font_box_px() {
+            let single = ascent + descent;
+            let mut pitch = if format.style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                && format.spacing.and_then(|spacing| spacing.line).is_none()
+            {
+                // Windows' implicit single spacing follows the requested face,
+                // including Century/Yu Mincho's taller boxes. Multiline Word
+                // probes distinguish this from font_size * 1.15.
+                single
+            } else if format.style.word_proportional_line_sizing.is_some() {
+                wrapped_line.line_height_px(&format.style, single)
+            } else {
+                points_to_px(jade_docx_layout::line_metrics::resolve_line_height_points(
+                    font_size_pt as f32,
+                    format.spacing,
+                    None,
+                    false,
+                    None,
+                    Some((single * 0.75) as f32),
+                ))
+            };
+            // Ruby needs the full guide/base box, unless the author fixes the
+            // line pitch explicitly (which may intentionally overlap).
+            let exact = format
+                .spacing
+                .and_then(|s| s.line_rule.as_deref())
+                .is_some_and(|rule| matches!(rule, "exact" | "exactly"));
+            if has_ruby && !exact {
+                pitch = pitch.max(single);
             }
+            let leading = (pitch - single).max(0.0);
+            let alignment_leading = match format.style.text_alignment.as_deref() {
+                Some("top") => 0.0,
+                Some("center") => leading * 0.5,
+                Some("bottom") => leading,
+                _ => 0.0,
+            };
+            return (ascent + alignment_leading, pitch);
         }
         let scale = if font_size_pt > 0.0 {
             font_size_pt / TEXT_BOX_DEFAULT_FONT_SIZE_PT
@@ -29591,8 +29581,7 @@ where
                 .and_then(|props| props.spacing.as_ref()),
             ..TextBoxParagraphFormat::default()
         };
-        format.style.word_east_asian_font_line_box =
-            format.style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+        format.style.word_east_asian_font_line_box = true;
         format.style.word_proportional_line_sizing =
             jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
                 format.spacing,
@@ -49991,6 +49980,10 @@ mod tests {
     /// Word wrapped a word early here.
     #[test]
     fn text_box_lines_wrap_and_paint_in_the_run_font() {
+        let _platform = RestoreWordPlatform(jade_docx_layout::line_metrics::word_layout_platform());
+        jade_docx_layout::line_metrics::set_word_layout_platform(
+            jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
+        );
         let (mut renderer, painter) = recording_renderer();
         let properties = RunProperties {
             font_size: Some(10.5),
@@ -50025,12 +50018,10 @@ mod tests {
             .first()
             .and_then(|paragraph| paragraph.lines.first())
             .expect("the shape records its one line");
-        // 14px was tuned for 12pt; a 10.5pt run scales the pitch with it.
-        assert!(
-            (line.height - 14.0 * 10.5 / 12.0).abs() < 1e-9,
-            "{}",
-            line.height
-        );
+        // Requested Yu Mincho uses its measured Windows 3426/2048-em
+        // single box. Three-line Word probes assert this actual pitch too.
+        let expected = 10.5 * 3426.0 / 2048.0 * 96.0 / 72.0;
+        assert!((line.height - expected).abs() < 1e-5, "{}", line.height);
     }
 
     /// The shared resolution answers exactly what a fresh one does, reuses an

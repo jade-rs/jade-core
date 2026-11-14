@@ -1,0 +1,288 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T080924812Z-f0e42358",
+  "captured_at_utc": "2026-11-14T08:09:24.8345907Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-textbox-multiline-arial-size21-auto-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-arial-size21-auto-compat15.docx",
+      "sha256": "ddfebc76352a953d833b6a5f03849f639fe12fabe1b5e77a4043077d75216e53",
+      "pdf": "word-windows-edge-textbox-multiline-arial-size21-auto-compat15.pdf",
+      "pdf_sha256": "fdd59da1f3dd7aad36f25de1a498d005aff180ea5aef689226e31c5b86cbd4d0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-arial-size21-auto-compat15.page-001.emf",
+          "sha256": "808e5fda8dedc6f89540cf5ccf9481bd2b70416c60a354f7cc067524d782d6fe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-arial-size40-auto-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-arial-size40-auto-compat15.docx",
+      "sha256": "7b5acfe44806f819dbac58968891adaa779e9644ac16aff1516e46386a9b429b",
+      "pdf": "word-windows-edge-textbox-multiline-arial-size40-auto-compat15.pdf",
+      "pdf_sha256": "b94d00f2c90f7c183cbc754b4826f89b373de83cd06793bc3265335779ef0c35",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-arial-size40-auto-compat15.page-001.emf",
+          "sha256": "3ef4c14e67fb93c449b2feb77ba097244fc2e3e637d2260353df4e17041be154",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-century-size21-auto-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-century-size21-auto-compat15.docx",
+      "sha256": "16ac7f03e37c6ae544b1bc5499eb9894b4939d1a4af78352341b56871b293016",
+      "pdf": "word-windows-edge-textbox-multiline-century-size21-auto-compat15.pdf",
+      "pdf_sha256": "54c92c8047eb9307b050cc9bbb861522578c9775acfec4737dc705ce7a866661",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-century-size21-auto-compat15.page-001.emf",
+          "sha256": "5e885e2d94300e12ffa02407729ff9cfce5978c8765024f93ea06211107fcbd9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-century-size40-auto-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-century-size40-auto-compat15.docx",
+      "sha256": "98df1787b79066c8f22928e59c5a08f0bf0ab9f783ab507df14cbe005005d222",
+      "pdf": "word-windows-edge-textbox-multiline-century-size40-auto-compat15.pdf",
+      "pdf_sha256": "b8155bc91e213b6639403a192abd813fb62da8fb9c03e2fefb354832196a5095",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-century-size40-auto-compat15.page-001.emf",
+          "sha256": "5e3faff94fc2ed779ae43bade4bb5808fac2c6b8250bc9790b0d460a968f3ea1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-yu-mincho-size21-auto-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-yu-mincho-size21-auto-compat15.docx",
+      "sha256": "09ba3ce3f5184b21a85af40cffcf070045e7a3739ceb6e24d3edc3748c4c79df",
+      "pdf": "word-windows-edge-textbox-multiline-yu-mincho-size21-auto-compat15.pdf",
+      "pdf_sha256": "904c97a749db13f216b85283de0688b5d23c764f739957720c2cfbba85cba7a8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-yu-mincho-size21-auto-compat15.page-001.emf",
+          "sha256": "c29b6f62338b79f71c282b233adffef6031ccffc49a966b444e36d1c07eb5fdc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-yu-mincho-size21-exact14-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-yu-mincho-size21-exact14-compat15.docx",
+      "sha256": "e809e4bf51997840f29493ed715023d4ae27cc2b9d9eae7ea7e1fa38ee71f63e",
+      "pdf": "word-windows-edge-textbox-multiline-yu-mincho-size21-exact14-compat15.pdf",
+      "pdf_sha256": "350af4a6f1868699d8da2d448216f9bc463708d789723bca5a21f6db0beb5c0e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-yu-mincho-size21-exact14-compat15.page-001.emf",
+          "sha256": "38c0deee15ead28e5e7dcb79d83ee0898768776afb22b8e5ccf86680e4b23ce4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-yu-mincho-size21-exact28-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-yu-mincho-size21-exact28-compat15.docx",
+      "sha256": "92f8d05d7b3703ac01f0d6e278ea0ec27fb2cada30872904013339d9009592b9",
+      "pdf": "word-windows-edge-textbox-multiline-yu-mincho-size21-exact28-compat15.pdf",
+      "pdf_sha256": "7fb5136e0d635a36759e9c3ffd08f3f739ce89f0e5ff3db8f3d0f7cf85dd0a4e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-yu-mincho-size21-exact28-compat15.page-001.emf",
+          "sha256": "c2493c973766a60ccc132713b75ae0324988607ec93a9afd072d2606229117d5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-yu-mincho-size40-auto-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-yu-mincho-size40-auto-compat15.docx",
+      "sha256": "6d868fc6e8cfd98cda168a61585b8295c3f5968f7fa261203872d4c10f7a9399",
+      "pdf": "word-windows-edge-textbox-multiline-yu-mincho-size40-auto-compat15.pdf",
+      "pdf_sha256": "1e54a6b9f78a7edc81dacd1309e99fd129050e62ecda84e986d5d7c048e30e4a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-yu-mincho-size40-auto-compat15.page-001.emf",
+          "sha256": "39f3e9531712dbf4cbe43c57705b5220ed26ba8c1b88790076f43cf091a8f155",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact14-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-yu-mincho-size40-exact14-compat15.docx",
+      "sha256": "c9f0aeecb6e45b7370d6a563e964f557f424dce39d0841d41b8827b355fc48d7",
+      "pdf": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact14-compat15.pdf",
+      "pdf_sha256": "5fef65839228c6a108f03c4e17ff5314d3de544f4a406eef7274bc8d5cac1784",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact14-compat15.page-001.emf",
+          "sha256": "c0d5bd5d45e89d7c925ece536207973a69217fd51cc6896cadfb350afadee060",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact28-compat15",
+      "source": "..\\w14-textbox-multiline-inputs\\word-windows-edge-textbox-multiline-yu-mincho-size40-exact28-compat15.docx",
+      "sha256": "59452f0221427cd265a6e4fe08a8bdacb3f6663aba0164e3484fabb74139d802",
+      "pdf": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact28-compat15.pdf",
+      "pdf_sha256": "dddf89bd1dda27244251e8d828b74600cc122fb9da491d030437bcecc80522a7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact28-compat15.page-001.emf",
+          "sha256": "7ff17702ff6b636ba259767eaf1fa1c8cc546dcec4c5d42d914785f94661c70e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,35 @@
 # Word for Mac coordinate regression gate
 
+## Independent Mac and Windows expectations
+
+`platform-coordinates.json` links the same original DOCX bytes to separate
+Word for Mac manifests and Windows Word captures. OS differences are expected:
+Mac rendering must match the Mac export, and Windows rendering must match the
+Windows export for each recorded Word version. Neither reference is replaced
+with the other platform's coordinates.
+
+For example, `endnote-mac` retains the Word for Mac 16.114
+(16.114.26101123) export and the Windows Word 16.0.19127.20936 export.
+The platform regression test loads both original coordinate sets and asserts
+that comparing either set with the other platform fails. Each platform's
+renderer is separately compared with its own original by these PR jobs:
+
+- **Mac Word browser coordinate match**, on `macos-latest`, checks every
+  imported Mac synthetic fixture, including every shared platform case.
+- **Mac Word coordinate match**, on `macos-latest`, runs the native Mac
+  regression tests described below.
+- **Windows Word baselines by version**, on `windows-latest`, renders every
+  registered shared case and compares it with the versioned Windows Word EMF,
+  PDF text, and separately painted native PDF. Absolute X and Y tolerance
+  remains **0.375 pt**, with no origin translation.
+
+These jobs run on every PR; coordinate assertion failures fail the job.
+The original DOCX and reference hashes are verified, and the existing Mac
+tolerances are preserved. Windows captures retain Word version/build and
+capture identity rather than overwriting the Mac goldens.
+
+## Native Mac regression coverage
+
 `CI / native-macos` runs `word_mac_coordinates` for every pull request, without
 Word or a locally installed Office font. It uses the native Skia renderer, the
 Mac layout platform, and the repository's Noto Sans JP Regular/Bold faces as
