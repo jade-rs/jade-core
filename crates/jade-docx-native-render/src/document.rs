@@ -471,7 +471,13 @@ impl NativeDocument {
                 .map_err(|_| "PDF renderer setup failed".to_string())?;
             register_math_faces(&mut renderer, &self.math_faces);
             renderer.sync_word_document(&self.word_document);
-            renderer.set_page_export_mode(true);
+            if pdf_options.rendering == PdfRenderingMode::Vector {
+                renderer.set_page_export_mode(true);
+            } else {
+                // Editor mode promises the live raster, including table grid
+                // guides. Vector mode is the clean, printable page surface.
+                renderer.set_spelling_export_mode(true);
+            }
             renderer.set_structure_tagging(pdf_options.tagged);
             renderer.mark_full_repaint();
             renderer
