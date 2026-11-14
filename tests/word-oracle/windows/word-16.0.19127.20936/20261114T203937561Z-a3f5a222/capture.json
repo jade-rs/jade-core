@@ -1,0 +1,531 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T203937561Z-a3f5a222",
+  "captured_at_utc": "2026-11-14T20:39:37.5812360Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom0-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-namenormal-custom0-compat14.docx",
+      "sha256": "cb04a681e64f485b3aeedceaa40b5c7ae414051e213dd54b93172b6456ce592c",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom0-compat14.pdf",
+      "pdf_sha256": "658faeae1bbb486795c47ecbf4b5e81a4aa86820fe1451c65f228a3b3ee2c1fc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom0-compat14.page-001.emf",
+          "sha256": "58076be3eb04b5fa061b393ddd283143a62d1895f1118b83964104e8e567138b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom1-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-namenormal-custom1-compat14.docx",
+      "sha256": "b830af3df69fc78de8f7673bb4e0827e47379397f735c6f186afa3b70451befe",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom1-compat14.pdf",
+      "pdf_sha256": "9a75d2f41d98eb7eab4e310613c92f59e8aabb44d972ae10749fac8339da46c4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom1-compat14.page-001.emf",
+          "sha256": "04cd77cfd7b6339e9d6701b419f352b8a8327f3574821a21bd83727a13b6475e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-namenormal-customomitted-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-namenormal-customomitted-compat14.docx",
+      "sha256": "3ecaf6dca9179c159a5c5cdb9ad98cec038c3112d2d658dd68a6b5df71ee12f2",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-namenormal-customomitted-compat14.pdf",
+      "pdf_sha256": "473b7a69710f2414c3bc7221d09dec539e50a491a9a94cf66db160579bc278aa",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-namenormal-customomitted-compat14.page-001.emf",
+          "sha256": "03504625c01e2fac683d689e234751914580b9ae5bb90af735fbd815f8e03ad8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom0-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-nameomitted-custom0-compat14.docx",
+      "sha256": "97bf02f4cd3a7c633ad274f2a5a566186bc498a5ee37f498551f8493cd8ba631",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom0-compat14.pdf",
+      "pdf_sha256": "91d49fae462be9b1ee6c431d5e62fc89640497a6b8f8caec67806499c1c73e7b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom0-compat14.page-001.emf",
+          "sha256": "6b5dfaa3493082a765b8dc92dd36b0bfbfb4a8895890d426053a73909d149e19",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom1-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-nameomitted-custom1-compat14.docx",
+      "sha256": "17bbfa0c06c2695d85bd3babf18a6345b107cd8267a77dfa2fd83a725fce25fb",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom1-compat14.pdf",
+      "pdf_sha256": "63263f8932b835329756f1df0a9a0d5498f2c122fceb124612e15e05694e1b5d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom1-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-nameomitted-customomitted-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-nameomitted-customomitted-compat14.docx",
+      "sha256": "191f4498602d3a0f7d8eca8eb15e5c9dc6b74d66d33a8528001b58389a645b95",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-nameomitted-customomitted-compat14.pdf",
+      "pdf_sha256": "b6943d43ab2b3e79fd2f95133452eddd8d785257208ae2a0a7655374b424e582",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-nameomitted-customomitted-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom0-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-nameprobe-custom0-compat14.docx",
+      "sha256": "f34698dfcf34c030e01b31fbbe7e1a477bc1fa29267048af3663f03486730461",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom0-compat14.pdf",
+      "pdf_sha256": "c1786b37ee928844f45963284d262b92bae00954388bd770961b685137ec434d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom0-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom1-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-nameprobe-custom1-compat14.docx",
+      "sha256": "996e560b7512e803f4b7e48c543aff7d66ead51e31979fc21c5052c7d34a6f50",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom1-compat14.pdf",
+      "pdf_sha256": "ff874c4eef2e7c666d7ac7f32a7b0510fc2132503da3bcf6e8a45156d0696d1c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom1-compat14.page-001.emf",
+          "sha256": "695425285f7b81b9943d6246bb3e0753262a917503483eafd2cae47fd14ef767",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idnormal-nameprobe-customomitted-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idnormal-nameprobe-customomitted-compat14.docx",
+      "sha256": "59d070f32cd250221703ebf5dc9e090313097b2900b629403a5d1b4ec2c28c45",
+      "pdf": "word-windows-edge-table-identity-effects-idnormal-nameprobe-customomitted-compat14.pdf",
+      "pdf_sha256": "4e6a79cd0522704d27f6aa1a4e6959fac504d4bfe9e35f6ca4b77f0a0bbe38b6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idnormal-nameprobe-customomitted-compat14.page-001.emf",
+          "sha256": "c087699a04d2acab83752650b3102a0fad02aa9fbea9dc6fbb7eae4d5e0a4617",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom0-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-namenormal-custom0-compat14.docx",
+      "sha256": "8d1b3186c15c67c9c1e3ecf92e18335fe96481de53dbd2adcab5c86f2df4c90a",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom0-compat14.pdf",
+      "pdf_sha256": "7a63c757614c8752347f4ab10e5d626c4a506109230e731d766d6ed9bfb0a9ff",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom0-compat14.page-001.emf",
+          "sha256": "f6300937445bdd9504ab6c596e88d5a8d60c29d85002e596d2f20e127c450e29",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom1-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-namenormal-custom1-compat14.docx",
+      "sha256": "6f54374f17471c637f97d7be1b1c00ed289b3478b5d19b5e9770ea901573f4b1",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom1-compat14.pdf",
+      "pdf_sha256": "141305035ab9f367d60b58d49f276c5d85ae64eab6a4f26718b86de6f80d64df",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom1-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-namenormal-customomitted-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-namenormal-customomitted-compat14.docx",
+      "sha256": "b4778966b2bfae34be69a0a339530249b7c59444dce07f1bae82c6240f7b98e8",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-namenormal-customomitted-compat14.pdf",
+      "pdf_sha256": "f6bc361e5a66d5a1ec0682d6acbbe1276e9920546887817992096a9320f269f6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-namenormal-customomitted-compat14.page-001.emf",
+          "sha256": "03504625c01e2fac683d689e234751914580b9ae5bb90af735fbd815f8e03ad8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom0-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-nameomitted-custom0-compat14.docx",
+      "sha256": "0aa4807986dba779eaee80178bf0fe5d1f52fd021ff1e8823816e48b1cbbae1b",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom0-compat14.pdf",
+      "pdf_sha256": "8a75495892a3e0a3fe8b163ed1df33ea03b2319717b0f6b57c1f380971cad98b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom0-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom1-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-nameomitted-custom1-compat14.docx",
+      "sha256": "e5271da665add70c5440850757844a110ae830d1894273c632cdc4a486058c37",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom1-compat14.pdf",
+      "pdf_sha256": "bc49d8bc917ddce52cfd7f4fb6c3f9de16cfbeee12db9f012eb31e29bdd9bced",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom1-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-nameomitted-customomitted-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-nameomitted-customomitted-compat14.docx",
+      "sha256": "3dce5c0551e70109f7bf610b8a3c677def3f227e75abb86bf85dcb5c3f347d5b",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-nameomitted-customomitted-compat14.pdf",
+      "pdf_sha256": "d264d6a75593b38c68f06f0b271ba0f2ad6b0892b27e5fde682527c3f0726892",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-nameomitted-customomitted-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom0-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-nameprobe-custom0-compat14.docx",
+      "sha256": "7bbb756b4fb618dce161b3adedf8e194d4e91659051bf909dc53d78e49091808",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom0-compat14.pdf",
+      "pdf_sha256": "ca991a2fdf734fecef7e3c3f76b789a0747ed59e3b25b7c745d78a4894c49aa0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom0-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom1-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-nameprobe-custom1-compat14.docx",
+      "sha256": "3ff13d6e81db4b39ec400d1f08ececd0787c55aea9b3c64a3f32fa38ed4bb7f5",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom1-compat14.pdf",
+      "pdf_sha256": "994ba46c11f33f8083407efb5f737363682a80986e243b80caf8b820df2afc62",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom1-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-identity-effects-idprobe-nameprobe-customomitted-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-identity-effects-idprobe-nameprobe-customomitted-compat14.docx",
+      "sha256": "c79a2fcf0d44f172bba49c9e1e13407cd3d7b5f83f05a480557d127d99484308",
+      "pdf": "word-windows-edge-table-identity-effects-idprobe-nameprobe-customomitted-compat14.pdf",
+      "pdf_sha256": "da2e984f5bbb10396204cb995f79ac2fa748953444a9c22d2feeff67fe2a5d3b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-identity-effects-idprobe-nameprobe-customomitted-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-style-dual-normal240-effects240-implicit-compat14",
+      "source": "..\\w15-table-identity-effects-inputs\\word-windows-edge-table-style-dual-normal240-effects240-implicit-compat14.docx",
+      "sha256": "3ecaf6dca9179c159a5c5cdb9ad98cec038c3112d2d658dd68a6b5df71ee12f2",
+      "pdf": "word-windows-edge-table-style-dual-normal240-effects240-implicit-compat14.pdf",
+      "pdf_sha256": "4998b2afd83229f0c49411d6b16da79033ef51d9949d4a21b227ae5c630a120f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-style-dual-normal240-effects240-implicit-compat14.page-001.emf",
+          "sha256": "03504625c01e2fac683d689e234751914580b9ae5bb90af735fbd815f8e03ad8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

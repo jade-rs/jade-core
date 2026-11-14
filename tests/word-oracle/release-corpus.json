@@ -3042,6 +3042,78 @@
     {
       "fixture": "word-windows-edge-table-row-indent-parent240-row2-dxa0-left-compat15",
       "docx_sha256": "9d6ba4fe0b8901754779d0d4a6ca9e38343a40087b953fd972c507e1d8f595f2"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom0-compat14",
+      "docx_sha256": "cb04a681e64f485b3aeedceaa40b5c7ae414051e213dd54b93172b6456ce592c"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-namenormal-custom1-compat14",
+      "docx_sha256": "b830af3df69fc78de8f7673bb4e0827e47379397f735c6f186afa3b70451befe"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-namenormal-customomitted-compat14",
+      "docx_sha256": "3ecaf6dca9179c159a5c5cdb9ad98cec038c3112d2d658dd68a6b5df71ee12f2"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom0-compat14",
+      "docx_sha256": "97bf02f4cd3a7c633ad274f2a5a566186bc498a5ee37f498551f8493cd8ba631"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-nameomitted-custom1-compat14",
+      "docx_sha256": "17bbfa0c06c2695d85bd3babf18a6345b107cd8267a77dfa2fd83a725fce25fb"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-nameomitted-customomitted-compat14",
+      "docx_sha256": "191f4498602d3a0f7d8eca8eb15e5c9dc6b74d66d33a8528001b58389a645b95"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom0-compat14",
+      "docx_sha256": "f34698dfcf34c030e01b31fbbe7e1a477bc1fa29267048af3663f03486730461"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-nameprobe-custom1-compat14",
+      "docx_sha256": "996e560b7512e803f4b7e48c543aff7d66ead51e31979fc21c5052c7d34a6f50"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idnormal-nameprobe-customomitted-compat14",
+      "docx_sha256": "59d070f32cd250221703ebf5dc9e090313097b2900b629403a5d1b4ec2c28c45"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom0-compat14",
+      "docx_sha256": "8d1b3186c15c67c9c1e3ecf92e18335fe96481de53dbd2adcab5c86f2df4c90a"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-namenormal-custom1-compat14",
+      "docx_sha256": "6f54374f17471c637f97d7be1b1c00ed289b3478b5d19b5e9770ea901573f4b1"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-namenormal-customomitted-compat14",
+      "docx_sha256": "b4778966b2bfae34be69a0a339530249b7c59444dce07f1bae82c6240f7b98e8"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom0-compat14",
+      "docx_sha256": "0aa4807986dba779eaee80178bf0fe5d1f52fd021ff1e8823816e48b1cbbae1b"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-nameomitted-custom1-compat14",
+      "docx_sha256": "e5271da665add70c5440850757844a110ae830d1894273c632cdc4a486058c37"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-nameomitted-customomitted-compat14",
+      "docx_sha256": "3dce5c0551e70109f7bf610b8a3c677def3f227e75abb86bf85dcb5c3f347d5b"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom0-compat14",
+      "docx_sha256": "7bbb756b4fb618dce161b3adedf8e194d4e91659051bf909dc53d78e49091808"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-nameprobe-custom1-compat14",
+      "docx_sha256": "3ff13d6e81db4b39ec400d1f08ececd0787c55aea9b3c64a3f32fa38ed4bb7f5"
+    },
+    {
+      "fixture": "word-windows-edge-table-identity-effects-idprobe-nameprobe-customomitted-compat14",
+      "docx_sha256": "c79a2fcf0d44f172bba49c9e1e13407cd3d7b5f83f05a480557d127d99484308"
     }
   ]
 }

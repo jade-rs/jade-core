@@ -7,7 +7,7 @@ part. Original ZIPs retain the exact captured metadata, inputs, PDF and EMF
 bytes. Direct accepted copies normalize only metadata JSON line endings;
 their hashes and derived EMF references are pinned independently.
 
-The complete observation registry contains 261 captures / 1,146 documents.
+The complete observation registry contains 262 captures / 1,165 documents.
 All 77 controls are also accepted four-plane coordinate regressions: raw EMF,
 unclipped Word PDF text, visible Word PDF text, and independently painted
 native PDF text, using the established 0.375pt absolute X/Y limit. Only font

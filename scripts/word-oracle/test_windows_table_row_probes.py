@@ -11,7 +11,7 @@ class TableRowProbeTests(unittest.TestCase):
     def test_reproduces_original_word_input_bytes(self):
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / 'probes'
-            self.assertEqual(generate(output), 71)
+            self.assertEqual(generate(output), 90)
             for source in output.glob('*.docx'):
                 with self.subTest(source=source.name):
                     self.assertEqual(source.read_bytes(),

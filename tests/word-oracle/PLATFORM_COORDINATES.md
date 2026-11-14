@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 399 font/typography
-documents (104,435 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 417 font/typography
+documents (104,579 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -111,5 +111,5 @@ The rule uses the requested face's line ascent and OS/2 strikeout metrics;
 its width is two inches. Mac paint and existing Mac references are unchanged.
 
 The [Windows table identity and row controls](windows/TABLE_ROW_PROBES.md) retain
-70 additional accepted originals plus an unchanged recapture. The platform
+88 additional accepted originals plus two unchanged recaptures. The platform
 expectations stay independent; Mac reference files and tolerances are unchanged.

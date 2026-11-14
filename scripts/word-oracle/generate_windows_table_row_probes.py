@@ -9,7 +9,10 @@ import argparse
 import hashlib
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE_SHA256 = {'word-windows-edge-table-style-dual-normal240-no-effects-implicit-compat14.docx': '38197b685752fc3be47b82f79d8d0d6b8e792d95def79a44516df0af2405f377', 'word-windows-edge-table-style-parent0-childomitted-directomitted-compat14.docx': 'd44f6e4052f2e99070dde72fa62330c6907e11bd24943a1fcc27d09673be6d66', 'word-windows-edge-table-style-parent240-childomitted-directomitted-compat14.docx': '37698c3c3e98cbf9650ea719fdf1c1655dbf4b7dc34e469c015e2ff2096443bd'}
+SOURCE_SHA256 = {'word-windows-edge-table-style-dual-normal240-no-effects-implicit-compat14.docx': '38197b685752fc3be47b82f79d8d0d6b8e792d95def79a44516df0af2405f377',
+ 'word-windows-edge-table-style-parent0-childomitted-directomitted-compat14.docx': 'd44f6e4052f2e99070dde72fa62330c6907e11bd24943a1fcc27d09673be6d66',
+ 'word-windows-edge-table-style-parent240-childomitted-directomitted-compat14.docx': '37698c3c3e98cbf9650ea719fdf1c1655dbf4b7dc34e469c015e2ff2096443bd',
+ 'word-windows-edge-table-style-dual-normal240-effects240-implicit-compat14.docx': '3ecaf6dca9179c159a5c5cdb9ad98cec038c3112d2d658dd68a6b5df71ee12f2'}
 
 
 def generate(output):
@@ -106,6 +109,33 @@ def generate(output):
             assert count == 1
             parts['word/styles.xml'] = styles.encode()
             write_parts(output / f'word-windows-edge-table-identity-id{identity}-nameomitted-custom{custom}-compat14.docx', parts)
+    # Keep authored primary definitions when the effects copy has the same id.
+    control = base / 'word-windows-edge-table-style-dual-normal240-effects240-implicit-compat14.docx'
+    shutil.copyfile(control, output / control.name)
+    original = read_parts(control)
+    for identity in ('normal', 'probe'):
+        for name in ('normal', 'probe', 'omitted'):
+            for custom in (None, 0, 1):
+                parts = dict(original)
+                def edit_effects_primary(match):
+                    block = match[0]
+                    style_id = 'TableNormal' if identity == 'normal' else 'ProbeIdentity'
+                    block = block.replace('w:styleId="TableNormal"', f'w:styleId="{style_id}"', 1)
+                    style_name = 'Normal Table' if name == 'normal' else 'Probe Named Table'
+                    replacement = '' if name == 'omitted' else f'<w:name w:val="{style_name}"/>'
+                    block, count = re.subn(r'<w:name\b[^>]*/>', replacement, block, count=1)
+                    assert count == 1
+                    end = block.index('>')
+                    tag = re.sub(r' w:customStyle="[^"]*"', '', block[:end])
+                    if custom is not None:
+                        tag += f' w:customStyle="{custom}"'
+                    return tag + block[end:]
+                styles, count = re.subn(r'<w:style\b[^>]*w:styleId="TableNormal".*?</w:style>',
+                                       edit_effects_primary, parts['word/styles.xml'].decode(), flags=re.S)
+                assert count == 1
+                parts['word/styles.xml'] = styles.encode()
+                label = 'omitted' if custom is None else str(custom)
+                write_parts(output / f'word-windows-edge-table-identity-effects-id{identity}-name{name}-custom{label}-compat14.docx', parts)
     return len(list(output.glob('*.docx')))
 
 

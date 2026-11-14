@@ -55,7 +55,7 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 399)
+        self.assertEqual(len(verify()), 417)
 
     def test_all_original_paragraph_only_break_controls_remain_registered(self):
         cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {
@@ -98,6 +98,18 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
                 self.assertEqual(case['word_product_version'], '16.0.19127.20936')
                 self.assertEqual(bool(case.get('no_visible_vector_ink')),
                                  not has_visible_vector_ink(manifest.parent / document['pdf']))
+
+    def test_primary_style_identity_is_preserved_with_an_effects_copy(self):
+        cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2]
+                 == '20261114T203937561Z-a3f5a222']
+        self.assertEqual(len(cases), 18)
+        self.assertEqual(sum(row[0]['glyph_count'] for row in cases), 144)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+                self.assertEqual(document['open_mode'], 'normal-read-only')
+                self.assertTrue(case['no_visible_vector_ink'])
+                self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
 
     def test_removed_case_is_rejected(self):
         data = json.loads((ROOT / INDEX).read_text())
