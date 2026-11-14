@@ -19317,12 +19317,11 @@ where
         } else {
             text_alignment_top_leading_share(text_alignment)
         };
-        // Word for Mac sets an exact-height line's baseline 0.8 of the height
-        // below its top, whatever the face, size or grid (exact-20261018).
+        // Both Word platforms set an exact-height line's baseline 0.8 of the
+        // height below its top, whatever the face, size or grid. Windows Word
+        // 16.0.19127.20936 also confirms the exact-grid/nogrid Mac originals.
         let exact_line_baseline_share =
             (matches!(text_alignment, None | Some("auto" | "baseline"))
-                && jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                 && paragraph_style.exact_line_spacing)
                 .then_some(0.8);
         // Capture a "paragraph start" seek snapshot at the actual paragraph top (after spacing-before).
@@ -23859,6 +23858,13 @@ where
                     .word_proportional_line_sizing
                     .map_or(0.0, |sizing| sizing.minimum_extra_above_px(content_height))
             };
+            // Retain Windows' object-line anchor: a tall picture can establish
+            // the baseline even when its authored exact pitch is smaller.
+            let exact_line_baseline_share = exact_line_baseline_share.filter(|_| {
+                paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    || !has_inline_object
+            });
             let top_leading = match exact_line_baseline_share {
                 Some(share) => line_height * share + min_top_offset,
                 None if paragraph_style.exact_line_spacing
@@ -74275,8 +74281,14 @@ mod tests {
     fn mac_exact_line_puts_its_baseline_at_four_fifths() {
         use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
         use jade_docx_reader::document::Spacing;
-        for (exact, size, grid) in [(17.5, 11.0, true), (24.0, 10.5, false), (12.0, 20.0, true)] {
-            set_word_layout_platform(WordLayoutPlatform::Mac);
+        for (platform, exact, size, grid) in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows]
+            .into_iter()
+            .flat_map(|platform| {
+                [(17.5, 11.0, true), (24.0, 10.5, false), (12.0, 20.0, true)]
+                    .map(|(exact, size, grid)| (platform, exact, size, grid))
+            })
+        {
+            set_word_layout_platform(platform);
             let mut document = doc_with_paragraph_texts(&["あ亜Ag"]);
             if grid {
                 document.default_section = Some(SectionProperties {

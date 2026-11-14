@@ -17424,6 +17424,10 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
             } else if paragraph_style.exact_line_spacing {
                 line.word_baseline_offset = if paragraph_style.word_platform
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                    || !wrapped
+                        .clusters
+                        .iter()
+                        .any(|cluster| cluster.inline_object_bounds_px().is_some())
                 {
                     Some(line_height * 0.8)
                 } else {
@@ -20067,6 +20071,10 @@ mod tests {
                 16.0
             };
             assert_eq!(paragraph.lines[0].word_baseline_offset, Some(baseline));
+            // Windows retains the picture's anchor on its first line; the
+            // following text uses the measured four-fifths exact-line anchor.
+            assert_eq!(paragraph.lines[1].word_baseline_offset, Some(12.8));
+            assert_eq!(paragraph.lines[2].word_baseline_offset, Some(12.8));
             paragraph.widow_control = false;
             let block = CellBlock {
                 height: paragraph.height,
