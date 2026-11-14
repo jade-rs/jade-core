@@ -18,6 +18,9 @@ thread_local! {
     /// the normalized (lowercased, trimmed) family name.
     static DOCUMENT_FONT_ALT_NAMES: RefCell<FxHashMap<String, Vec<String>>> =
         RefCell::new(FxHashMap::default());
+    static DOCUMENT_FONT_FALLBACK_NAMES: RefCell<FxHashMap<String, Vec<String>>> =
+        RefCell::new(FxHashMap::default());
+    static HOST_FONT_FAMILIES: RefCell<Option<HashSet<String>>> = const { RefCell::new(None) };
     /// Families the host registered as stand-ins for Word fonts; see
     /// [`set_host_font_fallbacks`].
     static HOST_FONT_FALLBACKS: RefCell<Vec<HostFontFallback>> =
@@ -132,7 +135,14 @@ pub fn set_document_font_alt_names<I>(alt_names: I)
 where
     I: IntoIterator<Item = (String, Vec<String>)>,
 {
-    let normalized: FxHashMap<String, Vec<String>> = alt_names
+    set_document_font_substitutions(alt_names, std::iter::empty());
+}
+
+fn normalized_font_substitutions<I>(names: I) -> FxHashMap<String, Vec<String>>
+where
+    I: IntoIterator<Item = (String, Vec<String>)>,
+{
+    names
         .into_iter()
         .filter_map(|(name, substitutes)| {
             let key = name.trim().to_ascii_lowercase();
@@ -143,22 +153,91 @@ where
                 .collect();
             (!key.is_empty() && !substitutes.is_empty()).then_some((key, substitutes))
         })
-        .collect();
-    DOCUMENT_FONT_ALT_NAMES.with(|registry| {
+        .collect()
+}
+
+pub fn set_document_font_substitutions<I, J>(alt_names: I, fallback_names: J)
+where
+    I: IntoIterator<Item = (String, Vec<String>)>,
+    J: IntoIterator<Item = (String, Vec<String>)>,
+{
+    let normalized = normalized_font_substitutions(alt_names);
+    let fallbacks = normalized_font_substitutions(fallback_names);
+    let explicit_changed = DOCUMENT_FONT_ALT_NAMES.with(|registry| {
         let mut registry = registry.borrow_mut();
         if *registry == normalized {
-            return;
+            return false;
         }
         *registry = normalized;
+        true
+    });
+    let fallback_changed = DOCUMENT_FONT_FALLBACK_NAMES.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        if *registry == fallbacks {
+            return false;
+        }
+        *registry = fallbacks;
+        true
+    });
+    if explicit_changed || fallback_changed {
         RESOLVED_FONT_FAMILIES_CACHE.with(|cache| cache.borrow_mut().clear());
         RESOLVED_RUN_STYLE_CACHE.with(|cache| cache.borrow_mut().clear());
-    });
+    }
+}
+
+/// Synchronizes both substitution maps when a document becomes active.
+/// Mac retains its authored alt-name-only policy.
+pub fn set_document_font_table(table: Option<&jade_docx_reader::FontTablePart>) {
+    let declared = table
+        .map(|table| {
+            table
+                .alt_names()
+                .map(|(name, alt)| (name.to_string(), vec![alt.to_string()]))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let fallbacks = if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+    {
+        table
+            .map(|table| {
+                table
+                    .windows_fallback_names()
+                    .map(|(name, fallback)| (name.to_string(), vec![fallback.to_string()]))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
+    set_document_font_substitutions(declared, fallbacks);
 }
 
 fn document_font_alt_names(name: &str) -> Vec<String> {
     let key = name.trim().to_ascii_lowercase();
     DOCUMENT_FONT_ALT_NAMES
         .with(|registry| registry.borrow().get(&key).cloned().unwrap_or_default())
+}
+
+pub fn set_host_font_families(families: Option<Vec<String>>) {
+    let normalized = families.map(|families| {
+        families
+            .into_iter()
+            .map(|name| normalize_font_identifier(&name))
+            .collect::<HashSet<_>>()
+    });
+    let changed = HOST_FONT_FAMILIES.with(|registry| {
+        let mut registry = registry.borrow_mut();
+        if *registry == normalized {
+            return false;
+        }
+        *registry = normalized;
+        true
+    });
+    if changed {
+        RESOLVED_FONT_FAMILIES_CACHE.with(|cache| cache.borrow_mut().clear());
+        RESOLVED_RUN_STYLE_CACHE.with(|cache| cache.borrow_mut().clear());
+    }
 }
 
 /// Fallback CSS font stack for Latin script.
@@ -378,6 +457,10 @@ fn insert_host_font_fallbacks(
 
 /// Normalizes font lists by quoting multi-word names and deduplicating aliases.
 fn normalize_font_stack(value: Option<&str>, fallback: &str) -> String {
+    normalize_font_stack_for_script(value, fallback, false)
+}
+
+fn normalize_font_stack_for_script(value: Option<&str>, fallback: &str, latin: bool) -> String {
     let mut parts: Vec<String> = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
@@ -407,6 +490,17 @@ fn normalize_font_stack(value: Option<&str>, fallback: &str) -> String {
         for alias in font_aliases(candidate) {
             push_name(alias);
         }
+        if latin
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+        {
+            let key = candidate.trim().to_ascii_lowercase();
+            let fallbacks = DOCUMENT_FONT_FALLBACK_NAMES
+                .with(|registry| registry.borrow().get(&key).cloned().unwrap_or_default());
+            for fallback in fallbacks {
+                push_name(&fallback);
+            }
+        }
         let requested: Vec<String> = std::iter::once(candidate)
             .chain(alt_names.iter().map(String::as_str))
             .map(normalize_font_identifier)
@@ -421,6 +515,40 @@ fn normalize_font_stack(value: Option<&str>, fallback: &str) -> String {
         }
     }
 
+    if latin
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows
+    {
+        if let Some(candidate) = value {
+            let key = normalize_font_identifier(candidate);
+            let has_document_fallback =
+                DOCUMENT_FONT_FALLBACK_NAMES.with(|registry| registry.borrow().contains_key(&key));
+            if has_document_fallback {
+                HOST_FONT_FAMILIES.with(|registry| {
+                    let registered = registry.borrow();
+                    let Some(registered) = registered.as_ref() else {
+                        return;
+                    };
+                    let compatible = HOST_FONT_FALLBACKS.with(|fallbacks| {
+                        fallbacks.borrow().iter().any(|fallback| {
+                            fallback.substitutes.contains(&key)
+                                && registered.contains(&normalize_font_identifier(&fallback.family))
+                        })
+                    });
+                    if !compatible {
+                        if let Some(first) = parts
+                            .iter()
+                            .position(|part| registered.contains(&normalize_font_identifier(part)))
+                        {
+                            // Both Word metrics and painting must start at the
+                            // actual available family, not an absent request.
+                            parts.drain(..first);
+                        }
+                    }
+                });
+            }
+        }
+    }
     parts.join(", ")
 }
 
@@ -725,8 +853,10 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
         hansi_candidate = ascii_candidate;
     }
 
-    let latin_ascii_stack = normalize_font_stack(ascii_candidate, DEFAULT_LATIN_FONT_STACK);
-    let latin_hansi_stack = normalize_font_stack(hansi_candidate, DEFAULT_LATIN_FONT_STACK);
+    let latin_ascii_stack =
+        normalize_font_stack_for_script(ascii_candidate, DEFAULT_LATIN_FONT_STACK, true);
+    let latin_hansi_stack =
+        normalize_font_stack_for_script(hansi_candidate, DEFAULT_LATIN_FONT_STACK, true);
 
     let hint = fonts_ref.and_then(|fonts| fonts.hint.as_ref());
 
@@ -1532,6 +1662,108 @@ pub fn apply_hint_to_script(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_missing_latin_faces_use_available_family_and_reset_between_documents() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous_platform = crate::line_metrics::word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        set_host_font_families(Some(vec![
+            "Cambria".into(),
+            "Calibri".into(),
+            "Arial".into(),
+        ]));
+        let table = |class: &str, alt: &str| {
+            jade_docx_reader::FontTablePart::from_xml(&format!(
+                "<w:fonts xmlns:w='w'><w:font w:name='Unavailable Fixture'><w:family w:val='{class}'/>{alt}</w:font></w:fonts>"
+            )).unwrap()
+        };
+        let props = ascii_font("Unavailable Fixture");
+        set_document_font_table(Some(&table("roman", "")));
+        assert!(resolve_font_families(Some(&props))
+            .latin_ascii_stack()
+            .starts_with("Cambria"));
+        // The same properties must be recomputed after opening another document.
+        set_document_font_table(Some(&table("swiss", "")));
+        assert!(resolve_font_families(Some(&props))
+            .latin_ascii_stack()
+            .starts_with("Calibri"));
+        set_document_font_table(Some(&table("roman", "<w:altName w:val='Arial'/>")));
+        assert!(resolve_font_families(Some(&props))
+            .latin_ascii_stack()
+            .starts_with("Arial"));
+        set_host_font_families(Some(vec!["Unavailable Fixture".into(), "Cambria".into()]));
+        assert!(resolve_font_families(Some(&props))
+            .latin_ascii_stack()
+            .starts_with("'Unavailable Fixture'"));
+        set_host_font_families(None);
+        set_document_font_table(None);
+        assert!(!resolve_font_families(Some(&props))
+            .latin_ascii_stack()
+            .contains("Cambria"));
+        set_word_layout_platform(previous_platform);
+    }
+
+    #[test]
+    fn family_substitution_preserves_mac_and_non_latin_stacks() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous_platform = crate::line_metrics::word_layout_platform();
+        let table = jade_docx_reader::FontTablePart::from_xml(
+            "<w:fonts xmlns:w='w'><w:font w:name='Unavailable Fixture'><w:family w:val='roman'/></w:font></w:fonts>"
+        ).unwrap();
+        set_host_font_families(Some(vec!["Cambria".into()]));
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            set_document_font_table(None);
+            let original_other_scripts = normalize_font_stack(Some("Unavailable Fixture"), "Arial");
+            let original_latin =
+                normalize_font_stack_for_script(Some("Unavailable Fixture"), "Arial", true);
+            set_document_font_table(Some(&table));
+            assert_eq!(
+                normalize_font_stack(Some("Unavailable Fixture"), "Arial"),
+                original_other_scripts
+            );
+            let latin = normalize_font_stack_for_script(Some("Unavailable Fixture"), "Arial", true);
+            if platform == WordLayoutPlatform::Mac {
+                assert_eq!(latin, original_latin);
+            } else {
+                assert!(latin.starts_with("Cambria"));
+                // Unknown availability keeps the primary instead of claiming it is absent.
+                set_host_font_families(None);
+                assert!(normalize_font_stack_for_script(
+                    Some("Unavailable Fixture"),
+                    "Arial",
+                    true
+                )
+                .starts_with("'Unavailable Fixture'"));
+            }
+        }
+        set_document_font_table(None);
+        set_host_font_families(None);
+        set_word_layout_platform(previous_platform);
+    }
+
+    #[test]
+    fn registered_metric_compatible_substitutes_retain_requested_word_metrics() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous_platform = crate::line_metrics::word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        set_document_font_substitutions(
+            std::iter::empty(),
+            [("Unavailable Fixture".into(), vec!["Cambria".into()])],
+        );
+        set_host_font_families(Some(vec!["Jade Compatible Face".into(), "Cambria".into()]));
+        set_host_font_fallbacks([HostFontFallback {
+            family: "Jade Compatible Face".into(),
+            substitutes: vec!["Unavailable Fixture".into()],
+        }]);
+        let stack = normalize_font_stack_for_script(Some("Unavailable Fixture"), "Arial", true);
+        assert!(stack.starts_with("'Unavailable Fixture'"));
+        assert!(stack.find("Jade Compatible Face").unwrap() < stack.find("Cambria").unwrap());
+        set_document_font_table(None);
+        set_host_font_families(None);
+        set_host_font_fallbacks(std::iter::empty());
+        set_word_layout_platform(previous_platform);
+    }
     #[test]
     fn numeric_boundaries_reuse_all_slot_metrics_across_style_clones() {
         use crate::line_metrics::WORD_FIXED_ASCII_DESCRIPTOR_LOOKUPS;

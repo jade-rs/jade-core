@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T220519401Z-b217a427",
+  "captured_at_utc": "2026-11-14T22:05:19.4051545Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-font-independent-hiragino-w6-hello-compat15",
+      "source": "..\\w15-independent-missing-font-inputs\\word-windows-edge-font-independent-hiragino-w6-hello-compat15.docx",
+      "sha256": "91f9d5ac774f7b4cb7e68253acf9f79606f4264d1eaa0acd72ac99ac8250bbb3",
+      "pdf": "word-windows-edge-font-independent-hiragino-w6-hello-compat15.pdf",
+      "pdf_sha256": "856d95beefbee804732a85582be58b438a589c1dc6f6c4549ab1497a83411eb6",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-font-independent-hiragino-w6-hello-compat15.page-001.emf",
+          "sha256": "b46d2244e8e32f10a9f64f510ab74ca01bf36fa343de525ed66a843760f584ab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-font-independent-hiragino-w6-hello-compat15.page-002.emf",
+          "sha256": "0340d503be7dc031860976213e86fa5c37ae24022a462d92074991ac1badfc5e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

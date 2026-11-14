@@ -19,7 +19,7 @@ import struct
 import unicodedata
 
 
-def emf_glyphs(data, page, width_pt, height_pt):
+def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
     if len(data) < 88 or len(data) > 64 * 1024 * 1024:
         raise ValueError('Invalid EMF size')
     if struct.unpack_from('<II', data)[0] != 1 or struct.unpack_from('<I', data, 40)[0] != 0x464d4520:
@@ -33,6 +33,10 @@ def emf_glyphs(data, page, width_pt, height_pt):
     # Text alignment and transformations are saved/restored with the DC.
     state = dict(alignment=0, unsupported_transform=False, canvas=None, rotated_font=False)
     canvas = None
+    # GM_ADVANCED ignores exScale/eyScale. Only whole-page device-pixel
+    # canvases and pure translations have an independently checked mapping.
+    device = struct.unpack_from('<ii', data, 72)
+    state['world_translation'] = (0.0, 0.0)
     fonts = {}
     if not all(math.isfinite(v) and v > 0 for v in (width_pt, height_pt)):
         raise ValueError('Invalid Word paper dimensions')
@@ -92,7 +96,25 @@ def emf_glyphs(data, page, width_pt, height_pt):
                 raise ValueError('Invalid mapping origin')
             if struct.unpack_from('<ii', record, 8) != (0, 0):
                 state['unsupported_transform'] = True
-        elif kind in (17, 35, 36, 98, 115, 119, 120):
+        elif kind in (35, 36):
+            if size != (32 if kind == 35 else 36):
+                raise ValueError('Invalid world transform record')
+            matrix = struct.unpack_from('<6f', record, 8)
+            operation = 4 if kind == 35 else struct.unpack_from('<I', record, 32)[0]
+            translation = matrix[4:] if (matrix[:4] == (1.0, 0.0, 0.0, 1.0)
+                                         and all(math.isfinite(v) for v in matrix)) else None
+            if operation == 1:
+                state['world_translation'] = (0.0, 0.0)
+            elif operation == 4:
+                state['world_translation'] = translation
+            elif operation in (2, 3):
+                previous = state['world_translation']
+                state['world_translation'] = (tuple(a + b for a, b in zip(previous, translation))
+                                               if previous is not None and translation is not None
+                                               else None)
+            else:
+                state['world_translation'] = None
+        elif kind in (17, 98, 115, 119, 120):
             # These may alter text placement beyond the per-record scale.
             # Preserve the raw file; require explicit support before promotion.
             state['unsupported_transform'] = True
@@ -105,12 +127,20 @@ def emf_glyphs(data, page, width_pt, height_pt):
             scale_x, scale_y = struct.unpack_from('<ff', record, 28)
             x, y, count, text_at, flags = struct.unpack_from('<iiIII', record, 36)
             dx_at = struct.unpack_from('<I', record, 72)[0]
-            if mode != 1 or state['alignment'] != 24 or state['unsupported_transform'] or state['rotated_font'] or state['canvas'] is None:
+            translation = state['world_translation']
+            if mode not in (1, 2) or state['alignment'] != 24 or state['unsupported_transform'] or state['rotated_font'] or state['canvas'] is None or translation is None:
                 raise ValueError('Unsupported graphics mode, alignment or transform')
-            if not all(math.isfinite(v) and v > 0 for v in (scale_x, scale_y)):
-                raise ValueError('Invalid drawing-unit scale')
-            if abs(scale_x * canvas[0] - right) > 2 or abs(scale_y * canvas[1] - bottom) > 2:
-                raise ValueError('Text scale does not describe the whole-page canvas')
+            if mode == 1:
+                if translation != (0.0, 0.0):
+                    raise ValueError('Compatible text has a nonidentity world transform')
+                if not all(math.isfinite(v) and v > 0 for v in (scale_x, scale_y)):
+                    raise ValueError('Invalid drawing-unit scale')
+                if abs(scale_x * canvas[0] - right) > 2 or abs(scale_y * canvas[1] - bottom) > 2:
+                    raise ValueError('Text scale does not describe the whole-page canvas')
+            elif device != state['canvas'] or min(device) <= 0:
+                raise ValueError('Advanced text requires a whole-page device-pixel canvas')
+            if graphics_modes is not None:
+                graphics_modes.add(mode)
             if flags & ~0x2006:
                 raise ValueError(f'Unsupported text options {flags:#x}')
             stride = 2 if flags & 0x2000 else 1
@@ -128,7 +158,8 @@ def emf_glyphs(data, page, width_pt, height_pt):
             pt_x, pt_y = width_pt / canvas[0], height_pt / canvas[1]
             for index, char in enumerate(text):
                 if not char.isspace() and unicodedata.category(char) != 'Cc':
-                    glyphs.append([page, char, x * pt_x, y * pt_y])
+                    glyphs.append([page, char, (x + translation[0]) * pt_x,
+                                   (y + translation[1]) * pt_y])
                 x += advances[index * stride]
                 if stride == 2:
                     y += advances[index * stride + 1]
@@ -150,6 +181,7 @@ def extract(manifest_path):
     if not re.fullmatch(r'[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+', version):
         raise ValueError('Complete Word product version required')
     fixtures = []
+    graphics_modes = set()
     for item in capture['documents']:
         pdf_name = item['pdf']
         if '/' in pdf_name or '\\' in pdf_name or pdf_name in ('', '.', '..'):
@@ -167,7 +199,7 @@ def extract(manifest_path):
             data = (manifest_path.parent / name).read_bytes()
             if hashlib.sha256(data).hexdigest() != page['sha256']:
                 raise ValueError(f'Word metafile changed: {name}')
-            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt']))
+            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt'], graphics_modes))
         fixtures.append(dict(name=item['name'], docx_sha256=item['sha256'],
                              pdf_sha256=item['pdf_sha256'], pdf_file=item['pdf'],
                              metafiles=pages, page_count=item['pages'], glyphs=glyphs))
@@ -177,6 +209,8 @@ def extract(manifest_path):
                 coordinate_source='Word Page.EnhMetaFileBits / MS-EMF',
                 extractor='MS-EMF GM_COMPATIBLE baseline Unicode origins v1',
                 tolerance_pt=0.375, fixtures=fixtures)
+    if 2 in graphics_modes:
+        result['extractor'] = 'MS-EMF compatible/advanced translated baseline Unicode origins v2'
     projection = capture.get('table_glyph_projection', 'visible')
     if projection not in ('visible', 'unclipped'):
         raise ValueError('Unknown table glyph projection')

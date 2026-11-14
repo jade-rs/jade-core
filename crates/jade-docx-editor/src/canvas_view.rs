@@ -943,18 +943,7 @@ mod ordered_size {
 /// document core stays layout-free; call it whenever a NEW document becomes
 /// the view's active document.
 pub(crate) fn install_document_font_substitutes(word_doc: &WordDocument) {
-    jade_docx_layout::font_resolver::set_document_font_alt_names(
-        word_doc
-            .font_table_part
-            .as_ref()
-            .map(|table| {
-                table
-                    .alt_names()
-                    .map(|(name, alt)| (name.to_string(), vec![alt.to_string()]))
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default(),
-    );
+    jade_docx_layout::font_resolver::set_document_font_table(word_doc.font_table_part.as_ref());
 }
 
 const HANDLE_HIT_THRESHOLD: f64 = 4.0;

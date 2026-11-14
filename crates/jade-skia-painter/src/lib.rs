@@ -1647,6 +1647,16 @@ fn pdf_rect_axis_spans(start: f32, end: f32) -> Vec<(f32, f32, f32)> {
 }
 
 impl Painter for SkiaPainter {
+    fn registered_font_families(&self) -> Option<Vec<String>> {
+        Some(
+            self.shared
+                .fonts
+                .borrow()
+                .iter()
+                .map(|face| face.family.clone())
+                .collect(),
+        )
+    }
     fn set_structure_node(&self, node: i32) {
         // Only a vector recording keeps the marks: a raster one draws its
         // page as a picture.

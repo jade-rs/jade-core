@@ -55,7 +55,27 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 417)
+        self.assertEqual(len(verify()), 427)
+
+    def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
+        import pymupdf
+        cases = [row for row in verify() if row[0]['name'] == 'hello'
+                 or row[0]['name'].startswith('word-windows-edge-font-independent-')]
+        self.assertEqual(len(cases), 10)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                capture = json.loads(manifest.read_text(encoding='utf-8'))
+                self.assertEqual(len(capture['documents']), 1)
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(document['open_mode'], 'normal-read-only')
+                name = case['name']
+                expected = 'Calibri' if any(token in name for token in
+                    ('-swiss-', '-auto-', '-modern-')) else 'Cambria'
+                with pymupdf.open(manifest.parent / document['pdf']) as pdf:
+                    families = {font[3].split('+')[-1] for page in pdf for font in page.get_fonts()}
+                self.assertEqual(families, {expected})
 
     def test_all_original_paragraph_only_break_controls_remain_registered(self):
         cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {
