@@ -203,6 +203,32 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "footnote-long-continuation-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-long-continuation-mac/source.docx",
+        "sha256": "89839c9589cf3e4e246360340397bb20124331fcd40ebb0305a157d483dafbe2"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/footnote-long-continuation-mac/manifest.json",
+        "sha256": "f97ec8ecd0f55e7018f315a3db8d064a076d05d36be7120f0cd1d048cfe9dec4"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-footnote-long-continuation-89839c95",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
