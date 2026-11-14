@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 40 font/typography
-documents (27,247 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 69 font/typography
+documents (44,171 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -48,6 +48,8 @@ password and retains the encrypted source hash separately from decrypted bytes.
 The shared registry also pairs the unchanged `footnote-mac` and
 `footnote-table-each-page-mac` sources with their Windows observations. These
 Windows checks use original PDF font programs so Office fonts are not required
-on hosted runners. The note matrix retains all 24 Word captures; only the 12
-fully matching matrix cases are promoted. Century superscript baselines and
-20pt Yu Mincho marker widths remain unpromoted evidence, never accepted errors.
+on hosted runners. The note matrix retains and asserts all 24 Word captures. Independent script
+and control sweeps cover four font families, four weights/slants and 49 sizes,
+including 1,568 measured script runs. Century OpenType/kerning/tracking probes
+cover modes 12/14/15 and default/explicit typography switches. Script metrics
+are re-extracted from original Word output in CI; Mac policy is unchanged.

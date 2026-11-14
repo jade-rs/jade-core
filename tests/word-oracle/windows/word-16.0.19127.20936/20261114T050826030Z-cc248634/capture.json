@@ -1,0 +1,511 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T050826030Z-cc248634",
+  "captured_at_utc": "2026-11-14T05:08:26.0835538Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-vert-align-sweep-bold-compat15",
+      "source": "public\\fixtures\\word-windows-edge-vert-align-sweep-bold-compat15.docx",
+      "sha256": "33383cfaaaf6836fff03756d7d85a5c59e5eb3a5372e2c2748633c959aa6e096",
+      "pdf": "word-windows-edge-vert-align-sweep-bold-compat15.pdf",
+      "pdf_sha256": "cda764055d7d5214d1afa5a039415ccdfd7d3f8d49fc84ecce64fd585a5b1e7a",
+      "pages": 13,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-001.emf",
+          "sha256": "e6f6b6b2e5fd4fe130afcc431e090115102e1ad18c17b757fd1f39a72b3fd8a5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-002.emf",
+          "sha256": "c9f9318b41f747de2aa903ae64163ce28b7c26f1db7f71da29afd16a041e3dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-003.emf",
+          "sha256": "ea2bf519327b6e979a0d752a9f90aedc1eca4d432f4f93a5934facefc998ca8c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-004.emf",
+          "sha256": "e37d1b1425bff5b6ba24a99367e21b96cf595f0533fd90cc877121d8849ec5b7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-005.emf",
+          "sha256": "ace5315c2f096110a412fcfadea96d821000cc94491ba0016813fb8e458291bd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-006.emf",
+          "sha256": "14b2a1683d3a37150f4d45165d1841c88e5032a1b3fc0e6cbd5e481ced48b5db",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-007.emf",
+          "sha256": "6a8dfc11117b01c9f9e1258b9c988a00408ee753ebb5d42db911473ce65a1a30",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-008.emf",
+          "sha256": "e9e8df5d0e492bdeec3f59b9abb02af21180332222d38feab6ca4439f224b903",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-009.emf",
+          "sha256": "a62a2c690dd6c1f180044f725e6cbdda01c4848ead68cb2e9077401c01c41242",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-010.emf",
+          "sha256": "e02afb8e4167555324f5dd13115762a8f0c814266da8c5e7507e31c1ee6b9b90",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-011.emf",
+          "sha256": "39f97e7a91b99eebe366ed5283ebd1f507cb5a9885e860e60ddfca37e6de0f20",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-012.emf",
+          "sha256": "190426302b55cc8aae55d97c565f7e28d5b3c5a9e74899946fdaa7ff0a83b106",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-vert-align-sweep-bold-compat15.page-013.emf",
+          "sha256": "0b5885c4c841f3babce9ca7cf3b284344dfebe81bbb6c99a47b02fdd1b3a7b39",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-vert-align-sweep-bold-italic-compat15",
+      "source": "public\\fixtures\\word-windows-edge-vert-align-sweep-bold-italic-compat15.docx",
+      "sha256": "955f7d0baca958b3388d17fcd873f804e249164f466ada6e470e78ce392930ca",
+      "pdf": "word-windows-edge-vert-align-sweep-bold-italic-compat15.pdf",
+      "pdf_sha256": "d21479bb22e01fd4558b267d4129385b3a7701dab9859c8e580298c5c32a9d2b",
+      "pages": 13,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-001.emf",
+          "sha256": "8543278f679b379f566fcef6d2759c0de854c2f3ecbae32f14e01a1781b29858",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-002.emf",
+          "sha256": "49f608f648e83efb57845ce6c5a45740d314ef50ae54b01f89447c60379a5953",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-003.emf",
+          "sha256": "0f14b69412869ba9e90ad2a71d9796918c3d2cabf751d8b7f15f925c47019ccc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-004.emf",
+          "sha256": "56e5363052d970606d400440cdefd32bd7f06de3106f6ee2bcd5d67ace64ef1c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-005.emf",
+          "sha256": "dd15e8c450b01a81aec67d78bf6dc0fae2c768e4664a7ea607759a44751c7da1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-006.emf",
+          "sha256": "fa4bf1a39a5c78b7feb032e2bca4ca3315c203f7c7563144823881a94b6ce5c7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-007.emf",
+          "sha256": "b41401e2aeda7d3eeb64f11e07d53266e073e23d053ad19d218ac26708ab9c42",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-008.emf",
+          "sha256": "53659268920d6ebc82adba371b7e61b65ca75214179e1f63c44dc2ea6ce67545",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-009.emf",
+          "sha256": "ae393a5f0c427e7b622c82f407685534b52a847c2c47c3deef7cd595d804a4bd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-010.emf",
+          "sha256": "352e7342f661cd23c0a64bcbc1ae10283ae8df96050dbab7a9a4e6fdd52f2e4a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-011.emf",
+          "sha256": "19a8b933ce6455df21e6469361a34d0172f21f08ff1ba354f7e07d3392f5bd54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-012.emf",
+          "sha256": "4271f50dc12b68dcd38346c1839d5e6601d467d9670e24e64df8d417dda6be3e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-vert-align-sweep-bold-italic-compat15.page-013.emf",
+          "sha256": "b08d7c8f47703a4fefcd1cb70f5ea0979cce45becee7b241a7b3b78ff0c3134e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-vert-align-sweep-italic-compat15",
+      "source": "public\\fixtures\\word-windows-edge-vert-align-sweep-italic-compat15.docx",
+      "sha256": "660d8d3344c66f7058d2127ff48d977356bf57ea74ab4fb0b32c23c943f1d0ad",
+      "pdf": "word-windows-edge-vert-align-sweep-italic-compat15.pdf",
+      "pdf_sha256": "a52def66f461eef035f7ccf62ecca8cfc8a557ae2a6dd008ca53842cd66827a8",
+      "pages": 13,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-001.emf",
+          "sha256": "2c427192851e1ec025863be7c78c899dbfb06db26cd08f544e27d4137c9da3d8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-002.emf",
+          "sha256": "50324bd5c19b754a7dc0f3a2100c8d1d64232e795f09478bb0af2cd09b5aec01",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-003.emf",
+          "sha256": "499d9e558ded5a4d36cf51a448cb6f5cdfb0fe899bbae074250d808a4f3cf5bd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-004.emf",
+          "sha256": "ca91d05fd4c6da4de6aaf6feed525f835ba7fa13983e2c0d37519fbc086d1044",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-005.emf",
+          "sha256": "234ccd77d65b535b1cdee31e9ae377d76c3009cfe26aca81e10ccb3d58f90ab7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-006.emf",
+          "sha256": "717b1035ada19095784782ff68ffa737231daf00e42e07b5b905b3cb6e5c18aa",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-007.emf",
+          "sha256": "5fc6c8b6a71e39299a4533ed4a31b71754564b7c00409895930ee5409362c137",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-008.emf",
+          "sha256": "2c039cced14320403796ba1296158ce77e24145543dc6e556753d52b2d4fc1d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-009.emf",
+          "sha256": "51b1c86629a7a6ee0ed9c18923787464d226358ff8b28e17a67db0b49871f3d6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-010.emf",
+          "sha256": "2fa7ddffa010ed55cb3d6b94cff9bc2aa1f3ca3bfa11e61caf6351bed7582bba",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-011.emf",
+          "sha256": "a1a8f0e343b123fdecd83f11f825a5a78b9f0dc6760cf2a9b926b0ea76ff989c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-012.emf",
+          "sha256": "6f3e7576a508a7e9312a46b4ca4a7ff462bf268de645fb058403a435fcba3787",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-vert-align-sweep-italic-compat15.page-013.emf",
+          "sha256": "dc86b7c95ccdb1f6bafa0789b5bc58ce58518858e57cc3b144454b0cec189213",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-vert-align-sweep-regular-compat15",
+      "source": "public\\fixtures\\word-windows-edge-vert-align-sweep-regular-compat15.docx",
+      "sha256": "249ca92e6cc1e3cc374fb640f0e5846524825cf0ce119429896f3125044369ce",
+      "pdf": "word-windows-edge-vert-align-sweep-regular-compat15.pdf",
+      "pdf_sha256": "1ed031629aa7f855a02825bb492365d7a4c27ffc1f3041876482c6aad98afda9",
+      "pages": 13,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-001.emf",
+          "sha256": "367954e1577cdfbbba566317ffb51f14c9c8bfd1042bbad81b528b24287ffbab",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-002.emf",
+          "sha256": "c5796b6057e93ac70a10b3dcbfe35dcdac39dd584577450de6f432b649b94401",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-003.emf",
+          "sha256": "d6d5d853d82750aeaca19c992c1c3eebb85ea05f0637a9a4908c531bf2ceea23",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 4,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-004.emf",
+          "sha256": "38f8ac292d9ca9ae503f75bcc1e4cc0d6e22a41fff4ed4f270bdd0f811f7abc1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 5,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-005.emf",
+          "sha256": "b5538aaeb8ba602865a890b0e7e5b538d4ee564b8244a972e054957d5e66867f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 6,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-006.emf",
+          "sha256": "a20b06cfb1e71fcc2b6042f4b770f03603a779644399d002e99a76765b238772",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 7,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-007.emf",
+          "sha256": "ed9f9f4caf65f219c4e2f499298907ae92333711d37391a0a4ca30b84e453843",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 8,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-008.emf",
+          "sha256": "55b696573eaba780ccc38013be8e910b680caa0fb31fd218d31e6410fff92743",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 9,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-009.emf",
+          "sha256": "794b202b02161b85006b45cb31bcff2b235b458b2dfa5ee982dd494b4ec9be51",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 10,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-010.emf",
+          "sha256": "c094514017878a9d8ee3480597c2a95dc0a39d9d792c5b836845df2a12f44d48",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 11,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-011.emf",
+          "sha256": "7f090940ecb0d32c11ee0b432555985ebd495a6a9c8788e5fc9d32e619b5f25c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 12,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-012.emf",
+          "sha256": "102b74a980a21bef27aad15dbfd65251ae4f180369737736f34ed1b528a4ce6c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 13,
+          "file": "word-windows-edge-vert-align-sweep-regular-compat15.page-013.emf",
+          "sha256": "bcc81e616fdfdb169d33baf688ae72c37f627acf1fc6b0252d314e0ffbed009d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
