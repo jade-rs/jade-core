@@ -4363,7 +4363,7 @@ where
     /// Content-addressed intrinsic/autofit results shared by consecutive table
     /// renders. Final row placement still runs every pass against current page
     /// geometry; only deterministic text measurements are retained.
-    table_autofit_cache: RefCell<table::TableAutofitCache>,
+    table_autofit_cache: Rc<RefCell<table::TableAutofitCache>>,
     table_autofit_cache_enabled: bool,
     /// Glyph widths and trailing overhangs measured for table cells, kept
     /// across table renders under the same rule as `table_autofit_cache`.
@@ -9502,7 +9502,7 @@ where
             font_line_box_height_cache: RefCell::new(FxHashMap::default()),
             paragraph_wrap_cache: Rc::new(RefCell::new(ParagraphWrapCache::default())),
             line_height_plan_cache: RefCell::default(),
-            table_autofit_cache: RefCell::new(table::TableAutofitCache::default()),
+            table_autofit_cache: Rc::new(RefCell::new(table::TableAutofitCache::default())),
             table_autofit_cache_enabled: true,
             table_text_measure_cache: Rc::new(RefCell::new(TextMeasureCache::default())),
             table_trailing_overhang_cache: Rc::new(RefCell::new(FxHashMap::default())),
@@ -48147,9 +48147,14 @@ mod tests {
 
         let (height, cold_count) = measure(&mut renderer);
         assert!(cold_count > 0);
+        let initial_stats = renderer.table_autofit_cache_stats();
+        assert!(initial_stats.misses > 0);
         renderer.drop_document_cache();
         renderer.clear_paragraph_wrap_cache();
         assert_eq!(measure(&mut renderer), (height, 0));
+        let reused_stats = renderer.table_autofit_cache_stats();
+        assert!(reused_stats.hits > initial_stats.hits);
+        assert_eq!(reused_stats.misses, initial_stats.misses);
 
         renderer.clear_text_measure_cache();
         assert_eq!(measure(&mut renderer), (height, cold_count));

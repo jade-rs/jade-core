@@ -2988,7 +2988,7 @@ where
                 (self.table_autofit_cache_enabled
                     && layout_config.paragraph_numbering.is_empty()
                     && table_autofit_cache_supported(table))
-                .then_some(&self.table_autofit_cache),
+                .then_some(self.table_autofit_cache.as_ref()),
                 &|field| self.resolve_run_field(field),
                 Some(&layout_config),
                 rtl_merged_percentage_grid,
