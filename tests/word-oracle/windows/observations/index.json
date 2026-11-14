@@ -12282,6 +12282,467 @@
           "opened_filename": "word-windows-edge-table-style-package-rich-root-compat14.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T174845835Z-eef8d731.zip",
+      "archive_sha256": "2f58581004ea1a970c527c0659541018f8fc4c01e364a4d673b5ccd826616cc6",
+      "capture_id": "20261114T174845835Z-eef8d731",
+      "capture_sha256": "2ff6cbab8b13412663d24672cd2143a0b0c79c26c5dee0eedad07674a501de41",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-heading-break-inline-before0-compat12",
+          "source_sha256": "494dedf7966ad4dc7d01f76a1f2fd41e7e86d30bec901685afaae963ccd0cda5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before0-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before0-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before0-compat14",
+          "source_sha256": "d23a843cd7ae808042bb517a1d013d36a7e67d8ceab03e0b274e98401dbd9a81",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before0-compat15",
+          "source_sha256": "a8fbfb4295a10f115992bea33b448226ca4cf5d105ee81d3f2a16096701454ad",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before0-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before480-compat12",
+          "source_sha256": "811511959dea9b1d5d40965ec6f33b557039a263985e264a68d2e06933b120fb",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before480-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before480-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before480-compat14",
+          "source_sha256": "a026bad2240bccf8231504f9c35d8c74eeb7285371dd909d3183d178553be7b4",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before480-compat15",
+          "source_sha256": "bab830a235c534127eaa87388fa4c93132b77eae7dc0361a794a5592e3015bcc",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before480-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before480-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before0-compat12",
+          "source_sha256": "1350ded1a0e0d082bff1b5b57a56178fc79732b57d43756748e311fc8ba853b0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before0-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before0-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before0-compat14",
+          "source_sha256": "5135c03f62b842996b849254d7dcdbd2230a1b445bfd8fbba8c71a674bda19f0",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before0-compat15",
+          "source_sha256": "a2401b9593af0789150fe738860020e314c96844ca06801d6b85709338505c32",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before0-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before480-compat12",
+          "source_sha256": "ce73d0ccdf54279ed1bae9a708d55949d35b88c4c8959fff330ec2a8ea85f9dd",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before480-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before480-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before480-compat14",
+          "source_sha256": "f19802af49686e7220dfc86556f761277c6b27172f9cefd0d10c91f5c67d4b46",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before480-compat15",
+          "source_sha256": "e8cc1b02e3e1d1a8d3bf8cdc4069ab96c529b9b03f8cda3e94da56e15b16ad7e",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before480-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before480-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-first-page-before0-compat14",
+          "source_sha256": "7cb39fb7ea1590500533761552a50cd62e9bfc869ca143cbbb4f83aed930b45f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-first-page-before0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-first-page-before0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-first-page-before480-compat14",
+          "source_sha256": "551800cd5305d280a2b4c6ed11556f2e7c9d3c6b916a32f2bb21e924373e2404",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-first-page-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-first-page-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-page-break-before-before0-compat14",
+          "source_sha256": "311de2584ac2c4fd623e116392831c925c764afa0d86d9da890eb9baeacd5274",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-page-break-before-before0-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-page-break-before-before0-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-page-break-before-before480-compat14",
+          "source_sha256": "e9c41c1242ccbd0b18e8f1a3e40cce56482a997584c240e52b5891bb2a9d0255",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-page-break-before-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-page-break-before-before480-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T181208382Z-8f7d9f6b.zip",
+      "archive_sha256": "19a65213e9253fec56a2dfb2283483b8f0df4d40f201b5b06216d9614a5462c7",
+      "capture_id": "20261114T181208382Z-8f7d9f6b",
+      "capture_sha256": "f0fb678961890b8035c535373e90fd78b870640d2848aabe36b0afb620bb223c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-heading-break-inline-direct-page-before-before480-compat14",
+          "source_sha256": "0f21d184a372283bc538f933249c7f0c9564e9d1e846b6fe3dadac93437d7ee9",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-direct-page-before-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-direct-page-before-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-inherited-page-before-before480-compat14",
+          "source_sha256": "2f36a2cf102e57989b3b850b6125deb0ef67c5b7a9495998bcfbad2a5b22dee5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-inherited-page-before-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-inherited-page-before-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-normal-before480-compat12",
+          "source_sha256": "0582c79cef878565ee63eb878fbdb4a65c4ebe6e2ae8294b1eb708872b586193",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-normal-before480-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-normal-before480-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-normal-before480-compat14",
+          "source_sha256": "30e6521840f73f4ed43b43250a8e6fa9baffb6c0287a3a3fb05f16e501c69e6f",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-normal-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-normal-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-normal-before480-compat15",
+          "source_sha256": "393c2cec9b8dbf3fdf076c146fe5c699c4975a44d95987d7f92d96191551ca22",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-normal-before480-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-normal-before480-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-compat14",
+          "source_sha256": "5a18a78949569a83aef92fd69c1ada830ee3033dec16066e411c1bc312753ee2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-direct-page-before-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-compat14",
+          "source_sha256": "9003e0e926735b5b6e4ab2c21ab941df6d292ebc7daad503cf8cd18b339ca1aa",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-inherited-page-before-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-normal-before480-compat12",
+          "source_sha256": "788d8eb872f5e17de97024bf8ecc413fe4f423bf0cad4492666b8b4284d7bb58",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-normal-before480-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-normal-before480-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-normal-before480-compat14",
+          "source_sha256": "1361cfc8a366fa8719c98dfb771da27123a630de972bfd332d820058661e65a8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-normal-before480-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-normal-before480-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-normal-before480-compat15",
+          "source_sha256": "b07f9c741f161c35e06f03f5d940b8232714fe31011e36064d1bcb7be337eb49",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-normal-before480-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-normal-before480-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T185441333Z-8f9ddd27.zip",
+      "archive_sha256": "434fdbbfff458fba131176dd29978ffd3f0db3561cc15d8c60a8ca5a20e53a22",
+      "capture_id": "20261114T185441333Z-8f9ddd27",
+      "capture_sha256": "2b168fed25ba9eb56950d120d54d1ec973c682a8e4aefbd823590f77d54a5a8c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-heading-break-inline-before0-ppr-only-compat12",
+          "source_sha256": "6eed6d4cc5ec8f53d52823c7b0ffd7d62b7baa2b6996ac4d79bf6f3d6b23fff5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before0-ppr-only-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before0-ppr-only-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before0-ppr-only-compat14",
+          "source_sha256": "bcbaa9b853d7b019fcfbc65385472bcb3012534cb568f23e6cd99c0b516af7ca",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before0-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before0-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before0-ppr-only-compat15",
+          "source_sha256": "ddaa0acac7c38556aea6399b6a3583a4938e5b09515217b42c8e8119471caed6",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before0-ppr-only-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before0-ppr-only-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before480-ppr-only-compat12",
+          "source_sha256": "02f160a24e994642912e823d8f9960be3356c21359ed7fdfa94d94dbfdd59992",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before480-ppr-only-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before480-ppr-only-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before480-ppr-only-compat14",
+          "source_sha256": "e5aa1c49942ac5af4bc7e1ee4e1b3752562dbd1dae0defbab4e748780c174d01",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-before480-ppr-only-compat15",
+          "source_sha256": "b79bdc3a8965474b713467d9bbbde44d5046c9cf362f0c0d4e8ba4e6cfb5c2ff",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-before480-ppr-only-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-before480-ppr-only-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14",
+          "source_sha256": "a70da90b311020b628146e66a710fa785f42d63394c2b2337d8cc289fae9b887",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14",
+          "source_sha256": "7f9f734f8bc547c6fb71b001dd31b925b46e55462d468c1789349d0725c71ffe",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12",
+          "source_sha256": "781b677d13cac9370dd4cba42c04289c026dba1952908dd596fa85cb4b07fd24",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14",
+          "source_sha256": "962e5c598015200b9703209802ec2719d54add063aeedb054e012d90cbd4b8a6",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15",
+          "source_sha256": "2f635a4dc3af1cd535a0a1abf0ea3526f62f0b0e89dd803bce3b7330b55e298b",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12",
+          "source_sha256": "5823f552681530e7d8f7017c540cd218e53619d71d33e6a52c5f151075221c27",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14",
+          "source_sha256": "dedf3a500d632e90fe7a74e0ea3cdd4a0c8a0f410f68286cf1b8a6720c7ca253",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15",
+          "source_sha256": "48c0c3b363fd6ceca77ff7fbd0ca5ee43f35d84b48f2c09f5d629736acd49225",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12",
+          "source_sha256": "4ed60318958cd03db55da13c080f53b3dff41dccc54862e266cf64808130b7d2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14",
+          "source_sha256": "96832959dbd925d6f4f757bd6b7d66280d97b776ab430d1a2d5c93dc24d5ebd1",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15",
+          "source_sha256": "235745792dccce3cbc2017da863c6af8b40939e1ad767ad19024ae8f1d75e6a2",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14",
+          "source_sha256": "fb73460c8c7f59e9fdbb86979b857ca8952bfff1060043d67eb7a5e4b0403b76",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14",
+          "source_sha256": "0a413490726464e17c9d9c844c99541836a6ae5787a7f5297f477ee7d97e2bb9",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12",
+          "source_sha256": "503c649deb5347a092d4980de71d27f5ab684d6f8352bd15cbcdd1a65b57a9c5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14",
+          "source_sha256": "2de1be8ba6099702424bde7b7d65c13ab6d834cc92c178b453847f6e42efbc33",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15",
+          "source_sha256": "521267617e1dd3494fdac31c14b092318ad522080fe99432d393b121ea67ec60",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-first-page-before0-ppr-only-compat14",
+          "source_sha256": "dcec4d1e4b90fd0c94d977420f5e7e5621c76b2ea37da13b886bca263c6de1c9",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-first-page-before0-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-first-page-before0-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-first-page-before480-ppr-only-compat14",
+          "source_sha256": "7f468ec84f89e081a7919af3d2878a3e0eee50c2cc57e3a902e32519efa5a103",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-first-page-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-first-page-before480-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-page-break-before-before0-ppr-only-compat14",
+          "source_sha256": "8b1159bc2de90e7c49c3b00758d8df4d29682eaa02fe0c9c4e7844386d1d9ab1",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-page-break-before-before0-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-page-break-before-before0-ppr-only-compat14.docx"
+        },
+        {
+          "name": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14",
+          "source_sha256": "66b9a1438855e84d24693b4830251c87f36d62c713c445e9f4f7e3ade94b2327",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-heading-page-break-before-before480-ppr-only-compat14.docx"
+          ],
+          "opened_filename": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

@@ -55,7 +55,18 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 303)
+        self.assertEqual(len(verify()), 329)
+
+    def test_all_original_paragraph_only_break_controls_remain_registered(self):
+        cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {
+            '20261114T185441333Z-8f9ddd27'}]
+        self.assertEqual(len(cases), 26)
+        self.assertEqual(sum(row[0]['glyph_count'] for row in cases), 640)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+                self.assertTrue(case['no_visible_vector_ink'])
+                self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
 
     def test_table_controls_preserve_original_paint_expectations(self):
         cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {

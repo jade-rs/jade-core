@@ -37808,8 +37808,6 @@ where
             || self.rendering_header_footer_story
             || self.rendering_note_story
             || self.paragraph_frame_column.is_some()
-            || jade_docx_layout::line_metrics::word_layout_platform()
-                != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         {
             return collapsed_spacing_before(before, preceding_after);
         }
@@ -37821,6 +37819,32 @@ where
         let at_flow_start =
             (self.current_y - self.effective_body_top() - self.current_page_valign_offset()).abs()
                 <= 1e-3;
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            // Windows Word drops before spacing after a paragraph-final
+            // manual break. pageBreakBefore and section starts retain it.
+            if at_flow_start
+                && body_element_index != section_start
+                && paragraph
+                    .properties
+                    .as_ref()
+                    .is_none_or(|properties| properties.page_break_before != Some(true))
+                && !paragraph
+                    .runs
+                    .iter()
+                    .any(|run| run.text.contains(PAGE_BREAK_CHAR))
+                && self.last_document.as_deref().is_some_and(|document| {
+                    jade_docx_layout::text_extract::body_follows_manual_page_break(
+                        document,
+                        body_element_index,
+                    )
+                })
+            {
+                return 0.0;
+            }
+            return collapsed_spacing_before(before, preceding_after);
+        }
         jade_docx_layout::line_metrics::resolve_body_paragraph_spacing_before(
             before,
             preceding_after,

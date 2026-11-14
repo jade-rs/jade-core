@@ -1,0 +1,562 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T174845835Z-eef8d731",
+  "captured_at_utc": "2026-11-14T17:48:45.8529589Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-heading-break-inline-before0-compat12",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-inline-before0-compat12.docx",
+      "sha256": "494dedf7966ad4dc7d01f76a1f2fd41e7e86d30bec901685afaae963ccd0cda5",
+      "pdf": "word-windows-edge-heading-break-inline-before0-compat12.pdf",
+      "pdf_sha256": "fee298713b34089c80b9b2aaf058b4a7b6112cc679ef51cde19758731d69251e",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before0-compat12.page-001.emf",
+          "sha256": "8fd5f8da7ac81918a96af6e84c2144fa59c9bbc5a171fef3999ca87ad4658510",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before0-compat12.page-002.emf",
+          "sha256": "a004f8edc9d2f201e709571d43aad1b1ea5af1254ad2847068e0aa2f14deeb13",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before0-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-inline-before0-compat14.docx",
+      "sha256": "d23a843cd7ae808042bb517a1d013d36a7e67d8ceab03e0b274e98401dbd9a81",
+      "pdf": "word-windows-edge-heading-break-inline-before0-compat14.pdf",
+      "pdf_sha256": "8975aab47755b8566eb9bb0bea75bcaaffc64d7712436ce3b893cd007316f7c1",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before0-compat14.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before0-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before0-compat15",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-inline-before0-compat15.docx",
+      "sha256": "a8fbfb4295a10f115992bea33b448226ca4cf5d105ee81d3f2a16096701454ad",
+      "pdf": "word-windows-edge-heading-break-inline-before0-compat15.pdf",
+      "pdf_sha256": "e11ab4563c37183c45364a5343e57f092bae9792f2478002c2540a8eef21f9f8",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before0-compat15.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before0-compat15.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before480-compat12",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-inline-before480-compat12.docx",
+      "sha256": "811511959dea9b1d5d40965ec6f33b557039a263985e264a68d2e06933b120fb",
+      "pdf": "word-windows-edge-heading-break-inline-before480-compat12.pdf",
+      "pdf_sha256": "b9b877c8092f3817939b0fc524f8076ff8513e1c9d21dc1b3a6c3c5366c0f163",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before480-compat12.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before480-compat12.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before480-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-inline-before480-compat14.docx",
+      "sha256": "a026bad2240bccf8231504f9c35d8c74eeb7285371dd909d3183d178553be7b4",
+      "pdf": "word-windows-edge-heading-break-inline-before480-compat14.pdf",
+      "pdf_sha256": "27900fdc6523e150d1f4491454c8bc0853105fd82e7892a23a6f9d7f90f736bf",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before480-compat14.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before480-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before480-compat15",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-inline-before480-compat15.docx",
+      "sha256": "bab830a235c534127eaa87388fa4c93132b77eae7dc0361a794a5592e3015bcc",
+      "pdf": "word-windows-edge-heading-break-inline-before480-compat15.pdf",
+      "pdf_sha256": "2ed2d1c388c4605d2bcde2d71a27d5ceddff8087e9b9dffe80f0e1bb711d2dcc",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before480-compat15.page-001.emf",
+          "sha256": "a676e1e69c45b6299fe0bb9502806f882b5cd0f6299bba12e6f26d9c8430eb66",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before480-compat15.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before0-compat12",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-paragraph-before0-compat12.docx",
+      "sha256": "1350ded1a0e0d082bff1b5b57a56178fc79732b57d43756748e311fc8ba853b0",
+      "pdf": "word-windows-edge-heading-break-paragraph-before0-compat12.pdf",
+      "pdf_sha256": "715d749e83da0e1585679459c0d4ca371e8fa6731c79119e231342151ad3bb01",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before0-compat12.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before0-compat12.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before0-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-paragraph-before0-compat14.docx",
+      "sha256": "5135c03f62b842996b849254d7dcdbd2230a1b445bfd8fbba8c71a674bda19f0",
+      "pdf": "word-windows-edge-heading-break-paragraph-before0-compat14.pdf",
+      "pdf_sha256": "6df7603043245d09d4b531cd1b64b0e30151c975998eecb60a22a714d90ac8e9",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before0-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before0-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before0-compat15",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-paragraph-before0-compat15.docx",
+      "sha256": "a2401b9593af0789150fe738860020e314c96844ca06801d6b85709338505c32",
+      "pdf": "word-windows-edge-heading-break-paragraph-before0-compat15.pdf",
+      "pdf_sha256": "4cc538d15a1faf91cfa82f7c1d145a38ed23cc1029dece7a4238792b9e00ff43",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before0-compat15.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before0-compat15.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before480-compat12",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-paragraph-before480-compat12.docx",
+      "sha256": "ce73d0ccdf54279ed1bae9a708d55949d35b88c4c8959fff330ec2a8ea85f9dd",
+      "pdf": "word-windows-edge-heading-break-paragraph-before480-compat12.pdf",
+      "pdf_sha256": "2414d9418bb454e4b5d5e8a12b432bd77e8cf68fc9320facc81797866c7ac0ce",
+      "pages": 2,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before480-compat12.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before480-compat12.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before480-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-paragraph-before480-compat14.docx",
+      "sha256": "f19802af49686e7220dfc86556f761277c6b27172f9cefd0d10c91f5c67d4b46",
+      "pdf": "word-windows-edge-heading-break-paragraph-before480-compat14.pdf",
+      "pdf_sha256": "5da379eb4a36321e8f7ef4ed6c7f11f1713fe1b963bd32f367d40dd52a7f8728",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before480-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before480-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before480-compat15",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-break-paragraph-before480-compat15.docx",
+      "sha256": "e8cc1b02e3e1d1a8d3bf8cdc4069ab96c529b9b03f8cda3e94da56e15b16ad7e",
+      "pdf": "word-windows-edge-heading-break-paragraph-before480-compat15.pdf",
+      "pdf_sha256": "cb1fdf838d439d3961417374ad69fc5e68de5dd476034c6c51c6c170bdeff484",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before480-compat15.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before480-compat15.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-first-page-before0-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-first-page-before0-compat14.docx",
+      "sha256": "7cb39fb7ea1590500533761552a50cd62e9bfc869ca143cbbb4f83aed930b45f",
+      "pdf": "word-windows-edge-heading-first-page-before0-compat14.pdf",
+      "pdf_sha256": "f965dd5afbc71dd68b7a47359825ee5a133b2932c18f20817a88c958ce8641f4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-first-page-before0-compat14.page-001.emf",
+          "sha256": "aa29a54df7a8219d055f4d745a6125626bb7cfbfcb7cc3959649fee013584ee4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-first-page-before480-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-first-page-before480-compat14.docx",
+      "sha256": "551800cd5305d280a2b4c6ed11556f2e7c9d3c6b916a32f2bb21e924373e2404",
+      "pdf": "word-windows-edge-heading-first-page-before480-compat14.pdf",
+      "pdf_sha256": "8cad5728035cd08a35228454ab70d882ca45754336c2e789ecabce6431b0f71b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-first-page-before480-compat14.page-001.emf",
+          "sha256": "0b923292ffc33e4237d95f861ec170e413ce6c00b001644bd31ea23789424e68",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-page-break-before-before0-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-page-break-before-before0-compat14.docx",
+      "sha256": "311de2584ac2c4fd623e116392831c925c764afa0d86d9da890eb9baeacd5274",
+      "pdf": "word-windows-edge-heading-page-break-before-before0-compat14.pdf",
+      "pdf_sha256": "d114a15ee7368b20de20512cd265ae81e06ccc461c7194112efdd4266954da20",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-page-break-before-before0-compat14.page-001.emf",
+          "sha256": "7430f1604fa0bcfa02438c88f1f7feddc4db21f786490074f668636addc8e258",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-page-break-before-before0-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-page-break-before-before480-compat14",
+      "source": "..\\w15-heading-break-inputs\\word-windows-edge-heading-page-break-before-before480-compat14.docx",
+      "sha256": "e9c41c1242ccbd0b18e8f1a3e40cce56482a997584c240e52b5891bb2a9d0255",
+      "pdf": "word-windows-edge-heading-page-break-before-before480-compat14.pdf",
+      "pdf_sha256": "a8176f42b4f1cb7300927e6182fb857ce23abffd85696fe8852e78bd147e4920",
+      "pages": 2,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-page-break-before-before480-compat14.page-001.emf",
+          "sha256": "7430f1604fa0bcfa02438c88f1f7feddc4db21f786490074f668636addc8e258",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-page-break-before-before480-compat14.page-002.emf",
+          "sha256": "b50ad44f9856062ee06530b1f037f83d76e3f816bced3a07f0e5066b1b6a6f7e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
