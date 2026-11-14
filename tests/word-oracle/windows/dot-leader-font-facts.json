@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "word_product_version": "16.0.19127.20936",
+  "capture_id": "20261114T125444122Z-6388e4a3",
+  "fonts": [
+    {
+      "fixture": "word-windows-edge-dot-leader-arial-size21-indent0-compat12",
+      "font_program_sha256": "5b615603eff2e766720ab10e8ef129f3cfcaf4496e6ffff5a6bc4b3f702bfcb0",
+      "family": "Arial",
+      "style": "Regular",
+      "font_version": "Version 7.07",
+      "units_per_em": 2048,
+      "period_glyph": "period",
+      "period_advance": 569,
+      "period_left_side_bearing": 186
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-century-size21-indent0-compat12",
+      "font_program_sha256": "df39afabe732a9ce821f7de21003c3f3048e158eb86a369a16bc8d9187a081f8",
+      "family": "Century",
+      "style": "Regular",
+      "font_version": "Version 1.20",
+      "units_per_em": 2048,
+      "period_glyph": "period",
+      "period_advance": 569,
+      "period_left_side_bearing": 163
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-ms-mincho-size21-indent0-compat12",
+      "font_program_sha256": "94099cc28951e7bd7fc12d4a05958565301cb23ccddd42421d9df3e1b1dd7c7c",
+      "family": "MS Mincho",
+      "style": "Regular",
+      "font_version": "Version 5.32",
+      "units_per_em": 256,
+      "period_glyph": "period",
+      "period_advance": 128,
+      "period_left_side_bearing": 17
+    },
+    {
+      "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-indent0-compat12",
+      "font_program_sha256": "ffa531919711944124e34b3290365c70d0d267a9bc3162d6d57441f1c0e22650",
+      "family": "Yu Mincho",
+      "style": "Regular",
+      "font_version": "Version 1.92",
+      "units_per_em": 2048,
+      "period_glyph": "period",
+      "period_advance": 559,
+      "period_left_side_bearing": 158
+    }
+  ]
+}

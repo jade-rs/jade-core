@@ -1,0 +1,369 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T131426303Z-d86a8f8f",
+  "captured_at_utc": "2026-11-14T13:14:26.3254547Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop7988-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop7988-compat12.docx",
+      "sha256": "f22fce89901ab4acfdca984650c697039e56730834b86693bbad312b2769de5b",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop7988-compat12.pdf",
+      "pdf_sha256": "758d1309ba5061d580e129b21db4eb6773bfbf40e7a5711d185ba8f8204f467f",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop7988-compat12.page-001.emf",
+          "sha256": "f22777cadd4c19fb96a3b4a505389950eb630c4dd4d913fc5f00eba2f7f29af1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop7990-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop7990-compat12.docx",
+      "sha256": "11910fb2df4410b3bd4e946cb6f5225014ec65188bfa0975e1fdc9a471eeb017",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop7990-compat12.pdf",
+      "pdf_sha256": "5a3a1c0cfab2b368c17e9a6cdbd1c47e8f6ed1cd9714a6e9f9b4595593670dc2",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop7990-compat12.page-001.emf",
+          "sha256": "7a29d44fac4f4db51da3b5f0d038230e8a84ce38f60ad01cdc4ac37266669ccf",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop7992-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop7992-compat12.docx",
+      "sha256": "cb283359163dbfa292f0ca4ba293ac2413098b2ee5b6a6a04bcb5ac4c537f8ad",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop7992-compat12.pdf",
+      "pdf_sha256": "082d745838e5cc936ada87bb1393af2e34219dfe4edd02862768a1a9dea6aab0",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop7992-compat12.page-001.emf",
+          "sha256": "c3c791fb75551f6469ee2d5faf1e01adbf7368dcc78d41600c94f22be0dc8d21",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop7994-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop7994-compat12.docx",
+      "sha256": "f6bfe5d6e3636f1fd71a8975ece392dbc4c3c06bfa3b484ce72b4e5d8e798b44",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop7994-compat12.pdf",
+      "pdf_sha256": "aeeb6f63eb6fbf9442e5502a4468e699840e7e6d3f761201c2154d677e1f2448",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop7994-compat12.page-001.emf",
+          "sha256": "891d2fb1e6bd6692358a867cdceacc5fdf4db5bf5a5d323e0cfe453b890f897b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop7996-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop7996-compat12.docx",
+      "sha256": "9962dfabcdbb1520621daf78bea60b40aba03ea18c81b3e90f3c80f190ba988b",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop7996-compat12.pdf",
+      "pdf_sha256": "d06216a7cf49342507c7eb12da9ab5b65f86519cf7a2c5e351c027e56b130830",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop7996-compat12.page-001.emf",
+          "sha256": "2f508b350e3806d930e4dba3df8958c2bc2c575db50690d80b2e7a832be6b260",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop7998-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop7998-compat12.docx",
+      "sha256": "f5294fa078897f9aa6768074f927593fd4d65d7711dc88a9ded56d439952557a",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop7998-compat12.pdf",
+      "pdf_sha256": "192a42a515a8b6bb9982dbd58ca7fb481a432129a20da2d5e6fb337a300c78ed",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop7998-compat12.page-001.emf",
+          "sha256": "742cfcb01b4118c8d2b2b5ceb6217ad80f5856735041c61233edb9e948f3e1f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8000-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8000-compat12.docx",
+      "sha256": "e7bb663a675862337118e85b3bab3fb3d18798949ee938dde7307b2d96f9c8ed",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8000-compat12.pdf",
+      "pdf_sha256": "d6d4410f30fda4176104f4c8bc7dfc7b8dbe859c21fadc03feddc3e490bc555e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8000-compat12.page-001.emf",
+          "sha256": "7580c2a9ab57ce3dcb5d2df4983d484bbd6f06f25ca024c3188860a403a0d572",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8002-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8002-compat12.docx",
+      "sha256": "8146ec8b57fa33c146055e049eef05a2179bb8b999ac9d7c02e98ef726ac518f",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8002-compat12.pdf",
+      "pdf_sha256": "7100b3c9df95c7ca14f2c96436552927765a190b9aecae3063b5559da53d4c21",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8002-compat12.page-001.emf",
+          "sha256": "054fde4f9dd5a99223d35667780e964ff267066679974273bf3f4493da22f858",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8004-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8004-compat12.docx",
+      "sha256": "90aef87573d203245ad995b9ff0cb94e6e98c73db34bd11a0e2585c68a82a21c",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8004-compat12.pdf",
+      "pdf_sha256": "d24dcfd66f506d45c806ef7bbbc78e680c792cd76ce96644d6d486002ada44b7",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8004-compat12.page-001.emf",
+          "sha256": "3ef402b95a592b970775803117261d2afdae0331c6060c48c3d9bbdf4176d04c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8006-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8006-compat12.docx",
+      "sha256": "4728b749bea868bceb81a1e9b12697ff73f9a8dad102545db64cc2ea53371fe4",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8006-compat12.pdf",
+      "pdf_sha256": "0831434b2ee2812a8ed4b246c3682eb2d9c62c1b3aa24fa61bb4b59e3188a40c",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8006-compat12.page-001.emf",
+          "sha256": "d589858ed7338083aa4649a7010b613a9fdd30768acf49ebfe1ce85599678db3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8008-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8008-compat12.docx",
+      "sha256": "c616b9a14c9c88cd22e5fbc14690a1d5ea526114726435cd27902d2ddff9092e",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8008-compat12.pdf",
+      "pdf_sha256": "aa4f7c9e5eeff444c69ae1fc141774d0104a02dd2a82c96d55e43d6a963bf597",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8008-compat12.page-001.emf",
+          "sha256": "4ae892d0643005b7d0a6a0d42a9b6f1c8556d043aa9867e8550fa0aafcd97e6d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8010-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8010-compat12.docx",
+      "sha256": "0c5818df17d4c4028614234abffbd544c5af358b4f7fe076d77340c14604ab9b",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8010-compat12.pdf",
+      "pdf_sha256": "d6798fa87d4c55b0263f84e7a4c14a1eb8479991aabeee107d60325be09486bd",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8010-compat12.page-001.emf",
+          "sha256": "7dc57fcd7d6f99f07c9d78585349b31f0400e609e410dcdf313cab97f1ef1b16",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12",
+      "source": "..\\w14-dot-leader-boundary-inputs\\word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12.docx",
+      "sha256": "7b3ffa0e2ea96342d66063e6d868e8ba97473174b20c8e4df987f010518052bd",
+      "pdf": "word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12.pdf",
+      "pdf_sha256": "135c562d596cf9a83ddbdc59f1aac2a80b75e8dd233068fc6acc286973ef49de",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12.page-001.emf",
+          "sha256": "ae3e3c81e1a12edf2d01d2e75d7b6f6f9d238efed3161c15a54e28ad043d3d26",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
