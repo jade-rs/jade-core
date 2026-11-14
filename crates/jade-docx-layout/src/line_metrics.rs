@@ -3580,7 +3580,8 @@ pub fn word_paragraph_between_border_extent_pt(edge: Option<&BorderEdge>) -> f32
 }
 
 /// Whether Word draws two adjacent paragraphs in one border box: both have
-/// the same `w:pBdr` and the same side indents. The upper paragraph then
+/// the same `w:pBdr`, side indents, and hanging indents. A positive first-line
+/// indent stays inside the box. The upper paragraph then
 /// leaves out its bottom border and the lower one its top border, with the
 /// `w:between` border, if any, between them. Word for Mac 16.113 sets the
 /// second of two boxed paragraphs at the plain pitch, and one indented by
@@ -3598,16 +3599,20 @@ pub fn word_paragraphs_share_border_box(
     if lower.borders.as_ref() != Some(borders) {
         return false;
     }
-    let sides = |properties: &ParagraphProperties| {
+    let box_indents = |properties: &ParagraphProperties| {
         let indent = properties.indent.as_ref();
         (
             indent.and_then(|indent| indent.start.or(indent.left)),
             indent.and_then(|indent| indent.end.or(indent.right)),
             indent.and_then(|indent| indent.start_chars.or(indent.left_chars)),
             indent.and_then(|indent| indent.end_chars.or(indent.right_chars)),
+            indent.and_then(|indent| indent.hanging).unwrap_or_default(),
+            indent
+                .and_then(|indent| indent.hanging_chars)
+                .unwrap_or_default(),
         )
     };
-    sides(upper) == sides(lower)
+    box_indents(upper) == box_indents(lower)
 }
 
 /// The ascent and descent, in points, Word gives a run: the largest of its

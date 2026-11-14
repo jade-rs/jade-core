@@ -2708,38 +2708,36 @@ const PAGE_BORDER_PAGE_INSET_PT: f32 = 24.0;
 /// rectangle hugs the text body box; for `Page` it is inset from the physical
 /// page edge by [`PAGE_BORDER_PAGE_INSET_PT`].
 #[allow(clippy::too_many_arguments)]
-/// Returns the top-level `Paragraph` at document-order paragraph `target`, or
-/// `None` if `target` lands inside a table cell (or a `Math` element, or is out
-/// of range). Used by band redraw to require the edited paragraph be a plain
-/// body paragraph. The paragraph index space matches `count_body_paragraphs`
-/// (table-cell paragraphs are counted but not top-level).
-fn top_level_paragraph_at_index(elements: &[BodyElement], target: usize) -> Option<&Paragraph> {
-    let mut counter = 0usize;
+/// Finds the top-level paragraphs in a small document-order window with one
+/// pass over the prefix. Table-cell paragraphs occupy indices but leave their
+/// window slots empty. Math elements do not occupy indices in this walk.
+fn top_level_paragraph_window<const N: usize>(
+    elements: &[BodyElement],
+    first: usize,
+) -> [Option<&Paragraph>; N] {
+    let mut window = [None; N];
+    let mut index = 0usize;
     for element in elements {
         match element {
             BodyElement::Paragraph(paragraph) => {
-                if counter == target {
-                    return Some(paragraph);
+                if let Some(slot) = index
+                    .checked_sub(first)
+                    .and_then(|offset| window.get_mut(offset))
+                {
+                    *slot = Some(paragraph.as_ref());
                 }
-                counter += 1;
+                index += 1;
             }
-            BodyElement::Table(table) => {
-                let inside = self::table::count_body_paragraphs(std::slice::from_ref(element));
-                if target < counter + inside {
-                    // Target falls inside this table — not a plain top-level
-                    // paragraph.
-                    return None;
-                }
-                counter += inside;
-                let _ = table;
+            BodyElement::Table(_) => {
+                index += self::table::count_body_paragraphs(std::slice::from_ref(element));
             }
             BodyElement::Math(_) => {}
         }
-        if counter > target {
-            return None;
+        if index >= first.saturating_add(N) {
+            break;
         }
     }
-    None
+    window
 }
 
 /// Returns `true` if any run of the paragraph carries a floating image, text
@@ -12728,7 +12726,15 @@ where
                 .set(self.band_redraw_fallback_not_plain_paragraph.get() + 1);
             return None;
         };
-        let Some(paragraph) = top_level_paragraph_at_index(&body.elements, edited) else {
+        const RADIUS: usize = BAND_MAX_REPAINTED_NEIGHBORS + 1;
+        let first = edited.saturating_sub(RADIUS);
+        let window = top_level_paragraph_window::<{ 2 * RADIUS + 1 }>(&body.elements, first);
+        let paragraph_at = |index: usize| {
+            index
+                .checked_sub(first)
+                .and_then(|offset| window.get(offset).copied().flatten())
+        };
+        let Some(paragraph) = paragraph_at(edited) else {
             self.band_redraw_fallback_not_plain_paragraph
                 .set(self.band_redraw_fallback_not_plain_paragraph.get() + 1);
             return None;
@@ -12973,19 +12979,18 @@ where
         // can rise above that line's ink. A marker of unknown extent counts as
         // reached, so the scan below decides (and refuses).
         let next = edited.saturating_add(1);
-        let next_marker_top =
-            top_level_paragraph_at_index(&body.elements, next).and_then(|paragraph| {
-                match self.band_numbering_marker_ink(paragraph, next, &layout, false) {
-                    Ok(marker) => marker.map(|(top, _)| top),
-                    Err(()) => Some(f64::NEG_INFINITY),
-                }
-            });
+        let next_marker_top = paragraph_at(next).and_then(|paragraph| {
+            match self.band_numbering_marker_ink(paragraph, next, &layout, false) {
+                Ok(marker) => marker.map(|(top, _)| top),
+                Err(()) => Some(f64::NEG_INFINITY),
+            }
+        });
         let next_ink_top = next_line_ink_top
             .into_iter()
             .chain(next_marker_top)
             .reduce(f64::min);
         let dpr = self.host.device_pixel_ratio();
-        if !self.band_preceding_lines_repaint(&body.elements, edited, &layout, local_top, dpr) {
+        if !self.band_preceding_lines_repaint(paragraph_at, edited, &layout, local_top, dpr) {
             self.band_redraw_fallback_neighbor_ink
                 .set(self.band_redraw_fallback_neighbor_ink.get() + 1);
             return None;
@@ -12993,7 +12998,7 @@ where
         let mut paint_bottom = local_bottom;
         if band_clip_overlaps_neighbor_ink(local_top, local_bottom, dpr, None, next_ink_top) {
             match self.band_following_repaint_bottom(
-                &body.elements,
+                paragraph_at,
                 edited,
                 &layout,
                 local_bottom,
@@ -13043,8 +13048,8 @@ where
     /// whenever the clip reaches the marker. Frames, drop caps and floating
     /// objects paint outside that line pass, and a table cell paragraph is
     /// not a top-level body paragraph.
-    fn band_neighbor_paints_in_line_pass(&self, elements: &[BodyElement], index: usize) -> bool {
-        let Some(paragraph) = top_level_paragraph_at_index(elements, index) else {
+    fn band_neighbor_paints_in_line_pass(paragraph: Option<&Paragraph>) -> bool {
+        let Some(paragraph) = paragraph else {
             return false;
         };
         paragraph
@@ -13060,13 +13065,13 @@ where
     /// paragraph has no recorded lines or its marker's ink is unknown.
     fn band_neighbor_reached_lines(
         &self,
-        elements: &[BodyElement],
+        paragraph: Option<&Paragraph>,
         index: usize,
         layout: &ParagraphLayoutResult,
         reaches: impl Fn(f64, f64) -> bool,
     ) -> Option<Vec<&jade_docx_layout::selection::LineLayout>> {
         let lines = &self.selection.paragraphs().get(index)?.lines;
-        let marker_reached = match top_level_paragraph_at_index(elements, index) {
+        let marker_reached = match paragraph {
             Some(paragraph) => self
                 .band_numbering_marker_ink(paragraph, index, layout, false)
                 .ok()?
@@ -13228,9 +13233,9 @@ where
     /// repainted under the clip. Band mode culls a line below the band by its
     /// bottom (`current_y` after the advance), so the returned bottom keeps
     /// every reached line drawing.
-    fn band_following_repaint_bottom(
+    fn band_following_repaint_bottom<'a>(
         &self,
-        elements: &[BodyElement],
+        paragraph_at: impl Fn(usize) -> Option<&'a Paragraph>,
         edited: usize,
         layout: &ParagraphLayoutResult,
         local_bottom: f64,
@@ -13238,20 +13243,22 @@ where
     ) -> Option<f64> {
         let mut paint_bottom = local_bottom;
         for index in edited + 1..=edited + BAND_MAX_REPAINTED_NEIGHBORS + 1 {
-            let reached = self.band_neighbor_reached_lines(elements, index, layout, |top, _| {
-                band_clip_overlaps_neighbor_ink(
-                    0.0,
-                    local_bottom,
-                    device_pixel_ratio,
-                    None,
-                    Some(top),
-                )
-            })?;
+            let paragraph = paragraph_at(index);
+            let reached =
+                self.band_neighbor_reached_lines(paragraph, index, layout, |top, _| {
+                    band_clip_overlaps_neighbor_ink(
+                        0.0,
+                        local_bottom,
+                        device_pixel_ratio,
+                        None,
+                        Some(top),
+                    )
+                })?;
             if reached.is_empty() {
                 return Some(paint_bottom);
             }
             if index > edited + BAND_MAX_REPAINTED_NEIGHBORS
-                || !self.band_neighbor_paints_in_line_pass(elements, index)
+                || !Self::band_neighbor_paints_in_line_pass(paragraph)
             {
                 return None;
             }
@@ -13267,17 +13274,18 @@ where
     /// clip reaches is repainted under the clip. Band mode culls a line above
     /// the band only when its bottom is more than `BAND_ABOVE_SLACK` above the
     /// band top, so each reached line must lie within that slack.
-    fn band_preceding_lines_repaint(
+    fn band_preceding_lines_repaint<'a>(
         &self,
-        elements: &[BodyElement],
+        paragraph_at: impl Fn(usize) -> Option<&'a Paragraph>,
         edited: usize,
         layout: &ParagraphLayoutResult,
         local_top: f64,
         device_pixel_ratio: f64,
     ) -> bool {
         for (step, index) in (0..edited).rev().enumerate() {
+            let paragraph = paragraph_at(index);
             let Some(reached) =
-                self.band_neighbor_reached_lines(elements, index, layout, |_, bottom| {
+                self.band_neighbor_reached_lines(paragraph, index, layout, |_, bottom| {
                     band_clip_overlaps_neighbor_ink(
                         local_top,
                         local_top,
@@ -13293,7 +13301,7 @@ where
                 return true;
             }
             if step >= BAND_MAX_REPAINTED_NEIGHBORS
-                || !self.band_neighbor_paints_in_line_pass(elements, index)
+                || !Self::band_neighbor_paints_in_line_pass(paragraph)
             {
                 return false;
             }
@@ -21037,20 +21045,14 @@ where
             if !suppress_spacing_after {
                 self.apply_spacing_after_value(spacing_after)?;
             }
-            // Windows still collapses the next before against this specified
-            // after, even when contextualSpacing suppresses its drawing.
-            // Keep Mac's existing suppression and cache behavior unchanged.
-            if !suppress_spacing_after
-                || paragraph_style.word_platform
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            {
-                self.trailing_spacing_after = Some((
-                    self.current_page_number,
-                    self.column_index,
-                    self.current_y,
-                    spacing_after,
-                ));
-            }
+            // Word collapses the next paragraph's before spacing against the
+            // specified after spacing even when contextual spacing hides it.
+            self.trailing_spacing_after = Some((
+                self.current_page_number,
+                self.column_index,
+                self.current_y,
+                spacing_after,
+            ));
         }
 
         for object in floating_paint_objects
@@ -42615,22 +42617,21 @@ mod tests {
     }
 
     #[test]
-    fn top_level_paragraph_at_index_skips_over_table_cell_paragraphs() {
+    fn top_level_paragraph_window_skips_over_table_cell_paragraphs() {
         // Layout: P0, Table(2 cell paragraphs = indices 1,2), P3.
         let elements = vec![
             BodyElement::Paragraph(Box::new(band_test_paragraph(vec![band_plain_run()]))),
             band_table_with_cell_paragraphs(2),
             BodyElement::Paragraph(Box::new(band_test_paragraph(vec![band_plain_run()]))),
         ];
-        // Index 0 → the first top-level paragraph.
-        assert!(top_level_paragraph_at_index(&elements, 0).is_some());
-        // Indices 1 and 2 fall inside the table cell → not top-level.
-        assert!(top_level_paragraph_at_index(&elements, 1).is_none());
-        assert!(top_level_paragraph_at_index(&elements, 2).is_none());
-        // Index 3 → the second top-level paragraph (after the two cell paragraphs).
-        assert!(top_level_paragraph_at_index(&elements, 3).is_some());
-        // Out of range.
-        assert!(top_level_paragraph_at_index(&elements, 4).is_none());
+        assert_eq!(
+            top_level_paragraph_window::<5>(&elements, 0).map(|slot| slot.is_some()),
+            [true, false, false, true, false]
+        );
+        assert_eq!(
+            top_level_paragraph_window::<4>(&elements, 1).map(|slot| slot.is_some()),
+            [false, false, true, false]
+        );
     }
 
     #[test]
