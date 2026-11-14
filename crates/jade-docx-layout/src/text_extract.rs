@@ -1394,6 +1394,29 @@ fn preceding_spacing_after(
     )
 }
 
+/// A paragraph-final manual page break is distinct from pageBreakBefore and
+/// a section transition. Empty formatting runs after the break add no content.
+pub fn body_follows_manual_page_break(document: &Document, element_index: usize) -> bool {
+    element_index
+        .checked_sub(1)
+        .and_then(|index| document.body.as_ref()?.elements.get(index))
+        .and_then(BodyElement::as_paragraph)
+        .and_then(|paragraph| paragraph.runs.iter().rev().find(|run| !run.text.is_empty()))
+        .is_some_and(|run| run.text.ends_with(PAGE_BREAK_CHAR))
+}
+
+fn windows_manual_break_suppresses_before(
+    paragraph: &Paragraph,
+    document: &Document,
+    element_index: usize,
+) -> bool {
+    crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph.properties.as_ref().is_none_or(|properties| {
+            properties.page_break_before != Some(true) && properties.frame.is_none()
+        })
+        && body_follows_manual_page_break(document, element_index)
+}
+
 #[allow(clippy::too_many_arguments)]
 fn advance_paragraph_spacing_before(
     current_y: &mut f64,
@@ -1404,19 +1427,31 @@ fn advance_paragraph_spacing_before(
     preceding_after: f64,
     section_start: bool,
     contains_inline_page_break: bool,
+    follows_manual_page_break: bool,
     content_top: f64,
     content_bottom: f64,
 ) {
     if before <= 0.0 {
         return;
     }
-    let spacing = crate::line_metrics::resolve_body_paragraph_spacing_before(
-        before,
-        preceding_after,
-        (*current_y - content_top).abs() <= EPS,
-        section_start,
-        contains_inline_page_break,
-    );
+    let at_flow_start = (*current_y - content_top).abs() <= EPS;
+    let spacing = if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+        && at_flow_start
+        && !section_start
+        && !contains_inline_page_break
+        && follows_manual_page_break
+    {
+        0.0
+    } else {
+        crate::line_metrics::resolve_body_paragraph_spacing_before(
+            before,
+            preceding_after,
+            at_flow_start,
+            section_start,
+            contains_inline_page_break,
+        )
+    };
     if crate::line_metrics::word_layout_platform() != crate::line_metrics::WordLayoutPlatform::Mac {
         advance_vertical_in_columns(
             current_y,
@@ -2288,6 +2323,12 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                                 .get(active_section_index)
                                 .map_or(0, |section| section.start),
                         input.spacing_before_px > 0.0 && input.text.contains(PAGE_BREAK_CHAR),
+                        input.spacing_before_px > 0.0
+                            && windows_manual_break_suppresses_before(
+                                paragraph,
+                                document,
+                                element_index,
+                            ),
                         content_top_y,
                         content_bottom_y,
                     );
@@ -2364,6 +2405,8 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         .get(active_section_index)
                         .map_or(0, |section| section.start),
                 input.spacing_before_px > 0.0 && input.text.contains(PAGE_BREAK_CHAR),
+                input.spacing_before_px > 0.0
+                    && windows_manual_break_suppresses_before(paragraph, document, element_index),
                 content_top_y,
                 content_bottom_y,
             );
@@ -5023,6 +5066,7 @@ mod tests {
                 4.0,
                 section_start,
                 inline,
+                false,
                 0.0,
                 100.0,
             );

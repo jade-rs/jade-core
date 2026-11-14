@@ -1,0 +1,4545 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261114T185441333Z-8f9ddd27",
+  "captured_at_utc": "2026-11-14T18:54:41.3465683Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-heading-break-inline-before0-ppr-only-compat12",
+      "docx_sha256": "6eed6d4cc5ec8f53d52823c7b0ffd7d62b7baa2b6996ac4d79bf6f3d6b23fff5",
+      "pdf_sha256": "5c4ddd09d3a9a86060c69f80982cab9d799c038f2c40cce2363c79ef945a0823",
+      "pdf_file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat12.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat12.page-001.emf",
+          "sha256": "8fd5f8da7ac81918a96af6e84c2144fa59c9bbc5a171fef3999ca87ad4658510",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat12.page-002.emf",
+          "sha256": "a004f8edc9d2f201e709571d43aad1b1ea5af1254ad2847068e0aa2f14deeb13",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before0-ppr-only-compat14",
+      "docx_sha256": "bcbaa9b853d7b019fcfbc65385472bcb3012534cb568f23e6cd99c0b516af7ca",
+      "pdf_sha256": "e5fd95bb47d7235cd9c6a6df12fb0d0fdacac5c102574b22689af81da3419fa0",
+      "pdf_file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat14.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before0-ppr-only-compat15",
+      "docx_sha256": "ddaa0acac7c38556aea6399b6a3583a4938e5b09515217b42c8e8119471caed6",
+      "pdf_sha256": "c01c67f0caeac54d85f9b1b59c655afad87eb5853f93d038d02d516e4de02618",
+      "pdf_file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat15.page-001.emf",
+          "sha256": "a676e1e69c45b6299fe0bb9502806f882b5cd0f6299bba12e6f26d9c8430eb66",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before0-ppr-only-compat15.page-002.emf",
+          "sha256": "31e2c6fc205d7a897d2373bf096190a411c5e523ce7428abdc0bcab6cd4a7425",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before480-ppr-only-compat12",
+      "docx_sha256": "02f160a24e994642912e823d8f9960be3356c21359ed7fdfa94d94dbfdd59992",
+      "pdf_sha256": "50b729615e1d7bbe9b0e89cbd52990cd0f32e92fb1d7d9e98629f2bccf439d39",
+      "pdf_file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat12.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat12.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat12.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before480-ppr-only-compat14",
+      "docx_sha256": "e5aa1c49942ac5af4bc7e1ee4e1b3752562dbd1dae0defbab4e748780c174d01",
+      "pdf_sha256": "c60812a8dfc08b914de94535790aa437c6c2fcea10359a97e6d7c2695a81dd70",
+      "pdf_file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "a676e1e69c45b6299fe0bb9502806f882b5cd0f6299bba12e6f26d9c8430eb66",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "aa29a54df7a8219d055f4d745a6125626bb7cfbfcb7cc3959649fee013584ee4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-before480-ppr-only-compat15",
+      "docx_sha256": "b79bdc3a8965474b713467d9bbbde44d5046c9cf362f0c0d4e8ba4e6cfb5c2ff",
+      "pdf_sha256": "e9e8749e959e3f84e38d44059690f1897db15f07b600e284d2e9e6dff7129ed2",
+      "pdf_file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat15.page-001.emf",
+          "sha256": "a676e1e69c45b6299fe0bb9502806f882b5cd0f6299bba12e6f26d9c8430eb66",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-before480-ppr-only-compat15.page-002.emf",
+          "sha256": "aa29a54df7a8219d055f4d745a6125626bb7cfbfcb7cc3959649fee013584ee4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14",
+      "docx_sha256": "a70da90b311020b628146e66a710fa785f42d63394c2b2337d8cc289fae9b887",
+      "pdf_sha256": "bee9dca63e3ec698e6f0815ddb9fc7477da28b7319d5f93e5a912068b267b985",
+      "pdf_file": "word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-direct-page-before-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "b50ad44f9856062ee06530b1f037f83d76e3f816bced3a07f0e5066b1b6a6f7e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          85.67999999999999
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          85.67999999999999
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          85.67999999999999
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          99.47999999999999
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          99.47999999999999
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          99.47999999999999
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14",
+      "docx_sha256": "7f9f734f8bc547c6fb71b001dd31b925b46e55462d468c1789349d0725c71ffe",
+      "pdf_sha256": "bd92160a5ceac85a5c10e41525035831bddc8135535b0cad4b6c29c03513dfaa",
+      "pdf_file": "word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "a676e1e69c45b6299fe0bb9502806f882b5cd0f6299bba12e6f26d9c8430eb66",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-inherited-page-before-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "b50ad44f9856062ee06530b1f037f83d76e3f816bced3a07f0e5066b1b6a6f7e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          85.67999999999999
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          85.67999999999999
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          85.67999999999999
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          99.47999999999999
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          99.47999999999999
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          99.47999999999999
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12",
+      "docx_sha256": "781b677d13cac9370dd4cba42c04289c026dba1952908dd596fa85cb4b07fd24",
+      "pdf_sha256": "1431a7988c046f0bdd8174d0303e61fd8302c0a3714205b32eb8871eb87fe3a4",
+      "pdf_file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat12.page-002.emf",
+          "sha256": "8e90bbdaeea1132715dec7de816354ca6b20437139eea710bb9c8b03bb0fb4ac",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          78.36,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          85.08,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          91.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          101.75999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          108.36,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          115.08,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          121.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          131.76,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          138.35999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          145.07999999999998,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          151.79999999999998,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          158.51999999999998,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          161.16,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          167.76,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14",
+      "docx_sha256": "962e5c598015200b9703209802ec2719d54add063aeedb054e012d90cbd4b8a6",
+      "pdf_sha256": "8c81e62c975e9ad9cbaed9d863038b5147990e245c40e6dd783d5cbdc1218e78",
+      "pdf_file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "fc2c20b96b36482fa37092839d89096b9565091d9a7115780cbf8ea37f1a8fef",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "3392f8aa2bda4a1072df3f6a6de46204fea6a35abc48e370a651ffb64ad8af51",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          78.36,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          85.08,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          91.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          101.75999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          108.36,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          115.08,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          121.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          131.76,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          138.35999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          145.07999999999998,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          151.79999999999998,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          158.51999999999998,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          161.16,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          167.76,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15",
+      "docx_sha256": "2f635a4dc3af1cd535a0a1abf0ea3526f62f0b0e89dd803bce3b7330b55e298b",
+      "pdf_sha256": "ac2811fb9b6708bd37733b743a3dbde5b78fc75abbdaa0c4bdefdc2509ddc76a",
+      "pdf_file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15.page-001.emf",
+          "sha256": "ead44a766a6e9bb1cb6dedaabf2ad7daa1a7882d5f991b6681ed3924fa780b1c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-inline-normal-before480-ppr-only-compat15.page-002.emf",
+          "sha256": "8e90bbdaeea1132715dec7de816354ca6b20437139eea710bb9c8b03bb0fb4ac",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          78.36,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          85.08,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          91.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          101.75999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          108.36,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          115.08,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          121.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          131.76,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          138.35999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          145.07999999999998,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          151.79999999999998,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          158.51999999999998,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          161.16,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          167.76,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12",
+      "docx_sha256": "5823f552681530e7d8f7017c540cd218e53619d71d33e6a52c5f151075221c27",
+      "pdf_sha256": "dbd7d95b9871bb1c43e73049b382843f237d0e25d1cc1b492c17cdba3a723ced",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12.page-001.emf",
+          "sha256": "01417bcb9cc78606d3ce20f48255d757b35ce4a662ad3b28309a6a46cf4943e6",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat12.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14",
+      "docx_sha256": "dedf3a500d632e90fe7a74e0ea3cdd4a0c8a0f410f68286cf1b8a6720c7ca253",
+      "pdf_sha256": "8a18c120df7bf14a2eae5b1f0414dfaccb0ddd64e450abaad0fc38307d47bea3",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15",
+      "docx_sha256": "48c0c3b363fd6ceca77ff7fbd0ca5ee43f35d84b48f2c09f5d629736acd49225",
+      "pdf_sha256": "9a9eba98d12ff74fdf2c2a19b9444e789a5f05d2fc24081db4a01be8f794a20e",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before0-ppr-only-compat15.page-002.emf",
+          "sha256": "aa29a54df7a8219d055f4d745a6125626bb7cfbfcb7cc3959649fee013584ee4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12",
+      "docx_sha256": "4ed60318958cd03db55da13c080f53b3dff41dccc54862e266cf64808130b7d2",
+      "pdf_sha256": "20f4cf3e0cec37ca0dfafd39dfe824ffe48ff4f0cd1b26a2e081977ef25d5999",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat12.page-002.emf",
+          "sha256": "31e2c6fc205d7a897d2373bf096190a411c5e523ce7428abdc0bcab6cd4a7425",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14",
+      "docx_sha256": "96832959dbd925d6f4f757bd6b7d66280d97b776ab430d1a2d5c93dc24d5ebd1",
+      "pdf_sha256": "eef913d38af60936a0bbb3130946fb75b077519586eec57a9bf479431b6c60d0",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15",
+      "docx_sha256": "235745792dccce3cbc2017da863c6af8b40939e1ad767ad19024ae8f1d75e6a2",
+      "pdf_sha256": "22b2267394be57dd0ff7201f8633a81dc907ec141611efeebaa79bb7117edb52",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-before480-ppr-only-compat15.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14",
+      "docx_sha256": "fb73460c8c7f59e9fdbb86979b857ca8952bfff1060043d67eb7a5e4b0403b76",
+      "pdf_sha256": "01b9b9aafb343f2500ec34a8e72bdde1f3d0e0e3813e5c93633b53bcb3b1e686",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-direct-page-before-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "b50ad44f9856062ee06530b1f037f83d76e3f816bced3a07f0e5066b1b6a6f7e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          85.67999999999999
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          85.67999999999999
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          85.67999999999999
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          99.47999999999999
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          99.47999999999999
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          99.47999999999999
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14",
+      "docx_sha256": "0a413490726464e17c9d9c844c99541836a6ae5787a7f5297f477ee7d97e2bb9",
+      "pdf_sha256": "c28f0a5676da31e4f4e3b97e426437a1f9ec1a70c4a4cd79dbdc1a3cebd49c95",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-inherited-page-before-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "b50ad44f9856062ee06530b1f037f83d76e3f816bced3a07f0e5066b1b6a6f7e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          85.67999999999999
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          85.67999999999999
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          85.67999999999999
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          99.47999999999999
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          99.47999999999999
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          99.47999999999999
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12",
+      "docx_sha256": "503c649deb5347a092d4980de71d27f5ab684d6f8352bd15cbcdd1a65b57a9c5",
+      "pdf_sha256": "1f3592637cdcd5248b71237826957f16cfa201006e951d1164e752db8a84c3b8",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat12.page-002.emf",
+          "sha256": "8e90bbdaeea1132715dec7de816354ca6b20437139eea710bb9c8b03bb0fb4ac",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          78.36,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          85.08,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          91.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          101.75999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          108.36,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          115.08,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          121.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          131.76,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          138.35999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          145.07999999999998,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          151.79999999999998,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          158.51999999999998,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          161.16,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          167.76,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14",
+      "docx_sha256": "2de1be8ba6099702424bde7b7d65c13ab6d834cc92c178b453847f6e42efbc33",
+      "pdf_sha256": "5c2cd10a4879f993835e60a92f98a922cc8d26f1fbcf15eee2b8368f523921dd",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "3392f8aa2bda4a1072df3f6a6de46204fea6a35abc48e370a651ffb64ad8af51",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          78.36,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          85.08,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          91.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          101.75999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          108.36,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          115.08,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          121.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          131.76,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          138.35999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          145.07999999999998,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          151.79999999999998,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          158.51999999999998,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          161.16,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          167.76,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15",
+      "docx_sha256": "521267617e1dd3494fdac31c14b092318ad522080fe99432d393b121ea67ec60",
+      "pdf_sha256": "9a4089b98ec21aa483af4f815f2d35a857649ab472b54509a0412fa0c400f747",
+      "pdf_file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15.page-001.emf",
+          "sha256": "e7af7d907c0777b27aae8168170a9c863b08caf3a8573d3b9ed6abcd2028e002",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-break-paragraph-normal-before480-ppr-only-compat15.page-002.emf",
+          "sha256": "6916e69692816292ce7646aefd6ef3278d748d54c7c16243704259e7272fd805",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          78.36,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          85.08,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          91.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          101.75999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          108.36,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          115.08,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          121.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          131.76,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          138.35999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          145.07999999999998,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          151.79999999999998,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          158.51999999999998,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          161.16,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          167.76,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-first-page-before0-ppr-only-compat14",
+      "docx_sha256": "dcec4d1e4b90fd0c94d977420f5e7e5621c76b2ea37da13b886bca263c6de1c9",
+      "pdf_sha256": "1722599808e460656da4872c6d7bf4c894b001c55fe7da41e8a73e3d1ef35b2d",
+      "pdf_file": "word-windows-edge-heading-first-page-before0-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-first-page-before0-ppr-only-compat14.page-001.emf",
+          "sha256": "aa29a54df7a8219d055f4d745a6125626bb7cfbfcb7cc3959649fee013584ee4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          1,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          1,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          1,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          1,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          1,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          1,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          1,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          1,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          1,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          1,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          1,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          1,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          1,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          1,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-first-page-before480-ppr-only-compat14",
+      "docx_sha256": "7f468ec84f89e081a7919af3d2878a3e0eee50c2cc57e3a902e32519efa5a103",
+      "pdf_sha256": "be48ec0bb18797c01dd340b4ce3631e55ae14aacb0c9317456d9b18a0f693cb1",
+      "pdf_file": "word-windows-edge-heading-first-page-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-first-page-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "0b923292ffc33e4237d95f861ec170e413ce6c00b001644bd31ea23789424e68",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          85.67999999999999
+        ],
+        [
+          1,
+          "e",
+          65.64,
+          85.67999999999999
+        ],
+        [
+          1,
+          "c",
+          72.36,
+          85.67999999999999
+        ],
+        [
+          1,
+          "o",
+          79.08,
+          85.67999999999999
+        ],
+        [
+          1,
+          "n",
+          86.39999999999999,
+          85.67999999999999
+        ],
+        [
+          1,
+          "d",
+          93.72,
+          85.67999999999999
+        ],
+        [
+          1,
+          "p",
+          104.39999999999999,
+          85.67999999999999
+        ],
+        [
+          1,
+          "a",
+          111.72,
+          85.67999999999999
+        ],
+        [
+          1,
+          "g",
+          118.44,
+          85.67999999999999
+        ],
+        [
+          1,
+          "e",
+          125.64,
+          85.67999999999999
+        ],
+        [
+          1,
+          "h",
+          135.72,
+          85.67999999999999
+        ],
+        [
+          1,
+          "e",
+          143.04,
+          85.67999999999999
+        ],
+        [
+          1,
+          "a",
+          149.76,
+          85.67999999999999
+        ],
+        [
+          1,
+          "d",
+          156.48,
+          85.67999999999999
+        ],
+        [
+          1,
+          "i",
+          163.68,
+          85.67999999999999
+        ],
+        [
+          1,
+          "n",
+          167.04,
+          85.67999999999999
+        ],
+        [
+          1,
+          "g",
+          174.23999999999998,
+          85.67999999999999
+        ],
+        [
+          1,
+          "E",
+          57.599999999999994,
+          99.47999999999999
+        ],
+        [
+          1,
+          "n",
+          65.64,
+          99.47999999999999
+        ],
+        [
+          1,
+          "d",
+          72.36,
+          99.47999999999999
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-page-break-before-before0-ppr-only-compat14",
+      "docx_sha256": "8b1159bc2de90e7c49c3b00758d8df4d29682eaa02fe0c9c4e7844386d1d9ab1",
+      "pdf_sha256": "a49e71facb84f0752787c376725957b9d8042b0b47e2679f9f5539da11c14770",
+      "pdf_file": "word-windows-edge-heading-page-break-before-before0-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-page-break-before-before0-ppr-only-compat14.page-001.emf",
+          "sha256": "7430f1604fa0bcfa02438c88f1f7feddc4db21f786490074f668636addc8e258",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-page-break-before-before0-ppr-only-compat14.page-002.emf",
+          "sha256": "d29810c9e43a875f160d899b630b0209aedc7b16af065c562330065283b20ea1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          61.68
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          61.68
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          61.68
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          61.68
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          61.68
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          61.68
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          61.68
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          61.68
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          61.68
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          61.68
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          61.68
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          75.48
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          75.48
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14",
+      "docx_sha256": "66b9a1438855e84d24693b4830251c87f36d62c713c445e9f4f7e3ade94b2327",
+      "pdf_sha256": "6c74d6d55391780bf836a26d213ba123d2970bfd2925f11f7751c00b5a007bba",
+      "pdf_file": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14.page-001.emf",
+          "sha256": "7430f1604fa0bcfa02438c88f1f7feddc4db21f786490074f668636addc8e258",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-heading-page-break-before-before480-ppr-only-compat14.page-002.emf",
+          "sha256": "c18a8f5ab2c2123bc687190f2963c75caa6346312a14bcef7b885bc677a13eeb",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "S",
+          57.599999999999994,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          65.64,
+          61.68
+        ],
+        [
+          1,
+          "a",
+          69.0,
+          61.68
+        ],
+        [
+          1,
+          "r",
+          75.72,
+          61.68
+        ],
+        [
+          1,
+          "t",
+          79.67999999999999,
+          61.68
+        ],
+        [
+          2,
+          "S",
+          57.599999999999994,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          65.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "c",
+          72.36,
+          85.67999999999999
+        ],
+        [
+          2,
+          "o",
+          79.08,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          86.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          93.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "p",
+          104.39999999999999,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          111.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          118.44,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          125.64,
+          85.67999999999999
+        ],
+        [
+          2,
+          "h",
+          135.72,
+          85.67999999999999
+        ],
+        [
+          2,
+          "e",
+          143.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "a",
+          149.76,
+          85.67999999999999
+        ],
+        [
+          2,
+          "d",
+          156.48,
+          85.67999999999999
+        ],
+        [
+          2,
+          "i",
+          163.68,
+          85.67999999999999
+        ],
+        [
+          2,
+          "n",
+          167.04,
+          85.67999999999999
+        ],
+        [
+          2,
+          "g",
+          174.23999999999998,
+          85.67999999999999
+        ],
+        [
+          2,
+          "E",
+          57.599999999999994,
+          99.47999999999999
+        ],
+        [
+          2,
+          "n",
+          65.64,
+          99.47999999999999
+        ],
+        [
+          2,
+          "d",
+          72.36,
+          99.47999999999999
+        ]
+      ]
+    }
+  ]
+}
