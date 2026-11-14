@@ -7,7 +7,7 @@ part. Original ZIPs retain the exact captured metadata, inputs, PDF and EMF
 bytes. Direct accepted copies normalize only metadata JSON line endings;
 their hashes and derived EMF references are pinned independently.
 
-The complete observation registry contains 257 captures / 1,075 documents.
+The complete observation registry contains 262 captures / 1,165 documents.
 All 77 controls are also accepted four-plane coordinate regressions: raw EMF,
 unclipped Word PDF text, visible Word PDF text, and independently painted
 native PDF text, using the established 0.375pt absolute X/Y limit. Only font
@@ -39,3 +39,6 @@ Source-driven indentation/default handling and clean PDF guide suppression
 are Windows-specific. The Mac style-load and PDF paint paths, committed Mac
 originals, and coordinate tolerances remain unchanged. Mac regression CI
 continues to compare against its own original Word coordinates.
+
+See the independent [table identity and row controls](../TABLE_ROW_PROBES.md)
+for name/custom-style boundaries and first-row indentation precedence.

@@ -9322,11 +9322,7 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
     }
     // Word ignores automatic/percentage indentation at the table border;
     // it does not align that ignored indent to the legacy cell text edge.
-    if table
-        .style
-        .get("table-indent-width-type")
-        .is_some_and(|kind| matches!(kind.as_str(), "auto" | "pct"))
-    {
+    if table_has_ignored_indent(table) {
         return 0.0;
     }
     let Some(row) = table.rows.first() else {
@@ -9520,17 +9516,15 @@ fn compute_inline_body_table_x_inner(
         return x;
     }
     let (effective_indent, automatic_indent) = table_leading_indent(table);
-    let has_indent = table.style.contains_key("margin-left") || effective_indent.is_some();
+    let has_indent = effective_indent.is_some()
+        || (windows_first_row_indent(table).is_none() && table.style.contains_key("margin-left"));
     let first_row = table.rows.iter().find(|row| !table_row_is_hidden(row));
     let separated = first_row.is_some_and(|row| row_uses_separate_cell_borders(row, table));
     // An explicit zero DXA selects separate borders without a physical gap.
     // Unlike a positive gap, it still hangs a legacy bidi table by its inset.
     let positive_spacing =
         first_row.is_some_and(|row| resolve_cell_spacing_px(row, table) > f64::EPSILON);
-    let ignored_indent = table
-        .style
-        .get("table-indent-width-type")
-        .is_some_and(|kind| matches!(kind.as_str(), "auto" | "pct"));
+    let ignored_indent = table_has_ignored_indent(table);
     let alignment = table.style.get("text-align").map(|value| value.trim());
     let centered = alignment.is_some_and(|value| {
         value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre")
@@ -9645,9 +9639,53 @@ fn compute_inline_body_table_x_inner(
     }
 }
 
-// Direct formatting remains authoritative. Style indentation is consumed
-// only by Windows until an independent Mac capture establishes its behavior.
+fn windows_first_row_indent(
+    table: &Table,
+) -> Option<jade_docx_reader::document::TableStyleIndentation> {
+    (jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
+        .then(|| table.rows.first().and_then(|row| row.indentation_exception))
+        .flatten()
+}
+
+fn table_has_ignored_indent(table: &Table) -> bool {
+    if let Some(indent) = windows_first_row_indent(table) {
+        return !matches!(
+            indent.width_type,
+            None | Some(jade_docx_reader::document::TableStyleIndentationType::Dxa)
+        );
+    }
+    table
+        .style
+        .get("table-indent-width-type")
+        .is_some_and(|kind| matches!(kind.as_str(), "auto" | "pct"))
+}
+
+// Windows first-row exceptions override direct formatting and style values.
+// Mac retains its existing direct-only indentation policy.
 fn table_leading_indent(table: &Table) -> (Option<f64>, bool) {
+    if let Some(indent) = windows_first_row_indent(table) {
+        let pixels = (!table_has_ignored_indent(table))
+            .then_some(indent.width_twips)
+            .flatten()
+            .map(|twips| {
+                // Original Word mode 12/14/15 controls ignore the numeric
+                // exception when an ordinary table is centered or right aligned.
+                let ignores_numeric_indent = !table.bidi_visual
+                    && table.style.get("text-align").is_some_and(|value| {
+                        matches!(
+                            value.trim().to_ascii_lowercase().as_str(),
+                            "center" | "centre" | "right" | "end"
+                        )
+                    });
+                if ignores_numeric_indent {
+                    0.0
+                } else {
+                    f64::from(twips) / 15.0
+                }
+            });
+        return (pixels, false);
+    }
     if let Some(value) = table.style.get("margin-left") {
         return (
             parse_length_to_px(value),

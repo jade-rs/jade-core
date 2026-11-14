@@ -599,6 +599,11 @@ impl DocumentParser {
             buf.clear();
             match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                    b"w:tblInd" => {
+                        row.indentation_exception =
+                            Some(Self::parse_row_indent_exception(e.attributes()));
+                        self.skip_element(reader, b"w:tblInd")?;
+                    }
                     b"w:tblCellSpacing" => {
                         row.cell_spacing_exception = Self::table_cell_spacing_value(
                             e.attributes(),
@@ -627,6 +632,10 @@ impl DocumentParser {
                     _ => self.skip_element(reader, e.name().as_ref())?,
                 },
                 Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                    b"w:tblInd" => {
+                        row.indentation_exception =
+                            Some(Self::parse_row_indent_exception(e.attributes()));
+                    }
                     b"w:tblCellSpacing" => {
                         row.cell_spacing_exception = Self::table_cell_spacing_value(
                             e.attributes(),
@@ -648,6 +657,29 @@ impl DocumentParser {
         }
 
         Ok(())
+    }
+
+    fn parse_row_indent_exception(attributes: Attributes) -> TableStyleIndentation {
+        let mut indent = TableStyleIndentation::default();
+        for attr in attributes.flatten() {
+            let value = String::from_utf8_lossy(&attr.value);
+            match attr.key.as_ref() {
+                b"w:w" => {
+                    indent.width_twips = value.trim().parse::<f32>().ok().filter(|v| v.is_finite())
+                }
+                b"w:type" => {
+                    indent.width_type = Some(match value.trim().to_ascii_lowercase().as_str() {
+                        "dxa" => TableStyleIndentationType::Dxa,
+                        "nil" => TableStyleIndentationType::Nil,
+                        "auto" => TableStyleIndentationType::Auto,
+                        "pct" => TableStyleIndentationType::Pct,
+                        _ => TableStyleIndentationType::Other,
+                    })
+                }
+                _ => {}
+            }
+        }
+        indent
     }
 
     pub(super) fn parse_table_cell_properties(
@@ -2020,6 +2052,34 @@ mod tests {
         assert_eq!(row.width_before.as_deref(), Some("72.00pt"));
         assert_eq!(row.grid_after, Some(2));
         assert_eq!(row.width_after.as_deref(), Some("50.00%"));
+    }
+
+    #[test]
+    fn row_indent_exceptions_preserve_ignored_types_and_both_xml_forms() {
+        for (token, expected) in [
+            ("dxa", TableStyleIndentationType::Dxa),
+            ("nil", TableStyleIndentationType::Nil),
+            ("auto", TableStyleIndentationType::Auto),
+            ("pct", TableStyleIndentationType::Pct),
+        ] {
+            for end in ["/>", "></w:tblInd>"] {
+                let xml =
+                    format!(r#"<w:tblPrEx><w:tblInd w:w="240" w:type="{token}"{end}</w:tblPrEx>"#);
+                let mut reader = Reader::from_str(&xml);
+                let mut row = TableRow::default();
+                assert!(matches!(reader.read_event().unwrap(), Event::Start(_)));
+                DocumentParser::new()
+                    .parse_table_property_exceptions(&mut reader, &mut row)
+                    .unwrap();
+                let indent = row.indentation_exception.unwrap();
+                assert_eq!(indent.width_twips, Some(240.0));
+                assert_eq!(indent.width_type, Some(expected));
+                assert!(
+                    row.style.is_empty(),
+                    "exception must not become direct row CSS"
+                );
+            }
+        }
     }
 
     #[test]

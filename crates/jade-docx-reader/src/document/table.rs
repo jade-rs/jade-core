@@ -452,6 +452,10 @@ pub struct TableRow {
     /// its spacing belongs outside the text margins (§17.4.44).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cell_spacing_exception: Option<f32>,
+    /// Row-scoped `w:tblPrEx/w:tblInd`. Windows Word uses only the first
+    /// row's declaration, overriding both direct and style indentation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub indentation_exception: Option<TableStyleIndentation>,
     /// Row-scoped cell margin exception (`w:tblPrEx/w:tblCellMar`). Each edge
     /// overrides the table default for cells in this row, while a cell's own
     /// `w:tcMar` remains authoritative.

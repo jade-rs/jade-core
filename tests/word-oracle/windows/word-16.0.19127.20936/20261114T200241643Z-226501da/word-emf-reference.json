@@ -1,0 +1,421 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261114T200241643Z-226501da",
+  "captured_at_utc": "2026-11-14T20:02:41.6546070Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directauto800-compat14",
+      "docx_sha256": "ea16e4cf8cf9d28a9e9f6fbfa1b3e65e60875b6ea112c4f3fc939aed13a67066",
+      "pdf_sha256": "86b26d0e284a2ecadaa1f89c55555314693828425dbbf57b5015e2fdf471190d",
+      "pdf_file": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directauto800-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directauto800-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa0-compat14",
+      "docx_sha256": "03f419e935d4232dff1a28ab4e03deeb7c03ec871e2f98f882bdff9b4036068e",
+      "pdf_sha256": "a74274a40ac799448400134db084a17a1292184f17bca17e80cee075f54e9f52",
+      "pdf_file": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa0-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa0-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa120-compat14",
+      "docx_sha256": "ff339dcddf670f8c01e5f4204ac36cd71792040314550cae859edbb3ca2cb609",
+      "pdf_sha256": "62f93750e3a0d64bb121f647520a53d6a7bb8200d9e0b15a7c86dd5ba95e2fab",
+      "pdf_file": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa120-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-row-direct-parent0-row1-dxa240-directdxa120-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directauto800-compat14",
+      "docx_sha256": "aa77e1683458110d6cb95bc74b3291b5214f7c39dc88faa97db5b166dd3a99dc",
+      "pdf_sha256": "dd98ee22367e9977087b9e9c92a2ebaf08d885b919c2a9a96b2547effc77f88c",
+      "pdf_file": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directauto800-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directauto800-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa0-compat14",
+      "docx_sha256": "babf174faf84de0f36974f28d90f6eda909e59574ed875b98489c05e7e04a3e0",
+      "pdf_sha256": "a15a215248e8f8e49c44e38dd582d68017caa321bd60f10659d67ba828858e6d",
+      "pdf_file": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa0-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa0-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa120-compat14",
+      "docx_sha256": "efedf561e04ca6106f091ac7e5d0e3e2d332af17647fe017e8657e2a6fe3af22",
+      "pdf_sha256": "99c7c04b20e9a5b742179f6a148a4018e45e944511576a5765544aea261867cd",
+      "pdf_file": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa120-compat14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-table-row-direct-parent240-row1-dxa240-directdxa120-compat14.page-001.emf",
+          "sha256": "0c7abd5fe92ed97d2b8d2dc1da2eee7e26723011cc46fd6961b42406a055e30a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          69.6,
+          61.68
+        ],
+        [
+          1,
+          "B",
+          77.64,
+          61.68
+        ],
+        [
+          1,
+          "C",
+          169.56,
+          61.68
+        ],
+        [
+          1,
+          "D",
+          178.2,
+          61.68
+        ],
+        [
+          1,
+          "E",
+          69.6,
+          75.48
+        ],
+        [
+          1,
+          "F",
+          77.64,
+          75.48
+        ],
+        [
+          1,
+          "G",
+          169.56,
+          75.48
+        ],
+        [
+          1,
+          "H",
+          178.92,
+          75.48
+        ]
+      ]
+    }
+  ]
+}
