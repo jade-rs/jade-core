@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 69 font/typography
-documents (44,171 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 91 font/typography
+documents (44,495 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -46,10 +46,26 @@ checked before rendering. The public encrypted fixture uses its documented test
 password and retains the encrypted source hash separately from decrypted bytes.
 
 The shared registry also pairs the unchanged `footnote-mac` and
-`footnote-table-each-page-mac` sources with their Windows observations. These
+`footnote-table-each-page-mac` and `endnote-mac` sources with their Windows observations. These
 Windows checks use original PDF font programs so Office fonts are not required
 on hosted runners. The note matrix retains and asserts all 24 Word captures. Independent script
 and control sweeps cover four font families, four weights/slants and 49 sizes,
 including 1,568 measured script runs. Century OpenType/kerning/tracking probes
 cover modes 12/14/15 and default/explicit typography switches. Script metrics
 are re-extracted from original Word output in CI; Mac policy is unchanged.
+
+Nine valid endnote separator probes vary body grid pitch (inactive `default`,
+18pt, 24pt) and separator size (inherited, 10.5pt, 20pt). Windows Word
+16.0.19127.20936 measures the authored separator story rather than a fixed
+12pt gap. The original endnote and all nine valid probes pass all four planes.
+Twelve inactive-grid controls cover theme, Century, Arial and Yu Mincho at
+10.5/12/20pt with plain, superscript and ordinary marker text. Their original
+PDFs, raw EMFs and byte-identical inputs are retained under captures
+`20261114T065723961Z-5f5c7857` and `20261114T071711373Z-e298d881`.
+Mac measurement and original expectations remain unchanged. Regenerate with
+`generate_windows_endnote_cases.py`; release hashes must match captured inputs.
+
+Three earlier probes use the malformed grid type `none` instead of the schema's
+inactive `default`. They remain unpromoted observations, with all original output
+preserved in the first capture. They expose a 0.39–0.45pt discrepancy in how this
+invalid value is handled; the strict 0.375pt gate is unchanged.
