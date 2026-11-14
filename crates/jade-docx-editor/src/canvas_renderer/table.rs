@@ -15548,20 +15548,15 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         {
                             let shares_previous =
                                 block_index.checked_sub(1).is_some_and(|previous| {
-                                    super::paragraph_border_box_continues_at(
-                                        &cell.blocks,
-                                        previous,
-                                    )
+                                    super::paragraph_border_box_continues_at(&cell.blocks, previous)
                                 });
                             if !shares_previous {
                                 cell_paragraph.spacing_before += points_to_px(
                                     super::word_paragraph_border_extent_pt(borders.top.as_ref()),
                                 );
                             }
-                            let shares_next = super::paragraph_border_box_continues_at(
-                                &cell.blocks,
-                                block_index,
-                            );
+                            let shares_next =
+                                super::paragraph_border_box_continues_at(&cell.blocks, block_index);
                             let bottom = if shares_next {
                                 super::word_paragraph_between_border_extent_pt(
                                     borders.between.as_ref(),
