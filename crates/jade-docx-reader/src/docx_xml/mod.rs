@@ -1390,6 +1390,7 @@ impl XmlElement {
         for attr in &self.attributes {
             let value = match (attr.name.as_str(), ignorable, id) {
                 ("mc:Ignorable", Some(value), _) | ("w:id", _, Some(value)) => value,
+                ("w:type", _, _) if self.name == "w:docGrid" && attr.value == "none" => "default",
                 _ => &attr.value,
             };
             push_attribute(buffer, &attr.name, value);

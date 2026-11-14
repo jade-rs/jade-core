@@ -16,7 +16,7 @@ use super::{XmlElement, XmlNode, XmlNodeId};
 #[derive(Clone, Copy)]
 enum Unlisted {
     /// Children the table does not list keep the place they have, right after
-    /// the sibling they follow. Extension elements (`w14:*`, `mc:*`) land here.
+    /// the sibling they follow. Unrecognized extension elements land here.
     Follow,
     /// Children the table does not list all sort at this rank. Used where the
     /// table only pins the properties element to the front (`w:p`, `w:r`).
@@ -100,7 +100,11 @@ fn sequence(parent: &str, grandparent: Option<&str>) -> Option<&'static Sequence
             ["w:kern"], ["w:position"], ["w:sz"], ["w:szCs"], ["w:highlight"],
             ["w:u"], ["w:effect"], ["w:bdr"], ["w:shd"], ["w:fitText"],
             ["w:vertAlign"], ["w:rtl"], ["w:cs"], ["w:em"], ["w:lang"],
-            ["w:eastAsianLayout"], ["w:specVanish"], ["w:oMath"], ["w:rPrChange"],
+            ["w:eastAsianLayout"], ["w:specVanish"],
+            ["w14:glow"], ["w14:shadow"], ["w14:reflection"], ["w14:textOutline"],
+            ["w14:textFill"], ["w14:scene3d"], ["w14:props3d"], ["w14:ligatures"],
+            ["w14:numForm"], ["w14:numSpacing"], ["w14:stylisticSets"], ["w14:cntxtAlts"],
+            ["w:oMath"], ["w:rPrChange"],
         ),
         // CT_PPr (§17.3.1.26).
         "w:pPr" => sequence!(Follow;
@@ -142,7 +146,9 @@ fn sequence(parent: &str, grandparent: Option<&str>) -> Option<&'static Sequence
             ["w:tblLayout"], ["w:tblCellMar"], ["w:tblLook"], ["w:tblCaption"],
             ["w:tblDescription"], ["w:tblPrChange"],
         ),
-        "w:trPr" => sequence!(Rank(0); ["w:ins"], ["w:del"], ["w:trPrChange"]),
+        "w:trPr" => sequence!(Rank(0);
+            [], ["w:ins"], ["w:del"], ["w:trPrChange"], ["w14:conflictIns", "w14:conflictDel"],
+        ),
         "w:tcPr" => sequence!(Follow;
             ["w:cnfStyle"], ["w:tcW"], ["w:gridSpan"], ["w:hMerge"], ["w:vMerge"],
             ["w:tcBorders"], ["w:shd"], ["w:noWrap"], ["w:tcMar"], ["w:textDirection"],
@@ -736,13 +742,41 @@ mod tests {
     }
 
     #[test]
+    fn word_2010_run_extensions_follow_base_properties() {
+        assert_eq!(
+            rewrite(
+                r#"<w:p><w:r><w:rPr><w:rFonts/><w:sz w:val="24"/><w:kern w:val="12"/><w:spacing w:val="10"/><w14:ligatures w14:val="standard"/></w:rPr></w:r></w:p>"#
+            ),
+            r#"<w:p><w:r><w:rPr><w:rFonts/><w:spacing w:val="10"/><w:kern w:val="12"/><w:sz w:val="24"/><w14:ligatures w14:val="standard"/></w:rPr></w:r></w:p>"#,
+        );
+    }
+
+    #[test]
+    fn table_row_properties_precede_revision_marks() {
+        assert_eq!(
+            rewrite(
+                r#"<w:tbl><w:tr><w:trPr><w:ins w:id="1" w:author="a"/><w:gridAfter w:val="2"/><w:trHeight w:val="360"/><w:cantSplit/></w:trPr></w:tr></w:tbl>"#
+            ),
+            r#"<w:tbl><w:tr><w:trPr><w:gridAfter w:val="2"/><w:trHeight w:val="360"/><w:cantSplit/><w:ins w:id="1" w:author="a"/></w:trPr></w:tr></w:tbl>"#,
+        );
+    }
+
+    #[test]
+    fn inactive_grid_uses_the_schema_value_when_written() {
+        assert_eq!(
+            rewrite(r#"<w:sectPr><w:docGrid w:type="none" w:linePitch="360"/></w:sectPr>"#),
+            r#"<w:sectPr><w:docGrid w:type="default" w:linePitch="360"/></w:sectPr>"#,
+        );
+    }
+
+    #[test]
     fn unlisted_children_keep_their_place() {
         // An extension element stays right after the sibling it followed.
         assert_eq!(
             rewrite(
-                r#"<w:p><w:r><w:rPr><w:lang w:val="ja-JP"/><w14:glow/><w:b/></w:rPr></w:r></w:p>"#
+                r#"<w:p><w:r><w:rPr><w:lang w:val="ja-JP"/><custom:unknown/><w:b/></w:rPr></w:r></w:p>"#
             ),
-            r#"<w:p><w:r><w:rPr><w:b/><w:lang w:val="ja-JP"/><w14:glow/></w:rPr></w:r></w:p>"#,
+            r#"<w:p><w:r><w:rPr><w:b/><w:lang w:val="ja-JP"/><custom:unknown/></w:rPr></w:r></w:p>"#,
         );
     }
 

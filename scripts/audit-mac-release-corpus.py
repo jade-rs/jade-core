@@ -68,14 +68,15 @@ def marker_sequence(xml: bytes, tag: str) -> list[tuple[tuple[str, str], ...]]:
 
 
 def structural_sequence(
-    xml: bytes, include_run_properties: bool = True
+    xml: bytes, include_run_properties: bool = True, *, source: bool = False
 ) -> list[tuple[str, tuple[tuple[str, str], ...]]]:
     """Non-text elements with their attributes, in document order.
 
     `include_run_properties=False` is the order check: it skips run properties
     and compares the children of a property container (`PROPERTY_CONTAINERS`)
     as a set, since the export puts them in schema order. Revision ids are left
-    out; `revision_id_errors` checks them.
+    out; `revision_id_errors` checks them. A source's legacy inactive grid
+    must be written with the standard value.
     """
 
     def visit(element: ET.Element) -> list[tuple[str, tuple[tuple[str, str], ...]]]:
@@ -100,6 +101,8 @@ def structural_sequence(
                     value = BOOLEAN_VALUES.get(value, value)
                 elif element.tag in REVISION_ELEMENTS and name == WORD + "id":
                     continue
+                elif source and element.tag == WORD + "docGrid" and name == WORD + "type" and value == "none":
+                    value = "default"
                 attributes.append((name, value))
             if element.tag in BOOLEAN_TAGS and WORD + "val" not in element.attrib:
                 attributes.append((WORD + "val", "true"))
@@ -304,9 +307,9 @@ def audit(source: Path, exported: Path) -> list[str]:
                     failures.append(f"changed {tag} marker sequence or attributes")
             structure = without_new_tracked_insertion(before, after, "Z")
             structure = without_run_typed_beside_object(structure, "Z")
-            if Counter(structural_sequence(before)) != Counter(structural_sequence(structure)):
+            if Counter(structural_sequence(before, source=True)) != Counter(structural_sequence(structure)):
                 failures.append("changed non-text document structure or attributes")
-            if structural_sequence(before, False) != structural_sequence(structure, False):
+            if structural_sequence(before, False, source=True) != structural_sequence(structure, False):
                 failures.append("changed non-text document order outside run properties")
             failures.extend(revision_id_errors(before, after))
             for attribute in ("rsidR", "rsidRPr", "rsidDel"):

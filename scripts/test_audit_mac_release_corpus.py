@@ -40,6 +40,19 @@ class CorpusAuditTests(unittest.TestCase):
         self.assertEqual(audit.structural_sequence(before, False), audit.structural_sequence(moved, False))
         self.assertNotEqual(audit.structural_sequence(before, False), audit.structural_sequence(changed, False))
 
+    def test_legacy_inactive_grid_is_normalized_only_in_source(self) -> None:
+        def document(grid_type: str, pitch: int = 360) -> bytes:
+            return (
+                f'<w:sectPr xmlns:w="{audit.WORD[1:-1]}">'
+                f'<w:docGrid w:type="{grid_type}" w:linePitch="{pitch}"/></w:sectPr>'
+            ).encode()
+
+        expected = audit.structural_sequence(document("none"), source=True)
+        self.assertEqual(expected, audit.structural_sequence(document("default")))
+        self.assertNotEqual(expected, audit.structural_sequence(document("none")))
+        self.assertNotEqual(expected, audit.structural_sequence(document("lines")))
+        self.assertNotEqual(expected, audit.structural_sequence(document("default", 720)))
+
     def test_paragraph_order_is_still_checked(self) -> None:
         def document(*texts: str) -> bytes:
             body = "".join(f'<w:p><w:pPr><w:pStyle w:val="{text}"/></w:pPr></w:p>' for text in texts)
