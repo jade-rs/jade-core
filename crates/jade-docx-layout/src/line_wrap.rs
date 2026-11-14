@@ -1529,7 +1529,7 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
         } else {
             paragraph_style
                 .map(|style| {
-                    let (mut leading, trailing) = implicit_latin_east_asian_gap_width(
+                    let (mut leading, mut trailing) = implicit_latin_east_asian_gap_width(
                         style,
                         grapheme,
                         script,
@@ -1538,6 +1538,27 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         next_grapheme,
                         font_descriptor,
                     );
+                    // Windows Word's Yu Mincho mixed-script captures use a
+                    // quarter of the tracked cell at both script boundaries.
+                    // The 9.5–16pt sweeps include -0.5 through +30pt tracking.
+                    if run_letter_spacing != 0.0
+                        && (leading > 0.0 || trailing > 0.0)
+                        && style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                        && matches!(
+                            font_descriptor.and_then(crate::line_metrics::word_ascii_metrics),
+                            Some(
+                                crate::line_metrics::WordAsciiMetrics::YuMincho(..)
+                                    | crate::line_metrics::WordAsciiMetrics::YuMinchoBold(..)
+                            )
+                        )
+                    {
+                        if leading > 0.0 {
+                            leading = (leading + run_letter_spacing * 0.25).max(0.0);
+                        }
+                        if trailing > 0.0 {
+                            trailing = (trailing + run_letter_spacing * 0.25).max(0.0);
+                        }
+                    }
                     // Word for Mac leaves a 3.5pt gap after 14pt kanji before
                     // 18pt Arial in table-minimum-line-cjk-mac.
                     if leading > 0.0
@@ -2920,7 +2941,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     };
     // Requested Windows font facts already own these advances below. Do not
     // measure the substitute face first only to discard its width afterward.
-    let requested_ascii_measure = if !measured_width_is_oracle
+    let (requested_ascii_measure, windows_yu_mincho_advance) = if !measured_width_is_oracle
         && requested_face_width.is_none()
         && script == ScriptCategory::Latin
         && grapheme.len() == 1
@@ -2929,17 +2950,18 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
                 && p.oracle_advance_px_by_text_offset.is_none()
         }) {
-        style
-            .ascii_metrics_for_descriptor(font_descriptor)
-            .filter(|metrics| {
-                matches!(
-                    metrics,
-                    crate::line_metrics::WordAsciiMetrics::TimesNewRoman(..)
-                )
-            })
-            .and_then(|metrics| metrics.advance_px(grapheme.as_bytes()[0]))
+        use crate::line_metrics::WordAsciiMetrics;
+        match style.ascii_metrics_for_descriptor(font_descriptor) {
+            Some(
+                metrics @ (WordAsciiMetrics::YuMincho(..) | WordAsciiMetrics::YuMinchoBold(..)),
+            ) => (metrics.advance_px(grapheme.as_bytes()[0]), true),
+            Some(metrics @ WordAsciiMetrics::TimesNewRoman(..)) => {
+                (metrics.advance_px(grapheme.as_bytes()[0]), false)
+            }
+            _ => (None, false),
+        }
     } else {
-        None
+        (None, false)
     };
     let measured_glyph_width = match (oracle_measured_glyph_width, requested_face_width) {
         (Some(width), _) => width,
@@ -3037,7 +3059,11 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         };
         let raw_adjustment = if let Some(adjustment) = word_pair_adjustment {
             adjustment
-        } else if requested_face_width.is_some() {
+        } else if requested_face_width.is_some()
+            || (windows_yu_mincho_advance && prev_grapheme.is_ascii())
+        {
+            // Windows Word retains nominal Yu Mincho Latin advances even
+            // with w:kern enabled; the host's GPOS W/o contraction is absent.
             // Word's own punctuation rules above still apply; the host's pair
             // kerning belongs to whatever face stands in for the fixed one.
             0.0
@@ -13913,7 +13939,7 @@ mod tests {
         for (platform, enabled, expected_pair_measurements) in [
             (WordLayoutPlatform::Mac, true, 0),
             (WordLayoutPlatform::Mac, false, 0),
-            (WordLayoutPlatform::Windows, true, 1),
+            (WordLayoutPlatform::Windows, true, 0),
         ] {
             for host_adjustment in [0.0, -0.5, -2.0] {
                 let mut ctx = CountingKerningContext::new(enabled);
@@ -13946,7 +13972,7 @@ mod tests {
                 } else if platform == WordLayoutPlatform::Mac {
                     -14.0 * 123.0 / 2048.0
                 } else {
-                    host_adjustment
+                    0.0
                 };
                 assert!(
                     (steps[1] - expected).abs() < 1e-9,
@@ -20919,6 +20945,57 @@ mod tests {
             );
 
             assert!((extra - 3.5).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn windows_yu_mincho_script_boundaries_use_a_quarter_tracked_cell() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let paragraph = ParagraphStyle {
+                enable_line_break_rules: true,
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            for size_pt in [9.5, 10.0, 10.5, 11.0, 11.5, 12.0, 14.0, 16.0] {
+                let descriptor = format!("{size_pt}pt 'Yu Mincho'");
+                for tracking_pt in [-0.5, 0.0, 0.5, 1.5, 30.0] {
+                    let tracking = tracking_pt * 96.0 / 72.0;
+                    let advance = compute_grapheme_advance(GraphemeAdvanceContext {
+                        snap_to_grid: false,
+                        paragraph_style: Some(&paragraph),
+                        grapheme: "D",
+                        script: ScriptCategory::Latin,
+                        measured_glyph_width: size_pt * 0.7 * 96.0 / 72.0,
+                        measured_width_is_oracle: false,
+                        text_scale_x: 1.0,
+                        extra_spacing: tracking,
+                        kerning_adjustment: 0.0,
+                        is_line_start: false,
+                        prev_prev_grapheme: Some("漢"),
+                        prev_grapheme: Some("字"),
+                        next_grapheme: Some("漢"),
+                        prev_glyph_width: Some(size_pt * 96.0 / 72.0),
+                        snap_cell_width: None,
+                        font_descriptor: Some(&descriptor),
+                        prev_auto_space: None,
+                        run_letter_spacing: tracking,
+                    });
+                    let expected = (size_pt
+                        + if platform == WordLayoutPlatform::Windows {
+                            tracking_pt
+                        } else {
+                            0.0
+                        })
+                        / 3.0;
+                    assert!(
+                        (advance.implicit_latin_gap - expected).abs() < 1e-9,
+                        "{platform:?}/{size_pt}/{tracking_pt}: {advance:?}"
+                    );
+                    assert!((advance.implicit_latin_trailing_gap - expected).abs() < 1e-9);
+                }
+            }
         }
     }
 

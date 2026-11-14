@@ -699,6 +699,7 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
 /// Windows Word 16.0.19127 EMF origins in contract.docx leave a quarter em
 /// on both sides of balanced Times New Roman letters next to Japanese text.
 /// Without balancing, the trailing gap uses half the face's OS/2 average width.
+/// Yu Mincho's 9.5–16pt mixed-script sweeps use a quarter em on both sides.
 /// Other faces retain their measured policy until their origins are captured.
 pub(crate) fn word_windows_latin_auto_space_metrics(
     font_descriptor: &str,
@@ -706,7 +707,19 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
 ) -> Option<WordAutoSpace> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    if family != "Times New Roman" || !size_pt.is_finite() || size_pt <= 0.0 {
+    if !size_pt.is_finite() || size_pt <= 0.0 {
+        return None;
+    }
+    if matches!(
+        family,
+        "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular"
+    ) {
+        return Some(WordAutoSpace {
+            em_px: f64::from(size_pt) * 96.0 / 72.0,
+            trailing_share: 1.0,
+        });
+    }
+    if family != "Times New Roman" {
         return None;
     }
     let trailing_share = if balanced {
@@ -851,7 +864,7 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
     match word_ascii_metrics(font_descriptor)? {
         WordAsciiMetrics::Fixed(advance) => Some(advance),
         WordAsciiMetrics::YuMincho(_, _)
-        | WordAsciiMetrics::YuMinchoBold(_, _)
+        | WordAsciiMetrics::YuMinchoBold(_, _, _)
         | WordAsciiMetrics::YuGothicLight(_)
         | WordAsciiMetrics::Century(_)
         | WordAsciiMetrics::NotoSansJp(_)
@@ -870,7 +883,7 @@ pub(crate) enum WordAsciiMetrics {
     // Pixels per font unit, resolved once rather than divided per glyph.
     // Pixels per font unit; whether source-observed Mac upright facts apply.
     YuMincho(f64, bool),
-    YuMinchoBold(f64, bool),
+    YuMinchoBold(f64, bool, f64),
     YuGothicLight(f64),
     Century(f64),
     NotoSansJp(f64),
@@ -1766,7 +1779,7 @@ impl WordAsciiMetrics {
             // Frozen Word for Mac header/footer origins, including actual spaces:
             // tests/word-oracle/mac-bold-header-footer-origins.json. Unobserved pairs,
             // italic faces and Windows retain their existing host fallback.
-            (Self::YuMinchoBold(_, true), left, right)
+            (Self::YuMinchoBold(_, true, _), left, right)
                 if matches!(
                     (left, right),
                     (b' ', b'F')
@@ -1809,8 +1822,8 @@ impl WordAsciiMetrics {
             {
                 Some(0.0)
             }
-            (Self::YuMinchoBold(unit_px, _), b'W', b'o') => Some(-123.0 * unit_px),
-            (Self::YuMinchoBold(_, _), left, right)
+            (Self::YuMinchoBold(unit_px, _, _), b'W', b'o') => Some(-123.0 * unit_px),
+            (Self::YuMinchoBold(_, _, _), left, right)
                 if matches!(
                     (left, right),
                     (b'H', b'e')
@@ -1942,7 +1955,7 @@ impl WordAsciiMetrics {
                 let units = CENTURY_ASCII_UNITS[usize::from(ascii - b' ')];
                 (units > 0).then_some(unit_px * f64::from(units))
             }
-            Self::YuMincho(unit_px, _) | Self::YuMinchoBold(unit_px, _) => {
+            Self::YuMincho(unit_px, _) | Self::YuMinchoBold(unit_px, _, _) => {
                 // The Word for Mac alignment fixture's YuMincho-Regular subset
                 // supplies these 2048-upem hmtx advances for ASCII punctuation.
                 let units = match (self, ascii) {
@@ -1956,11 +1969,10 @@ impl WordAsciiMetrics {
                 };
                 // The original Word headers/footer leave ASCII spaces unemboldened.
                 // Resolve the platform/style once with the cached metrics.
-                let plain_space = ascii == b' ' && matches!(self, Self::YuMinchoBold(_, true));
-                let synthetic_units = if matches!(self, Self::YuMinchoBold(_, _)) && !plain_space {
-                    2048.0 * 0.02
-                } else {
-                    0.0
+                let plain_space = ascii == b' ' && matches!(self, Self::YuMinchoBold(_, true, _));
+                let synthetic_units = match self {
+                    Self::YuMinchoBold(_, _, extra_units) if !plain_space => extra_units,
+                    _ => 0.0,
                 };
                 (units > 0).then_some(unit_px * (f64::from(units) + synthetic_units))
             }
@@ -2397,6 +2409,13 @@ fn parse_word_ascii_metrics(
             em_px
                 * if bold && platform == WordLayoutPlatform::Mac {
                     0.52
+                } else if bold
+                    && platform == WordLayoutPlatform::Windows
+                    && matches!(family, "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "ＭＳ明朝")
+                {
+                    // MS Mincho is 256 upem. Windows Word's 6–30pt
+                    // sweep adds one design unit when emboldening Latin.
+                    129.0 / 256.0
                 } else {
                     0.5
                 },
@@ -2405,6 +2424,11 @@ fn parse_word_ascii_metrics(
             WordAsciiMetrics::YuMinchoBold(
                 em_px / 2048.0,
                 !italic && platform == WordLayoutPlatform::Mac,
+                if platform == WordLayoutPlatform::Mac {
+                    2048.0 * 0.02
+                } else {
+                    1.0
+                },
             )
         } else {
             WordAsciiMetrics::YuMincho(
@@ -2784,7 +2808,7 @@ pub(crate) fn word_mac_cjk_pair_kerning_px(
         _ => return None,
     };
     match word_ascii_metrics(font_descriptor)? {
-        WordAsciiMetrics::YuMincho(unit_px, _) | WordAsciiMetrics::YuMinchoBold(unit_px, _) => {
+        WordAsciiMetrics::YuMincho(unit_px, _) | WordAsciiMetrics::YuMinchoBold(unit_px, _, _) => {
             Some(units * unit_px)
         }
         _ => None,
@@ -5884,17 +5908,68 @@ mod tests {
                 };
                 let metrics = word_ascii_metrics(descriptor).unwrap();
                 let observed = platform == WordLayoutPlatform::Mac && !italic;
-                let synthetic_units = if observed { 0.0 } else { 2048.0 * 0.02 };
+                let synthetic_units = if observed {
+                    0.0
+                } else if platform == WordLayoutPlatform::Windows {
+                    1.0
+                } else {
+                    2048.0 * 0.02
+                };
                 let expected = (16.0 / 0.75 / 2048.0) * (532.0 + synthetic_units);
                 assert!((metrics.advance_px(b' ').unwrap() - expected).abs() < 1e-12);
                 assert_eq!(metrics.pair_kerning_px(b'P', b'A'), observed.then_some(0.0));
-                // Upright synthetic bold still widens ink-bearing letters.
+                // The Mac synthetic width is unchanged. Windows Word keeps
+                // the nominal Yu Mincho advances when emboldening this face.
+                let extra_units = if platform == WordLayoutPlatform::Mac {
+                    2048.0 * 0.02
+                } else {
+                    1.0
+                };
                 let expected_letter = (16.0 / 0.75 / 2048.0)
-                    * (f64::from(YU_MINCHO_ASCII_UNITS[usize::from(b'A' - b' ')]) + 2048.0 * 0.02);
+                    * (f64::from(YU_MINCHO_ASCII_UNITS[usize::from(b'A' - b' ')]) + extra_units);
                 assert!((metrics.advance_px(b'A').unwrap() - expected_letter).abs() < 1e-12);
             }
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn windows_bold_mincho_advances_follow_captured_size_sweeps() {
+        for half_points in 12..=60 {
+            let pt = f64::from(half_points) / 2.0;
+            let em = pt / 0.75;
+            let ms = word_ascii_metrics_for_platform(
+                &format!("bold {pt}pt 'MS Mincho'"),
+                WordLayoutPlatform::Windows,
+            )
+            .unwrap();
+            assert!((ms.advance_px(b'H').unwrap() - em * 129.0 / 256.0).abs() < 1e-9);
+            let regular = word_ascii_metrics_for_platform(
+                &format!("{pt}pt 'Yu Mincho'"),
+                WordLayoutPlatform::Windows,
+            )
+            .unwrap();
+            let bold = word_ascii_metrics_for_platform(
+                &format!("bold {pt}pt 'Yu Mincho'"),
+                WordLayoutPlatform::Windows,
+            )
+            .unwrap();
+            for character in b"Hello World 0123456789" {
+                assert!(
+                    (bold.advance_px(*character).unwrap()
+                        - regular.advance_px(*character).unwrap()
+                        - em / 2048.0)
+                        .abs()
+                        < 1e-9
+                );
+            }
+            let mac = word_ascii_metrics_for_platform(
+                &format!("bold {pt}pt 'MS Mincho'"),
+                WordLayoutPlatform::Mac,
+            )
+            .unwrap();
+            assert!((mac.advance_px(b'H').unwrap() - em * 0.52).abs() < 1e-9);
+        }
     }
 
     #[test]
@@ -6233,7 +6308,10 @@ mod tests {
             ("10.50pt 'MS Mincho', serif", Some(7.0)),
             ("11.00pt 'Times New Roman', serif", None),
             ("12.00pt 'MS Mincho', serif", Some(8.0)),
-            ("bold italic 10.50pt 'ＭＳ 明朝', serif", Some(7.0)),
+            (
+                "bold italic 10.50pt 'ＭＳ 明朝', serif",
+                Some(14.0 * 129.0 / 256.0),
+            ),
             ("10.50pt 'MS PMincho', serif", None),
             ("10.50pt 'MS Gothic', serif", Some(7.0)),
             ("bold 12.00pt 'ＭＳ ゴシック', serif", Some(8.0)),
