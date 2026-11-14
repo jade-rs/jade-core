@@ -2050,6 +2050,46 @@
     {
       "fixture": "word-windows-edge-footnote-long-carry-section-margin300-compat15",
       "docx_sha256": "8f597f9f24b4ee97839056a47ffd33945a2ddf66a504120da73e0064f871a5d4"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-center-indent0-ordered-compat14",
+      "docx_sha256": "ae19a0afcc3e77b3c9aa887a4c6a716a2ff7cce8061c3c1a29a22a5eeaaad589"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-center-indentomitted-ordered-compat14",
+      "docx_sha256": "8bfaea09012f5f83d4eb9de63011598724cf2c7900ae37513607ea8f7694208b"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-left-indent0-ordered-compat12",
+      "docx_sha256": "4802d2a11c1907e12beb27806f9a56742afe04d625592b78f2ac54dd42b03dcb"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-left-indent0-ordered-compat14",
+      "docx_sha256": "28738f224b25b42931419fef228f745ee5e4268bc6a363a439994673a724761c"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-left-indent0-ordered-compat15",
+      "docx_sha256": "11a325278ec7d067f6fd4b0a6c84f2e09c7847348b7e50becbae0a05f4cc156e"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-left-indentomitted-ordered-compat12",
+      "docx_sha256": "e6a80056a61a22807b9abf34bdfc997f113fc5d381f844560a540f2665f4a4ca"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-left-indentomitted-ordered-compat14",
+      "docx_sha256": "cc70fa1fd4715a1dd55a41613eb5cb524a5021315849e6779f59c559cf7a537c"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-left-indentomitted-ordered-compat15",
+      "docx_sha256": "88c9107aea898423d2146a25e2a445653e7f4e08baae36f6ba64491cdf853129"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-right-indent0-ordered-compat14",
+      "docx_sha256": "78d5f3274933d9a258caff639d8b693471a6860b7a89f188680b3111bf87b900"
+    },
+    {
+      "fixture": "word-windows-edge-header-table-right-indentomitted-ordered-compat14",
+      "docx_sha256": "cdd7d1cc5c73e14336f98adeb61f087cc7825c332b91df9c5c35813bae28dc5f"
     }
   ]
 }
