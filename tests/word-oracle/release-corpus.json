@@ -1562,6 +1562,42 @@
     {
       "fixture": "word-windows-edge-century-opentype-default-compat15",
       "docx_sha256": "a4fa33b16ba8481b438cf325f574597268982f051fae2b6b83481b7c5714780d"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid0-font0-compat15",
+      "docx_sha256": "7229f801a5c738bbd9fa5126f4d9c2de525681c2eff58107a04b7d70b677fd6e"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid0-font21-compat15",
+      "docx_sha256": "4e126beecf1431c4d0c9b8916651e895b3c0527befb07a286f75613dbf70b247"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid0-font40-compat15",
+      "docx_sha256": "4779b4923d0386699d604b90edff072f87968227c4c780f292e423a5c91ebaf1"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid360-font0-compat15",
+      "docx_sha256": "912a3699b79b7d349554dfcd19c4e3cd175745a4f05c6eabce8e0822c15f8849"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid360-font21-compat15",
+      "docx_sha256": "3d2b479626f6e90a0d5943ae42f22ee394838b97db4b03beeb35e29ec812caea"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid360-font40-compat15",
+      "docx_sha256": "8d2a7879403dfc7e08c0d09fad2f1ca4d036908072723ff9a52af3794807b69c"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid480-font0-compat15",
+      "docx_sha256": "edeb5989eed2502e28f96e6944d9404eb772c1ddd2efb321a296973f03648024"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid480-font21-compat15",
+      "docx_sha256": "71b5a273f6a0627633bb70eda8541c530d67902898676fc89a4452bda4b61239"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-separator-grid480-font40-compat15",
+      "docx_sha256": "edd96c6e8e57a2241c29d42a61511d1017e1147cd6ab75c15ce9097ff886b6ab"
     }
   ]
 }

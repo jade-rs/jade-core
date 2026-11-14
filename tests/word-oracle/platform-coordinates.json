@@ -177,6 +177,32 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "endnote-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/endnote-mac/source.docx",
+        "sha256": "06477c7f53f9b7c80147bd15f7db44254b6e72ee5cd7e39af422a7b81b17d19e"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/endnote-mac/manifest.json",
+        "sha256": "31bc9567d9dcfd8bfee6b462881eb5f48d4db711cf68a547a044a8c9f33dfa5b"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-endnote-06477c7f",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

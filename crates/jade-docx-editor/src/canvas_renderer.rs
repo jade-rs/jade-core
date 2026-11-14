@@ -8270,11 +8270,10 @@ where
         &mut self,
         document: &Document,
     ) -> Result<Option<f64>, JsValue> {
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
-            return Ok(None);
-        }
+        // Windows Word 16.0.19127.20936 also lays out the authored separator:
+        // its default story is taller than the former fixed 12pt fallback.
+        // Grid-on/off and explicit 10.5/20pt separator probes confirm this;
+        // retain the same existing Mac measurement path.
         let Some(separator) = document.endnotes.values().find(|note| {
             note.note_type
                 .as_deref()
@@ -68343,9 +68342,22 @@ mod tests {
 
     #[test]
     fn one_rule_separator_matches_rich_story_height_across_fonts_and_spacing() {
+        let _platform = RestoreWordPlatform::mac();
+        assert_one_rule_separator_matches_rich_story_height();
+    }
+
+    #[test]
+    fn windows_one_rule_separator_matches_authored_height_without_body_grid_changes() {
+        let _platform = RestoreWordPlatform(jade_docx_layout::line_metrics::word_layout_platform());
+        jade_docx_layout::line_metrics::set_word_layout_platform(
+            jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
+        );
+        assert_one_rule_separator_matches_rich_story_height();
+    }
+
+    fn assert_one_rule_separator_matches_rich_story_height() {
         use jade_docx_reader::document::{Note, NoteSeparatorKind, Spacing};
         use jade_painter::recording::RecordingPainter;
-        let _platform = RestoreWordPlatform::mac();
         for east_asian in [false, true] {
             for size in [7.5, 21.0] {
                 for exact in [None, Some(14.0)] {
