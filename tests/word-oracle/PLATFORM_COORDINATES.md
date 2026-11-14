@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 135 font/typography
-documents (64,001 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 147 font/typography
+documents (64,145 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -93,3 +93,19 @@ Ten three-line controls additionally assert successive baselines. Windows
 implicit single spacing uses the requested font box, not a font-size estimate.
 Original output is preserved in `20261114T080924812Z-f0e42358`; all fonts and
 14/28pt exact-line controls retain the unchanged per-axis limit.
+
+Windows endnote separator paint has an additional independent vector gate.
+The original endnote, nine valid grid/size probes and twelve Arial/Century/
+Yu Mincho/MS Mincho probes assert every black rule rectangle's page and four
+edges against both the original Word PDF and raw EMF `PATCOPY` destination.
+Missing or additional paint fails; the absolute edge limit stays 0.375pt.
+The renderer receives only DOCX bytes and original embedded font programs.
+No expected coordinates are supplied to it. The vector gate reuses the
+separately painted PDF from the font-coordinate gate.
+
+Capture `20261114T091931923Z-52cf7efc` retains all twelve Word
+16.0.19127.20936 exports, input bytes, raw EMFs and font-table provenance
+(face/version/file hash, units, line and strikeout metrics). Generate the
+byte-identical inputs with `generate_windows_note_rule_cases.py`.
+The rule uses the requested face's line ascent and OS/2 strikeout metrics;
+its width is two inches. Mac paint and existing Mac references are unchanged.

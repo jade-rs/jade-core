@@ -1,0 +1,342 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T091931923Z-52cf7efc",
+  "captured_at_utc": "2026-11-14T09:19:31.9388606Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-endnote-rule-arial-size21-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-arial-size21-compat15.docx",
+      "sha256": "b9ace011bb9723301b1a8b8641fec4d3c4c8e25a78cd86e5e631b61f6cb34621",
+      "pdf": "word-windows-edge-endnote-rule-arial-size21-compat15.pdf",
+      "pdf_sha256": "a1a38df2ae5e737f004334dc44ace04bfd9f3de2b192df8f7b7a0bdfdf06a1de",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-arial-size21-compat15.page-001.emf",
+          "sha256": "1ea61c97ec5fcbc852fdf438b1deea02d5d2e97dbf5e42d28140860df835e064",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-arial-size24-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-arial-size24-compat15.docx",
+      "sha256": "410f9ac73d005bc0cb6f2ad784f681351505c9742d935168e13ed7e5db0384a0",
+      "pdf": "word-windows-edge-endnote-rule-arial-size24-compat15.pdf",
+      "pdf_sha256": "b8d56c8351f2439ced47504ea4d3708e9b0074ab89284db63443dd7e46a1b911",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-arial-size24-compat15.page-001.emf",
+          "sha256": "1a4a7956dd5974ac94e35091a66e7f1fa379bbfcaa4006e07e5db4a8daadbf25",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-arial-size40-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-arial-size40-compat15.docx",
+      "sha256": "7eb92769b8544598639eaa1da41520bb6169abb241f359aacc0c3fed157a42e3",
+      "pdf": "word-windows-edge-endnote-rule-arial-size40-compat15.pdf",
+      "pdf_sha256": "a8f23b3c5c597d1fc80738811ff056975f9daf4e5a6d76e211bc745fbd5108f9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-arial-size40-compat15.page-001.emf",
+          "sha256": "d8e7e13588d006e85e14eecc5a1127342132389089cd6139267ae64d187c3e1c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-century-size21-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-century-size21-compat15.docx",
+      "sha256": "2e68e2c5e4cef940611362dcb1d73d99978d094bc307f9cdcb90d0114f76725d",
+      "pdf": "word-windows-edge-endnote-rule-century-size21-compat15.pdf",
+      "pdf_sha256": "b4bb5f63900ab17469d106d6b1d8434d03fbc418dfbac5c08f342b4460448aad",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-century-size21-compat15.page-001.emf",
+          "sha256": "e3d374a651d33c6258df9645c3e3f96240941172f8d1b4c6a0ee99208c8a1063",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-century-size24-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-century-size24-compat15.docx",
+      "sha256": "71b1f8055ee4bfc594ca42cf68679ec3938fd8d7d1acd72278d874a6ed75b2ba",
+      "pdf": "word-windows-edge-endnote-rule-century-size24-compat15.pdf",
+      "pdf_sha256": "58bd3601c8303af3462c98c10500169bdc8d4514b6a313081639fd66e4876ee6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-century-size24-compat15.page-001.emf",
+          "sha256": "4037021ee96cba8979abd48d9dc1fa3969050b9e4880b63eb03b063c2e962ef6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-century-size40-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-century-size40-compat15.docx",
+      "sha256": "5f70ac46926aa9f014ee1316d599efe99d2e222cc870e7736e85626bb4adab97",
+      "pdf": "word-windows-edge-endnote-rule-century-size40-compat15.pdf",
+      "pdf_sha256": "3af8351925e4e00c271076eb2b69749098236d811ba7b3cdaffe26419b02e378",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-century-size40-compat15.page-001.emf",
+          "sha256": "b12038c73182f0d26b409821292ca652b41bc84691292c09ccc1a3e3efa3345f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-ms-mincho-size21-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-ms-mincho-size21-compat15.docx",
+      "sha256": "3a1e3d838ab1e6ee69b6e98d9a7788427d53e16ba32537ec62ce0fa112c71443",
+      "pdf": "word-windows-edge-endnote-rule-ms-mincho-size21-compat15.pdf",
+      "pdf_sha256": "46fcac2773e10b53a1f688cb3a6f051857ad6eab024bfbbb3918fd6ec5e3022b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-ms-mincho-size21-compat15.page-001.emf",
+          "sha256": "67d894ded3cee398cf140cc3460b4048f2b0ca876a00e4f549c44ea0cecad5dc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-ms-mincho-size24-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-ms-mincho-size24-compat15.docx",
+      "sha256": "370dff466ea27f60d23c4b9ec04cc3e71f53af27dc32ab86db5022e926a1078b",
+      "pdf": "word-windows-edge-endnote-rule-ms-mincho-size24-compat15.pdf",
+      "pdf_sha256": "c0ba7d3ddb9e9cc2eed8d96d80edd727963d30926e1e23ab2bf554abb1f4453e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-ms-mincho-size24-compat15.page-001.emf",
+          "sha256": "c5cf7300674525ccbde71fcb7ddb20f31eff763e88185e75c103f713d1a126bd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-ms-mincho-size40-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-ms-mincho-size40-compat15.docx",
+      "sha256": "10b73a9afd5837ad597a5efb28693474b6e49993386193db9554c414388b682d",
+      "pdf": "word-windows-edge-endnote-rule-ms-mincho-size40-compat15.pdf",
+      "pdf_sha256": "f163d5226a61bf4342061a728ceaf7c96e6e54bb8078c120648c538669e4760c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-ms-mincho-size40-compat15.page-001.emf",
+          "sha256": "c0998673f741f194bcde61d65d7ef6ff15307a44c9c2fbae0470078fa57697be",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-yu-mincho-size21-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-yu-mincho-size21-compat15.docx",
+      "sha256": "3f092b0c16640b14a2dd3393ea370a23d8bcfefcb786afa51a05860f6e4d03d1",
+      "pdf": "word-windows-edge-endnote-rule-yu-mincho-size21-compat15.pdf",
+      "pdf_sha256": "a0df8cac9e14ca14c70535c936bade79a9ef56f2ad34c63bcd81f46f7c5c70cf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-yu-mincho-size21-compat15.page-001.emf",
+          "sha256": "23afe919ca36a2a3a1208f138d4d2ae3168e9c98d5c1c5f10258d7f4ca962290",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-yu-mincho-size24-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-yu-mincho-size24-compat15.docx",
+      "sha256": "675d49095f679d142303ba2af52968d32f0818943902e59cc4689e9ed588eab8",
+      "pdf": "word-windows-edge-endnote-rule-yu-mincho-size24-compat15.pdf",
+      "pdf_sha256": "8a6d823693fa819dad396f5f6154cd713fcdd6bf27f126b6ff5eb5fabd6853e4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-yu-mincho-size24-compat15.page-001.emf",
+          "sha256": "a15a354ec466846fd22871795f8f3aa27a0ac85c42f5efa2d35fb4ed38ef64a6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-endnote-rule-yu-mincho-size40-compat15",
+      "source": "..\\w14-note-rule-font-inputs\\word-windows-edge-endnote-rule-yu-mincho-size40-compat15.docx",
+      "sha256": "5243a623f3ebf5ced73c96e6894cc4d44ba03c29d2adf34f9c4ebfe10d7874ef",
+      "pdf": "word-windows-edge-endnote-rule-yu-mincho-size40-compat15.pdf",
+      "pdf_sha256": "a342e8064756e484acbb7d7aa3c0e59810a3fd0826b4bd0172a49d2ed40da96c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-endnote-rule-yu-mincho-size40-compat15.page-001.emf",
+          "sha256": "f77a977f7685454fd93e86db22c380e1cb0b813b86d9d31bf6a9dee27c66a5c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

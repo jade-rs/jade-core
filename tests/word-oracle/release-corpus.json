@@ -1826,6 +1826,54 @@
     {
       "fixture": "word-windows-edge-textbox-multiline-yu-mincho-size40-exact28-compat15",
       "docx_sha256": "59452f0221427cd265a6e4fe08a8bdacb3f6663aba0164e3484fabb74139d802"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-arial-size21-compat15",
+      "docx_sha256": "b9ace011bb9723301b1a8b8641fec4d3c4c8e25a78cd86e5e631b61f6cb34621"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-arial-size24-compat15",
+      "docx_sha256": "410f9ac73d005bc0cb6f2ad784f681351505c9742d935168e13ed7e5db0384a0"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-arial-size40-compat15",
+      "docx_sha256": "7eb92769b8544598639eaa1da41520bb6169abb241f359aacc0c3fed157a42e3"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-century-size21-compat15",
+      "docx_sha256": "2e68e2c5e4cef940611362dcb1d73d99978d094bc307f9cdcb90d0114f76725d"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-century-size24-compat15",
+      "docx_sha256": "71b1f8055ee4bfc594ca42cf68679ec3938fd8d7d1acd72278d874a6ed75b2ba"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-century-size40-compat15",
+      "docx_sha256": "5f70ac46926aa9f014ee1316d599efe99d2e222cc870e7736e85626bb4adab97"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-ms-mincho-size21-compat15",
+      "docx_sha256": "3a1e3d838ab1e6ee69b6e98d9a7788427d53e16ba32537ec62ce0fa112c71443"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-ms-mincho-size24-compat15",
+      "docx_sha256": "370dff466ea27f60d23c4b9ec04cc3e71f53af27dc32ab86db5022e926a1078b"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-ms-mincho-size40-compat15",
+      "docx_sha256": "10b73a9afd5837ad597a5efb28693474b6e49993386193db9554c414388b682d"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-yu-mincho-size21-compat15",
+      "docx_sha256": "3f092b0c16640b14a2dd3393ea370a23d8bcfefcb786afa51a05860f6e4d03d1"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-yu-mincho-size24-compat15",
+      "docx_sha256": "675d49095f679d142303ba2af52968d32f0818943902e59cc4689e9ed588eab8"
+    },
+    {
+      "fixture": "word-windows-edge-endnote-rule-yu-mincho-size40-compat15",
+      "docx_sha256": "5243a623f3ebf5ced73c96e6894cc4d44ba03c29d2adf34f9c4ebfe10d7874ef"
     }
   ]
 }

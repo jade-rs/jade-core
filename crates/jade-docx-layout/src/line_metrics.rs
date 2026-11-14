@@ -3555,6 +3555,30 @@ pub fn word_font_vertical_metrics_px(font_descriptor: &str) -> Option<(f64, f64)
     Some((f64::from(ascent) * size_px, f64::from(descent) * size_px))
 }
 
+/// The top offset and thickness of a Windows Word note separator rule.
+/// Word 16.0.19127.20936 uses the requested face's OS/2 strikeout position
+/// and size, relative to its normal line baseline. These are font-table
+/// units, not fitted coordinates from any particular document.
+pub fn word_windows_note_rule_metrics_px(font_descriptor: &str) -> Option<(f64, f64)> {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim().trim_matches(['\'', '"']).to_ascii_lowercase();
+    let (units, position, thickness) = match family.as_str() {
+        "arial" | "century" => (2048.0, 530.0, 102.0),
+        "yu mincho" | "yumincho" | "游明朝" | "yu mincho light" | "游明朝 light"
+        | "yu mincho demibold" | "游明朝 demibold" => (2048.0, 858.0, 94.0),
+        "ms mincho" | "ms pmincho" | "ms 明朝" | "ms p明朝" | "ＭＳ 明朝" | "ＭＳ明朝"
+        | "ＭＳ Ｐ明朝" | "ＭＳＰ明朝" | "ｍｓ 明朝" | "ｍｓ明朝" | "ｍｓ ｐ明朝"
+        | "ｍｓｐ明朝" => (256.0, 66.0, 13.0),
+        _ => return None,
+    };
+    let (ascent, _) = word_font_vertical_metrics_px(font_descriptor)?;
+    let scale = f64::from(size_pt) * 96.0 / 72.0 / units;
+    Some((ascent - position * scale, thickness * scale))
+}
+
 pub(crate) fn word_mac_join_control_line_height_px(
     font_descriptor: &str,
     control: &str,
@@ -6616,6 +6640,37 @@ mod tests {
         assert!((ascent * 0.75 - 11.28).abs() <= 0.1);
         assert!((26.0 - descent * 0.75 - 22.97).abs() <= 0.1);
         set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
+    #[test]
+    fn windows_note_rule_metrics_match_original_word_font_sweep() {
+        // Word 16.0.19127.20936, capture 20261114T091931923Z-52cf7efc:
+        // rule tops relative to the unchanged 117.25pt separator story top.
+        let cases = [
+            ("Arial", [7.09, 8.17, 13.69]),
+            ("Century", [7.57, 8.77, 14.53]),
+            ("Yu Mincho", [8.05, 9.25, 15.37]),
+            ("ＭＳ 明朝", [7.81, 9.01, 15.01]),
+        ];
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for (family, tops) in cases {
+            for ((size, top), thickness) in [10.5, 12.0, 20.0]
+                .into_iter()
+                .zip(tops)
+                .zip([0.48, 0.60, 0.96])
+            {
+                let descriptor = format!("{size}pt '{family}', serif");
+                let (actual_top, actual_thickness) =
+                    word_windows_note_rule_metrics_px(&descriptor).expect("measured face");
+                assert!((actual_top * 0.75 - top).abs() < 0.11, "{descriptor}");
+                assert!((actual_thickness * 0.75 - thickness).abs() < 0.11);
+            }
+        }
+        assert!(word_windows_note_rule_metrics_px("12pt 'Unmeasured Face'").is_none());
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for (family, _) in cases {
+            assert!(word_windows_note_rule_metrics_px(&format!("12pt '{family}'")).is_none());
+        }
     }
 
     #[test]
