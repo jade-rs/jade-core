@@ -1,0 +1,542 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T005709592Z-772bee19",
+  "captured_at_utc": "2026-11-14T00:57:09.6125295Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-arial-latin-advances-bold-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-arial-latin-advances-bold-compat15.docx",
+      "sha256": "a462fcf63e2e03a6d12828f8770b310b0978ecf05f9569bb67dcb3a8c2805f7f",
+      "pdf": "word-windows-edge-arial-latin-advances-bold-compat15.pdf",
+      "pdf_sha256": "aea01313f42c03a46ce4b3e71f429500929f4ac77a099d1007f05b699c39c7d9",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-latin-advances-bold-compat15.page-001.emf",
+          "sha256": "a72df9dcec6d6f94dcddf9967aee0f9d739027864a3d32340d6ca1fca84dad17",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-latin-advances-bold-compat15.page-002.emf",
+          "sha256": "2e3b5e456f684c4804c0ceb22bab95ddc068445d988e8aab9611a65fa6a20e83",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-latin-advances-bold-italic-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-arial-latin-advances-bold-italic-compat15.docx",
+      "sha256": "a1f9260915b810ac448aed1fb20e90b311a24fd4cc35b276f7f859c21ab77fc2",
+      "pdf": "word-windows-edge-arial-latin-advances-bold-italic-compat15.pdf",
+      "pdf_sha256": "dd34d880ad94defbb371f6fb0199ede1fa4aa927254ff71484c94a88a019d370",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-latin-advances-bold-italic-compat15.page-001.emf",
+          "sha256": "06d155c07805a12c0ca7e18ff6728a7bba53077d0eb39c8c88469835c2751bd9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-latin-advances-bold-italic-compat15.page-002.emf",
+          "sha256": "1de465732fcd4dfa5ffaea76f62329a40c244d2ba0b73bf236dfddb48c6c3e43",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-latin-advances-italic-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-arial-latin-advances-italic-compat15.docx",
+      "sha256": "e5135c6f8d7f44c729b50222d621cd4db6d8c8824c1d36200cd1683eaedee285",
+      "pdf": "word-windows-edge-arial-latin-advances-italic-compat15.pdf",
+      "pdf_sha256": "2e025c0d6e0700698f700c9bb3301f4064585cbcd46a79a66d91cd10c013c1a5",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-latin-advances-italic-compat15.page-001.emf",
+          "sha256": "6100ebd9ee53696a3f59e9cd10c38ab12cd754ec8f93602ae715c9c61b98cf9e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-latin-advances-italic-compat15.page-002.emf",
+          "sha256": "724e321c2eff3fe3a54ba8e301b327b7fe99b227121ab1b24345c1954aa65978",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-arial-latin-advances-regular-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-arial-latin-advances-regular-compat15.docx",
+      "sha256": "6dfb455140ecdea66145b20884edc859ced59eaf8f12f412868a72d43668618d",
+      "pdf": "word-windows-edge-arial-latin-advances-regular-compat15.pdf",
+      "pdf_sha256": "5ecf8e9832c1dba0cfdf50d5b4af495f74a950816e588abe001814e74de4270f",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-latin-advances-regular-compat15.page-001.emf",
+          "sha256": "2bde4dd9f4e870c35ac8e0e2fdb5f92a238671a5f6330ac5c8fbf303aff9ef0d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-arial-latin-advances-regular-compat15.page-002.emf",
+          "sha256": "d451030b71e0583f0870c271798d8469fac7f2d29c9ebe93cfd7a85caf0c0941",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-bold-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-ms-mincho-latin-advances-bold-compat15.docx",
+      "sha256": "199ec945681f815a42349dae45c8351b0d4a59cbff3ab60dd487207e8d7a741d",
+      "pdf": "word-windows-edge-ms-mincho-latin-advances-bold-compat15.pdf",
+      "pdf_sha256": "26a7fa7140f9817b4e1c24ba947580cf677e8ada22b114381f5f3ac396488ec5",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-ms-mincho-latin-advances-bold-compat15.page-001.emf",
+          "sha256": "50de5bbbc4514980a07f4239e1ab6a29021c8dc189f5a03ac6b911f6c46e7c68",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-ms-mincho-latin-advances-bold-compat15.page-002.emf",
+          "sha256": "2c105bc9a18c975675e6efd2f551c7a64d24383cb865d6294e86763c48199589",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15.docx",
+      "sha256": "c3c76307c73070a4597f81e8e4a2ef9ba53a1cda48090730f113b9ba6751b432",
+      "pdf": "word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15.pdf",
+      "pdf_sha256": "89a5041bd8036359cf20462bcfb5e7a0aee23e73652cb7111fb802618bf301be",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15.page-001.emf",
+          "sha256": "612029c8f16b86a1a3c90868b694c8a9cde96d4d1cc1f02dc9eccda0af3d6e16",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15.page-002.emf",
+          "sha256": "abb505a31dca0a79ba1c22daf49cd5bd5379aff110fb395ce117b4bd8886275b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-italic-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-ms-mincho-latin-advances-italic-compat15.docx",
+      "sha256": "25e18ce4d5928e2d433be1cdf118581b6d7688d8c8de1ff574c8e70eb18cdf16",
+      "pdf": "word-windows-edge-ms-mincho-latin-advances-italic-compat15.pdf",
+      "pdf_sha256": "00090642e99f425033bd2711ed31c9966628a460a1cf4de0d93697160fcefea2",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-ms-mincho-latin-advances-italic-compat15.page-001.emf",
+          "sha256": "08aa585473131e89c03d08ecebfbebd137638989c671f5ab223bac254e22e384",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-ms-mincho-latin-advances-italic-compat15.page-002.emf",
+          "sha256": "123491092987c33fabe59eaf3f83dfcf55b6469cfa7bec9c9fe62a002d98624b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-ms-mincho-latin-advances-regular-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-ms-mincho-latin-advances-regular-compat15.docx",
+      "sha256": "133f66045850d5067e47572c4614d214bf9ef0056699264c1f26c0fdd5841afd",
+      "pdf": "word-windows-edge-ms-mincho-latin-advances-regular-compat15.pdf",
+      "pdf_sha256": "b86fd6a2caa58ac1e9b3bf3b9c8eed46603553a5a35dcd2b8af189e4002d20ad",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-ms-mincho-latin-advances-regular-compat15.page-001.emf",
+          "sha256": "9fa933f97b6aa3f083cbbbcccdbaf4402a72dcae749334666e7a705e2f904fec",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-ms-mincho-latin-advances-regular-compat15.page-002.emf",
+          "sha256": "17419084de247f58d9f013811d65005c03f491128be0008df2bcad86bde1991e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-bold-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-latin-advances-bold-compat15.docx",
+      "sha256": "dc9f102fde284f8d03baea1e15c1da0dba08d7b9539b7cc4a904dae30cc294b9",
+      "pdf": "word-windows-edge-yu-mincho-latin-advances-bold-compat15.pdf",
+      "pdf_sha256": "056646d405edcae28721ae8d015925430b647ec4b142312cc06321d026d89cf0",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-latin-advances-bold-compat15.page-001.emf",
+          "sha256": "95654809f892e7e8770954d437efddcc419b2927e7aac58dc1b519f672405b27",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-latin-advances-bold-compat15.page-002.emf",
+          "sha256": "cf1d815013bc42adecc4d5bab97f2e651e3dcefbbc3ea5e51db288dc43138d34",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-latin-advances-bold-compat15.page-003.emf",
+          "sha256": "dc2cb1b7ebc5c58e5ed209e6e1051d2b3e75d146820108d66095ddb8129a3a0b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15.docx",
+      "sha256": "6da42f7fc7a9d7dedf329a202fcb33a62ff4a3021b7fdc3da78b9be421643495",
+      "pdf": "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15.pdf",
+      "pdf_sha256": "ad852da1e1ed2c4fd23eb67a1ca0446b8081d4ffb233fea63b902ee6b6e2af3a",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15.page-001.emf",
+          "sha256": "9a49421e735ba4a624288d1c6e0260f6c4c5d9d8f9d0043ef08906be26a6345f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15.page-002.emf",
+          "sha256": "89da1770e04ac715975ebbaebdbd068b0fa78d33af31b4389e3c8dec970f8a11",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15.page-003.emf",
+          "sha256": "e336d2840cb1348ee2de89716619f3ebd63f7afea98bc155cc997e20e9e42886",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-italic-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-latin-advances-italic-compat15.docx",
+      "sha256": "7e75417eb631c62eb88851f9d9a503595fa2c883115250983eb090f2c87e65e6",
+      "pdf": "word-windows-edge-yu-mincho-latin-advances-italic-compat15.pdf",
+      "pdf_sha256": "7e0ae6fab6d0b2542cc0859b760f4c2b062ff8977cb2b91da899982e682bf166",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-latin-advances-italic-compat15.page-001.emf",
+          "sha256": "7ca50542f3a2f69cc2c8ade116a43cb0a130fa245cdcf30e321883b018be0927",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-latin-advances-italic-compat15.page-002.emf",
+          "sha256": "b786dbf80439a7e4589e9d27a42872ab07bbc00b866f7c31a800889fa9375474",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-latin-advances-italic-compat15.page-003.emf",
+          "sha256": "d3e9331da0e5093db6dd6b9cfc35034ace4caa7980a6b34eee0c91a34e011319",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-latin-advances-regular-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-latin-advances-regular-compat15.docx",
+      "sha256": "3dd7d5518b0d20dc407b26394aedf36cb4b16a889d6dd849eba5a856b7679cb5",
+      "pdf": "word-windows-edge-yu-mincho-latin-advances-regular-compat15.pdf",
+      "pdf_sha256": "e13a90f15c6e024ae504428c0b69578ddf1192119d8e2b8fe38ec7298c21c90a",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-latin-advances-regular-compat15.page-001.emf",
+          "sha256": "0a9d43d88e217a3ff0673e5b7c55b320e8ca530ab883edd3a758ba6b7f694867",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-latin-advances-regular-compat15.page-002.emf",
+          "sha256": "5686c46885ab73f20222ee35f48603d8b8ecf4e0c6fcfe07ed62c54c2913aa99",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-latin-advances-regular-compat15.page-003.emf",
+          "sha256": "7a76a561b420d060c07cb2f35879b6d8f7276c855b26d5b39c0a1e851f183da1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-tracking-mixed-compat12",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-tracking-mixed-compat12.docx",
+      "sha256": "373e19735bc92a5b92658921af9851ed9b55c56d8fc44150ce5d2286fe123ae5",
+      "pdf": "word-windows-edge-yu-mincho-tracking-mixed-compat12.pdf",
+      "pdf_sha256": "f5550a16d3d9f83ca6af545e0828caad5e433fc03ace8a92485981cc6ad33142",
+      "pages": 3,
+      "compatibility_mode": 12,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat12.page-001.emf",
+          "sha256": "6554b8ef3520ba6f7cb7f795d6e29c8c9a680342aee7ada9804ba73baaeba69f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat12.page-002.emf",
+          "sha256": "bf4115072e99c50ffe0bd62dfd94680c1123ad2ecc9a2f97e34026d9bef5bfcb",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat12.page-003.emf",
+          "sha256": "f59f612d914e50ad887f5c2d807e1c2b02b0f6e3e6466a63b592a723400b7bb9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-tracking-mixed-compat14",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-tracking-mixed-compat14.docx",
+      "sha256": "3e3598c1cf5f7a5ac988280bb371ba35cc4ae84918dbf4355751d3ebbd9e2ea1",
+      "pdf": "word-windows-edge-yu-mincho-tracking-mixed-compat14.pdf",
+      "pdf_sha256": "9066aa674b2d63ac54a366ddf6ed4219966abf564735eae6fa0f228d26450352",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat14.page-001.emf",
+          "sha256": "de3dda1cdca11dfd439a648b66c624267535199f67685080ce62944ca45dfc1a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat14.page-002.emf",
+          "sha256": "f1c8206dc1bed73e350c9b614bd45e2487bb8f035ccfcf64f41112cac5ba8ae4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat14.page-003.emf",
+          "sha256": "280030e506df67881635cece8b410eb2ece388cf9773fdf71802f75356ca15d5",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-edge-yu-mincho-tracking-mixed-compat15",
+      "source": "..\\decimal-anchor-core\\public\\fixtures\\word-windows-edge-yu-mincho-tracking-mixed-compat15.docx",
+      "sha256": "7771939e8807a8f152dcfa1229a061384f89723144a65cc7cd3cead30ad87703",
+      "pdf": "word-windows-edge-yu-mincho-tracking-mixed-compat15.pdf",
+      "pdf_sha256": "ccfa9c2e75ceb3dbe19e6cb19dc4d33f0f745b0656b50776275f4d0e316ec713",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat15.page-001.emf",
+          "sha256": "a143f596d83fbf3e3f80036c15fabcfadf66b657325c0fdf8edd522875691ff5",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat15.page-002.emf",
+          "sha256": "d6a27fa67e24b61d1f46911449f5ec57c5e5043f053c525bb4ac4d538ffb1943",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-edge-yu-mincho-tracking-mixed-compat15.page-003.emf",
+          "sha256": "951507f1010a2dba97cf3bcb0ddc8c1aed7178beccdfe383e90e8a217bee269d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "ww14-merged-table-over-page-1fd9d10f",
+      "source": "..\\w14-inputs\\ww14-merged-table-over-page-1fd9d10f.docx",
+      "sha256": "1fd9d10fde0a7acfb986e9381db4bf99f93d0219d8b6e705bfa788d083fdf9fe",
+      "pdf": "ww14-merged-table-over-page-1fd9d10f.pdf",
+      "pdf_sha256": "3b5afdfb25d963ba75cb4a9603ecceb8e9137dc7290fe02078e18d93be8a9797",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-merged-table-over-page-1fd9d10f.page-001.emf",
+          "sha256": "5c19e778676daa0425d622c1994e25864e18ebf5afaeddce1a9e9dedc24d51f6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "ww14-merged-table-over-page-1fd9d10f.page-002.emf",
+          "sha256": "a54e80816df89350fd92f877cf16a5d84d25aa239f8ed1041b47fd377ad52fa7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "physical-page-rectangle"
+        }
+      ]
+    },
+    {
+      "name": "ww14-footnote-anchor-19-length-35-mac-3010334e",
+      "source": "..\\w14-inputs\\ww14-footnote-anchor-19-length-35-mac-3010334e.docx",
+      "sha256": "3010334ec651c631718a9259bdc4379126991a742cf5d94c80b819325e3f0ad7",
+      "pdf": "ww14-footnote-anchor-19-length-35-mac-3010334e.pdf",
+      "pdf_sha256": "1df1753a48466ac796d27f34175de17a2764299067c8a053ca1606cf9165e9d8",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "ww14-footnote-anchor-19-length-35-mac-3010334e.page-001.emf",
+          "sha256": "5cbe01e99ff0400c0cc02c828a6c3267d8da7f00b7199290b10a7bfd4ea1ad7b",
+          "width_pt": 420.0,
+          "height_pt": 480.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "ww14-footnote-anchor-19-length-35-mac-3010334e.page-002.emf",
+          "sha256": "58c6a9ba5482aa18cd36f7d4004cb2ecd678e0a4e5d1a6c9fe58a283c42b349d",
+          "width_pt": 420.0,
+          "height_pt": 480.0,
+          "geometry_source": "single-section-continuation"
+        },
+        {
+          "page": 3,
+          "file": "ww14-footnote-anchor-19-length-35-mac-3010334e.page-003.emf",
+          "sha256": "1240fedab35f1f696ac874c3417a1ae78097be06d71755455270f821b07b234b",
+          "width_pt": 420.0,
+          "height_pt": 480.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}

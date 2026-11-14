@@ -1,0 +1,343 @@
+{
+  "fonts": [
+    {
+      "family": "Noto Sans JP",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\Users\\dev\\Documents\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\decimal-anchor-core\\crates\\jade-docx-native-render\\../..\\fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Noto Sans JP",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\Users\\dev\\Documents\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\decimal-anchor-core\\crates\\jade-docx-native-render\\../..\\fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arial.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arialbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\arialbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\ariali.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\ariblk.ttf",
+      "weight": 900
+    },
+    {
+      "family": "Cambria Math",
+      "index": 1,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\cambria.ttc",
+      "weight": 400
+    },
+    {
+      "family": "MS Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msgothic.ttc",
+      "weight": 400
+    },
+    {
+      "family": "MS Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msmincho.ttc",
+      "weight": 400
+    },
+    {
+      "family": "MS PGothic",
+      "index": 2,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msgothic.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Meiryo",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\meiryo.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Meiryo",
+      "index": 1,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\meiryo.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Meiryo",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\meiryob.ttc",
+      "weight": 700
+    },
+    {
+      "family": "Meiryo",
+      "index": 1,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\meiryob.ttc",
+      "weight": 700
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\times.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\timesbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesi.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothB.ttc",
+      "weight": 700
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothL.ttc",
+      "weight": 300
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothM.ttc",
+      "weight": 500
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothR.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Yu Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yumin.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Yu Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yumindb.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Yu Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yuminl.ttf",
+      "weight": 300
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arial.ttf",
+      "weight": 400
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arialbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\arialbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\ariali.ttf",
+      "weight": 400
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\ariblk.ttf",
+      "weight": 900
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\times.ttf",
+      "weight": 400
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\timesbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesi.ttf",
+      "weight": 400
+    },
+    {
+      "family": "游ゴシック Light",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothL.ttc",
+      "weight": 400
+    },
+    {
+      "family": "游ゴシック Light",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothB.ttc",
+      "weight": 700
+    },
+    {
+      "family": "游明朝",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yumin.ttf",
+      "weight": 400
+    },
+    {
+      "family": "游明朝",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yumindb.ttf",
+      "weight": 600
+    },
+    {
+      "family": "游明朝",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yuminl.ttf",
+      "weight": 300
+    },
+    {
+      "family": "ＭＳ Ｐゴシック",
+      "index": 2,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msgothic.ttc",
+      "weight": 400
+    }
+  ],
+  "glyphs": [
+    [
+      1,
+      "H",
+      85.05000305175781,
+      111.94140625
+    ],
+    [
+      1,
+      "e",
+      93.69404602050781,
+      111.94140625
+    ],
+    [
+      1,
+      "l",
+      98.84150695800783,
+      111.94140625
+    ],
+    [
+      1,
+      "l",
+      101.65620422363283,
+      111.94140625
+    ],
+    [
+      1,
+      "o",
+      104.47090148925783,
+      111.94140625
+    ],
+    [
+      1,
+      "あ",
+      90.70000314712524,
+      742.94140625
+    ],
+    [
+      1,
+      "あ",
+      101.20000314712523,
+      742.94140625
+    ],
+    [
+      1,
+      "あ",
+      111.70000314712523,
+      742.94140625
+    ]
+  ],
+  "page_count": 2,
+  "table_glyph_projection": "unclipped"
+}

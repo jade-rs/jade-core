@@ -1,0 +1,30 @@
+{
+  "engine_commit": "d948cb44d4cbae401f3a5fe06b1e9ebdfafe5f7b",
+  "word_product_version": "16.0.19127.20936",
+  "capture_id": "20261114T005709592Z-772bee19",
+  "reference_kind": "emf",
+  "engine_source_worktree_dirty": false,
+  "strict_fixtures": [],
+  "matching_fixtures": [
+    "word-windows-edge-arial-latin-advances-bold-compat15",
+    "word-windows-edge-arial-latin-advances-bold-italic-compat15",
+    "word-windows-edge-arial-latin-advances-italic-compat15",
+    "word-windows-edge-arial-latin-advances-regular-compat15",
+    "word-windows-edge-ms-mincho-latin-advances-italic-compat15",
+    "word-windows-edge-ms-mincho-latin-advances-regular-compat15",
+    "word-windows-edge-yu-mincho-latin-advances-italic-compat15",
+    "word-windows-edge-yu-mincho-latin-advances-regular-compat15",
+    "ww14-merged-table-over-page-1fd9d10f"
+  ],
+  "pending_fixtures": [
+    "word-windows-edge-ms-mincho-latin-advances-bold-compat15",
+    "word-windows-edge-ms-mincho-latin-advances-bold-italic-compat15",
+    "word-windows-edge-yu-mincho-latin-advances-bold-compat15",
+    "word-windows-edge-yu-mincho-latin-advances-bold-italic-compat15",
+    "word-windows-edge-yu-mincho-tracking-mixed-compat12",
+    "word-windows-edge-yu-mincho-tracking-mixed-compat14",
+    "word-windows-edge-yu-mincho-tracking-mixed-compat15",
+    "ww14-footnote-anchor-19-length-35-mac-3010334e"
+  ],
+  "table_glyph_projection": "unclipped"
+}
