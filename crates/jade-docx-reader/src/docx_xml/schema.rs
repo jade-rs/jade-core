@@ -146,7 +146,9 @@ fn sequence(parent: &str, grandparent: Option<&str>) -> Option<&'static Sequence
             ["w:tblLayout"], ["w:tblCellMar"], ["w:tblLook"], ["w:tblCaption"],
             ["w:tblDescription"], ["w:tblPrChange"],
         ),
-        "w:trPr" => sequence!(Rank(0); ["w:ins"], ["w:del"], ["w:trPrChange"]),
+        "w:trPr" => sequence!(Rank(0);
+            [], ["w:ins"], ["w:del"], ["w:trPrChange"], ["w14:conflictIns", "w14:conflictDel"],
+        ),
         "w:tcPr" => sequence!(Follow;
             ["w:cnfStyle"], ["w:tcW"], ["w:gridSpan"], ["w:hMerge"], ["w:vMerge"],
             ["w:tcBorders"], ["w:shd"], ["w:noWrap"], ["w:tcMar"], ["w:textDirection"],
@@ -746,6 +748,16 @@ mod tests {
                 r#"<w:p><w:r><w:rPr><w:rFonts/><w:sz w:val="24"/><w:kern w:val="12"/><w:spacing w:val="10"/><w14:ligatures w14:val="standard"/></w:rPr></w:r></w:p>"#
             ),
             r#"<w:p><w:r><w:rPr><w:rFonts/><w:spacing w:val="10"/><w:kern w:val="12"/><w:sz w:val="24"/><w14:ligatures w14:val="standard"/></w:rPr></w:r></w:p>"#,
+        );
+    }
+
+    #[test]
+    fn table_row_properties_precede_revision_marks() {
+        assert_eq!(
+            rewrite(
+                r#"<w:tbl><w:tr><w:trPr><w:ins w:id="1" w:author="a"/><w:gridAfter w:val="2"/><w:trHeight w:val="360"/><w:cantSplit/></w:trPr></w:tr></w:tbl>"#
+            ),
+            r#"<w:tbl><w:tr><w:trPr><w:gridAfter w:val="2"/><w:trHeight w:val="360"/><w:cantSplit/><w:ins w:id="1" w:author="a"/></w:trPr></w:tr></w:tbl>"#,
         );
     }
 
