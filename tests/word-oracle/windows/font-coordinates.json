@@ -3924,6 +3924,150 @@
       "word_product_version": "16.0.19127.20936",
       "glyph_count": 129,
       "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size21-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern0-size21-compat15.docx",
+        "sha256": "ad7f473172a7e5c726abf9c601c8d2d6c560aae5c70bf4fb28639a801cb37344"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size24-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern0-size24-compat15.docx",
+        "sha256": "b54a90ce08db23fa18e4106b985c7c4aea7e693fed42efb40e5c54a4433467a0"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size40-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern0-size40-compat15.docx",
+        "sha256": "172a8c4c5f4404bea6c5acb5c34dc62288d49f26e3bd59afbea7c25c3945b46f"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern0-size44-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern0-size44-compat15.docx",
+        "sha256": "ea3b1fdc1e6f53b0f47fec7070f01e0dd121c74c442cd32b505812e979e703b7"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size21-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern2-size21-compat15.docx",
+        "sha256": "c19e657d40aa1b5b41145e824c6cdb18f04caf36f12914ebfc2bc56856578db6"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size24-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern2-size24-compat15.docx",
+        "sha256": "85b2f034604da90909f6a7f383f9b5348b6615e222286d6101d6633caa9c97f5"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size40-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern2-size40-compat15.docx",
+        "sha256": "364aea75d167d9ce2d1db726331c09de2c961848cd8d57b1c4e389b84bee77b0"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-edge-calibri-kern2-size44-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/capture.json",
+        "sha256": "ad5cfc11646dece16d684cac980b491b6405fd09ba1f94ff50e7530fe2667d6b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T141251318Z-71154518/word-emf-reference.json",
+        "sha256": "a0a214327240a1684f9bd0098c362217bca53cb1c366b4d737e8e6ff6401efb6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-calibri-kern2-size44-compat15.docx",
+        "sha256": "3515969564c0d39a0ccac7f4c4f100bc838797e6cef76d082c6dceb7a62a1b62"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 97,
+      "public_test_password": null
     }
   ]
 }

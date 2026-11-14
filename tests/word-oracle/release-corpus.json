@@ -2202,6 +2202,54 @@
     {
       "fixture": "word-windows-edge-dot-leader-yu-mincho-size21-stop8012-compat12",
       "docx_sha256": "7b3ffa0e2ea96342d66063e6d868e8ba97473174b20c8e4df987f010518052bd"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern0-size21-compat15",
+      "docx_sha256": "ad7f473172a7e5c726abf9c601c8d2d6c560aae5c70bf4fb28639a801cb37344"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern0-size24-compat15",
+      "docx_sha256": "b54a90ce08db23fa18e4106b985c7c4aea7e693fed42efb40e5c54a4433467a0"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern0-size40-compat15",
+      "docx_sha256": "172a8c4c5f4404bea6c5acb5c34dc62288d49f26e3bd59afbea7c25c3945b46f"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern0-size44-compat15",
+      "docx_sha256": "ea3b1fdc1e6f53b0f47fec7070f01e0dd121c74c442cd32b505812e979e703b7"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern2-size21-compat15",
+      "docx_sha256": "c19e657d40aa1b5b41145e824c6cdb18f04caf36f12914ebfc2bc56856578db6"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern2-size24-compat15",
+      "docx_sha256": "85b2f034604da90909f6a7f383f9b5348b6615e222286d6101d6633caa9c97f5"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern2-size40-compat15",
+      "docx_sha256": "364aea75d167d9ce2d1db726331c09de2c961848cd8d57b1c4e389b84bee77b0"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern2-size44-compat15",
+      "docx_sha256": "3515969564c0d39a0ccac7f4c4f100bc838797e6cef76d082c6dceb7a62a1b62"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern0-size44-spacing10-compat15",
+      "docx_sha256": "adf594dcff86bccd43e4fcb0ba1a5a95311c86ae6df14516385719d2cd3d9331"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern0-size44-spacing5-compat15",
+      "docx_sha256": "7523a36465a920458ad756e4d8bc91610468acb830d5e6122eac88f8966e2bcc"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern2-size44-spacing10-compat15",
+      "docx_sha256": "94d0a35169709f70e7d10861810eae4b8685d1bec6f34072d7cab337be1286f2"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-kern2-size44-spacing5-compat15",
+      "docx_sha256": "d3e6fcd40b41d47ba5060e780cf6639591cce831a6c474a3d82275c074a479cc"
     }
   ]
 }
