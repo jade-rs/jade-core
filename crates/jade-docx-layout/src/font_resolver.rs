@@ -825,9 +825,9 @@ pub fn opentype_features_token(props: &RunProperties, pair_kerning: bool) -> Opt
     }
     // Windows Word switches tracked runs back to its plain-text path. The
     // original typography properties remain on the run for round trips.
-    if crate::line_metrics::word_layout_platform()
-        == crate::line_metrics::WordLayoutPlatform::Windows
-        && props.char_spacing.is_some_and(|spacing| spacing != 0.0)
+    if props.char_spacing.is_some_and(|spacing| spacing != 0.0)
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows
     {
         return None;
     }
