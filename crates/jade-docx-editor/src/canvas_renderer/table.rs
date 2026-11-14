@@ -15540,6 +15540,37 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         // the preceding block has already reserved its after space.
                         cell_paragraph.spacing_before = (before - previous_after).max(0.0);
                         cell_paragraph.spacing_after = after;
+                        if let Some(borders) = paragraph
+                            .properties
+                            .as_ref()
+                            .and_then(|properties| properties.borders.as_ref())
+                            .filter(|_| horizontal)
+                        {
+                            let shares_previous =
+                                block_index.checked_sub(1).is_some_and(|previous| {
+                                    super::paragraph_border_box_continues_at(
+                                        &cell.blocks,
+                                        previous,
+                                    )
+                                });
+                            if !shares_previous {
+                                cell_paragraph.spacing_before += points_to_px(
+                                    super::word_paragraph_border_extent_pt(borders.top.as_ref()),
+                                );
+                            }
+                            let shares_next = super::paragraph_border_box_continues_at(
+                                &cell.blocks,
+                                block_index,
+                            );
+                            let bottom = if shares_next {
+                                super::word_paragraph_between_border_extent_pt(
+                                    borders.between.as_ref(),
+                                )
+                            } else {
+                                super::word_paragraph_border_extent_pt(borders.bottom.as_ref())
+                            };
+                            cell_paragraph.spacing_after += points_to_px(bottom);
+                        }
                         previous_after = after;
                         // Preserve the shared empty-line geometry and formatting
                         // for caret/selection, but do not grow the cell for its
