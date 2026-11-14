@@ -21037,20 +21037,14 @@ where
             if !suppress_spacing_after {
                 self.apply_spacing_after_value(spacing_after)?;
             }
-            // Windows still collapses the next before against this specified
-            // after, even when contextualSpacing suppresses its drawing.
-            // Keep Mac's existing suppression and cache behavior unchanged.
-            if !suppress_spacing_after
-                || paragraph_style.word_platform
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            {
-                self.trailing_spacing_after = Some((
-                    self.current_page_number,
-                    self.column_index,
-                    self.current_y,
-                    spacing_after,
-                ));
-            }
+            // Word collapses the next paragraph's before spacing against the
+            // specified after spacing even when contextual spacing hides it.
+            self.trailing_spacing_after = Some((
+                self.current_page_number,
+                self.column_index,
+                self.current_y,
+                spacing_after,
+            ));
         }
 
         for object in floating_paint_objects
