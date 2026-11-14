@@ -1,0 +1,567 @@
+{
+  "fonts": [
+    {
+      "family": "Noto Sans JP",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\Users\\dev\\Documents\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\decimal-anchor-core\\crates\\jade-docx-native-render\\../..\\fonts/Noto_Sans_JP/static/NotoSansJP-Regular.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Noto Sans JP",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\Users\\dev\\Documents\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\decimal-anchor-core\\crates\\jade-docx-native-render\\../..\\fonts/Noto_Sans_JP/static/NotoSansJP-Bold.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arial.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arialbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\arialbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\ariali.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Arial",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\ariblk.ttf",
+      "weight": 900
+    },
+    {
+      "family": "Cambria Math",
+      "index": 1,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\cambria.ttc",
+      "weight": 400
+    },
+    {
+      "family": "MS Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msgothic.ttc",
+      "weight": 400
+    },
+    {
+      "family": "MS Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msmincho.ttc",
+      "weight": 400
+    },
+    {
+      "family": "MS PGothic",
+      "index": 2,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msgothic.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Meiryo",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\meiryo.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Meiryo",
+      "index": 1,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\meiryo.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Meiryo",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\meiryob.ttc",
+      "weight": 700
+    },
+    {
+      "family": "Meiryo",
+      "index": 1,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\meiryob.ttc",
+      "weight": 700
+    },
+    {
+      "family": "Noto Sans JP",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\NotoSansJP-VF.ttf",
+      "weight": 100
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\times.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\timesbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "Times New Roman",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesi.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothB.ttc",
+      "weight": 700
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothL.ttc",
+      "weight": 300
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothM.ttc",
+      "weight": 500
+    },
+    {
+      "family": "Yu Gothic",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\YuGothR.ttc",
+      "weight": 400
+    },
+    {
+      "family": "Yu Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yumin.ttf",
+      "weight": 400
+    },
+    {
+      "family": "Yu Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yumindb.ttf",
+      "weight": 600
+    },
+    {
+      "family": "Yu Mincho",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\yuminl.ttf",
+      "weight": 300
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arial.ttf",
+      "weight": 400
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\arialbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\arialbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\ariali.ttf",
+      "weight": 400
+    },
+    {
+      "family": "sans-serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\ariblk.ttf",
+      "weight": 900
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\times.ttf",
+      "weight": 400
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\timesbd.ttf",
+      "weight": 700
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesbi.ttf",
+      "weight": 700
+    },
+    {
+      "family": "serif",
+      "index": 0,
+      "italic": true,
+      "path": "C:\\WINDOWS\\Fonts\\timesi.ttf",
+      "weight": 400
+    },
+    {
+      "family": "ＭＳ Ｐゴシック",
+      "index": 2,
+      "italic": false,
+      "path": "C:\\WINDOWS\\Fonts\\msgothic.ttc",
+      "weight": 400
+    }
+  ],
+  "glyphs": [
+    [
+      1,
+      "H",
+      57.599998474121094,
+      60.7178726196289
+    ],
+    [
+      1,
+      "o",
+      65.54023529052733,
+      60.7178726196289
+    ],
+    [
+      1,
+      "r",
+      71.6551303100586,
+      60.7178726196289
+    ],
+    [
+      1,
+      "i",
+      75.3165512084961,
+      60.7178726196289
+    ],
+    [
+      1,
+      "z",
+      77.75928802490236,
+      60.7178726196289
+    ],
+    [
+      1,
+      "o",
+      83.25678802490235,
+      60.7178726196289
+    ],
+    [
+      1,
+      "n",
+      89.37168304443361,
+      60.7178726196289
+    ],
+    [
+      1,
+      "t",
+      95.48657806396486,
+      60.7178726196289
+    ],
+    [
+      1,
+      "a",
+      98.54134124755862,
+      60.7178726196289
+    ],
+    [
+      1,
+      "l",
+      104.65623626708987,
+      60.7178726196289
+    ],
+    [
+      1,
+      " ",
+      107.0989730834961,
+      60.7178726196289
+    ],
+    [
+      1,
+      "f",
+      110.15373626708985,
+      60.7178726196289
+    ],
+    [
+      1,
+      "l",
+      113.20849945068362,
+      60.7178726196289
+    ],
+    [
+      1,
+      "o",
+      115.65123626708987,
+      60.7178726196289
+    ],
+    [
+      1,
+      "a",
+      121.76613128662112,
+      60.7178726196289
+    ],
+    [
+      1,
+      "t",
+      127.88102630615236,
+      60.7178726196289
+    ],
+    [
+      1,
+      "i",
+      130.9357894897461,
+      60.7178726196289
+    ],
+    [
+      1,
+      "n",
+      133.37852630615237,
+      60.7178726196289
+    ],
+    [
+      1,
+      "g",
+      139.4934213256836,
+      60.7178726196289
+    ],
+    [
+      1,
+      " ",
+      145.60831634521486,
+      60.7178726196289
+    ],
+    [
+      1,
+      "t",
+      148.6630795288086,
+      60.7178726196289
+    ],
+    [
+      1,
+      "a",
+      151.71784271240233,
+      60.7178726196289
+    ],
+    [
+      1,
+      "b",
+      157.8327377319336,
+      60.7178726196289
+    ],
+    [
+      1,
+      "l",
+      163.94763275146482,
+      60.7178726196289
+    ],
+    [
+      1,
+      "e",
+      166.39036956787112,
+      60.7178726196289
+    ],
+    [
+      1,
+      " ",
+      172.50526458740234,
+      60.7178726196289
+    ],
+    [
+      1,
+      "p",
+      175.56002777099607,
+      60.7178726196289
+    ],
+    [
+      1,
+      "r",
+      181.67492279052732,
+      60.7178726196289
+    ],
+    [
+      1,
+      "o",
+      185.3363436889648,
+      60.7178726196289
+    ],
+    [
+      1,
+      "b",
+      191.45123870849608,
+      60.7178726196289
+    ],
+    [
+      1,
+      "e",
+      197.5661337280273,
+      60.7178726196289
+    ],
+    [
+      1,
+      "M",
+      62.999998569488525,
+      90.81787109375
+    ],
+    [
+      1,
+      "L",
+      72.1630847454071,
+      90.81787109375
+    ],
+    [
+      1,
+      "M",
+      257.40000009536743,
+      160.81787109375
+    ],
+    [
+      1,
+      "C",
+      266.563086271286,
+      160.81787109375
+    ],
+    [
+      1,
+      "M",
+      451.8000016212464,
+      230.81787109375
+    ],
+    [
+      1,
+      "R",
+      460.963087797165,
+      230.81787109375
+    ],
+    [
+      1,
+      "P",
+      5.400000095367432,
+      300.81787109375
+    ],
+    [
+      1,
+      "L",
+      12.73691463470459,
+      300.81787109375
+    ],
+    [
+      1,
+      "P",
+      257.40000009536743,
+      370.81787109375
+    ],
+    [
+      1,
+      "C",
+      264.7369146347046,
+      370.81787109375
+    ],
+    [
+      1,
+      "P",
+      509.40000009536743,
+      440.81787109375
+    ],
+    [
+      1,
+      "R",
+      516.7369146347046,
+      440.81787109375
+    ],
+    [
+      1,
+      "M",
+      62.999998569488525,
+      510.81787109375
+    ],
+    [
+      1,
+      "X",
+      72.1630847454071,
+      510.81787109375
+    ],
+    [
+      1,
+      "M",
+      449.4000015258789,
+      580.81787109375
+    ],
+    [
+      1,
+      "R",
+      458.5630877017975,
+      580.81787109375
+    ],
+    [
+      1,
+      "P",
+      466.5069353580475,
+      580.81787109375
+    ],
+    [
+      1,
+      "A",
+      473.84384989738464,
+      580.81787109375
+    ],
+    [
+      1,
+      "D",
+      481.1807644367218,
+      580.81787109375
+    ]
+  ],
+  "page_count": 1,
+  "table_glyph_projection": "visible"
+}

@@ -468,6 +468,15 @@ const directories = (await readdir(corpus, { withFileTypes: true }))
   .filter(entry => entry.isDirectory()).map(entry => entry.name).sort();
 assert(directories.length > 0, 'no Word coordinate fixtures found');
 const names = process.argv.length > 2 ? process.argv.slice(2) : [...directories, ...archivedGlyphProbes.keys(), tallGridName];
+const platformRegistry = JSON.parse(await readFile(new URL('tests/word-oracle/platform-coordinates.json', root), 'utf8'));
+assert.equal(platformRegistry.schema, 1);
+assert(platformRegistry.fixtures.length > 0, 'no shared platform fixtures');
+for (const fixture of platformRegistry.fixtures) {
+  assert(directories.includes(fixture.mac_case), `missing Mac original: ${fixture.mac_case}`);
+  if (process.argv.length <= 2) {
+    assert(names.includes(fixture.mac_case), `shared fixture omitted from Mac assertion: ${fixture.mac_case}`);
+  }
+}
 const browser = await chromium.launch();
 const failures = [];
 try {

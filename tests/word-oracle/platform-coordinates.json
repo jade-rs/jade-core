@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "mac_case": "word-mac-probe-floating-horizontal-15",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-floating-horizontal-15/source.docx",
+        "sha256": "3f89f455ba8b8367be54e71d7403fb7786a884324b501bfdc1e789e2c5e91404"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-floating-horizontal-15/manifest.json",
+        "sha256": "9dcb7dc323d42271f02d605c080e5b8d324516a84b6340987f65250dc4b56972"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T015622405Z-203d1791/capture.json",
+            "sha256": "9385552844f19477b6e722be3d8a5ce60051073e1d107ebf626f9f41cceda9d7"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T015622405Z-203d1791/word-emf-reference.json",
+            "sha256": "754a9d4c0c1e2a15aa8cff0eda6a878c2e9b27c948cfba398973878a6456f25d"
+          },
+          "fixture": "source"
+        }
+      ]
+    }
+  ]
+}

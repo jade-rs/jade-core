@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "source_commit": "d948cb44d4cbae401f3a5fe06b1e9ebdfafe5f7b",
+  "executable_sha256": "7c827dc8809fe6932706215b5be55fe6db236cad8063f438e4d45e5137ac0b90",
+  "capture_tools_commit": "7309c9dfe54d8f3797a926be56754436159c3984",
+  "archive_tools_commit": "7309c9dfe54d8f3797a926be56754436159c3984",
+  "note": "Windows capture of byte-identical Mac corpus original; Mac expectations remain unchanged."
+}

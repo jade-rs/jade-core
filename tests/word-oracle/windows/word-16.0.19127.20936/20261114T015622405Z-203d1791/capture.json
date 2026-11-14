@@ -1,0 +1,39 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T015622405Z-203d1791",
+  "captured_at_utc": "2026-11-14T01:56:22.4170450Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "source",
+      "source": "..\\decimal-anchor-core\\tests\\word-oracle\\mac-elsa-synthetic\\word-mac-probe-floating-horizontal-15\\source.docx",
+      "sha256": "3f89f455ba8b8367be54e71d7403fb7786a884324b501bfdc1e789e2c5e91404",
+      "pdf": "source.pdf",
+      "pdf_sha256": "4eb0e9ffdd4492d9eee357bc23491d0f779aed3294bd61af2606b9d510a433af",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "source.page-001.emf",
+          "sha256": "4f6908057010d980855f5732e12d35de4f1bf63be530316f6c695758ca87c676",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ],
+  "table_glyph_projection": "unclipped"
+}
