@@ -90,7 +90,9 @@ pub fn apply_headless_commands_and_execute_queries(
         .map_err(|err| HeadlessApplyAndQueryError::Load(err.to_string()))?;
 
     // The before-snapshot is only consumed when the caller asked for a diff.
-    let before = request.include_diff.then(|| DiffSnapshot::capture(&word_doc));
+    let before = request
+        .include_diff
+        .then(|| DiffSnapshot::capture(&word_doc));
 
     let edit_request = HeadlessEditRequest {
         commands: request.commands.clone(),
@@ -529,9 +531,8 @@ mod tests {
     #[test]
     fn diff_matches_oracle_on_document_with_many_paragraphs_and_tables() {
         let input = many_blocks_fixture(6, 40);
-        let load = || {
-            executor::block_on(WordDocument::load(&input, &Options::default())).expect("load")
-        };
+        let load =
+            || executor::block_on(WordDocument::load(&input, &Options::default())).expect("load");
         let before_doc = load();
         let before_new = table_signatures(&before_doc);
         let before_old = table_signatures_quadratic(&before_doc);
@@ -571,10 +572,8 @@ mod tests {
         let after_old = table_signatures_quadratic(&oracle_doc);
         assert_eq!(after_new, after_old);
         let expected_tables = changed_table_indices(&before_old, &after_old);
-        let expected_paragraphs = changed_paragraph_indices(
-            &paragraph_texts(&before_doc),
-            &paragraph_texts(&oracle_doc),
-        );
+        let expected_paragraphs =
+            changed_paragraph_indices(&paragraph_texts(&before_doc), &paragraph_texts(&oracle_doc));
         assert!(!expected_tables.is_empty());
         assert!(expected_paragraphs.contains(&100));
 

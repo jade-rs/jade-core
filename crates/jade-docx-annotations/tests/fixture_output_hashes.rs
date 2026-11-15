@@ -41,7 +41,10 @@ fn fixture_outputs_are_deterministic_and_match_recorded_hashes() {
         for (comments, revisions) in FLAGS {
             let first = run(&data, comments, revisions);
             let second = run(&data, comments, revisions);
-            assert_eq!(first, second, "{name} {comments} {revisions} is not deterministic");
+            assert_eq!(
+                first, second,
+                "{name} {comments} {revisions} is not deterministic"
+            );
             actual.push((name, comments, revisions, first.len(), hash(&first)));
         }
     }
