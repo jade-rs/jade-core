@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 431 font/typography
-documents (107,302 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 456 font/typography
+documents (123,862 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -129,8 +129,33 @@ Windows vector export now relies on its existing line clip; interactive canvas
 and all Mac paths retain their prior paint behavior. The gate still rejects
 white fills after text or images, including fills that erase a background.
 
-Four additional original green/yellow paragraph-background captures, each with
-one/two columns, are retained as versioned raw observations with their source
-bytes. They are not accepted shading geometry: their text passes all four
-coordinate comparisons, but paragraph-background edges still differ from Word.
-Their original PDF/EMF evidence must remain available for that follow-up fix.
+Twenty-five fully matching paragraph-background controls now join the release
+corpus (855 DOCX files) and font-coordinate gate (456 cases). These include the
+four original green/yellow one/two-column controls, centered and left-aligned
+Japanese/Latin mixtures, balancing enabled/disabled, and font/grid/default/mark
+variations. Generate all 45 measured controls with
+`generate_windows_paragraph_shading_probes.py`; every generated DOCX is byte
+identical to its original Word capture input.
+
+Each accepted background is checked against the original Word PDF: exact page
+and rectangle counts, opaque source color, four absolute edges within 0.375pt,
+and continuity within 0.01pt at touching boundaries. Additional vectors,
+translucent edge pieces, white erasure and missing paint fail. Negative tests
+exercise these failures; tolerances and all existing Mac references stay fixed.
+The renderer receives only source DOCX bytes and embedded font programs.
+
+Windows solid vector shading uses the authored rectangle as one opaque path.
+Body shading includes Word's horizontal padding and first-line grid leading.
+Japanese Arial text selects MS Mincho for its missing Japanese glyphs, while
+neutral note rules retain their authored Arial line box. Word/width repair
+removes ASCII pair kerning across moved line boundaries, and a soft line end
+has no Latin-to-Japanese auto space for text on the next line. The Mac geometry,
+paint and reference paths remain unchanged.
+
+Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
+borders, adjacent shading, tables, spacing, font and justification variants.
+The complete observation registry holds 407 captures / 1,318 documents / 1,279
+source byte groups, retaining earlier Word builds and exact executable hashes.
+Unmatched cases remain raw observations, including mixed-script justification,
+bordered/table shading, adjacent-paragraph continuity and one Arial 20pt
+unbalanced-space case. They are not accepted coordinate expectations.

@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T042912267Z-a4b3ed0b",
+  "captured_at_utc": "2026-11-15T04:29:12.2713596Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-column-background-yellow-cols2-compat15",
+      "source": "..\\w15-h-column-background-input-snapshots\\word-windows-edge-column-background-yellow-cols2-compat15.docx",
+      "sha256": "495487efe829a5dffa045ddacd2c5d17267eca52b24a405366220f29faa2e287",
+      "pdf": "word-windows-edge-column-background-yellow-cols2-compat15.pdf",
+      "pdf_sha256": "6d40d0a3548a80f097c568d9a482768d82f5f95b1ee20c8be6089dd6c2da91b4",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-column-background-yellow-cols2-compat15.page-001.emf",
+          "sha256": "329dd679af2d1a6bce760fe0097197fae555d34f7c7851166f7bd4f017ead8a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-column-background-yellow-cols2-compat15.page-002.emf",
+          "sha256": "e59459b13cb4b82291a2fc6eb55b2fd2ef1d094a0a593921690a3064a3d4a4ec",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1346,6 +1346,15 @@ fn balanced_space_width_px(
     {
         return None;
     }
+    // Windows captures establish the half-em width beside CJK text. Keep
+    // the existing object/repeated-space policy until those are measured too.
+    if paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && !prev_grapheme.into_iter().chain(next_grapheme).any(|text| {
+            classify_script(text) == ScriptCategory::EastAsia && text != INLINE_OBJECT_TEXT
+        })
+    {
+        return None;
+    }
     crate::line_metrics::word_balanced_space_advance_px(paragraph.word_platform, font_descriptor)
 }
 
@@ -1827,11 +1836,8 @@ pub fn implicit_latin_east_asian_gap_width(
                 0.0
             },
             if next_is_east_asia {
-                metrics.trailing_gap_px(
-                    paragraph_style
-                        .east_asian_rules
-                        .balance_single_byte_double_byte_width,
-                )
+                // The Windows face policy already incorporates balancing.
+                metrics.trailing_gap_px(false)
             } else {
                 0.0
             },
@@ -2898,6 +2904,42 @@ fn fixed_punctuation_pair_adjustment(
     Some(-0.5 * em)
 }
 
+// Keep Windows' fixed face kerning identical during initial measurement and
+// when word/width repair changes a soft-line boundary.
+fn windows_ascii_pair_adjustment(
+    style: &ResolvedRunStyle,
+    font_descriptor: &str,
+    left: u8,
+    right: u8,
+) -> Option<f64> {
+    match style.ascii_metrics_for_descriptor(font_descriptor) {
+        Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(unit_px)) => {
+            crate::line_metrics::word_windows_arial_pair_kerning_px(unit_px, left, right)
+        }
+        Some(crate::line_metrics::WordAsciiMetrics::Calibri(unit_px, false)) => {
+            crate::line_metrics::word_windows_calibri_pair_kerning_px(unit_px, left, right)
+        }
+        // Windows Word's Century W/o uses legacy kern -113/2048
+        // in plain/tracked runs, but not in its OpenType path.
+        // All three compatibility modes and explicit/default
+        // typography switches are captured in the Century matrix.
+        Some(crate::line_metrics::WordAsciiMetrics::Century(unit_px))
+            if left == b'W' && right == b'o' =>
+        {
+            Some(if style.has_font_features {
+                0.0
+            } else {
+                -113.0 * unit_px
+            })
+        }
+        Some(
+            metrics @ (crate::line_metrics::WordAsciiMetrics::YuMincho(..)
+            | crate::line_metrics::WordAsciiMetrics::YuMinchoBold(..)),
+        ) if style.has_font_features => metrics.pair_kerning_px(left, right),
+        _ => None,
+    }
+}
+
 /// Like [`compute_text_advance_step`], but the caller supplies the already
 /// classified script and resolved font descriptor/hash. The hot wrap loop
 /// computes these once per grapheme, so this avoids re-classifying the script
@@ -3087,36 +3129,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                         )
                     })
             } else if style.enable_pair_kerning {
-                match style.ascii_metrics_for_descriptor(font_descriptor) {
-                    Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(unit_px)) => {
-                        crate::line_metrics::word_windows_arial_pair_kerning_px(
-                            unit_px, left, right,
-                        )
-                    }
-                    Some(crate::line_metrics::WordAsciiMetrics::Calibri(unit_px, false)) => {
-                        crate::line_metrics::word_windows_calibri_pair_kerning_px(
-                            unit_px, left, right,
-                        )
-                    }
-                    // Windows Word's Century W/o uses legacy kern -113/2048
-                    // in plain/tracked runs, but not in its OpenType path.
-                    // All three compatibility modes and explicit/default
-                    // typography switches are captured in the Century matrix.
-                    Some(crate::line_metrics::WordAsciiMetrics::Century(unit_px))
-                        if left == b'W' && right == b'o' =>
-                    {
-                        Some(if style.has_font_features {
-                            0.0
-                        } else {
-                            -113.0 * unit_px
-                        })
-                    }
-                    Some(
-                        metrics @ (crate::line_metrics::WordAsciiMetrics::YuMincho(..)
-                        | crate::line_metrics::WordAsciiMetrics::YuMinchoBold(..)),
-                    ) if style.has_font_features => metrics.pair_kerning_px(left, right),
-                    _ => None,
-                }
+                windows_ascii_pair_adjustment(style, font_descriptor, left, right)
             } else {
                 None
             }
@@ -8990,16 +9003,11 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         }
     }
 
-    let initial_soft_starts: Vec<usize> =
-        if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac {
-            lines
-                .windows(2)
-                .filter(|pair| pair[0].break_kind == LineBreakKind::Soft)
-                .filter_map(|pair| pair[1].clusters.first().map(|cluster| cluster.start))
-                .collect()
-        } else {
-            Vec::new()
-        };
+    let initial_soft_starts: Vec<usize> = lines
+        .windows(2)
+        .filter(|pair| pair[0].break_kind == LineBreakKind::Soft)
+        .filter_map(|pair| pair[1].clusters.first().map(|cluster| cluster.start))
+        .collect();
     prevent_mid_word_breaks(text, paragraph_style, base_available, &mut lines);
     enforce_line_start_rules(paragraph_style, &mut lines);
     // The kinsoku repair moves single characters: one that may not start a
@@ -9068,6 +9076,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         )?;
     }
     reconcile_mac_cjk_wrap_kerning(ctx, paragraph_style, &initial_soft_starts, &mut lines)?;
+    if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows {
+        reconcile_windows_ascii_wrap_kerning(
+            ctx,
+            paragraph_style,
+            &initial_soft_starts,
+            &mut lines,
+        )?;
+        drop_windows_line_end_auto_space(&mut lines);
+    }
     if text.contains('\u{ad}') {
         hyphenate::show_discretionary_hyphens(ctx, &mut lines, paragraph_style, base_available)?;
     }
@@ -10849,6 +10866,120 @@ fn reconcile_mac_cjk_wrap_kerning<C: LineWrapContext>(
                 descriptor,
                 previous.text.as_str(),
                 current.text.as_str(),
+            ) {
+                let delta = direction * kern * style.text_scale_x.max(0.01);
+                right.leading_advance += delta;
+                current.width += delta;
+            }
+        }
+        Ok(())
+    };
+    for index in 0..lines.len() {
+        let (before, remaining) = lines.split_at_mut(index);
+        let line = &mut remaining[0];
+        let (Some(first), Some(last)) = (line.clusters.first(), line.clusters.last()) else {
+            continue;
+        };
+        let (first_start, last_start) = (first.start, last.start);
+        let next_start = initial_soft_starts.partition_point(|start| *start <= first_start);
+        if next_start == 0 || initial_soft_starts[next_start - 1] != first_start {
+            if let Some(previous) = before
+                .last()
+                .filter(|line| line.break_kind == LineBreakKind::Soft)
+                .and_then(|line| line.clusters.last())
+            {
+                adjust(previous, &mut line.clusters[0], &line.segments, -1.0)?;
+            }
+        }
+        for &removed_start in initial_soft_starts[next_start..]
+            .iter()
+            .take_while(|start| **start <= last_start)
+        {
+            if let Ok(cluster_index) = line
+                .clusters
+                .binary_search_by_key(&removed_start, |cluster| cluster.start)
+            {
+                let (left, right) = line.clusters.split_at_mut(cluster_index);
+                adjust(&left[cluster_index - 1], &mut right[0], &line.segments, 1.0)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+// The Latin-to-CJK auto space belongs only between characters on the same
+// line. Retaining it after a soft wrap shifts centered/right-aligned lines.
+fn drop_windows_line_end_auto_space(lines: &mut [WrappedLine]) {
+    for line in lines {
+        if line.break_kind != LineBreakKind::Soft {
+            continue;
+        }
+        let Some(last) = line.clusters.last_mut() else {
+            continue;
+        };
+        let gap = last.auto_space_trailing;
+        if gap <= 0.0 {
+            continue;
+        }
+        if let Some(layout) = last.layout.as_mut() {
+            layout.glyph_box_width -= gap;
+        }
+        last.width -= gap;
+        last.auto_space_trailing = 0.0;
+    }
+}
+
+// A word moved to the next line no longer has the preceding line's space-A
+// kerning. Restore it only if that original line boundary is later joined.
+// Adjust the pair contribution alone: grid, ruby and ADVANCE offsets survive.
+fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
+    ctx: &C,
+    paragraph_style: &ParagraphStyle,
+    initial_soft_starts: &[usize],
+    lines: &mut [WrappedLine],
+) -> Result<(), C::Error> {
+    if initial_soft_starts.is_empty() {
+        return Ok(());
+    }
+    let adjust = |previous: &InlineCluster,
+                  current: &mut InlineCluster,
+                  segments: &[TextSegment],
+                  direction: f64|
+     -> Result<(), C::Error> {
+        let (Some(left), Some(right)) = (&previous.layout, &mut current.layout) else {
+            return Ok(());
+        };
+        if previous.end != current.start
+            || !previous
+                .text
+                .bytes()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == b' ')
+            || !current.text.bytes().all(|ch| ch.is_ascii_alphanumeric())
+            || previous.text.len() != 1
+            || current.text.len() != 1
+            || right.script != ScriptCategory::Latin
+            || left.font_descriptor_hash != right.font_descriptor_hash
+            || paragraph_style
+                .oracle_advance_px_by_text_offset
+                .as_ref()
+                .is_some_and(|advances| advances.contains_key(&current.start))
+        {
+            return Ok(());
+        }
+        let Some(segment) = segments
+            .iter()
+            .find(|segment| segment.start <= current.start && current.end <= segment.end)
+        else {
+            return Ok(());
+        };
+        let style = ctx.resolve_run_style(segment.properties.as_deref())?;
+        if style.enable_pair_kerning && style.measures_letter_pairs() {
+            let descriptor = style.descriptor_for_slot(right.font_slot);
+            if let Some(kern) = windows_ascii_pair_adjustment(
+                &style,
+                descriptor,
+                previous.text.as_bytes()[0],
+                current.text.as_bytes()[0],
             ) {
                 let delta = direction * kern * style.text_scale_x.max(0.01);
                 right.leading_advance += delta;
@@ -19468,6 +19599,94 @@ mod tests {
         assert!(contains_fit_text_control("横浜\tab"));
         assert!(contains_fit_text_control("横浜\nab"));
         assert!(contains_fit_text_control("横浜\u{000c}ab"));
+    }
+
+    #[test]
+    fn windows_wrapped_latin_end_has_no_auto_space_for_the_next_line() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut ctx = TestContext::new(10.0);
+        ctx.style = ResolvedRunStyle::new(
+            "20.00pt 'Yu Mincho'",
+            "20.00pt 'Yu Mincho'",
+            "20.00pt 'Yu Mincho'",
+            "20.00pt 'Yu Mincho'",
+            0.0,
+            1.0,
+            true,
+            None,
+        );
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            enable_line_break_rules: true,
+            east_asian_rules: EastAsianLineBreakingRules {
+                use_east_asian_layout: true,
+                auto_space_de: Some(true),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let text = "Ag日本語Ag日本語Ag日本語Ag日本語";
+        let mut latin_line_ends = 0;
+        let mut interior_auto_spaces = 0;
+        for width in [35.0, 45.0, 55.0, 65.0, 75.0, 85.0, 95.0] {
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, width)
+                    .unwrap();
+            for line in &lines {
+                if line.break_kind == LineBreakKind::Soft {
+                    if let Some(last) = line.clusters.last().filter(|c| c.text == "g") {
+                        latin_line_ends += 1;
+                        assert_eq!(last.auto_space_trailing, 0.0);
+                    }
+                }
+                interior_auto_spaces += line
+                    .clusters
+                    .iter()
+                    .filter(|c| c.auto_space_trailing > 0.0)
+                    .count();
+            }
+        }
+        assert!(latin_line_ends > 0, "exercise a Latin-to-CJK wrap");
+        assert!(interior_auto_spaces > 0, "retain spacing within the line");
+    }
+
+    #[test]
+    fn windows_word_repair_removes_cross_line_ascii_kerning() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut ctx = TestContext::new(10.0);
+        ctx.style = ResolvedRunStyle::new(
+            "12.00pt Arial",
+            "12.00pt Arial",
+            "12.00pt Arial",
+            "12.00pt Arial",
+            0.0,
+            1.0,
+            true,
+            None,
+        );
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            ..ParagraphStyle::default()
+        };
+        let text = "Ag ABCxyz0123 paragraph shading geometry. Ag ABCxyz0123 paragraph";
+        let mut repaired_a_starts = 0;
+        for width in [80.0, 100.0, 120.0, 140.0, 160.0, 180.0, 200.0] {
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, width)
+                    .unwrap();
+            for line in lines.iter().skip(1) {
+                if let Some(first) = line.clusters.first().filter(|c| c.text == "A") {
+                    repaired_a_starts += 1;
+                    assert!(
+                        first.layout.as_ref().unwrap().leading_advance.abs() < 1e-9,
+                        "width {width}: line-start A retains pair kerning"
+                    );
+                }
+            }
+        }
+        assert!(repaired_a_starts > 0, "exercise a space-A wrap boundary");
     }
 
     #[test]

@@ -22514,7 +22514,24 @@ where
                     (style, border_extent, underline_depth)
                 }
             };
-            let faces = self.word_run_faces(&style.resolved, east_asian_faces_size_lines);
+            let faces = if run.note_separator.is_some()
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                let effective =
+                    self.effective_run_properties_rc(paragraph, run.properties.as_ref());
+                let authored = jade_docx_layout::font_resolver::neutral_rule_east_asia_descriptor(
+                    &style.resolved,
+                    effective.as_deref(),
+                );
+                WordRunFaces::new(
+                    &style.resolved.font_descriptor_latin_ascii,
+                    &authored,
+                    east_asian_faces_size_lines,
+                )
+            } else {
+                self.word_run_faces(&style.resolved, east_asian_faces_size_lines)
+            };
             let slots = run_font_slots(run, self.document_east_asian_rules.use_east_asian_layout);
             if slots.1 {
                 if let Some(height) = faces.east_asian_line_pt {
@@ -22961,6 +22978,43 @@ where
         }
         if let Some(buf) = commands_out.as_deref_mut() {
             buf.extend(commands);
+        }
+    }
+
+    // Adjacent line backgrounds must meet at their original vector edges.
+    // Encoding each line's fractional-pixel coverage separately creates pale
+    // seams where the partially transparent edge rectangles overlap.
+    fn paint_vector_shading(
+        &self,
+        shading: &ShadingPaint,
+        rect: (f64, f64, f64, f64),
+        commands_out: &mut Option<&mut Vec<DrawCommand>>,
+    ) {
+        let Some(fill) = shading.fill.as_ref() else {
+            return;
+        };
+        let (x, y, width, height) = rect;
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+        if self.should_draw_current_page_for_render() {
+            let context = self.host.painter();
+            context.save();
+            context.set_fill_style_str(fill);
+            context.begin_path();
+            context.rect(x, y, width, height);
+            context.fill();
+            context.restore();
+            self.reset_fill_style_state();
+        }
+        if let Some(buf) = commands_out.as_deref_mut() {
+            buf.push(DrawCommand::FillVectorRect {
+                x,
+                y,
+                width,
+                height,
+                color: Rc::clone(fill),
+            });
         }
     }
 
@@ -24542,15 +24596,36 @@ where
             // paragraph content box (left indent → right indent) and is the
             // same width on every line, matching Word's paragraph shading.
             if let Some(shading) = paragraph_shading.as_ref() {
-                let band_x = paragraph_base_x;
-                if let Some(band_w) =
-                    paragraph_shading_band_width(paragraph_base_x, default_right_limit)
-                {
-                    self.paint_shading(
-                        shading,
-                        (band_x, top, band_w, line_box_height),
-                        &mut commands_out,
-                    );
+                let windows_shading = paragraph_style.word_platform
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    && paragraph_borders.is_none();
+                let (band_x, band_top, band_right) = if windows_shading {
+                    // Independent Windows Word captures keep 0.02 inch of
+                    // shading beyond each paragraph edge, including a negative
+                    // first-line indent. Only the first grid line omits its
+                    // leading blank area; later lines shade the whole pitch.
+                    let padding = points_to_px(1.44);
+                    let first_leading =
+                        if line_index == 0 && paragraph_style.word_grid_line_sizing.is_some() {
+                            top_leading.max(0.0)
+                        } else {
+                            0.0
+                        };
+                    (
+                        paragraph_base_x + paragraph_style.first_line_indent.min(0.0) - padding,
+                        top + first_leading,
+                        default_right_limit + padding,
+                    )
+                } else {
+                    (paragraph_base_x, top, default_right_limit)
+                };
+                if let Some(band_w) = paragraph_shading_band_width(band_x, band_right) {
+                    let rect = (band_x, band_top, band_w, top + line_box_height - band_top);
+                    if windows_shading && self.page_export_mode && shading.pattern.is_none() {
+                        self.paint_vector_shading(shading, rect, &mut commands_out);
+                    } else {
+                        self.paint_shading(shading, rect, &mut commands_out);
+                    }
                 }
             }
 

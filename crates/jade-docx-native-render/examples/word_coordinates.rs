@@ -1,5 +1,5 @@
 //! Capture the native renderer's unaligned glyph origins in PDF points.
-//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables] [--password-file file] [--fonts-directory directory]
+//! Usage: word_coordinates document.docx output.json [mac|windows] [vector.pdf] [--unclipped-tables] [--password-file file] [--fonts-directory directory] [--line-details]
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 use jade_docx_native_render::{
     system_fonts, FontFace, NativeDocument, PdfExportOptions, PdfRenderingMode,
@@ -29,6 +29,8 @@ fn main() {
             assert!(directory.is_dir(), "font directory does not exist");
             directory
         });
+    let line_details = args.iter().any(|arg| arg == "--line-details");
+    args.retain(|arg| arg != "--line-details");
     let unclipped_tables = args.iter().any(|arg| arg == "--unclipped-tables");
     args.retain(|arg| arg != "--unclipped-tables");
     assert!(args.len() >= 3, "document.docx output.json [mac|windows]");
@@ -90,6 +92,7 @@ fn main() {
     assert!(snapshot.complete, "incomplete glyph capture");
     let mut lines = snapshot.body_lines;
     lines.extend(snapshot.auxiliary_lines.into_iter().map(|entry| entry.line));
+    let detailed_lines = line_details.then(|| serde_json::to_value(&lines).unwrap());
     let mut glyphs = Vec::new();
     for line in lines {
         for fragment in line.fragments {
@@ -106,7 +109,10 @@ fn main() {
             }
         }
     }
-    let result = json!({"input_sha256": input_sha256, "render_input_sha256": render_input_sha256, "password_provided": password_file.is_some(), "page_count": doc.page_count(), "table_glyph_projection": if unclipped_tables {"unclipped"} else {"visible"}, "glyphs": glyphs, "fonts": faces.iter().map(|f| json!({"family": f.family, "path": f.path, "index": f.index, "weight": f.weight, "italic": f.italic})).collect::<Vec<_>>()});
+    let mut result = json!({"input_sha256": input_sha256, "render_input_sha256": render_input_sha256, "password_provided": password_file.is_some(), "page_count": doc.page_count(), "table_glyph_projection": if unclipped_tables {"unclipped"} else {"visible"}, "glyphs": glyphs, "fonts": faces.iter().map(|f| json!({"family": f.family, "path": f.path, "index": f.index, "weight": f.weight, "italic": f.italic})).collect::<Vec<_>>()});
+    if let Some(lines) = detailed_lines {
+        result["line_details"] = lines;
+    }
     std::fs::write(&args[2], serde_json::to_vec_pretty(&result).unwrap()).unwrap();
     if let Some(pdf_path) = args.get(4) {
         let pdf = doc

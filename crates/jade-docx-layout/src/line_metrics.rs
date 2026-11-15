@@ -932,7 +932,10 @@ pub fn word_balanced_space_advance_px(
     platform: WordLayoutPlatform,
     font_descriptor: &str,
 ) -> Option<f64> {
-    word_automatic_note_separator_advance_px(platform, font_descriptor)
+    // The caller has already checked the balancing flag and the neighbour.
+    // The Windows on/off captures confirm the same half-em box; the normal
+    // font's pair kerning still applies to the following glyph.
+    word_note_separator_advance_px(platform, font_descriptor, true)
 }
 
 /// The family stack [`word_numbering_suffix_space_descriptor`] measures a
@@ -1019,6 +1022,12 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
         return Some(WordAutoSpace {
             em_px: f64::from(size_pt) * 96.0 / 72.0,
             trailing_share: 1.0,
+        });
+    }
+    if family == "Arial" && font_descriptor_style(font_descriptor) == (false, false) {
+        return Some(WordAutoSpace {
+            em_px: f64::from(size_pt) * 96.0 / 72.0,
+            trailing_share: 2.0 * 904.0 / 2048.0,
         });
     }
     if family != "Times New Roman" {

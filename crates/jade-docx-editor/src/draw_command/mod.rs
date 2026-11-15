@@ -291,6 +291,16 @@ pub enum DrawCommand {
         color: Rc<str>,
     },
 
+    /// Fill a vector rectangle through a path, retaining fractional PDF edges.
+    /// Used for contiguous Windows print backgrounds, rather than live pixel coverage.
+    FillVectorRect {
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        color: Rc<str>,
+    },
+
     /// Stroke an open polyline (wavy and stroked border rules).
     StrokePolyline {
         points: Rc<[(f64, f64)]>,
@@ -475,6 +485,19 @@ impl DrawCommand {
                 height,
                 color,
             } => DrawCommand::FillRect {
+                x: *x,
+                y: *y + offset,
+                width: *width,
+                height: *height,
+                color: color.clone(),
+            },
+            DrawCommand::FillVectorRect {
+                x,
+                y,
+                width,
+                height,
+                color,
+            } => DrawCommand::FillVectorRect {
                 x: *x,
                 y: *y + offset,
                 width: *width,
