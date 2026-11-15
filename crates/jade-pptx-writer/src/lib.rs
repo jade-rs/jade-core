@@ -1384,8 +1384,16 @@ mod slide_part_name_tests {
         let expected = jade_pptx_reader::read_pptx(bytes).unwrap().slides;
         let package = OpcPackage::open_preserving(bytes).unwrap();
         for (i, slide) in expected.iter().enumerate() {
-            assert_eq!(slide_part_name(&package, i).unwrap(), slide.part_name, "{name} #{i}");
-            assert_eq!(slide_xml(bytes, i).unwrap().1, slide.part_name, "{name} #{i}");
+            assert_eq!(
+                slide_part_name(&package, i).unwrap(),
+                slide.part_name,
+                "{name} #{i}"
+            );
+            assert_eq!(
+                slide_xml(bytes, i).unwrap().1,
+                slide.part_name,
+                "{name} #{i}"
+            );
         }
         let n = expected.len();
         assert!(matches!(slide_part_name(&package, n), Err(WriteError::NoSlide(i)) if i == n));
@@ -1410,7 +1418,11 @@ mod slide_part_name_tests {
             saw_multi = true;
             let swapped = reversed(bytes);
             let after = jade_pptx_reader::read_pptx(&swapped).unwrap().slides;
-            assert_eq!(after.first().map(|s| &s.part_name), original.last().map(|s| &s.part_name), "{name}");
+            assert_eq!(
+                after.first().map(|s| &s.part_name),
+                original.last().map(|s| &s.part_name),
+                "{name}"
+            );
             check(name, &swapped);
         }
         assert!(saw_multi, "no multi-slide fixture");
