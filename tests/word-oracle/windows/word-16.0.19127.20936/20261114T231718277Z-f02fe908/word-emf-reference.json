@@ -1,0 +1,98 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261114T231718277Z-f02fe908",
+  "captured_at_utc": "2026-11-14T23:17:18.2814682Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "char-spacing",
+      "docx_sha256": "6064f2d4aa131ac92bc583e1e0c119e955b3d32af49222cf640801ab3a04e2c1",
+      "pdf_sha256": "bcb285d6c8c4afb22787dead9411c48f604e67e5bf5fc87309a3860097a1c5e8",
+      "pdf_file": "char-spacing.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "char-spacing.page-001.emf",
+          "sha256": "a824bad9f9b2dbe5496fd95aa237972cac9085f0d008d7d9ac295754c91fb761",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "H",
+          85.07714170530134,
+          111.95734036488028
+        ],
+        [
+          1,
+          "e",
+          123.71584357992339,
+          111.95734036488028
+        ],
+        [
+          1,
+          "l",
+          158.87466236645835,
+          111.95734036488028
+        ],
+        [
+          1,
+          "l",
+          191.63356178189878,
+          111.95734036488028
+        ],
+        [
+          1,
+          "o",
+          224.51245716589395,
+          111.95734036488028
+        ],
+        [
+          1,
+          "W",
+          292.79016327353355,
+          111.95734036488028
+        ],
+        [
+          1,
+          "o",
+          333.2288046764765,
+          111.95734036488028
+        ],
+        [
+          1,
+          "r",
+          368.86760733723037,
+          111.95734036488028
+        ],
+        [
+          1,
+          "l",
+          402.82646643821806,
+          111.95734036488028
+        ],
+        [
+          1,
+          "d",
+          435.7053618222132,
+          111.95734036488028
+        ]
+      ]
+    }
+  ]
+}

@@ -25898,18 +25898,27 @@ where
                         last_forbid_line_start,
                         is_hanging_punctuation,
                     });
-                let clear_x = right_limit.floor();
-                let clear_width = (line_layout.visual_end_x().ceil() - clear_x).max(1.0);
-                if draw_enabled {
-                    context.clear_rect(clear_x, clip_top, clear_width, clip_height);
-                }
-                if let Some(buf) = commands_out.as_deref_mut() {
-                    buf.push(DrawCommand::ClearRect {
-                        x: clear_x,
-                        y: clip_top,
-                        width: clear_width,
-                        height: clip_height,
-                    });
+                // The printable Windows page already clips each line above,
+                // including its permitted trailing whitespace/punctuation.
+                // Painting paper after restoring that clip adds erasure boxes
+                // over the gutter and any content behind the text.
+                if !(self.page_export_mode
+                    && jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
+                {
+                    let clear_x = right_limit.floor();
+                    let clear_width = (line_layout.visual_end_x().ceil() - clear_x).max(1.0);
+                    if draw_enabled {
+                        context.clear_rect(clear_x, clip_top, clear_width, clip_height);
+                    }
+                    if let Some(buf) = commands_out.as_deref_mut() {
+                        buf.push(DrawCommand::ClearRect {
+                            x: clear_x,
+                            y: clip_top,
+                            width: clear_width,
+                            height: clip_height,
+                        });
+                    }
                 }
             }
 
@@ -45070,6 +45079,64 @@ mod tests {
         });
         assert!(renderer.last_fast_replay_stable());
         assert_eq!(regions(&renderer), before);
+    }
+
+    #[test]
+    fn windows_print_overflow_uses_the_line_clip_without_erasing_the_gutter() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_painter::recording::Op;
+        let previous = jade_docx_layout::line_metrics::word_layout_platform();
+        let model = futures::executor::block_on(WordDocument::load(
+            include_bytes!("../../../public/fixtures/2col.docx"),
+            &Options::default(),
+        ))
+        .unwrap();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            for exporting in [false, true] {
+                set_word_layout_platform(platform);
+                let (mut renderer, painter) = recording_renderer();
+                renderer.set_style_context(
+                    model.styles_part.clone().map(Rc::new),
+                    model.loaded_theme_part().map(Rc::new),
+                );
+                renderer.set_page_export_mode(exporting);
+                renderer
+                    .render(model.document.as_ref().unwrap(), &Options::default())
+                    .unwrap();
+                let overflows = renderer.line_overflow_debug_regions();
+                assert!(
+                    !overflows.is_empty(),
+                    "the original must exercise overflowing lines"
+                );
+                let erasures = painter
+                    .ops()
+                    .iter()
+                    .filter(|op| {
+                        matches!(op, Op::ClearRect(x, _, _, _) if overflows.iter().any(|line|
+                        (*x - line.right_limit_x.floor()).abs() < 1e-6))
+                    })
+                    .count();
+                if platform == WordLayoutPlatform::Windows && exporting {
+                    assert_eq!(
+                        erasures, 0,
+                        "print must not paint paper after the line clip"
+                    );
+                } else {
+                    assert!(
+                        erasures > 0,
+                        "Mac paint and the interactive canvas keep their existing erasures"
+                    );
+                }
+                assert!(
+                    painter
+                        .ops()
+                        .iter()
+                        .any(|op| matches!(op, Op::FillText(..))),
+                    "suppressing erasures must preserve the text"
+                );
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

@@ -35,8 +35,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 427 font/typography
-documents (104,679 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 431 font/typography
+documents (107,302 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -117,3 +117,20 @@ its width is two inches. Mac paint and existing Mac references are unchanged.
 The [Windows table identity and row controls](windows/TABLE_ROW_PROBES.md) retain
 88 additional accepted originals plus two unchanged recaptures. The platform
 expectations stay independent; Mac reference files and tolerances are unchanged.
+
+Windows column overflow and preserved background observations
+-----------------------------------------------------------
+
+The original `2col`, `align-center`, `char-spacing` and `character-styles`
+fixtures add four strict coordinate/no-vector-ink assertions using their
+unchanged Word 16.0.19127.20936 captures. In the two-column vector PDF, painting
+paper after restoring a line clip produced white rectangles absent from Word.
+Windows vector export now relies on its existing line clip; interactive canvas
+and all Mac paths retain their prior paint behavior. The gate still rejects
+white fills after text or images, including fills that erase a background.
+
+Four additional original green/yellow paragraph-background captures, each with
+one/two columns, are retained as versioned raw observations with their source
+bytes. They are not accepted shading geometry: their text passes all four
+coordinate comparisons, but paragraph-background edges still differ from Word.
+Their original PDF/EMF evidence must remain available for that follow-up fix.
