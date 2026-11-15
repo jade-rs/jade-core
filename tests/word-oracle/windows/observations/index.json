@@ -18823,6 +18823,282 @@
           "opened_filename": "word-windows-edge-manual-size-yu22-width206p25-balance1-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122720798Z-47a36f2f.zip",
+      "archive_sha256": "5f30a69510507b48ee1916c4d22e2a403ed3dac549af266275c383bdfbf1eae3",
+      "capture_id": "20261115T122720798Z-47a36f2f",
+      "capture_sha256": "6c6222b0ce49d7630642bbfd9c46e70d893d22a7b4222bab02eb7450340a8621",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu12-both-width121p2-balance0-compat15",
+          "source_sha256": "3bf44b8a91262c9874749aacd482f9065d314cfc548976f453baa6f10c914a09",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu12-both-width121p2-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu12-both-width121p2-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122724450Z-1088d7bd.zip",
+      "archive_sha256": "c11dc70743b4f89f0e9420def40bbfbf2a9c7eda757b621e66df67b335b15ab1",
+      "capture_id": "20261115T122724450Z-1088d7bd",
+      "capture_sha256": "f43ab044c963416db77beeba0f0ed1f06482db9b5f7e32dbe44dfc4dd0bcdbed",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu12-both-width121p2-balance1-compat15",
+          "source_sha256": "4a45976ce9d79fcd8c9f2bbcecbd5b675d94c32a10185cc1a57070739209e8ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu12-both-width121p2-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu12-both-width121p2-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122727302Z-5ed79d3d.zip",
+      "archive_sha256": "8a1a8f904d5c819be5c963adb13cb49add5dff3b43a50beea3eb90fe031f4ecb",
+      "capture_id": "20261115T122727302Z-5ed79d3d",
+      "capture_sha256": "149be0102be44cae3b64c3ca55240ae91d2efe4f3a70a7bcc6117f98eed272e2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu12-left-balance0-compat15",
+          "source_sha256": "22e0df66040009526c298fbd5c9471cf0d555fd1aa383c34264046ab71d84dfa",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu12-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu12-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122728705Z-dd5362dc.zip",
+      "archive_sha256": "73a1346510048fff943194317fffb53dccec96f55e7c61fd18d14ca248cb85f5",
+      "capture_id": "20261115T122728705Z-dd5362dc",
+      "capture_sha256": "2b0feda7c0d1ba29f24037a84ae9761ab18e0d2188ec5513b41a815713985d29",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu12-left-balance1-compat15",
+          "source_sha256": "9cf6593308bdc2fb27b1ddfc054f3aa3743ac5a3be0ebc81d2ae0ce1abf5ec9a",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu12-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu12-left-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122730179Z-45282580.zip",
+      "archive_sha256": "ee2c000a669dede9fb13b2d566db48a091843702a54837baa3a2d3f1c1089638",
+      "capture_id": "20261115T122730179Z-45282580",
+      "capture_sha256": "4e51b742ac3cccd3c72020623cb56874e1f1f0ea7b3d620f6cdeb2f2496a4585",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu18-both-width181p8-balance0-compat15",
+          "source_sha256": "40a49e3b31b28541d2354d9729ff85f4fd8dfcf602691015b6214ac24a8aa309",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu18-both-width181p8-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu18-both-width181p8-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122735559Z-c0e907a5.zip",
+      "archive_sha256": "ec9f32f5f5979f50fe5ed1cc2399ca01006a742138cfbe00214b35f70bb1b9a9",
+      "capture_id": "20261115T122735559Z-c0e907a5",
+      "capture_sha256": "d22999c488bb42b5b67640caef000526c78df81d4f59d8098b8f290d95636216",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu18-both-width181p8-balance1-compat15",
+          "source_sha256": "b242aa491ae315f0c3db5822c2cd217c1ac750b8a6afd6e6664376b53a6944d5",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu18-both-width181p8-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu18-both-width181p8-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122738454Z-586f7f76.zip",
+      "archive_sha256": "a31a4fd29f540491de5409e0ccd45570b48832ad9afb3b84965cf857840d87d7",
+      "capture_id": "20261115T122738454Z-586f7f76",
+      "capture_sha256": "1c616600d712c2ab4f229a73d38dff141d1ef7afaf8126a9fc6b150902e13cf7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu18-left-balance0-compat15",
+          "source_sha256": "a52cccf5dd532931e3595b898c1bd9716cdbdbca1f63ed231433a04b99aefaf8",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu18-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu18-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122741230Z-5a109c48.zip",
+      "archive_sha256": "e2ea17606a8c67d2aade2307a07f1b1882f6cfb3da937564e6d0b9b03b0a30a8",
+      "capture_id": "20261115T122741230Z-5a109c48",
+      "capture_sha256": "2b42a36d25aa0352e984b5f6e0636616cc423ffcdb12eb406557f6be5c96e007",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu18-left-balance1-compat15",
+          "source_sha256": "aaca3f7140822f8a8e27ad1a467a34a4f3ac69c2294b1f705e49dc7b674395ee",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu18-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu18-left-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122744127Z-9bb9696f.zip",
+      "archive_sha256": "82bc947783a58cacf14bb1d68027a426c31d5c9d4134230f3efc5dd3636d2b49",
+      "capture_id": "20261115T122744127Z-9bb9696f",
+      "capture_sha256": "b48c198f3e55f1c21a9bebee35374cac87368ea2c88fabf5213135f2cb1c990b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15",
+          "source_sha256": "4fe5bcef9eea15037bdc8908b1157a33d6a7bbdcbb7f5baec0150bb3612d09b0",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122745568Z-9f285d10.zip",
+      "archive_sha256": "bf1b0d954175623626fb4ae71380110c18720acd8110308b0a7c4bb247d477ab",
+      "capture_id": "20261115T122745568Z-9f285d10",
+      "capture_sha256": "376c58d612a8fb2a474cb1a799b6f714dcdd89324bc53ea3f01c946e4ecc24a6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu22-both-width222p2-balance1-compat15",
+          "source_sha256": "c71d55531525b9406697cad9e7d4018fa91eac83bb9c6d143a193e7072c1dc49",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu22-both-width222p2-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu22-both-width222p2-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122748431Z-2c515c32.zip",
+      "archive_sha256": "127670953bc88b88afb2f86875fb8b7b8a0c0b5e6c5da901e4ab9a14295a682b",
+      "capture_id": "20261115T122748431Z-2c515c32",
+      "capture_sha256": "5a8cf67df2e0bcd0a80425b64a2038583cc96db63fcb98ee4b542365388f0342",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu22-left-balance0-compat15",
+          "source_sha256": "13c7d641f75f28cf6fe6bf28688ed647f36b407d1c1c31b4691de49c50a88bab",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu22-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu22-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T122752052Z-bb1835d5.zip",
+      "archive_sha256": "5c2e0b92fee1b9bfae934c2c03cb1e17aa08e39d8a1b7e3eb61da2107bb992ca",
+      "capture_id": "20261115T122752052Z-bb1835d5",
+      "capture_sha256": "56ad85fd049f3eda71e4462871837765afa2d15c93143b142f51de68c5f27d84",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-small-slack-yu22-left-balance1-compat15",
+          "source_sha256": "eccd444c2e408e0cfa1eb69a712513d3a966431253de806f12e2460e827cfe83",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-small-slack-yu22-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-small-slack-yu22-left-balance1-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

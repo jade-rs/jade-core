@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T122727302Z-5ed79d3d",
+  "captured_at_utc": "2026-11-15T12:27:27.3068074Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-small-slack-yu12-left-balance0-compat15",
+      "docx_sha256": "22e0df66040009526c298fbd5c9471cf0d555fd1aa383c34264046ab71d84dfa",
+      "pdf_sha256": "172c2ddccab285a12d13a0647f95331dce7951f73407d919bf98244508684f44",
+      "pdf_file": "word-windows-edge-small-slack-yu12-left-balance0-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-small-slack-yu12-left-balance0-compat15.page-001.emf",
+          "sha256": "82a0e03ec08c1881b054f01670c38822e55e52ac6b61ed3ec583c17938d07291",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          121.55711231470924
+        ],
+        [
+          1,
+          "g",
+          93.59685547268695,
+          121.55711231470924
+        ],
+        [
+          1,
+          "日",
+          102.83654505140092,
+          121.55711231470924
+        ],
+        [
+          1,
+          "本",
+          114.8361419068736,
+          121.55711231470924
+        ],
+        [
+          1,
+          "語",
+          126.83573876234628,
+          121.55711231470924
+        ],
+        [
+          1,
+          "A",
+          141.95523080024188,
+          121.55711231470924
+        ],
+        [
+          1,
+          "B",
+          150.4749445676275,
+          121.55711231470924
+        ],
+        [
+          1,
+          "C",
+          158.75466639790363,
+          121.55711231470924
+        ],
+        [
+          1,
+          "A",
+          170.6342672848216,
+          121.55711231470924
+        ],
+        [
+          1,
+          "B",
+          179.1539810522072,
+          121.55711231470924
+        ],
+        [
+          1,
+          "C",
+          187.43370288248335,
+          121.55711231470924
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          157.55625712656786
+        ]
+      ]
+    }
+  ]
+}
