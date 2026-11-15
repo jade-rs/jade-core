@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T144701440Z-03148e05",
+  "captured_at_utc": "2026-11-15T14:47:01.4437895Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-default-hint-calibri-size12-left-hinteastAsia-balance1-compat15",
+      "source": "tmp\\w15-y-default-hint-input-snapshots\\word-windows-edge-default-hint-calibri-size12-left-hinteastAsia-balance1-compat15.docx",
+      "sha256": "9b8a5e9db6db71d56eaf0cc8214e2de848b46f997e2bbb7f5883dcd890ec71d5",
+      "pdf": "word-windows-edge-default-hint-calibri-size12-left-hinteastAsia-balance1-compat15.pdf",
+      "pdf_sha256": "f2bf5430be1c15b339e205bdbca2d5db3ebb66da2e9008d7737eb221ee624663",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-default-hint-calibri-size12-left-hinteastAsia-balance1-compat15.page-001.emf",
+          "sha256": "8b43cda49f78942f392ecdc8cd2edc7579a8f63c3262e3a2b2aeded03102817a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1363,33 +1363,66 @@ fn balanced_space_width_px(
 // slots request Arial, including with an explicit East Asia hint.
 fn windows_balanced_distinct_script_face(style: &ResolvedRunStyle) -> bool {
     style.has_distinct_requested_east_asia_font()
+        && !style.uses_requested_latin_east_asia_fallback()
 }
 
-fn windows_balanced_arial_trailing_gap(
+// For a requested Latin East Asian face Windows uses the Latin font's
+// OS/2 average-width cell beside Japanese, without ordinary-space kerning.
+// Word 16.0.19127.20936 B/T/A controls distinguish it from half-em + kerning.
+fn windows_balanced_latin_space_advance(
+    paragraph: Option<&ParagraphStyle>,
+    descriptor: &str,
+    style: &ResolvedRunStyle,
+) -> Option<f64> {
+    let paragraph = paragraph?;
+    if paragraph.word_platform != crate::line_metrics::WordLayoutPlatform::Windows
+        || !paragraph
+            .east_asian_rules
+            .balance_single_byte_double_byte_width
+        || !style.uses_requested_latin_east_asia_fallback()
+    {
+        return None;
+    }
+    crate::line_metrics::word_windows_balanced_latin_space_advance_px(descriptor)
+}
+
+fn windows_balanced_latin_trailing_gap(
     paragraph: &ParagraphStyle,
     descriptor: Option<&str>,
     resolved: Option<&ResolvedRunStyle>,
     trailing: f64,
 ) -> f64 {
-    if trailing > 0.0
-        && paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
-        && paragraph
+    if trailing <= 0.0
+        || paragraph.word_platform != crate::line_metrics::WordLayoutPlatform::Windows
+        || !paragraph
             .east_asian_rules
             .balance_single_byte_double_byte_width
-        && resolved.is_some_and(windows_balanced_distinct_script_face)
     {
-        if let Some(descriptor) = descriptor {
-            if matches!(
-                crate::line_metrics::word_ascii_metrics(descriptor),
-                Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(_))
-            ) {
-                if let Some(metrics) =
-                    crate::line_metrics::word_windows_latin_auto_space_metrics(descriptor, true)
-                {
-                    return metrics.leading_gap_px();
-                }
+        return trailing;
+    }
+    let (Some(descriptor), Some(style)) = (descriptor, resolved) else {
+        return trailing;
+    };
+    let Some((_, family)) = crate::line_metrics::split_font_descriptor(descriptor) else {
+        return trailing;
+    };
+    let family = family.trim().trim_matches(['\'', '"']);
+    match family {
+        "Arial" if windows_balanced_distinct_script_face(style) => {
+            if let Some(metrics) =
+                crate::line_metrics::word_windows_latin_auto_space_metrics(descriptor, true)
+            {
+                return metrics.leading_gap_px();
             }
         }
+        "Calibri" if style.uses_requested_latin_east_asia_fallback() => {
+            if let Some(metrics) =
+                crate::line_metrics::word_windows_latin_auto_space_metrics(descriptor, false)
+            {
+                return metrics.trailing_gap_px(false);
+            }
+        }
+        _ => {}
     }
     trailing
 }
@@ -1647,7 +1680,7 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         next_grapheme,
                         font_descriptor,
                     );
-                    trailing = windows_balanced_arial_trailing_gap(
+                    trailing = windows_balanced_latin_trailing_gap(
                         style,
                         font_descriptor,
                         resolved_style,
@@ -3332,7 +3365,13 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                     })
             } else if style.enable_pair_kerning {
                 if (left == b' ' || right == b' ')
-                    && windows_balanced_distinct_script_face(style)
+                    && (windows_balanced_distinct_script_face(style)
+                        || windows_balanced_latin_space_advance(
+                            paragraph_style,
+                            font_descriptor,
+                            style,
+                        )
+                        .is_some())
                     && windows_balanced_space_pair(
                         paragraph_style,
                         font_descriptor,
@@ -3417,6 +3456,10 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                     next_grapheme,
                     font_descriptor,
                 )
+                .map(|half_em| {
+                    windows_balanced_latin_space_advance(paragraph_style, font_descriptor, style)
+                        .unwrap_or(half_em)
+                })
             })
             .or(requested_ascii_measure),
     );
@@ -11422,7 +11465,13 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
         if style.enable_pair_kerning && style.measures_letter_pairs() {
             let descriptor = style.descriptor_for_slot(right.font_slot);
             if previous.text == " "
-                && windows_balanced_distinct_script_face(&style)
+                && (windows_balanced_distinct_script_face(&style)
+                    || windows_balanced_latin_space_advance(
+                        Some(paragraph_style),
+                        descriptor,
+                        &style,
+                    )
+                    .is_some())
                 && windows_balanced_space_pair(
                     Some(paragraph_style),
                     descriptor,
@@ -15276,6 +15325,151 @@ mod tests {
     }
 
     #[test]
+    fn windows_balanced_latin_space_cells_preserve_mac_and_japanese_faces() {
+        use crate::line_metrics::WordLayoutPlatform;
+        for (family, prefix, average) in [
+            ("Arial", "", 904.0),
+            ("Arial", "bold ", 980.0),
+            ("Arial", "italic ", 904.0),
+            ("Arial", "bold italic ", 980.0),
+            ("Calibri", "", 1067.0),
+            ("Calibri", "bold ", 1098.0),
+            ("Calibri", "italic ", 1067.0),
+            ("Calibri", "bold italic ", 1099.0),
+        ] {
+            for size in [12.0, 20.0, 24.0] {
+                let descriptor = format!("{prefix}{size:.2}pt {family}");
+                for east in ["Arial", "Calibri", "MS Mincho"] {
+                    let style = ResolvedRunStyle::new(
+                        descriptor.as_str(),
+                        descriptor.as_str(),
+                        "12pt MS Mincho",
+                        descriptor.as_str(),
+                        0.0,
+                        1.0,
+                        true,
+                        None,
+                    )
+                    .with_requested_font_slots(Some(&RunProperties {
+                        fonts: Some(jade_docx_reader::RunFonts {
+                            ascii: Some(family.into()),
+                            east_asia: Some(east.into()),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }));
+                    for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+                        let mut paragraph = ParagraphStyle {
+                            word_platform: platform,
+                            ..Default::default()
+                        };
+                        paragraph
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width = true;
+                        let actual = windows_balanced_latin_space_advance(
+                            Some(&paragraph),
+                            descriptor.as_str(),
+                            &style,
+                        );
+                        if platform == WordLayoutPlatform::Windows
+                            && east != "MS Mincho"
+                            && (family != "Arial" || !prefix.is_empty())
+                        {
+                            assert!(
+                                (actual.unwrap() - size * 4.0 / 3.0 * average / 2048.0).abs()
+                                    < 1e-9
+                            );
+                        } else {
+                            assert_eq!(actual, None);
+                        }
+                        paragraph
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width = false;
+                        assert_eq!(
+                            windows_balanced_latin_space_advance(
+                                Some(&paragraph),
+                                descriptor.as_str(),
+                                &style
+                            ),
+                            None
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn windows_balanced_calibri_latin_fallback_keeps_the_font_average_gap() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for (prefix, average) in [
+                ("", 1067.0),
+                ("bold ", 1098.0),
+                ("italic ", 1067.0),
+                ("bold italic ", 1099.0),
+            ] {
+                for size in [12.0, 20.0, 24.0] {
+                    for east in ["Arial", "Calibri", "MS Mincho"] {
+                        let properties = RunProperties {
+                            fonts: Some(jade_docx_reader::RunFonts {
+                                ascii: Some("Calibri".into()),
+                                h_ansi: Some("Calibri".into()),
+                                east_asia: Some(east.into()),
+                                ..jade_docx_reader::RunFonts::default()
+                            }),
+                            ..RunProperties::default()
+                        };
+                        let descriptor = format!("{prefix}{size:.2}pt Calibri");
+                        let style = ResolvedRunStyle::new(
+                            descriptor.as_str(),
+                            descriptor.as_str(),
+                            "12pt MS Mincho",
+                            descriptor.as_str(),
+                            0.0,
+                            1.0,
+                            true,
+                            None,
+                        )
+                        .with_requested_font_slots(Some(&properties));
+                        let mut paragraph = ParagraphStyle {
+                            word_platform: platform,
+                            ..ParagraphStyle::default()
+                        };
+                        paragraph
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width = true;
+                        let quarter = size / 3.0;
+                        let actual = windows_balanced_latin_trailing_gap(
+                            &paragraph,
+                            Some(&descriptor),
+                            Some(&style),
+                            quarter,
+                        );
+                        let expected =
+                            if platform == WordLayoutPlatform::Windows && east != "MS Mincho" {
+                                quarter * 2.0 * average / 2048.0
+                            } else {
+                                quarter
+                            };
+                        assert!(
+                            (actual - expected).abs() < 1e-9,
+                            "{platform:?}/{size}/{east}: {actual}"
+                        );
+                        assert_eq!(
+                            windows_balanced_distinct_script_face(&style),
+                            east == "MS Mincho"
+                        );
+                    }
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn windows_balanced_arial_cells_keep_same_face_and_mac_spacing() {
         use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
         for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
@@ -15319,7 +15513,7 @@ mod tests {
                             .east_asian_rules
                             .balance_single_byte_double_byte_width = true;
                         let ordinary = size / 3.0 * 2.0 * 904.0 / 2048.0;
-                        let actual = windows_balanced_arial_trailing_gap(
+                        let actual = windows_balanced_latin_trailing_gap(
                             &paragraph,
                             Some(&descriptor),
                             Some(&style),
@@ -15350,7 +15544,7 @@ mod tests {
                             .east_asian_rules
                             .balance_single_byte_double_byte_width = false;
                         assert_eq!(
-                            windows_balanced_arial_trailing_gap(
+                            windows_balanced_latin_trailing_gap(
                                 &paragraph,
                                 Some(&descriptor),
                                 Some(&style),

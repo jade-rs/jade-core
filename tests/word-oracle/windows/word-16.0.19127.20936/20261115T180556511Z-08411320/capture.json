@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T180556511Z-08411320",
+  "captured_at_utc": "2026-11-15T18:05:56.5160284Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-plain-space-face-calibri-italic-nextT-size24-balance0-compat15",
+      "source": "..\\w16-d-plain-space-letters-input-snapshots\\word-windows-edge-plain-space-face-calibri-italic-nextT-size24-balance0-compat15.docx",
+      "sha256": "453fe4a333d5ec63690b93eb46f51f02f7472d02e7978afa50bab1c36afb0bac",
+      "pdf": "word-windows-edge-plain-space-face-calibri-italic-nextT-size24-balance0-compat15.pdf",
+      "pdf_sha256": "2c107ec22f505a4bbbfa4bf53f5b8d42ec43118a0771b7f73ff5fc61af7b5533",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-plain-space-face-calibri-italic-nextT-size24-balance0-compat15.page-001.emf",
+          "sha256": "11c7abd795868101884250c15a6997223d3cf724f99b6c6fe3ee16982ee164d1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

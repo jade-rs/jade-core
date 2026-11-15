@@ -4134,6 +4134,462 @@
     {
       "fixture": "word-windows-edge-cross-slot-calibri-arial-size24-left-balance0-compat15",
       "docx_sha256": "cdb5589baf8b8838057683f63300f2478e52803a1043afb246bac53b457d2d1e"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-bold-nextB-size24-balance0-compat15",
+      "docx_sha256": "c3b77218e69052d0900a253a7766b1e45060eec44ac1c71898afb6923af8c1fe"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-bold-nextT-size24-balance0-compat15",
+      "docx_sha256": "9e0bdc0a8742685277d495e03e74abee422e397e4eada323b85e67a581b3a899"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-bolditalic-nextB-size24-balance0-compat15",
+      "docx_sha256": "d11a721cea595f9b07b854ffa53e68da32285e05a8b8eec66dcc874a934b5618"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-bolditalic-nextT-size24-balance0-compat15",
+      "docx_sha256": "b01dd5345dce60c97e77ffbdc9aa8e44d63a1e2e244b4568b4dcdcb2e160060a"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-italic-nextB-size24-balance0-compat15",
+      "docx_sha256": "90e3f309befb027494f7e4ffceaa0276521094ae8880851022dbbfd7cb8ea069"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-italic-nextT-size24-balance0-compat15",
+      "docx_sha256": "7ca97cbb349eec0175bba379c86757f5e2a718560866e595db8aac65d2139ee0"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-regular-nextB-size24-balance0-compat15",
+      "docx_sha256": "581847d87774e9847794d86e0559f55e606d8a08d11b8c4328c973b7e4811fe4"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-arial-regular-nextT-size24-balance0-compat15",
+      "docx_sha256": "a76631cf7c19ea4e3d533f2f8c71d94f3de8ce2fafb278277e720a9e5c0fe1ad"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-bold-nextB-size24-balance0-compat15",
+      "docx_sha256": "5a28f34a1633bf305fcbb5cbf543e36fb46f5e9889a1a2060f71a7bb8e45d999"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-bold-nextT-size24-balance0-compat15",
+      "docx_sha256": "2db4e0b06675409744e9bbf1311e363db728770cd277be1c1590055eb08bccfe"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-bolditalic-nextB-size24-balance0-compat15",
+      "docx_sha256": "4d5bd267340b92ef8d3a8cf90eee84cf1768d3118bc5674881dede2734176a33"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-bolditalic-nextT-size24-balance0-compat15",
+      "docx_sha256": "1227948ba0db9fb12eff93794fdd56c2939aa1ece7bd2447745be0bbc3c5b7e7"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-italic-nextB-size24-balance0-compat15",
+      "docx_sha256": "54e124e2543e7bed3225265059e2b0917a9d0c3b16eee2eec2586e67662c932d"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-italic-nextT-size24-balance0-compat15",
+      "docx_sha256": "453fe4a333d5ec63690b93eb46f51f02f7472d02e7978afa50bab1c36afb0bac"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-regular-nextB-size24-balance0-compat15",
+      "docx_sha256": "f13a0fedc7dd6c29a9fb41892ff22ebb3b01950b0239a1c44389924d654947a5"
+    },
+    {
+      "fixture": "word-windows-edge-plain-space-face-calibri-regular-nextT-size24-balance0-compat15",
+      "docx_sha256": "3bf96cb93ed00e7041fc72e0c84e2ca90a54635564d39b469394498d898b1bad"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-arial-bold-nextB-size24-balance1-compat15",
+      "docx_sha256": "4d0a8fb022907484d4762703f4022ab0b9764e517e6747d5c1d63d2698c7488b"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-arial-bold-nextT-size24-balance1-compat15",
+      "docx_sha256": "14c57f902e665928aff59c1d383072f41991c5565c5cf9b64f4689f0da183abe"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-arial-bolditalic-nextB-size24-balance1-compat15",
+      "docx_sha256": "69b72f350eeef53ba9e8a44c277d5c5b53a9afc4fbdea8da28abd4db8d37a4ba"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-arial-bolditalic-nextT-size24-balance1-compat15",
+      "docx_sha256": "fcded306b70146584e20e707a1cdb4b0bc95b99a6376fa29fa227388862f29c9"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-arial-italic-nextB-size24-balance1-compat15",
+      "docx_sha256": "975fd329b0273d8cc072b5b139a68917d52c0fc3ac296773c54b34b7fad43403"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-arial-italic-nextT-size24-balance1-compat15",
+      "docx_sha256": "7c84ce450ce08f111d5d7ae2b2bd5039d94baab8416c63f6afd82162cc7a63ec"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-bold-nextB-size24-balance1-compat15",
+      "docx_sha256": "fdac43850782eaecc4b20011cb5d2e52dfc86a93eb6329c92db0dcc37bbf1731"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-bold-nextT-size24-balance1-compat15",
+      "docx_sha256": "1f0acaab30160a0c0a476ec11e96d782895d7703e7aa14b5caec19405f9587c7"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-bolditalic-nextB-size24-balance1-compat15",
+      "docx_sha256": "7a3560b5ab896e83ecaff8ead8e94698a5dce77b8321de634935f876c7e6e3e9"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-bolditalic-nextT-size24-balance1-compat15",
+      "docx_sha256": "e4bd3b749109cd277feb5080e2b68d4b370ae97c99d1fb7c1fb97757eb0bbd78"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-italic-nextB-size24-balance1-compat15",
+      "docx_sha256": "76528dcffdc27035a9e9a3d5fd2397d2ac96a0504774aa31c78db1c40f3769dc"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-italic-nextT-size24-balance1-compat15",
+      "docx_sha256": "db4feb17734d6db668f0858be4cde67b14ac416bd5c6be39262b2965bec3a557"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-regular-nextB-size24-balance1-compat15",
+      "docx_sha256": "fc41705fa00ac5726c6b0f5ea8812bf390cf9f78c12c8146176bc250fe66c8c0"
+    },
+    {
+      "fixture": "word-windows-edge-space-face-calibri-regular-nextT-size24-balance1-compat15",
+      "docx_sha256": "c017e6ca04c37b745712b93ee5cbda5cb18b41ce5699bd6fb6c1153aa02774b7"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size12-left-bold-balance1-compat15",
+      "docx_sha256": "776ea641bce4d8d96f6196366eeda76c92501c0af7e74c97277d2b915f8e6916"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size12-left-bolditalic-balance1-compat15",
+      "docx_sha256": "16cbfd925eea6d50456bef1f24ea61730354259dcddbdf136f674a9e99116d73"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size12-left-italic-balance1-compat15",
+      "docx_sha256": "5b798d3bc4914b733558dbbb0aa4e09b59d9ed54ed79e1ff778fc234987cc064"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-bold-balance1-compat15",
+      "docx_sha256": "1e991246f5bf9cde039628b4c237d05556ecf469b7a8545425ddf9a877bd8d6a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-bolditalic-balance1-compat15",
+      "docx_sha256": "29d4f17efd52784c4c80b952eeee3ade2f520734174ea7ef2ecaff34be53407a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size20-left-italic-balance1-compat15",
+      "docx_sha256": "668379cdb6df33abaaf1fbca5cb2def51ef961bca86f2b37df3185729d86068a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size24-left-bold-balance1-compat15",
+      "docx_sha256": "babf5cf0e73a3a438fb041f5c9e5c3d1a0d0d666571323dc933d6786ce5cebf0"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size24-left-bolditalic-balance1-compat15",
+      "docx_sha256": "dda5039ee2b6c54c2b0cc657a4a8bcfe4dd4b77ca746703f168317b385fbac03"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-arial-ea-calibri-size24-left-italic-balance1-compat15",
+      "docx_sha256": "3c8fddce574a516d2d506101b11f102e439efee103e5607899b18631b25a99e9"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size12-left-bold-balance0-compat15",
+      "docx_sha256": "6a86c9f07c1238481147735de41960fc1d101bee505a8d889fcc6ccb192c52fb"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size12-left-bold-balance1-compat15",
+      "docx_sha256": "6f39d9484521e1c5dd81da74a98e5a8aebe557eef123deda6178f9398bd41971"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size12-left-bolditalic-balance0-compat15",
+      "docx_sha256": "7121942a0bf7fd9bf4d33e9c6273723645fa225b8ccbc924647cd496333b2b4e"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size12-left-bolditalic-balance1-compat15",
+      "docx_sha256": "eb6f0554bd3a78d72c64fae050c3626d79107ec99a03e5028e574fe70ef15aa1"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size12-left-italic-balance0-compat15",
+      "docx_sha256": "bf6deb528b6fcf01c4addd70519a6c076c603d7dd1eb6a3afa33792682d37ec6"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size12-left-italic-balance1-compat15",
+      "docx_sha256": "2a91a4731a5f7eefcca9812b86f3b6d0c7e9e2d908479735d140efcd6aafe4c8"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size20-left-bold-balance0-compat15",
+      "docx_sha256": "b645224b09dd2da756d0ca4d40261e428ac9dcb1fb2744bc963a9d5c262209f2"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size20-left-bold-balance1-compat15",
+      "docx_sha256": "c91dfdc5c6b298c750c4439436ae0db524073ff4dfbdefb89094e644191ac57b"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size20-left-bolditalic-balance0-compat15",
+      "docx_sha256": "f440ea323ce493acdffcb6265bd679359e3fdccad294c50bf53ec928c277db72"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size20-left-bolditalic-balance1-compat15",
+      "docx_sha256": "b6db8e1e3dde07f7f3f4caf80905206b050306d3a1bf36c2230322d76a697ebf"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size20-left-italic-balance0-compat15",
+      "docx_sha256": "40d90e530dfccad8d94ba6114cb5d7efef184315dead280affc668731098e55c"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size20-left-italic-balance1-compat15",
+      "docx_sha256": "190949a331781c47eda59639f5dea23874ecd660e8ba001a5cb65e70df166450"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size24-left-bold-balance0-compat15",
+      "docx_sha256": "01a2ae715edbeb667d3045b256b8c13e9929fd713da28a65027534ffe94ff14a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size24-left-bold-balance1-compat15",
+      "docx_sha256": "4643d90da29fcb05c8abd9c1be30e3d5a29371565e625f2b7844ab96a274c8e6"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size24-left-bolditalic-balance0-compat15",
+      "docx_sha256": "f792d68b57c4d640d2dd997a27c2f458e08d94a9752c6f06273fe0abe1dec89a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size24-left-bolditalic-balance1-compat15",
+      "docx_sha256": "34a7abe0895365974f2afe24322c6dce2a171e8a0f60f28398103035f0106a6a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size24-left-italic-balance0-compat15",
+      "docx_sha256": "0a1ff678a27cc76c9d52bffe9a727603b79623975d648d57191c0c4d9f599fdb"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-autooff-calibri-ea-calibri-size24-left-italic-balance1-compat15",
+      "docx_sha256": "ab835823f6572d7bb95660d233f6178ace2005df13a0afc27bc33c48afbff9d2"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size12-left-bold-balance1-compat15",
+      "docx_sha256": "f7818b0719c9f751b676c34efe746bf18d20a00340d463c9e4c1f701b17466f9"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size12-left-bolditalic-balance1-compat15",
+      "docx_sha256": "9a5b5dd0b037b06e743df253942f3345acfd62656fb9a94062f30084bd79e56f"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size12-left-italic-balance0-compat15",
+      "docx_sha256": "69eac2646675c891dc64cf667fbbec96056087ba87a0b6ec7ef0ad4869f8fe9c"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size12-left-italic-balance1-compat15",
+      "docx_sha256": "98064b24bc1a86465dd5881c2bb5081e2831fd3266eb733ec0af99e59321d23e"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size20-left-bold-balance1-compat15",
+      "docx_sha256": "e93de6df721b15c25d351d65321bec0641dd0c07445c51ff1e126cfea3444172"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size20-left-bolditalic-balance1-compat15",
+      "docx_sha256": "ebffdf66f7e5215eb0317d78ec8e15666830c095773be54789a8ae61628ebb1a"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size20-left-italic-balance1-compat15",
+      "docx_sha256": "a2841229c688e824e7ff299dcf7f374e58569a0b60e297ef25e47a32f9dc3d0e"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size24-left-bold-balance1-compat15",
+      "docx_sha256": "c4554115c538a10ce436404ad45e6417000d5fc06c64c6b4faebd1e2f2b8fbba"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size24-left-bolditalic-balance1-compat15",
+      "docx_sha256": "c27ee0a677ea8c078a980d795a0f011d503c903a6d6905e5f8346b4ed5522978"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-arial-ea-calibri-size24-left-italic-balance1-compat15",
+      "docx_sha256": "991a9b66a7920cc113b6b7d91e244d1bf58bfc68fa7e735aa13ef5341dcdc1ee"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-bold-balance0-compat15",
+      "docx_sha256": "4259e58b8b04d222b098294ea713fc8d0753e462b0e959e03d782d2299e06a1f"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-bold-balance1-compat15",
+      "docx_sha256": "61d242ce13d032a0b12fd2c150a0d0fbc50e0c92f0a4e13737b5b60f1ae666f5"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-bolditalic-balance0-compat15",
+      "docx_sha256": "c6741eb341d01fbdc5c3edc7447fd28bd27f748dceef073548055ac2d4d19f39"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-bolditalic-balance1-compat15",
+      "docx_sha256": "a881ce86b221b92d6c0ba83e75ee004018c3088d538c8a69cc7246bf73399697"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-italic-balance0-compat15",
+      "docx_sha256": "5133ec3a000caf91844d895d26d0defcf9403306fd024d2e972a7d46c7394c1f"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size12-left-italic-balance1-compat15",
+      "docx_sha256": "628f3bdca4f8924e72121ca4c215ebc0cea076e3919c617959b8849ddf8edd90"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size20-left-bold-balance0-compat15",
+      "docx_sha256": "0f59219106ccc1b425775d5ab1e10cbd67b3f1ebc12d276bf02d30b3c9a92377"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size20-left-bold-balance1-compat15",
+      "docx_sha256": "4a090bbd4ea3b4dcca181d26f338d9b81f83e23bb99623c62a46a9a84823bc81"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size20-left-bolditalic-balance0-compat15",
+      "docx_sha256": "409ce1480993972a1705abc309386906e2728912651176ea4619ca390840f708"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size20-left-bolditalic-balance1-compat15",
+      "docx_sha256": "9adfeb94c088c08d3b509f3aea358f0448170f49bb33cfc6d99290e1e7925073"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size20-left-italic-balance0-compat15",
+      "docx_sha256": "80488cc3d8f721bd6b8d7d6d89155774af3ee1f27c094c76026d4966e1893161"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size20-left-italic-balance1-compat15",
+      "docx_sha256": "144a8a25fc105607d2b4c58f98eec73a5baf2bbb054f7a27744c680225252be3"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bold-balance0-compat15",
+      "docx_sha256": "38093d044fff2b3c1b211711641c32f1cfd1b8550f6727924c876d3b6b5e7da3"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bold-balance1-compat15",
+      "docx_sha256": "3339a09a580ec24b571e7dae05170e191530193354e6d54702d50149201d49e0"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bolditalic-balance0-compat15",
+      "docx_sha256": "a7bcd562f1ea6091929c2cf841a64d4e4d5d91a65714bb7e571acc878fcac6f0"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-bolditalic-balance1-compat15",
+      "docx_sha256": "02fad7110ac8a1e2146ab94a62cfbe948e10b3a2043a212585202012215ef038"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-italic-balance0-compat15",
+      "docx_sha256": "910cd96600e243fb91c99c416d6a9ed96015b5dcef680a4400b60d86fb8bc707"
+    },
+    {
+      "fixture": "word-windows-edge-calibri-fallback-style-calibri-ea-calibri-size24-left-italic-balance1-compat15",
+      "docx_sha256": "e61bf6925d907590a349805a18fb22b7f665c98ce0ec65556dac34db98ed9245"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size12-both-balance0-compat15",
+      "docx_sha256": "2d27629be77753c1285b847c28e67ef422400c415ce377f4fa7026880e197038"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size12-both-balance1-compat15",
+      "docx_sha256": "8e2ac47d3926fa5f397b67abe0c4120146caea6578662f700056a965f7ec7b1c"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size12-left-balance0-compat15",
+      "docx_sha256": "ce802ec1021269ab8d96ce1cf61f370ba95365e836f0c597115aa1e65910e3f8"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size12-left-balance1-compat15",
+      "docx_sha256": "e131591481d12265257240edb0b372c2bf25d8a0332b0b1bf790efcf8b29a1c2"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size20-left-balance0-compat15",
+      "docx_sha256": "2858a142b14cf6630f3cd1862d4f0b45bad44c22f1d6d4e68375cb3594c5dba7"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size20-left-balance1-compat15",
+      "docx_sha256": "5ad27bcccd08383ddbf20dc50788f57c5107fd536290f7a9905c1f75b23c0b31"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size24-left-balance0-compat15",
+      "docx_sha256": "6fc00cee25d6138d2dfd2ce4856a92e76a1f7f608b1626dddb8d5f18de61d150"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-calibri-size24-left-balance1-compat15",
+      "docx_sha256": "8af36bb99080c6bfa8674ea7cdec2bceaddf49c281628a01014b6f4c27c944ac"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size12-left-balance1-compat15",
+      "docx_sha256": "b5865242d671647a42fdea5e7f0440304a0a2f66870d3256d8dfbc137677a2e5"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size20-left-balance1-compat15",
+      "docx_sha256": "ba0153ba394d312306a7ff44df47c9f91db9b6dea51fa58ad9274fb73f3ffbb5"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size24-left-balance1-compat15",
+      "docx_sha256": "082ec758465bd6865ce49097f337f1bda411e38c8dbb44a76069b91eb40c0ae8"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-calibri-size12-both-balance0-compat15",
+      "docx_sha256": "7c2fe626c58e6f96cf85ca2ac79230acde45da3d580edac346fae334b6538585"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-calibri-size12-left-balance0-compat15",
+      "docx_sha256": "8b155ba56bb759b96609a22c36f94a5b64eeb6dfd97573cf536617f57f681fbf"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-calibri-size20-both-balance0-compat15",
+      "docx_sha256": "e32562df106603c7436becce54b2b80eebc073a583158b0afc9aab805b6500b8"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-calibri-size20-left-balance0-compat15",
+      "docx_sha256": "a6c8537e60b56598113f1b5e28da756a76a768a8da653636bd7845f574e64dd1"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-calibri-size24-both-balance0-compat15",
+      "docx_sha256": "6f2de8511a7735c49e690ca841b08b649d9842d1f5f351991d5f5dab111fca18"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-calibri-size24-left-balance0-compat15",
+      "docx_sha256": "b783f2cba6bba1f5b647bc35728b361f9a56ee5b20decb42786e2ae34e99c83a"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size12-both-hinteastAsia-balance1-compat15",
+      "docx_sha256": "39e051fd777a9010e4e1ebe8b07a7bafcb595f785c7a33729f8fdd90b0ac1f20"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size12-both-hintnone-balance1-compat15",
+      "docx_sha256": "d4bc92dfac94b2c3cc3634ee8f1271dfeb50f9f7abe01cfe927eaebc9eeae870"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size12-left-hinteastAsia-balance1-compat15",
+      "docx_sha256": "9b8a5e9db6db71d56eaf0cc8214e2de848b46f997e2bbb7f5883dcd890ec71d5"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size12-left-hintnone-balance1-compat15",
+      "docx_sha256": "da861d564b3a3030bff0ee764a253f09eace671f25edd398c40f487c57fa5192"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size20-both-hinteastAsia-balance1-compat15",
+      "docx_sha256": "ec5e1bfa56d1c7269d12279fab0ac73d7e5e5266a52a11d1a8a6d44dfb9d7067"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size20-both-hintnone-balance1-compat15",
+      "docx_sha256": "8a6d7206cbe3812ee790360243486b92f96cfd5377ed986969b53c690846e325"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size20-left-hinteastAsia-balance1-compat15",
+      "docx_sha256": "7aa18fe2cf1482846d7552df74ea3a3449273b10f65b8a1d52107343d158e1f8"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size20-left-hintnone-balance1-compat15",
+      "docx_sha256": "cb1893cba49b60d0723fe3bc41f730437c1bb9b28c71fefad431a02a73a73060"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size24-both-hinteastAsia-balance1-compat15",
+      "docx_sha256": "f699520aa03b6a35419c5c41abac56d1ddc3506db775bad5f2f2de9a01f10396"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size24-both-hintnone-balance1-compat15",
+      "docx_sha256": "b4b23e10fe17bdab37b22a92a2a7f03f95a6a5a48ca941c907773386bedb54c4"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size24-left-hinteastAsia-balance1-compat15",
+      "docx_sha256": "1857c04d5671eddd84cc5f034c32b34f6ac70a8e484d22bfd35bc2584d2c4b01"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-calibri-size24-left-hintnone-balance1-compat15",
+      "docx_sha256": "d70ae6ae6f7f2a72a91efa1d0e65ccd8eceb0c931ee6bdbec77420c6dd16f427"
     }
   ]
 }
