@@ -1307,6 +1307,13 @@ name = "jade-diff-align"
 version = "0.1.0"
 
 [[package]]
+name = "jade-diff-support"
+version = "0.1.0"
+dependencies = [
+ "jade-diff-align",
+]
+
+[[package]]
 name = "jade-doc-reader"
 version = "0.1.0"
 dependencies = [
@@ -1363,6 +1370,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "jade-diff-align",
+ "jade-diff-support",
  "jade-docx-extract",
  "serde",
  "serde_json",
