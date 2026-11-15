@@ -8477,8 +8477,12 @@ where
         let effective =
             self.effective_run_properties_rc(paragraph, paragraph.runs[0].properties.as_ref());
         let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
+        let authored_rule = jade_docx_layout::font_resolver::neutral_rule_east_asia_descriptor(
+            &style.resolved,
+            effective.as_deref(),
+        );
         let descriptor = if self.document_east_asian_rules.use_east_asian_layout {
-            &style.resolved.font_descriptor_east_asia
+            authored_rule.as_ref()
         } else {
             &style.resolved.font_descriptor_latin_ascii
         };
@@ -8530,8 +8534,12 @@ where
         let effective =
             self.effective_run_properties_rc(paragraph, paragraph.runs[0].properties.as_ref());
         let style = self.resolve_applied_run_style_cached_rc(effective.as_ref());
+        let authored_rule = jade_docx_layout::font_resolver::neutral_rule_east_asia_descriptor(
+            &style.resolved,
+            effective.as_deref(),
+        );
         let descriptor = if self.document_east_asian_rules.use_east_asian_layout {
-            &style.resolved.font_descriptor_east_asia
+            authored_rule.as_ref()
         } else {
             &style.resolved.font_descriptor_latin_ascii
         };
@@ -69032,6 +69040,72 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn windows_arial_note_rule_paint_uses_the_authored_face_before_cjk_fallback() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, word_windows_note_rule_metrics_px,
+            WordLayoutPlatform,
+        };
+        use jade_docx_reader::document::{Note, NoteSeparatorKind};
+        use jade_painter::recording::Op;
+        let _platform = RestoreWordPlatform(word_layout_platform());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (top, thickness) = word_windows_note_rule_metrics_px("10.50pt Arial").unwrap();
+        for footnote in [false, true] {
+            let (mut renderer, painter) = recording_renderer();
+            renderer.document_east_asian_rules.use_east_asian_layout = true;
+            renderer.current_y = 100.0;
+            let mut paragraph = note_test_paragraph("", None);
+            paragraph.runs[0].note_separator = Some(NoteSeparatorKind::Separator);
+            paragraph.runs[0].properties = Some(RunProperties {
+                font_size: Some(10.5),
+                east_asia_language: Some("ja-JP".into()),
+                fonts: Some(RunFonts {
+                    ascii: Some("Arial".into()),
+                    h_ansi: Some("Arial".into()),
+                    east_asia: Some("Arial".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            let height = renderer
+                .resolve_paragraph_line_height_plan_with_grid(&paragraph, None)
+                .unwrap()
+                .0;
+            let mut document = Document::default();
+            let note = Note {
+                id: "-1".into(),
+                note_type: Some("separator".into()),
+                body: vec![BodyElement::from_paragraph(paragraph)],
+            };
+            if footnote {
+                document.footnotes.insert("-1".into(), note);
+                assert!(renderer.paint_windows_footnote_separator(
+                    &document,
+                    "separator",
+                    points_to_px(height)
+                ));
+            } else {
+                document.endnotes.insert("-1".into(), note);
+                renderer.paint_windows_endnote_separator(&document).unwrap();
+            }
+            let rectangles: Vec<_> = painter
+                .ops()
+                .into_iter()
+                .filter_map(|op| match op {
+                    Op::Rect(x, y, width, height) => Some((x, y, width, height)),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(rectangles.len(), 1, "{footnote}: {rectangles:?}");
+            let (x, y, width, height) = rectangles[0];
+            assert_eq!(x, renderer.margin_left);
+            assert!((y - 100.0 - top).abs() < 1e-9, "{footnote}: {rectangles:?}");
+            assert!((height - thickness).abs() < 1e-9);
+            assert_eq!(width, points_to_px(144.0));
         }
     }
 
