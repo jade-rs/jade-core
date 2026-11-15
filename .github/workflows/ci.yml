@@ -286,6 +286,10 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_fallback_spacing_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_balanced_font_slot_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_cross_font_slot_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_fallback_style_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_autooff_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_balanced_space_letter_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_plain_space_letter_probes.py
           python scripts/word-oracle/check_windows_observations.py
       - name: Reconstruct registered origins from original Word drawing files
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json

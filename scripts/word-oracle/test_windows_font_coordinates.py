@@ -79,8 +79,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 619)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 185)
+        self.assertEqual(len(verify()), 733)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 299)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf

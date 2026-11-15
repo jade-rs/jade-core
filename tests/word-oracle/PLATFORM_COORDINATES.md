@@ -1,6 +1,12 @@
 Shared Mac and Windows coordinate assertions
 ===========================================
 
+Current verified Windows coverage is 733 typography cases / 134,207 origins,
+including 299 shaded controls, 61 note-rule cases and 1,129 release inputs.
+The versioned observation archive retains 713 captures / 1,624 documents /
+1,585 source byte groups. Previous records and every Mac expectation remain
+unchanged. Newer Word captures append evidence instead of replacing a version.
+
 `platform-coordinates.json` links each unchanged Mac corpus `source.docx` to its
 existing Mac manifest and one or more Windows Word captures. Source bytes must
 match the Mac source hash and the archived Windows input exactly. Each Windows
@@ -154,7 +160,7 @@ paint and reference paths remain unchanged.
 
 Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
 borders, adjacent shading, tables, spacing, font and justification variants.
-The observation registry holds 609 captures / 1,520 documents / 1,481
+The observation registry holds 713 captures / 1,624 documents / 1,585
 source byte groups, retaining earlier Word builds and exact executable hashes.
 Unmatched cases remain raw observations, including mixed-script justification,
 bordered/table shading and adjacent-paragraph continuity. They are not accepted
@@ -299,14 +305,68 @@ space-glyph pair kerning, including after wrap repair. Same-face Arial controls
 retain their previous average-width gap and pair kerning, regardless of the
 East Asia hint. Mac spacing and font selection are unchanged.
 
-Thirty-one newly passing controls (10 separate-face Arial, 8 same-face/hint
+At the earlier font-slot checkpoint, thirty-one newly passing controls
+(10 separate-face Arial, 8 same-face/hint
 controls and 13 cross-face controls) are now required coordinate/background
 expectations. Together with the three existing endnote inputs newly covered
-above, the font gate contains 619 cases / 132,839 origins, including 185 shaded
+above, that checkpoint contained 619 cases / 132,839 origins, including 185 shaded
 controls; the note-rule gate covers 61 cases and the release corpus 1,015 inputs.
 All previous 588/984 records and every original Mac expectation remain intact.
 The 72 new input DOCX files reproduce the original captures byte for byte.
-Across 247 recent controls, 185 pass and 62 remain unpromoted original
+At that checkpoint, across 247 recent controls, 185 passed and 62 remained unpromoted original
 observations, alongside older table/border cases. Requested Calibri East Asian
 fallback line height and additional justified lines remain under investigation;
 no failing observation is used as an accepted expectation.
+
+Thirty-six additional original Word 16.0.19127.20936 controls vary only bold,
+italic or bold+italic run flags with the East Asian face requested as Calibri.
+Arial/Calibri Latin faces, 12/20/24pt sizes and balanced/unbalanced left alignment
+are retained. Their input bytes reproduce exactly and every other package part
+is unchanged. All source/PDF/EMF originals remain versioned raw observations;
+the earlier renderer failed the full coordinate/background gate for all 36.
+The current correction accepts 28 of them; eight remain diagnostic observations.
+
+Thirty-six matching controls explicitly disable only `autoSpaceDE` on those
+styled inputs. Their original Word 16.0.19127.20936 ZIP/source/PDF/EMF records
+remain separate raw observations; the byte-identical generator asserts that no
+other package part changes. With the first Calibri fallback prototype all 36
+background checks pass and 12 complete coordinate comparisons pass. The other
+24 were initially diagnostic. The current correction accepts 27 of the
+36 auto-spacing-disabled controls; nine retain their measured differences.
+
+The style probes also assert the intrinsic OS/2 averages from the original
+embedded font programs without installing fonts or using Word coordinates as
+renderer inputs: Arial bold/bold-italic 980, italic 904; Calibri bold 1098,
+bold-italic 1099 and italic 1067, all in a 2048-unit em. Mac's font metric
+catalog is unchanged. The Windows style policies pass the original Word
+coordinate gates and exact Mac output comparisons before acceptance.
+
+Sixteen additional 24pt balanced, auto-spacing-disabled controls vary only the
+first Latin letter after Japanese plus a space (B/T), across Arial/Calibri and
+regular/bold/italic/bold-italic. Their independently archived Word origins retain
+the same space advance for A/B/T and distinguish a font-average cell from a
+half-em cell followed by ordinary-space kerning. Fourteen now pass the
+coordinate/background gates. Regular Arial's B/T controls remain diagnostic:
+using its average alone regresses the EMF origins in two existing long justified
+inputs, so the established regular Arial cell/kerning path is retained.
+
+Sixteen corresponding unbalanced controls vary the same following letters,
+separating ordinary-space kerning from balanced cells. All sixteen pass.
+Their byte-identical generator and versioned ZIP/PDF/EMF originals are retained.
+
+The current Windows correction promotes 114 independently verified controls:
+17 cross-slot and 12 hint controls, 28 styled controls, 27 auto-spacing-disabled
+controls, 14 balanced B/T controls and 16 ordinary B/T controls. Production
+generators reproduce all 176 related source files exactly. All prior 619 font
+and 1,015 release records remain an unchanged prefix. Across the 351 recent
+controls, 299 pass the full four-coordinate-plane/background gate and 52 remain
+unpromoted, alongside older table/border observations. The renderer consumes
+DOCX and font programs, never measured reference coordinates.
+
+Windows fallback maps Japanese Calibri glyphs to MS Mincho while preserving
+the authored face for glyphless rules. Styled auto spacing uses the original
+font programs' OS/2 averages. Balanced cells for styled Arial and Calibri with
+requested Latin East Asian faces use that average without ordinary-space pair
+kerning, including during wrap repair. Mac font metrics, spacing and expectation
+files remain unchanged; 372 source-identical comparisons preserve exact glyphs,
+pages, screen pixels and all PDF page pixels/drawings.

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T180533639Z-c47eb9c1",
+  "captured_at_utc": "2026-11-15T18:05:33.6433644Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-plain-space-face-arial-italic-nextB-size24-balance0-compat15",
+      "source": "..\\w16-d-plain-space-letters-input-snapshots\\word-windows-edge-plain-space-face-arial-italic-nextB-size24-balance0-compat15.docx",
+      "sha256": "90e3f309befb027494f7e4ffceaa0276521094ae8880851022dbbfd7cb8ea069",
+      "pdf": "word-windows-edge-plain-space-face-arial-italic-nextB-size24-balance0-compat15.pdf",
+      "pdf_sha256": "4996c8ae4f73086e195b3d0e7c36cca1e4736e797a273de55ea49a304a05a642",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-plain-space-face-arial-italic-nextB-size24-balance0-compat15.page-001.emf",
+          "sha256": "2940ed66ed149ce45545efc9b225fb9f79b59af9a83ff1c7afcf081321ad1ea7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1024,19 +1024,31 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
             trailing_share: 1.0,
         });
     }
-    if family == "Arial" && font_descriptor_style(font_descriptor) == (false, false) {
+    let style = font_descriptor_style(font_descriptor);
+    if family == "Arial" {
+        // Original Windows Word PDFs embed 980-unit bold/bold-italic and
+        // 904-unit regular/italic OS/2 averages in a 2048-unit em.
+        let average = if style.0 { 980.0 } else { 904.0 };
         return Some(WordAutoSpace {
             em_px: f64::from(size_pt) * 96.0 / 72.0,
-            trailing_share: 2.0 * 904.0 / 2048.0,
+            trailing_share: 2.0 * average / 2048.0,
         });
     }
-    if family == "Calibri" && font_descriptor_style(font_descriptor) == (false, false) {
-        // Calibri's OS/2 xAvgCharWidth is 1067 in a 2048-unit em. Original
-        // Windows Word 12/20/24pt controls retain this face metric, while
-        // balanced spacing uses a quarter em on either side.
+    if family == "Calibri" {
+        // The original bold-italic font has xAvgCharWidth=1099,
+        // versus 1098 for bold and 1067 for regular/italic.
+        let average = match style {
+            (true, true) => 1099.0,
+            (true, false) => 1098.0,
+            (false, _) => 1067.0,
+        };
         return Some(WordAutoSpace {
             em_px: f64::from(size_pt) * 96.0 / 72.0,
-            trailing_share: if balanced { 1.0 } else { 2.0 * 1067.0 / 2048.0 },
+            trailing_share: if balanced {
+                1.0
+            } else {
+                2.0 * average / 2048.0
+            },
         });
     }
     if family != "Times New Roman" {
@@ -1057,6 +1069,22 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
         em_px: f64::from(size_pt) * 96.0 / 72.0,
         trailing_share,
     })
+}
+
+/// Windows balanced cells for faces whose font-average policy has been
+/// checked independently of the following Latin letter. Regular Arial retains
+/// its established cell/kerning path: an average alone shifts EMF origins in
+/// long justified paragraphs, so its printer-metric correction remains open.
+pub(crate) fn word_windows_balanced_latin_space_advance_px(descriptor: &str) -> Option<f64> {
+    let (_, family) = split_font_descriptor(descriptor)?;
+    let family = family.trim().trim_matches(['\'', '"']);
+    if !matches!(family, "Arial" | "Calibri")
+        || (family == "Arial" && font_descriptor_style(descriptor) == (false, false))
+    {
+        return None;
+    }
+    word_windows_latin_auto_space_metrics(descriptor, false)
+        .map(|metrics| 2.0 * metrics.trailing_gap_px(false))
 }
 
 /// [`WordAutoSpace`] for a glyph drawn with `font_descriptor` in Word for Mac,
@@ -4696,6 +4724,26 @@ mod monospace_tests;
 #[cfg(test)]
 mod tests {
     #[test]
+    fn windows_styled_latin_gaps_use_original_font_program_averages() {
+        use super::*;
+        for (face, prefix, average) in [
+            ("Arial", "bold ", 980.0),
+            ("Arial", "italic ", 904.0),
+            ("Arial", "bold italic ", 980.0),
+            ("Calibri", "bold ", 1098.0),
+            ("Calibri", "italic ", 1067.0),
+            ("Calibri", "bold italic ", 1099.0),
+        ] {
+            for size in [12.0, 20.0, 24.0] {
+                let descriptor = format!("{prefix}{size:.2}pt {face}");
+                let metrics = word_windows_latin_auto_space_metrics(&descriptor, false).unwrap();
+                assert!((metrics.leading_gap_px() - size / 3.0).abs() < 1e-9);
+                assert!((metrics.trailing_gap_px(false) - size * average / 3072.0).abs() < 1e-9);
+            }
+        }
+    }
+
+    #[test]
     fn windows_calibri_auto_space_scales_with_the_face_and_balance() {
         use super::*;
         for size in [12.0, 20.0, 24.0] {
@@ -4710,7 +4758,7 @@ mod tests {
             );
             assert!((balanced.trailing_gap_px(false) - balanced.leading_gap_px()).abs() < 1e-9);
         }
-        assert!(word_windows_latin_auto_space_metrics("bold 12.00pt Calibri", false).is_none());
+        assert!(word_windows_latin_auto_space_metrics("bold 12.00pt Unknown", false).is_none());
     }
 
     #[test]

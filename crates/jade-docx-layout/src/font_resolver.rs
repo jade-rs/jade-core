@@ -400,6 +400,12 @@ impl ResolvedFontFamilies {
     }
 }
 
+fn windows_latin_east_asia_fallback_face(name: &str) -> bool {
+    ["Arial", "Calibri"]
+        .iter()
+        .any(|face| name.trim().eq_ignore_ascii_case(face))
+}
+
 /// A glyphless rule reserves its authored East Asian face, even when actual
 /// Japanese glyphs in that face need Windows Word's MS Mincho fallback.
 /// Preserve every Mac descriptor and every other named-face policy.
@@ -422,10 +428,15 @@ pub fn neutral_rule_east_asia_descriptor<'a>(
                 })
                 .or(p.font_family.as_deref())
         });
-        if named.is_some_and(|name| name.trim().eq_ignore_ascii_case("Arial"))
-            && descriptor.contains("'MS Mincho'")
-        {
-            return std::borrow::Cow::Owned(descriptor.replacen("'MS Mincho'", "Arial", 1));
+        if let Some(name) = named.filter(|name| windows_latin_east_asia_fallback_face(name)) {
+            if descriptor.contains("'MS Mincho'") {
+                let family = if name.trim().eq_ignore_ascii_case("Arial") {
+                    "Arial"
+                } else {
+                    "Calibri"
+                };
+                return std::borrow::Cow::Owned(descriptor.replacen("'MS Mincho'", family, 1));
+            }
         }
     }
     std::borrow::Cow::Borrowed(descriptor)
@@ -930,7 +941,7 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
         })
     };
     let platform = crate::line_metrics::word_layout_platform();
-    // Windows Word's Japanese Arial probes select MS Mincho for the East
+    // Windows Word's Japanese Arial/Calibri probes select MS Mincho for the East
     // Asian slot. This must select that slot's metrics as well as its paint.
     let east_candidate = if (platform == crate::line_metrics::WordLayoutPlatform::Mac
         && ((!language_is("zh")
@@ -942,7 +953,7 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
                 && east_candidate.is_some_and(|family| family.trim() == "Noto Sans"))))
         || (platform == crate::line_metrics::WordLayoutPlatform::Windows
             && language_is("ja")
-            && east_candidate.is_some_and(|family| family.trim().eq_ignore_ascii_case("Arial")))
+            && east_candidate.is_some_and(windows_latin_east_asia_fallback_face))
     {
         Some("MS Mincho")
     } else {
@@ -1276,6 +1287,7 @@ pub struct ResolvedRunStyle {
     // Preserve requested script-slot identity before CJK font fallback replaces
     // a Latin East Asian face with MS Mincho.
     requested_east_asia_font_is_distinct: bool,
+    requested_east_asia_uses_latin_fallback: bool,
     /// Whether the descriptors ask for ligatures or contextual alternates
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
     /// as kerning is, so a ligature's width reaches layout.
@@ -1308,7 +1320,19 @@ impl ResolvedRunStyle {
                 .zip(latin)
                 .is_some_and(|(east, latin)| !east.trim().eq_ignore_ascii_case(latin.trim()))
         });
+        self.requested_east_asia_uses_latin_fallback = properties.is_some_and(|props| {
+            let fonts = props.fonts.as_ref();
+            fonts
+                .and_then(|fonts| fonts.preferred_east_asia())
+                .or_else(|| fonts.and_then(|fonts| fonts.preferred_latin()))
+                .or(props.font_family.as_deref())
+                .is_some_and(windows_latin_east_asia_fallback_face)
+        });
         self
+    }
+
+    pub fn uses_requested_latin_east_asia_fallback(&self) -> bool {
+        self.requested_east_asia_uses_latin_fallback
     }
 
     pub fn has_distinct_requested_east_asia_font(&self) -> bool {
@@ -1404,6 +1428,7 @@ impl ResolvedRunStyle {
             enable_pair_kerning,
             font_hint,
             requested_east_asia_font_is_distinct: false,
+            requested_east_asia_uses_latin_fallback: false,
             joins_characters,
             has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
@@ -2365,6 +2390,55 @@ mod tests {
                 styles[0].font_descriptor_east_asia,
                 styles[1].font_descriptor_east_asia
             );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn calibri_japanese_fallback_preserves_requested_spacing_and_neutral_rules() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for east in ["Arial", "Calibri", "MS Mincho"] {
+                let properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some("Calibri".into()),
+                        h_ansi: Some("Calibri".into()),
+                        east_asia: Some(east.into()),
+                        ..RunFonts::default()
+                    }),
+                    east_asia_language: Some("ja-JP".into()),
+                    ..RunProperties::default()
+                };
+                let style = resolve_run_style_for_wrap(Some(&properties), None);
+                assert!(style.font_descriptor_east_asia.contains("'MS Mincho'"));
+                assert_eq!(
+                    style.uses_requested_latin_east_asia_fallback(),
+                    east != "MS Mincho"
+                );
+                let rule = neutral_rule_east_asia_descriptor(&style, Some(&properties));
+                if platform == WordLayoutPlatform::Windows && east != "MS Mincho" {
+                    assert!(rule.contains(east));
+                    assert!(!rule.starts_with(&*style.font_descriptor_east_asia));
+                } else {
+                    assert_eq!(rule.as_ref(), style.font_descriptor_east_asia.as_ref());
+                }
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for language in ["zh-TW", "ko-KR"] {
+            let properties = RunProperties {
+                fonts: Some(RunFonts {
+                    east_asia: Some("Calibri".into()),
+                    ..RunFonts::default()
+                }),
+                east_asia_language: Some(language.into()),
+                ..RunProperties::default()
+            };
+            assert!(resolve_font_families(Some(&properties))
+                .east_asia_stack()
+                .starts_with("Calibri"));
         }
         set_word_layout_platform(previous);
     }
