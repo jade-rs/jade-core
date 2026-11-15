@@ -875,9 +875,6 @@ fn execute_text_run_with_font_state<P: Painter>(
             context, text, x, y, combine, style, fonts, glyphs, font_state,
         );
     }
-    if try_draw_windows_legacy_effect(context, text, x, y, style, fonts, glyphs, font_state)? {
-        return Ok(());
-    }
     // `w:shadow` (§17.3.2.31) / `w:emboss` (§17.3.2.13) / `w:imprint`
     // (§17.3.2.18): apply a native canvas shadow around the glyph fills, then
     // always clear it so later draws are unaffected. The shadow propagates to
@@ -907,12 +904,21 @@ fn execute_text_run_with_font_state<P: Painter>(
         halo?;
     }
     let shadow_applied = if style.emboss {
+        if try_draw_windows_legacy_effect(context, text, x, y, style, fonts, glyphs, font_state)? {
+            return Ok(());
+        }
         apply_emboss_shadow(context, style.font_size_pt, false);
         true
     } else if style.imprint {
+        if try_draw_windows_legacy_effect(context, text, x, y, style, fonts, glyphs, font_state)? {
+            return Ok(());
+        }
         apply_emboss_shadow(context, style.font_size_pt, true);
         true
     } else if style.shadow {
+        if try_draw_windows_legacy_effect(context, text, x, y, style, fonts, glyphs, font_state)? {
+            return Ok(());
+        }
         apply_text_shadow(context, style.font_size_pt);
         true
     } else {
@@ -1174,6 +1180,7 @@ fn apply_text_shadow<P: Painter>(context: &P, font_size_pt: f32) {
 /// The measured controls exclude transforms, combined effects and OpenType
 /// shaping; those retain their current path until independently measured.
 #[allow(clippy::too_many_arguments)]
+#[cold]
 fn try_draw_windows_legacy_effect<P: Painter>(
     context: &P,
     text: &str,
@@ -1275,6 +1282,25 @@ fn clear_text_shadow<P: Painter>(context: &P) {
     context.set_shadow_blur(0.0);
 }
 
+// Outline selection is rare. Keep feature/platform checks out of ordinary
+// glyph painting so its existing batch path remains small and inlineable.
+#[cold]
+#[inline(never)]
+fn is_isolated_windows_outline(
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    font_state: &mut FontStateTracker,
+) -> bool {
+    !style.shadow
+        && !style.emboss
+        && !style.imprint
+        && style.effects.is_none()
+        && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && !fonts.iter().any(|font| font_state.font_has_features(font))
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_text_run_glyphs<P: Painter>(
     context: &P,
@@ -1292,24 +1318,19 @@ fn draw_text_run_glyphs<P: Painter>(
     // `w:outline` (§17.3.2.23): draw the glyphs as hollow stroked outlines using
     // the run's color, rather than solid fills. The glyph-batch fast path only
     // fills, so outline runs always take the per-glyph stroke path below.
-    let isolated_windows_outline = style.outline
-        && !style.shadow
-        && !style.emboss
-        && !style.imprint
-        && style.effects.is_none()
-        && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
-        && jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        && !fonts.iter().any(|font| font_state.font_has_features(font));
-    if style.outline {
+    let isolated_windows_outline = if style.outline {
+        let isolated = is_isolated_windows_outline(style, fonts, font_state);
         context.set_stroke_style_str(&style.fill_color);
-        context.set_line_width(if isolated_windows_outline {
+        context.set_line_width(if isolated {
             // Original Word PDFs use a 0.14 pt cosmetic outline at 12/20/40 pt.
             jade_docx_layout::units::points_to_px(0.14)
         } else {
             outline_line_width_px(style.font_size_pt)
         });
-    }
+        isolated
+    } else {
+        false
+    };
 
     let needs_scale = (style.text_scale_x - 1.0).abs() > f64::EPSILON;
 
