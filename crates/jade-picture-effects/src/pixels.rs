@@ -100,9 +100,7 @@ pub fn decode(bytes: &[u8]) -> Option<image::RgbaImage> {
 
 pub fn encode_png(pixels: &image::RgbaImage) -> Option<Vec<u8>> {
     let mut out = std::io::Cursor::new(Vec::new());
-    pixels
-        .write_to(&mut out, image::ImageFormat::Png)
-        .ok()?;
+    pixels.write_to(&mut out, image::ImageFormat::Png).ok()?;
     Some(out.into_inner())
 }
 
@@ -300,10 +298,19 @@ pub fn blur(pixels: &mut image::RgbaImage, radius: u32) {
                 (width, height, width * 4)
             };
             for index in 0..lines {
-                let start = if horizontal { index * width * 4 } else { index * 4 };
+                let start = if horizontal {
+                    index * width * 4
+                } else {
+                    index * 4
+                };
                 for i in 0..length {
                     let at = start + i * step;
-                    let pixel = [samples[at], samples[at + 1], samples[at + 2], samples[at + 3]];
+                    let pixel = [
+                        samples[at],
+                        samples[at + 1],
+                        samples[at + 2],
+                        samples[at + 3],
+                    ];
                     line[i] = pixel;
                     for channel in 0..4 {
                         prefix[i + 1][channel] = prefix[i][channel] + u64::from(pixel[channel]);
