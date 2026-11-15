@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T020524270Z-5a3c7bd3",
+  "captured_at_utc": "2026-11-15T02:05:24.2744525Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15",
+      "source": "..\\w15-japanese-graphic-text-inputs\\word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15.docx",
+      "sha256": "7ebc09fecc78c3d50b061fa72de445a10128707d3ab07795761a793c8f9c1829",
+      "pdf": "word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15.pdf",
+      "pdf_sha256": "32cfe3ed73a72677496b67e573d8d8bc2ef645ac1ba522b885c35a2caf9fd935",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15.page-001.emf",
+          "sha256": "36765341c720a1a86b0f3ab585f28ad4dd50f29683386adeda331b92b2f900f8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

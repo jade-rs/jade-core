@@ -1,8 +1,8 @@
 Windows legacy character-effect assertions
 ==========================================
 
-`windows/graphic-text.json` pins 47 independently captured Windows paint cases:
-the unchanged `char-effects.docx` and 46 reproducible controls. Captures retain
+`windows/graphic-text.json` pins 62 independently captured Windows paint cases:
+the unchanged `char-effects.docx` and 61 reproducible controls. Captures retain
 Word 16.0.19127.20936, the WINWORD executable SHA-256, OS, UTC capture ID,
 byte-identical input, original PDF and raw EMF for every page. Each document was
 opened read-only in a fresh Word process. Add new version directories and
@@ -10,8 +10,12 @@ observations rather than replacing an older version's originals.
 
 The matrix covers plain, shadow, outline, emboss and imprint at 12/20/40 pt,
 black/automatic and explicit red, Times New Roman/Arial/Calibri/Yu Mincho,
-and compatibility modes 12/14/15. Regenerate the 46 controls with
+and compatibility modes 12/14/15. Fifteen additional Yu Mincho controls cover
+Japanese kanji, hiragana, katakana and full-width letters/digits at 12/20/40 pt,
+including line wrapping. Regenerate the original 46 controls with
 `generate_windows_graphic_text_probes.py --output-directory <new-directory>`.
+Regenerate the Japanese controls with
+`generate_windows_japanese_graphic_text_probes.py --output-directory <new-directory>`.
 The generator tests require byte equality with the captured inputs.
 
 The Windows CI gate checks all physical glyph copies from EMF against native
@@ -29,6 +33,21 @@ For raster PDF export, auxiliary effect copies do not add duplicate invisible
 search text. The foreground text remains searchable exactly once. Native PDF
 tests exercise this on both Mac and Windows policies without changing the
 visible copies or vector-PDF paint assertions.
+
+Windows Word's original PDFs realize the requested 12/20/40 pt fonts at
+12/20.04/39.96 pt on the 600 dpi em grid. Windows contour painting uses this
+realized size while retaining the authored DOCX size and original glyph origins.
+Mac keeps its existing font sizes. The Japanese registry records both authored
+and observed Word font sizes, rechecked against the DOCX and original PDFs.
+
+PDF paint traces can label a glyph with a font's canonical cmap character while
+ActualText preserves its intended Unicode: the measured Yu Mincho font maps
+the day character and Kangxi sun radical to the same glyph ID. The verifier
+honors explicit scalar ActualText only when it covers every painted instance
+and both code points map to the same nonzero glyph in one unambiguous embedded
+font program. Font identifiers are bound through the embedded PostScript name.
+It never normalizes character Unicode, changes positions or drops paint copies.
+Different glyphs, mixed unmarked meanings and displaced text remain failures.
 
 Only font programs extracted from the original Word PDF and DOCX source bytes
 are supplied to the renderer. Expected coordinates are never renderer inputs.

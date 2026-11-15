@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T020452966Z-12abca4d",
+  "captured_at_utc": "2026-11-15T02:04:52.9698219Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15",
+      "source": "..\\w15-japanese-graphic-text-inputs\\word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15.docx",
+      "sha256": "a3caf158379fdad2ce3f88e96f72a47c441b68293d7fad7ce3ac95f20382e141",
+      "pdf": "word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15.pdf",
+      "pdf_sha256": "545bb7d412ba27732a03b7ba42692f13eb3395d09aa4519e42e57907cb84ca92",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15.page-001.emf",
+          "sha256": "f4e92cf185df5f5cca2e7e88bf25eae677ad9f77187ede6f680951f8e43f20fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

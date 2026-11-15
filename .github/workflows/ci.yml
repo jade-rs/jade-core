@@ -276,6 +276,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_table_row_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_missing_font_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_japanese_graphic_text_probes.py
           python scripts/word-oracle/check_windows_observations.py
       - name: Reconstruct registered origins from original Word drawing files
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json
@@ -300,6 +301,7 @@ jobs:
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_actualtext_aliases.py
           python scripts/word-oracle/check_windows_graphic_text.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert note-rule paint against versioned original Word PDF and EMF
         run: |

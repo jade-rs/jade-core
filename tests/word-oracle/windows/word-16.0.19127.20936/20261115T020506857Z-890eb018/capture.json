@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T020506857Z-890eb018",
+  "captured_at_utc": "2026-11-15T02:05:06.8624082Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15",
+      "source": "..\\w15-japanese-graphic-text-inputs\\word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15.docx",
+      "sha256": "94b088a4094670c46df326359d77694335d07c72ea8d194d7b36fde0a1af89ef",
+      "pdf": "word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15.pdf",
+      "pdf_sha256": "59aec5680bd837b9ef9c716dacee5c7e0fec9d0ad0dae2d6f933f4ef6ca76f7e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15.page-001.emf",
+          "sha256": "83969299f6442557918a1f940a8b9bfe1c5c9ded5f069ed879fcad229b433226",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
