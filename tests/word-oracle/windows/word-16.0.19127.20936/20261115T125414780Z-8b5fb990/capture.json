@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T125414780Z-8b5fb990",
+  "captured_at_utc": "2026-11-15T12:54:14.7840013Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-fallback-residual-yu-ms-size12-left-balance0-compat15",
+      "source": "tmp\\w15-u-fallback-residual-input-snapshots\\word-windows-edge-fallback-residual-yu-ms-size12-left-balance0-compat15.docx",
+      "sha256": "7ed0ae0d216cd20bdc4cfe173681c6a2e1d12eae0a7874084dc354542a0c9610",
+      "pdf": "word-windows-edge-fallback-residual-yu-ms-size12-left-balance0-compat15.pdf",
+      "pdf_sha256": "29ea3cbf61e0bd186150e9d6c176e4e1dc81ee97b76dae9f7e5c2161e59417d8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-fallback-residual-yu-ms-size12-left-balance0-compat15.page-001.emf",
+          "sha256": "b8d2a543a9c1be69e99480605668eb374d94864df311a1bdb28b164189a8f18f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

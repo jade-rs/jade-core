@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T131352291Z-ddb2b431",
+  "captured_at_utc": "2026-11-15T13:13:52.2940534Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-calibri-auto-size24-left-balance1-compat15",
+      "source": "tmp\\w15-w-calibri-auto-space-input-snapshots\\word-windows-edge-calibri-auto-size24-left-balance1-compat15.docx",
+      "sha256": "8a1f8f0fb8975d3a99617fd4cb505d8de2af7c9e29512a7566b409b803d951c1",
+      "pdf": "word-windows-edge-calibri-auto-size24-left-balance1-compat15.pdf",
+      "pdf_sha256": "45bb1f56885071d8c01138f10440ec2ddcd63edd272f9c25248cf92e80959093",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-calibri-auto-size24-left-balance1-compat15.page-001.emf",
+          "sha256": "32744955b396b60f9b3c97c0462653b19cddbc99f62f495267cfbd42d8945337",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

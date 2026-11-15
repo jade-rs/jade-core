@@ -23821,7 +23821,20 @@ where
                     ) {
                         opportunity.auto_space_capacity_px = left.4.max(right.4) * 0.25;
                     } else if east_asian_justification_gap(left.2, right.2).is_none()
-                        && !(is_east_asian(left.2) && right.2 == " ")
+                        && !(is_east_asian(left.2)
+                            && right.2 == " "
+                            && (paragraph_style
+                                .east_asian_rules
+                                .balance_single_byte_double_byte_width
+                                || !jade_docx_layout::line_metrics::word_windows_justification_space_is_latin(
+                                    prepared_segments[right.0]
+                                        .style
+                                        .resolved
+                                        .descriptor_for_grapheme(
+                                            " ",
+                                            jade_docx_layout::line_wrap::ScriptCategory::Latin,
+                                        ),
+                                )))
                     {
                         continue;
                     }
