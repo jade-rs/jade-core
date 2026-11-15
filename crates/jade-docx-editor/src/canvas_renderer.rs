@@ -10601,9 +10601,11 @@ where
                 props.font_size.map(f32::to_bits).hash(&mut hasher);
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
-                if windows {
+                if windows && (props.language.is_some() || props.east_asia_language.is_some()) {
                     // Wrapped lines retain the resolved language and fallback
                     // metrics, including after an in-place formatting edit.
+                    // When neither is authored, retain the legacy key without
+                    // hashing two empty options on every incremental repaint.
                     props.language.hash(&mut hasher);
                     props.east_asia_language.hash(&mut hasher);
                 }
@@ -12222,7 +12224,7 @@ where
                 hash_metric!(font_size, 4);
                 metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
-                if windows {
+                if windows && (props.language.is_some() || props.east_asia_language.is_some()) {
                     props.language.hash(&mut hasher);
                     props.east_asia_language.hash(&mut hasher);
                 }
