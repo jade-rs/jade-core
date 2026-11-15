@@ -35,7 +35,7 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 552 font/typography
+The separate `windows/font-coordinates.json` registry asserts 585 font/typography
 documents (123,862 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
@@ -154,7 +154,7 @@ paint and reference paths remain unchanged.
 
 Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
 borders, adjacent shading, tables, spacing, font and justification variants.
-The complete observation registry holds 501 captures / 1,412 documents / 1,373
+The observation registry holds 537 captures / 1,448 documents / 1,409
 source byte groups, retaining earlier Word builds and exact executable hashes.
 Unmatched cases remain raw observations, including mixed-script justification,
 bordered/table shading and adjacent-paragraph continuity. They are not accepted
@@ -201,7 +201,7 @@ observations: a narrow balanced line changes word wrapping and a 202pt line
 has an X-coordinate mismatch. Across all 111 recent controls, 19 remain
 unpromoted. All previous reference records and Mac expectations are retained.
 
-The edit/export gate also checks all 951 release documents. Reusing an authored
+The edit/export gate also checks all 984 release documents. Reusing an authored
 soft-break run during serialization preserves the original break syntax and
 run properties across edits; the reader's editable run segmentation and
 rendering are unchanged. Regression tests cover repeated synchronization,
@@ -242,3 +242,24 @@ paint checks against Word 16.0.19127.20936. They bring the current font gate to
 corpus to 951 documents. All prior 540/939 records remain unchanged. These
 controls constrain future changes to the remaining 20pt mismatch; they do not
 resolve it. Across the 139 recent controls, eighteen remain unpromoted.
+
+Thirty-six original Word 16.0.19127.20936 captures separate Latin-space fonts
+from explicitly selected Japanese fonts, vary terminal Japanese/Latin text and
+spaces, and exercise Calibri auto spacing at 12/20/24pt with balancing on/off.
+The generator reproduces every input byte for byte and preserves all package
+parts outside the explicitly changed document properties and text.
+
+Windows justification now counts an ordinary space in a known Latin face once;
+a CJK fallback glyph before it does not add another ideographic opportunity.
+Balanced half-em spaces and spaces in East Asian faces retain their policy.
+Calibri's regular-face auto spacing now uses its intrinsic OS/2 average width
+(1067/2048 em), with quarter-em spacing when balanced. A test reconstructs these
+metrics from the exact original Word PDF font program, independently of expected
+glyph coordinates. Both changes are Windows-only.
+
+Thirty-three controls pass all four coordinate planes and the production
+background gate. The current totals are 585 typography cases / 132,431 origins,
+154 shaded controls and 984 release documents. All previous 552/951 records and
+Mac expectations remain unchanged. The two justified controls ending in a space
+and the longer justified Calibri control remain raw observations. Across the
+175 recent controls, 21 remain unpromoted, alongside older table/border cases.

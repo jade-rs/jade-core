@@ -1030,6 +1030,15 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
             trailing_share: 2.0 * 904.0 / 2048.0,
         });
     }
+    if family == "Calibri" && font_descriptor_style(font_descriptor) == (false, false) {
+        // Calibri's OS/2 xAvgCharWidth is 1067 in a 2048-unit em. Original
+        // Windows Word 12/20/24pt controls retain this face metric, while
+        // balanced spacing uses a quarter em on either side.
+        return Some(WordAutoSpace {
+            em_px: f64::from(size_pt) * 96.0 / 72.0,
+            trailing_share: if balanced { 1.0 } else { 2.0 * 1067.0 / 2048.0 },
+        });
+    }
     if family != "Times New Roman" {
         return None;
     }
@@ -3498,6 +3507,20 @@ pub fn word_latin_font_line_height_em(family: &str) -> Option<f32> {
     Some((ascent + descent) / 2048.0)
 }
 
+/// A normal space in a known Latin face is a single word-spacing opportunity
+/// in Windows justification. A preceding CJK fallback glyph does not turn it
+/// into an additional ideographic opportunity. Balanced half-em spaces are
+/// handled separately by the caller. Unknown faces retain the existing policy.
+pub fn word_windows_justification_space_is_latin(font_descriptor: &str) -> bool {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return false;
+    }
+    let Some((_, family)) = split_font_descriptor(font_descriptor) else {
+        return false;
+    };
+    word_latin_font_vertical_units(family, Some(font_descriptor)).is_some()
+}
+
 /// The ascent (`hhea` ascender + line gap) and descent, in 2048-unit em, of
 /// the Latin faces in [`word_latin_font_line_height_em`]. Word sets the line
 /// gap above the glyphs: the first baseline of a Times New Roman page is
@@ -4672,6 +4695,45 @@ mod monospace_tests;
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_calibri_auto_space_scales_with_the_face_and_balance() {
+        use super::*;
+        for size in [12.0, 20.0, 24.0] {
+            let descriptor = format!("{size:.2}pt Calibri");
+            let ordinary = word_windows_latin_auto_space_metrics(&descriptor, false).unwrap();
+            let balanced = word_windows_latin_auto_space_metrics(&descriptor, true).unwrap();
+            assert!((ordinary.leading_gap_px() - size / 3.0).abs() < 1e-9);
+            assert!(
+                (ordinary.trailing_gap_px(false) - ordinary.leading_gap_px() * 1067.0 / 1024.0)
+                    .abs()
+                    < 1e-9
+            );
+            assert!((balanced.trailing_gap_px(false) - balanced.leading_gap_px()).abs() < 1e-9);
+        }
+        assert!(word_windows_latin_auto_space_metrics("bold 12.00pt Calibri", false).is_none());
+    }
+
+    #[test]
+    fn windows_latin_word_space_policy_preserves_mac_and_unknown_faces() {
+        use super::*;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for descriptor in ["12.00pt Arial", "bold 12.00pt Arial", "12.00pt Calibri"] {
+            assert!(word_windows_justification_space_is_latin(descriptor));
+        }
+        for descriptor in [
+            "12.00pt Yu Mincho",
+            "12.00pt MS Mincho",
+            "12.00pt Unregistered Font",
+            "invalid descriptor",
+        ] {
+            assert!(!word_windows_justification_space_is_latin(descriptor));
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(!word_windows_justification_space_is_latin("12.00pt Arial"));
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn windows_scripts_match_original_word_sizes_moves_and_all_measured_styles() {
         use super::*;

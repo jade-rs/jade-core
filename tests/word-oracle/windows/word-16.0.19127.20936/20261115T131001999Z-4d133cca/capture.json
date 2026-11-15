@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T131001999Z-4d133cca",
+  "captured_at_utc": "2026-11-15T13:10:02.0112765Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-both-balance0-compat15",
+      "source": "tmp\\w15-v-terminal-script-input-snapshots\\word-windows-edge-terminal-script-arial-arial-size12-ea-both-balance0-compat15.docx",
+      "sha256": "48081bae359d50811146318af852b94a2ec180191d0579f202791d7af2b41d8d",
+      "pdf": "word-windows-edge-terminal-script-arial-arial-size12-ea-both-balance0-compat15.pdf",
+      "pdf_sha256": "8db79fb01b5be474c1aeb108da9c40707416355b21fc7ba272ecfcb99fabfe76",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-terminal-script-arial-arial-size12-ea-both-balance0-compat15.page-001.emf",
+          "sha256": "7162a2124953dd07dbaf582061343bdaaf55636fa296df3e29b191b027a772d7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

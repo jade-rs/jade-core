@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T125400038Z-0080acff",
+  "captured_at_utc": "2026-11-15T12:54:00.0414955Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-fallback-residual-arial-yu-size12-both-balance0-compat15",
+      "source": "tmp\\w15-u-fallback-residual-input-snapshots\\word-windows-edge-fallback-residual-arial-yu-size12-both-balance0-compat15.docx",
+      "sha256": "7ee24d79d15271ce711587d73df4287c01ac1dfbafbc4404b10d1229237ff5a2",
+      "pdf": "word-windows-edge-fallback-residual-arial-yu-size12-both-balance0-compat15.pdf",
+      "pdf_sha256": "e0dc3544a94b242bc15fd0c005822cac0372f7b7836ff12ce1406354afb850a8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-fallback-residual-arial-yu-size12-both-balance0-compat15.page-001.emf",
+          "sha256": "8fe8e051ad6b4fc6e2e94d7e72b861ebbbfc1cb25627d1a29c2b0e73ffbaca01",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
