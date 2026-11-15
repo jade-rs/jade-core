@@ -1882,6 +1882,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "jade-diff-align",
+ "jade-diff-support",
  "jade-docx-extract",
  "serde",
  "serde_json",

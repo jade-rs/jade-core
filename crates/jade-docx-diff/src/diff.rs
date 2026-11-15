@@ -4,6 +4,7 @@
 //! [`jade_diff_align`] に任せる。内容が一致するものを錨として固定し、隙間だけ
 //! 総当たりするので、長い文書でも現実的な時間で終わる。
 
+use diff_support::{MAX_LCS_CELLS, trimmed_lcs_diff};
 use jade_diff_align::{Pairing, Step, lcs_diff, pair_with_anchors, similarity};
 use serde::Serialize;
 use std::hash::Hash;
@@ -688,11 +689,39 @@ fn reposition_removed(blocks: &mut Vec<BlockChange>) {
     *blocks = kept;
 }
 
+/// 文字列の編集手順。
+///
+/// 共通の接頭辞だけを先に落とす。`lcs_diff` は先頭が一致する限り必ず `Equal` を
+/// 取るので、接頭辞を落としても結果は変わらない。接尾辞は落とさない: 同じ長さの
+/// 並べ方が複数あるとき、接尾辞を先に固定すると `lcs_diff` と違う並べ方になりうる。
+/// 残りが LCS の表 ([`MAX_LCS_CELLS`]) に収まるなら従来どおり [`lcs_diff`] で解き、
+/// 収まらないときだけ、接尾辞の除去と Myers 法・上限付きの表を備えた
+/// `trimmed_lcs_diff` に回す。
+fn char_steps(old: &[char], new: &[char]) -> Vec<Step> {
+    let prefix = old.iter().zip(new).take_while(|(a, b)| a == b).count();
+    let (old_rest, new_rest) = (&old[prefix..], &new[prefix..]);
+
+    let rest = if old_rest.len().saturating_mul(new_rest.len()) <= MAX_LCS_CELLS {
+        lcs_diff(old_rest, new_rest)
+    } else {
+        trimmed_lcs_diff(old_rest, new_rest)
+    };
+
+    let mut out = Vec::with_capacity(prefix + rest.len());
+    out.extend((0..prefix).map(|index| Step::Equal(index, index)));
+    out.extend(rest.into_iter().map(|step| match step {
+        Step::Equal(o, n) => Step::Equal(prefix + o, prefix + n),
+        Step::Removed(o) => Step::Removed(prefix + o),
+        Step::Added(n) => Step::Added(prefix + n),
+    }));
+    out
+}
+
 /// 文字単位の内訳。日本語には単語境界が無いので文字で見る。
 pub fn segment_text(old: &str, new: &str) -> Vec<Segment> {
     let old_chars: Vec<char> = old.chars().collect();
     let new_chars: Vec<char> = new.chars().collect();
-    let steps = lcs_diff(&old_chars, &new_chars);
+    let steps = char_steps(&old_chars, &new_chars);
 
     let mut out: Vec<Segment> = Vec::new();
     for step in steps {
@@ -811,6 +840,117 @@ fn collect_diagnostics(blocks: &[BlockIr], diagnostics: &mut Diagnostics, old_si
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn segments(old: &str, new: &str) -> Vec<(SegmentKind, String)> {
+        segment_text(old, new)
+            .into_iter()
+            .map(|segment| (segment.kind, segment.text))
+            .collect()
+    }
+
+    /// 変更前の実装 (全体を `lcs_diff` に渡す) をそのまま残した基準。
+    fn reference_segments(old: &str, new: &str) -> Vec<(SegmentKind, String)> {
+        let old_chars: Vec<char> = old.chars().collect();
+        let new_chars: Vec<char> = new.chars().collect();
+        let mut out: Vec<(SegmentKind, String)> = Vec::new();
+        for step in lcs_diff(&old_chars, &new_chars) {
+            let (kind, ch) = match step {
+                Step::Equal(o, _) => (SegmentKind::Equal, old_chars[o]),
+                Step::Removed(o) => (SegmentKind::Delete, old_chars[o]),
+                Step::Added(n) => (SegmentKind::Insert, new_chars[n]),
+            };
+            match out.last_mut() {
+                Some(last) if last.0 == kind => last.1.push(ch),
+                _ => out.push((kind, ch.to_string())),
+            }
+        }
+        out
+    }
+
+    #[test]
+    fn segment_text_small_cases_are_unchanged() {
+        let cases = [
+            ("", ""),
+            ("abc", ""),
+            ("", "abc"),
+            ("abc", "abc"),
+            ("abc", "abd"),
+            ("the cat sat", "the bat sat"),
+            ("第三条 甲は乙に支払う", "第三条 甲は丙に支払う"),
+            ("aXbXc", "abc"),
+            ("abab", "baba"),
+            ("aab", "ab"),
+            ("ba", "aba"),
+            ("abcabc", "acbacb"),
+        ];
+        for (old, new) in cases {
+            assert_eq!(
+                segments(old, new),
+                reference_segments(old, new),
+                "{old:?} -> {new:?}"
+            );
+        }
+        assert_eq!(
+            segments("abc", "aXc"),
+            vec![
+                (SegmentKind::Equal, "a".to_owned()),
+                (SegmentKind::Delete, "b".to_owned()),
+                (SegmentKind::Insert, "X".to_owned()),
+                (SegmentKind::Equal, "c".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn segment_text_matches_full_lcs_on_random_small_inputs() {
+        let mut state = 0x2545_f491_4f6c_dd1du64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..5000 {
+            let mut gen_string = |max_len: u64| {
+                let len = next() % (max_len + 1);
+                (0..len)
+                    .map(|_| ['a', 'b', 'c', '日'][(next() % 4) as usize])
+                    .collect::<String>()
+            };
+            let (old, new) = (gen_string(14), gen_string(14));
+            assert_eq!(
+                segments(&old, &new),
+                reference_segments(&old, &new),
+                "{old:?} -> {new:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn segment_text_handles_a_long_paragraph_with_one_edit() {
+        // 全体を `lcs_diff` に渡すと 20_000 x 20_000 = 4e8 セルの表が要る。
+        let old: String = (0..20_000)
+            .map(|i| char::from_u32(0x3041 + (i % 80) as u32).unwrap())
+            .collect();
+        let mut new_chars: Vec<char> = old.chars().collect();
+        new_chars[10_000] = 'X';
+        let new: String = new_chars.iter().collect();
+
+        let result = segments(&old, &new);
+        assert_eq!(result.len(), 4);
+        assert_eq!(result[0].0, SegmentKind::Equal);
+        assert_eq!(result[0].1.chars().count(), 10_000);
+        assert_eq!(
+            result[1],
+            (
+                SegmentKind::Delete,
+                old.chars().nth(10_000).unwrap().to_string()
+            )
+        );
+        assert_eq!(result[2], (SegmentKind::Insert, "X".to_owned()));
+        assert_eq!(result[3].0, SegmentKind::Equal);
+        assert_eq!(result[3].1.chars().count(), 9_999);
+    }
 
     fn paragraph(text: &str, para_id: Option<&str>) -> BlockIr {
         BlockIr::Paragraph(ParagraphIr {
