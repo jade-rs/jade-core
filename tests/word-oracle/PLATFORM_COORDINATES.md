@@ -45,7 +45,7 @@ apply. Coverage, source hashes, version metadata, original PDFs and EMFs are
 checked before rendering. The public encrypted fixture uses its documented test
 password and retains the encrypted source hash separately from decrypted bytes.
 
-An additional [graphic-text gate](GRAPHIC_TEXT.md) asserts 47 versioned Windows
+An additional [graphic-text gate](GRAPHIC_TEXT.md) asserts 62 versioned Windows
 cases against original physical glyph copies, visible colors and absolute
 outline geometry. It preserves the existing typography gate and Mac references.
 

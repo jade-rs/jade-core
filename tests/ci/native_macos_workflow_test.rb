@@ -175,6 +175,7 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute step.fetch("continue-on-error", false)
     command = step.fetch("run")
     assert_includes command, "test_windows_graphic_text.py"
+    assert_includes command, "test_windows_actualtext_aliases.py"
     assert_includes command, "check_windows_graphic_text.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
     refute_includes command, "|| true"
     refute_includes command, "--skip"

@@ -16,7 +16,7 @@ def rectangle(offset=0):
 
 class GraphicTextTests(unittest.TestCase):
     def test_registered_originals_retain_all_graphic_cases(self):
-        self.assertEqual(len(check.verify()), 47)
+        self.assertEqual(len(check.verify()), 62)
 
     def test_missing_registry_or_changed_evidence_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -1301,6 +1301,71 @@ fn is_isolated_windows_outline(
         && !fonts.iter().any(|font| font_state.font_has_features(font))
 }
 
+/// Word realizes GDI glyph outlines on its 600 dpi em grid: the original
+/// 12/20/40 pt control PDFs use 12/20.04/39.96 pt text sizes. Preserve style
+/// and family while using that realized size for Windows contour painting.
+#[cold]
+fn windows_outline_font(source: &Rc<str>) -> Rc<str> {
+    let Some(end) = source.find("pt ") else {
+        return Rc::clone(source);
+    };
+    let start = source[..end]
+        .char_indices()
+        .rev()
+        .find(|(_, character)| character.is_whitespace())
+        .map_or(0, |(index, character)| index + character.len_utf8());
+    let Ok(size) = source[start..end].parse::<f64>() else {
+        return Rc::clone(source);
+    };
+    let realized = (size * 600.0 / 72.0).round() * 72.0 / 600.0;
+    if !size.is_finite() || !realized.is_finite() || realized <= 0.0 || size == realized {
+        return Rc::clone(source);
+    }
+    Rc::from(format!(
+        "{}{}{}",
+        &source[..start],
+        realized,
+        &source[end..]
+    ))
+}
+
+#[cold]
+#[allow(clippy::too_many_arguments)]
+fn draw_unscaled_outline_glyphs<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+    isolated_windows_outline: bool,
+) -> Result<(), P::Error> {
+    record_replay_fallback_run(glyphs.len() as u64);
+    let realized: Vec<_>;
+    let fonts = if isolated_windows_outline {
+        realized = fonts.iter().map(windows_outline_font).collect();
+        &realized[..]
+    } else {
+        fonts
+    };
+    for glyph in glyphs {
+        let Some(font_descriptor) = fonts.get(glyph.font_index as usize) else {
+            continue;
+        };
+        let Some(glyph_text) = glyph.text(text) else {
+            continue;
+        };
+        font_state.set_font_rc_if_changed(context, font_descriptor);
+        if isolated_windows_outline {
+            context.stroke_text_as_path(glyph_text, x + glyph.x_offset, y)?;
+        } else {
+            context.stroke_text(glyph_text, x + glyph.x_offset, y)?;
+        }
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn draw_text_run_glyphs<P: Painter>(
     context: &P,
@@ -1361,22 +1426,16 @@ fn draw_text_run_glyphs<P: Painter>(
     }
 
     if style.outline {
-        record_replay_fallback_run(glyphs.len() as u64);
-        for glyph in glyphs {
-            let Some(font_descriptor) = fonts.get(glyph.font_index as usize) else {
-                continue;
-            };
-            let Some(glyph_text) = glyph.text(text) else {
-                continue;
-            };
-            font_state.set_font_rc_if_changed(context, font_descriptor);
-            if isolated_windows_outline {
-                context.stroke_text_as_path(glyph_text, x + glyph.x_offset, y)?;
-            } else {
-                context.stroke_text(glyph_text, x + glyph.x_offset, y)?;
-            }
-        }
-        return Ok(());
+        return draw_unscaled_outline_glyphs(
+            context,
+            text,
+            x,
+            y,
+            fonts,
+            glyphs,
+            font_state,
+            isolated_windows_outline,
+        );
     }
 
     // Draw each glyph at its pre-calculated position.
@@ -2991,6 +3050,96 @@ mod painter_backend_tests {
                 Some(("Z".into(), "#ff0000".into(), 300.0, 400.0)),
                 "{effect}"
             );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn outline_font_realization_preserves_font_style_and_family() {
+        for (input, expected) in [
+            ("12pt 'Yu Mincho'", "12pt 'Yu Mincho'"),
+            (
+                "bold italic 20pt 'Yu Mincho'",
+                "bold italic 20.04pt 'Yu Mincho'",
+            ),
+            (
+                "italic 40pt 'Times New Roman'",
+                "italic 39.96pt 'Times New Roman'",
+            ),
+        ] {
+            assert_eq!(windows_outline_font(&Rc::from(input)).as_ref(), expected);
+        }
+        for input in ["12pt 'Yu Mincho'", "unparsed-font", "0pt 'Yu Mincho'"] {
+            let source: Rc<str> = Rc::from(input);
+            assert!(Rc::ptr_eq(&source, &windows_outline_font(&source)));
+        }
+    }
+
+    #[test]
+    fn outline_realization_is_windows_only_and_restores_the_following_font() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let source: Rc<str> = Rc::from("bold italic 20pt 'Yu Mincho'");
+        let fonts = [Rc::clone(&source)];
+        let glyphs = [GlyphRunStep {
+            text_start: 0,
+            text_end: 1,
+            font_index: 0,
+            x_offset: 0.0,
+        }];
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let painter = RecordingPainter::new();
+            let mut tracker = FontStateTracker::new();
+            let outline = TextStyle {
+                outline: true,
+                font_size_pt: 20.0,
+                ..TextStyle::default()
+            };
+            execute_text_run_with_font_state(
+                &painter,
+                "A",
+                12.0,
+                34.0,
+                &outline,
+                &fonts,
+                &glyphs,
+                &mut tracker,
+            )
+            .unwrap();
+            execute_text_run_with_font_state(
+                &painter,
+                "Z",
+                56.0,
+                78.0,
+                &TextStyle::default(),
+                &fonts,
+                &glyphs,
+                &mut tracker,
+            )
+            .unwrap();
+            let ops = painter.ops();
+            let selected: Vec<_> = ops
+                .iter()
+                .filter_map(|op| match op {
+                    Op::SetFont(font) => Some(font.as_str()),
+                    _ => None,
+                })
+                .collect();
+            let expected = if platform == WordLayoutPlatform::Windows {
+                "bold italic 20.04pt 'Yu Mincho'"
+            } else {
+                source.as_ref()
+            };
+            assert_eq!(selected.first().copied(), Some(expected), "{platform:?}");
+            assert_eq!(
+                selected.last().copied(),
+                Some(source.as_ref()),
+                "{platform:?}"
+            );
+            assert!(ops.contains(&Op::FillText("Z".into(), 56.0, 78.0)));
         }
         set_word_layout_platform(previous);
     }

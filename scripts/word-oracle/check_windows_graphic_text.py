@@ -19,10 +19,20 @@ import pymupdf
 
 from check_platform_coordinates import ROOT, checked_file, compare, extract_fonts, read_json, require
 from extract_windows_emf import extract
+from pdf_actualtext_aliases import resolve_actualtext_aliases
 
 INDEX = Path('tests/word-oracle/windows/graphic-text.json')
-INDEX_SHA256 = 'e9bcb21f340bf9435357a8b432d55a587dbea8c437d969889c8016d7ab040fd8'
+INDEX_SHA256 = '0ddc6587e48ba90016fb21001cc56176c76620cc7f9c2707745214508c158508'
 TOLERANCE_PT = .375
+
+
+def word_font_sizes(path):
+    with pymupdf.open(path) as document:
+        return sorted({round(span['size'], 5)
+                       for page in document for span in page.get_texttrace()
+                       if span['type'] in (0, 1) and any(
+                           chr(ch[0]).isprintable() and not chr(ch[0]).isspace()
+                           for ch in span['chars'])})
 
 
 def pdf_paint(path):
@@ -55,6 +65,7 @@ def pdf_paint(path):
                     leading_white += 1
                     continue
                 paths.append(dict(drawing, page=page_index + 1))
+        resolve_actualtext_aliases(path, all_glyphs)
         return dict(page_count=len(document), glyphs=all_glyphs), dict(
             page_count=len(document), glyphs=visible), dict(colors), paths, images
 
@@ -176,7 +187,7 @@ def verify(root=ROOT):
     require(hashlib.sha256((root / INDEX).read_bytes()).hexdigest() == INDEX_SHA256,
             'Graphic-text coverage/expectations changed')
     index = read_json(root / INDEX)
-    require(index['schema'] == 1 and len(index['fixtures']) == 47, 'Graphic-text coverage removed')
+    require(index['schema'] == 1 and len(index['fixtures']) == 62, 'Graphic-text coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         name = case['name']
@@ -200,6 +211,14 @@ def verify(root=ROOT):
         drawing, = [row for row in drawings[manifest]['fixtures'] if row['name'] == name]
         require(len(drawing['glyphs']) == case['emf_glyph_count'], 'Physical glyph coverage changed')
         word_pdf = manifest.parent / document['pdf']
+        if 'word_font_sizes_pt' in case:
+            import xml.etree.ElementTree as ET
+            with ZipFile(source) as package:
+                body = ET.fromstring(package.read('word/document.xml'))
+            w = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
+            requested = {float(size.get(w + 'val')) for size in body.findall('.//' + w + 'rPr/' + w + 'sz')}
+            require(requested == {2 * case['requested_font_size_pt']}, 'Authored font size changed')
+            require(word_font_sizes(word_pdf) == case['word_font_sizes_pt'], 'Original Word draw sizes changed')
         _, visible, _, paths, images = pdf_paint(word_pdf)
         require(len(visible['glyphs']) == case['pdf_visible_glyph_count'], 'Visible PDF coverage changed')
         require(len(paths) == case['outline_count'] and images == case['image_count'], 'Original graphics coverage changed')

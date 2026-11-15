@@ -15074,6 +15074,351 @@
           "opened_filename": "word-windows-edge-graphic-shadow-yu-mincho-size20-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020443231Z-09810fcc.zip",
+      "archive_sha256": "1323b2db323868685df5eb94ee3df9dfb37f53f3d061bcf2fb9b0e177c280e83",
+      "capture_id": "20261115T020443231Z-09810fcc",
+      "capture_sha256": "336754a052e3bea731c00b2c6155a8eeab42185f3b75cc882e17ba99d8e3c505",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-emboss-size12-compat15",
+          "source_sha256": "4fcf459ff5c4eac397bd597c97e9c6838f6acfa1de38266b5ec262476c911595",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-emboss-size12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-emboss-size12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020447095Z-4ecde840.zip",
+      "archive_sha256": "cabfba7e8ccebd40a55aa633cac49c44a40a6eae1ce35319d92fbf7e88443631",
+      "capture_id": "20261115T020447095Z-4ecde840",
+      "capture_sha256": "b29b2ac2f240bcf893779cc3b793044a8f5968bc26bc43bc78579f1b0d510240",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-emboss-size20-compat15",
+          "source_sha256": "82d281c12430b92333c0a7adc93246e2bdb38a27da1b0dbebe084a54e1bc23c8",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-emboss-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-emboss-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020450031Z-2ffa35e2.zip",
+      "archive_sha256": "82690bfdeff00169eaa4fa3daf04b603d8046963c7438cc5dd9379e2cce8642b",
+      "capture_id": "20261115T020450031Z-2ffa35e2",
+      "capture_sha256": "cf4fcd75d764718d9bc093460f8a66e9f3ae002b68fe32e4c6f081999a969586",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-emboss-size40-compat15",
+          "source_sha256": "2c3eb1ea5d652c9c55cbbb99fec7ddc38cf9e5f3d8094fbfbbb093d3f8895626",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-emboss-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-emboss-size40-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020452966Z-12abca4d.zip",
+      "archive_sha256": "b4205c18527e0fe46d23fb382c678805c8a776d34ade7b5d893619c904921150",
+      "capture_id": "20261115T020452966Z-12abca4d",
+      "capture_sha256": "f586211c2acb6123278ffca626e64893e5244c2ee66e714b5eb1500c16423b27",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15",
+          "source_sha256": "a3caf158379fdad2ce3f88e96f72a47c441b68293d7fad7ce3ac95f20382e141",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020455837Z-d83724d1.zip",
+      "archive_sha256": "a3f279f7d4b1bbbdc27e333dbb6c65685fb153c80c2462f621a30a845ec0ffbb",
+      "capture_id": "20261115T020455837Z-d83724d1",
+      "capture_sha256": "7f5ac7d77c1023dc0840874489d10f214894867ad1e7d148bb2ca823f25e4b92",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-imprint-size20-compat15",
+          "source_sha256": "c6f03cdba79390d443c8a5fd273a0ad4b32e2f6096ff323b6b0da9aa5dbb097c",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-imprint-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-imprint-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020458742Z-e78d68b7.zip",
+      "archive_sha256": "c5ee1a9b2cb6931a4b809facc352b25fc00d222e1cf08eac2391a7940f72b6cf",
+      "capture_id": "20261115T020458742Z-e78d68b7",
+      "capture_sha256": "3ad53541975883dd8d320d8268b989f684ddc740600a28e14ddce284db52a743",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-imprint-size40-compat15",
+          "source_sha256": "a0087f87d03e0ea96dab893e701ff907fbccf2bac941bfd57ce7f3b3ca427f91",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-imprint-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-imprint-size40-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020501663Z-15f6ca65.zip",
+      "archive_sha256": "9c6ee40b3312813a60f31612287c09fe5bc7f9a8ed12306faeaf86314f29b3ad",
+      "capture_id": "20261115T020501663Z-15f6ca65",
+      "capture_sha256": "20355b650bd5c7afc675532067716608b7d0dc8b490b5660d8f59fec47269b06",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-outline-size12-compat15",
+          "source_sha256": "b205d5a27a41952bc054a29509327f4a574eeca783a710cd1d6b63fa7099f36b",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-outline-size12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-outline-size12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020506857Z-890eb018.zip",
+      "archive_sha256": "d7f67a106bab1d1e27161656fdeb61e3616f310b144e83b3c3f7b8205ffe4d41",
+      "capture_id": "20261115T020506857Z-890eb018",
+      "capture_sha256": "24090ef3d98310184736871e3d83b88b64e59787ac375f7c0dc73472cabc6831",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15",
+          "source_sha256": "94b088a4094670c46df326359d77694335d07c72ea8d194d7b36fde0a1af89ef",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020509726Z-eeedf104.zip",
+      "archive_sha256": "b797246390c17b9e4976651721fcfc9ebba14f07a7f90a1832f557338c8e14bb",
+      "capture_id": "20261115T020509726Z-eeedf104",
+      "capture_sha256": "90e1c3a10adbdbe229df7da51db3c12152b3225895366c70a8eef56dc3141be8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-outline-size40-compat15",
+          "source_sha256": "920cd5d670098b657e6aa854bbc82c03164079289c1f3c08583e534d1c5a43d5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-outline-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-outline-size40-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020512599Z-f41b0111.zip",
+      "archive_sha256": "3db3798001cd176626c5a53f8c9a5bee2fbb50cbc36c40a04d665d48b73bb156",
+      "capture_id": "20261115T020512599Z-f41b0111",
+      "capture_sha256": "08e16eb72f173fc330fe3343a772984e67b429156f23cb0924f29c77150659f9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-plain-size12-compat15",
+          "source_sha256": "0d631d501c144f4e9c7bf10c74a0d4d740a4851b00410041c919be845d4d7008",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-plain-size12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-plain-size12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020515508Z-a288781b.zip",
+      "archive_sha256": "3b1e5fa136d77993f8f5fe6a532d4018bb36ed8e179dd3256b95aaa965aaaca0",
+      "capture_id": "20261115T020515508Z-a288781b",
+      "capture_sha256": "a906a0207cb4938c964d24ae83ccdff52c3bf6c042ba79cbdd44d5432f55dfa9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-plain-size20-compat15",
+          "source_sha256": "54e7fac047c2d679300733966e37608b68eef21a2a4ec2eda00795132ec9ad5b",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-plain-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-plain-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020518368Z-91c03f23.zip",
+      "archive_sha256": "8dc67fda4e49b27ed6004541b9b10c4d37f80f5e6d7d94808542a4329a0d9f7f",
+      "capture_id": "20261115T020518368Z-91c03f23",
+      "capture_sha256": "899c5a8b91b23f4269e0253178faa764ac7f89ceb2cfd405c1924ba3f07727ea",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-plain-size40-compat15",
+          "source_sha256": "6a36e4053634cd8870ef3d762dc6180e7d162b276601a7bb9cdbfd84ee32868c",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-plain-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-plain-size40-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020521283Z-9bd5380e.zip",
+      "archive_sha256": "233d5ea9b046ac43283cb8c337aa305853db198bb8c50076df01b3af6bbc6b85",
+      "capture_id": "20261115T020521283Z-9bd5380e",
+      "capture_sha256": "1debd81b480eff582d0833893dd6d78753216f0e202400186760113fa7a446a2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-shadow-size12-compat15",
+          "source_sha256": "6672f8602e98c2886125ec4f1993ee922eb9a07a1e770bcabc290a2d93302ab9",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-shadow-size12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-shadow-size12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020524270Z-5a3c7bd3.zip",
+      "archive_sha256": "a0e7138ef56ae1cad063d482d5eaa21bd8457b4a800251cd9dae775c542cc641",
+      "capture_id": "20261115T020524270Z-5a3c7bd3",
+      "capture_sha256": "ee5f8a0497855a57485d6df493b9ff8b799725fdc68f0aa2c14e5097602337d6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15",
+          "source_sha256": "7ebc09fecc78c3d50b061fa72de445a10128707d3ab07795761a793c8f9c1829",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T020527143Z-56991f09.zip",
+      "archive_sha256": "a5ec1ef0ae97635b1ce68bb33253021522426fb6e3c88dca59e3685f3c6ba790",
+      "capture_id": "20261115T020527143Z-56991f09",
+      "capture_sha256": "1a3edd1089cc4c5930f21c83d6c27f613aec2c879293156506eb279b257e5a22",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-graphic-ja-yu-mincho-shadow-size40-compat15",
+          "source_sha256": "184294ce49e911d4593d938456aa61dba67f04a4a0c184af6d88d36cc0c0b3d5",
+          "source_aliases": [
+            "public/fixtures/word-windows-edge-graphic-ja-yu-mincho-shadow-size40-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-shadow-size40-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

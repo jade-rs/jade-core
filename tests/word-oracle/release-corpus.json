@@ -3334,6 +3334,66 @@
     {
       "fixture": "word-windows-edge-graphic-shadow-yu-mincho-size20-compat15",
       "docx_sha256": "122a3e678cef14134a9b2ce747cd26cdfbba16d30908a59e89c15fb17f38adc5"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-emboss-size12-compat15",
+      "docx_sha256": "4fcf459ff5c4eac397bd597c97e9c6838f6acfa1de38266b5ec262476c911595"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-emboss-size20-compat15",
+      "docx_sha256": "82d281c12430b92333c0a7adc93246e2bdb38a27da1b0dbebe084a54e1bc23c8"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-emboss-size40-compat15",
+      "docx_sha256": "2c3eb1ea5d652c9c55cbbb99fec7ddc38cf9e5f3d8094fbfbbb093d3f8895626"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-imprint-size12-compat15",
+      "docx_sha256": "a3caf158379fdad2ce3f88e96f72a47c441b68293d7fad7ce3ac95f20382e141"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-imprint-size20-compat15",
+      "docx_sha256": "c6f03cdba79390d443c8a5fd273a0ad4b32e2f6096ff323b6b0da9aa5dbb097c"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-imprint-size40-compat15",
+      "docx_sha256": "a0087f87d03e0ea96dab893e701ff907fbccf2bac941bfd57ce7f3b3ca427f91"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-outline-size12-compat15",
+      "docx_sha256": "b205d5a27a41952bc054a29509327f4a574eeca783a710cd1d6b63fa7099f36b"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-outline-size20-compat15",
+      "docx_sha256": "94b088a4094670c46df326359d77694335d07c72ea8d194d7b36fde0a1af89ef"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-outline-size40-compat15",
+      "docx_sha256": "920cd5d670098b657e6aa854bbc82c03164079289c1f3c08583e534d1c5a43d5"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-plain-size12-compat15",
+      "docx_sha256": "0d631d501c144f4e9c7bf10c74a0d4d740a4851b00410041c919be845d4d7008"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-plain-size20-compat15",
+      "docx_sha256": "54e7fac047c2d679300733966e37608b68eef21a2a4ec2eda00795132ec9ad5b"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-plain-size40-compat15",
+      "docx_sha256": "6a36e4053634cd8870ef3d762dc6180e7d162b276601a7bb9cdbfd84ee32868c"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-shadow-size12-compat15",
+      "docx_sha256": "6672f8602e98c2886125ec4f1993ee922eb9a07a1e770bcabc290a2d93302ab9"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-shadow-size20-compat15",
+      "docx_sha256": "7ebc09fecc78c3d50b061fa72de445a10128707d3ab07795761a793c8f9c1829"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-ja-yu-mincho-shadow-size40-compat15",
+      "docx_sha256": "184294ce49e911d4593d938456aa61dba67f04a4a0c184af6d88d36cc0c0b3d5"
     }
   ]
 }
