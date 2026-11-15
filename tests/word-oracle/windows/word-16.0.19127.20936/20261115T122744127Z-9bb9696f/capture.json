@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T122744127Z-9bb9696f",
+  "captured_at_utc": "2026-11-15T12:27:44.1319016Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15",
+      "source": "tmp\\w15-t-small-slack-expansion-input-snapshots\\word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15.docx",
+      "sha256": "4fe5bcef9eea15037bdc8908b1157a33d6a7bbdcbb7f5baec0150bb3612d09b0",
+      "pdf": "word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15.pdf",
+      "pdf_sha256": "bf0205f2622a0ec5eb6207044b188121318dd4bed19882c3c9c2bfb4e29dfd26",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15.page-001.emf",
+          "sha256": "564f63fb8b406f004ef7ef21c2536b0f145627624630a6306ddeb1ba69a9d945",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

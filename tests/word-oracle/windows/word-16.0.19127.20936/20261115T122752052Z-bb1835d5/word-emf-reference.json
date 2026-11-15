@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T122752052Z-bb1835d5",
+  "captured_at_utc": "2026-11-15T12:27:52.0571268Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-small-slack-yu22-left-balance1-compat15",
+      "docx_sha256": "eccd444c2e408e0cfa1eb69a712513d3a966431253de806f12e2460e827cfe83",
+      "pdf_sha256": "13b69773854c5fb089e97d620a65f231c538cd2e895eb99dbfcd9e23e3253e7b",
+      "pdf_file": "word-windows-edge-small-slack-yu22-left-balance1-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-small-slack-yu22-left-balance1-compat15.page-001.emf",
+          "sha256": "f39f004b9475325b3ec5f8c4725a7cc49033a07fbeab620e9f227e496abac650",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          134.03681584948689
+        ],
+        [
+          1,
+          "g",
+          100.55662164886111,
+          134.03681584948689
+        ],
+        [
+          1,
+          "日",
+          117.59604918363232,
+          134.03681584948689
+        ],
+        [
+          1,
+          "本",
+          139.55531142914734,
+          134.03681584948689
+        ],
+        [
+          1,
+          "語",
+          161.63456964321708,
+          134.03681584948689
+        ],
+        [
+          1,
+          "A",
+          194.63346099576697,
+          134.03681584948689
+        ],
+        [
+          1,
+          "B",
+          210.11294093932673,
+          134.03681584948689
+        ],
+        [
+          1,
+          "C",
+          225.23243297722232,
+          134.03681584948689
+        ],
+        [
+          1,
+          "A",
+          247.0716992541826,
+          134.03681584948689
+        ],
+        [
+          1,
+          "B",
+          262.5511791977424,
+          134.03681584948689
+        ],
+        [
+          1,
+          "C",
+          277.67067123563794,
+          134.03681584948689
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          188.0355330672748
+        ]
+      ]
+    }
+  ]
+}

@@ -35,7 +35,7 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 540 font/typography
+The separate `windows/font-coordinates.json` registry asserts 552 font/typography
 documents (123,862 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
@@ -154,7 +154,7 @@ paint and reference paths remain unchanged.
 
 Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
 borders, adjacent shading, tables, spacing, font and justification variants.
-The complete observation registry holds 489 captures / 1,400 documents / 1,361
+The complete observation registry holds 501 captures / 1,412 documents / 1,373
 source byte groups, retaining earlier Word builds and exact executable hashes.
 Unmatched cases remain raw observations, including mixed-script justification,
 bordered/table shading and adjacent-paragraph continuity. They are not accepted
@@ -201,7 +201,7 @@ observations: a narrow balanced line changes word wrapping and a 202pt line
 has an X-coordinate mismatch. Across all 111 recent controls, 19 remain
 unpromoted. All previous reference records and Mac expectations are retained.
 
-The edit/export gate also checks all 939 release documents. Reusing an authored
+The edit/export gate also checks all 951 release documents. Reusing an authored
 soft-break run during serialization preserves the original break syntax and
 run properties across edits; the reader's editable run segmentation and
 rendering are unchanged. Regression tests cover repeated synchronization,
@@ -232,3 +232,13 @@ release corpus to 939 documents and the font gate to 540 cases / 131,228 origins
 including 109 shaded controls. All prior 528/927 records remain unchanged.
 Mac rendering also remains identical for these twelve controls. Eighteen of the
 127 recent controls remain raw observations with their original Word evidence.
+
+Twelve paired left/justified controls at 12, 18 and 22pt preserve the same text
+and balance settings as the original 20pt/202pt controls. They vary only run size
+and, for justified lines, the right indent. Their sources reproduce the captured
+DOCX bytes exactly, and all twelve pass four coordinate planes and background
+paint checks against Word 16.0.19127.20936. They bring the current font gate to
+552 cases / 131,372 origins, including 121 shaded controls, and the release
+corpus to 951 documents. All prior 540/939 records remain unchanged. These
+controls constrain future changes to the remaining 20pt mismatch; they do not
+resolve it. Across the 139 recent controls, eighteen remain unpromoted.

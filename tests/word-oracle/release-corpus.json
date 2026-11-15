@@ -3830,6 +3830,54 @@
     {
       "fixture": "word-windows-edge-manual-size-yu22-width206p25-balance1-compat15",
       "docx_sha256": "77e631de821a6635a92b1c6edce40235d886a5110119014364800288eccf3fb9"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu12-both-width121p2-balance0-compat15",
+      "docx_sha256": "3bf44b8a91262c9874749aacd482f9065d314cfc548976f453baa6f10c914a09"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu12-both-width121p2-balance1-compat15",
+      "docx_sha256": "4a45976ce9d79fcd8c9f2bbcecbd5b675d94c32a10185cc1a57070739209e8ac"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu12-left-balance0-compat15",
+      "docx_sha256": "22e0df66040009526c298fbd5c9471cf0d555fd1aa383c34264046ab71d84dfa"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu12-left-balance1-compat15",
+      "docx_sha256": "9cf6593308bdc2fb27b1ddfc054f3aa3743ac5a3be0ebc81d2ae0ce1abf5ec9a"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu18-both-width181p8-balance0-compat15",
+      "docx_sha256": "40a49e3b31b28541d2354d9729ff85f4fd8dfcf602691015b6214ac24a8aa309"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu18-both-width181p8-balance1-compat15",
+      "docx_sha256": "b242aa491ae315f0c3db5822c2cd217c1ac750b8a6afd6e6664376b53a6944d5"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu18-left-balance0-compat15",
+      "docx_sha256": "a52cccf5dd532931e3595b898c1bd9716cdbdbca1f63ed231433a04b99aefaf8"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu18-left-balance1-compat15",
+      "docx_sha256": "aaca3f7140822f8a8e27ad1a467a34a4f3ac69c2294b1f705e49dc7b674395ee"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu22-both-width222p2-balance0-compat15",
+      "docx_sha256": "4fe5bcef9eea15037bdc8908b1157a33d6a7bbdcbb7f5baec0150bb3612d09b0"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu22-both-width222p2-balance1-compat15",
+      "docx_sha256": "c71d55531525b9406697cad9e7d4018fa91eac83bb9c6d143a193e7072c1dc49"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu22-left-balance0-compat15",
+      "docx_sha256": "13c7d641f75f28cf6fe6bf28688ed647f36b407d1c1c31b4691de49c50a88bab"
+    },
+    {
+      "fixture": "word-windows-edge-small-slack-yu22-left-balance1-compat15",
+      "docx_sha256": "eccd444c2e408e0cfa1eb69a712513d3a966431253de806f12e2460e827cfe83"
     }
   ]
 }
