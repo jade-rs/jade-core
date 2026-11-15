@@ -10599,6 +10599,14 @@ where
                 props.font_size.map(f32::to_bits).hash(&mut hasher);
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
+                if jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                {
+                    // Wrapped lines retain the resolved language and fallback
+                    // metrics, including after an in-place formatting edit.
+                    props.language.hash(&mut hasher);
+                    props.east_asia_language.hash(&mut hasher);
+                }
                 props.bold.hash(&mut hasher);
                 props.italic.hash(&mut hasher);
                 props.bold_complex.hash(&mut hasher);
@@ -12212,6 +12220,12 @@ where
                 hash_metric!(font_size, 4);
                 metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
+                if jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                {
+                    props.language.hash(&mut hasher);
+                    props.east_asia_language.hash(&mut hasher);
+                }
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
                     fonts.h_ansi.as_deref().hash(&mut hasher);

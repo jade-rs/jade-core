@@ -4590,6 +4590,54 @@
     {
       "fixture": "word-windows-edge-default-hint-calibri-size24-left-hintnone-balance1-compat15",
       "docx_sha256": "d70ae6ae6f7f2a72a91efa1d0e65ccd8eceb0c931ee6bdbec77420c6dd16f427"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-eastasia-ja-ja-ja-compat15",
+      "docx_sha256": "fc478ee910dcf52f8d292ab822a2cfbb1cedaa3fc0de389c3ae9b41836140b35"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-eastasia-ja-zh-ko-compat15",
+      "docx_sha256": "55dcfd6d47e4f90a4005f5f961c478de72bf52f640ca086ceb2a22855be29468"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15",
+      "docx_sha256": "afeaf6edc01ea6c6ce29bc8b72f88d84b6f1f56588bcb5d495822dd4e0053586"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-val-ja-ja-ja-compat15",
+      "docx_sha256": "16d50c16db5ed7b17ab25907e514dcffad492588ec0589dc7112c85baa63e29e"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-val-ja-zh-ko-compat15",
+      "docx_sha256": "d6b40215b327e06d3213443485599971c0dd98f7d698b122f43691774a8a202e"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-val-ko-zh-ja-compat15",
+      "docx_sha256": "12741b566a677ce03d863539bd54f343bc2ad4d572fcbd7a4e2dc4b168122389"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-eastasia-ja-ja-ja-compat15",
+      "docx_sha256": "cdb623167803ffb3f6cf9c5224b1678309bf5dd9318a53ec2c45498872f0f41d"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-eastasia-ja-zh-ko-compat15",
+      "docx_sha256": "0dd0ac73508560c88ce53cf05e89fde377e10f880ebd32ea633a0468a6abe518"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-eastasia-ko-zh-ja-compat15",
+      "docx_sha256": "e7e6dd1d0ca6546eac475c310456ed9e48fb5f9bc535c9caaac2b78946149f6e"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-val-ja-ja-ja-compat15",
+      "docx_sha256": "9e1f8563673daf33e0a2f06cc2eb7a5aa0401a91bc34f3a407437790331f2f1f"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-val-ja-zh-ko-compat15",
+      "docx_sha256": "1a69fbcd54c57f0f4a12d3c3f332e16ae1cc7fc6c9fa40a6b4db24469bc92575"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-val-ko-zh-ja-compat15",
+      "docx_sha256": "35d9b037feb837294cbbd19302a442ec80a25b3ee2ac62d5e64d5d8ab8f75168"
     }
   ]
 }

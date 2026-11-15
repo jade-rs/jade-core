@@ -64,6 +64,10 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
         );
         optional!(5, props.emphasis.as_ref());
         optional!(19, props.east_asian_layout.as_ref());
+        // Language selects fallback faces and their metrics even when all
+        // authored font slots are unchanged. Keep both optional fields distinct.
+        optional!(20, props.language.as_ref());
+        optional!(21, props.east_asia_language.as_ref());
         if let Some(ruby) = props.ruby.as_ref() {
             present |= 1 << 6;
             ruby.text.hash(&mut hasher);
@@ -114,6 +118,32 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn windows_language_values_and_field_positions_remain_distinct() {
+        let languages = [
+            None,
+            Some(""),
+            Some("ja-JP"),
+            Some("zh-TW"),
+            Some("ko-KR"),
+            Some("en-US"),
+        ];
+        let mut keys = std::collections::HashSet::new();
+        for language in languages {
+            for east_asia_language in languages {
+                let properties = RunProperties {
+                    language: language.map(Into::into),
+                    east_asia_language: east_asia_language.map(Into::into),
+                    ..Default::default()
+                };
+                assert!(
+                    keys.insert(windows_key(Some(&properties), None)),
+                    "{properties:?}"
+                );
+            }
+        }
+    }
     // The reference uses base-four place values of independently generated
     // ternary digits. Keep the exact key representation, not only uniqueness.
     fn check_boolean_encoding(digits: [u8; 15]) {

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T193854347Z-53f3d2b5",
+  "captured_at_utc": "2026-11-15T19:38:54.3509032Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15",
+      "source": "..\\w16-q-lang-input-snapshots\\word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15.docx",
+      "sha256": "afeaf6edc01ea6c6ce29bc8b72f88d84b6f1f56588bcb5d495822dd4e0053586",
+      "pdf": "word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15.pdf",
+      "pdf_sha256": "fdcac9e9dc7705f119eb6ca9f81570e23ea50dceb3547005f24c473d05710463",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15.page-001.emf",
+          "sha256": "276ea204eefb83454a474d274102483926c23b36dfb6ea19af5dfeac5ad8c360",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
