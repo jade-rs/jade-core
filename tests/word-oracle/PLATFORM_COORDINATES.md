@@ -154,8 +154,20 @@ paint and reference paths remain unchanged.
 
 Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
 borders, adjacent shading, tables, spacing, font and justification variants.
-The complete observation registry holds 407 captures / 1,318 documents / 1,279
+The complete observation registry holds 443 captures / 1,354 documents / 1,315
 source byte groups, retaining earlier Word builds and exact executable hashes.
 Unmatched cases remain raw observations, including mixed-script justification,
 bordered/table shading, adjacent-paragraph continuity and one Arial 20pt
 unbalanced-space case. They are not accepted coordinate expectations.
+
+An additional 36 Word 16.0.19127.20936 captures isolate mixed-script
+justification: 12 kerning-threshold controls (0, 20 and 198 half-points), and
+24 short manual-break controls varying Japanese/Latin boundaries and spaces.
+Both groups compare left and justified alignment with balanced widths enabled
+and disabled. The original input DOCX, PDF, EMF and capture metadata remain in
+versioned observation archives, including executable identity and read-only
+capture provenance. `generate_windows_justification_probes.py` reproduces all
+36 source files byte for byte; CI asserts their identity and archive hashes.
+These diagnostic captures do not change the 456 accepted font-coordinate
+cases or the Mac expectations. Residual mismatches require renderer fixes
+before promotion into the coordinate gate.
