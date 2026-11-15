@@ -37,6 +37,15 @@ pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
 }
 
 pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>) -> u64 {
+    windows_key_impl::<true>(properties, grid)
+}
+
+/// The effective-properties cache checks full structural equality within each
+/// bucket. Its bucket hash need not repeat the language work in the style key.
+pub(super) fn windows_key_impl<const INCLUDE_LANGUAGES: bool>(
+    properties: Option<&RunProperties>,
+    grid: Option<f64>,
+) -> u64 {
     let mut hasher = FxHasher::default();
     let mut present = 0_u64;
     macro_rules! optional {
@@ -66,8 +75,10 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
         optional!(19, props.east_asian_layout.as_ref());
         // Language selects fallback faces and their metrics even when all
         // authored font slots are unchanged. Keep both optional fields distinct.
-        optional!(20, props.language.as_ref());
-        optional!(21, props.east_asia_language.as_ref());
+        if INCLUDE_LANGUAGES {
+            optional!(20, props.language.as_ref());
+            optional!(21, props.east_asia_language.as_ref());
+        }
         if let Some(ruby) = props.ruby.as_ref() {
             present |= 1 << 6;
             ruby.text.hash(&mut hasher);
@@ -113,6 +124,20 @@ pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>)
     }
     present.hash(&mut hasher);
     hasher.finish()
+}
+
+// Keep optional language hashing out of the large repaint loops. Passing the
+// hasher by value also avoids making the hot loop's accumulator escape.
+#[cold]
+#[inline(never)]
+pub(super) fn hash_windows_languages(props: &RunProperties, mut hasher: FxHasher) -> FxHasher {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        props.language.hash(&mut hasher);
+        props.east_asia_language.hash(&mut hasher);
+    }
+    hasher
 }
 
 #[cfg(test)]
