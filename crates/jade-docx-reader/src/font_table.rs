@@ -23,6 +23,9 @@ pub struct FontDeclaration {
     /// `w:panose1` — the ten-byte PANOSE classification, kept verbatim.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub panose: Option<String>,
+    /// `w:family`: the authored generic design classification.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
     /// `w:embedRegular` / `w:embedBold` / `w:embedItalic` /
     /// `w:embedBoldItalic`: font files the author embedded for this family
     /// (see [`crate::embedded_font`]).
@@ -118,6 +121,13 @@ impl FontTablePart {
                                     .filter(|value| !value.is_empty());
                             }
                         }
+                        b"family" => {
+                            if let Some(current) = current.as_mut() {
+                                current.family = attr_value(e, b"w:val")
+                                    .map(|value| value.trim().to_string())
+                                    .filter(|value| !value.is_empty());
+                            }
+                        }
                         other => {
                             if let (Some(current), Some(style)) =
                                 (current.as_mut(), EmbeddedFontStyle::from_element(other))
@@ -160,6 +170,23 @@ impl FontTablePart {
             let alt = font.alt_name.as_deref()?;
             // A self-referential alt name adds nothing to a fallback stack.
             (!alt.eq_ignore_ascii_case(&font.name)).then_some((font.name.as_str(), alt))
+        })
+    }
+
+    /// Windows Word's measured missing-face candidates. Explicit alt names
+    /// and known aliases retain precedence; an installed primary still wins.
+    /// PANOSE-qualified designs need independent measurements.
+    pub fn windows_fallback_names(&self) -> impl Iterator<Item = (&str, &'static str)> {
+        self.fonts.iter().filter_map(|font| {
+            if font.panose.is_some() {
+                return None;
+            }
+            let fallback = match font.family.as_deref()? {
+                "roman" => "Cambria",
+                "swiss" | "auto" | "modern" => "Calibri",
+                _ => return None,
+            };
+            (!fallback.eq_ignore_ascii_case(&font.name)).then_some((font.name.as_str(), fallback))
         })
     }
 }
@@ -206,6 +233,29 @@ fn attr_value(element: &quick_xml::events::BytesStart<'_>, name: &[u8]) -> Optio
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_family_candidates_require_a_measured_class_without_panose() {
+        let part = FontTablePart::from_xml(r#"<w:fonts xmlns:w="w">
+          <w:font w:name="Unavailable Roman"><w:family w:val="roman"/></w:font>
+          <w:font w:name="Unavailable Swiss"><w:family w:val="swiss"></w:family></w:font>
+          <w:font w:name="Unavailable Modern"><w:family w:val="modern"/></w:font>
+          <w:font w:name="Unavailable Auto"><w:family w:val="auto"/></w:font>
+          <w:font w:name="Classified"><w:family w:val="roman"/><w:panose1 w:val="02020609040205080304"/></w:font>
+          <w:font w:name="Unmeasured"><w:family w:val="script"/></w:font>
+          <w:font w:name="Unspecified"/>
+        </w:fonts>"#).unwrap();
+        assert_eq!(part.fonts[0].family.as_deref(), Some("roman"));
+        assert_eq!(
+            part.windows_fallback_names().collect::<Vec<_>>(),
+            vec![
+                ("Unavailable Roman", "Cambria"),
+                ("Unavailable Swiss", "Calibri"),
+                ("Unavailable Modern", "Calibri"),
+                ("Unavailable Auto", "Calibri"),
+            ]
+        );
+    }
 
     #[test]
     fn parses_font_declarations_with_alt_names_and_panose() {

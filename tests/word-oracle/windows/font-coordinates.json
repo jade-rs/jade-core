@@ -7690,6 +7690,196 @@
       "glyph_count": 8,
       "public_test_password": null,
       "no_visible_vector_ink": true
+    },
+    {
+      "name": "hello",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T210924740Z-80d17c55/capture.json",
+        "sha256": "36dccaa44b2a9fe7c3abef18257b509e70e2152159283eb226c8bf454d1a5b78"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T210924740Z-80d17c55/word-emf-reference.json",
+        "sha256": "e6e9b41896e8710c78a97e9cc45d3baac77291a0ed2c08c379c8397ddd9981c9"
+      },
+      "source": {
+        "file": "public/fixtures/hello.docx",
+        "sha256": "a61b160c57a76b7d22cdba0aed72dadaab198655fae7eb24de788c8a04227f3b"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-auto-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220509174Z-2683902f/capture.json",
+        "sha256": "aeb286419d162363f28b16cfa605ae297d552930d64e3f801b1f1bf4e1eb8241"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220509174Z-2683902f/word-emf-reference.json",
+        "sha256": "5c8f4b3c49bd0663cec6c34dab9ea2852fc0677186f1c3d5b03e49a5d3118eb0"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-auto-hello-compat15.docx",
+        "sha256": "75e82003f8590fd42c71d21985839499c7c53ff1fba142f70a88ea0ee88c7b09"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-hiragino-latin-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220512990Z-73ec2dd1/capture.json",
+        "sha256": "1f4ed38e7ecba3efeb0b2488b83590a838ad422d1e50da7eff6dbe66be54653a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220512990Z-73ec2dd1/word-emf-reference.json",
+        "sha256": "3e428adfef09d9252de6c6d77110726d68e819f17e29370ff03273d8be30f457"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-hiragino-latin-hello-compat15.docx",
+        "sha256": "a6c5600275fc01fb8de3e513ee473e777c96ebfd9c247630e9324870735a71e1"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-hiragino-swiss-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220516290Z-0f07ef16/capture.json",
+        "sha256": "7bc3e6c0f5432a0d7b9674b517bcd71f197ca36f6485da79e0e8ec80bbadce32"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220516290Z-0f07ef16/word-emf-reference.json",
+        "sha256": "0b48a97a06141b907db93aa117a153e25ddb1ea300d620e12191894ed2fce122"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-hiragino-swiss-hello-compat15.docx",
+        "sha256": "2165bda7e470d2c86db30727e833741394c1590c4b2ad38af847b3b9b533764d"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-hiragino-w6-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220519401Z-b217a427/capture.json",
+        "sha256": "025086c0319493f88ffdc763dca50716e951ba7b8e48b79e8e75b88f159eba32"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220519401Z-b217a427/word-emf-reference.json",
+        "sha256": "c60cebe99eb95922ed612543ec160e3403eff2a6bad16d512e1ba3e646eb735d"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-hiragino-w6-hello-compat15.docx",
+        "sha256": "91f9d5ac774f7b4cb7e68253acf9f79606f4264d1eaa0acd72ac99ac8250bbb3"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-modern-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220522462Z-de8edfdd/capture.json",
+        "sha256": "e4e4e2a43ed7ef94ef5b6fbe8f7374fd9a26214256722296f874fdd9248d7a20"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220522462Z-de8edfdd/word-emf-reference.json",
+        "sha256": "821ef466a429396029b47147c0aa1780fcc3b23b5f4f481f1555dca882e7e072"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-modern-hello-compat15.docx",
+        "sha256": "e945d32f88da2f7ae51d2e12d3b3b22827b4cb59c037ad15759d23a3a59ffab3"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-roman-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220525529Z-bfc4e60e/capture.json",
+        "sha256": "0f581a7f1f84b267f945e38838949203904620c4247649724caf5f63ef509766"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220525529Z-bfc4e60e/word-emf-reference.json",
+        "sha256": "1df71ec21679c077b7982c903516dab61c1cd541b727c7373e2da1fe074ef4a2"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-roman-hello-compat15.docx",
+        "sha256": "ca3e909e18c853747eac585eef1a5f34fbbefcead64352997d805b2601aa030d"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-swiss-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220527187Z-ca3d087e/capture.json",
+        "sha256": "e4c90c90a6d2a63a468924e37def977d781b1d615eb47dfdb54654f45208be45"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220527187Z-ca3d087e/word-emf-reference.json",
+        "sha256": "fe57dc7fd8792788c226af1a98e20049f4d4212ac64de55b98da1912141612bf"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-swiss-hello-compat15.docx",
+        "sha256": "9fdebcc5fbe0993b2513525ca54cca9bca8d5aa699efde1500f5511a845b06b7"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-unknown-ja-roman-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220530227Z-fb8039c2/capture.json",
+        "sha256": "de972059424bcca6ce239e4ab0e4e89307a1f70dee601357c4cd15f503c46b18"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220530227Z-fb8039c2/word-emf-reference.json",
+        "sha256": "4fed0f58febbe55436df59ca3bf6b702c8fbe31d77a35fcdd5d8bc7a686cd982"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-unknown-ja-roman-hello-compat15.docx",
+        "sha256": "17668a2f9d1361e82cb5f46a0b50666fe475fcce28fe77a73db93e6e21b25c8f"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220533305Z-0d6cb896/capture.json",
+        "sha256": "9c4ea240b93704257a16a5c8ca6d42866ae846631d15872163b63f439b977aee"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T220533305Z-0d6cb896/word-emf-reference.json",
+        "sha256": "f5d73d5b2fe5f5e6989aef911a58a68fcdf4f68619707b1e425e1166f80d8533"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.docx",
+        "sha256": "96022488d0a4fcf5d2b03d81db4133546742c9d747a43d7bd3e1f68a3811c75f"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 10,
+      "public_test_password": null,
+      "no_visible_vector_ink": true
     }
   ]
 }

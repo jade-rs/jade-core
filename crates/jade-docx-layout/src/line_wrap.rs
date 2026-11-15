@@ -6858,6 +6858,11 @@ pub enum InlineClusterKind {
 /// Environment required by `wrap_text_into_lines` (style resolution and measurement).
 pub trait LineWrapContext {
     type Error;
+    /// Logical families registered by this measurement backend, when known.
+    /// `None` preserves the unresolved font stack instead of guessing availability.
+    fn registered_font_families(&self) -> Option<Vec<String>> {
+        None
+    }
     /// Returns the resolved run style that provides descriptors and letter spacing.
     fn resolve_run_style(
         &self,

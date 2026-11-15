@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T220533305Z-0d6cb896",
+  "captured_at_utc": "2026-11-14T22:05:33.3084026Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15",
+      "source": "..\\w15-independent-missing-font-inputs\\word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.docx",
+      "sha256": "96022488d0a4fcf5d2b03d81db4133546742c9d747a43d7bd3e1f68a3811c75f",
+      "pdf": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.pdf",
+      "pdf_sha256": "1977569da92ac10ee440b9b04890f6d16996165ef8c301f97863c9014fca91d7",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.page-001.emf",
+          "sha256": "900896f8f226f311f2084a690a68f83f338a763924b503ab432acc31d8c7b2b2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.page-002.emf",
+          "sha256": "9f92249b6223be117ff010fe31fc20717e3ff172fecc30fc7910d524832f9e25",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

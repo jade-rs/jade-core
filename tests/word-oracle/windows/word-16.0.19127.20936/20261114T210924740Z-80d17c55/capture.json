@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T210924740Z-80d17c55",
+  "captured_at_utc": "2026-11-14T21:09:24.7538792Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "hello",
+      "source": "public\\fixtures\\hello.docx",
+      "sha256": "a61b160c57a76b7d22cdba0aed72dadaab198655fae7eb24de788c8a04227f3b",
+      "pdf": "hello.pdf",
+      "pdf_sha256": "b663bc48f3574a0b675aa56aeb0ba665ab418f373fd79ebb88b533988433b702",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "hello.page-001.emf",
+          "sha256": "b6fad51cd0d58e3dc91151fb9cb8b372b9117cb9e874b55df6805c55e1b0bdda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "hello.page-002.emf",
+          "sha256": "0340d503be7dc031860976213e86fa5c37ae24022a462d92074991ac1badfc5e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

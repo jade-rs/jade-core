@@ -3114,6 +3114,42 @@
     {
       "fixture": "word-windows-edge-table-identity-effects-idprobe-nameprobe-customomitted-compat14",
       "docx_sha256": "c79a2fcf0d44f172bba49c9e1e13407cd3d7b5f83f05a480557d127d99484308"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-auto-hello-compat15",
+      "docx_sha256": "75e82003f8590fd42c71d21985839499c7c53ff1fba142f70a88ea0ee88c7b09"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-hiragino-latin-hello-compat15",
+      "docx_sha256": "a6c5600275fc01fb8de3e513ee473e777c96ebfd9c247630e9324870735a71e1"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-hiragino-swiss-hello-compat15",
+      "docx_sha256": "2165bda7e470d2c86db30727e833741394c1590c4b2ad38af847b3b9b533764d"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-hiragino-w6-hello-compat15",
+      "docx_sha256": "91f9d5ac774f7b4cb7e68253acf9f79606f4264d1eaa0acd72ac99ac8250bbb3"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-modern-hello-compat15",
+      "docx_sha256": "e945d32f88da2f7ae51d2e12d3b3b22827b4cb59c037ad15759d23a3a59ffab3"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-roman-hello-compat15",
+      "docx_sha256": "ca3e909e18c853747eac585eef1a5f34fbbefcead64352997d805b2601aa030d"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-swiss-hello-compat15",
+      "docx_sha256": "9fdebcc5fbe0993b2513525ca54cca9bca8d5aa699efde1500f5511a845b06b7"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-unknown-ja-roman-hello-compat15",
+      "docx_sha256": "17668a2f9d1361e82cb5f46a0b50666fe475fcce28fe77a73db93e6e21b25c8f"
+    },
+    {
+      "fixture": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15",
+      "docx_sha256": "96022488d0a4fcf5d2b03d81db4133546742c9d747a43d7bd3e1f68a3811c75f"
     }
   ]
 }

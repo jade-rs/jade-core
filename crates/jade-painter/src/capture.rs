@@ -221,6 +221,10 @@ pub fn replay<P: Painter>(
 impl<P: Painter> Painter for RoutedPainter<P> {
     type Error = P::Error;
 
+    fn registered_font_families(&self) -> Option<Vec<String>> {
+        self.inner.registered_font_families()
+    }
+
     // Tagged PDF marks go where the drawing goes: into a capture, to be
     // replayed with it, or on to the painter — never dropped.
     fn set_structure_node(&self, node: i32) {

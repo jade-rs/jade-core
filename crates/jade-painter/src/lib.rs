@@ -79,6 +79,12 @@ pub trait Painter {
     /// backends that cannot fail use [`core::convert::Infallible`].
     type Error;
 
+    /// Registered logical family names, including metric-compatible aliases.
+    /// Unknown backends retain their existing font selection policy.
+    fn registered_font_families(&self) -> Option<Vec<String>> {
+        None
+    }
+
     /// Draws an encoded image or a previously decoded resource with the same
     /// key. Source coordinates are normalized to the image's natural size.
     /// False means decoding is unavailable, allowing a visible fallback.

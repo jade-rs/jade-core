@@ -14839,6 +14839,13 @@ where
         footer_lines: Option<&[HeaderLine]>,
         comments: Option<&HashMap<String, DocumentComment>>,
     ) -> Result<(), JsValue> {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            jade_docx_layout::font_resolver::set_host_font_families(
+                self.host.painter().registered_font_families(),
+            );
+        }
         self.reset_page_layers(&document_rc);
         let align_is_offset = |value| {
             matches!(
@@ -40398,6 +40405,10 @@ where
     HostPainter::Error: PainterError,
 {
     type Error = JsValue;
+
+    fn registered_font_families(&self) -> Option<Vec<String>> {
+        self.host.painter().registered_font_families()
+    }
 
     fn measure_arabic_clusters(&self, text: &str, font: &str) -> Option<Vec<(usize, f64)>> {
         self.host.arabic_cluster_measurer()?(text, font)

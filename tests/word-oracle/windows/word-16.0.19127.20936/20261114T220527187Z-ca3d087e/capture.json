@@ -1,0 +1,53 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T220527187Z-ca3d087e",
+  "captured_at_utc": "2026-11-14T22:05:27.1904854Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-font-independent-swiss-hello-compat15",
+      "source": "..\\w15-independent-missing-font-inputs\\word-windows-edge-font-independent-swiss-hello-compat15.docx",
+      "sha256": "9fdebcc5fbe0993b2513525ca54cca9bca8d5aa699efde1500f5511a845b06b7",
+      "pdf": "word-windows-edge-font-independent-swiss-hello-compat15.pdf",
+      "pdf_sha256": "5dd2fb14149c09bdbfaddb4f35f9b22fd61e4685dbf0e69c05716cb9791bbaeb",
+      "pages": 2,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-font-independent-swiss-hello-compat15.page-001.emf",
+          "sha256": "bf1e230e34dcfe066695e65b18acddc7b66c27029cb2780feb487a25b8fdc163",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-font-independent-swiss-hello-compat15.page-002.emf",
+          "sha256": "76f77b449d336e17fc9a92c96d9cae1f9dae512fb827b11b9082aa80e6865b5e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

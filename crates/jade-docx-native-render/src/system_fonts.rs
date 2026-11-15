@@ -294,6 +294,18 @@ pub fn families_named_in(package: &[u8]) -> BTreeSet<String> {
         }
         if let Ok(Some(xml)) = package.part_str(part) {
             font_names_in_xml(&xml, part.ends_with("fontTable.xml"), &mut named);
+            if part.ends_with("fontTable.xml")
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                if let Ok(table) = jade_docx_reader::FontTablePart::from_xml(&xml) {
+                    named.extend(
+                        table
+                            .windows_fallback_names()
+                            .map(|(_, fallback)| fallback.to_string()),
+                    );
+                }
+            }
         }
     }
     named

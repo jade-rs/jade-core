@@ -10,6 +10,30 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_fractional_white_paper_is_invisible_but_later_white_erasure_is_rejected(self):
+        import pymupdf
+        with tempfile.TemporaryDirectory() as directory:
+            for kind in ('fractional-paper', 'text-erasure', 'image-erasure'):
+                with self.subTest(kind=kind), pymupdf.open() as document:
+                    page = document.new_page(width=595.5, height=842.25)
+                    page.draw_rect(page.rect, color=None, fill=(1, 1, 1))
+                    authored_paper = pymupdf.Rect(0, 0, 595.3, 841.9)
+                    if kind == 'fractional-paper':
+                        page.draw_rect(authored_paper, color=None, fill=(1, 1, 1))
+                    if kind == 'image-erasure':
+                        pixel = pymupdf.Pixmap(pymupdf.csRGB, pymupdf.IRect(0, 0, 1, 1), False)
+                        pixel.clear_with(0)
+                        page.insert_image(pymupdf.Rect(72, 72, 82, 82), pixmap=pixel)
+                    else:
+                        page.insert_text((72, 90), 'Visible text')
+                    if kind != 'fractional-paper':
+                        # A page-sized white fill after text/images is erasure,
+                        # even though the previous check treated it as paper.
+                        page.draw_rect(page.rect, color=None, fill=(1, 1, 1))
+                    pdf = Path(directory) / (kind + '.pdf')
+                    document.save(pdf)
+                    self.assertEqual(has_visible_vector_ink(pdf), kind != 'fractional-paper')
+
     def test_filled_and_stroked_guides_are_detected_without_counting_white_paper(self):
         import pymupdf
         with tempfile.TemporaryDirectory() as directory:
@@ -55,7 +79,27 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 417)
+        self.assertEqual(len(verify()), 427)
+
+    def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
+        import pymupdf
+        cases = [row for row in verify() if row[0]['name'] == 'hello'
+                 or row[0]['name'].startswith('word-windows-edge-font-independent-')]
+        self.assertEqual(len(cases), 10)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                capture = json.loads(manifest.read_text(encoding='utf-8'))
+                self.assertEqual(len(capture['documents']), 1)
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(document['open_mode'], 'normal-read-only')
+                name = case['name']
+                expected = 'Calibri' if any(token in name for token in
+                    ('-swiss-', '-auto-', '-modern-')) else 'Cambria'
+                with pymupdf.open(manifest.parent / document['pdf']) as pdf:
+                    families = {font[3].split('+')[-1] for page in pdf for font in page.get_fonts()}
+                self.assertEqual(families, {expected})
 
     def test_all_original_paragraph_only_break_controls_remain_registered(self):
         cases = [row for row in verify() if row[0]['capture']['file'].split('/')[-2] in {

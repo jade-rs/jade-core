@@ -38,7 +38,65 @@ def metafile(origin=600, mode=1, flags=4, rounded_printer=False):
     return bytes(header) + b''.join(records)
 
 
+def advanced_text():
+    text = bytearray(metafile(mode=2)[136:224])
+    struct.pack_into('<ff', text, 28, 0., 0.)
+    return bytes(text)
+
+
+def advanced_metafile(commands):
+    base = metafile()
+    header = bytearray(base[:108])
+    records = [base[108:124], base[124:136], *commands, base[224:]]
+    struct.pack_into('<ii', header, 72, 5100, 6600)
+    struct.pack_into('<II', header, 48, 108 + sum(map(len, records)), 1 + len(records))
+    return bytes(header) + b''.join(records)
+
+
+def world_translation(x, y, mode=2):
+    return record(36, struct.pack('<6fI', 1., 0., 0., 1., x, y, mode))
+
+
 class DrawingOriginTests(unittest.TestCase):
+    def test_advanced_translation_ignores_unused_record_scales(self):
+        data = advanced_metafile([world_translation(10., 20.), advanced_text()])
+        found = emf_glyphs(data, 1, 612, 792)
+        self.assertEqual([row[:2] for row in found], [[1, 'A'], [1, '日']])
+        for actual, expected in zip(found, [(73.2, 86.4), (79.2, 86.4)]):
+            for coordinate, value in zip(actual[2:], expected):
+                self.assertAlmostEqual(coordinate, value)
+
+    def test_advanced_set_left_right_and_identity_preserve_absolute_positions(self):
+        for mode, expected in [(1, (0., 0.)), (2, (40., 60.)),
+                               (3, (40., 60.)), (4, (30., 40.))]:
+            with self.subTest(mode=mode):
+                data = advanced_metafile([world_translation(10., 20.),
+                                          world_translation(30., 40., mode), advanced_text()])
+                first = emf_glyphs(data, 1, 612, 792)[0]
+                self.assertAlmostEqual(first[2], (600 + expected[0]) * .12)
+                self.assertAlmostEqual(first[3], (700 + expected[1]) * .12)
+
+    def test_saved_dc_restores_world_translation(self):
+        data = advanced_metafile([
+            record(33, b''), world_translation(100., 200.), advanced_text(),
+            record(34, struct.pack('<i', -1)), advanced_text(),
+        ])
+        first, _, restored, _ = emf_glyphs(data, 1, 612, 792)
+        self.assertEqual(first, [1, 'A', 84., 108.])
+        self.assertEqual(restored, [1, 'A', 72., 84.])
+
+    def test_unvalidated_advanced_units_rotation_and_scale_still_fail(self):
+        for linear in [(1.1, 0., 0., 1.), (0., 1., -1., 0.)]:
+            data = advanced_metafile([
+                record(35, struct.pack('<6f', *linear, 0., 0.)), advanced_text(),
+            ])
+            with self.assertRaisesRegex(ValueError, 'mode, alignment or transform'):
+                emf_glyphs(data, 1, 612, 792)
+        data = bytearray(advanced_metafile([advanced_text()]))
+        struct.pack_into('<ii', data, 72, 1000, 1000)
+        with self.assertRaisesRegex(ValueError, 'device-pixel canvas'):
+            emf_glyphs(data, 1, 612, 792)
+
     def test_raw_origin_and_advances_convert_without_alignment(self):
         self.assertEqual(emf_glyphs(metafile(), 1, 612, 792),
                          [[1, 'A', 72, 84], [1, '日', 78, 84]])

@@ -2928,20 +2928,17 @@ pub fn layout_docx_lines_from_package_with_oracle_advances<C: LineWrapContext>(
     let theme = theme_xml.and_then(|xml| ThemePart::from_xml(&String::from_utf8_lossy(xml)).ok());
     // Install (or clear) the document's fontTable substitutes so headless
     // measurement falls back through the same faces Word recorded.
-    crate::font_resolver::set_document_font_alt_names(
-        package
-            .get("word/fontTable.xml")
-            .and_then(|xml| {
-                jade_docx_reader::FontTablePart::from_xml(&String::from_utf8_lossy(xml)).ok()
-            })
-            .map(|table| {
-                table
-                    .alt_names()
-                    .map(|(name, alt)| (name.to_string(), vec![alt.to_string()]))
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default(),
-    );
+    let font_table = package.get("word/fontTable.xml").and_then(|xml| {
+        jade_docx_reader::FontTablePart::from_xml(&String::from_utf8_lossy(xml)).ok()
+    });
+    crate::font_resolver::set_document_font_table(font_table.as_ref());
+    if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+    {
+        // Each backend owns its font inventory. Clear a previous renderer's
+        // inventory when the current headless context cannot report one.
+        crate::font_resolver::set_host_font_families(context.registered_font_families());
+    }
     layout_document_lines_with_styles_and_oracle(
         &document,
         // Explicit East Asian faces still inherit omitted sizes on Windows.

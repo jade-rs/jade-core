@@ -1,0 +1,106 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261114T220533305Z-0d6cb896",
+  "captured_at_utc": "2026-11-14T22:05:33.3084026Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF compatible/advanced translated baseline Unicode origins v2",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15",
+      "docx_sha256": "96022488d0a4fcf5d2b03d81db4133546742c9d747a43d7bd3e1f68a3811c75f",
+      "pdf_sha256": "1977569da92ac10ee440b9b04890f6d16996165ef8c301f97863c9014fca91d7",
+      "pdf_file": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.page-001.emf",
+          "sha256": "900896f8f226f311f2084a690a68f83f338a763924b503ab432acc31d8c7b2b2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15.page-002.emf",
+          "sha256": "9f92249b6223be117ff010fe31fc20717e3ff172fecc30fc7910d524832f9e25",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 2,
+      "glyphs": [
+        [
+          1,
+          "H",
+          56.638097157831076,
+          67.07840649942987
+        ],
+        [
+          1,
+          "e",
+          63.47786736545051,
+          67.07840649942987
+        ],
+        [
+          1,
+          "l",
+          68.99768191896794,
+          67.07840649942987
+        ],
+        [
+          1,
+          "l",
+          71.5175972586172,
+          67.07840649942987
+        ],
+        [
+          1,
+          "o",
+          74.03751259826647,
+          67.07840649942987
+        ],
+        [
+          2,
+          "W",
+          56.638097157831076,
+          67.07840649942987
+        ],
+        [
+          2,
+          "o",
+          66.47776657931868,
+          67.07840649942987
+        ],
+        [
+          2,
+          "r",
+          72.35756903850029,
+          67.07840649942987
+        ],
+        [
+          2,
+          "l",
+          76.19744003225155,
+          67.07840649942987
+        ],
+        [
+          2,
+          "d",
+          78.71735537190082,
+          67.07840649942987
+        ]
+      ]
+    }
+  ]
+}
