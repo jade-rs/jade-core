@@ -2283,14 +2283,27 @@ fn append_unmaterialized_style_changes(
         .chain(new_styles.into_iter().flat_map(BTreeMap::keys))
         .copied()
         .collect();
+    let old_bounds = SheetBounds::of(old_sheet);
+    let new_bounds = SheetBounds::of(new_sheet);
+    // First pre-existing change per same-cell address. Positions are distinct, so the
+    // style-only changes pushed below can never match a later position.
+    let mut same_cell_index: HashMap<String, usize> = HashMap::new();
+    for (index, change) in diff.cell_changes.iter().enumerate() {
+        if let (Some(old_address), Some(new_address)) =
+            (change.old_address.as_deref(), change.new_address.as_deref())
+            && old_address == new_address
+        {
+            same_cell_index
+                .entry(old_address.to_owned())
+                .or_insert(index);
+        }
+    }
 
     for (row, column) in positions {
         // Materialized cells are already compared through the structural row/column
         // mapping. Comparing their absolute addresses again would turn a moved styled
         // cell into two false style changes at its old and new coordinates.
-        if sheet_contains_position(old_sheet, row, column)
-            || sheet_contains_position(new_sheet, row, column)
-        {
+        if old_bounds.contains(row, column) || new_bounds.contains(row, column) {
             continue;
         }
         let old_style = old_styles
@@ -2303,14 +2316,8 @@ fn append_unmaterialized_style_changes(
             continue;
         }
         let cell_address = one_based_address(row, column);
-        if diff.cell_changes.iter_mut().any(|change| {
-            let same_cell = change.old_address.as_deref() == Some(&cell_address)
-                && change.new_address.as_deref() == Some(&cell_address);
-            if same_cell {
-                change.style_changed = true;
-            }
-            same_cell
-        }) {
+        if let Some(&index) = same_cell_index.get(&cell_address) {
+            diff.cell_changes[index].style_changed = true;
             continue;
         }
         diff.cell_changes.push(CellChange {
@@ -2331,6 +2338,36 @@ fn append_unmaterialized_style_changes(
     }
 }
 
+/// The materialized grid of a sheet, computed once instead of per position.
+struct SheetBounds {
+    start_row: usize,
+    row_count: usize,
+    start_col: usize,
+    width: usize,
+}
+
+impl SheetBounds {
+    fn of(sheet: &SheetIr) -> Self {
+        Self {
+            start_row: sheet.start_row,
+            row_count: sheet.rows.len(),
+            start_col: sheet.start_col,
+            width: sheet.rows.iter().map(Vec::len).max().unwrap_or(0),
+        }
+    }
+
+    fn contains(&self, row: usize, column: usize) -> bool {
+        self.row_count != 0
+            && self.width > 0
+            && row >= self.start_row
+            && row < self.start_row + self.row_count
+            && column >= self.start_col
+            && column < self.start_col + self.width
+    }
+}
+
+/// The original per-call implementation, kept as the oracle for [`SheetBounds`].
+#[cfg(test)]
 fn sheet_contains_position(sheet: &SheetIr, row: usize, column: usize) -> bool {
     let width = sheet.rows.iter().map(Vec::len).max().unwrap_or(0);
     !sheet.rows.is_empty()
@@ -6202,6 +6239,198 @@ mod tests {
     use super::*;
     use proptest::prelude::*;
     use rust_xlsxwriter::ExcelDateTime;
+
+    fn grid_sheet(start_row: usize, start_col: usize, widths: &[usize]) -> SheetIr {
+        SheetIr {
+            name: "S".to_owned(),
+            start_row,
+            start_col,
+            rows: widths
+                .iter()
+                .map(|&width| vec![CellIr::default(); width])
+                .collect(),
+            merged_ranges: Vec::new(),
+        }
+    }
+
+    fn empty_sheet_diff() -> SheetDiff {
+        SheetDiff {
+            old_name: None,
+            new_name: None,
+            status: SheetStatus::Unchanged,
+            old_position: None,
+            new_position: None,
+            order_changed: false,
+            match_confidence: None,
+            alignment: AlignmentDiagnostics::default(),
+            table_regions: Vec::new(),
+            row_changes: Vec::new(),
+            column_changes: Vec::new(),
+            cell_changes: Vec::new(),
+            merge_changes: Vec::new(),
+        }
+    }
+
+    fn existing_change(address: &str, other: Option<&str>) -> CellChange {
+        CellChange {
+            old_address: Some(address.to_owned()),
+            new_address: Some(other.unwrap_or(address).to_owned()),
+            kind: CellChangeKind::ValueChanged,
+            old_value: Some("a".to_owned()),
+            new_value: Some("b".to_owned()),
+            old_value_kind: None,
+            new_value_kind: None,
+            old_formula: None,
+            new_formula: None,
+            style_changed: false,
+        }
+    }
+
+    /// The pre-optimisation body of `append_unmaterialized_style_changes`.
+    fn reference_append_style_changes(
+        diff: &mut SheetDiff,
+        old_sheet: &SheetIr,
+        new_sheet: &SheetIr,
+        old_styles: Option<&BTreeMap<(usize, usize), String>>,
+        new_styles: Option<&BTreeMap<(usize, usize), String>>,
+        old_default: &str,
+        new_default: &str,
+    ) {
+        let positions: BTreeSet<(usize, usize)> = old_styles
+            .into_iter()
+            .flat_map(BTreeMap::keys)
+            .chain(new_styles.into_iter().flat_map(BTreeMap::keys))
+            .copied()
+            .collect();
+        for (row, column) in positions {
+            if sheet_contains_position(old_sheet, row, column)
+                || sheet_contains_position(new_sheet, row, column)
+            {
+                continue;
+            }
+            let old_style = old_styles
+                .and_then(|styles| styles.get(&(row, column)))
+                .map_or(old_default, String::as_str);
+            let new_style = new_styles
+                .and_then(|styles| styles.get(&(row, column)))
+                .map_or(new_default, String::as_str);
+            if old_style == new_style {
+                continue;
+            }
+            let cell_address = one_based_address(row, column);
+            if diff.cell_changes.iter_mut().any(|change| {
+                let same_cell = change.old_address.as_deref() == Some(&cell_address)
+                    && change.new_address.as_deref() == Some(&cell_address);
+                if same_cell {
+                    change.style_changed = true;
+                }
+                same_cell
+            }) {
+                continue;
+            }
+            diff.cell_changes.push(CellChange {
+                old_address: Some(cell_address.clone()),
+                new_address: Some(cell_address),
+                kind: CellChangeKind::StyleChanged,
+                old_value: Some(String::new()),
+                new_value: Some(String::new()),
+                old_value_kind: Some(CellValueKind::Empty),
+                new_value_kind: Some(CellValueKind::Empty),
+                old_formula: None,
+                new_formula: None,
+                style_changed: true,
+            });
+        }
+        if !diff.cell_changes.is_empty() && matches!(diff.status, SheetStatus::Unchanged) {
+            diff.status = SheetStatus::Modified;
+        }
+    }
+
+    #[test]
+    fn sheet_bounds_agree_with_the_per_call_helper() {
+        let sheets = [
+            grid_sheet(1, 1, &[]),
+            grid_sheet(1, 1, &[0, 0]),
+            grid_sheet(1, 1, &[3]),
+            grid_sheet(2, 3, &[1, 4, 2]),
+            grid_sheet(5, 2, &[0, 3]),
+        ];
+        for sheet in &sheets {
+            let bounds = SheetBounds::of(sheet);
+            for row in 0..10 {
+                for column in 0..10 {
+                    assert_eq!(
+                        bounds.contains(row, column),
+                        sheet_contains_position(sheet, row, column),
+                        "({row}, {column})"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn many_styled_cells_give_the_same_style_changes_as_the_old_pass() {
+        // Styled positions both inside and outside the 60 x 40 / 55 x 38 grids.
+        let old_sheet = grid_sheet(2, 2, &[40; 60]);
+        let new_sheet = grid_sheet(4, 3, &[38; 55]);
+        let mut old_styles = BTreeMap::new();
+        let mut new_styles = BTreeMap::new();
+        for row in 1..=75 {
+            for column in 1..=40 {
+                if (row * 7 + column * 3) % 2 == 0 {
+                    old_styles.insert((row, column), format!("s{}", (row + column) % 3));
+                }
+                if (row + column) % 3 != 0 {
+                    new_styles.insert((row, column), format!("s{}", (row * column) % 4));
+                }
+            }
+        }
+        let seed_changes = || {
+            vec![
+                existing_change("A70", None),
+                existing_change("A70", None),
+                existing_change("B71", Some("B72")),
+                existing_change("C65", None),
+                existing_change("E66", None),
+            ]
+        };
+        for (old_default, new_default) in [("s0", "s0"), ("s0", "s1")] {
+            let mut expected = empty_sheet_diff();
+            expected.cell_changes = seed_changes();
+            reference_append_style_changes(
+                &mut expected,
+                &old_sheet,
+                &new_sheet,
+                Some(&old_styles),
+                Some(&new_styles),
+                old_default,
+                new_default,
+            );
+            let mut actual = empty_sheet_diff();
+            actual.cell_changes = seed_changes();
+            append_unmaterialized_style_changes(
+                &mut actual,
+                &old_sheet,
+                &new_sheet,
+                Some(&old_styles),
+                Some(&new_styles),
+                old_default,
+                new_default,
+            );
+            assert!(expected.cell_changes.len() > 100);
+            assert!(
+                expected
+                    .cell_changes
+                    .iter()
+                    .any(|c| !matches!(c.kind, CellChangeKind::StyleChanged) && c.style_changed)
+            );
+            assert_eq!(
+                serde_json::to_string(&actual).unwrap(),
+                serde_json::to_string(&expected).unwrap()
+            );
+        }
+    }
 
     const INDEXED_COLOR_CASES: &[(usize, &str)] = &[
         (0, "000000"),

@@ -15,6 +15,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1"
+diff_support = { package = "jade-diff-support", path = "../jade-diff-support" }
 jade-diff-align = { path = "../jade-diff-align" }
 jade-docx-extract = { path = "../jade-docx-extract" }
 serde = { version = "1", features = ["derive"] }
