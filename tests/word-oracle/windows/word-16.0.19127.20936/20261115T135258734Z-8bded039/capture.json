@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T135258734Z-8bded039",
+  "captured_at_utc": "2026-11-15T13:52:58.7389809Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-arial-balanced-auto-size24-both-balance1-compat15",
+      "source": "tmp\\w15-x-arial-balanced-auto-input-snapshots\\word-windows-edge-arial-balanced-auto-size24-both-balance1-compat15.docx",
+      "sha256": "a4c682c620e866c2fa903e4a76cfaaf9f3b6a2b19877161f3437c8fdaa212fe4",
+      "pdf": "word-windows-edge-arial-balanced-auto-size24-both-balance1-compat15.pdf",
+      "pdf_sha256": "7aa9e1172be4390e937a4ebda68c1e5f78bf9bee93690f909c2a57d488c63d5e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-arial-balanced-auto-size24-both-balance1-compat15.page-001.emf",
+          "sha256": "ca4a2bc813004681c8cd94b9dc4eae7a1501b96646d266be3b53c63704f2444b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

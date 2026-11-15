@@ -29,7 +29,7 @@ class NoteRuleTests(unittest.TestCase):
             self.assertAlmostEqual(found, edge, places=12)
 
     def test_versioned_originals_and_all_fifty_eight_cases(self):
-        self.assertEqual(len(check.verify()), 58)
+        self.assertEqual(len(check.verify()), 61)
 
     def test_patcopy_uses_logical_destination_edges(self):
         self.assert_rule(check.emf_rules(rule_metafile(), 1, 612, 792),

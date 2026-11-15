@@ -913,6 +913,21 @@ fn windows_noop_format_edits_preserve_fresh_line_metrics() {
     );
 }
 
+#[test]
+fn courier_color_after_highlight_preserves_the_following_baseline() {
+    for windows in [true, false] {
+        check_history(
+            &[
+                Edit::RunText(10, Some(4)),
+                Edit::RunText(4, Some(1)),
+                Edit::Metric(0, None),
+                Edit::RunText(9, Some(1)),
+            ],
+            windows,
+        );
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
     #[test]

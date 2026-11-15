@@ -4010,6 +4010,130 @@
     {
       "fixture": "word-windows-edge-calibri-auto-size24-left-balance1-compat15",
       "docx_sha256": "8a1f8f0fb8975d3a99617fd4cb505d8de2af7c9e29512a7566b409b803d951c1"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size12-both-hinteastAsia-balance1-compat15",
+      "docx_sha256": "d148b4446f4bb0ff921e7d19997c5818f5153ae09d99015cb98973e2a060c836"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size12-both-hintnone-balance1-compat15",
+      "docx_sha256": "0ba55e8b66daff4b84da336bd5fc917f7d01eed93c748a8f6dafc1e2a55f5c20"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size12-left-hinteastAsia-balance1-compat15",
+      "docx_sha256": "b9b9f62c78fb0cdbc1ebc7a17ee6ca9f3a1ec14bf19fef1ed50cee05f9b59cc8"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size12-left-hintnone-balance1-compat15",
+      "docx_sha256": "9d4d83645478655dba1b0c700143d7558e4b99ee68080c36c4c6f0ff1f0f1661"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size20-left-hinteastAsia-balance1-compat15",
+      "docx_sha256": "c011de5a61805b7bd266a97ca098fff6d6333fa886c9ba833ba5b61a3313e067"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size20-left-hintnone-balance1-compat15",
+      "docx_sha256": "f9b7705e447e24d21d620d618de46b5f97a5d1448f6cc3c610d904ebc1cd0c90"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size24-left-hinteastAsia-balance1-compat15",
+      "docx_sha256": "c2807244f2746c91d213c9612554e0eae008325a3ad1e0d6fe524e05546496cb"
+    },
+    {
+      "fixture": "word-windows-edge-default-hint-arial-size24-left-hintnone-balance1-compat15",
+      "docx_sha256": "5546d9184602762098df1411015fc5e013cea681d8c7e8ebe1cf6a2531f70bbf"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size12-both-balance0-compat15",
+      "docx_sha256": "8b7d8f90f57239c5bc537d5a06c7dbe1d605abb2abdb1ee1c9e62f64c7e605e6"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size12-both-balance1-compat15",
+      "docx_sha256": "f807177cc17c50eb979ce3eb795fe57dbd52b46304bfcb19011a9dee20d135d0"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size12-left-balance0-compat15",
+      "docx_sha256": "e9a9a940b19b6c516bebaf491d0424802e0a570173a0bf436a709087e8367aa8"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size12-left-balance1-compat15",
+      "docx_sha256": "b2336376163019c34206d07b0ca93035acb4b8772fb7d8e5cea6e6919d3079a1"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size20-both-balance1-compat15",
+      "docx_sha256": "d9a8fc8c4ec2423d2448bf202adb6703fb671609e7e6a33e1d9db5ca20351c35"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size20-left-balance0-compat15",
+      "docx_sha256": "6e1540577b165b28ce00aa1a98ab4fe7a3855beed2c5fd58f9706f35e3f3b53b"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size20-left-balance1-compat15",
+      "docx_sha256": "3191c422db0aeb99d4a06def3c564aa5d526c91e05bfb824f1b4b4a8d787879e"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size24-both-balance1-compat15",
+      "docx_sha256": "a4c682c620e866c2fa903e4a76cfaaf9f3b6a2b19877161f3437c8fdaa212fe4"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size24-left-balance0-compat15",
+      "docx_sha256": "2e98375b41643aedf80282f892f1b7468dcba2e3ca33925bf64343e22786e3ba"
+    },
+    {
+      "fixture": "word-windows-edge-arial-balanced-auto-size24-left-balance1-compat15",
+      "docx_sha256": "a95f682bc8484d5a5977eef7a731493016bdcbfa52199d26aba6f94b910469b7"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-arial-size12-both-balance0-compat15",
+      "docx_sha256": "b872740320b4641f7b5ea7ea8e44e76166829770471ae4b147efbdeaa00cd51b"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-arial-size12-left-balance0-compat15",
+      "docx_sha256": "19ffc8cb2d0ca2f5db00e89e2d5f9d6c0e433bf2a687ba01e219c4426d236c5a"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-arial-size20-left-balance0-compat15",
+      "docx_sha256": "6a42394446094c383b46a695f78ac13a80d8b77a317532cd00e6010193b2cf94"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-arial-arial-size24-left-balance0-compat15",
+      "docx_sha256": "e6d307382941b025adb190e97698038ff186ba3ac90bf3cdea0c591d423fb55a"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size12-both-balance0-compat15",
+      "docx_sha256": "8c976d3c1a27ee7f4a5f619cacf61370e2753767f43c38f2aa4cfe58751a3075"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size12-both-balance1-compat15",
+      "docx_sha256": "caf7cb34bdb17573250342572949093b21aae93e17e166874bfd0eec31f8ae13"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size12-left-balance0-compat15",
+      "docx_sha256": "7b1aec65cdb8e2cb9ff1933ea7879285c83a3be2a34637cce2ee56d3700a72a3"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size20-both-balance0-compat15",
+      "docx_sha256": "d0bc0459eb0161fd11cfad5b9bba54f591542908a4e3baf63325961a7752b5fa"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size20-both-balance1-compat15",
+      "docx_sha256": "58b1bdf391bdc5c36f7591488ba82732e54ecb1b041de4af5e18ebbfd1c614c1"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size20-left-balance0-compat15",
+      "docx_sha256": "3dbfbcc80375f022ca1a4eb09624fd4a5447d4e9d5b0e92e84f75fdf23ce618f"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size24-both-balance0-compat15",
+      "docx_sha256": "1d78fdbf427e46567efb042fbfae9b0c1b742370623ed1d37154e127b26c7beb"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size24-both-balance1-compat15",
+      "docx_sha256": "5b279ba6aefd76706ce0b749ed249db9b418f570157403bba820cf6877859e31"
+    },
+    {
+      "fixture": "word-windows-edge-cross-slot-calibri-arial-size24-left-balance0-compat15",
+      "docx_sha256": "cdb5589baf8b8838057683f63300f2478e52803a1043afb246bac53b457d2d1e"
     }
   ]
 }

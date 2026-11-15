@@ -10,7 +10,7 @@ from compare_windows_borders import rectangles
 from extract_windows_emf import emf_glyphs
 
 INDEX = Path('tests/word-oracle/windows/note-rules.json')
-INDEX_SHA256 = '3f292341c02940520e0543e3af2b9a1684829878a9d3005fd7439e808db67a06'
+INDEX_SHA256 = 'a210609414f46fa33c834d2b9dc184424dd9d52cb45c74fca356f1a3c13022f2'
 TOLERANCE = .375
 
 
@@ -107,7 +107,7 @@ def verify(root=ROOT):
     require(hashlib.sha256(index_path.read_bytes()).hexdigest() == INDEX_SHA256,
             'Note-rule coverage/expectations changed')
     index = read_json(index_path)
-    require(index['schema'] == 1 and len(index['fixtures']) == 58, 'Note-rule coverage removed')
+    require(index['schema'] == 1 and len(index['fixtures']) == 61, 'Note-rule coverage removed')
     fonts = {row[0]['name']: row for row in verify_fonts(root)}
     cases, names = [], set()
     checked_file(root, index['font_tables'])

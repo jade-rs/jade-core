@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T152303424Z-5fa9ee6b",
+  "captured_at_utc": "2026-11-15T15:23:03.4282345Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-cross-slot-calibri-arial-size12-left-balance0-compat15",
+      "docx_sha256": "7b1aec65cdb8e2cb9ff1933ea7879285c83a3be2a34637cce2ee56d3700a72a3",
+      "pdf_sha256": "3c346d3ee9e05521c297ef6f1ad587d8f12bb727fae1465321ec0c40b8dc9e1c",
+      "pdf_file": "word-windows-edge-cross-slot-calibri-arial-size12-left-balance0-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-cross-slot-calibri-arial-size12-left-balance0-compat15.page-001.emf",
+          "sha256": "769bbc9a6ccd85c259488aa463c9a7176943c8fbc2c47731467c3477d754ec55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "g",
+          92.0369078814755,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          100.79661358597056,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          112.79621044144325,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          124.79580729691592,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          139.55531142914734,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          146.5150776053215,
+          112.55732611174459
+        ],
+        [
+          1,
+          "C",
+          152.99485990727675,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          159.35464624067725,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          166.3144124168514,
+          112.55732611174459
+        ],
+        [
+          1,
+          "C",
+          172.79419471880666,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.31690421892816
+        ]
+      ]
+    }
+  ]
+}

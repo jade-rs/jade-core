@@ -294,6 +294,21 @@
       "name": "word-windows-edge-footnote-inside-paragraph-named-stories-compat15",
       "word_product_version": "16.0.19127.20936",
       "rule_count": 0
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid0-font0-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid0-font21-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
+    },
+    {
+      "name": "word-windows-edge-endnote-separator-grid0-font40-compat15",
+      "word_product_version": "16.0.19127.20936",
+      "rule_count": 1
     }
   ]
 }

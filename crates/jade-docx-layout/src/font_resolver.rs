@@ -594,9 +594,18 @@ fn hash_font_hint(hint: Option<&FontHint>, hasher: &mut FxHasher) {
 }
 
 fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut FxHasher) {
-    // Japanese missing-glyph fallback differs between Word platforms.
-    (crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Mac)
-        .hash(hasher);
+    // A nonzero domain tag also preserves leading absent fields in FxHasher.
+    // Windows' old zero tag let font_family=Courier New collide with a
+    // complex-only Courier New request after the leading None fields.
+    // Mac retains its existing nonzero tag and exact cache-key encoding.
+    let platform_tag = if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Mac
+    {
+        1_u8
+    } else {
+        2_u8
+    };
+    platform_tag.hash(hasher);
     if let Some(props) = properties {
         props.style.hash(hasher);
         props.bold.hash(hasher);
@@ -1203,6 +1212,7 @@ fn resolve_run_style_for_wrap_uncached(
             .and_then(|props| props.fonts.as_ref())
             .and_then(|fonts| fonts.hint.clone()),
     )
+    .with_requested_font_slots(properties)
     .with_snap_to_grid(
         properties
             .and_then(|props| props.snap_to_grid)
@@ -1263,6 +1273,9 @@ pub struct ResolvedRunStyle {
     pub text_scale_x: f64,
     pub enable_pair_kerning: bool,
     pub font_hint: Option<FontHint>,
+    // Preserve requested script-slot identity before CJK font fallback replaces
+    // a Latin East Asian face with MS Mincho.
+    requested_east_asia_font_is_distinct: bool,
     /// Whether the descriptors ask for ligatures or contextual alternates
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
     /// as kerning is, so a ligature's width reaches layout.
@@ -1279,6 +1292,29 @@ pub struct ResolvedRunStyle {
 }
 
 impl ResolvedRunStyle {
+    /// Retain script-slot provenance independently of the fallback paint face.
+    pub fn with_requested_font_slots(mut self, properties: Option<&RunProperties>) -> Self {
+        self.requested_east_asia_font_is_distinct = properties.is_some_and(|props| {
+            let Some(fonts) = props.fonts.as_ref() else {
+                return false;
+            };
+            let latin = fonts
+                .ascii
+                .as_deref()
+                .or(fonts.h_ansi.as_deref())
+                .or(props.font_family.as_deref());
+            fonts
+                .preferred_east_asia()
+                .zip(latin)
+                .is_some_and(|(east, latin)| !east.trim().eq_ignore_ascii_case(latin.trim()))
+        });
+        self
+    }
+
+    pub fn has_distinct_requested_east_asia_font(&self) -> bool {
+        self.requested_east_asia_font_is_distinct
+    }
+
     pub fn with_snap_to_grid(mut self, enabled: bool) -> Self {
         self.snap_to_grid = enabled;
         self
@@ -1367,6 +1403,7 @@ impl ResolvedRunStyle {
             text_scale_x,
             enable_pair_kerning,
             font_hint,
+            requested_east_asia_font_is_distinct: false,
             joins_characters,
             has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
@@ -1698,6 +1735,49 @@ pub fn apply_hint_to_script(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn font_family_cache_keeps_latin_and_complex_slot_requests_independent() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            RESOLVED_FONT_FAMILIES_CACHE.with(|cache| cache.borrow_mut().clear());
+            RESOLVED_RUN_STYLE_CACHE.with(|cache| cache.borrow_mut().clear());
+            let latin = RunProperties {
+                font_family: Some("Courier New".into()),
+                ..Default::default()
+            };
+            let complex = RunProperties {
+                fonts: Some(RunFonts {
+                    complex: Some("Courier New".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            // Warming a Latin request must not assign that face to the Latin
+            // slot of a later request that names only a complex-script face.
+            let _ = resolve_font_families(Some(&latin));
+            for color in [None, Some(""), Some("#E01020")] {
+                let properties = RunProperties {
+                    color: color.map(Into::into),
+                    ..complex.clone()
+                };
+                let expected = resolve_font_families_uncached(Some(&properties));
+                let actual = resolve_font_families(Some(&properties));
+                assert_eq!(actual.latin_ascii_stack(), expected.latin_ascii_stack());
+                assert_eq!(actual.latin_hansi_stack(), expected.latin_hansi_stack());
+                assert_eq!(actual.east_asia_stack(), expected.east_asia_stack());
+                assert_eq!(actual.complex_stack(), expected.complex_stack());
+                let expected = resolve_run_style_for_wrap(Some(&properties), None);
+                assert_eq!(
+                    expected.font_descriptor_latin_ascii.as_ref(),
+                    actual.to_descriptor_set("", 12.0).latin_ascii()
+                );
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn japanese_arial_glyph_fallback_does_not_resize_a_neutral_rule() {
         use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
@@ -2249,6 +2329,44 @@ mod tests {
         let tracked = resolve_run_style_for_wrap(Some(&props), Some(3.0));
         assert!(!tracked.snap_to_grid);
         assert_eq!(tracked.letter_spacing_px, 2.0);
+    }
+
+    #[test]
+    fn requested_script_slots_survive_identical_windows_cjk_fallback() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for hint in [None, Some(FontHint::EastAsia), Some(FontHint::Default)] {
+            let mut styles = Vec::new();
+            for east in ["Arial", "MS Mincho"] {
+                let properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some("Arial".into()),
+                        h_ansi: Some("Arial".into()),
+                        east_asia: Some(east.into()),
+                        hint: hint.clone(),
+                        ..RunFonts::default()
+                    }),
+                    east_asia_language: Some("ja-JP".into()),
+                    ..RunProperties::default()
+                };
+                let style = resolve_run_style_for_wrap(Some(&properties), None);
+                assert_eq!(
+                    style.has_distinct_requested_east_asia_font(),
+                    east != "Arial"
+                );
+                assert_eq!(
+                    style.clone().has_distinct_requested_east_asia_font(),
+                    east != "Arial"
+                );
+                styles.push(style);
+            }
+            assert_eq!(
+                styles[0].font_descriptor_east_asia,
+                styles[1].font_descriptor_east_asia
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
