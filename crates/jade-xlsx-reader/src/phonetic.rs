@@ -350,14 +350,14 @@ pub fn package_readings(
     range: CellRange,
     columns: &BTreeSet<u32>,
 ) -> Result<BTreeMap<CellRef, PhoneticReading>> {
-    let sheet = package.required_part_str(sheet_part)?;
-    let mut scanned = scan(&sheet, Select::Inline(range, columns))?;
+    let sheet = package.required_part_text(sheet_part)?;
+    let mut scanned = scan(sheet, Select::Inline(range, columns))?;
     if scanned.shared.is_empty() {
         return Ok(scanned.inline);
     }
     let workbook = package
-        .part_str("_rels/.rels")?
-        .map(|xml| jade_opc::parse_relationships(&xml))
+        .part_text("_rels/.rels")?
+        .map(jade_opc::parse_relationships)
         .transpose()?
         .and_then(|rels| {
             rels.target_by_type_suffix("/officeDocument")
@@ -365,14 +365,14 @@ pub fn package_readings(
         })
         .unwrap_or_else(|| "xl/workbook.xml".into());
     let rels = package
-        .part_str(&jade_opc::rels_part_name(&workbook))?
-        .map(|xml| jade_opc::parse_relationships(&xml))
+        .part_text(&jade_opc::rels_part_name(&workbook))?
+        .map(jade_opc::parse_relationships)
         .transpose()?
         .unwrap_or_default();
     if let Some(target) = rels.target_by_type_suffix("/sharedStrings") {
         let part = jade_opc::resolve_target(&workbook, target);
         let needed = scanned.shared.values().copied().collect();
-        let shared = scan(&package.required_part_str(&part)?, Select::Shared(&needed))?;
+        let shared = scan(package.required_part_text(&part)?, Select::Shared(&needed))?;
         for (at, index) in scanned.shared {
             if let Some(reading) = shared.items.get(&index) {
                 scanned.inline.insert(at, reading.clone());

@@ -109,10 +109,10 @@ impl Override {
     }
 }
 fn relation(package: &OpcPackage, owner: &str, suffix: &str) -> Result<Option<String>> {
-    let Some(xml) = package.part_str(&rels_part_name(owner))? else {
+    let Some(xml) = package.part_text(&rels_part_name(owner))? else {
         return Ok(None);
     };
-    Ok(parse_relationships(&xml)?
+    Ok(parse_relationships(xml)?
         .by_type_suffix(suffix)
         .into_iter()
         .find(|r| !r.external)
@@ -168,8 +168,8 @@ impl ThemeResolver {
         };
         for part in [&key.1, &key.2].into_iter().flatten() {
             if !self.overrides.contains_key(part) {
-                let value = match package.part_str(part)? {
-                    Some(xml) => Override::read(&xml)?,
+                let value = match package.part_text(part)? {
+                    Some(xml) => Override::read(xml)?,
                     None => Override::default(),
                 };
                 self.overrides.insert(part.clone(), value);

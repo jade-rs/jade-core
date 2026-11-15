@@ -118,8 +118,8 @@ pub struct ShowInfo {
 pub fn read_show(bytes: &[u8]) -> Result<ShowInfo> {
     let package = OpcPackage::open(bytes)?;
     let presentation = crate::presentation_part_name(&package)?;
-    let rels = match package.part_str(&jade_opc::rels_part_name(&presentation))? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?,
+    let rels = match package.part_text(&jade_opc::rels_part_name(&presentation))? {
+        Some(xml) => jade_opc::parse_relationships(xml)?,
         None => Default::default(),
     };
     let slides = crate::read_pptx(bytes)?.slides;
@@ -128,16 +128,16 @@ pub fn read_show(bytes: &[u8]) -> Result<ShowInfo> {
         .target_by_type_suffix("/presProps")
         .map(|target| jade_opc::resolve_target(&presentation, target))
     {
-        Some(part) => match package.part_str(&part)? {
-            Some(xml) => parse_show_settings(&parse_tree(&xml)?),
+        Some(part) => match package.part_text(&part)? {
+            Some(xml) => parse_show_settings(&parse_tree(xml)?),
             None => ShowSettings::default(),
         },
         None => ShowSettings::default(),
     };
 
     let mut custom_shows = Vec::new();
-    if let Some(xml) = package.part_str(&presentation)? {
-        let root = parse_tree(&xml)?;
+    if let Some(xml) = package.part_text(&presentation)? {
+        let root = parse_tree(xml)?;
         if let Some(list) = root.child("custShowLst") {
             for show in list.children.iter().filter(|c| c.name == "custShow") {
                 let ids: Vec<usize> = show
@@ -165,8 +165,8 @@ pub fn read_show(bytes: &[u8]) -> Result<ShowInfo> {
 
     let mut advances = Vec::with_capacity(slides.len());
     for slide in &slides {
-        let advance = match package.part_str(&slide.part_name)? {
-            Some(xml) => slide_advance(&parse_tree(&xml)?),
+        let advance = match package.part_text(&slide.part_name)? {
+            Some(xml) => slide_advance(&parse_tree(xml)?),
             None => SlideAdvance::default(),
         };
         advances.push(advance);
