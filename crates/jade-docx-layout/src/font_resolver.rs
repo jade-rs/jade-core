@@ -594,9 +594,18 @@ fn hash_font_hint(hint: Option<&FontHint>, hasher: &mut FxHasher) {
 }
 
 fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut FxHasher) {
-    // Japanese missing-glyph fallback differs between Word platforms.
-    (crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Mac)
-        .hash(hasher);
+    // A nonzero domain tag also preserves leading absent fields in FxHasher.
+    // Windows' old zero tag let font_family=Courier New collide with a
+    // complex-only Courier New request after the leading None fields.
+    // Mac retains its existing nonzero tag and exact cache-key encoding.
+    let platform_tag = if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Mac
+    {
+        1_u8
+    } else {
+        2_u8
+    };
+    platform_tag.hash(hasher);
     if let Some(props) = properties {
         props.style.hash(hasher);
         props.bold.hash(hasher);
@@ -1726,6 +1735,49 @@ pub fn apply_hint_to_script(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn font_family_cache_keeps_latin_and_complex_slot_requests_independent() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            RESOLVED_FONT_FAMILIES_CACHE.with(|cache| cache.borrow_mut().clear());
+            RESOLVED_RUN_STYLE_CACHE.with(|cache| cache.borrow_mut().clear());
+            let latin = RunProperties {
+                font_family: Some("Courier New".into()),
+                ..Default::default()
+            };
+            let complex = RunProperties {
+                fonts: Some(RunFonts {
+                    complex: Some("Courier New".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            // Warming a Latin request must not assign that face to the Latin
+            // slot of a later request that names only a complex-script face.
+            let _ = resolve_font_families(Some(&latin));
+            for color in [None, Some(""), Some("#E01020")] {
+                let properties = RunProperties {
+                    color: color.map(Into::into),
+                    ..complex.clone()
+                };
+                let expected = resolve_font_families_uncached(Some(&properties));
+                let actual = resolve_font_families(Some(&properties));
+                assert_eq!(actual.latin_ascii_stack(), expected.latin_ascii_stack());
+                assert_eq!(actual.latin_hansi_stack(), expected.latin_hansi_stack());
+                assert_eq!(actual.east_asia_stack(), expected.east_asia_stack());
+                assert_eq!(actual.complex_stack(), expected.complex_stack());
+                let expected = resolve_run_style_for_wrap(Some(&properties), None);
+                assert_eq!(
+                    expected.font_descriptor_latin_ascii.as_ref(),
+                    actual.to_descriptor_set("", 12.0).latin_ascii()
+                );
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn japanese_arial_glyph_fallback_does_not_resize_a_neutral_rule() {
         use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
