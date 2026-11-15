@@ -2274,6 +2274,135 @@ pub fn distribute_east_asian_justification(
     shares
 }
 
+/// Intrinsic capacities of one Windows mixed-script justification boundary.
+#[derive(Clone, Copy, Debug)]
+pub struct WindowsMixedJustificationOpportunity {
+    pub space_capacity_px: f64,
+    pub auto_space_capacity_px: f64,
+}
+
+/// Apply bounded word-space expansion, then script-boundary expansion, then
+/// share the remaining width across all eligible boundaries. The caller owns
+/// glyph placement; neither this plan nor its capacities use reference output.
+pub fn distribute_windows_mixed_justification(
+    opportunities: &[WindowsMixedJustificationOpportunity],
+    extra: f64,
+) -> Vec<f64> {
+    let mut shares = vec![0.0; opportunities.len()];
+    if opportunities.is_empty() || !extra.is_finite() || extra <= 0.0 {
+        return shares;
+    }
+    let mut remaining = extra;
+    for auto_space in [false, true] {
+        let capacity = |opportunity: &WindowsMixedJustificationOpportunity| {
+            let value = if auto_space {
+                opportunity.auto_space_capacity_px
+            } else {
+                opportunity.space_capacity_px
+            };
+            if value.is_finite() {
+                value.max(0.0)
+            } else {
+                0.0
+            }
+        };
+        let total: f64 = opportunities.iter().map(capacity).sum();
+        if total <= 0.0 {
+            continue;
+        }
+        let scale = (remaining / total).min(1.0);
+        let mut used = 0.0;
+        for (share, opportunity) in shares.iter_mut().zip(opportunities) {
+            let placed = capacity(opportunity) * scale;
+            *share += placed;
+            used += placed;
+        }
+        remaining = (remaining - used).max(0.0);
+    }
+    if remaining > 0.0 {
+        let residual = remaining / opportunities.len() as f64;
+        for share in &mut shares {
+            *share += residual;
+        }
+    }
+    shares
+}
+
+#[cfg(test)]
+mod windows_mixed_justification_tests {
+    use super::{
+        distribute_windows_mixed_justification as distribute,
+        WindowsMixedJustificationOpportunity as Opportunity,
+    };
+
+    #[test]
+    fn word_spaces_expand_before_script_boundaries_and_residual_reaches_both() {
+        let opportunities = [
+            Opportunity {
+                space_capacity_px: 4.0,
+                auto_space_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 5.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 0.0,
+            },
+        ];
+        assert_eq!(distribute(&opportunities, 3.0), [3.0, 0.0, 0.0]);
+        assert_eq!(distribute(&opportunities, 7.0), [4.0, 3.0, 0.0]);
+        assert_eq!(distribute(&opportunities, 15.0), [6.0, 7.0, 2.0]);
+    }
+
+    #[test]
+    fn allocation_conserves_line_slack_and_scales_with_layout_units() {
+        let opportunities = [
+            Opportunity {
+                space_capacity_px: 2.5,
+                auto_space_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 5.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 3.0,
+                auto_space_capacity_px: 0.0,
+            },
+        ];
+        for extra in [0.0, 0.5, 5.5, 7.0, 10.5, 57.25] {
+            let original = distribute(&opportunities, extra);
+            assert!((original.iter().sum::<f64>() - extra).abs() < 1e-10);
+            assert!(original.iter().all(|share| *share >= 0.0));
+            let scaled = opportunities.map(|op| Opportunity {
+                space_capacity_px: op.space_capacity_px * 1.5,
+                auto_space_capacity_px: op.auto_space_capacity_px * 1.5,
+            });
+            for (actual, expected) in distribute(&scaled, extra * 1.5).iter().zip(original) {
+                assert!((actual - expected * 1.5).abs() < 1e-10);
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_slack_cannot_move_glyphs() {
+        let opportunities = [Opportunity {
+            space_capacity_px: 4.0,
+            auto_space_capacity_px: 5.0,
+        }];
+        for extra in [-1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert_eq!(distribute(&opportunities, extra), [0.0]);
+        }
+        assert!(distribute(&[], 10.0).is_empty());
+    }
+}
+
 /// East Asian text that takes an auto-spacing boundary next to Latin letters
 /// or digits: ideographs and kana, but not East Asian punctuation, the
 /// katakana middle dot `・` included. Word sets `、2026` and `「M` with no gap
@@ -10929,8 +11058,9 @@ fn drop_windows_line_end_auto_space(lines: &mut [WrappedLine]) {
     }
 }
 
-// A word moved to the next line no longer has the preceding line's space-A
-// kerning. Restore it only if that original line boundary is later joined.
+// A cluster moved to the next line no longer has its preceding pair kerning.
+// Restore it if that original line boundary is later joined, including ASCII
+// punctuation (Arial's y-period pair can be joined by the same width repair).
 // Adjust the pair contribution alone: grid, ruby and ADVANCE offsets survive.
 fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
     ctx: &C,
@@ -10953,8 +11083,8 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
             || !previous
                 .text
                 .bytes()
-                .all(|ch| ch.is_ascii_alphanumeric() || ch == b' ')
-            || !current.text.bytes().all(|ch| ch.is_ascii_alphanumeric())
+                .all(|ch| ch.is_ascii_graphic() || ch == b' ')
+            || !current.text.bytes().all(|ch| ch.is_ascii_graphic())
             || previous.text.len() != 1
             || current.text.len() != 1
             || right.script != ScriptCategory::Latin
@@ -19649,6 +19779,55 @@ mod tests {
         }
         assert!(latin_line_ends > 0, "exercise a Latin-to-CJK wrap");
         assert!(interior_auto_spaces > 0, "retain spacing within the line");
+    }
+
+    #[test]
+    fn windows_word_repair_restores_punctuation_pair_when_a_boundary_is_joined() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut ctx = TestContext::new(10.0);
+        ctx.style = ResolvedRunStyle::new(
+            "20.00pt Arial",
+            "20.00pt Arial",
+            "20.00pt Arial",
+            "20.00pt Arial",
+            0.0,
+            1.0,
+            true,
+            None,
+        );
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            ..ParagraphStyle::default()
+        };
+        let text = "geometry. Ag";
+        let mut lines =
+            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 1000.0)
+                .unwrap();
+        assert_eq!(lines.len(), 1);
+        let period = lines[0]
+            .clusters
+            .iter()
+            .position(|c| c.text == ".")
+            .unwrap();
+        let cluster = &mut lines[0].clusters[period];
+        let original_width = cluster.width;
+        let original_leading = cluster.layout.as_ref().unwrap().leading_advance;
+        let kern = windows_ascii_pair_adjustment(&ctx.style, "20.00pt Arial", b'y', b'.').unwrap();
+        assert!(kern < -1.0, "exercise the measured Arial y-period pair");
+        assert!((original_leading - kern).abs() < 1e-9);
+        // A period originally measured at a soft line start has no y-period
+        // kerning. The width repair joins it to y; unrelated leading survives.
+        cluster.layout.as_mut().unwrap().leading_advance += 3.0 - kern;
+        cluster.width += 3.0 - kern;
+        let old_start = cluster.start;
+        reconcile_windows_ascii_wrap_kerning(&ctx, &paragraph, &[old_start], &mut lines).unwrap();
+        let restored = &lines[0].clusters[period];
+        assert!((restored.width - original_width - 3.0).abs() < 1e-9);
+        assert!(
+            (restored.layout.as_ref().unwrap().leading_advance - original_leading - 3.0).abs()
+                < 1e-9
+        );
     }
 
     #[test]

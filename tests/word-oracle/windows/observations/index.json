@@ -17765,6 +17765,696 @@
           "opened_filename": "word-windows-edge-justify-tiers-yu20-cjk6-space1-left-balance1-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095205869Z-500fef18.zip",
+      "archive_sha256": "8a36b55ec041f56f85b54e17323a2ffe01c8541ed8e76ba6366c5da78e5468b3",
+      "capture_id": "20261115T095205869Z-500fef18",
+      "capture_sha256": "188cf2200a7211632fd8d62488f902ffd3bd88723360d0d28a1408c439f5200c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu12-cjk3-space3-both-balance0-compat15",
+          "source_sha256": "a30bf262efd0d3827af2ccdf63f7763bd8de8f5c76762a2da52467b05211f73b",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu12-cjk3-space3-both-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu12-cjk3-space3-both-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095209758Z-9232e03d.zip",
+      "archive_sha256": "08e1905e01afea24f70e29ddf483d509aa99846e523516c3bff899a03c367249",
+      "capture_id": "20261115T095209758Z-9232e03d",
+      "capture_sha256": "dae482cac552f60a3993f9f078b8eed6ef3a2556e233f07e066bcb487ca922b7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu12-cjk3-space3-both-balance1-compat15",
+          "source_sha256": "90a0d98317463ce9f9b055e006d1ac25ecac9c94790808066201755d690cca2f",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu12-cjk3-space3-both-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu12-cjk3-space3-both-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095211336Z-ecb70649.zip",
+      "archive_sha256": "07fbe80592b40d7f67e2e8ff7ac2faa7b7d3c4764be401d1e19c9d5017b4e88c",
+      "capture_id": "20261115T095211336Z-ecb70649",
+      "capture_sha256": "6753cbfd4f62f41981ce0f0df0afa69fa93fcc9500ad296fe85f8bc42ddf10e2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance0-compat15",
+          "source_sha256": "c92964ce62b7e7509168daacbd0c0a19a214a3d6fc9714bb09a483bdd2c01bc0",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu12-cjk3-space3-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095214220Z-764af9eb.zip",
+      "archive_sha256": "2bdaddf9e894224eb79f2043d8e4b854159550f834c1e691309706b28cf3d328",
+      "capture_id": "20261115T095214220Z-764af9eb",
+      "capture_sha256": "a4d35ca03937093ab06758ffc05ae811904f9203c3393afa16efe91f1dd49bcd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15",
+          "source_sha256": "a7eb6a9f6a94f614bee5e70390218c77136c4d11c508dfd15af1bf67b876a1ba",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095217171Z-5d379096.zip",
+      "archive_sha256": "1a33f0537da6418ec1e20c9be522d102cf3f88efb4d3b569bf91a69117355a63",
+      "capture_id": "20261115T095217171Z-5d379096",
+      "capture_sha256": "b48d3f1bce3cf85ea05ada08b402e275e7ff4810d814bea6e1d5c148198dd412",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu18-cjk3-space3-both-balance0-compat15",
+          "source_sha256": "c27ec99dc83bd3d5100c3266063ff6c5651daf05fb75d1cacd90d23e3b532dbc",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu18-cjk3-space3-both-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu18-cjk3-space3-both-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095221218Z-a083cfd6.zip",
+      "archive_sha256": "7286f76446c71098052edc4d780cad23387bf4448ed3e282c864d707401df0b1",
+      "capture_id": "20261115T095221218Z-a083cfd6",
+      "capture_sha256": "02c116cb6142b3254d0c4063b79a93e5bbf099a1ef1f4ab7de46ca892719f432",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu18-cjk3-space3-both-balance1-compat15",
+          "source_sha256": "e39f6d49e82cd43a61f2d9730bc3f125ede1b55c695cb3e90c2367bda182432b",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu18-cjk3-space3-both-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu18-cjk3-space3-both-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095224163Z-72c1bb3f.zip",
+      "archive_sha256": "f2463858412568eb8404e6deb5730751a32277a41bde620f94692f2626fe6454",
+      "capture_id": "20261115T095224163Z-72c1bb3f",
+      "capture_sha256": "5af2ab56b600564b81dc8c70ec65ff56fb574210b2462a961c75281fb21d79e3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu18-cjk3-space3-left-balance0-compat15",
+          "source_sha256": "06090065e1c80bcc18e87a7e3da46dfd989072651e95fae5f55e48e6364dfcee",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu18-cjk3-space3-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu18-cjk3-space3-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095227095Z-28d9fc2e.zip",
+      "archive_sha256": "c48428392d3a109faceb73b31c26c1f05bda81c5c396f1ea9590d773bc0a168c",
+      "capture_id": "20261115T095227095Z-28d9fc2e",
+      "capture_sha256": "54a0b5fddbb0a8e39fe7a83c2b9a14d5f0f83133e38b86d5421df17e2ff4e549",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu18-cjk3-space3-left-balance1-compat15",
+          "source_sha256": "f616057c69371da21d1c5d7006b17f69000856420b69fc97035180d60adbcd57",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu18-cjk3-space3-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu18-cjk3-space3-left-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095230008Z-65323f18.zip",
+      "archive_sha256": "d83b8ac606a74414e5ff6a99b71d01e6c4bfa1e0d50aeb1b3719f6225f3a2060",
+      "capture_id": "20261115T095230008Z-65323f18",
+      "capture_sha256": "2ce41970e879fda821def3699c7c8d4555fc3c9eef93b612e09b35539bb3c095",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu22-cjk3-space3-both-balance0-compat15",
+          "source_sha256": "4a2acb7823d351efa278d068058770aab2835326a21b438cab57f4606c8b6b27",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu22-cjk3-space3-both-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu22-cjk3-space3-both-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095232956Z-dfd7e107.zip",
+      "archive_sha256": "ed3ce36617e2ede1ced21b4ebc1c33fe43c8bc82a764b684bc0fb4618fa7ec1e",
+      "capture_id": "20261115T095232956Z-dfd7e107",
+      "capture_sha256": "fb945271b02f679745c66fd3c9366961fd14c8910c5addcc90c96b4be8ffc368",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu22-cjk3-space3-both-balance1-compat15",
+          "source_sha256": "80bb39f8f27245ef25ae32355585f3828c19de6e61454409f0347ef1fc021024",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu22-cjk3-space3-both-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu22-cjk3-space3-both-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095235916Z-e7766f15.zip",
+      "archive_sha256": "44f369346a891e3f6ac58fc0547fce26ee889da1a518374feb682022b9c0101e",
+      "capture_id": "20261115T095235916Z-e7766f15",
+      "capture_sha256": "2ca9a68a9c06dff06a76478e2af0ac324030380389c39dd5dbdfbe45bbeb8ea0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu22-cjk3-space3-left-balance0-compat15",
+          "source_sha256": "a27c045a712f86a44727498ed546370d16627d72587e612e3d9e8e0b9fedc086",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu22-cjk3-space3-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu22-cjk3-space3-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T095239245Z-a6aadebf.zip",
+      "archive_sha256": "acb7d29396cd3ea9d1848e5a5c0b2c9d67c49863e4d6ce445787703b9eac32ff",
+      "capture_id": "20261115T095239245Z-a6aadebf",
+      "capture_sha256": "a73cd198e3fd14185ed03450d9f475416a51b6e8ad539e039c345c4d7e1acff0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-size-yu22-cjk3-space3-left-balance1-compat15",
+          "source_sha256": "42b545cb67a0a61487a9244381612236ef2cfc644d6931dfe1936c8c299b10b3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-size-yu22-cjk3-space3-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-size-yu22-cjk3-space3-left-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100739683Z-ac5f37af.zip",
+      "archive_sha256": "7ae96a6f71f29aabfd0d11ffccd9649501c05528447a47fc3ae8f4aeb6d39ad8",
+      "capture_id": "20261115T100739683Z-ac5f37af",
+      "capture_sha256": "dbde8b78685754d75c2d8fc698c4a0c3ba8b2c3ec756a8a37be7710d7e8e01f7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width186-balance0-compat15",
+          "source_sha256": "f48bacd3f937b815ef8e22d77d88fcd4b4a70451621d2a088bb8586a4d4a4142",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width186-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width186-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100743321Z-fcd68a31.zip",
+      "archive_sha256": "3f8155983cbc3e60335f7012ecd5e4897f1bb2904e75408fd23594c13389f822",
+      "capture_id": "20261115T100743321Z-fcd68a31",
+      "capture_sha256": "ee6d38d9d23f52e4877d7f62c205ef678280bf84f4e34383fcedaba1d39ffa2d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width186-balance1-compat15",
+          "source_sha256": "64af0d5c639efa17e4bed33c11c1a06d765cc9d7114dbc0a2e7c87bbb53b24da",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width186-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width186-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100746114Z-3924e5fc.zip",
+      "archive_sha256": "658fb0147c4b19d636a6fc0396f9803f2beb1ca68b2f217e1d12c162c17bc371",
+      "capture_id": "20261115T100746114Z-3924e5fc",
+      "capture_sha256": "47842280844cc994023a2f17da896e27cdd9e7f0c095b3cdb361b022b677e988",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width188-balance0-compat15",
+          "source_sha256": "85540623f947df1ea33b93f83aff6a9231ac5ada8c17ae1460e5b5cf505f2821",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width188-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width188-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100748949Z-9d960906.zip",
+      "archive_sha256": "d78f92535c6633a4f4881dc9dd2b3df90e15446d9258466d3a610a3eaee449b2",
+      "capture_id": "20261115T100748949Z-9d960906",
+      "capture_sha256": "93761b1fe039a4eae20637e4a256c356831586f074d6a86e274298cb8bc27dd7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width188-balance1-compat15",
+          "source_sha256": "51fe3f198a6c757bf64c39a8592503d7793dbb30d509fb78681248e227817b99",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width188-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width188-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100752604Z-58ef849a.zip",
+      "archive_sha256": "77751318ae16aef4fe10d211a61c8f738666112c1892bb839763c5aad40ea082",
+      "capture_id": "20261115T100752604Z-58ef849a",
+      "capture_sha256": "507e5ed17caa49d3590feffa0720a850c5018e151a0b92bdfaa4fd7a49420684",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width190-balance0-compat15",
+          "source_sha256": "6e01f42c8fa2cf46c8a2e395f1a7023cba443651f0d2ea911b2151dba3f927db",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width190-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width190-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100755383Z-157c1999.zip",
+      "archive_sha256": "a5ef712bc867cecd6a24794224a2ea972dad7a9da729533887dc7a22372eeb46",
+      "capture_id": "20261115T100755383Z-157c1999",
+      "capture_sha256": "d756835f55e47734390a4958a3ff817b74f318638b63f701431d109f7d22b96e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width190-balance1-compat15",
+          "source_sha256": "6b414f1c4846f6550c145e7472f9449b310c5c0a93c38eccc60810028118467e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width190-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width190-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100758130Z-02f4fb8d.zip",
+      "archive_sha256": "7bb5eaf3e0fddfe6f1180d31aa5437d701f07088fc86df5fcb81cccdd2c2662e",
+      "capture_id": "20261115T100758130Z-02f4fb8d",
+      "capture_sha256": "013281e0933fc768efbf5d896d1a7526bf8d95e68cad89b42fe2a95af99fca3d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width192-balance0-compat15",
+          "source_sha256": "a038a5dd5a503e9da5df26461706f4f54970a593b27b6044d8535ce87dbffa60",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width192-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width192-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100800894Z-e3dc1359.zip",
+      "archive_sha256": "37044b1c896e14a70399b5906edb4a263f130051462ea8209b091e8ac8e94032",
+      "capture_id": "20261115T100800894Z-e3dc1359",
+      "capture_sha256": "8cad12ad6d1f1a8c4710e50da8f56caf3882fa89cf67c02d060497a9d63969f6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width192-balance1-compat15",
+          "source_sha256": "c47c02cccbbc90aad4e510b3dabcc229a522b9848e815e41898db3c14ac70e55",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width192-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width192-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100803621Z-075ab677.zip",
+      "archive_sha256": "807408020b189ed5be71f29220975d8e43482543361631748424691cf35726c6",
+      "capture_id": "20261115T100803621Z-075ab677",
+      "capture_sha256": "941aca14a6c3d6de4be9de014c627e123f5b539f80507f211b175fa269d4c739",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width194-balance0-compat15",
+          "source_sha256": "87378c568f624a0245c4c7bd1d8350863239fe63c5a01e4789b29629949f42d2",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width194-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width194-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100806386Z-a9c634b1.zip",
+      "archive_sha256": "314e1c13fa5b4ef11fec89b7a6712520e7f95d2c50e1c3b87c2f570759d1105c",
+      "capture_id": "20261115T100806386Z-a9c634b1",
+      "capture_sha256": "7e97865d0d3a03d129ffb0a2290bccf6ed29659afaa1ec1cece2d2a59c1175ad",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width194-balance1-compat15",
+          "source_sha256": "e29c91950e07c4f2a7ccaf081387cb3491c17512834b12acd523890db1d64af5",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width194-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width194-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100811461Z-07b2c7b1.zip",
+      "archive_sha256": "ba89a2db36ac48ddec048240e27bb0daf17f92056b98d9891d60f5f06cabb758",
+      "capture_id": "20261115T100811461Z-07b2c7b1",
+      "capture_sha256": "0d6c01b2420b1d64ba53471bf4ee7b2853c7ddd384e32ad4bf5ea77557c51896",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width198-balance0-compat15",
+          "source_sha256": "8c67e7b2d80f126bc66335e0fa6647e73de90824c80adbcb22a328d27eee301a",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width198-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width198-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100814212Z-b61e692c.zip",
+      "archive_sha256": "21467caf11d65ad5853c2b528757b6e617e7a78472a4b836ba640feaed943a3b",
+      "capture_id": "20261115T100814212Z-b61e692c",
+      "capture_sha256": "d6b8c8a623e371defc9348a7a4ca32a96ab5c3efb191ac486981e848553c6881",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width198-balance1-compat15",
+          "source_sha256": "895e0e95c1bde26dc44ec2c9e15810a6155c6ad6685d5848e8e3f11e6f564c54",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width198-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width198-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100816972Z-85544bb1.zip",
+      "archive_sha256": "829c1c1fc6668ebacb80b746884da5d51187505b1290587dc9247b8489fbf0b3",
+      "capture_id": "20261115T100816972Z-85544bb1",
+      "capture_sha256": "b5d6bd02adc9c3153770b24a9a69351cbb6d1c2e5e089c77e91e5b4c5be741c5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width202-balance0-compat15",
+          "source_sha256": "7382fde04bd40030b62f1a3a0e60eeb6d618f61da705b31dc080a724c1d24557",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width202-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width202-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100819764Z-ff60b0e3.zip",
+      "archive_sha256": "71d29f1d0906faf03d2ab3ea1463ee5c41e99b3dac3cf7b0491a23a0eca479d5",
+      "capture_id": "20261115T100819764Z-ff60b0e3",
+      "capture_sha256": "4194b8da71e54d9e864ed75b2d4a82ace8c1037e60ae1f8e05a6a7aa03f193f6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width202-balance1-compat15",
+          "source_sha256": "39d15883599e425e22f6bbe97ba3c6521ea6bc1b0b1df26eaf053a29d18cb960",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width202-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width202-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100822470Z-a26dc9a3.zip",
+      "archive_sha256": "bd43794ee5dfcb9a09e48c2c31587ee6744daa325085d19dc2e775a597cc94ea",
+      "capture_id": "20261115T100822470Z-a26dc9a3",
+      "capture_sha256": "eb23ffcf5267853724c6b8589fdaf3d4425a20a13f6e19388788eae108c366a2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width210-balance0-compat15",
+          "source_sha256": "57448330a80acde7dc4283420c46d0dd7870907c6458de04bb6333ad2decb793",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width210-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width210-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100825248Z-4afa9d5c.zip",
+      "archive_sha256": "e523f26fcfe6cd54fad69e8c31144a62f7c03b169619339dfd6121467999e9a1",
+      "capture_id": "20261115T100825248Z-4afa9d5c",
+      "capture_sha256": "9517bd58af9a830d7a28ad1974fd6140c043414510c9041d56e2bdf9085df85a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-both-width210-balance1-compat15",
+          "source_sha256": "51de0467c3ec3564982796ba3dcefcbfb8ffa7a6e8f8071a27a680e7b3cfc570",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-both-width210-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-both-width210-balance1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100828925Z-493dcd36.zip",
+      "archive_sha256": "d2b1eefc72d87404faff9bffc4e66326a754d9ca4067a3aadf954170abc474ca",
+      "capture_id": "20261115T100828925Z-493dcd36",
+      "capture_sha256": "e40b77953d97d81dec6e2b3d87676916e79f3445813f47daf24f01ea8113840c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-left-balance0-compat15",
+          "source_sha256": "5dab178fc6b5e64c210183db9704db5540e781350f68f8f57858d39326011d58",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-left-balance0-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-left-balance0-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T100830347Z-dab90604.zip",
+      "archive_sha256": "9e699aba1b2c06fa022ee163072bca074bee2635ca1f04f81c3c1591d524a9c6",
+      "capture_id": "20261115T100830347Z-dab90604",
+      "capture_sha256": "0c496234c00948c4da8ba056afad935155b03bd551778df29953abb3efd9c75c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-justify-width-yu20-left-balance1-compat15",
+          "source_sha256": "9b3ed186edf7641c895f5567cf56553a7e07aa91a989b255d44f6d4a988548ea",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-justify-width-yu20-left-balance1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-justify-width-yu20-left-balance1-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

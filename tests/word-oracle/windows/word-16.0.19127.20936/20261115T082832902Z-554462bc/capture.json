@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T082832902Z-554462bc",
+  "captured_at_utc": "2026-11-15T08:28:32.9072396Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-tiers-yu20-cjk3-latin-cjk-left-balance0-compat15",
+      "source": "..\\w15-o-justification-tiers-input-snapshots\\word-windows-edge-justify-tiers-yu20-cjk3-latin-cjk-left-balance0-compat15.docx",
+      "sha256": "98626adb995030f4e9cafead386fcb055dd272214d31369f1656627981fe2ffe",
+      "pdf": "word-windows-edge-justify-tiers-yu20-cjk3-latin-cjk-left-balance0-compat15.pdf",
+      "pdf_sha256": "39481563523c350409eefb2b615493501a4264c4140f1f62b11f55680d7b2d2c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-tiers-yu20-cjk3-latin-cjk-left-balance0-compat15.page-001.emf",
+          "sha256": "68cbce0ba5eeeb3487bde6d3bfc22b67cae52d4bc3a15921fdb5ceca9196211d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

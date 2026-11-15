@@ -23736,6 +23736,131 @@ where
                 distributed
             };
 
+        // Keep Windows-only allocation out of the Mac renderer's hot body.
+        #[inline(never)]
+        fn distribute_windows_mixed(
+            prepared_segments: &mut [PreparedSegment<'_, '_>],
+            paragraph_style: &ParagraphStyle,
+            extra_total: f64,
+        ) -> Option<f64> {
+            use jade_docx_layout::line_wrap::{
+                classify_script, distribute_windows_mixed_justification,
+                WindowsMixedJustificationOpportunity,
+            };
+            if !paragraph_style.enable_line_break_rules
+                || paragraph_style.bidi
+                || !matches!(paragraph_style.alignment.as_str(), "both" | "justify")
+                || prepared_segments
+                    .iter()
+                    .any(|p| p.segment.leading_width.abs() > 1e-9)
+            {
+                return None;
+            }
+            let is_east_asian = |text: &str| {
+                !text.chars().all(char::is_whitespace)
+                    && classify_script(text)
+                        == jade_docx_layout::line_wrap::ScriptCategory::EastAsia
+            };
+            let (owners, opportunities) = {
+                let mut nodes = Vec::new();
+                let mut pen = 0.0;
+                for (segment, prepared) in prepared_segments.iter().enumerate() {
+                    pen += prepared.segment.leading_width;
+                    let em = points_to_px(prepared.style.font_size_pt)
+                        * prepared.style.resolved.text_scale_x.max(0.01);
+                    for (glyph, step) in prepared.glyph_steps.iter().enumerate() {
+                        let text = step.text(&prepared.segment.text);
+                        if text.is_empty() || text.chars().all(char::is_control) {
+                            continue;
+                        }
+                        if text.contains('\u{fffc}')
+                            || text.chars().any(|ch| ch.is_whitespace() && ch != ' ')
+                        {
+                            return None;
+                        }
+                        nodes.push((segment, glyph, text, pen + step.x_offset, em));
+                    }
+                    pen += prepared.width;
+                }
+                if !nodes.iter().any(|n| is_east_asian(n.2))
+                    || !nodes
+                        .iter()
+                        .any(|n| n.2.chars().any(|ch| ch.is_ascii_alphanumeric()))
+                {
+                    return None;
+                }
+                let first = nodes
+                    .iter()
+                    .position(|n| !n.2.chars().all(char::is_whitespace))?;
+                let last = nodes
+                    .iter()
+                    .rposition(|n| !n.2.chars().all(char::is_whitespace))?;
+                let mut owners = Vec::new();
+                let mut opportunities = Vec::new();
+                for index in first..last {
+                    let left = nodes[index];
+                    let right = nodes[index + 1];
+                    let mut opportunity = WindowsMixedJustificationOpportunity {
+                        space_capacity_px: 0.0,
+                        auto_space_capacity_px: 0.0,
+                    };
+                    if left.2 == " " {
+                        let balanced = paragraph_style
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width
+                            && (index > 0 && is_east_asian(nodes[index - 1].2)
+                                || is_east_asian(right.2));
+                        if !balanced {
+                            opportunity.space_capacity_px = ((right.3 - left.3) * 0.5).max(0.0);
+                        }
+                    } else if matches!(
+                        east_asian_justification_gap(left.2, right.2),
+                        Some(
+                            jade_docx_layout::line_wrap::EastAsianJustificationGap::AutoSpace { .. }
+                        )
+                    ) {
+                        opportunity.auto_space_capacity_px = left.4.max(right.4) * 0.25;
+                    } else if east_asian_justification_gap(left.2, right.2).is_none()
+                        && !(is_east_asian(left.2) && right.2 == " ")
+                    {
+                        continue;
+                    }
+                    owners.push((left.0, left.1));
+                    opportunities.push(opportunity);
+                }
+                (owners, opportunities)
+            };
+            if opportunities.is_empty() {
+                return None;
+            }
+            // Capture the requested slack before mutating any glyph boxes.
+            let shares = distribute_windows_mixed_justification(&opportunities, extra_total);
+            let mut cursor = 0;
+            let mut distributed = 0.0;
+            for (segment, prepared) in prepared_segments.iter_mut().enumerate() {
+                let mut accumulated = 0.0;
+                let glyphs = Rc::make_mut(&mut prepared.fragment.glyphs);
+                for (index, step) in prepared.glyph_steps.iter_mut().enumerate() {
+                    step.x_offset += accumulated;
+                    if let Some(glyph) = glyphs.get_mut(index) {
+                        glyph.x += accumulated;
+                    }
+                    if owners.get(cursor) == Some(&(segment, index)) {
+                        let extra = shares[cursor];
+                        if let Some(glyph) = glyphs.get_mut(index) {
+                            glyph.width += extra;
+                        }
+                        accumulated += extra;
+                        distributed += extra;
+                        cursor += 1;
+                    }
+                }
+                prepared.fragment.width += accumulated;
+                prepared.width += accumulated;
+            }
+            Some(distributed)
+        }
+
         // Word's East Asian justification (`east_asian_justification_gap`):
         // auto-space boundaries widen first, then the gaps between East Asian
         // characters share the rest. Returns the width placed.
@@ -25088,11 +25213,23 @@ where
                     // column edge. Apply the same extra width to glyph boxes and
                     // planned draw steps so rendering, selection, and browser
                     // oracle character X coordinates stay in the same space.
-                    distribute_justification_to_whitespace(
-                        prepared_segments.as_mut_slice(),
-                        extra_total,
-                        matches!(break_kind, LineBreakKind::Soft),
-                    )
+                    let mixed = (paragraph_style.word_platform
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
+                        .then(|| {
+                            distribute_windows_mixed(
+                                prepared_segments.as_mut_slice(),
+                                paragraph_style,
+                                extra_total,
+                            )
+                        })
+                        .flatten();
+                    mixed.unwrap_or_else(|| {
+                        distribute_justification_to_whitespace(
+                            prepared_segments.as_mut_slice(),
+                            extra_total,
+                            matches!(break_kind, LineBreakKind::Soft),
+                        )
+                    })
                 } else {
                     0.0
                 };

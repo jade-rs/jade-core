@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T081722934Z-edba44f1",
+  "captured_at_utc": "2026-11-15T08:17:22.9384306Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-kern-yu20-left-balance1-kern20-compat15",
+      "source": "..\\w15-n-justification-kern-input-snapshots\\word-windows-edge-justify-kern-yu20-left-balance1-kern20-compat15.docx",
+      "sha256": "eef32c763df5567784c30638be2127e079457b4495422e377a433eeb02edb55f",
+      "pdf": "word-windows-edge-justify-kern-yu20-left-balance1-kern20-compat15.pdf",
+      "pdf_sha256": "9644923cd474277a7d8a0c811a7374bf308f258a0e50f7664bbfe1610895952a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-kern-yu20-left-balance1-kern20-compat15.page-001.emf",
+          "sha256": "e77f212c7d4d2d7c9904079f37554eef4001b092b248db535dfb84ff70cb1a8f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -41602,9 +41602,38 @@ impl WordDocument {
                 }
             }
 
+            // The reader splits an ordinary source run at soft breaks. When
+            // those pieces still have one format, write them back through the
+            // original run together: rebuilding each piece separately loses
+            // the break template and duplicates the source run properties.
+            let following_piece = runs.get(run_index + 1).is_some_and(is_unbound_plain_run);
+            let coalesced = match tokens.front() {
+                Some(ChildToken::RunElement(element))
+                    if following_piece
+                        && runs[run_index].node_id == Some(element.id)
+                        && !in_field_instruction(&runs[run_index]) =>
+                {
+                    Self::coalesce_source_soft_break_pieces(element, &runs[run_index..])
+                }
+                _ => None,
+            };
+            if let Some((combined, count)) = coalesced {
+                let Some(ChildToken::RunElement(existing)) = tokens.pop_front() else {
+                    unreachable!("matched source run");
+                };
+                let (element, text_id) =
+                    Self::update_run_element(doc, existing, &combined, preserve_drawings, false)
+                        .expect("a plain run containing a soft break has content");
+                runs[run_index].node_id = Some(element.id);
+                runs[run_index].text_node_id = text_id;
+                new_children.push(XmlNode::Element(element));
+                piece_budget = 0;
+                run_index += count;
+                continue;
+            }
+
             // Ordinary bound runs need no source-text traversal. A budget is
             // only consumed by an immediately following unbound plain run.
-            let following_piece = runs.get(run_index + 1).is_some_and(is_unbound_plain_run);
             let run = &mut runs[run_index];
             let existing_run_element = match tokens.front() {
                 Some(ChildToken::RunElement(element)) if run.node_id == Some(element.id) => {
@@ -41667,6 +41696,87 @@ impl WordDocument {
         }
 
         new_children
+    }
+
+    /// Reuse one authored run without changing the editable model's pieces.
+    /// Inserted/deleted breaks, independently formatted pieces and ambiguous
+    /// unbound continuations retain the ordinary per-run writer path.
+    fn coalesce_source_soft_break_pieces(
+        source: &XmlElement,
+        runs: &[Run],
+    ) -> Option<(Run, usize)> {
+        if !source
+            .children
+            .iter()
+            .any(|node| matches!(node, XmlNode::Element(element) if element.name == "w:br"))
+        {
+            return None;
+        }
+        let mut pieces = Vec::new();
+        let mut has_text = false;
+        for node in &source.children {
+            let XmlNode::Element(element) = node else {
+                continue;
+            };
+            match element.name.as_str() {
+                "w:rPr" => {}
+                "w:t" => has_text |= Self::xml_text_len(element) > 0,
+                "w:br"
+                    if matches!(
+                        Self::word_break_type(element).as_deref(),
+                        None | Some("textwrapping")
+                    ) =>
+                {
+                    if std::mem::take(&mut has_text) {
+                        pieces.push(false);
+                    }
+                    pieces.push(true);
+                }
+                _ => return None,
+            }
+        }
+        if has_text {
+            pieces.push(false);
+        }
+        if pieces.len() < 2
+            || runs.len() < pieces.len()
+            || runs
+                .get(pieces.len())
+                .is_some_and(|run| run.node_id.is_none())
+        {
+            return None;
+        }
+        let first = &runs[0];
+        let plain = |run: &Run| {
+            run.field.is_none()
+                && run.image.is_none()
+                && run.text_box.is_none()
+                && run.math.is_none()
+                && run.hyperlink.is_none()
+                && run.revision.is_none()
+                && run.comment_reference_ids.is_empty()
+                && run.footnote_reference_ids.is_empty()
+                && run.endnote_reference_ids.is_empty()
+                && run.note_separator.is_none()
+                && !run.has_footnote_ref
+                && !run.has_endnote_ref
+        };
+        for (index, (run, &is_break)) in runs.iter().zip(&pieces).enumerate() {
+            if !plain(run)
+                || run.properties != first.properties
+                || index > 0 && run.node_id.is_some()
+                || (run.text == "\n") != is_break
+                || !is_break && run.text.contains('\n')
+            {
+                return None;
+            }
+        }
+        let mut combined = first.clone();
+        combined.text = runs[..pieces.len()]
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect();
+        Some((combined, pieces.len()))
     }
 
     /// Whether `element` is an inline equation the reader models as a math
@@ -64641,6 +64751,84 @@ mod tests {
         assert!(
             raw.contains(r#"<w:t>X</w:t><w:br w:type="futureBreak"/><w:t>F</w:t>"#),
             "unknown break types must survive lossless editing: {raw}",
+        );
+    }
+
+    #[test]
+    fn untyped_soft_break_survives_editing_its_split_source_run() {
+        let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body><w:p><w:r><w:rPr><w:b/></w:rPr><w:t>Above</w:t><w:br/><w:t>Below</w:t></w:r></w:p></w:body>
+</w:document>"#;
+        let data = build_document_docx(document_xml);
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+        let paragraph = document.paragraph_mut(0).expect("paragraph");
+        assert_eq!(
+            paragraph
+                .runs
+                .iter()
+                .map(|r| r.text.as_str())
+                .collect::<String>(),
+            "Above\nBelow"
+        );
+        paragraph.runs[0].text.insert(0, 'Z');
+        document.sync_paragraph_text(0);
+        let raw = document
+            .raw_document
+            .as_ref()
+            .expect("raw XML")
+            .to_string()
+            .expect("serialize");
+        assert!(
+            raw.contains("<w:br/>"),
+            "original untyped break must survive: {raw}"
+        );
+        assert!(
+            !raw.contains("w:type=\"textWrapping\""),
+            "editing text must not rewrite the original break: {raw}"
+        );
+        assert!(raw.contains("ZAbove") && raw.contains("Below"));
+        assert_eq!(
+            raw.matches("<w:rPr>").count(),
+            1,
+            "source formatting must not be duplicated"
+        );
+
+        // The editable model keeps its split pieces. Repeated synchronization
+        // and an edit to the tail must reuse the same original break again.
+        document
+            .paragraph_mut(0)
+            .unwrap()
+            .runs
+            .last_mut()
+            .unwrap()
+            .text = "Changed".into();
+        document.sync_paragraph_text(0);
+        let raw = document.raw_document.as_ref().unwrap().to_string().unwrap();
+        assert!(raw.contains("<w:br/>") && raw.contains("Changed"));
+        assert_eq!(raw.matches("<w:rPr>").count(), 1);
+        assert_eq!(
+            document
+                .paragraph(0)
+                .unwrap()
+                .runs
+                .iter()
+                .map(|run| run.text.as_str())
+                .collect::<String>(),
+            "ZAbove\nChanged"
+        );
+
+        document
+            .paragraph_mut(0)
+            .unwrap()
+            .runs
+            .retain(|run| run.text != "\n");
+        document.sync_paragraph_text(0);
+        let raw = document.raw_document.as_ref().unwrap().to_string().unwrap();
+        assert!(
+            !raw.contains("<w:br"),
+            "a deleted break must not return: {raw}"
         );
     }
 
