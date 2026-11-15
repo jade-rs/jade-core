@@ -10578,6 +10578,8 @@ where
     fn compute_wrap_content_hash(text: &str, run_styles: &[RunStyle]) -> u64 {
         use std::hash::{Hash, Hasher};
 
+        let windows = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
         let mut hasher = FxHasher::default();
         text.hash(&mut hasher);
         for style in run_styles {
@@ -10599,9 +10601,7 @@ where
                 props.font_size.map(f32::to_bits).hash(&mut hasher);
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-                {
+                if windows {
                     // Wrapped lines retain the resolved language and fallback
                     // metrics, including after an in-place formatting edit.
                     props.language.hash(&mut hasher);
@@ -12169,6 +12169,8 @@ where
         }
 
         // Runs (text + styling + embedded objects that affect layout/drawing)
+        let windows = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
         for run in &paragraph.runs {
             if content_hash.is_some() {
                 run.text.len().hash(&mut hasher);
@@ -12220,9 +12222,7 @@ where
                 hash_metric!(font_size, 4);
                 metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-                {
+                if windows {
                     props.language.hash(&mut hasher);
                     props.east_asia_language.hash(&mut hasher);
                 }
