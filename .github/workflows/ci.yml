@@ -278,6 +278,8 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_japanese_graphic_text_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_justification_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_justification_size_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_justification_width_probes.py
           python scripts/word-oracle/check_windows_observations.py
       - name: Reconstruct registered origins from original Word drawing files
         run: python scripts/word-oracle/extract_windows_emf.py --verify-index tests/word-oracle/windows/index.json

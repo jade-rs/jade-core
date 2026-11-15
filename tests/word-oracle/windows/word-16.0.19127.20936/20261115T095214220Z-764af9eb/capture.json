@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T095214220Z-764af9eb",
+  "captured_at_utc": "2026-11-15T09:52:14.2245205Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15",
+      "source": "tmp\\w15-p-justification-sizes-input-snapshots\\word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15.docx",
+      "sha256": "a7eb6a9f6a94f614bee5e70390218c77136c4d11c508dfd15af1bf67b876a1ba",
+      "pdf": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15.pdf",
+      "pdf_sha256": "10b2f6867c07290b20a826186041ebeb1ccd0b0a4448dfef1f4e5a0b3e348f4f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-size-yu12-cjk3-space3-left-balance1-compat15.page-001.emf",
+          "sha256": "430249567113043867502ea61c973fad48158fea3a0330bd7a25b9b6fdc8b65a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
