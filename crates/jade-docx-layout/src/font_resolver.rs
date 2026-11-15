@@ -400,6 +400,37 @@ impl ResolvedFontFamilies {
     }
 }
 
+/// A glyphless rule reserves its authored East Asian face, even when actual
+/// Japanese glyphs in that face need Windows Word's MS Mincho fallback.
+/// Preserve every Mac descriptor and every other named-face policy.
+pub fn neutral_rule_east_asia_descriptor<'a>(
+    resolved: &'a ResolvedRunStyle,
+    properties: Option<&RunProperties>,
+) -> std::borrow::Cow<'a, str> {
+    let descriptor = &*resolved.font_descriptor_east_asia;
+    if crate::line_metrics::word_layout_platform()
+        == crate::line_metrics::WordLayoutPlatform::Windows
+    {
+        let named = properties.and_then(|p| {
+            p.fonts
+                .as_ref()
+                .and_then(|fonts| {
+                    fonts
+                        .preferred_east_asia()
+                        .or(fonts.ascii.as_deref())
+                        .or(fonts.h_ansi.as_deref())
+                })
+                .or(p.font_family.as_deref())
+        });
+        if named.is_some_and(|name| name.trim().eq_ignore_ascii_case("Arial"))
+            && descriptor.contains("'MS Mincho'")
+        {
+            return std::borrow::Cow::Owned(descriptor.replacen("'MS Mincho'", "Arial", 1));
+        }
+    }
+    std::borrow::Cow::Borrowed(descriptor)
+}
+
 fn format_font_name(name: &str) -> String {
     let trimmed = name.trim();
     if trimmed.is_empty() {
@@ -889,15 +920,20 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
                 })
         })
     };
-    let east_candidate = if crate::line_metrics::word_layout_platform()
-        == crate::line_metrics::WordLayoutPlatform::Mac
+    let platform = crate::line_metrics::word_layout_platform();
+    // Windows Word's Japanese Arial probes select MS Mincho for the East
+    // Asian slot. This must select that slot's metrics as well as its paint.
+    let east_candidate = if (platform == crate::line_metrics::WordLayoutPlatform::Mac
         && ((!language_is("zh")
             && !language_is("ko")
             && fonts_ref
                 .and_then(|fonts| fonts.preferred_east_asia())
                 .is_some_and(word_mac_face_lacks_cjk_glyphs))
             || (language_is("ja")
-                && east_candidate.is_some_and(|family| family.trim() == "Noto Sans")))
+                && east_candidate.is_some_and(|family| family.trim() == "Noto Sans"))))
+        || (platform == crate::line_metrics::WordLayoutPlatform::Windows
+            && language_is("ja")
+            && east_candidate.is_some_and(|family| family.trim().eq_ignore_ascii_case("Arial")))
     {
         Some("MS Mincho")
     } else {
@@ -1662,6 +1698,39 @@ pub fn apply_hint_to_script(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn japanese_arial_glyph_fallback_does_not_resize_a_neutral_rule() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let properties = RunProperties {
+            font_size: Some(10.5),
+            east_asia_language: Some("ja-JP".into()),
+            fonts: Some(RunFonts {
+                ascii: Some("Arial".into()),
+                h_ansi: Some("Arial".into()),
+                east_asia: Some("Arial".into()),
+                ..RunFonts::default()
+            }),
+            ..RunProperties::default()
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let resolved = resolve_run_style_for_wrap(Some(&properties), None);
+            assert!(resolved.font_descriptor_east_asia.contains("'MS Mincho'"));
+            let rule = neutral_rule_east_asia_descriptor(&resolved, Some(&properties));
+            if platform == WordLayoutPlatform::Windows {
+                assert!(rule.starts_with("10.50pt Arial"), "{rule}");
+                assert_ne!(rule, &*resolved.font_descriptor_east_asia);
+            } else {
+                assert_eq!(rule, &*resolved.font_descriptor_east_asia);
+            }
+            assert_eq!(
+                neutral_rule_east_asia_descriptor(&resolved, None),
+                &*resolved.font_descriptor_east_asia
+            );
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+    }
+
     #[test]
     fn windows_missing_latin_faces_use_available_family_and_reset_between_documents() {
         use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};

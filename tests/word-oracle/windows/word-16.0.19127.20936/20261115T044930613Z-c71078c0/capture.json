@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T044930613Z-c71078c0",
+  "captured_at_utc": "2026-11-15T04:49:30.6165835Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-shading-center-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w15-i-paragraph-shading-input-snapshots\\word-windows-edge-shading-center-compat15.docx",
+      "sha256": "d514087276b14d5d68efff55ad2c9205b464dc6181a773ebe20d9395c2cf1e10",
+      "pdf": "word-windows-edge-shading-center-compat15.pdf",
+      "pdf_sha256": "c359557a12c20aee21183824ef9a461473d9275c64bce200d86aa12da7aa2d27",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-shading-center-compat15.page-001.emf",
+          "sha256": "9a3d8c169054094d0d578a2a345e2798c9a2c2fd10d9992d9eead1ad5abaf59f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

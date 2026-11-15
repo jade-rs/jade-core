@@ -718,6 +718,19 @@ pub fn execute_command_with_font_state<P: Painter>(
             context.fill_rect(*x, *y, *width, *height);
             font_state.invalidate_fill_style();
         }
+        DrawCommand::FillVectorRect {
+            x,
+            y,
+            width,
+            height,
+            color,
+        } => {
+            context.set_fill_style_str(color);
+            context.begin_path();
+            context.rect(*x, *y, *width, *height);
+            context.fill();
+            font_state.invalidate_fill_style();
+        }
         DrawCommand::StrokePolyline {
             points,
             line_width,

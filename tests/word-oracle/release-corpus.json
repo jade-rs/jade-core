@@ -3394,6 +3394,106 @@
     {
       "fixture": "word-windows-edge-graphic-ja-yu-mincho-shadow-size40-compat15",
       "docx_sha256": "184294ce49e911d4593d938456aa61dba67f04a4a0c184af6d88d36cc0c0b3d5"
+    },
+    {
+      "fixture": "word-windows-edge-column-background-green-cols1-compat15",
+      "docx_sha256": "20a6b081cdaa08e6ab44213d3e60b404e63c21a6b9706568900ba0cd78ccd3f7"
+    },
+    {
+      "fixture": "word-windows-edge-column-background-green-cols2-compat15",
+      "docx_sha256": "447ece0c689bcc65084b17da2abf144cad7398535a7fda47e400607b863be628"
+    },
+    {
+      "fixture": "word-windows-edge-column-background-yellow-cols1-compat15",
+      "docx_sha256": "a1507d12650dace38e57b4f61d426bae018c8a9b09aa759e60a8fe88a1af8932"
+    },
+    {
+      "fixture": "word-windows-edge-column-background-yellow-cols2-compat15",
+      "docx_sha256": "495487efe829a5dffa045ddacd2c5d17267eca52b24a405366220f29faa2e287"
+    },
+    {
+      "fixture": "word-windows-edge-shading-center-compat15",
+      "docx_sha256": "d514087276b14d5d68efff55ad2c9205b464dc6181a773ebe20d9395c2cf1e10"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-arial12-center-balance0-normal-compat15",
+      "docx_sha256": "70f3825a0d3585e03c417ae0574bd4eb1bd9b0a3e47d3103501c406fb303560d"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-arial12-center-balance1-normal-compat15",
+      "docx_sha256": "dfe9ec75c2d8c68f162a691e0fce3b3538472560aa69464abc8e59042d02b7b4"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-arial12-left-balance0-normal-compat15",
+      "docx_sha256": "c318115e76e42a453545e8358d32ae0fde3dc4980f53e108ab0e6dc08fab5f51"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-arial12-left-balance1-normal-compat15",
+      "docx_sha256": "bad24867cd5b8f6a5e9d5cfbfcd9bc76361c7d9a56f62ff531052df79e17c33d"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-base-center-balance0-normal-compat15",
+      "docx_sha256": "f9234434937e32f662793396203480e0e2296b9efa68708066b1ea43d63728e9"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-base-center-balance1-normal-compat15",
+      "docx_sha256": "35cf68f88eb4a02884df4ce0139db9d324003343368cb506b56f47b7ed370702"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-base-left-balance0-normal-compat15",
+      "docx_sha256": "3796c5a832173939a45975fe86a9c22ca0e7a36baec7926fac29e9e6ded4cb9a"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-base-left-balance1-normal-compat15",
+      "docx_sha256": "4cdf7fc7d844a309e14cb461d3338faf5da6c107ee127e4bb518046e8b960678"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-center-balance0-normal-compat15",
+      "docx_sha256": "1618fcf9c2edc57b715c23fcb4fc87f9b32c5aaddd2b2198b6c03df1849a769f"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-center-balance1-normal-compat15",
+      "docx_sha256": "dc24d52159f89327c10eabc75b44eba9a61836091b651a921d7a5b1b966859fc"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-left-balance0-normal-compat15",
+      "docx_sha256": "0e5d29f30236e39aa7206b3122414e58cd221f2c5b6740b2f11f9d53391bdcef"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-left-balance1-defaults20-compat15",
+      "docx_sha256": "e261023cc9cd38fc1afb7cf8bca97e81f592048b6954c429ba0f4f5c2e5ca1d5"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-left-balance1-mark20-compat15",
+      "docx_sha256": "4f75f90b169f765922e18c2b79ef87d5f1627f69240e57824121aa3d26367ab1"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-left-balance1-no-grid-compat15",
+      "docx_sha256": "087735e54f866b4aaed542d0e2efdd7638f9db6e551996dc652f62021980208d"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-yu20-left-balance1-normal-compat15",
+      "docx_sha256": "6c1c506d36bd7ba37ae4900e9e214fa786ba7e8e213c34da588fb0991d9447ec"
+    },
+    {
+      "fixture": "word-windows-edge-arial-space-arial12-balance1-defaults20-compat15",
+      "docx_sha256": "222374e421a0d86ef8e8c8d32c1aba9f87cf1a3e7b38a5716d04a1f2bb4f79ab"
+    },
+    {
+      "fixture": "word-windows-edge-arial-space-arial12-balance1-mark20-compat15",
+      "docx_sha256": "5ae9371211e3d2858918a65eb128282177bcda1e721ef08f8e0ae57ba2c4f3a7"
+    },
+    {
+      "fixture": "word-windows-edge-arial-space-arial12-balance1-no-grid-compat15",
+      "docx_sha256": "9450a68ff15b27bc7e9956d8b7e5fa2559667d4db329818083b0f7465f1efd50"
+    },
+    {
+      "fixture": "word-windows-edge-arial-space-arial20-balance1-defaults20-compat15",
+      "docx_sha256": "a34a84906c41e1fa46092fccec9ad6de63dc40824ca9680cd1ce2e05e6ca79a3"
+    },
+    {
+      "fixture": "word-windows-edge-arial-space-arial20-balance1-normal-compat15",
+      "docx_sha256": "caac9cd2d5b60f181c6e7c72ef69e1a4cce29aecb44e17aececb934f979c5757"
     }
   ]
 }

@@ -16,7 +16,7 @@ from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = 'ee882210c7aad8a44bbd36b99ccd53fbe0747db29d97e3a0c633ab253ee1f14a'
+INDEX_SHA256 = 'fd4be98f7b38154fa2a9956df90abcb328cb31b7a55b135338475be84bef33bf'
 
 
 def has_visible_vector_ink(pdf):
@@ -51,11 +51,13 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 431, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 456, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         require('no_visible_vector_ink' not in case
                 or case['no_visible_vector_ink'] is True, 'Invalid paint expectation')
+        require('solid_paragraph_background' not in case
+                or case['solid_paragraph_background'] is True, 'Invalid shading expectation')
         name = case['name']
         require(name not in names, 'Duplicate font fixture')
         names.add(name)
@@ -79,7 +81,7 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 107302, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 123862, 'Total font coverage changed')
     return cases
 
 
@@ -116,6 +118,9 @@ def check_windows(executable, output, root=ROOT):
                         case['name'] + ': original Word has unexpected vector paint')
                 require(not has_visible_vector_ink(painted_path),
                         case['name'] + ': native PDF contains extra border/guide paint')
+            if case.get('solid_paragraph_background'):
+                from paragraph_backgrounds import compare_paragraph_backgrounds
+                compare_paragraph_backgrounds(source, original_pdf, painted_path, case['name'])
             print(case['name'], case['word_product_version'], 'four coordinate planes: PASS', flush=True)
         finally:
             password.unlink(missing_ok=True)
@@ -130,4 +135,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 107302 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 123862 glyph origins')

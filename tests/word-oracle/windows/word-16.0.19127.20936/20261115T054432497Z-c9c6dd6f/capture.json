@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T054432497Z-c9c6dd6f",
+  "captured_at_utc": "2026-11-15T05:44:32.5009696Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-mixed-base-left-balance0-normal-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w15-l-mixed-script-input-snapshots\\word-windows-edge-mixed-base-left-balance0-normal-compat15.docx",
+      "sha256": "3796c5a832173939a45975fe86a9c22ca0e7a36baec7926fac29e9e6ded4cb9a",
+      "pdf": "word-windows-edge-mixed-base-left-balance0-normal-compat15.pdf",
+      "pdf_sha256": "b01452cceee2cc2047a101ee4ad0d171cf97bdde1c8cc51163af115199a0a252",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-mixed-base-left-balance0-normal-compat15.page-001.emf",
+          "sha256": "0281bb6e520e5859dbfd6773185bb58e8e41d122a133d3b2fb6edfcd8cd56636",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
