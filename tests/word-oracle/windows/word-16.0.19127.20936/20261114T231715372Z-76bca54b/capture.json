@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T231715372Z-76bca54b",
+  "captured_at_utc": "2026-11-14T23:17:15.3769720Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "char-effects",
+      "source": "public\\fixtures\\char-effects.docx",
+      "sha256": "9483a3b8154cde513b6d77fe91f25883404f80ba1de5ed1eedef4b88919b631d",
+      "pdf": "char-effects.pdf",
+      "pdf_sha256": "e4ae4c7acdbd7b2f016c19d7c9ae0c4a9d523b050c05c04b7df77364a34e5e5d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "char-effects.page-001.emf",
+          "sha256": "b7309db0f523b8a9c834e79658dad5ac971e0a20ccb90e63653198ad6b11959f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

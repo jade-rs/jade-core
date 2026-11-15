@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T234416568Z-c958a175",
+  "captured_at_utc": "2026-11-14T23:44:16.5711617Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-shadow-size40-colorauto-compat15",
+      "source": "..\\w15-graphic-text-inputs\\word-windows-edge-graphic-shadow-size40-colorauto-compat15.docx",
+      "sha256": "014c26526b20b0127c84e518cd618951039f43047fcd43208430a0f58d9cd9a1",
+      "pdf": "word-windows-edge-graphic-shadow-size40-colorauto-compat15.pdf",
+      "pdf_sha256": "8f2987fbe796ed37437230ff6856b7b7f64f813ddf14ff6076116bffa13ce39c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-shadow-size40-colorauto-compat15.page-001.emf",
+          "sha256": "c351e70c92aea1ed4314118c94c69104a43720b80b396aac6deb8e5a86f47e90",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

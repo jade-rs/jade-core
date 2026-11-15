@@ -165,6 +165,22 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_windows_graphic_text_keeps_required_paint_and_rejection_checks
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    step = job.fetch("steps").find do |item|
+      item["name"] == "Assert versioned Windows text effects and absolute outline geometry"
+    end
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    command = step.fetch("run")
+    assert_includes command, "test_windows_graphic_text.py"
+    assert_includes command, "check_windows_graphic_text.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+    refute_includes command, "|| true"
+    refute_includes command, "--skip"
+    refute_includes command, "--ignored"
+  end
+
   def test_windows_editing_and_font_reuse_cannot_silently_stop_running
     job = @workflow.fetch("jobs").fetch("windows-native-editing")
     assert_equal "windows-latest", job.fetch("runs-on")

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001926333Z-1121d5c2",
+  "captured_at_utc": "2026-11-15T00:19:26.3374769Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-emboss-size20-colorauto-compat12",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-emboss-size20-colorauto-compat12.docx",
+      "sha256": "91c059ed0e8aae1ede3c0e9347c508c79547f15b7a0d738f39ad23ce055cbc03",
+      "pdf": "word-windows-edge-graphic-emboss-size20-colorauto-compat12.pdf",
+      "pdf_sha256": "9969b18a51523124fd535e92737d5fbec39592b2ff566ce8880603b0437434aa",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-emboss-size20-colorauto-compat12.page-001.emf",
+          "sha256": "59134e57ac53860e8e0b8d47f25a1c4cc92a2510a088059688fd3b821503b762",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

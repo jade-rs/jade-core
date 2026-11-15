@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T234405774Z-20b5d8e2",
+  "captured_at_utc": "2026-11-14T23:44:05.7788886Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-plain-size40-colorauto-compat15",
+      "source": "..\\w15-graphic-text-inputs\\word-windows-edge-graphic-plain-size40-colorauto-compat15.docx",
+      "sha256": "0e6461d85ca69fcfb0c65716a3b0fbbee87aceb699428cab01c5e2976673efef",
+      "pdf": "word-windows-edge-graphic-plain-size40-colorauto-compat15.pdf",
+      "pdf_sha256": "89985083fe67b59514835d959bf301b012ac7d29398a45ba1bd4a86549cecc29",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-plain-size40-colorauto-compat15.page-001.emf",
+          "sha256": "a8d11870ef819c11c437eb840d8bdfb6139d588cc0563f73e400a5521be98d45",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

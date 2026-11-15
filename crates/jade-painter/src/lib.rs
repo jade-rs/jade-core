@@ -168,6 +168,11 @@ pub trait Painter {
         self.fill_text(text, x, y)
     }
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
+    /// Strokes scalable font contours with round joins when available. The default retains
+    /// the backend's normal text stroke; vector backends may preserve paths.
+    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        self.stroke_text(text, x, y)
+    }
     /// Advance width of `text` under the current font.
     ///
     /// Line breaking never goes through here — `jade-docx-layout` owns wrap and

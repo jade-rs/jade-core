@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001931710Z-6f96fbe6",
+  "captured_at_utc": "2026-11-15T00:19:31.7140827Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-emboss-yu-mincho-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-emboss-yu-mincho-size20-compat15.docx",
+      "sha256": "a372865e8d2c13fb61355495c1d22d6afee1e17d1de3906a82f71e3ac74f0fbf",
+      "pdf": "word-windows-edge-graphic-emboss-yu-mincho-size20-compat15.pdf",
+      "pdf_sha256": "6bf87daa5398c620ac26f14899a88f47b537536459a989ee1870daec5fbad37f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-emboss-yu-mincho-size20-compat15.page-001.emf",
+          "sha256": "408a2ddb212abd7c061cc7a23d3595590cfc075d6ff75782fd250df2651103b9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

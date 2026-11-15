@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T002005223Z-d3e6b3ce",
+  "captured_at_utc": "2026-11-15T00:20:05.2276996Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-plain-arial-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-plain-arial-size20-compat15.docx",
+      "sha256": "c7ee2f2c5bafa5e8ab4dcb8fbfed99587877869bb86d5f458bcd38e9d96f3180",
+      "pdf": "word-windows-edge-graphic-plain-arial-size20-compat15.pdf",
+      "pdf_sha256": "d33974086c3aa32757536197b1280a60e7596ecebf49c58536c78c7a5ff4bc44",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-plain-arial-size20-compat15.page-001.emf",
+          "sha256": "d9cb56b7df14b97e5f654c5c73bba3c9b9884889b9043070c00d664b5619b777",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

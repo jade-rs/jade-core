@@ -120,6 +120,7 @@ struct StyleState {
     shadow_blur: f32,
     shadow_offset: (f32, f32),
     blur_filter: f32,
+    stroke_text_paths: bool,
     /// What the `y` given to `fill_text` means, as canvas's `textBaseline`.
     /// Skia always draws from the alphabetic baseline, so this decides how far
     /// the `y` has to be moved before the glyphs land where the caller meant.
@@ -185,6 +186,7 @@ impl Default for StyleState {
             shadow_blur: 0.0,
             shadow_offset: (0.0, 0.0),
             blur_filter: 0.0,
+            stroke_text_paths: false,
             text_baseline: TextBaseline::Alphabetic,
         }
     }
@@ -759,6 +761,29 @@ impl SkiaPainter {
             PaintSurface::Recording { raster_scale, .. } => *raster_scale,
             _ => None,
         };
+        let contour_path = if paint.style() == skia_safe::paint::Style::Stroke
+            && self.shared.style.borrow().stroke_text_paths
+        {
+            let mut widths = vec![0.0; glyphs.len()];
+            font.get_widths(glyphs, &mut widths);
+            let mut path = Path::new();
+            let mut advance = 0.0;
+            let mut complete = true;
+            for (glyph, width) in glyphs.iter().copied().zip(widths) {
+                if let Some(outline) = font.get_path(glyph) {
+                    path.add_path(&outline, (advance, 0.0), None);
+                } else {
+                    complete = false;
+                    break;
+                }
+                advance += width;
+            }
+            complete.then_some(path)
+        } else {
+            None
+        };
+        let raster_contours = contour_path.is_some()
+            && matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_));
         let path_text = editor_scale.is_none()
             && matches!(
                 &*self.shared.surface.borrow(),
@@ -772,6 +797,13 @@ impl SkiaPainter {
                 || paint.image_filter().is_some()
                 || paint.mask_filter().is_some());
         self.with_canvas(|canvas| {
+            if raster_contours {
+                canvas.save();
+                canvas.translate((x, y));
+                canvas.draw_path(contour_path.as_ref().unwrap(), paint);
+                canvas.restore();
+                return;
+            }
             if !path_text && editor_scale.is_none() {
                 canvas.draw_text_blob(&blob, (x, y), paint);
                 return;
@@ -804,6 +836,13 @@ impl SkiaPainter {
                     descent: metrics.descent,
                     transform: [a, b, c, d, a * x + c * y + e, b * x + d * y + f],
                 });
+            if let Some(path) = contour_path.as_ref() {
+                canvas.save();
+                canvas.translate((x, y));
+                canvas.draw_path(path, paint);
+                canvas.restore();
+                return;
+            }
             if editor_scale.is_some() {
                 canvas.draw_text_blob(&blob, (x, y), paint);
                 return;
@@ -1856,6 +1895,16 @@ impl Painter for SkiaPainter {
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         let paint = self.stroke_paint();
         self.draw_segments(text, x, y, &paint);
+        Ok(())
+    }
+
+    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        let previous = self.shared.style.borrow().stroke_text_paths;
+        self.shared.style.borrow_mut().stroke_text_paths = true;
+        let mut paint = self.stroke_paint();
+        paint.set_stroke_join(skia_safe::paint::Join::Round);
+        self.draw_segments(text, x, y, &paint);
+        self.shared.style.borrow_mut().stroke_text_paths = previous;
         Ok(())
     }
 

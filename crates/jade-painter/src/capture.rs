@@ -50,6 +50,7 @@ pub enum PaintOp {
     /// painter cannot shape it.
     FillShapedText(Rc<str>, Rc<[(usize, f64)]>, f64),
     StrokeText(Rc<str>, f64, f64),
+    StrokeTextAsPath(Rc<str>, f64, f64),
     FillRect(f64, f64, f64, f64),
     HorizontalGradientRect(ImageRect, [u8; 4], [u8; 4]),
     ClearRect(f64, f64, f64, f64),
@@ -176,6 +177,7 @@ pub fn replay<P: Painter>(
                 }
             }
             PaintOp::StrokeText(text, x, y) => painter.stroke_text(text, *x, *y)?,
+            PaintOp::StrokeTextAsPath(text, x, y) => painter.stroke_text_as_path(text, *x, *y)?,
             PaintOp::FillRect(x, y, w, h) => painter.fill_rect(*x, *y, *w, *h),
             PaintOp::HorizontalGradientRect(rect, start, end) => {
                 painter.fill_horizontal_gradient_rect(*rect, *start, *end)?
@@ -410,6 +412,14 @@ impl<P: Painter> Painter for RoutedPainter<P> {
             return Ok(());
         }
         self.inner.stroke_text(text, x, y)
+    }
+
+    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        if self.record(|| PaintOp::StrokeTextAsPath(Rc::from(text), x, y)) {
+            Ok(())
+        } else {
+            self.inner.stroke_text_as_path(text, x, y)
+        }
     }
 
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
@@ -753,5 +763,21 @@ mod tests {
         assert!(!captured
             .try_fill_glyph_run_batch("ab", &[0.0, 1.0], 0.0)
             .unwrap());
+    }
+
+    #[test]
+    fn captured_outline_strokes_retain_path_intent_through_replay() {
+        let surface = RecordingPainter::new();
+        let sink = new_sink();
+        let captured = RoutedPainter::new(surface.clone(), Some(sink.clone()));
+        captured.stroke_text_as_path("A", 12.0, 34.0).unwrap();
+        assert!(surface.ops().is_empty());
+        assert_eq!(
+            sink.borrow().as_slice(),
+            &[PaintOp::StrokeTextAsPath(Rc::from("A"), 12.0, 34.0)]
+        );
+        // Backends without scalable contours keep their existing stroke API.
+        replay(&sink.borrow(), &surface, |_| {}).unwrap();
+        assert_eq!(surface.ops(), vec![Op::StrokeText("A".into(), 12.0, 34.0)]);
     }
 }

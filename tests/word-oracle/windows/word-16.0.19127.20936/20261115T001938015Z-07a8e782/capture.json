@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001938015Z-07a8e782",
+  "captured_at_utc": "2026-11-15T00:19:38.0193302Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-imprint-calibri-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-imprint-calibri-size20-compat15.docx",
+      "sha256": "1b33ad43a9f898b0e42e2427953e50ff1542facb6e8c72762969a45ff3c6c043",
+      "pdf": "word-windows-edge-graphic-imprint-calibri-size20-compat15.pdf",
+      "pdf_sha256": "e5961f36ba42ee33afbf0f33c55575ea3096e8249d878fd992a50179f9b9098e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-imprint-calibri-size20-compat15.page-001.emf",
+          "sha256": "46b27efa3e19e036186dcb7896fd00bf4e547a587f520a174bb3ebdfdc589c80",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

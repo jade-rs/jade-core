@@ -875,6 +875,9 @@ fn execute_text_run_with_font_state<P: Painter>(
             context, text, x, y, combine, style, fonts, glyphs, font_state,
         );
     }
+    if try_draw_windows_legacy_effect(context, text, x, y, style, fonts, glyphs, font_state)? {
+        return Ok(());
+    }
     // `w:shadow` (§17.3.2.31) / `w:emboss` (§17.3.2.13) / `w:imprint`
     // (§17.3.2.18): apply a native canvas shadow around the glyph fills, then
     // always clear it so later draws are unaffected. The shadow propagates to
@@ -1166,6 +1169,70 @@ fn apply_text_shadow<P: Painter>(context: &P, font_size_pt: f32) {
     context.set_shadow_blur(offset * 0.5);
 }
 
+/// Word 16.0.19127.20936 paints these legacy effects as ordered glyph copies,
+/// not a blurred canvas shadow. Keep the existing Mac treatment independent.
+/// The measured controls exclude transforms, combined effects and OpenType
+/// shaping; those retain their current path until independently measured.
+#[allow(clippy::too_many_arguments)]
+fn try_draw_windows_legacy_effect<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<bool, P::Error> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    let effects = u8::from(style.shadow) + u8::from(style.emboss) + u8::from(style.imprint);
+    if effects != 1
+        || style.outline
+        || style.effects.is_some()
+        || (style.text_scale_x - 1.0).abs() > f64::EPSILON
+        || word_layout_platform() != WordLayoutPlatform::Windows
+        || fonts.iter().any(|font| font_state.font_has_features(font))
+    {
+        return Ok(false);
+    }
+    record_replay_fallback_run(glyphs.len() as u64);
+    clear_text_shadow(context);
+    font_state.ensure_text_baseline_alphabetic(context);
+    let gray: Rc<str> = Rc::from(if style.shadow { "#c0c0c0" } else { "#999999" });
+    let black: Rc<str> = Rc::from("#000000");
+    let depth = jade_docx_layout::units::points_to_px(0.96);
+    let shadow_offset = jade_docx_layout::units::points_to_px(style.font_size_pt / 24.0);
+    for glyph in glyphs {
+        let (Some(font), Some(value)) = (fonts.get(glyph.font_index as usize), glyph.text(text))
+        else {
+            continue;
+        };
+        font_state.set_font_rc_if_changed(context, font);
+        let gx = x + glyph.x_offset;
+        if style.emboss {
+            font_state.set_fill_style_rc_if_changed(context, &gray);
+            context.fill_text(value, gx, y)?;
+            font_state.set_fill_style_rc_if_changed(context, &black);
+            context.fill_text(value, gx - 2.0 * depth, y - 2.0 * depth)?;
+            font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
+            context.fill_text(value, gx - depth, y - depth)?;
+        } else if style.imprint {
+            font_state.set_fill_style_rc_if_changed(context, &black);
+            context.fill_text(value, gx + 2.0 * depth, y + 2.0 * depth)?;
+            font_state.set_fill_style_rc_if_changed(context, &gray);
+            context.fill_text(value, gx, y)?;
+            font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
+            context.fill_text(value, gx + depth, y + depth)?;
+        } else {
+            font_state.set_fill_style_rc_if_changed(context, &gray);
+            context.fill_text(value, gx + shadow_offset, y + shadow_offset)?;
+            font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
+            context.fill_text(value, gx, y)?;
+        }
+    }
+    Ok(true)
+}
+
 /// Applies a light highlight shadow to fake an embossed (raised) or imprinted
 /// (engraved) look. On a light page, a white highlight cast below-right reads as
 /// raised, while the same highlight cast above-left reads as pressed in. The
@@ -1225,9 +1292,23 @@ fn draw_text_run_glyphs<P: Painter>(
     // `w:outline` (§17.3.2.23): draw the glyphs as hollow stroked outlines using
     // the run's color, rather than solid fills. The glyph-batch fast path only
     // fills, so outline runs always take the per-glyph stroke path below.
+    let isolated_windows_outline = style.outline
+        && !style.shadow
+        && !style.emboss
+        && !style.imprint
+        && style.effects.is_none()
+        && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && !fonts.iter().any(|font| font_state.font_has_features(font));
     if style.outline {
         context.set_stroke_style_str(&style.fill_color);
-        context.set_line_width(outline_line_width_px(style.font_size_pt));
+        context.set_line_width(if isolated_windows_outline {
+            // Original Word PDFs use a 0.14 pt cosmetic outline at 12/20/40 pt.
+            jade_docx_layout::units::points_to_px(0.14)
+        } else {
+            outline_line_width_px(style.font_size_pt)
+        });
     }
 
     let needs_scale = (style.text_scale_x - 1.0).abs() > f64::EPSILON;
@@ -1268,7 +1349,11 @@ fn draw_text_run_glyphs<P: Painter>(
                 continue;
             };
             font_state.set_font_rc_if_changed(context, font_descriptor);
-            context.stroke_text(glyph_text, x + glyph.x_offset, y)?;
+            if isolated_windows_outline {
+                context.stroke_text_as_path(glyph_text, x + glyph.x_offset, y)?;
+            } else {
+                context.stroke_text(glyph_text, x + glyph.x_offset, y)?;
+            }
         }
         return Ok(());
     }
@@ -2813,6 +2898,142 @@ mod painter_backend_tests {
             fill_color: Rc::from("#000000"),
             ..TextStyle::default()
         }
+    }
+
+    #[test]
+    fn windows_legacy_effects_keep_cached_color_and_following_text_in_sync() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let fonts = [Rc::from("20pt 'Times New Roman'")];
+        let glyphs = [GlyphRunStep {
+            text_start: 0,
+            text_end: 1,
+            font_index: 0,
+            x_offset: 0.0,
+        }];
+        for effect in ["shadow", "emboss", "imprint"] {
+            let painter = RecordingPainter::new();
+            let mut tracker = FontStateTracker::new();
+            let mut effect_style = TextStyle {
+                font_size_pt: 20.0,
+                fill_color: Rc::from("#ff0000"),
+                ..TextStyle::default()
+            };
+            match effect {
+                "shadow" => effect_style.shadow = true,
+                "emboss" => effect_style.emboss = true,
+                _ => effect_style.imprint = true,
+            }
+            execute_text_run_with_font_state(
+                &painter,
+                "A",
+                100.0,
+                200.0,
+                &effect_style,
+                &fonts,
+                &glyphs,
+                &mut tracker,
+            )
+            .unwrap();
+            let plain = TextStyle {
+                fill_color: Rc::clone(&effect_style.fill_color),
+                ..TextStyle::default()
+            };
+            // Reusing the same color exercises the tracker cache: the final
+            // text must not inherit a secondary layer's color or translation.
+            execute_text_run_with_font_state(
+                &painter,
+                "Z",
+                300.0,
+                400.0,
+                &plain,
+                &fonts,
+                &glyphs,
+                &mut tracker,
+            )
+            .unwrap();
+            let mut color = String::new();
+            let mut last = None;
+            for op in painter.ops() {
+                match op {
+                    Op::SetFillStyle(value) => color = value,
+                    Op::FillText(text, x, y) => last = Some((text, color.clone(), x, y)),
+                    Op::SetShadowColor(value) => assert_eq!(value, "rgba(0, 0, 0, 0)"),
+                    _ => {}
+                }
+            }
+            assert_eq!(
+                last,
+                Some(("Z".into(), "#ff0000".into(), 300.0, 400.0)),
+                "{effect}"
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_legacy_effect_guard_leaves_mac_and_unmeasured_paths_untouched() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let fonts = [Rc::from("20pt 'Times New Roman'")];
+        let glyphs = [GlyphRunStep {
+            text_start: 0,
+            text_end: 1,
+            font_index: 0,
+            x_offset: 0.0,
+        }];
+        let base = TextStyle {
+            shadow: true,
+            ..TextStyle::default()
+        };
+        for (platform, style) in [
+            (WordLayoutPlatform::Mac, base.clone()),
+            (
+                WordLayoutPlatform::Windows,
+                TextStyle {
+                    text_scale_x: 0.75,
+                    ..base.clone()
+                },
+            ),
+            (
+                WordLayoutPlatform::Windows,
+                TextStyle {
+                    outline: true,
+                    ..base.clone()
+                },
+            ),
+            (
+                WordLayoutPlatform::Windows,
+                TextStyle {
+                    emboss: true,
+                    ..base
+                },
+            ),
+        ] {
+            set_word_layout_platform(platform);
+            let painter = RecordingPainter::new();
+            assert!(!try_draw_windows_legacy_effect(
+                &painter,
+                "A",
+                100.0,
+                200.0,
+                &style,
+                &fonts,
+                &glyphs,
+                &mut FontStateTracker::new()
+            )
+            .unwrap());
+            assert!(
+                painter.ops().is_empty(),
+                "{platform:?}: the fallback owns all paint"
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     /// The executor used to require a live `CanvasRenderingContext2d`, so none
