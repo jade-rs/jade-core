@@ -15419,6 +15419,98 @@
           "opened_filename": "word-windows-edge-graphic-ja-yu-mincho-shadow-size40-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T042904025Z-40ba0a32.zip",
+      "archive_sha256": "cbab8971d76bf5b8f3999007fd4078c92a1ce43783bf0783f9892c4c7649e593",
+      "capture_id": "20261115T042904025Z-40ba0a32",
+      "capture_sha256": "ffd66e09ee46db25706c6e2670ef50bb4ce537a0db7604b52d18d0011985f8a8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-column-background-green-cols1-compat15",
+          "source_sha256": "20a6b081cdaa08e6ab44213d3e60b404e63c21a6b9706568900ba0cd78ccd3f7",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-column-background-green-cols1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-column-background-green-cols1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T042906358Z-662c156e.zip",
+      "archive_sha256": "537b3073007035e5fd8940d8c1967aa24a17c28737624d4a7a0c43a36d5b1121",
+      "capture_id": "20261115T042906358Z-662c156e",
+      "capture_sha256": "e6382bb356736ce1f45984391ada0d2880340ea274f67e06786ab123102d10e3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-column-background-green-cols2-compat15",
+          "source_sha256": "447ece0c689bcc65084b17da2abf144cad7398535a7fda47e400607b863be628",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-column-background-green-cols2-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-column-background-green-cols2-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T042909364Z-6660d664.zip",
+      "archive_sha256": "3c13cd0afa650aecd96c28051a8b7e60d02d1da2b81ae9d7750cad18d93c31aa",
+      "capture_id": "20261115T042909364Z-6660d664",
+      "capture_sha256": "fb1fba34da1922f8ae489f26a9bb5aa8fb48dbf353944da951f1c0fda922738f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-column-background-yellow-cols1-compat15",
+          "source_sha256": "a1507d12650dace38e57b4f61d426bae018c8a9b09aa759e60a8fe88a1af8932",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-column-background-yellow-cols1-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-column-background-yellow-cols1-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T042912267Z-a4b3ed0b.zip",
+      "archive_sha256": "2e5df507b519f96a357fb8d16a70f2ac9fa8c061f9b47086b68e0fb5445b1b5c",
+      "capture_id": "20261115T042912267Z-a4b3ed0b",
+      "capture_sha256": "0998bf4f962b833e1c9c50c2e807c2dbb2bd9de2a67e3ca4c68465067e6950e0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-column-background-yellow-cols2-compat15",
+          "source_sha256": "495487efe829a5dffa045ddacd2c5d17267eca52b24a405366220f29faa2e287",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-column-background-yellow-cols2-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-column-background-yellow-cols2-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

@@ -79,7 +79,7 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 427)
+        self.assertEqual(len(verify()), 431)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf
@@ -151,6 +151,21 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         for case, _, manifest, document, _ in cases:
             with self.subTest(name=case['name']):
                 self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+                self.assertEqual(document['open_mode'], 'normal-read-only')
+                self.assertTrue(case['no_visible_vector_ink'])
+                self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
+
+    def test_column_and_typography_controls_keep_original_no_ink_expectations(self):
+        names = {'2col', 'align-center', 'char-spacing', 'character-styles'}
+        cases = [row for row in verify() if row[0]['name'] in names]
+        self.assertEqual({row[0]['name'] for row in cases}, names)
+        self.assertEqual(sum(row[0]['glyph_count'] for row in cases), 2623)
+        for case, _, manifest, document, _ in cases:
+            with self.subTest(name=case['name']):
+                capture = json.loads(manifest.read_text(encoding='utf-8'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
                 self.assertEqual(document['open_mode'], 'normal-read-only')
                 self.assertTrue(case['no_visible_vector_ink'])
                 self.assertFalse(has_visible_vector_ink(manifest.parent / document['pdf']))
