@@ -44413,10 +44413,7 @@ mod tests {
         let path = "word/document.xml";
         let decoded = String::from_utf8_lossy(&bytes);
         let expected = jade_docx_reader::word_namespaces::normalize(&decoded);
-        doc.package
-            .as_mut()
-            .unwrap()
-            .files
+        std::sync::Arc::make_mut(&mut doc.package.as_mut().unwrap().files)
             .insert(path.to_string(), bytes.clone());
         let result = doc.load_part(path);
         match expected {
@@ -49209,7 +49206,7 @@ mod tests {
         let mut files = HashMap::new();
         files.insert("word/media/image1.png".to_string(), b"png".to_vec());
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: None,
         };
@@ -49296,7 +49293,7 @@ mod tests {
         let mut files = HashMap::new();
         files.insert("word/media/image1.wmf".to_string(), b"wmf".to_vec());
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: None,
         };
@@ -49649,7 +49646,7 @@ mod tests {
         let mut files = HashMap::new();
         files.insert("word/media/image1.emf".to_string(), minimal_emf_bytes());
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: None,
         };

@@ -5613,11 +5613,13 @@ mod tests {
 <w:style w:type="character" w:styleId="Toggle"><w:rPr><w:vanish/></w:rPr></w:style>
 </w:styles>"#;
             let package = OpenXmlPackage {
-                files: [
-                    ("word/document.xml".into(), document.into_bytes()),
-                    ("word/styles.xml".into(), styles.as_bytes().to_vec()),
-                ]
-                .into(),
+                files: std::sync::Arc::new(
+                    [
+                        ("word/document.xml".into(), document.into_bytes()),
+                        ("word/styles.xml".into(), styles.as_bytes().to_vec()),
+                    ]
+                    .into(),
+                ),
                 relationships: vec![jade_docx_reader::Relationship {
                     id: "rId1".into(),
                     r#type: RelationshipTypes::OfficeDocument.as_str().into(),
@@ -5837,7 +5839,7 @@ mod tests {
             THEME_XML.as_bytes().to_vec(),
         );
         let package = OpenXmlPackage {
-            files,
+            files: std::sync::Arc::new(files),
             relationships: vec![jade_docx_reader::Relationship {
                 id: "rId1".to_string(),
                 r#type:

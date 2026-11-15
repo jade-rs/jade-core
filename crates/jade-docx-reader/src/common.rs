@@ -3,6 +3,7 @@ use quick_xml::events::Event;
 use quick_xml::Reader;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Relationship {
@@ -92,7 +93,11 @@ pub trait Part: Send + Sync {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenXmlPackage {
-    pub files: HashMap<String, Vec<u8>>,
+    /// Inflated ZIP entries. The map is reference-counted so cloning a package
+    /// (and therefore a whole `WordDocument`) does not copy every entry's
+    /// bytes. Reads go through `Deref`; to mutate, use `Arc::make_mut`, which
+    /// deep-copies the whole map only when it is currently shared.
+    pub files: Arc<HashMap<String, Vec<u8>>>,
     pub relationships: Vec<Relationship>,
     /// Compressed byte length of the source DOCX. This is package-level state,
     /// not the sum of inflated ZIP entries, and is used by Word's FILESIZE
@@ -124,7 +129,7 @@ impl OpenXmlPackage {
 
         // Load main relationships
         let package = Self {
-            files,
+            files: Arc::new(files),
             relationships: Vec::new(),
             original_size_bytes: Some(data.len()),
         };
@@ -508,7 +513,7 @@ mod tests {
             .as_bytes();
 
         let package = OpenXmlPackage {
-            files: HashMap::new(),
+            files: Arc::default(),
             relationships: Vec::new(),
             original_size_bytes: None,
         };
@@ -546,11 +551,11 @@ mod tests {
   <TotalTime>37</TotalTime>
 </Properties>"#;
         let package = OpenXmlPackage {
-            files: HashMap::from([
+            files: Arc::new(HashMap::from([
                 ("metadata/core-data.xml".to_string(), core.to_vec()),
                 ("metadata/custom-data.xml".to_string(), custom.to_vec()),
                 ("metadata/app-data.xml".to_string(), extended.to_vec()),
-            ]),
+            ])),
             relationships: vec![
                 Relationship {
                     id: "rCore".to_string(),
@@ -620,5 +625,37 @@ mod tests {
             properties.get("template").map(String::as_str),
             Some("Normal.dotm")
         );
+    }
+
+    #[test]
+    fn cloning_a_package_shares_entry_bytes_and_mutation_is_isolated() {
+        let original = OpenXmlPackage {
+            files: Arc::new(HashMap::from([
+                ("word/media/image1.png".to_string(), vec![1u8; 4096]),
+                ("word/document.xml".to_string(), b"<doc/>".to_vec()),
+            ])),
+            relationships: Vec::new(),
+            original_size_bytes: Some(10),
+        };
+        let mut clone = original.clone();
+
+        // Cloning bumps a reference count instead of copying entry bytes.
+        assert!(Arc::ptr_eq(&original.files, &clone.files));
+        assert_eq!(Arc::strong_count(&original.files), 2);
+        assert_eq!(
+            original.files["word/media/image1.png"].as_ptr(),
+            clone.files["word/media/image1.png"].as_ptr()
+        );
+
+        // Mutating the clone copies on write and leaves the original untouched.
+        Arc::make_mut(&mut clone.files)
+            .insert("word/document.xml".to_string(), b"<changed/>".to_vec());
+        Arc::make_mut(&mut clone.files).remove("word/media/image1.png");
+        assert!(!Arc::ptr_eq(&original.files, &clone.files));
+        assert_eq!(original.files["word/document.xml"], b"<doc/>");
+        assert_eq!(original.files["word/media/image1.png"], vec![1u8; 4096]);
+        assert_eq!(clone.files["word/document.xml"], b"<changed/>");
+        assert!(!clone.files.contains_key("word/media/image1.png"));
+        assert_eq!(Arc::strong_count(&original.files), 1);
     }
 }
