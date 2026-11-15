@@ -3150,6 +3150,190 @@
     {
       "fixture": "word-windows-edge-font-independent-unknown-ja-swiss-hello-compat15",
       "docx_sha256": "96022488d0a4fcf5d2b03d81db4133546742c9d747a43d7bd3e1f68a3811c75f"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-arial-size20-compat15",
+      "docx_sha256": "2d3d7c9443669a4255714b20447323111761a55220f90dd4613a3ecbe89a7143"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-calibri-size20-compat15",
+      "docx_sha256": "aa3f5a6f448f45c74753d16d11c96e5acfa5b08a880c020fa536580e824603be"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-size12-colorauto-compat15",
+      "docx_sha256": "eaf18d7b89a50786d5782e7e11792a904f1fb1ad8a0d312cfc969d15855bbb34"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-size20-colorauto-compat12",
+      "docx_sha256": "91c059ed0e8aae1ede3c0e9347c508c79547f15b7a0d738f39ad23ce055cbc03"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-size20-colorauto-compat14",
+      "docx_sha256": "e9356d9e95383580fd996013cc57317f5e97caa1c16504aa9345375d2171f0e7"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-size20-colorauto-compat15",
+      "docx_sha256": "1d382556b9a704c3bfa05d7cca2b6849e39a1ea4fdb9b35b20b0cd5321038082"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-size20-colorFF0000-compat15",
+      "docx_sha256": "ec862348b525e5bf86a67bc567bc253adc38409d9654af4d105229421d9c1a73"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-size40-colorauto-compat15",
+      "docx_sha256": "34b99091acbda0fa03ae3864aa9b41ac3025f104a975276ffe68834ac6c584b3"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-emboss-yu-mincho-size20-compat15",
+      "docx_sha256": "a372865e8d2c13fb61355495c1d22d6afee1e17d1de3906a82f71e3ac74f0fbf"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-arial-size20-compat15",
+      "docx_sha256": "bdacdcb403fc5f9a6f8cb8b7491915cc762006f131b2be559943176b8bffc996"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-calibri-size20-compat15",
+      "docx_sha256": "1b33ad43a9f898b0e42e2427953e50ff1542facb6e8c72762969a45ff3c6c043"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-size12-colorauto-compat15",
+      "docx_sha256": "6bcecaba8caace975e22a17d22c32988fe22654c51f44fd3b4956b33709ab96c"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-size20-colorauto-compat12",
+      "docx_sha256": "00bc89e77307d89c107866c948570c3b4316eae7bdcf664bbe9d27d24eccc0df"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-size20-colorauto-compat14",
+      "docx_sha256": "e546ecf8e3123b5c672613b1e17d5811ba4a627a2138855302c2c6b9e1d2c85b"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-size20-colorauto-compat15",
+      "docx_sha256": "1ba45c27533de1db96b803a0af36060f9624e3fef6e6cdc7ef63e4063de89f86"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-size20-colorFF0000-compat15",
+      "docx_sha256": "e1c2375ba9dec6ca681dc737a67e708efd3c92d83533dd64b4799a9c19eb7159"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-size40-colorauto-compat15",
+      "docx_sha256": "ad32e6b847888d2ede0ebca729398816b41cbdbe61947391a7d9601c55b0b698"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-imprint-yu-mincho-size20-compat15",
+      "docx_sha256": "df65c0b600f6e35722999ac183bf0d934bdbda69c46f2272d8af83b3e8d699c6"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-original-plain-font-control",
+      "docx_sha256": "d74b9022dd47973954a3c230e8430d098624fc7cf8387af8bf6102037c111acb"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-arial-size20-compat15",
+      "docx_sha256": "4015877d1c806b66579534d7c4ff4d8ad30e9b6b139bad850dd476b122048a3e"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-calibri-size20-compat15",
+      "docx_sha256": "73a558089a2eeee9ee82f5cf32cb4e5278480522d5910c36ff39bb6fdb8883af"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-size12-colorauto-compat15",
+      "docx_sha256": "d8dc301ff3ad0ff23932cb234a4bdbdc3b228e2a6ce6a74dc8851af5cad449c4"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-size20-colorauto-compat12",
+      "docx_sha256": "81dfee17a3b7aabd994190f8a4324e25de8e3c859d7b41c84c321b5ec3069fc9"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-size20-colorauto-compat14",
+      "docx_sha256": "c04f1219c270f93dbb8617c7d5c455e9136a6649a80f4dcc709380281a401728"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-size20-colorauto-compat15",
+      "docx_sha256": "d0c3a4a04dce3e52196a8fcb5fb4df5b0eeeeffb1cd703b1562a8eac8582b64b"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-size20-colorFF0000-compat15",
+      "docx_sha256": "93d23995fb3fc08b8242bb46549e3b1265fe3f3c1d69b50c102f88b43296957d"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-size40-colorauto-compat15",
+      "docx_sha256": "db5767c6fba97e0d5ad09b8bf708725e6e14e94d435791787b0ca7e3954c865b"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-outline-yu-mincho-size20-compat15",
+      "docx_sha256": "d27e8d9caa94a11ee062c91e625e3e83c13046d31fe84a89ae208a13c5832cbe"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-arial-size20-compat15",
+      "docx_sha256": "c7ee2f2c5bafa5e8ab4dcb8fbfed99587877869bb86d5f458bcd38e9d96f3180"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-calibri-size20-compat15",
+      "docx_sha256": "0240b56d5345a9c882072116e38adee3f3c60ef4d4601d17661a969b9da720c9"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-size12-colorauto-compat15",
+      "docx_sha256": "ec67cd5e87dc71f705bd139a025f49ab7052c14494f9652b4a3686439f886f45"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-size20-colorauto-compat12",
+      "docx_sha256": "48d88ca63cbe661e2dee921d049c245909cb57c6eb6dfde9c7a06fbfb72a48ba"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-size20-colorauto-compat14",
+      "docx_sha256": "223bc375c3d86cfee6e61048d717414a20fb781ba194332ecdf2f62815a51c45"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-size20-colorauto-compat15",
+      "docx_sha256": "7012b1e43f4e977033f54439ae6a52cebdaf2194a73ae5214b1077000b5165ff"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-size20-colorFF0000-compat15",
+      "docx_sha256": "a0347058221b3a155677ccae9e64ae359aa2b7658262c780fd300251dd8d9f16"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-size40-colorauto-compat15",
+      "docx_sha256": "0e6461d85ca69fcfb0c65716a3b0fbbee87aceb699428cab01c5e2976673efef"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-plain-yu-mincho-size20-compat15",
+      "docx_sha256": "0ddf6c663f1ccd80b2f65f69302be3c814c0854c5f407ae151f29244cb6800a8"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-arial-size20-compat15",
+      "docx_sha256": "104472a15590baf743d2f4eb820edfcec900795b869f6c0817bfa302b3840356"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-calibri-size20-compat15",
+      "docx_sha256": "4f97ea9a9ef57e7247d9d9931d40b7dbcb365ccb4bc8816d65926ca8040d1de2"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-size12-colorauto-compat15",
+      "docx_sha256": "b7425b7265e0fd602d142e20db8300a101d667da63faa77abdc14f5a1eb1d0a6"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-size20-colorauto-compat12",
+      "docx_sha256": "b19429bb2d4788e0b50c2c4ec5b92b321a291ed7239f441507798fb962fba4d1"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-size20-colorauto-compat14",
+      "docx_sha256": "6bfb5170f925393fad35b0f4e8e5c7b009bdb61dddbd76c640c21e2bc8de1839"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-size20-colorauto-compat15",
+      "docx_sha256": "b3a27efaac087526f8b77434f72fb4108cbed71d8f88018374cb793b67f90930"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-size20-colorFF0000-compat15",
+      "docx_sha256": "448dc915e69d130b8e165942ace1eae1788ed0820b7e9819b904cd3292f77d74"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-size40-colorauto-compat15",
+      "docx_sha256": "014c26526b20b0127c84e518cd618951039f43047fcd43208430a0f58d9cd9a1"
+    },
+    {
+      "fixture": "word-windows-edge-graphic-shadow-yu-mincho-size20-compat15",
+      "docx_sha256": "122a3e678cef14134a9b2ce747cd26cdfbba16d30908a59e89c15fb17f38adc5"
     }
   ]
 }

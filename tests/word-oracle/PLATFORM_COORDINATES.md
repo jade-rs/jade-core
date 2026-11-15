@@ -45,6 +45,10 @@ apply. Coverage, source hashes, version metadata, original PDFs and EMFs are
 checked before rendering. The public encrypted fixture uses its documented test
 password and retains the encrypted source hash separately from decrypted bytes.
 
+An additional [graphic-text gate](GRAPHIC_TEXT.md) asserts 47 versioned Windows
+cases against original physical glyph copies, visible colors and absolute
+outline geometry. It preserves the existing typography gate and Mac references.
+
 The shared registry also pairs the unchanged `footnote-mac` and
 `footnote-table-each-page-mac` and `endnote-mac` sources with their Windows observations. These
 Windows checks use original PDF font programs so Office fonts are not required

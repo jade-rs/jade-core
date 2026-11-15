@@ -46168,101 +46168,137 @@ mod tests {
 
     #[test]
     fn numbering_character_effects_reach_paint_and_cached_replay() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
         use jade_painter::recording::Op;
-        for effect in ["shadow", "outline", "emboss", "imprint"] {
-            for (token, fallback_enabled, enabled) in [
-                (Some("on"), false, true),
-                (Some("off"), true, false),
-                (None, true, true),
-                (None, false, false),
-            ] {
-                let property = token
-                    .map(|value| format!(r#"<w:{effect} w:val="{value}"/>"#))
-                    .unwrap_or_default();
-                let numbering = NumberingPart::from_xml(&format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr><w:sz w:val="24"/>{property}</w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#)).unwrap();
-                let fallback = RunProperties {
-                    shadow: (effect == "shadow").then_some(fallback_enabled),
-                    outline: (effect == "outline").then_some(fallback_enabled),
-                    emboss: (effect == "emboss").then_some(fallback_enabled),
-                    imprint: (effect == "imprint").then_some(fallback_enabled),
-                    ..RunProperties::default()
-                };
-                let props = <CanvasRenderer>::merge_numbering_run_props(
-                    numbering.get_level_info("1", 0).unwrap().run_props.clone(),
-                    Some(&fallback),
-                )
-                .unwrap();
-                let (mut renderer, painter) = recording_renderer();
-                let style = renderer.resolve_applied_run_style_cached(Some(&props));
-                let context = NumberingTextContext {
-                    margin_line_number: false,
-                    paragraph_style: None,
-                    suffix_space: true,
-                    following_grapheme: Some("X"),
-                };
-                let label = "A一. ";
-                let measured = renderer
-                    .measure_numbering_text_plan(label, &style, context)
-                    .unwrap();
-                let mut commands = Vec::new();
-                let painted = renderer
-                    .draw_numbering_text_plan(
-                        (label, 0),
-                        (10.0, 40.0),
-                        Some(&props),
-                        &style,
-                        context,
-                        &mut Some(&mut commands),
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for effect in ["shadow", "outline", "emboss", "imprint"] {
+                for (token, fallback_enabled, enabled) in [
+                    (Some("on"), false, true),
+                    (Some("off"), true, false),
+                    (None, true, true),
+                    (None, false, false),
+                ] {
+                    let property = token
+                        .map(|value| format!(r#"<w:{effect} w:val="{value}"/>"#))
+                        .unwrap_or_default();
+                    let numbering = NumberingPart::from_xml(&format!(r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:rPr><w:sz w:val="24"/>{property}</w:rPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#)).unwrap();
+                    let fallback = RunProperties {
+                        shadow: (effect == "shadow").then_some(fallback_enabled),
+                        outline: (effect == "outline").then_some(fallback_enabled),
+                        emboss: (effect == "emboss").then_some(fallback_enabled),
+                        imprint: (effect == "imprint").then_some(fallback_enabled),
+                        ..RunProperties::default()
+                    };
+                    let props = <CanvasRenderer>::merge_numbering_run_props(
+                        numbering.get_level_info("1", 0).unwrap().run_props.clone(),
+                        Some(&fallback),
                     )
                     .unwrap();
-                assert!((measured - painted).abs() < 1e-9);
-                for replay in [false, true] {
-                    if replay {
-                        painter.clear();
-                        <CanvasRenderer>::replay_cached_draw_commands(
-                            &painter,
-                            &mut Vec::new(),
-                            &commands,
-                            0.0,
-                            false,
+                    let (mut renderer, painter) = recording_renderer();
+                    let style = renderer.resolve_applied_run_style_cached(Some(&props));
+                    let context = NumberingTextContext {
+                        margin_line_number: false,
+                        paragraph_style: None,
+                        suffix_space: true,
+                        following_grapheme: Some("X"),
+                    };
+                    let label = "A一. ";
+                    let measured = renderer
+                        .measure_numbering_text_plan(label, &style, context)
+                        .unwrap();
+                    let mut commands = Vec::new();
+                    let painted = renderer
+                        .draw_numbering_text_plan(
+                            (label, 0),
+                            (10.0, 40.0),
+                            Some(&props),
+                            &style,
+                            context,
+                            &mut Some(&mut commands),
                         )
                         .unwrap();
-                    }
-                    let ops = painter.ops();
-                    let outline = enabled && effect == "outline";
-                    let mut text = String::new();
-                    for op in &ops {
-                        match op {
-                            Op::FillText(value, _, _) => {
-                                assert!(!outline);
-                                text.push_str(value);
-                            }
-                            Op::StrokeText(value, _, _) => {
-                                assert!(outline);
-                                text.push_str(value);
-                            }
-                            _ => {}
+                    assert!((measured - painted).abs() < 1e-9);
+                    for replay in [false, true] {
+                        if replay {
+                            painter.clear();
+                            <CanvasRenderer>::replay_cached_draw_commands(
+                                &painter,
+                                &mut Vec::new(),
+                                &commands,
+                                0.0,
+                                false,
+                            )
+                            .unwrap();
                         }
-                    }
-                    assert_eq!(text, label, "{effect}, token={token:?}, replay={replay}");
-                    let shadow_color = match effect {
-                        "shadow" => "rgba(0, 0, 0, 0.35)",
-                        _ => "rgba(255, 255, 255, 0.7)",
-                    };
-                    assert_eq!(
+                        let ops = painter.ops();
+                        let outline = enabled && effect == "outline";
+                        let mut text = String::new();
+                        for op in &ops {
+                            match op {
+                                Op::FillText(value, _, _) => {
+                                    assert!(!outline);
+                                    text.push_str(value);
+                                }
+                                Op::StrokeText(value, _, _) => {
+                                    assert!(outline);
+                                    text.push_str(value);
+                                }
+                                _ => {}
+                            }
+                        }
+                        let copies = if platform == WordLayoutPlatform::Windows && enabled {
+                            match effect {
+                                "shadow" => 2,
+                                "emboss" | "imprint" => 3,
+                                _ => 1,
+                            }
+                        } else {
+                            1
+                        };
+                        let expected: String = label
+                            .chars()
+                            .flat_map(|c| std::iter::repeat_n(c, copies))
+                            .collect();
+                        assert_eq!(
+                            text, expected,
+                            "{platform:?}, {effect}, token={token:?}, replay={replay}"
+                        );
+                        let shadow_color = match effect {
+                            "shadow" => "rgba(0, 0, 0, 0.35)",
+                            _ => "rgba(255, 255, 255, 0.7)",
+                        };
+                        assert_eq!(
                         ops.iter().any(
                             |op| matches!(op, Op::SetShadowColor(color) if color == shadow_color)
                         ),
-                        enabled && effect != "outline",
+                        enabled && effect != "outline" && platform == WordLayoutPlatform::Mac,
                         "{effect}, token={token:?}, replay={replay}"
                     );
-                    if enabled && effect != "outline" {
-                        assert!(ops.iter().any(|op| matches!(op, Op::SetShadowOffsetY(offset) if if effect == "imprint" { *offset < 0.0 } else { *offset > 0.0 })));
-                        assert!(ops.iter().any(|op| matches!(op, Op::SetShadowColor(color) if color == "rgba(0, 0, 0, 0)")));
+                        if enabled && effect != "outline" && platform == WordLayoutPlatform::Mac {
+                            assert!(ops.iter().any(|op| matches!(op, Op::SetShadowOffsetY(offset) if if effect == "imprint" { *offset < 0.0 } else { *offset > 0.0 })));
+                            assert!(ops.iter().any(|op| matches!(op, Op::SetShadowColor(color) if color == "rgba(0, 0, 0, 0)")));
+                        }
+                        if enabled && effect != "outline" && platform == WordLayoutPlatform::Windows
+                        {
+                            let layer_color = if effect == "shadow" {
+                                "#c0c0c0"
+                            } else {
+                                "#999999"
+                            };
+                            assert!(ops.iter().any(
+                                |op| matches!(op, Op::SetFillStyle(color) if color == layer_color)
+                            ));
+                            assert!(!ops.iter().any(|op| matches!(op, Op::SetShadowColor(color) if color != "rgba(0, 0, 0, 0)")));
+                        }
                     }
                 }
             }
         }
+        set_word_layout_platform(previous);
     }
 
     #[test]
@@ -47874,92 +47910,139 @@ mod tests {
 
     #[test]
     fn first_paint_keeps_character_effects_without_waiting_for_cache_replay() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
         use jade_painter::recording::{Op, RecordingPainter};
-        for (effect, props) in [
-            (
-                "outline",
-                RunProperties {
-                    outline: Some(true),
-                    ..RunProperties::default()
-                },
-            ),
-            (
-                "shadow",
-                RunProperties {
-                    shadow: Some(true),
-                    ..RunProperties::default()
-                },
-            ),
-            (
-                "emboss",
-                RunProperties {
-                    emboss: Some(true),
-                    ..RunProperties::default()
-                },
-            ),
-            (
-                "imprint",
-                RunProperties {
-                    imprint: Some(true),
-                    ..RunProperties::default()
-                },
-            ),
-        ] {
-            let mut document = doc_with_paragraph_texts(&["Effect", "Plain"]);
-            let BodyElement::Paragraph(paragraph) =
-                &mut document.body.as_mut().unwrap().elements[0]
-            else {
-                panic!("paragraph")
-            };
-            paragraph.runs[0].properties = Some(props);
-            let painter = RecordingPainter::new();
-            let mut renderer = CanvasRenderer::with_host(
-                Box::new(NonCanvasHost {
-                    painter: painter.clone(),
-                }),
-                false,
-            )
-            .unwrap();
-            renderer.mark_full_repaint();
-            renderer
-                .render(
-                    &document,
-                    &Options {
-                        show_formatting_marks: false,
-                        show_crop_marks: false,
-                        ..Options::default()
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (effect, props) in [
+                (
+                    "outline",
+                    RunProperties {
+                        outline: Some(true),
+                        ..RunProperties::default()
                     },
+                ),
+                (
+                    "shadow",
+                    RunProperties {
+                        shadow: Some(true),
+                        ..RunProperties::default()
+                    },
+                ),
+                (
+                    "emboss",
+                    RunProperties {
+                        emboss: Some(true),
+                        ..RunProperties::default()
+                    },
+                ),
+                (
+                    "imprint",
+                    RunProperties {
+                        imprint: Some(true),
+                        ..RunProperties::default()
+                    },
+                ),
+            ] {
+                let mut document = doc_with_paragraph_texts(&["Effect", "Plain"]);
+                let BodyElement::Paragraph(paragraph) =
+                    &mut document.body.as_mut().unwrap().elements[0]
+                else {
+                    panic!("paragraph")
+                };
+                paragraph.runs[0].properties = Some(props);
+                let painter = RecordingPainter::new();
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(NonCanvasHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
                 )
                 .unwrap();
-            let ops = painter.ops();
-            if effect == "outline" {
-                assert!(
-                    ops.iter().any(|op| matches!(op, Op::StrokeText(..))),
-                    "first paint lost {effect}"
-                );
-            } else {
-                assert!(
+                renderer.mark_full_repaint();
+                renderer
+                    .render(
+                        &document,
+                        &Options {
+                            show_formatting_marks: false,
+                            show_crop_marks: false,
+                            ..Options::default()
+                        },
+                    )
+                    .unwrap();
+                let ops = painter.ops();
+                if effect == "outline" {
+                    assert!(
+                        ops.iter().any(|op| matches!(op, Op::StrokeText(..))),
+                        "first paint lost {effect}"
+                    );
+                } else if platform == WordLayoutPlatform::Mac {
+                    assert!(
                     ops.iter().any(
                         |op| matches!(op, Op::SetShadowColor(color) if color != "rgba(0, 0, 0, 0)")
                     ),
                     "first paint lost {effect}"
                 );
-                let shadow_end = ops
+                    let shadow_end = ops
                     .iter()
                     .rposition(
                         |op| matches!(op, Op::SetShadowColor(color) if color == "rgba(0, 0, 0, 0)"),
                     )
                     .unwrap();
-                let plain = ops
-                    .iter()
-                    .position(|op| matches!(op, Op::FillText(text, ..) if text == "P"))
-                    .unwrap();
-                assert!(
-                    shadow_end < plain,
-                    "{effect} leaked into following paragraph"
-                );
+                    let plain = ops
+                        .iter()
+                        .position(|op| matches!(op, Op::FillText(text, ..) if text == "P"))
+                        .unwrap();
+                    assert!(
+                        shadow_end < plain,
+                        "{effect} leaked into following paragraph"
+                    );
+                } else {
+                    let copies = if effect == "shadow" { 2 } else { 3 };
+                    assert_eq!(
+                        ops.iter()
+                            .filter(|op| matches!(op, Op::FillText(text, ..) if text == "E"))
+                            .count(),
+                        copies
+                    );
+                    let layer_color = if effect == "shadow" {
+                        "#c0c0c0"
+                    } else {
+                        "#999999"
+                    };
+                    assert!(ops
+                        .iter()
+                        .any(|op| matches!(op, Op::SetFillStyle(color) if color == layer_color)));
+                    assert!(!ops.iter().any(
+                        |op| matches!(op, Op::SetShadowColor(color) if color != "rgba(0, 0, 0, 0)")
+                    ));
+                    let expected_color = renderer
+                        .resolve_applied_run_style_cached(None)
+                        .fill_color
+                        .to_string();
+                    let mut active_color = String::new();
+                    let mut found_plain = false;
+                    for op in &ops {
+                        match op {
+                            Op::SetFillStyle(color) => active_color.clone_from(color),
+                            Op::FillText(text, ..) if text == "P" => {
+                                assert_eq!(
+                                    active_color, expected_color,
+                                    "{effect} leaked layer color"
+                                );
+                                found_plain = true;
+                            }
+                            _ => {}
+                        }
+                    }
+                    assert!(found_plain);
+                }
             }
         }
+        set_word_layout_platform(previous);
     }
 
     /// The renderer runs against a painter that is not the canvas.

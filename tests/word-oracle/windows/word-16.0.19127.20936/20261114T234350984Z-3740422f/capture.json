@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261114T234350984Z-3740422f",
+  "captured_at_utc": "2026-11-14T23:43:50.9870927Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-outline-size20-colorauto-compat15",
+      "source": "..\\w15-graphic-text-inputs\\word-windows-edge-graphic-outline-size20-colorauto-compat15.docx",
+      "sha256": "d0c3a4a04dce3e52196a8fcb5fb4df5b0eeeeffb1cd703b1562a8eac8582b64b",
+      "pdf": "word-windows-edge-graphic-outline-size20-colorauto-compat15.pdf",
+      "pdf_sha256": "52b63570c8de3767d3e70d11af858bb89d34c72f994f8436c6cdfb3aa01672a2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-outline-size20-colorauto-compat15.page-001.emf",
+          "sha256": "139434dd5834fc5dad0b804b2790deeceacdf397eef2af277d89c9eb09cf9704",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

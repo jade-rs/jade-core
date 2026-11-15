@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T002018175Z-40b1c820",
+  "captured_at_utc": "2026-11-15T00:20:18.1783565Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-plain-yu-mincho-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-plain-yu-mincho-size20-compat15.docx",
+      "sha256": "0ddf6c663f1ccd80b2f65f69302be3c814c0854c5f407ae151f29244cb6800a8",
+      "pdf": "word-windows-edge-graphic-plain-yu-mincho-size20-compat15.pdf",
+      "pdf_sha256": "2f793f174e77c93908bf44252812b199bccdb4c174b7a0b87182c50fd050cb07",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-plain-yu-mincho-size20-compat15.page-001.emf",
+          "sha256": "687e24a29c00cc0ebce18bcb2a7ffe9a63e1a45c258de32665baf23c7e9872a3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

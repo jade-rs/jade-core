@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001951647Z-c12b5249",
+  "captured_at_utc": "2026-11-15T00:19:51.6578703Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-outline-arial-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-outline-arial-size20-compat15.docx",
+      "sha256": "4015877d1c806b66579534d7c4ff4d8ad30e9b6b139bad850dd476b122048a3e",
+      "pdf": "word-windows-edge-graphic-outline-arial-size20-compat15.pdf",
+      "pdf_sha256": "6010951ae5eea8962489f5fbe6c511cac5e6121f0e3634ba8363089de42c00ee",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-outline-arial-size20-compat15.page-001.emf",
+          "sha256": "258b0a5f407215fdeb90a66bbb5312cfdc7055683f88e05621aecc4675025be7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001948883Z-ff565509",
+  "captured_at_utc": "2026-11-15T00:19:48.8869761Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-original-plain-font-control",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-original-plain-font-control.docx",
+      "sha256": "d74b9022dd47973954a3c230e8430d098624fc7cf8387af8bf6102037c111acb",
+      "pdf": "word-windows-edge-graphic-original-plain-font-control.pdf",
+      "pdf_sha256": "07d39438cd9550b917d82a38a66e0ea6d88de57b618edae93b8f5455a95a466b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-original-plain-font-control.page-001.emf",
+          "sha256": "347cc7f23cf434e666338ecc6b4a8f084cfc571134deb4b316fd3e9c04d4689c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

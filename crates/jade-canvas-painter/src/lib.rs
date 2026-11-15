@@ -232,6 +232,14 @@ impl<C: Borrow<CanvasRenderingContext2d>, I: CanvasImages> Painter for Canvas2dP
         Ok(())
     }
 
+    fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        self.ctx().save();
+        self.ctx().set_line_join("round");
+        let result = self.stroke_text(text, x, y);
+        self.ctx().restore();
+        result
+    }
+
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
         Ok(self.ctx().measure_text(text)?.width())
     }

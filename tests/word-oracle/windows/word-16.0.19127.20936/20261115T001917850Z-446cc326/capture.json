@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001917850Z-446cc326",
+  "captured_at_utc": "2026-11-15T00:19:17.8628947Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-emboss-arial-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-emboss-arial-size20-compat15.docx",
+      "sha256": "2d3d7c9443669a4255714b20447323111761a55220f90dd4613a3ecbe89a7143",
+      "pdf": "word-windows-edge-graphic-emboss-arial-size20-compat15.pdf",
+      "pdf_sha256": "8203b6be118ebd72697a631ed975b71526c41e40ae73ec3f1c26b77259b4a53a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-emboss-arial-size20-compat15.page-001.emf",
+          "sha256": "64601f3814a7f5ef91e6121ac6646a136f417552a0f958a49cf2f9c0e4773b40",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T001940713Z-3f18eb19",
+  "captured_at_utc": "2026-11-15T00:19:40.7160364Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-imprint-size20-colorauto-compat12",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-imprint-size20-colorauto-compat12.docx",
+      "sha256": "00bc89e77307d89c107866c948570c3b4316eae7bdcf664bbe9d27d24eccc0df",
+      "pdf": "word-windows-edge-graphic-imprint-size20-colorauto-compat12.pdf",
+      "pdf_sha256": "a2de8396149883dba14b6c9790dd1df7cb723efb8da68e61a569b8e5f149e6ee",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-imprint-size20-colorauto-compat12.page-001.emf",
+          "sha256": "669ea61cce42c8d475d8c835a4845b825e988accd4a5bc7a19465837b358fed4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

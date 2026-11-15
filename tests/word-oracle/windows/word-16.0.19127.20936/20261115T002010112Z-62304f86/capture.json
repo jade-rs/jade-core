@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T002010112Z-62304f86",
+  "captured_at_utc": "2026-11-15T00:20:10.1152300Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-graphic-plain-calibri-size20-compat15",
+      "source": "..\\w15-graphic-text-holdout-inputs\\word-windows-edge-graphic-plain-calibri-size20-compat15.docx",
+      "sha256": "0240b56d5345a9c882072116e38adee3f3c60ef4d4601d17661a969b9da720c9",
+      "pdf": "word-windows-edge-graphic-plain-calibri-size20-compat15.pdf",
+      "pdf_sha256": "1d3db202074f96e2c984f0c729e05061a1005e1718ae802787931daab721b14f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-graphic-plain-calibri-size20-compat15.page-001.emf",
+          "sha256": "cf1af6a43dc9ca8167cfc40b4e2163859bc17d5f7af888202f8dd3042dba74ae",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
