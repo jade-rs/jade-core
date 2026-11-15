@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T110120390Z-ef1efb24",
+  "captured_at_utc": "2026-11-15T11:01:20.4056975Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-justify-threshold-yu20-both-width186p5-balance1-compat15",
+      "docx_sha256": "da8acb445555937fb8e52222f20ee3eeb45991ea66673e4e9dbf880b30de150a",
+      "pdf_sha256": "43c45a4c683865077a5115cf3386edd40c44130a91142a41908be56e3b85f20d",
+      "pdf_file": "word-windows-edge-justify-threshold-yu20-both-width186p5-balance1-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-threshold-yu20-both-width186p5-balance1-compat15.page-001.emf",
+          "sha256": "3c599a4cdf9ae388bf975b10b1881507c574b5780979fd53c78aca772a04d72f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          124.31704675028506
+        ],
+        [
+          1,
+          "g",
+          99.23666599475911,
+          124.31704675028506
+        ],
+        [
+          1,
+          "日",
+          112.67621447288852,
+          124.31704675028506
+        ],
+        [
+          1,
+          "本",
+          132.7155412215279,
+          124.31704675028506
+        ],
+        [
+          1,
+          "語",
+          152.75486797016728,
+          124.31704675028506
+        ],
+        [
+          1,
+          "A",
+          182.753860108849,
+          124.31704675028506
+        ],
+        [
+          1,
+          "B",
+          196.79338842975204,
+          124.31704675028506
+        ],
+        [
+          1,
+          "C",
+          210.59292481354564,
+          124.31704675028506
+        ],
+        [
+          1,
+          "A",
+          229.07230397097356,
+          124.31704675028506
+        ],
+        [
+          1,
+          "B",
+          243.23182826043134,
+          124.31704675028506
+        ],
+        [
+          1,
+          "C",
+          257.03136464422494,
+          124.31704675028506
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          160.31619156214367
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T121640359Z-68aaa69d",
+  "captured_at_utc": "2026-11-15T12:16:40.3643258Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-manual-size-yu22-width205p7-balance1-compat15",
+      "source": "tmp\\w15-s-manual-size-threshold-input-snapshots\\word-windows-edge-manual-size-yu22-width205p7-balance1-compat15.docx",
+      "sha256": "60959d175125fa381a86a5fe616e9e46bbd942ab4a547af489f790717b168332",
+      "pdf": "word-windows-edge-manual-size-yu22-width205p7-balance1-compat15.pdf",
+      "pdf_sha256": "72554204ef5592de65b8acb02556f1ea2348a2132f46aa6c13ab6614094af428",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-manual-size-yu22-width205p7-balance1-compat15.page-001.emf",
+          "sha256": "c11ebdd377612a3c309d72534c5f95fd81fbb5a07d3e58a835f41b7f30c5c5e1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

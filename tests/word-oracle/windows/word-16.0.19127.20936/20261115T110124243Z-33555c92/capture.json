@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T110124243Z-33555c92",
+  "captured_at_utc": "2026-11-15T11:01:24.2473756Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-threshold-yu20-both-width187-balance1-compat15",
+      "source": "tmp\\w15-r-justification-threshold-input-snapshots\\word-windows-edge-justify-threshold-yu20-both-width187-balance1-compat15.docx",
+      "sha256": "30109099d71c0045e1c72932a4638ddce84025ba9e64b3e5060283ddcd3a597c",
+      "pdf": "word-windows-edge-justify-threshold-yu20-both-width187-balance1-compat15.pdf",
+      "pdf_sha256": "16ef96f04bcc3f47e3f7b4ad505d39791da8e1e98628908cd1bdba24e500a3a0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-threshold-yu20-both-width187-balance1-compat15.page-001.emf",
+          "sha256": "475be3aa9c1a3ea5b088ca6aac0afeca7562148d20e346de716d338956446417",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

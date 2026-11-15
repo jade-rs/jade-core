@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T100748949Z-9d960906",
+  "captured_at_utc": "2026-11-15T10:07:48.9536575Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-justify-width-yu20-both-width188-balance1-compat15",
+      "source": "tmp\\w15-q-justification-widths-input-snapshots\\word-windows-edge-justify-width-yu20-both-width188-balance1-compat15.docx",
+      "sha256": "51fe3f198a6c757bf64c39a8592503d7793dbb30d509fb78681248e227817b99",
+      "pdf": "word-windows-edge-justify-width-yu20-both-width188-balance1-compat15.pdf",
+      "pdf_sha256": "6d4719b8ad10ef96e3b4994871fcd6e0d65d8724b5cac84d335e5fead101848e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-justify-width-yu20-both-width188-balance1-compat15.page-001.emf",
+          "sha256": "e0202b3864a247502286399e0958eedea66c938f3ab976ecacf1b83358b741be",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
