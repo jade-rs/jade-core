@@ -35,7 +35,7 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 585 font/typography
+The separate `windows/font-coordinates.json` registry asserts 619 font/typography
 documents (123,862 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
@@ -154,7 +154,7 @@ paint and reference paths remain unchanged.
 
 Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
 borders, adjacent shading, tables, spacing, font and justification variants.
-The observation registry holds 537 captures / 1,448 documents / 1,409
+The observation registry holds 609 captures / 1,520 documents / 1,481
 source byte groups, retaining earlier Word builds and exact executable hashes.
 Unmatched cases remain raw observations, including mixed-script justification,
 bordered/table shading and adjacent-paragraph continuity. They are not accepted
@@ -201,7 +201,7 @@ observations: a narrow balanced line changes word wrapping and a 202pt line
 has an X-coordinate mismatch. Across all 111 recent controls, 19 remain
 unpromoted. All previous reference records and Mac expectations are retained.
 
-The edit/export gate also checks all 984 release documents. Reusing an authored
+The edit/export gate also checks all 1,015 release documents. Reusing an authored
 soft-break run during serialization preserves the original break syntax and
 run properties across edits; the reader's editable run segmentation and
 rendering are unchanged. Regression tests cover repeated synchronization,
@@ -263,3 +263,50 @@ background gate. The current totals are 585 typography cases / 132,431 origins,
 Mac expectations remain unchanged. The two justified controls ending in a space
 and the longer justified Calibri control remain raw observations. Across the
 175 recent controls, 21 remain unpromoted, alongside older table/border cases.
+
+Thirty-six further original Word 16.0.19127.20936 controls isolate balanced
+Arial spacing with an explicit MS Mincho East Asian face, and compare identical
+Latin/East Asian font slots with and without an East Asia hint for Arial and
+Calibri at 12/20/24pt. All original captures are retained, including failures.
+The generator reproduces all 36 original DOCX inputs byte for byte, changing
+only the stated font slots/hint and preserving every other package part.
+An independent test checks the original Word PDF origins: all twelve hinted/
+unhinted pairs are identical, while separate versus identical script font slots
+change Arial's balanced origins. These observations constrain the font-slot
+policy; an East Asia hint alone must not select a different spacing rule.
+
+Three previously published endnote separator inputs (grid disabled, separator
+font sizes omitted/10.5/20pt) now also have required glyph-origin and note-rule
+assertions against their existing original Word 16.0.19127.20936 capture.
+All three pass EMF, visible/unclipped Word PDF and independently painted native
+PDF origins, plus original EMF/PDF and native PDF rule geometry. This closes a
+coverage gap without changing the source documents or expected coordinates.
+The font gate covers 588 cases / 132,467 origins and the note-rule gate 61 cases;
+the release corpus remains 984 documents and all prior 585/58 registry records
+are preserved.
+
+Thirty-six additional cross-font controls vary only the East Asian font slot of
+the original Arial/MS Mincho and Calibri/MS Mincho inputs. They compare same-face
+unbalanced controls and both Arial/Calibri cross-face directions at 12/20/24pt,
+left/justified alignment and balanced/unbalanced widths. All Word originals,
+including unmatched geometry, are retained by version in the raw registry.
+
+Windows balanced Arial spacing now distinguishes the requested script font
+slots before the Japanese Arial slot is replaced by its MS Mincho fallback.
+With an explicitly separate Japanese face, its Latin auto gap is a quarter em
+and the adjacent half-em space cell must not be shortened again by ordinary
+space-glyph pair kerning, including after wrap repair. Same-face Arial controls
+retain their previous average-width gap and pair kerning, regardless of the
+East Asia hint. Mac spacing and font selection are unchanged.
+
+Thirty-one newly passing controls (10 separate-face Arial, 8 same-face/hint
+controls and 13 cross-face controls) are now required coordinate/background
+expectations. Together with the three existing endnote inputs newly covered
+above, the font gate contains 619 cases / 132,839 origins, including 185 shaded
+controls; the note-rule gate covers 61 cases and the release corpus 1,015 inputs.
+All previous 588/984 records and every original Mac expectation remain intact.
+The 72 new input DOCX files reproduce the original captures byte for byte.
+Across 247 recent controls, 185 pass and 62 remain unpromoted original
+observations, alongside older table/border cases. Requested Calibri East Asian
+fallback line height and additional justified lines remain under investigation;
+no failing observation is used as an accepted expectation.

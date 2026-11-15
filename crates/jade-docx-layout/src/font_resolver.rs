@@ -1203,6 +1203,7 @@ fn resolve_run_style_for_wrap_uncached(
             .and_then(|props| props.fonts.as_ref())
             .and_then(|fonts| fonts.hint.clone()),
     )
+    .with_requested_font_slots(properties)
     .with_snap_to_grid(
         properties
             .and_then(|props| props.snap_to_grid)
@@ -1263,6 +1264,9 @@ pub struct ResolvedRunStyle {
     pub text_scale_x: f64,
     pub enable_pair_kerning: bool,
     pub font_hint: Option<FontHint>,
+    // Preserve requested script-slot identity before CJK font fallback replaces
+    // a Latin East Asian face with MS Mincho.
+    requested_east_asia_font_is_distinct: bool,
     /// Whether the descriptors ask for ligatures or contextual alternates
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
     /// as kerning is, so a ligature's width reaches layout.
@@ -1279,6 +1283,29 @@ pub struct ResolvedRunStyle {
 }
 
 impl ResolvedRunStyle {
+    /// Retain script-slot provenance independently of the fallback paint face.
+    pub fn with_requested_font_slots(mut self, properties: Option<&RunProperties>) -> Self {
+        self.requested_east_asia_font_is_distinct = properties.is_some_and(|props| {
+            let Some(fonts) = props.fonts.as_ref() else {
+                return false;
+            };
+            let latin = fonts
+                .ascii
+                .as_deref()
+                .or(fonts.h_ansi.as_deref())
+                .or(props.font_family.as_deref());
+            fonts
+                .preferred_east_asia()
+                .zip(latin)
+                .is_some_and(|(east, latin)| !east.trim().eq_ignore_ascii_case(latin.trim()))
+        });
+        self
+    }
+
+    pub fn has_distinct_requested_east_asia_font(&self) -> bool {
+        self.requested_east_asia_font_is_distinct
+    }
+
     pub fn with_snap_to_grid(mut self, enabled: bool) -> Self {
         self.snap_to_grid = enabled;
         self
@@ -1367,6 +1394,7 @@ impl ResolvedRunStyle {
             text_scale_x,
             enable_pair_kerning,
             font_hint,
+            requested_east_asia_font_is_distinct: false,
             joins_characters,
             has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
@@ -2249,6 +2277,44 @@ mod tests {
         let tracked = resolve_run_style_for_wrap(Some(&props), Some(3.0));
         assert!(!tracked.snap_to_grid);
         assert_eq!(tracked.letter_spacing_px, 2.0);
+    }
+
+    #[test]
+    fn requested_script_slots_survive_identical_windows_cjk_fallback() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for hint in [None, Some(FontHint::EastAsia), Some(FontHint::Default)] {
+            let mut styles = Vec::new();
+            for east in ["Arial", "MS Mincho"] {
+                let properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some("Arial".into()),
+                        h_ansi: Some("Arial".into()),
+                        east_asia: Some(east.into()),
+                        hint: hint.clone(),
+                        ..RunFonts::default()
+                    }),
+                    east_asia_language: Some("ja-JP".into()),
+                    ..RunProperties::default()
+                };
+                let style = resolve_run_style_for_wrap(Some(&properties), None);
+                assert_eq!(
+                    style.has_distinct_requested_east_asia_font(),
+                    east != "Arial"
+                );
+                assert_eq!(
+                    style.clone().has_distinct_requested_east_asia_font(),
+                    east != "Arial"
+                );
+                styles.push(style);
+            }
+            assert_eq!(
+                styles[0].font_descriptor_east_asia,
+                styles[1].font_descriptor_east_asia
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

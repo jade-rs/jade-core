@@ -33963,6 +33963,7 @@ where
                 enable_pair_kerning,
                 font_hint.clone(),
             )
+            .with_requested_font_slots(properties)
             .with_snap_to_grid(
                 properties
                     .and_then(|props| props.snap_to_grid)

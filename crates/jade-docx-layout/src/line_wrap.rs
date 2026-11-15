@@ -1358,6 +1358,73 @@ fn balanced_space_width_px(
     crate::line_metrics::word_balanced_space_advance_px(paragraph.word_platform, font_descriptor)
 }
 
+// Word's balanced Latin cells differ when Japanese uses a separate requested
+// face. The 12/20/24pt Arial controls retain ordinary spacing when all script
+// slots request Arial, including with an explicit East Asia hint.
+fn windows_balanced_distinct_script_face(style: &ResolvedRunStyle) -> bool {
+    style.has_distinct_requested_east_asia_font()
+}
+
+fn windows_balanced_arial_trailing_gap(
+    paragraph: &ParagraphStyle,
+    descriptor: Option<&str>,
+    resolved: Option<&ResolvedRunStyle>,
+    trailing: f64,
+) -> f64 {
+    if trailing > 0.0
+        && paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph
+            .east_asian_rules
+            .balance_single_byte_double_byte_width
+        && resolved.is_some_and(windows_balanced_distinct_script_face)
+    {
+        if let Some(descriptor) = descriptor {
+            if matches!(
+                crate::line_metrics::word_ascii_metrics(descriptor),
+                Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(_))
+            ) {
+                if let Some(metrics) =
+                    crate::line_metrics::word_windows_latin_auto_space_metrics(descriptor, true)
+                {
+                    return metrics.leading_gap_px();
+                }
+            }
+        }
+    }
+    trailing
+}
+
+// A balanced half-em cell is not the face's ordinary U+0020 glyph. Applying
+// that glyph's pair kerning afterwards would shorten the fixed cell again.
+#[inline(never)]
+fn windows_balanced_space_pair(
+    paragraph: Option<&ParagraphStyle>,
+    descriptor: &str,
+    previous_previous: Option<&str>,
+    previous: Option<&str>,
+    current: &str,
+    next: Option<&str>,
+) -> bool {
+    let Some(style) = paragraph.filter(|p| {
+        p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+            && p.east_asian_rules.balance_single_byte_double_byte_width
+    }) else {
+        return false;
+    };
+    current == " "
+        && balanced_space_width_px(" ", Some(style), previous, false, next, descriptor).is_some()
+        || previous == Some(" ")
+            && balanced_space_width_px(
+                " ",
+                Some(style),
+                previous_previous,
+                false,
+                Some(current),
+                descriptor,
+            )
+            .is_some()
+}
+
 // Specialize the run's grid switch once instead of branching at every
 // adjustment of every grapheme. Both paths use the same width algorithm.
 #[inline]
@@ -1579,6 +1646,12 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
                         prev_grapheme,
                         next_grapheme,
                         font_descriptor,
+                    );
+                    trailing = windows_balanced_arial_trailing_gap(
+                        style,
+                        font_descriptor,
+                        resolved_style,
+                        trailing,
                     );
                     // Windows Word's Yu Mincho mixed-script captures use a
                     // quarter of the tracked cell at both script boundaries.
@@ -3258,7 +3331,21 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                         )
                     })
             } else if style.enable_pair_kerning {
-                windows_ascii_pair_adjustment(style, font_descriptor, left, right)
+                if (left == b' ' || right == b' ')
+                    && windows_balanced_distinct_script_face(style)
+                    && windows_balanced_space_pair(
+                        paragraph_style,
+                        font_descriptor,
+                        state.prev_prev_grapheme.as_deref(),
+                        state.prev_grapheme.as_deref(),
+                        grapheme,
+                        next_grapheme,
+                    )
+                {
+                    Some(0.0)
+                } else {
+                    windows_ascii_pair_adjustment(style, font_descriptor, left, right)
+                }
             } else {
                 None
             }
@@ -11299,7 +11386,8 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
     if initial_soft_starts.is_empty() {
         return Ok(());
     }
-    let adjust = |previous: &InlineCluster,
+    let adjust = |previous_previous: Option<&str>,
+                  previous: &InlineCluster,
                   current: &mut InlineCluster,
                   segments: &[TextSegment],
                   direction: f64|
@@ -11333,6 +11421,19 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
         let style = ctx.resolve_run_style(segment.properties.as_deref())?;
         if style.enable_pair_kerning && style.measures_letter_pairs() {
             let descriptor = style.descriptor_for_slot(right.font_slot);
+            if previous.text == " "
+                && windows_balanced_distinct_script_face(&style)
+                && windows_balanced_space_pair(
+                    Some(paragraph_style),
+                    descriptor,
+                    previous_previous,
+                    Some(" "),
+                    &current.text,
+                    None,
+                )
+            {
+                return Ok(());
+            }
             if let Some(kern) = windows_ascii_pair_adjustment(
                 &style,
                 descriptor,
@@ -11355,12 +11456,24 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
         let (first_start, last_start) = (first.start, last.start);
         let next_start = initial_soft_starts.partition_point(|start| *start <= first_start);
         if next_start == 0 || initial_soft_starts[next_start - 1] != first_start {
-            if let Some(previous) = before
+            if let Some(previous_line) = before
                 .last()
                 .filter(|line| line.break_kind == LineBreakKind::Soft)
-                .and_then(|line| line.clusters.last())
             {
-                adjust(previous, &mut line.clusters[0], &line.segments, -1.0)?;
+                if let Some(previous) = previous_line.clusters.last() {
+                    let previous_previous = previous_line
+                        .clusters
+                        .len()
+                        .checked_sub(2)
+                        .map(|i| previous_line.clusters[i].text.as_str());
+                    adjust(
+                        previous_previous,
+                        previous,
+                        &mut line.clusters[0],
+                        &line.segments,
+                        -1.0,
+                    )?;
+                }
             }
         }
         for &removed_start in initial_soft_starts[next_start..]
@@ -11372,7 +11485,14 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
                 .binary_search_by_key(&removed_start, |cluster| cluster.start)
             {
                 let (left, right) = line.clusters.split_at_mut(cluster_index);
-                adjust(&left[cluster_index - 1], &mut right[0], &line.segments, 1.0)?;
+                let previous_previous = cluster_index.checked_sub(2).map(|i| left[i].text.as_str());
+                adjust(
+                    previous_previous,
+                    &left[cluster_index - 1],
+                    &mut right[0],
+                    &line.segments,
+                    1.0,
+                )?;
             }
         }
     }
@@ -15153,6 +15273,95 @@ mod tests {
         );
         assert_eq!(east_asian_justification_gap("(", "c"), None);
         assert_eq!(east_asian_justification_gap("c", ")"), None);
+    }
+
+    #[test]
+    fn windows_balanced_arial_cells_keep_same_face_and_mac_spacing() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for size in [12.0, 20.0, 24.0] {
+                let descriptor = format!("{size:.2}pt Arial");
+                for east_asia in [descriptor.as_str(), "12.00pt MS Mincho"] {
+                    for hint in [None, Some(FontHint::EastAsia), Some(FontHint::Default)] {
+                        let style = ResolvedRunStyle::new(
+                            descriptor.clone(),
+                            descriptor.clone(),
+                            east_asia.to_owned(),
+                            descriptor.clone(),
+                            0.0,
+                            1.0,
+                            true,
+                            hint.clone(),
+                        )
+                        .with_requested_font_slots(Some(&RunProperties {
+                            fonts: Some(jade_docx_reader::RunFonts {
+                                ascii: Some("Arial".into()),
+                                h_ansi: Some("Arial".into()),
+                                east_asia: Some(
+                                    if east_asia == descriptor {
+                                        "Arial"
+                                    } else {
+                                        "MS Mincho"
+                                    }
+                                    .into(),
+                                ),
+                                hint,
+                                ..jade_docx_reader::RunFonts::default()
+                            }),
+                            ..RunProperties::default()
+                        }));
+                        let mut paragraph = ParagraphStyle {
+                            word_platform: platform,
+                            ..ParagraphStyle::default()
+                        };
+                        paragraph
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width = true;
+                        let ordinary = size / 3.0 * 2.0 * 904.0 / 2048.0;
+                        let actual = windows_balanced_arial_trailing_gap(
+                            &paragraph,
+                            Some(&descriptor),
+                            Some(&style),
+                            ordinary,
+                        );
+                        let distinct = east_asia != descriptor;
+                        let expected = if platform == WordLayoutPlatform::Windows && distinct {
+                            size / 3.0
+                        } else {
+                            ordinary
+                        };
+                        assert!(
+                            (actual - expected).abs() < 1e-9,
+                            "{platform:?}/{size}/{east_asia}: {actual} != {expected}"
+                        );
+                        if platform == WordLayoutPlatform::Windows {
+                            assert_eq!(windows_balanced_distinct_script_face(&style), distinct);
+                            assert!(windows_balanced_space_pair(
+                                Some(&paragraph),
+                                &descriptor,
+                                Some("語"),
+                                Some(" "),
+                                "A",
+                                None
+                            ));
+                        }
+                        paragraph
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width = false;
+                        assert_eq!(
+                            windows_balanced_arial_trailing_gap(
+                                &paragraph,
+                                Some(&descriptor),
+                                Some(&style),
+                                ordinary
+                            ),
+                            ordinary
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]

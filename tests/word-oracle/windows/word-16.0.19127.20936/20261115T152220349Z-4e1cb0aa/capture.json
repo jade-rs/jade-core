@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T152220349Z-4e1cb0aa",
+  "captured_at_utc": "2026-11-15T15:22:20.3540830Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-cross-slot-arial-arial-size24-left-balance0-compat15",
+      "source": "w15-z-cross-slot-input-snapshots\\word-windows-edge-cross-slot-arial-arial-size24-left-balance0-compat15.docx",
+      "sha256": "e6d307382941b025adb190e97698038ff186ba3ac90bf3cdea0c591d423fb55a",
+      "pdf": "word-windows-edge-cross-slot-arial-arial-size24-left-balance0-compat15.pdf",
+      "pdf_sha256": "67f1df50979d76a3fac7306016bf98659088326ed161a859a9d6073217e9ff1e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-cross-slot-arial-arial-size24-left-balance0-compat15.page-001.emf",
+          "sha256": "e9cdaa3563fa6ea79a2969f6fea01fee6c3c0c226110ca322d807d7aa174047c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

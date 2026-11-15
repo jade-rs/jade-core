@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T144618767Z-5258b8cb",
+  "captured_at_utc": "2026-11-15T14:46:18.7790040Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-default-hint-arial-size12-both-hinteastAsia-balance1-compat15",
+      "source": "tmp\\w15-y-default-hint-input-snapshots\\word-windows-edge-default-hint-arial-size12-both-hinteastAsia-balance1-compat15.docx",
+      "sha256": "d148b4446f4bb0ff921e7d19997c5818f5153ae09d99015cb98973e2a060c836",
+      "pdf": "word-windows-edge-default-hint-arial-size12-both-hinteastAsia-balance1-compat15.pdf",
+      "pdf_sha256": "e8459c85772f72985245e8c308e5b84b514fc563526c6cdf0fe82fe092dfc63b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-default-hint-arial-size12-both-hinteastAsia-balance1-compat15.page-001.emf",
+          "sha256": "32cc61f327cec59c9cb2aec2992803469d3b19c8b0bb43ff4e42a7e5a440c428",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

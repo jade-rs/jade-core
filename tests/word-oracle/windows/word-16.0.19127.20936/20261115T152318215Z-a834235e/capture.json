@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T152318215Z-a834235e",
+  "captured_at_utc": "2026-11-15T15:23:18.2199202Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-cross-slot-calibri-arial-size20-left-balance0-compat15",
+      "source": "w15-z-cross-slot-input-snapshots\\word-windows-edge-cross-slot-calibri-arial-size20-left-balance0-compat15.docx",
+      "sha256": "3dbfbcc80375f022ca1a4eb09624fd4a5447d4e9d5b0e92e84f75fdf23ce618f",
+      "pdf": "word-windows-edge-cross-slot-calibri-arial-size20-left-balance0-compat15.pdf",
+      "pdf_sha256": "48a9ba9052ff180705cb4507b95cf85695fa1021647660e1739d65eb90c6fff7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-cross-slot-calibri-arial-size20-left-balance0-compat15.page-001.emf",
+          "sha256": "fe790ae62fc06fe9befc905cc96b09668e2dcab4d2d00ebcc5e54cfc65af7cc5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
