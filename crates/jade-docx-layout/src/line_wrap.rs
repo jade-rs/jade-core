@@ -9151,6 +9151,22 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         prefer_arabic_separator_breaks(&mut lines);
     }
     drop_line_start_auto_space(&mut lines);
+    if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph_style.expand_lines_ending_in_breaks
+        && paragraph_style.enable_line_break_rules
+        && matches!(paragraph_style.alignment.as_str(), "both" | "justify")
+        && !paragraph_style.bidi
+        && paragraph_style.float_line_segments.is_empty()
+    {
+        join_windows_contractible_manual_lines::<C, SHAPE_ARABIC>(
+            ctx,
+            &mut lines,
+            base_x,
+            column_right_edge,
+            paragraph_style,
+            &mut snap_to_chars_cell_width_cache,
+        )?;
+    }
     let character_borders = lines.iter().any(line_has_character_border);
     let source = SHAPE_ARABIC.then_some(ArabicWrapSource {
         text,
@@ -9922,6 +9938,188 @@ fn trailing_whitespace_width(clusters: &[InlineCluster]) -> f64 {
         .sum()
 }
 
+// Manual justified mixed-script lines use the available word-space contraction
+// before narrowing an existing script gap. Balanced CJK-adjacent half-em
+// spaces retain their authored width. The capacities depend only on advances.
+#[inline(never)]
+fn windows_manual_shrink_parts(line: &WrappedLine, style: &ParagraphStyle) -> Option<(f64, f64)> {
+    if style.word_platform != crate::line_metrics::WordLayoutPlatform::Windows
+        || !style.expand_lines_ending_in_breaks
+        || !style.enable_line_break_rules
+        || style.bidi
+        || !matches!(style.alignment.as_str(), "both" | "justify")
+        || style.oracle_advance_px_by_text_offset.is_some()
+        || !style.advances.is_empty()
+        || !style.float_line_segments.is_empty()
+        || line.break_kind != LineBreakKind::Hard
+        || !line.tab_stops.is_empty()
+        || !line.leaders.is_empty()
+        || line.hyphen.is_some()
+        || line_has_character_border(line)
+        || line.segments.iter().any(|s| s.leading_width.abs() > 1e-9)
+        || line.clusters.iter().any(|c| {
+            c.kind != InlineClusterKind::Grapheme
+                || classify_script(&c.text) == ScriptCategory::Complex
+                || c.text
+                    .chars()
+                    .any(|ch| ch.is_control() || ch.is_whitespace() && ch != ' ')
+        })
+        || !line
+            .clusters
+            .iter()
+            .any(|c| is_non_whitespace_east_asian_grapheme(&c.text))
+        || !line
+            .clusters
+            .iter()
+            .any(|c| c.text.chars().any(|ch| ch.is_ascii_alphanumeric()))
+    {
+        return None;
+    }
+    let end = line.clusters.iter().rposition(|c| !c.is_whitespace)? + 1;
+    let mut spaces = 0.0;
+    let mut auto = 0.0;
+    for (index, cluster) in line.clusters.iter().enumerate().take(end) {
+        if windows_manual_word_space(line, style, index) {
+            spaces += cluster.width.max(0.0) * 0.25;
+        }
+        auto += (cluster.auto_space_leading.max(0.0) + cluster.auto_space_trailing.max(0.0)) * 0.5;
+    }
+    Some((spaces, auto))
+}
+
+fn windows_manual_word_space(line: &WrappedLine, style: &ParagraphStyle, index: usize) -> bool {
+    line.clusters[index].text == " "
+        && !(style.east_asian_rules.balance_single_byte_double_byte_width
+            && (index
+                .checked_sub(1)
+                .and_then(|i| line.clusters.get(i))
+                .is_some_and(|c| is_non_whitespace_east_asian_grapheme(&c.text))
+                || line
+                    .clusters
+                    .get(index + 1)
+                    .is_some_and(|c| is_non_whitespace_east_asian_grapheme(&c.text))))
+}
+
+fn join_windows_contractible_manual_lines<C: LineWrapContext, const SHAPE_ARABIC: bool>(
+    ctx: &C,
+    lines: &mut Vec<WrappedLine>,
+    base_x: f64,
+    right: f64,
+    style: &ParagraphStyle,
+    cache: &mut FxHashMap<SnapToCharsCacheKey, f64>,
+) -> Result<(), C::Error> {
+    let mut index = 1;
+    while index < lines.len() {
+        if lines[index - 1].break_kind != LineBreakKind::Soft
+            || lines[index].break_kind != LineBreakKind::Hard
+            || lines[index - 1]
+                .clusters
+                .last()
+                .is_none_or(|c| c.text != " ")
+            || lines[index]
+                .clusters
+                .first()
+                .is_none_or(|c| !c.text.chars().all(|ch| ch.is_ascii_alphanumeric()))
+            || !lines[index - 1].tab_stops.is_empty()
+            || !lines[index - 1].leaders.is_empty()
+            || lines[index - 1].hyphen.is_some()
+            || !lines[index].tab_stops.is_empty()
+            || !lines[index].leaders.is_empty()
+            || lines[index].hyphen.is_some()
+            || lines[index]
+                .segments
+                .iter()
+                .any(|s| s.leading_width.abs() > 1e-9)
+        {
+            index += 1;
+            continue;
+        }
+        let mut joined = lines[index - 1].clone();
+        let next = &lines[index];
+        let mut complete = true;
+        for cluster in &next.clusters {
+            let Some(source) = next
+                .segments
+                .iter()
+                .find(|s| s.start <= cluster.start && cluster.end <= s.end)
+            else {
+                complete = false;
+                break;
+            };
+            let mut segment = source.clone();
+            segment.text = cluster.text.to_string();
+            segment.start = cluster.start;
+            segment.end = cluster.end;
+            append_cluster_to_line_end(&mut joined, cluster.clone(), segment);
+        }
+        joined.break_kind = next.break_kind;
+        joined.break_range = next.break_range;
+        joined.break_properties = next.break_properties.clone();
+        if complete {
+            if let Some((spaces, auto)) = windows_manual_shrink_parts(&joined, style) {
+                let width = measure_wrapped_line_width::<C, SHAPE_ARABIC>(
+                    ctx, &joined, style, false, None, cache,
+                )?;
+                let available =
+                    style.available_width_for_line(right - style.right_indent - base_x, index - 1);
+                if width - trailing_whitespace_width(&joined.clusters) - spaces - auto
+                    <= available + WRAP_FIT_TOLERANCE_PX
+                {
+                    lines[index - 1] = joined;
+                    lines.remove(index);
+                    index = index.saturating_sub(1).max(1);
+                    continue;
+                }
+            }
+        }
+        index += 1;
+    }
+    Ok(())
+}
+
+#[inline(never)]
+fn contract_windows_manual_line(
+    line: &mut WrappedLine,
+    style: &ParagraphStyle,
+    overflow: f64,
+    spaces: f64,
+    auto: f64,
+) {
+    let space_take = overflow.min(spaces);
+    let auto_take = (overflow - space_take).max(0.0).min(auto);
+    let end = line
+        .clusters
+        .iter()
+        .rposition(|c| !c.is_whitespace)
+        .map_or(0, |i| i + 1);
+    for index in 0..end {
+        let word_space = windows_manual_word_space(line, style, index);
+        let cluster = &mut line.clusters[index];
+        let space = if word_space && spaces > 0.0 {
+            cluster.width.max(0.0) * 0.25 * space_take / spaces
+        } else {
+            0.0
+        };
+        let leading = if auto > 0.0 {
+            cluster.auto_space_leading.max(0.0) * 0.5 * auto_take / auto
+        } else {
+            0.0
+        };
+        let trailing = if auto > 0.0 {
+            cluster.auto_space_trailing.max(0.0) * 0.5 * auto_take / auto
+        } else {
+            0.0
+        };
+        cluster.width = (cluster.width - space - leading - trailing).max(0.0);
+        cluster.auto_space_leading -= leading;
+        cluster.auto_space_trailing -= trailing;
+        if let Some(layout) = cluster.layout.as_mut() {
+            layout.leading_advance -= leading;
+            layout.glyph_box_width = (layout.glyph_box_width - space - trailing).max(0.0);
+        }
+    }
+}
+
 fn compress_justified_word_spaces_to_available_width<
     C: LineWrapContext,
     const SHAPE_ARABIC: bool,
@@ -9945,6 +10143,25 @@ fn compress_justified_word_spaces_to_available_width<
         let available = paragraph_style
             .available_width_for_line(base_available, line_index)
             .max(1.0);
+        if let Some((spaces, auto)) = (paragraph_style.word_platform
+            == crate::line_metrics::WordLayoutPlatform::Windows)
+            .then(|| windows_manual_shrink_parts(line, paragraph_style))
+            .flatten()
+        {
+            let width = measure_wrapped_line_width::<C, SHAPE_ARABIC>(
+                ctx,
+                line,
+                paragraph_style,
+                false,
+                None,
+                snap_to_chars_cell_width_cache,
+            )?;
+            let overflow = (width - trailing_whitespace_width(&line.clusters) - available).max(0.0);
+            if overflow > 0.0 && overflow <= spaces + auto + WRAP_FIT_TOLERANCE_PX {
+                contract_windows_manual_line(line, paragraph_style, overflow, spaces, auto);
+            }
+            continue;
+        }
         let mut natural_cache = None;
         if line.break_kind != LineBreakKind::Soft {
             if paragraph_style.word_platform != crate::line_metrics::WordLayoutPlatform::Mac
@@ -10553,7 +10770,16 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
             snap_to_chars_cell_width_cache,
         )?;
         loop {
-            let compressible_line = lines[line_index].break_kind == LineBreakKind::Soft
+            let manual_capacity = if paragraph_style.word_platform
+                == crate::line_metrics::WordLayoutPlatform::Windows
+            {
+                windows_manual_shrink_parts(&lines[line_index], paragraph_style)
+                    .map(|(spaces, auto)| spaces + auto)
+            } else {
+                None
+            };
+            let compressible_line = manual_capacity.is_some()
+                || lines[line_index].break_kind == LineBreakKind::Soft
                 || (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
                     && lines[line_index].break_kind == LineBreakKind::ParagraphEnd
                     && lines[line_index].tab_stops.is_empty());
@@ -10561,10 +10787,12 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
                 && is_justified_alignment(&paragraph_style.alignment)
                 && width
                     - trailing_whitespace_width(&lines[line_index].clusters)
-                    - justified_word_space_shrink_capacity(
-                        &lines[line_index].clusters,
-                        paragraph_style,
-                    )
+                    - manual_capacity.unwrap_or_else(|| {
+                        justified_word_space_shrink_capacity(
+                            &lines[line_index].clusters,
+                            paragraph_style,
+                        )
+                    })
                     <= effective_available + WRAP_FIT_TOLERANCE_PX;
             // A line the wrap loop admitted by narrowing its punctuation or
             // auto spacing (`mac_squeeze_admits`) is compressed afterwards.
@@ -19779,6 +20007,82 @@ mod tests {
         }
         assert!(latin_line_ends > 0, "exercise a Latin-to-CJK wrap");
         assert!(interior_auto_spaces > 0, "retain spacing within the line");
+    }
+
+    #[test]
+    fn windows_justified_manual_break_keeps_a_word_when_spacing_can_contract() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut ctx = TestContext::new(points_to_px(20.0));
+        // Known Windows Latin advances differ from this mock's constant CJK
+        // advance. Its synthetic pair measurement must not invent kerning.
+        ctx.style = ResolvedRunStyle::new(
+            "20.00pt Yu Mincho",
+            "20.00pt Yu Mincho",
+            "20.00pt Yu Mincho",
+            "20.00pt Yu Mincho",
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            alignment: "both".into(),
+            enable_line_break_rules: true,
+            expand_lines_ending_in_breaks: true,
+            east_asian_rules: EastAsianLineBreakingRules {
+                balance_single_byte_double_byte_width: true,
+                compatibility_mode: Some(15),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let text = "Ag日本語 ABC ABC\nX";
+        let line_text = |line: &WrappedLine| {
+            line.segments
+                .iter()
+                .map(|segment| segment.text.as_str())
+                .collect::<String>()
+        };
+        // Word 16.0.19127.20936's original Q/R width controls retain both ABC
+        // words before the manual break at these authored widths.
+        for width in [186.5, 187.0, 187.5, 188.0, 188.5, 190.0] {
+            let lines = wrap_text_into_lines(
+                &ctx,
+                text,
+                &[make_run(text)],
+                0.0,
+                &paragraph,
+                0,
+                points_to_px(width),
+            )
+            .unwrap();
+            assert_eq!(lines.len(), 2, "width {width}");
+            assert_eq!(line_text(&lines[0]), "Ag日本語 ABC ABC", "width {width}");
+            assert_eq!(lines[0].break_kind, LineBreakKind::Hard);
+            let newline = text.find('\n').unwrap();
+            assert_eq!(lines[0].break_range, Some((newline, newline + 1)));
+            assert_eq!(line_text(&lines[1]), "X");
+            assert!(lines.iter().all(|line| !line_text(line).contains('\n')));
+        }
+        let narrower = wrap_text_into_lines(
+            &ctx,
+            text,
+            &[make_run(text)],
+            0.0,
+            &paragraph,
+            0,
+            points_to_px(186.0),
+        )
+        .unwrap();
+        assert_eq!(
+            narrower.len(),
+            3,
+            "the 186pt original wraps before the final word"
+        );
+        assert_eq!(narrower[1].break_kind, LineBreakKind::Hard);
+        assert_eq!(line_text(&narrower[2]), "X");
     }
 
     #[test]

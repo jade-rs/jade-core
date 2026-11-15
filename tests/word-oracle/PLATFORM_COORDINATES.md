@@ -35,7 +35,7 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 523 font/typography
+The separate `windows/font-coordinates.json` registry asserts 540 font/typography
 documents (123,862 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
@@ -154,7 +154,7 @@ paint and reference paths remain unchanged.
 
 Sixty-two additional original Word 16.0.19127.20936 captures preserve paragraph
 borders, adjacent shading, tables, spacing, font and justification variants.
-The complete observation registry holds 473 captures / 1,384 documents / 1,345
+The complete observation registry holds 489 captures / 1,400 documents / 1,361
 source byte groups, retaining earlier Word builds and exact executable hashes.
 Unmatched cases remain raw observations, including mixed-script justification,
 bordered/table shading and adjacent-paragraph continuity. They are not accepted
@@ -201,8 +201,34 @@ observations: a narrow balanced line changes word wrapping and a 202pt line
 has an X-coordinate mismatch. Across all 111 recent controls, 19 remain
 unpromoted. All previous reference records and Mac expectations are retained.
 
-The edit/export gate also checks all 922 release documents. Reusing an authored
+The edit/export gate also checks all 939 release documents. Reusing an authored
 soft-break run during serialization preserves the original break syntax and
 run properties across edits; the reader's editable run segmentation and
 rendering are unchanged. Regression tests cover repeated synchronization,
 tail edits and break deletion, as well as the corpus's original package data.
+
+Four additional original Word 16.0.19127.20936 captures bracket the balanced
+manual-line threshold at 186.5, 187, 187.5 and 188.5pt. Their generator changes
+only the right indent of the original 188pt control and reproduces each archived
+DOCX byte for byte. Word retains the final word on the first line at these widths;
+the 186pt control still wraps. Windows mixed-script justification now contracts
+ordinary word spaces before existing script auto spacing, within their respective
+capacities, and preserves the authored hard-break range when rejoining a word.
+Balanced CJK-adjacent spaces remain fixed. This policy is Windows-only and uses
+intrinsic layout measurements, never expected Word positions.
+
+These four controls and the previously unmatched balanced 188pt control pass all
+four coordinate planes and the production background gate. The release corpus
+now contains 927 documents; the font gate covers 528 cases / 131,084 origins,
+including 97 shaded controls. All previous 523/922 records remain unchanged.
+The 202pt unbalanced mismatch remains a raw observation; across the 115 recent
+controls, 18 remain unpromoted. Mac's reference data and tolerances are unchanged.
+
+Twelve further original captures independently exercise the manual-line threshold
+at 12, 18 and 22pt. Their generator changes only the run size and right indent of
+the same original parent; all other package parts are byte-identical. All twelve
+pass every coordinate plane and the production background gate, bringing the
+release corpus to 939 documents and the font gate to 540 cases / 131,228 origins,
+including 109 shaded controls. All prior 528/927 records remain unchanged.
+Mac rendering also remains identical for these twelve controls. Eighteen of the
+127 recent controls remain raw observations with their original Word evidence.
