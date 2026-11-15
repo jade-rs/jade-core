@@ -683,6 +683,32 @@ impl DocReader {
         (fc < entry.1).then_some(entry.2.as_slice())
     }
 
+    /// Which CHPX run `fc` is in, if any.
+    fn chpx_index(&self, fc: u32) -> Option<usize> {
+        let index = self.chpx.partition_point(|(start, _, _)| *start <= fc);
+        let at = index.checked_sub(1)?;
+        (fc < self.chpx.get(at)?.1).then_some(at)
+    }
+
+    /// The format of `chp` and `link`, kept while the run's are the same.
+    fn run_format<'a>(
+        &self,
+        cache: &'a mut Option<(Option<String>, CharFormat)>,
+        chp: &Chp,
+        link: Option<&str>,
+    ) -> &'a CharFormat {
+        let stale = cache
+            .as_ref()
+            .is_none_or(|(cached, _)| cached.as_deref() != link);
+        if stale {
+            *cache = Some((link.map(str::to_string), self.format(chp, link)));
+        }
+        match cache {
+            Some((_, format)) => format,
+            None => unreachable!("filled above"),
+        }
+    }
+
     fn paragraph_properties(&mut self, fc: u32) -> (Pap, Chp, String, u16) {
         let (istd, grpprl) = self
             .papx_at(fc)
@@ -830,6 +856,8 @@ impl DocReader {
         let mut table: Option<TableBuilder> = None;
         let mut fields: Vec<Field> = Vec::new();
         let mut paragraph_chp: Option<(u32, Chp)> = None;
+        let mut run: Option<((Option<usize>, u32), Chp)> = None;
+        let mut run_format: Option<(Option<String>, CharFormat)> = None;
         let end = end.min(self.chars.len() as u32);
         let mut cp = start;
         while cp < end {
@@ -841,12 +869,23 @@ impl DocReader {
                 let (_, chp, _, _) = self.paragraph_properties(mark);
                 paragraph_chp = Some((mark, chp));
             }
-            let base = paragraph_chp
-                .as_ref()
-                .map(|(_, chp)| chp.clone())
-                .unwrap_or_default();
-            let chp = self.char_properties(fc, &base);
-            let link = fields.iter().rev().find_map(|field| field.link.clone());
+            // Characters in one CHPX run of one paragraph share their
+            // properties: resolved once, not per character.
+            let mark = paragraph_chp.as_ref().map_or(0, |(mark, _)| *mark);
+            let key = (self.chpx_index(fc), mark);
+            if run.as_ref().map(|(run_key, _)| *run_key) != Some(key) {
+                let base = paragraph_chp.as_ref().map(|(_, chp)| chp);
+                let chp = match base {
+                    Some(base) => self.char_properties(fc, base),
+                    None => self.char_properties(fc, &Chp::default()),
+                };
+                run = Some((key, chp));
+                run_format = None;
+            }
+            let Some((_, chp)) = run.as_ref() else {
+                break;
+            };
+            let link = fields.iter().rev().find_map(|field| field.link.as_deref());
             let in_instruction = fields.iter().any(|field| !field.in_result);
             match unit {
                 0x13 => {
@@ -913,32 +952,40 @@ impl DocReader {
                         paragraph.inlines.push(Inline::Image(image));
                     }
                 }
-                0x1E => paragraph.push_text("\u{2011}", &self.format(&chp, link.as_deref())),
+                0x1E => {
+                    let format = self.run_format(&mut run_format, chp, link);
+                    paragraph.push_text("\u{2011}", format);
+                }
                 0x00..=0x1F => {}
                 _ => {
-                    let text = match chp.symbol {
+                    let mut buf = [0u8; 4];
+                    let pair;
+                    let text: &str = match chp.symbol {
                         Some((_, code)) if chp.special => {
                             let code = if code >= 0xF000 { code - 0xF000 } else { code };
-                            char::from_u32(code as u32)
-                                .map(String::from)
-                                .unwrap_or_default()
+                            match char::from_u32(code as u32) {
+                                Some(ch) => ch.encode_utf8(&mut buf),
+                                None => "",
+                            }
                         }
-                        _ => char::from_u32(unit as u32)
-                            .map(String::from)
-                            .unwrap_or_else(|| {
+                        _ => match char::from_u32(unit as u32) {
+                            Some(ch) => ch.encode_utf8(&mut buf),
+                            None => {
                                 // A surrogate pair: decode it with the next unit.
                                 let next = self.chars.get(cp as usize + 1).map(|(unit, _)| *unit);
                                 match next {
                                     Some(low) if (0xDC00..0xE000).contains(&low) => {
                                         cp += 1;
-                                        String::from_utf16_lossy(&[unit, low])
+                                        pair = String::from_utf16_lossy(&[unit, low]);
+                                        pair.as_str()
                                     }
-                                    _ => String::new(),
+                                    _ => "",
                                 }
-                            }),
+                            }
+                        },
                     };
-                    let format = self.format(&chp, link.as_deref());
-                    paragraph.push_text(&text, &format);
+                    let format = self.run_format(&mut run_format, chp, link);
+                    paragraph.push_text(text, format);
                 }
             }
             cp += 1;
