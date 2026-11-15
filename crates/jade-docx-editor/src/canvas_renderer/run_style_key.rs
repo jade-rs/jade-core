@@ -134,15 +134,88 @@ pub(super) fn hash_windows_languages(props: &RunProperties, mut hasher: FxHasher
     if jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
     {
-        props.language.hash(&mut hasher);
-        props.east_asia_language.hash(&mut hasher);
+        hash_language(props.language.as_deref(), &mut hasher);
+        hash_language(props.east_asia_language.as_deref(), &mut hasher);
     }
     hasher
+}
+
+#[inline]
+fn hash_language(language: Option<&str>, hasher: &mut FxHasher) {
+    let Some(language) = language else {
+        0_u64.hash(hasher);
+        return;
+    };
+    let bytes = language.as_bytes();
+    if bytes.len() == 5 {
+        // Common BCP47 tags (ja-JP, en-US, ko-KR) fit in one word. Include
+        // their byte length, so absent, empty and embedded NULs stay distinct.
+        let lower = u32::from_le_bytes(bytes[..4].try_into().unwrap());
+        (u64::from(lower) | (u64::from(bytes[4]) << 32) | (6_u64 << 56)).hash(hasher);
+    } else if bytes.len() <= 7 {
+        let mut packed = [0_u8; 8];
+        packed[..bytes.len()].copy_from_slice(bytes);
+        packed[7] = bytes.len() as u8 + 1;
+        u64::from_le_bytes(packed).hash(hasher);
+    } else {
+        // Long/private-use and arbitrary UTF-8 tags retain every byte.
+        9_u64.hash(hasher);
+        language.hash(hasher);
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn language_hash_keeps_presence_lengths_fields_and_long_suffixes_distinct() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = jade_docx_layout::line_metrics::word_layout_platform();
+        let tags = [
+            None,
+            Some(""),
+            Some("a"),
+            Some("a\0"),
+            Some("a\0\0"),
+            Some("ja"),
+            Some("ja-JP"),
+            Some("ja-jp"),
+            Some("zh-Hant"),
+            Some("ko-KR"),
+            Some("en-US-x-first"),
+            Some("en-US-x-second"),
+            Some("日本"),
+            Some("日本語"),
+        ];
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut keys = std::collections::HashSet::new();
+        for language in tags {
+            for east_asia_language in tags {
+                let properties = RunProperties {
+                    language: language.map(Into::into),
+                    east_asia_language: east_asia_language.map(Into::into),
+                    ..Default::default()
+                };
+                let mut seed = FxHasher::default();
+                0x1234_u64.hash(&mut seed);
+                let key = hash_windows_languages(&properties, seed).finish();
+                assert!(keys.insert(key), "{language:?}/{east_asia_language:?}");
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for tag in tags {
+            let properties = RunProperties {
+                language: tag.map(Into::into),
+                ..Default::default()
+            };
+            let mut seed = FxHasher::default();
+            0x1234_u64.hash(&mut seed);
+            let expected = seed.finish();
+            assert_eq!(hash_windows_languages(&properties, seed).finish(), expected);
+        }
+        set_word_layout_platform(previous);
+    }
 
     #[test]
     fn windows_language_values_and_field_positions_remain_distinct() {
