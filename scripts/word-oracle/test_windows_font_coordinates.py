@@ -10,6 +10,38 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_language_controls_match_captured_inputs_without_inherited_language(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_language_cache_probes import generate as generate_languages
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        w = '{' + ns['w'] + '}'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'languages'
+            self.assertEqual(generate_languages(output), 20)
+            for source in output.glob('*.docx'):
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (ROOT /
+                        'tests/word-oracle/windows/observations/sources' / source.name).read_bytes())
+                    with ZipFile(source) as archive:
+                        document = ET.fromstring(archive.read('word/document.xml'))
+                        runs = document.findall('w:body/w:p/w:r', ns)
+                        self.assertEqual(len(runs), 3)
+                        tags = document.findall('.//w:lang', ns)
+                        self.assertEqual(len(tags), 3)
+                        for run in runs:
+                            self.assertEqual(run.find('w:t', ns).text, 'A税あB ')
+                            lang = run.find('w:rPr/w:lang', ns)
+                            self.assertIn(lang, tags)
+                            if '-val-' in source.name:
+                                self.assertEqual(set(lang.attrib), {w + 'val'})
+                            else:
+                                self.assertEqual(set(lang.attrib), {w + 'val', w + 'eastAsia'})
+                                self.assertEqual(lang.get(w + 'val'), 'en-US')
+                        for name in archive.namelist():
+                            if name.endswith('.xml') and name != 'word/document.xml':
+                                self.assertEqual(ET.fromstring(archive.read(name)).findall('.//w:lang', ns), [])
+
     def test_fractional_white_paper_is_invisible_but_later_white_erasure_is_rejected(self):
         import pymupdf
         with tempfile.TemporaryDirectory() as directory:
@@ -79,8 +111,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 733)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 299)
+        self.assertEqual(len(verify()), 745)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 311)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf

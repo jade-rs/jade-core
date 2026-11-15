@@ -23975,6 +23975,466 @@
           "opened_filename": "word-windows-edge-plain-space-face-calibri-regular-nextT-size24-balance0-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193846330Z-90d3d266.zip",
+      "archive_sha256": "bb9b8ce228cebf1a7c1c8097230b83123735d3a2e27e4a21b5ed121f961f7b12",
+      "capture_id": "20261115T193846330Z-90d3d266",
+      "capture_sha256": "8fd4ad6669c47de8715a4057153c9d037e53c7a6c0549ee8307ff1a94919000c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-eastasia-ja-ja-ja-compat15",
+          "source_sha256": "fc478ee910dcf52f8d292ab822a2cfbb1cedaa3fc0de389c3ae9b41836140b35",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-eastasia-ja-ja-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-eastasia-ja-ja-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193848617Z-3d5157bd.zip",
+      "archive_sha256": "f888a593339de8a3da24b77dbaf66fefa9a2aed4a1c9ac5df942237f76da284e",
+      "capture_id": "20261115T193848617Z-3d5157bd",
+      "capture_sha256": "82e222c8f4697f2d1ae81560d7ffbd335e4aa4d6133d71aa6f025aaefb7794d9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-eastasia-ja-zh-ko-compat15",
+          "source_sha256": "55dcfd6d47e4f90a4005f5f961c478de72bf52f640ca086ceb2a22855be29468",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-eastasia-ja-zh-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-eastasia-ja-zh-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193851469Z-80e6f1a0.zip",
+      "archive_sha256": "1ac56a40eaf17d2528c01f4054d54309009795d27770687d776778c6d045d655",
+      "capture_id": "20261115T193851469Z-80e6f1a0",
+      "capture_sha256": "70e4df802145b356652427939f077eb786d832e08ec3beb06fdbe86498d3bbb9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-eastasia-ko-ko-ko-compat15",
+          "source_sha256": "dad48b19d38fecc49896e5c52e377b3918d5f9236344cfcf6c372b9e0a908aee",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-eastasia-ko-ko-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-eastasia-ko-ko-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193854347Z-53f3d2b5.zip",
+      "archive_sha256": "fc6a72efcd243c93ecda95bd97b8ff8993eebd1e9c01cec14274664fe40294b5",
+      "capture_id": "20261115T193854347Z-53f3d2b5",
+      "capture_sha256": "031bb091b86462d6d04929f56ac7e1eb5112be3b1bb6d519fe7897a5cdd5c954",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15",
+          "source_sha256": "afeaf6edc01ea6c6ce29bc8b72f88d84b6f1f56588bcb5d495822dd4e0053586",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-eastasia-ko-zh-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193859570Z-f72db4ef.zip",
+      "archive_sha256": "48450debc83f2803f875ed5452586015c667289506d3b26c4a1e3f284221afa2",
+      "capture_id": "20261115T193859570Z-f72db4ef",
+      "capture_sha256": "d741100424dc2218f2d3873b0f625bf5a2ae7f63fe9aadeb39f7476560ea222b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-eastasia-zh-zh-zh-compat15",
+          "source_sha256": "9c0955978b133a7c439560b2e453b9ddac701d0f3d6ad5efadd4997abe9a39ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-eastasia-zh-zh-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-eastasia-zh-zh-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193902501Z-a7361a91.zip",
+      "archive_sha256": "9ecceb308beea3b95676b51a8ebb3d446e627dfcf33f2811c1fbc0fe3736c698",
+      "capture_id": "20261115T193902501Z-a7361a91",
+      "capture_sha256": "aafffe30f000730850ebe708c4ce3b6cc5d60d02e52d25ebd29c9963b67c306e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-val-ja-ja-ja-compat15",
+          "source_sha256": "16d50c16db5ed7b17ab25907e514dcffad492588ec0589dc7112c85baa63e29e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-val-ja-ja-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-val-ja-ja-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193905355Z-a4fd596c.zip",
+      "archive_sha256": "121a6b9ec8f3e85b96acce23c15bbb589d47a1b2d1f119e47e9b4bb145b92648",
+      "capture_id": "20261115T193905355Z-a4fd596c",
+      "capture_sha256": "77f6a84b403bd491522ada342e5de8e9821284c146cf6dbbbe2fc5d2f2589262",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-val-ja-zh-ko-compat15",
+          "source_sha256": "d6b40215b327e06d3213443485599971c0dd98f7d698b122f43691774a8a202e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-val-ja-zh-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-val-ja-zh-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193908220Z-b18b1483.zip",
+      "archive_sha256": "27d73d854c13cacfd13e6c29b19442cc7ca481163833d722ff20af7ba89f6a5a",
+      "capture_id": "20261115T193908220Z-b18b1483",
+      "capture_sha256": "d4af1794ab4405478112a0b58ff5a8c49ce1027ff637a48e1830e2757fada2a5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-val-ko-ko-ko-compat15",
+          "source_sha256": "c119cfaf1ed5102bf20e25cc64ce3cfbfa80cd099af8d961c6227bee43584649",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-val-ko-ko-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-val-ko-ko-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193909707Z-97daeb20.zip",
+      "archive_sha256": "5f2bb298561888e30ff7fcbbf9d549a08ff2d6076d726c78cc939471195980f7",
+      "capture_id": "20261115T193909707Z-97daeb20",
+      "capture_sha256": "779fe2188c080e1d021b811a87de8cafd403e6a235325d759dcb2d84d77e225e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-val-ko-zh-ja-compat15",
+          "source_sha256": "12741b566a677ce03d863539bd54f343bc2ad4d572fcbd7a4e2dc4b168122389",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-val-ko-zh-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-val-ko-zh-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193912582Z-c17393a7.zip",
+      "archive_sha256": "f608414dfa786249cb71e60c230ba7eb114452945ab691767231c7da2b41840c",
+      "capture_id": "20261115T193912582Z-c17393a7",
+      "capture_sha256": "180255cc194cff647b1d91ea2252a553b2d93c69c7dbbe945d12ca46aa92923c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-arial-val-zh-zh-zh-compat15",
+          "source_sha256": "40b203715146fdf7879ac663de0d9d75e34ce390f5585216566c85a3eafb4620",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-arial-val-zh-zh-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-arial-val-zh-zh-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193916530Z-f27cbf42.zip",
+      "archive_sha256": "d0fa9a5a3f7ba4bdbb62d7d9e07b0126b07ec5046b1e4399f4b75cb18d7ad38b",
+      "capture_id": "20261115T193916530Z-f27cbf42",
+      "capture_sha256": "a2d16e81248fff62cf96b58ea929fafbd63f17914d41ccf398f94631f77d7b16",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-eastasia-ja-ja-ja-compat15",
+          "source_sha256": "cdb623167803ffb3f6cf9c5224b1678309bf5dd9318a53ec2c45498872f0f41d",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-eastasia-ja-ja-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-eastasia-ja-ja-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193919451Z-294b910d.zip",
+      "archive_sha256": "482cef67446b1828956abba1eba68cf26133204bb1772327de45c6e7e72407a5",
+      "capture_id": "20261115T193919451Z-294b910d",
+      "capture_sha256": "0625c30b0ac61b1976f922fe3ba1899d279425c06ff3bdf23c47a1aeb9e57d25",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-eastasia-ja-zh-ko-compat15",
+          "source_sha256": "0dd0ac73508560c88ce53cf05e89fde377e10f880ebd32ea633a0468a6abe518",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-eastasia-ja-zh-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-eastasia-ja-zh-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193922317Z-2d134100.zip",
+      "archive_sha256": "d108e6dee96f2987f169cdcfe4845892ea4ad293ba53f83a5aae4a4643a8733b",
+      "capture_id": "20261115T193922317Z-2d134100",
+      "capture_sha256": "58cc0c074bf79c65e4ee7dbc04f3b08001a83594612e525e34f163f438b84547",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-eastasia-ko-ko-ko-compat15",
+          "source_sha256": "2ddf02c37c9a13be029e5c0c17242a8fb2ae8e353ff0a158ae7ce9e655b818da",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-eastasia-ko-ko-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-eastasia-ko-ko-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193925212Z-a5ed2945.zip",
+      "archive_sha256": "0d2689f9e4e9588b215b60495c3d4d5129cbf90490c9e6bc330654d0e36ff3e1",
+      "capture_id": "20261115T193925212Z-a5ed2945",
+      "capture_sha256": "f08040f963b6756796e3ade56242cae7e7e6122f3dab5f655edf21892d9dfa73",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-eastasia-ko-zh-ja-compat15",
+          "source_sha256": "e7e6dd1d0ca6546eac475c310456ed9e48fb5f9bc535c9caaac2b78946149f6e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-eastasia-ko-zh-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-eastasia-ko-zh-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193928075Z-84d7d0ed.zip",
+      "archive_sha256": "d0ff90a6436b6ca7c655b380adb66429de150f281e7a5a4c71b64b3f480fe0f4",
+      "capture_id": "20261115T193928075Z-84d7d0ed",
+      "capture_sha256": "2008d38c3d2e4a5890585b4fb6fff497568a90f5ec4356e774383e16207bce2b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-eastasia-zh-zh-zh-compat15",
+          "source_sha256": "b8c1dddafe9dae8a71ef2ee06aa66575c9dea9fc70a622f0a925599f26190df5",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-eastasia-zh-zh-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-eastasia-zh-zh-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193930974Z-f2135282.zip",
+      "archive_sha256": "11ae2a75b05a3fc5cc2e96f6c2245568e2ef93c9a26abd662688407b11b4e52e",
+      "capture_id": "20261115T193930974Z-f2135282",
+      "capture_sha256": "0f709a26ea5a0caba8f297e1fdd1381765ad644ec65dc21599a9d5b3f1142834",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-val-ja-ja-ja-compat15",
+          "source_sha256": "9e1f8563673daf33e0a2f06cc2eb7a5aa0401a91bc34f3a407437790331f2f1f",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-val-ja-ja-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-val-ja-ja-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193936172Z-ae5202eb.zip",
+      "archive_sha256": "ef1bdd06d0c0f18c710f0ec1517a5e363c087a71a0da7090503e52c1594a7170",
+      "capture_id": "20261115T193936172Z-ae5202eb",
+      "capture_sha256": "4d6e68db2013ebb5a052f267c355d198b9466a323ad1253e03b88e38373ee23a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-val-ja-zh-ko-compat15",
+          "source_sha256": "1a69fbcd54c57f0f4a12d3c3f332e16ae1cc7fc6c9fa40a6b4db24469bc92575",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-val-ja-zh-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-val-ja-zh-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193937717Z-362e31cb.zip",
+      "archive_sha256": "2076517d49d6104b54ba5d48a3cf7431f0a235113f0fb77aebde40b672acc783",
+      "capture_id": "20261115T193937717Z-362e31cb",
+      "capture_sha256": "2ec8904039c35ed607ac5312f217733d0b930fe3a240abf76909c843d4b1cf28",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-val-ko-ko-ko-compat15",
+          "source_sha256": "b1080b716ef5ce1f872aaf605e508dc26ecb85cd529a5ba8984743e2d4bc72fa",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-val-ko-ko-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-val-ko-ko-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193939155Z-78a3df8c.zip",
+      "archive_sha256": "505f2ff22cc7cf876d2dc0ae2d3f8d12f671df52a1ba1363f6f754f70913d609",
+      "capture_id": "20261115T193939155Z-78a3df8c",
+      "capture_sha256": "b86ab559b829bc4605f44439048bf33e5f84ea984a865e63d2260a623d1cf36d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-val-ko-zh-ja-compat15",
+          "source_sha256": "35d9b037feb837294cbbd19302a442ec80a25b3ee2ac62d5e64d5d8ab8f75168",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-val-ko-zh-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-val-ko-zh-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T193942071Z-dc6a5229.zip",
+      "archive_sha256": "058e1a32c05dec865a670dbaac86f820d50264d69ab6269143e75c6d0888b788",
+      "capture_id": "20261115T193942071Z-dc6a5229",
+      "capture_sha256": "6c22e7e43be84c77c73ca8fcef7f7c7f28a24e728486deaf2d5eaf4b96361c0e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-language-calibri-val-zh-zh-zh-compat15",
+          "source_sha256": "f84ddd0323fe2841f17e156081460d6e1ad76c1887384859a695c1dda9e6df80",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-language-calibri-val-zh-zh-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-language-calibri-val-zh-zh-zh-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

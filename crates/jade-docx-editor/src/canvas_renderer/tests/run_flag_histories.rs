@@ -4,6 +4,83 @@ use super::*;
 use jade_painter::recording::{Op, RecordingPainter};
 use proptest::prelude::*;
 
+#[test]
+fn windows_language_edits_preserve_fresh_font_selection_and_replay() {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    let _restore = RestoreWordPlatform::mac();
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let options = Options {
+        show_formatting_marks: false,
+        show_crop_marks: false,
+        ..Default::default()
+    };
+    for face in ["Calibri", "Arial", "Noto Sans"] {
+        for east_asia in [false, true] {
+            let mut document = doc_with_paragraph_texts(&["A税あB", "UNCHANGED"]);
+            let (mut warm, painter) = renderer_with_painter();
+            let mut state = PaintState::new();
+            for language in [
+                None,
+                Some("ja-JP"),
+                Some("zh-TW"),
+                Some("ko-KR"),
+                Some("en-US"),
+                Some("JA-jp"),
+                None,
+            ] {
+                let BodyElement::Paragraph(paragraph) =
+                    &mut document.body.as_mut().unwrap().elements[0]
+                else {
+                    unreachable!()
+                };
+                let mut properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some(face.into()),
+                        h_ansi: Some(face.into()),
+                        east_asia: Some(face.into()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                };
+                if east_asia {
+                    properties.east_asia_language = language.map(Into::into);
+                } else {
+                    properties.language = language.map(Into::into);
+                }
+                paragraph.runs[0].properties = Some(properties);
+                warm.invalidate_paragraph_render_cache_range(0, 0);
+                warm.disable_seek_replay_once();
+                warm.set_incremental_dirty_from(0);
+                warm.mark_paragraph_dirty(0);
+                for replay in [false, true] {
+                    warm.mark_full_repaint();
+                    painter.clear();
+                    warm.render(&document, &options).unwrap();
+                    let (mut fresh, fresh_painter) = renderer_with_painter();
+                    fresh.render(&document, &options).unwrap();
+                    let context = format!("face={face}, east_asia={east_asia}, language={language:?}, replay={replay}");
+                    assert_eq!(
+                        layout_difference(
+                            &serde_json::to_value(warm.layout_debug_lines()).unwrap(),
+                            &serde_json::to_value(fresh.layout_debug_lines()).unwrap()
+                        ),
+                        None,
+                        "{context}"
+                    );
+                    assert_eq!(
+                        ink(&painter, &mut state),
+                        ink(&fresh_painter, &mut PaintState::new()),
+                        "{context}"
+                    );
+                    if replay {
+                        assert!(warm.paragraph_render_cache_stats().hits > 0, "{context}");
+                    }
+                }
+            }
+        }
+    }
+}
+
 type FlagSetter = fn(&mut RunProperties, Option<bool>);
 const FLAGS: [(&str, FlagSetter); 15] = [
     ("bold", |p, v| p.bold = v),

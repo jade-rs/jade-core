@@ -4768,7 +4768,7 @@ where
         let key = {
             let mut hasher = FxHasher::default();
             paragraph_style_id.hash(&mut hasher);
-            Self::compute_applied_run_style_cache_key(direct, None).hash(&mut hasher);
+            Self::compute_run_style_cache_key::<false>(direct, None).hash(&mut hasher);
             hasher.finish()
         };
         if let Some(entry) = self
@@ -4795,16 +4795,18 @@ where
         if cache.len() >= 4096 {
             cache.clear();
         }
-        cache
-            .entry(key)
-            .or_default()
-            .push(EffectiveRunPropertiesEntry {
-                styles,
-                theme,
-                paragraph_style_id: paragraph_style_id.map(str::to_owned),
-                direct: direct.cloned(),
-                effective: effective.clone(),
-            });
+        let entries = cache.entry(key).or_default();
+        // Languages share a bucket, so bound variants as well as bucket count.
+        if entries.len() >= 64 {
+            entries.clear();
+        }
+        entries.push(EffectiveRunPropertiesEntry {
+            styles,
+            theme,
+            paragraph_style_id: paragraph_style_id.map(str::to_owned),
+            direct: direct.cloned(),
+            effective: effective.clone(),
+        });
         effective
     }
 
@@ -10599,6 +10601,9 @@ where
                 props.font_size.map(f32::to_bits).hash(&mut hasher);
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
+                if props.language.is_some() || props.east_asia_language.is_some() {
+                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                }
                 props.bold.hash(&mut hasher);
                 props.italic.hash(&mut hasher);
                 props.bold_complex.hash(&mut hasher);
@@ -12212,6 +12217,9 @@ where
                 hash_metric!(font_size, 4);
                 metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
+                if props.language.is_some() || props.east_asia_language.is_some() {
+                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                }
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
                     fonts.h_ansi.as_deref().hash(&mut hasher);
@@ -34029,10 +34037,21 @@ where
         properties: Option<&RunProperties>,
         doc_grid_char_spacing_px: Option<f64>,
     ) -> u64 {
+        Self::compute_run_style_cache_key::<true>(properties, doc_grid_char_spacing_px)
+    }
+
+    fn compute_run_style_cache_key<const INCLUDE_LANGUAGES: bool>(
+        properties: Option<&RunProperties>,
+        doc_grid_char_spacing_px: Option<f64>,
+    ) -> u64 {
         if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
-            return run_style_key::windows_key(properties, doc_grid_char_spacing_px);
+            return if INCLUDE_LANGUAGES {
+                run_style_key::windows_key(properties, doc_grid_char_spacing_px)
+            } else {
+                run_style_key::windows_key_impl::<false>(properties, doc_grid_char_spacing_px)
+            };
         }
         let mut hasher = FxHasher::default();
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
@@ -50876,6 +50895,88 @@ mod tests {
                 .effective_run_properties(&caption, Some(&bold))
                 .as_ref()
         );
+    }
+
+    #[test]
+    fn shared_language_bucket_still_requires_full_property_equality() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_painter::recording::RecordingPainter;
+        let _restore = RestoreWordPlatform::mac();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (renderer, _) = recording_renderer();
+        let paragraph = Paragraph {
+            properties: None,
+            runs: Vec::new(),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+        let languages = [
+            None,
+            Some(""),
+            Some("ja-JP"),
+            Some("zh-TW"),
+            Some("ko-KR"),
+            Some("en-US"),
+        ];
+        let mut bucket = None;
+        let mut applied = std::collections::HashSet::new();
+        let mut resolved = Vec::new();
+        for language in languages {
+            for east_asia_language in languages {
+                let direct = RunProperties {
+                    language: language.map(Into::into),
+                    east_asia_language: east_asia_language.map(Into::into),
+                    ..Default::default()
+                };
+                let key = CanvasRenderer::<RecordingPainter>::compute_run_style_cache_key::<false>(
+                    Some(&direct),
+                    None,
+                );
+                assert_eq!(*bucket.get_or_insert(key), key);
+                assert!(applied.insert(
+                    CanvasRenderer::<RecordingPainter>::compute_applied_run_style_cache_key(
+                        Some(&direct),
+                        None
+                    )
+                ));
+                let shared = renderer.effective_run_properties_rc(&paragraph, Some(&direct));
+                assert_eq!(
+                    shared.as_deref(),
+                    renderer
+                        .effective_run_properties(&paragraph, Some(&direct))
+                        .as_ref()
+                );
+                resolved.push((direct, shared));
+            }
+        }
+        // Revisit all colliding entries after the bucket has been populated.
+        for (direct, expected) in resolved {
+            let actual = renderer.effective_run_properties_rc(&paragraph, Some(&direct));
+            assert_eq!(actual, expected);
+            if let (Some(actual), Some(expected)) = (actual, expected) {
+                assert!(Rc::ptr_eq(&actual, &expected));
+            }
+        }
+        // Arbitrary authored language strings must not grow a single bucket
+        // without limit; eviction must still return a fresh resolution.
+        for index in 0..130 {
+            let direct = RunProperties {
+                language: Some(format!("private-{index}").into()),
+                ..Default::default()
+            };
+            assert_eq!(
+                renderer
+                    .effective_run_properties_rc(&paragraph, Some(&direct))
+                    .as_deref(),
+                renderer
+                    .effective_run_properties(&paragraph, Some(&direct))
+                    .as_ref()
+            );
+            let cache = renderer.effective_run_properties_cache.borrow();
+            assert_eq!(cache.len(), 1);
+            assert!(cache.values().all(|entries| entries.len() <= 64));
+        }
     }
 
     /// Rendering-only decorations must not become the cached source for a
