@@ -621,18 +621,30 @@ fn pdf_exports_the_live_header_after_edit_undo_and_redo() {
 
 #[test]
 fn pdf_keeps_text_searchable_when_the_glyphs_have_visual_effects() {
-    let editor = common::open_fixture("public/fixtures/char-effects.docx");
-    let pdf = Document::load_mem(&editor.export_pdf().unwrap()).unwrap();
-    let text = pdf.extract_text(&[1]).unwrap().replace(['\n', ' '], "");
-    for expected in [
-        "Shadowedtext",
-        "Outlinedtext",
-        "Embossedtext",
-        "Imprintedtext",
-        "Visibletail",
-    ] {
-        assert!(text.contains(expected), "missing {expected}: {text:?}");
+    use jade_docx_layout::line_metrics::{
+        set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+    };
+    let previous = word_layout_platform();
+    for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+        set_word_layout_platform(platform);
+        let editor = common::open_fixture("public/fixtures/char-effects.docx");
+        let pdf = Document::load_mem(&editor.export_pdf().unwrap()).unwrap();
+        let text = pdf.extract_text(&[1]).unwrap().replace(['\n', ' '], "");
+        for expected in [
+            "Shadowedtext",
+            "Outlinedtext",
+            "Embossedtext",
+            "Imprintedtext",
+            "Visibletail",
+        ] {
+            assert_eq!(
+                text.matches(expected).count(),
+                1,
+                "{platform:?}: missing/duplicated {expected}: {text:?}"
+            );
+        }
     }
+    set_word_layout_platform(previous);
 }
 
 #[test]

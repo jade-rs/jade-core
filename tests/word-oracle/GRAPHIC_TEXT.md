@@ -25,6 +25,11 @@ Deleting a contour, moving text, changing paint color or replacing vector
 outlines with a raster image fails the check. Invisible native search text
 remains available but is checked separately from visible paint.
 
+For raster PDF export, auxiliary effect copies do not add duplicate invisible
+search text. The foreground text remains searchable exactly once. Native PDF
+tests exercise this on both Mac and Windows policies without changing the
+visible copies or vector-PDF paint assertions.
+
 Only font programs extracted from the original Word PDF and DOCX source bytes
 are supplied to the renderer. Expected coordinates are never renderer inputs.
 The unchanged original has outlined glyphs omitted from its embedded font

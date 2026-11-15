@@ -121,6 +121,7 @@ struct StyleState {
     shadow_offset: (f32, f32),
     blur_filter: f32,
     stroke_text_paths: bool,
+    decorative_text: bool,
     /// What the `y` given to `fill_text` means, as canvas's `textBaseline`.
     /// Skia always draws from the alphabetic baseline, so this decides how far
     /// the `y` has to be moved before the glyphs land where the caller meant.
@@ -187,6 +188,7 @@ impl Default for StyleState {
             shadow_offset: (0.0, 0.0),
             blur_filter: 0.0,
             stroke_text_paths: false,
+            decorative_text: false,
             text_baseline: TextBaseline::Alphabetic,
         }
     }
@@ -819,23 +821,25 @@ impl SkiaPainter {
                 .to_affine()
                 .expect("2D painter transform")
                 .map(|value| value / editor_scale.unwrap_or(1.0) as f32);
-            self.shared
-                .effect_text
-                .borrow_mut()
-                .push(pdf_text::RecordedText {
-                    text: text.to_string(),
-                    font_size: font.size(),
-                    widths: if glyphs.len() == 1 && text.chars().count() > 1 {
-                        let mut scalar_widths = vec![0.0; text.chars().count()];
-                        scalar_widths[0] = widths[0];
-                        scalar_widths
-                    } else {
-                        widths.clone()
-                    },
-                    ascent: -metrics.ascent,
-                    descent: metrics.descent,
-                    transform: [a, b, c, d, a * x + c * y + e, b * x + d * y + f],
-                });
+            if !self.shared.style.borrow().decorative_text {
+                self.shared
+                    .effect_text
+                    .borrow_mut()
+                    .push(pdf_text::RecordedText {
+                        text: text.to_string(),
+                        font_size: font.size(),
+                        widths: if glyphs.len() == 1 && text.chars().count() > 1 {
+                            let mut scalar_widths = vec![0.0; text.chars().count()];
+                            scalar_widths[0] = widths[0];
+                            scalar_widths
+                        } else {
+                            widths.clone()
+                        },
+                        ascent: -metrics.ascent,
+                        descent: metrics.descent,
+                        transform: [a, b, c, d, a * x + c * y + e, b * x + d * y + f],
+                    });
+            }
             if let Some(path) = contour_path.as_ref() {
                 canvas.save();
                 canvas.translate((x, y));
@@ -1906,6 +1910,14 @@ impl Painter for SkiaPainter {
         self.draw_segments(text, x, y, &paint);
         self.shared.style.borrow_mut().stroke_text_paths = previous;
         Ok(())
+    }
+
+    fn fill_text_decoration(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        let previous = self.shared.style.borrow().decorative_text;
+        self.shared.style.borrow_mut().decorative_text = true;
+        let result = self.fill_text(text, x, y);
+        self.shared.style.borrow_mut().decorative_text = previous;
+        result
     }
 
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {

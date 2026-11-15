@@ -168,6 +168,13 @@ pub trait Painter {
         self.fill_text(text, x, y)
     }
     fn stroke_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
+    /// Paint an auxiliary copy of text, such as a shadow or bevel layer.
+    /// Raster PDF backends can omit duplicate searchable overlays while
+    /// preserving every visible paint operation.
+    fn fill_text_decoration(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
+        self.fill_text(text, x, y)
+    }
+
     /// Strokes scalable font contours with round joins when available. The default retains
     /// the backend's normal text stroke; vector backends may preserve paths.
     fn stroke_text_as_path(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {

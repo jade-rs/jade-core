@@ -1211,21 +1211,21 @@ fn try_draw_windows_legacy_effect<P: Painter>(
         let gx = x + glyph.x_offset;
         if style.emboss {
             font_state.set_fill_style_rc_if_changed(context, &gray);
-            context.fill_text(value, gx, y)?;
+            context.fill_text_decoration(value, gx, y)?;
             font_state.set_fill_style_rc_if_changed(context, &black);
-            context.fill_text(value, gx - 2.0 * depth, y - 2.0 * depth)?;
+            context.fill_text_decoration(value, gx - 2.0 * depth, y - 2.0 * depth)?;
             font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
             context.fill_text(value, gx - depth, y - depth)?;
         } else if style.imprint {
             font_state.set_fill_style_rc_if_changed(context, &black);
-            context.fill_text(value, gx + 2.0 * depth, y + 2.0 * depth)?;
+            context.fill_text_decoration(value, gx + 2.0 * depth, y + 2.0 * depth)?;
             font_state.set_fill_style_rc_if_changed(context, &gray);
-            context.fill_text(value, gx, y)?;
+            context.fill_text_decoration(value, gx, y)?;
             font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
             context.fill_text(value, gx + depth, y + depth)?;
         } else {
             font_state.set_fill_style_rc_if_changed(context, &gray);
-            context.fill_text(value, gx + shadow_offset, y + shadow_offset)?;
+            context.fill_text_decoration(value, gx + shadow_offset, y + shadow_offset)?;
             font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
             context.fill_text(value, gx, y)?;
         }
