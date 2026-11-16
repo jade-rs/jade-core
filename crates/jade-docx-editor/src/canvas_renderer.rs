@@ -3236,6 +3236,7 @@ struct LineNumberState {
 
 #[derive(Clone, Debug)]
 struct CachedParagraphRender {
+    windows_shading_continuation: bool,
     render_hash: ContentHash,
     start_y: f64,
     start_page: usize,
@@ -18319,15 +18320,37 @@ where
         let current_direction = self.current_text_direction;
         // Word shades the whole grid pitch after a matching adjacent shaded
         // paragraph. The initial paragraph alone leaves its leading unpainted.
-        let windows_shading_continuation = paragraph_style.word_platform
+        let windows_shading_continuation = if paragraph_style.word_platform
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && paragraph
+                .properties
+                .as_ref()
+                .is_some_and(|p| p.shading.is_some())
+            && doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
             && !self.spacing_scan_from_story
             && !self.rendering_header_footer_story
             && !self.rendering_note_story
-            && windows_paragraph_shading_continues_at(
+        {
+            let continues = windows_paragraph_shading_continues_at(
                 self.spacing_scan_body_elements(),
                 body_element_index,
             );
+            // Only the previous paragraph can change this paint input without
+            // changing our own content hash. Retain normal replay while it
+            // matches; invalidate the dependent paragraph when it changes.
+            let mut cache = self.paragraph_render_cache.borrow_mut();
+            if cache
+                .entries
+                .get(paragraph_index)
+                .and_then(Option::as_ref)
+                .is_some_and(|entry| entry.windows_shading_continuation != continues)
+            {
+                cache.invalidate_at(paragraph_index);
+            }
+            continues
+        } else {
+            false
+        };
 
         let prefix_replay = self
             .prefix_replay_until
@@ -18349,7 +18372,6 @@ where
         // entries from earlier render modes (e.g. before toggling comments/formatting marks) could
         // be replayed incorrectly.
         if (prefix_replay || fast_replay || shift_replay)
-            && !windows_shading_continuation
             && self.active_float_exclusions.is_empty()
             && self.float_lookahead.is_none()
             && self.float_lookahead_pin.is_none()
@@ -18682,9 +18704,6 @@ where
             && options.render_comments
             && Self::paragraph_contains_comment_anchors(paragraph);
         let cache_eligible = !has_comment_anchors
-            // These commands depend on the preceding paragraph's shading.
-            // Do not reuse an own-paragraph-only draw cache for this case.
-            && !windows_shading_continuation
             // Full diagnostics must rebuild auxiliary metadata absent from
             // cached draw commands. Keep normal editing caches intact.
             && self.auxiliary_story_capture_mode != AuxiliaryStoryCaptureMode::Full
@@ -21463,6 +21482,7 @@ where
                 self.paragraph_render_cache.borrow_mut().insert(
                     paragraph_index,
                     CachedParagraphRender {
+                        windows_shading_continuation,
                         render_hash,
                         start_y: cache_start_y,
                         start_page: cache_start_page,
@@ -41772,7 +41792,18 @@ fn windows_paragraph_shading_continues_at(elements: &[BodyElement], lower_index:
         return false;
     }
     let Some(shading) = lower.shading.as_ref().filter(|shading| {
-        shading.pattern().is_none() && shading.resolved_background_color().is_some()
+        shading.pattern().is_none()
+            && if shading
+                .val
+                .as_deref()
+                .is_none_or(|val| val.eq_ignore_ascii_case("clear"))
+            {
+                // The common clear mask returns fill.clone(); presence is
+                // enough here and avoids allocating on every cached repaint.
+                shading.fill.is_some()
+            } else {
+                shading.resolved_background_color().is_some()
+            }
     }) else {
         return false;
     };
@@ -66003,6 +66034,7 @@ mod tests {
             .entries
             .resize(11, None);
         renderer.paragraph_render_cache.borrow_mut().entries[9] = Some(CachedParagraphRender {
+            windows_shading_continuation: false,
             render_hash: ContentHash::new(9),
             start_y: p9_start_y,
             start_page: page_0idx,
@@ -66982,6 +67014,7 @@ mod tests {
             .entries
             .resize(1, None);
         renderer.paragraph_render_cache.borrow_mut().entries[0] = Some(CachedParagraphRender {
+            windows_shading_continuation: false,
             render_hash: ContentHash::new(1),
             start_y: 0.0,
             start_page: 2,
@@ -72625,6 +72658,7 @@ mod tests {
         renderer.paragraph_render_cache.borrow_mut().insert(
             0,
             CachedParagraphRender {
+                windows_shading_continuation: false,
                 render_hash: ContentHash::new(42),
                 start_y: 100.0,
                 start_page: 1,
@@ -72695,6 +72729,7 @@ mod tests {
             let mut cache = renderer.paragraph_render_cache.borrow_mut();
             cache.entries.resize(2, None);
             cache.entries[0] = Some(CachedParagraphRender {
+                windows_shading_continuation: false,
                 render_hash: ContentHash::new(0xAAA),
                 start_y: 0.0,
                 start_page: 1,
@@ -72714,6 +72749,7 @@ mod tests {
                 hyperlink_regions: Vec::new(),
             });
             cache.entries[1] = Some(CachedParagraphRender {
+                windows_shading_continuation: false,
                 render_hash: ContentHash::new(0xBBB),
                 start_y: 20.0,
                 start_page: 1,
@@ -72842,6 +72878,7 @@ mod tests {
             cache.entries.resize(4, None);
             for idx in 0..4 {
                 cache.entries[idx] = Some(CachedParagraphRender {
+                    windows_shading_continuation: false,
                     render_hash: ContentHash::new(idx as u64 + 1),
                     start_y: idx as f64 * 20.0,
                     start_page: 1,

@@ -77,6 +77,10 @@ fn windows_shading_groups_follow_previous_color_through_edit_and_replay() {
                 warm.mark_full_repaint();
                 painter.clear();
                 warm.render(&document, &options).unwrap();
+                if replay {
+                    assert!(warm.paragraph_render_cache_stats().hits >= 2,
+                        "unchanged shaded paragraphs must remain replayable: {platform:?} {color:?}");
+                }
                 let (mut fresh, fresh_painter) = renderer_with_painter();
                 fresh.render(&document, &options).unwrap();
                 assert_eq!(
