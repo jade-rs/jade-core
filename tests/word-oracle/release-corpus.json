@@ -5790,6 +5790,30 @@
     {
       "fixture": "word-windows-cjk-cell-yu-ideographic-gap-size8p5-regular-compat15",
       "docx_sha256": "01f5edbbd697924b101228b5a4add73e5e0378a52048185b16342bc8313c8ac4"
+    },
+    {
+      "fixture": "word-windows-nominal-wrap-kerning-mincho-disabled-width319p95-compat15",
+      "docx_sha256": "b66477a79359f16999cd55f46ec442a1b0a56f2a1525dfc2a1a410a1baba3bf8"
+    },
+    {
+      "fixture": "word-windows-nominal-wrap-kerning-mincho-enabled-width319p95-compat15",
+      "docx_sha256": "12940d1ee0b3d783b7c636e6478e2a6c18d65ee2caec9d378eeedfaa037c4d06"
+    },
+    {
+      "fixture": "word-windows-nominal-wrap-kerning-yu-disabled-width319p95-compat15",
+      "docx_sha256": "9d0a31ba3bf1b1d892688329efdfbf8af10995489a41091d06ba52f1b028fe51"
+    },
+    {
+      "fixture": "word-windows-nominal-wrap-kerning-yu-disabled-width320-compat15",
+      "docx_sha256": "f3d4321da611b4b3170bb3f04b8d660969cf4543db361e28f21ad99523be03d1"
+    },
+    {
+      "fixture": "word-windows-nominal-wrap-kerning-yu-enabled-width319p95-compat15",
+      "docx_sha256": "268ac2c04f95366b83c4863f9ccb4798b1ea337f943d5ffa53ba9d8203266990"
+    },
+    {
+      "fixture": "word-windows-nominal-wrap-kerning-yu-enabled-width320-compat15",
+      "docx_sha256": "2ad56d77d1530e0854b541e8b99c167c8f87bf21d35c58c47d2b4ce080d97db6"
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T194446688Z-d3499578",
+  "captured_at_utc": "2026-11-16T19:44:46.6944452Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-nominal-wrap-kerning-yu-enabled-width320-compat15",
+      "source": "w17-e-nominal-kerning-input-snapshots\\word-windows-nominal-wrap-kerning-yu-enabled-width320-compat15.docx",
+      "sha256": "2ad56d77d1530e0854b541e8b99c167c8f87bf21d35c58c47d2b4ce080d97db6",
+      "pdf": "word-windows-nominal-wrap-kerning-yu-enabled-width320-compat15.pdf",
+      "pdf_sha256": "57955e6ed6dfa0cdd517372bbccb31f2ac56c414f729452bb2e60714b552f26e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-nominal-wrap-kerning-yu-enabled-width320-compat15.page-001.emf",
+          "sha256": "11861a41c75a1266da6b9579a1f937bdb7adfcced34ed3293b0878ca59b515b3",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

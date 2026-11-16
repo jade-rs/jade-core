@@ -113,7 +113,7 @@ pub(crate) fn whole_twips(width: f32) -> f32 {
 pub(crate) const MAX_INLINE_IMAGE_BYTES: usize = 5 * 1024 * 1024;
 pub(crate) const MAX_AUTHORED_OMML_BYTES: usize = 256 * 1024;
 const INK_TITLE_PREFIX: &str = "aidocs-ink";
-/// `w:sz`/`w:szCs`/`w:kern` are half-points; Word's 1638pt ceiling is 3276.
+/// `w:sz`/`w:szCs` are half-points; Word's 1638pt font-size ceiling is 3276.
 const WORD_MAX_HALF_POINTS: f32 = 3276.0;
 const MAX_INK_PAYLOAD_BYTES: usize = 64 * 1024;
 const MAX_INK_DIMENSION_PX: f64 = 16_384.0;
@@ -39646,8 +39646,10 @@ impl WordDocument {
             };
             match kerning {
                 Some(points) if points.is_finite() && points >= 0.0 => {
-                    let half_points =
-                        (points * 2.0).round().clamp(0.0, WORD_MAX_HALF_POINTS) as i32;
+                    // This is a minimum size for kerning, not the run's font
+                    // size. Preserve imported thresholds above the font-size
+                    // ceiling when an unrelated text edit re-emits the run.
+                    let half_points = (points * 2.0).round() as i32;
                     Self::upsert_run_property_child_with_value(
                         doc,
                         &mut element,

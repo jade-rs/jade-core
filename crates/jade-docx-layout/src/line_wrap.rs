@@ -3367,6 +3367,14 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             {
                 style
                     .fixed_east_asia_em_px()
+                    .or_else(|| {
+                        paragraph_style
+                            .filter(|paragraph| {
+                                paragraph.word_platform
+                                    == crate::line_metrics::WordLayoutPlatform::Windows
+                            })
+                            .and_then(|_| style.observed_cjk_em_px(font_descriptor))
+                    })
                     .filter(|em| (measured - em).abs() < 1.0 / 64.0)
             } else {
                 None
