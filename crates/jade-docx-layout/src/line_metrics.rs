@@ -3254,8 +3254,18 @@ pub(crate) fn word_windows_cjk_extra_advances_px(font_descriptor: &str) -> [f64;
         return [0.0; 3];
     }
     let nominal = f64::from(size_pt) * 600.0 / 72.0;
-    if (nominal.fract() - 0.5).abs() > 1e-6 {
-        return [0.0; 3];
+    let half_device = (nominal.fract() - 0.5).abs() <= 1e-6;
+    // Independent MS Mincho half-point controls retain printer quantization
+    // for full cells and ideographic gaps outside half-device ems. Integer
+    // sizes, including the preserved 22pt original, have a different PDF
+    // advance and retain their existing policy. Half-width kana outside
+    // half-device ems also need separate screen/print investigation.
+    if !half_device {
+        let half_point = (f64::from(size_pt).fract() - 0.5).abs() <= 1e-6;
+        if !(half_point && matches!(family, "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "ＭＳ明朝"))
+        {
+            return [0.0; 3];
+        }
     }
     let realized = nominal.round();
     let cell_extra = |cell: f64| {
@@ -3269,7 +3279,8 @@ pub(crate) fn word_windows_cjk_extra_advances_px(font_descriptor: &str) -> [f64;
         (advance - cell_nominal) * 96.0 / 600.0
     };
     let full = cell_extra(1.0);
-    [full, cell_extra(0.5), full]
+    let half = if half_device { cell_extra(0.5) } else { 0.0 };
+    [full, half, full]
 }
 
 pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {

@@ -17,11 +17,12 @@ The A3 landscape controls include:
 - eight English/Japanese face-name, East Asian layout and grid controls;
 - five 419.9/420/420.1/420.3/420.5pt exact-width wrap controls.
 
-Thirteen size controls and every independent/full-half-space control pass the
-original EMF, unclipped Word PDF, visible Word PDF and independently painted
-native PDF comparisons. The 8.5, 12.5 and 14.5pt MS Mincho size controls remain
-unaccepted observations with horizontal discrepancies. Other previously failing
-Yu Mincho ASCII and mixed-script controls also remain preserved for further fixes.
+The initial half-device correction asserted thirteen size controls and every
+independent/full-half-space control in this original batch. Extending regular
+MS Mincho full-cell and ideographic-space quantization to the independently measured half-point sizes also matches the original 8.5, 12.5 and 14.5pt size controls. All sixteen sizes
+now pass original EMF, unclipped/visible Word PDF and independently painted native
+PDF comparisons. Yu Mincho ASCII and mixed-script discrepancies remain preserved
+for further fixes.
 The existing 0.375pt per-axis limit and paragraph-background/continuity gates stay
 unchanged. Expected coordinates always come from original Word output.
 
