@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T113137991Z-e6b8ec38",
+  "captured_at_utc": "2026-11-16T11:31:37.9950895Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-ms-font-alias-mincho-size10p5-regular-compat15",
+      "source": "w16-bh-ms-font-alias-input-snapshots\\word-windows-ms-font-alias-mincho-size10p5-regular-compat15.docx",
+      "sha256": "d83f971f5ac592d4656399b1868d148642c4a9f30783e0121dfcf33eee29a921",
+      "pdf": "word-windows-ms-font-alias-mincho-size10p5-regular-compat15.pdf",
+      "pdf_sha256": "53629c7e84b5510f3d2ec6edeea25b966d4fbe5f0bb8d96e6fcf6b2207ba6dbb",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-font-alias-mincho-size10p5-regular-compat15.page-001.emf",
+          "sha256": "11383d075384aaeb62a2d3fef64f0298bb51e409d92428b1ca5c733a52b4c2ba",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T103718812Z-755d964b",
+  "captured_at_utc": "2026-11-16T10:37:18.8156958Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-cjk-cell-yu-ideographic-gap-size16p5-regular-compat15",
+      "source": "w16-bb-cjk-cell-input-snapshots\\word-windows-cjk-cell-yu-ideographic-gap-size16p5-regular-compat15.docx",
+      "sha256": "a766040ced5ea31ff256f8c1e7c53ac9f71fdd62995fc5b4aaa3ecad315402ab",
+      "pdf": "word-windows-cjk-cell-yu-ideographic-gap-size16p5-regular-compat15.pdf",
+      "pdf_sha256": "0e3b99118e182de80cd959c4ad3657b374cfa2d0339bfe3ba6a6a75ddc7648fa",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-yu-ideographic-gap-size16p5-regular-compat15.page-001.emf",
+          "sha256": "4a7fa02543a12669e14371ac2ddd92639c627ea2b54525518628111ea89d6ec4",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

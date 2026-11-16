@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T064159624Z-d8f96b56",
+  "captured_at_utc": "2026-11-16T06:41:59.6282929Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-wide-a3-gothic-grid-size22p5-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w16-ab-wide-grid-font-input-snapshots\\word-windows-wide-a3-gothic-grid-size22p5-compat15.docx",
+      "sha256": "c109ebcde7431e3e2e5ea75dc1c184cc56a0bd8e2483c812937af2dc2ef0b5d6",
+      "pdf": "word-windows-wide-a3-gothic-grid-size22p5-compat15.pdf",
+      "pdf_sha256": "0d75a5a41ebe41cacb5e9ca6e8cf5f0e58d2eaa4e1b320f4e76219b8e0ec7490",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-wide-a3-gothic-grid-size22p5-compat15.page-001.emf",
+          "sha256": "ea12b79c817daa38456b98aae8ebe1c237925aa8c0384a7de706b59de2f8beba",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

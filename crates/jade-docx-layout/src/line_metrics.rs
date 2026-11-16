@@ -3222,6 +3222,56 @@ fn synthetic_bold_descriptor_needs_style_scan(font_descriptor: &str) -> bool {
     !(first.is_ascii() && first.ends_with("pt"))
 }
 
+// Original Windows Word size sweeps retain full cells, half-width kana and
+// ideographic gaps. Their half-device-pixel ems are reproduced by realizing
+// each cell on the 600dpi font grid and quantizing its requested advance on
+// a 1024-unit measurement grid. The independent 25.5pt controls distinguish
+// this from rounding a 1000-unit scale, which accumulates false expansion.
+// Entries are full cell, half cell and ideographic space respectively.
+pub(crate) fn word_windows_cjk_extra_advances_px(font_descriptor: &str) -> [f64; 3] {
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    if bold {
+        let extra = word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor);
+        return [extra, extra, 0.0];
+    }
+    if italic {
+        return [0.0; 3];
+    }
+    let Some((size_pt, family)) = split_font_descriptor(font_descriptor) else {
+        return [0.0; 3];
+    };
+    let family = family
+        .split(',')
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .trim_matches(['\'', '"']);
+    if !size_pt.is_finite()
+        || size_pt <= 0.0
+        || !(is_word_monospace_family(family)
+            || matches!(family, "Yu Mincho" | "游明朝" | "游明朝体" | "YuMincho"))
+    {
+        return [0.0; 3];
+    }
+    let nominal = f64::from(size_pt) * 600.0 / 72.0;
+    if (nominal.fract() - 0.5).abs() > 1e-6 {
+        return [0.0; 3];
+    }
+    let realized = nominal.round();
+    let cell_extra = |cell: f64| {
+        let cell_nominal = nominal * cell;
+        let cell_realized = (realized * cell).round();
+        let units_per_pixel = (1024.0 / cell_realized).floor();
+        if units_per_pixel <= 0.0 {
+            return 0.0;
+        }
+        let advance = (cell_nominal * units_per_pixel).round() / units_per_pixel;
+        (advance - cell_nominal) * 96.0 / 600.0
+    };
+    let full = cell_extra(1.0);
+    [full, cell_extra(0.5), full]
+}
+
 pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: &str) -> f64 {
     if !synthetic_bold_descriptor_needs_style_scan(font_descriptor)
         || !font_descriptor_style(font_descriptor).0
@@ -5652,6 +5702,20 @@ mod tests {
             }),
             ..Default::default()
         }
+    }
+
+    #[test]
+    fn postscript_requests_use_the_resolved_face_line_box() {
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for alias in ["MS-Mincho", "MS-Gothic"] {
+                // Select the effective CJK face before its metrics lookup.
+                // Generic requested-family line metrics retain their path.
+                assert_eq!(word_east_asian_font_vertical_units(alias), None);
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

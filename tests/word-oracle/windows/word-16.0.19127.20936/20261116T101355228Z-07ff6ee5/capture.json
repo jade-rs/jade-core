@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T101355228Z-07ff6ee5",
+  "captured_at_utc": "2026-11-16T10:13:55.2329268Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-half-device-independent-yu-size19p5-regular-compat15",
+      "source": "w16-aw-half-device-independent-input-snapshots\\word-windows-half-device-independent-yu-size19p5-regular-compat15.docx",
+      "sha256": "db54981df584774eb0b699294ce4ec160b2279e5e3db07410bd8c59cd36be9fa",
+      "pdf": "word-windows-half-device-independent-yu-size19p5-regular-compat15.pdf",
+      "pdf_sha256": "5df2a51cc744ddef88516daae13c8cc3efd73884710b3ec0a1f90eaf441a0278",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-half-device-independent-yu-size19p5-regular-compat15.page-001.emf",
+          "sha256": "1557b9d8fcd18b75fa39e12b40bda0dc0e0547183d9a60a8486c2935f83b61fd",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
