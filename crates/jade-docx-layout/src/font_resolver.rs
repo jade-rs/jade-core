@@ -1280,7 +1280,10 @@ struct CachedCjkMetrics {
     descriptors: [Rc<str>; 4],
     observed_em_px: [Option<f64>; 4],
     compatible_em_px: [Option<f64>; 4],
-    windows_cjk_extra_px: std::cell::OnceCell<[WindowsCjkAdvances; 4]>,
+    // Only the East Asian slot is hot for printer realization. Retain its
+    // allocation with the facts so replaced public slots cannot inherit them,
+    // without growing the shared CJK metric allocation for every painted run.
+    windows_cjk_extra_px: std::cell::OnceCell<(Rc<str>, WindowsCjkAdvances)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1639,17 +1642,15 @@ impl ResolvedRunStyle {
     #[inline(always)]
     fn windows_cjk_advances(&self, descriptor: &str) -> WindowsCjkAdvances {
         let cached = self.cjk_metrics();
-        let extras = cached.windows_cjk_extra_px.get_or_init(|| {
-            cached.descriptors.each_ref().map(|descriptor| {
-                WindowsCjkAdvances::from_cells(
-                    crate::line_metrics::word_windows_cjk_extra_advances_px(descriptor),
-                )
-            })
+        let (key, extra) = cached.windows_cjk_extra_px.get_or_init(|| {
+            let descriptor = Rc::clone(&cached.descriptors[0]);
+            let extra = WindowsCjkAdvances::from_cells(
+                crate::line_metrics::word_windows_cjk_extra_advances_px(&descriptor),
+            );
+            (descriptor, extra)
         });
-        for (key, extra) in cached.descriptors.iter().zip(extras) {
-            if std::ptr::eq(key.as_ref(), descriptor) {
-                return *extra;
-            }
+        if std::ptr::eq(key.as_ref(), descriptor) {
+            return *extra;
         }
         // Public slot replacement must not reuse facts for the old allocation.
         WindowsCjkAdvances::from_cells(crate::line_metrics::word_windows_cjk_extra_advances_px(
