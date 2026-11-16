@@ -5,6 +5,120 @@ use jade_painter::recording::{Op, RecordingPainter};
 use proptest::prelude::*;
 
 #[test]
+fn windows_shading_groups_follow_previous_color_through_edit_and_replay() {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+    use jade_docx_reader::document::{DocGrid, SectionProperties, Shading};
+    let _restore = RestoreWordPlatform::mac();
+    for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+        set_word_layout_platform(platform);
+        let mut document = doc_with_paragraph_texts(&["QPAQ QPAQ", "QPAQ QPAQ", "UNCHANGED"]);
+        document.default_section = Some(SectionProperties {
+            doc_grid: Some(DocGrid {
+                grid_type: Some("lines".into()),
+                line_pitch: Some(18.0),
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+        for element in document.body.as_mut().unwrap().elements.iter_mut().take(2) {
+            let BodyElement::Paragraph(paragraph) = element else {
+                unreachable!()
+            };
+            paragraph.properties = Some(ParagraphProperties {
+                shading: Some(Shading {
+                    fill: Some("#D9EAD3".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            paragraph.runs[0].properties = Some(RunProperties {
+                font_family: Some("Arial".into()),
+                fonts: Some(RunFonts {
+                    ascii: Some("Arial".into()),
+                    h_ansi: Some("Arial".into()),
+                    east_asia: Some("Arial".into()),
+                    ..Default::default()
+                }),
+                font_size: Some(12.0),
+                bold: Some(true),
+                language: Some("ja-JP".into()),
+                east_asia_language: Some("ja-JP".into()),
+                ..Default::default()
+            });
+        }
+        let options = Options {
+            show_formatting_marks: false,
+            show_crop_marks: false,
+            ..Default::default()
+        };
+        let (mut warm, painter) = renderer_with_painter();
+        let mut state = PaintState::new();
+        for color in [
+            Some("#D9EAD3"),
+            None,
+            Some("#FFFF00"),
+            Some("#D9EAD3"),
+            None,
+            Some("#D9EAD3"),
+        ] {
+            let BodyElement::Paragraph(first) = &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            first.properties.as_mut().unwrap().shading = color.map(|color| Shading {
+                fill: Some(color.into()),
+                ..Default::default()
+            });
+            warm.invalidate_paragraph_render_cache_range(0, 0);
+            warm.disable_seek_replay_once();
+            warm.set_incremental_dirty_from(0);
+            warm.mark_paragraph_dirty(0);
+            for replay in [false, true] {
+                warm.mark_full_repaint();
+                painter.clear();
+                warm.render(&document, &options).unwrap();
+                if replay {
+                    assert!(warm.paragraph_render_cache_stats().hits >= 2,
+                        "unchanged shaded paragraphs must remain replayable: {platform:?} {color:?}");
+                }
+                let (mut fresh, fresh_painter) = renderer_with_painter();
+                fresh.render(&document, &options).unwrap();
+                assert_eq!(
+                    layout_difference(
+                        &serde_json::to_value(warm.layout_debug_lines()).unwrap(),
+                        &serde_json::to_value(fresh.layout_debug_lines()).unwrap()
+                    ),
+                    None,
+                    "{platform:?} {color:?} replay={replay}"
+                );
+                assert_eq!(
+                    ink(&painter, &mut state),
+                    ink(&fresh_painter, &mut PaintState::new()),
+                    "{platform:?} {color:?} replay={replay}"
+                );
+                if platform == WordLayoutPlatform::Windows && color == Some("#D9EAD3") {
+                    let mut fill = String::new();
+                    let mut rectangles = Vec::new();
+                    for op in fresh_painter.ops() {
+                        match op {
+                            Op::SetFillStyle(value) => fill = value,
+                            Op::FillRect(x, y, width, height)
+                                if fill.eq_ignore_ascii_case("#D9EAD3") =>
+                            {
+                                rectangles.push((x, y, width, height))
+                            }
+                            _ => {}
+                        }
+                    }
+                    assert_eq!(rectangles.len(), 2);
+                    assert!((rectangles[0].1 + rectangles[0].3 - rectangles[1].1).abs() < 1e-9, "a matching grid-shaded paragraph must close the leading gap: {rectangles:?}");
+                }
+            }
+        }
+    }
+}
+
+#[test]
 fn windows_language_edits_preserve_fresh_font_selection_and_replay() {
     use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
     let _restore = RestoreWordPlatform::mac();

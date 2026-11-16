@@ -3236,6 +3236,7 @@ struct LineNumberState {
 
 #[derive(Clone, Debug)]
 struct CachedParagraphRender {
+    windows_shading_continuation: bool,
     render_hash: ContentHash,
     start_y: f64,
     start_page: usize,
@@ -18317,6 +18318,39 @@ where
         }
         let paragraph_offset = 0usize;
         let current_direction = self.current_text_direction;
+        // Word shades the whole grid pitch after a matching adjacent shaded
+        // paragraph. The initial paragraph alone leaves its leading unpainted.
+        let windows_shading_continuation = if paragraph_style.word_platform
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && paragraph
+                .properties
+                .as_ref()
+                .is_some_and(|p| p.shading.is_some())
+            && doc_grid_has_active_line_grid(self.current_doc_grid.as_ref())
+            && !self.spacing_scan_from_story
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+        {
+            let continues = windows_paragraph_shading_continues_at(
+                self.spacing_scan_body_elements(),
+                body_element_index,
+            );
+            // Only the previous paragraph can change this paint input without
+            // changing our own content hash. Retain normal replay while it
+            // matches; invalidate the dependent paragraph when it changes.
+            let mut cache = self.paragraph_render_cache.borrow_mut();
+            if cache
+                .entries
+                .get(paragraph_index)
+                .and_then(Option::as_ref)
+                .is_some_and(|entry| entry.windows_shading_continuation != continues)
+            {
+                cache.invalidate_at(paragraph_index);
+            }
+            continues
+        } else {
+            false
+        };
 
         let prefix_replay = self
             .prefix_replay_until
@@ -21069,6 +21103,7 @@ where
                                 !(self.dark_mode_text && is_default_page_background_shading(c))
                             })
                         }),
+                    windows_shading_continuation,
                     paragraph_box_borders
                         .and_then(|borders| {
                             resolve_paragraph_box_borders(
@@ -21447,6 +21482,7 @@ where
                 self.paragraph_render_cache.borrow_mut().insert(
                     paragraph_index,
                     CachedParagraphRender {
+                        windows_shading_continuation,
                         render_hash,
                         start_y: cache_start_y,
                         start_page: cache_start_page,
@@ -23297,6 +23333,7 @@ where
         exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
         paragraph_shading: Option<ShadingPaint>,
+        windows_shading_continuation: bool,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
         commands_out: Option<&mut Vec<DrawCommand>>,
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
@@ -24759,12 +24796,14 @@ where
                     // first-line indent. Only the first grid line omits its
                     // leading blank area; later lines shade the whole pitch.
                     let padding = points_to_px(1.44);
-                    let first_leading =
-                        if line_index == 0 && paragraph_style.word_grid_line_sizing.is_some() {
-                            top_leading.max(0.0)
-                        } else {
-                            0.0
-                        };
+                    let first_leading = if line_index == 0
+                        && !windows_shading_continuation
+                        && paragraph_style.word_grid_line_sizing.is_some()
+                    {
+                        top_leading.max(0.0)
+                    } else {
+                        0.0
+                    };
                     (
                         paragraph_base_x + paragraph_style.first_line_indent.min(0.0) - padding,
                         top + first_leading,
@@ -41737,6 +41776,48 @@ fn paragraph_border_box_continues_at(elements: &[BodyElement], upper_index: usiz
     adjacent_paragraphs(elements, upper_index).is_some_and(|(upper, lower)| {
         word_paragraphs_share_border_box(upper.properties.as_ref(), lower.properties.as_ref())
     })
+}
+
+fn windows_paragraph_shading_continues_at(elements: &[BodyElement], lower_index: usize) -> bool {
+    let Some((upper, lower)) = lower_index
+        .checked_sub(1)
+        .and_then(|index| adjacent_paragraphs(elements, index))
+    else {
+        return false;
+    };
+    let (Some(upper), Some(lower)) = (upper.properties.as_ref(), lower.properties.as_ref()) else {
+        return false;
+    };
+    if upper.borders.is_some() || lower.borders.is_some() || lower.page_break_before == Some(true) {
+        return false;
+    }
+    let Some(shading) = lower.shading.as_ref().filter(|shading| {
+        shading.pattern().is_none()
+            && if shading
+                .val
+                .as_deref()
+                .is_none_or(|val| val.eq_ignore_ascii_case("clear"))
+            {
+                // The common clear mask returns fill.clone(); presence is
+                // enough here and avoids allocating on every cached repaint.
+                shading.fill.is_some()
+            } else {
+                shading.resolved_background_color().is_some()
+            }
+    }) else {
+        return false;
+    };
+    upper.shading.as_ref() == Some(shading)
+        && upper.spacing.as_ref().is_none_or(|spacing| {
+            spacing.after.unwrap_or(0.0) == 0.0
+                && spacing.after_lines.unwrap_or(0.0) == 0.0
+                && !spacing.after_auto
+        })
+        && lower.spacing.as_ref().is_none_or(|spacing| {
+            spacing.before.unwrap_or(0.0) == 0.0
+                && spacing.before_lines.unwrap_or(0.0) == 0.0
+                && !spacing.before_auto
+        })
 }
 
 /// `(lower drops its space before, upper drops its space after)` for the
@@ -65953,6 +66034,7 @@ mod tests {
             .entries
             .resize(11, None);
         renderer.paragraph_render_cache.borrow_mut().entries[9] = Some(CachedParagraphRender {
+            windows_shading_continuation: false,
             render_hash: ContentHash::new(9),
             start_y: p9_start_y,
             start_page: page_0idx,
@@ -66932,6 +67014,7 @@ mod tests {
             .entries
             .resize(1, None);
         renderer.paragraph_render_cache.borrow_mut().entries[0] = Some(CachedParagraphRender {
+            windows_shading_continuation: false,
             render_hash: ContentHash::new(1),
             start_y: 0.0,
             start_page: 2,
@@ -72575,6 +72658,7 @@ mod tests {
         renderer.paragraph_render_cache.borrow_mut().insert(
             0,
             CachedParagraphRender {
+                windows_shading_continuation: false,
                 render_hash: ContentHash::new(42),
                 start_y: 100.0,
                 start_page: 1,
@@ -72645,6 +72729,7 @@ mod tests {
             let mut cache = renderer.paragraph_render_cache.borrow_mut();
             cache.entries.resize(2, None);
             cache.entries[0] = Some(CachedParagraphRender {
+                windows_shading_continuation: false,
                 render_hash: ContentHash::new(0xAAA),
                 start_y: 0.0,
                 start_page: 1,
@@ -72664,6 +72749,7 @@ mod tests {
                 hyperlink_regions: Vec::new(),
             });
             cache.entries[1] = Some(CachedParagraphRender {
+                windows_shading_continuation: false,
                 render_hash: ContentHash::new(0xBBB),
                 start_y: 20.0,
                 start_page: 1,
@@ -72792,6 +72878,7 @@ mod tests {
             cache.entries.resize(4, None);
             for idx in 0..4 {
                 cache.entries[idx] = Some(CachedParagraphRender {
+                    windows_shading_continuation: false,
                     render_hash: ContentHash::new(idx as u64 + 1),
                     start_y: idx as f64 * 20.0,
                     start_page: 1,

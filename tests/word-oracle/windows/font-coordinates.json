@@ -15591,6 +15591,120 @@
       "glyph_count": 1143,
       "public_test_password": null,
       "no_visible_vector_ink": true
+    },
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size12-bold-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014510298Z-ff94084d/capture.json",
+        "sha256": "2c161a836ecfd59f6c8104ebc41262d0da4117035eb4abd5fc0c10f82add2014"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014510298Z-ff94084d/word-emf-reference.json",
+        "sha256": "81e20572a28b2f87f702a2c6307508d6a11eeffde2af44019fcf507a10954cf5"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-styled-arial-pair-matrix-size12-bold-compat15.docx",
+        "sha256": "e668194bd63db0b9767e58cec03af090d426818e81639aef2de28669510b3836"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 1143,
+      "public_test_password": null,
+      "solid_paragraph_background": true
+    },
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size12-bolditalic-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014514370Z-9cdf250c/capture.json",
+        "sha256": "a308c5825c480e529dc047c0beed1fb6ce1eb8f29e29a0c88ead108738719e53"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014514370Z-9cdf250c/word-emf-reference.json",
+        "sha256": "f3081abd7eeb963b923f4ac12fe1da946e31672b68f5ab735e4dc65a63e00498"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-styled-arial-pair-matrix-size12-bolditalic-compat15.docx",
+        "sha256": "ae6a9da1973684a5b5fa1d3861ef54ee4f0a1bf03f360f60bf956df20b7cade7"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 1143,
+      "public_test_password": null,
+      "solid_paragraph_background": true
+    },
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size12-italic-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014517575Z-4987d3b4/capture.json",
+        "sha256": "c321619b440cef04c89862b6462238b7a724aee1e7dacdd5972ab31700e18545"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014517575Z-4987d3b4/word-emf-reference.json",
+        "sha256": "4539d4c7a49de393741950211f2cdd6d544ea6c4089208f9d3f3c5d371889d5f"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-styled-arial-pair-matrix-size12-italic-compat15.docx",
+        "sha256": "60dac26c10088ed129b70ef3761db60737fa62b539471eefb21b70b9d3dfff02"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 1143,
+      "public_test_password": null,
+      "solid_paragraph_background": true
+    },
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size24-bold-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014519402Z-ee5ca13b/capture.json",
+        "sha256": "60a6350cc7a3b58c2c780829ea2b1a74b906aa5ecfc864517243d90202730bdf"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014519402Z-ee5ca13b/word-emf-reference.json",
+        "sha256": "f36a55777929edcf4eda529bebf4f9c7bc03446e08619e79af1f6d94b9a7f803"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-styled-arial-pair-matrix-size24-bold-compat15.docx",
+        "sha256": "c420974c56dcc3a7f6f0c9cbd4e2920e763c8ebc05fa9eb43f57119b280ce8f3"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 1143,
+      "public_test_password": null,
+      "solid_paragraph_background": true
+    },
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size24-bolditalic-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014522876Z-48850faf/capture.json",
+        "sha256": "03e688d1d8b7bf5f55f92434a01bcc8bdcacde067dfffa96b89b5600232e55d9"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014522876Z-48850faf/word-emf-reference.json",
+        "sha256": "67de1fbf7950833c0f0d0417ab19e8c0362912b09f656e6552f8f5376f4f850e"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-styled-arial-pair-matrix-size24-bolditalic-compat15.docx",
+        "sha256": "1e8b0adf09c838808ecce920445f93f4a44a7f45adbc855805b1fb7bc4ea9329"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 1143,
+      "public_test_password": null,
+      "solid_paragraph_background": true
+    },
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size24-italic-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014526130Z-f7659573/capture.json",
+        "sha256": "cc56a12316838ccec9ab49688f061f07b80476e534690cdccdc64631446795c8"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261116T014526130Z-f7659573/word-emf-reference.json",
+        "sha256": "63cff7328ede492382f981a848e9f1efc83c26772099b4f3e42df706fcc730ca"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-styled-arial-pair-matrix-size24-italic-compat15.docx",
+        "sha256": "2130e03337bf63bf640b1c769f19103a51c9b8bb70fdc87fad788c7580fe6f30"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 1143,
+      "public_test_password": null,
+      "solid_paragraph_background": true
     }
   ]
 }
