@@ -10,6 +10,20 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_independent_nonhalf_and_halfwrap_sources_reproduce_word_originals(self):
+        from generate_windows_nonhalf_cell_probes import generate as nonhalf
+        from generate_windows_printer_halfwrap_probes import generate as halfwrap
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        for generator, count in [(nonhalf, 24), (halfwrap, 6)]:
+            with self.subTest(generator=generator.__module__):
+                with tempfile.TemporaryDirectory() as directory:
+                    output = Path(directory) / 'controls'
+                    self.assertEqual(generator(output), count)
+                    self.assertEqual(len(list(output.glob('*.docx'))), count)
+                    for source in output.glob('*.docx'):
+                        self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(),
+                                         source.name)
+
     def test_printer_context_and_wrap_controls_reproduce_original_captured_sources(self):
         from generate_windows_printer_context_probes import generate as generate_context
         sources = ROOT / 'tests/word-oracle/windows/observations/sources'
@@ -238,8 +252,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 996)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 556)
+        self.assertEqual(len(verify()), 1010)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 570)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf

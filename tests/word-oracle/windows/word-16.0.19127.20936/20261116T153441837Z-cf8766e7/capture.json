@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T153441837Z-cf8766e7",
+  "captured_at_utc": "2026-11-16T15:34:42.0867834Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-cjk-cell-mincho-ideographic-gap-size15p5-regular-compat15",
+      "source": "tmp\\w16-bx-nonhalf-cell-input-snapshots\\word-windows-cjk-cell-mincho-ideographic-gap-size15p5-regular-compat15.docx",
+      "sha256": "78f1c86f559229419cd7caf28e01d34defa6771a3424bd4bcb216303419b0988",
+      "pdf": "word-windows-cjk-cell-mincho-ideographic-gap-size15p5-regular-compat15.pdf",
+      "pdf_sha256": "540e6d6f137b71db1fdd537a3a85f0765af942bb57968f1a16840866f65138d8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-mincho-ideographic-gap-size15p5-regular-compat15.page-001.emf",
+          "sha256": "1fa74deb9ca3d3dfa11566ed79fa77180aadfc86bc93afbdaf97a3d3b45c83e4",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

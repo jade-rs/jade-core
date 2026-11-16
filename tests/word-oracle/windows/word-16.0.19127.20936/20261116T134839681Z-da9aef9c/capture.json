@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T134839681Z-da9aef9c",
+  "captured_at_utc": "2026-11-16T13:48:39.6861114Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-printer-halfwrap-size16p5-width330-compat15",
+      "source": "w16-bu-printer-halfwrap-input-snapshots\\word-windows-printer-halfwrap-size16p5-width330-compat15.docx",
+      "sha256": "fef0e2c27f89a594a74f85f4ebb85a332ebc7aa075aa2bc62481275d260d8996",
+      "pdf": "word-windows-printer-halfwrap-size16p5-width330-compat15.pdf",
+      "pdf_sha256": "3753a9b3387f9a482e9f3b81df570aaa5ccc135fc49025f181891149b4423096",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-halfwrap-size16p5-width330-compat15.page-001.emf",
+          "sha256": "98fa9e508a2d8abc0fb7e5d5f90215d38d830416cf3d63b114d027b716bdbd0a",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

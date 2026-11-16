@@ -45,9 +45,10 @@ advances for painting. Fixed-pair classification uses that same realized cell
 instead of asking a substitute font for unrelated pair kerning. Cell classification
 is reused once per grapheme; cached zero corrections skip cell-specific work.
 
-There are now 996 typography cases / 157,351 origins / 556 shaded cases and 1,392
-release inputs. The archive retains 965 captures / 1,876 documents / 1,829 source
-byte groups. The 91 new typography assertions include 75 sources from these new
+The printer-cell correction was introduced with 996 typography cases / 157,351
+origins / 556 shaded cases and 1,392 release inputs. Its archive retained 965
+captures / 1,876 documents / 1,829 source byte groups. Subsequent independent
+controls and current totals are documented in `NONHALF_CELL_PROBES.md`. The 91 new typography assertions include 75 sources from these new
 captures and 16 previously preserved sources. Byte-identical recaptures remain
 archived aliases instead of duplicate typography assertions.
 
