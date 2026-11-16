@@ -1280,7 +1280,82 @@ struct CachedCjkMetrics {
     descriptors: [Rc<str>; 4],
     observed_em_px: [Option<f64>; 4],
     compatible_em_px: [Option<f64>; 4],
-    windows_cjk_extra_px: std::cell::OnceCell<[[f64; 3]; 4]>,
+    windows_cjk_extra_px: std::cell::OnceCell<[WindowsCjkAdvances; 4]>,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum WindowsCjkAdvances {
+    None,
+    SyntheticBold(f64),
+    Printer { full: f64, half: f64 },
+}
+
+impl WindowsCjkAdvances {
+    fn from_cells(cells: [f64; 3]) -> Self {
+        if cells == [0.0; 3] {
+            Self::None
+        } else if cells[0] == cells[2] {
+            Self::Printer {
+                full: cells[0],
+                half: cells[1],
+            }
+        } else {
+            debug_assert!(cells[0] == cells[1] && cells[2] == 0.0);
+            Self::SyntheticBold(cells[0])
+        }
+    }
+
+    fn cell(self, index: usize) -> f64 {
+        match self {
+            Self::None => 0.0,
+            Self::SyntheticBold(extra) => {
+                if index == 2 {
+                    0.0
+                } else {
+                    extra
+                }
+            }
+            Self::Printer { full, half } => {
+                if index == 1 {
+                    half
+                } else {
+                    full
+                }
+            }
+        }
+    }
+
+    fn realize(self, text: &str, known_cell: Option<f64>) -> (f64, f64) {
+        match self {
+            Self::None => (0.0, 0.0),
+            Self::SyntheticBold(extra) => (
+                if text.chars().all(char::is_whitespace) {
+                    0.0
+                } else {
+                    extra
+                },
+                0.0,
+            ),
+            Self::Printer { full, half } => {
+                let extra = if known_cell == Some(1.0) {
+                    full
+                } else if known_cell == Some(0.5) {
+                    if text == " " {
+                        0.0
+                    } else {
+                        half
+                    }
+                } else if text.chars().all(char::is_whitespace) {
+                    0.0
+                } else {
+                    full
+                };
+                // Word's exact-width controls fit nominal cells, then paint
+                // their realized printer advances. Synthetic ink is separate.
+                (extra, extra)
+            }
+        }
+    }
 }
 
 /// Runtime style metadata exposed to `LineWrapContext`.
@@ -1547,19 +1622,39 @@ impl ResolvedRunStyle {
 
     #[inline(always)]
     pub(crate) fn windows_cjk_extra_px(&self, descriptor: &str, cell: usize) -> f64 {
+        self.windows_cjk_advances(descriptor).cell(cell)
+    }
+
+    #[inline(always)]
+    pub(crate) fn windows_cjk_realized_advance_px(
+        &self,
+        descriptor: &str,
+        text: &str,
+        known_cell: Option<f64>,
+    ) -> (f64, f64) {
+        self.windows_cjk_advances(descriptor)
+            .realize(text, known_cell)
+    }
+
+    #[inline(always)]
+    fn windows_cjk_advances(&self, descriptor: &str) -> WindowsCjkAdvances {
         let cached = self.cjk_metrics();
         let extras = cached.windows_cjk_extra_px.get_or_init(|| {
             cached.descriptors.each_ref().map(|descriptor| {
-                crate::line_metrics::word_windows_cjk_extra_advances_px(descriptor)
+                WindowsCjkAdvances::from_cells(
+                    crate::line_metrics::word_windows_cjk_extra_advances_px(descriptor),
+                )
             })
         });
         for (key, extra) in cached.descriptors.iter().zip(extras) {
             if std::ptr::eq(key.as_ref(), descriptor) {
-                return extra[cell];
+                return *extra;
             }
         }
         // Public slot replacement must not reuse facts for the old allocation.
-        crate::line_metrics::word_windows_cjk_extra_advances_px(descriptor)[cell]
+        WindowsCjkAdvances::from_cells(crate::line_metrics::word_windows_cjk_extra_advances_px(
+            descriptor,
+        ))
     }
 
     #[inline]

@@ -29472,6 +29472,305 @@
           "opened_filename": "word-windows-ms-font-alias-ms-mincho-size10p5-regular-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131901956Z-2cce32c4.zip",
+      "archive_sha256": "775a6765424a976ad98b72185ce47396ab463e1bb5c8e341852de2c8f74f7885",
+      "capture_id": "20261116T131901956Z-2cce32c4",
+      "capture_sha256": "2cc023082f7ddc98e459f82b85d2dc4e52b193d01d725dd46e2724eebe75ad2e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-en-fe0-grid0-size10p5-compat15",
+          "source_sha256": "660ba30a22f0cef7b41933ea6dd4f506aad1da0bf2383ec1473217ad7b694050",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-en-fe0-grid0-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-en-fe0-grid0-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131904599Z-3420883e.zip",
+      "archive_sha256": "9f0a00f7f51d50af08e7223d6f4ddeb609f70520c758b406dc21159ce383f2f5",
+      "capture_id": "20261116T131904599Z-3420883e",
+      "capture_sha256": "97e0ca77bccbf93c525a6be05c189be4e3f9594a6ed9aa0aa406d4f56aa4c418",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-en-fe0-grid1-size10p5-compat15",
+          "source_sha256": "7cab6fb0977d6a14be0ab708ba8df23765c0cceffb5ae5941e1dd6812d77f05f",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-en-fe0-grid1-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-en-fe0-grid1-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131907414Z-b20615df.zip",
+      "archive_sha256": "c37e145a0b66ce79fd0eda9f988bb60de4d4cba0323efa2fa491ef02e2a41952",
+      "capture_id": "20261116T131907414Z-b20615df",
+      "capture_sha256": "fd8abfc3e7f6218964e03ec767636b30440666c2c7ec2223be082b7ba484af42",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-en-fe1-grid0-size10p5-compat15",
+          "source_sha256": "b53bc95a843407be1c657cdf7cb957f9332a3ebc4fb04d37452fa08e7b95b3d6",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-en-fe1-grid0-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-en-fe1-grid0-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131910295Z-65432de4.zip",
+      "archive_sha256": "12afbbc1fc024cfcf096d02b5a2e954b130f87f5429f5956d1a9e0b43391188a",
+      "capture_id": "20261116T131910295Z-65432de4",
+      "capture_sha256": "d6067b485f6bb497977405f4b468738595856c0c39dfb7dd9d71d2d68a4aa765",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-en-fe1-grid1-size10p5-compat15",
+          "source_sha256": "9b9a4dd1da643cf3608ea9142f70cb5404208dc180f181e8081089ce0fcff75f",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-en-fe1-grid1-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-en-fe1-grid1-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131913097Z-0c0067b4.zip",
+      "archive_sha256": "963f1dba0bbc5ab4fc19eecbf6b4d648ad0369aac1e97ed598a774f0046eb6ca",
+      "capture_id": "20261116T131913097Z-0c0067b4",
+      "capture_sha256": "78d952cbcffa990fcb3ca384e9970b37334a688f520b9d889d8d37fb143ee5af",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-ja-fe0-grid0-size10p5-compat15",
+          "source_sha256": "cc4ca1a3b6bffc161a844cf7f112f2c0235cecf9f98fbc4b3496a6d13d199bf2",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-ja-fe0-grid0-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-ja-fe0-grid0-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131916832Z-6f867557.zip",
+      "archive_sha256": "d4a39343a87d5d24a73714de27da9203344071b23db93df05f382e3ae78a89bd",
+      "capture_id": "20261116T131916832Z-6f867557",
+      "capture_sha256": "4fc247ec6691bc1c6e022f278f2d537756afa3274c0c70a33456121a0a3deff1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-ja-fe0-grid1-size10p5-compat15",
+          "source_sha256": "df2dfb12766a0a851ecd08ebfcce4e960cf7a823f9de999f07ed12a93df1d95f",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-ja-fe0-grid1-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-ja-fe0-grid1-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131919707Z-d58bd3c3.zip",
+      "archive_sha256": "dd8d7e5341de4861d0d56d6363935c6d1a99a38a5e88b043866fea5fad7096a8",
+      "capture_id": "20261116T131919707Z-d58bd3c3",
+      "capture_sha256": "5b76ec882f59cabb95b66c11b29a6a8c3025e2110516830dd18f81c1730e1d32",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-ja-fe1-grid0-size10p5-compat15",
+          "source_sha256": "7788591cf5709b872ae0d64b16bb97d2fd97f5fb53b9b05e88791ffc31ccb4d5",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-ja-fe1-grid0-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-ja-fe1-grid0-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T131921071Z-f2ceada8.zip",
+      "archive_sha256": "01329363858bb0f6e83be37c9bb21bc7ddd6fdf21cc44654de04a596a20e1a79",
+      "capture_id": "20261116T131921071Z-f2ceada8",
+      "capture_sha256": "45aa34f2b6cf79217d0ed206c6b8dc80294c814c65916dbf5cd6eeaafb4490a9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-context-ja-fe1-grid1-size10p5-compat15",
+          "source_sha256": "e7459703adb80f022ff2408e806f33463090822f0f5ca3fe89eb6fd417e3ed28",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-context-ja-fe1-grid1-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-context-ja-fe1-grid1-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T132312179Z-86dc1009.zip",
+      "archive_sha256": "4abb4dcf21e920adbf17cfa48ff70c92358a264fd9f0e8c648904ee3206c302c",
+      "capture_id": "20261116T132312179Z-86dc1009",
+      "capture_sha256": "18d995ac30cc79fb6af2fd6433370582f1abbdc6523aaf9813e805fd474cde6f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-wrap-width419p9-size10p5-compat15",
+          "source_sha256": "e17bf7515b0b877b6a67ec3c4f2cf52e4e1f8d78f57300d05644a3cd5df9903e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-wrap-width419p9-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-wrap-width419p9-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T132316039Z-053e6396.zip",
+      "archive_sha256": "4d15115c132b5e800abd7f77e5a7cdf7b0b9d9e31f83825163d7556cc47fb774",
+      "capture_id": "20261116T132316039Z-053e6396",
+      "capture_sha256": "b25c21dbd74bdcb8c53d57602dfa45ccc1e07fe5cea79bb334789e4af1c44cd4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-wrap-width420-size10p5-compat15",
+          "source_sha256": "9bf418986baa39afa94436a7bca55a8a6e17ec7a9c873a3ba77d40c8e9c8aa28",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-wrap-width420-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-wrap-width420-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T132319028Z-5090250b.zip",
+      "archive_sha256": "42d5140aae3c5b7051384745b1923ba78c62eef279719df568ac3368235250bc",
+      "capture_id": "20261116T132319028Z-5090250b",
+      "capture_sha256": "091d784c80d0551d4e50e69191a89b07a20ea6395247bfb5285fc691f8f73db9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-wrap-width420p1-size10p5-compat15",
+          "source_sha256": "b419313914b3eb3b7312bfb554d8af558761ccb2884d19f639bce3998d9cf617",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-wrap-width420p1-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-wrap-width420p1-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T132321924Z-40135ac2.zip",
+      "archive_sha256": "e8f313f2d807f7061b5c59ca4be6f4c0f9485a640c0b5af6407b2578efdcf905",
+      "capture_id": "20261116T132321924Z-40135ac2",
+      "capture_sha256": "25b83063f987eba8bac5f35e58f0680f018481b436ce012d276abe802f26b8c3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-wrap-width420p3-size10p5-compat15",
+          "source_sha256": "f1da76c0db0ab4cfef65beaacc4bede04bcf5b1407bef618badf6718fab30b1f",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-wrap-width420p3-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-wrap-width420p3-size10p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T132324868Z-b1eec387.zip",
+      "archive_sha256": "7c52a6668860e31f1b4ee2c78f969e7d32bcb1381c670069be3d0f655d95cef5",
+      "capture_id": "20261116T132324868Z-b1eec387",
+      "capture_sha256": "640d2f01e5f2af773ccd647fa1c97c664c076511c2fe222850e53566499e944f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-wrap-width420p5-size10p5-compat15",
+          "source_sha256": "62a43f3686281a17a1ed814799bf2f63a9d69867d92fd8f76885aac2c217b356",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-wrap-width420p5-size10p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-wrap-width420p5-size10p5-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

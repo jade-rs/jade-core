@@ -5590,6 +5590,58 @@
     {
       "fixture": "word-windows-ms-font-alias-ms-mincho-size10p5-regular-compat15",
       "docx_sha256": "cdef1da48f432ece948390dbaf00601157bd2ac06b7f419d821df477b79a558c"
+    },
+    {
+      "fixture": "word-windows-printer-context-en-fe0-grid0-size10p5-compat15",
+      "docx_sha256": "660ba30a22f0cef7b41933ea6dd4f506aad1da0bf2383ec1473217ad7b694050"
+    },
+    {
+      "fixture": "word-windows-printer-context-en-fe0-grid1-size10p5-compat15",
+      "docx_sha256": "7cab6fb0977d6a14be0ab708ba8df23765c0cceffb5ae5941e1dd6812d77f05f"
+    },
+    {
+      "fixture": "word-windows-printer-context-en-fe1-grid0-size10p5-compat15",
+      "docx_sha256": "b53bc95a843407be1c657cdf7cb957f9332a3ebc4fb04d37452fa08e7b95b3d6"
+    },
+    {
+      "fixture": "word-windows-printer-context-en-fe1-grid1-size10p5-compat15",
+      "docx_sha256": "9b9a4dd1da643cf3608ea9142f70cb5404208dc180f181e8081089ce0fcff75f"
+    },
+    {
+      "fixture": "word-windows-printer-context-ja-fe0-grid0-size10p5-compat15",
+      "docx_sha256": "cc4ca1a3b6bffc161a844cf7f112f2c0235cecf9f98fbc4b3496a6d13d199bf2"
+    },
+    {
+      "fixture": "word-windows-printer-context-ja-fe0-grid1-size10p5-compat15",
+      "docx_sha256": "df2dfb12766a0a851ecd08ebfcce4e960cf7a823f9de999f07ed12a93df1d95f"
+    },
+    {
+      "fixture": "word-windows-printer-context-ja-fe1-grid0-size10p5-compat15",
+      "docx_sha256": "7788591cf5709b872ae0d64b16bb97d2fd97f5fb53b9b05e88791ffc31ccb4d5"
+    },
+    {
+      "fixture": "word-windows-printer-context-ja-fe1-grid1-size10p5-compat15",
+      "docx_sha256": "e7459703adb80f022ff2408e806f33463090822f0f5ca3fe89eb6fd417e3ed28"
+    },
+    {
+      "fixture": "word-windows-printer-wrap-width419p9-size10p5-compat15",
+      "docx_sha256": "e17bf7515b0b877b6a67ec3c4f2cf52e4e1f8d78f57300d05644a3cd5df9903e"
+    },
+    {
+      "fixture": "word-windows-printer-wrap-width420-size10p5-compat15",
+      "docx_sha256": "9bf418986baa39afa94436a7bca55a8a6e17ec7a9c873a3ba77d40c8e9c8aa28"
+    },
+    {
+      "fixture": "word-windows-printer-wrap-width420p1-size10p5-compat15",
+      "docx_sha256": "b419313914b3eb3b7312bfb554d8af558761ccb2884d19f639bce3998d9cf617"
+    },
+    {
+      "fixture": "word-windows-printer-wrap-width420p3-size10p5-compat15",
+      "docx_sha256": "f1da76c0db0ab4cfef65beaacc4bede04bcf5b1407bef618badf6718fab30b1f"
+    },
+    {
+      "fixture": "word-windows-printer-wrap-width420p5-size10p5-compat15",
+      "docx_sha256": "62a43f3686281a17a1ed814799bf2f63a9d69867d92fd8f76885aac2c217b356"
     }
   ]
 }
