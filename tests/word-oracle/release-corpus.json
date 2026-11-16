@@ -5014,6 +5014,66 @@
     {
       "fixture": "word-windows-styled-arial-pair-matrix-size24-italic-compat15",
       "docx_sha256": "2130e03337bf63bf640b1c769f19103a51c9b8bb70fdc87fad788c7580fe6f30"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size10-regular-compat15",
+      "docx_sha256": "c301c25c8718cce9e10eb37cdb71d91f16d2ac8ef2f29152618adb6f38204da0"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size11-regular-compat15",
+      "docx_sha256": "3205ab2ac742d94606c66d0059dc2975202f06c6f1f8ad228e11d8698e5ff8c7"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size13-regular-compat15",
+      "docx_sha256": "394123f3bc975eccb0208785f24f139857ff9582ab7afc4e2d6da0ef75cd7cd1"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size13p5-regular-compat15",
+      "docx_sha256": "f28d1e1bf47935b8aeb08db58c83d71aea68ecb6d674dd1a51c2897770f4c9aa"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size14-regular-compat15",
+      "docx_sha256": "ba742ea4a4dbe3da51b4a3140cb06a107b92e35c8645484cdc50e17b99a19330"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size16-regular-compat15",
+      "docx_sha256": "0a87c076e85d13223cbd7b991d5a8bb99d11fd47cc1ba1f1ab4daa3954cbb9ca"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size17-regular-compat15",
+      "docx_sha256": "d79c41374bd563357dcdab8832321066fbc6d63ca8c453c35a111eaae9618c4c"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size19-regular-compat15",
+      "docx_sha256": "dffd770cb761e019f74b112c3087665651f5346ba0b5ec19458531b34a38fdd1"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size19p5-regular-compat15",
+      "docx_sha256": "ab9c2f04a9ebba6fdfa46bae83fdc9bcb91076b11f2ed897332e237be11faaa8"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size22-regular-compat15",
+      "docx_sha256": "5b9f3811821b4ee1380ce64eb4f2bcc26c77e1e712501c044afa31aa6ad88f96"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size23-regular-compat15",
+      "docx_sha256": "3128e5f45bb47dd2ae66f310ad79160dbe4f14af456a12859686073da2edeb42"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size7-regular-compat15",
+      "docx_sha256": "03bdb8f9602f9e250a139dcf1306c4c73a5b66084fb7fb64ef879557f5d6070a"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size7p5-regular-compat15",
+      "docx_sha256": "903c6dce4ce2b7c2dc40aaab35b7b058e62cd3a91d37ed8da336f4631278de1e"
+    },
+    {
+      "fixture": "word-windows-mincho-printer-halfpixel-size8-regular-compat15",
+      "docx_sha256": "29e564fb457ed8061ff59735fdb5e017da973eb368f3fd37d498b1d2856ecf74"
+    },
+    {
+      "fixture": "word-windows-mincho-wide-a3-size12-regular-compat15",
+      "docx_sha256": "985c94b8bd994ba5e6f8a54792a83fa640b95f107eabba1bd10a2579912e9e18"
     }
   ]
 }

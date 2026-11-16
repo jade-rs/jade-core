@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T055639798Z-4d48ff82",
+  "captured_at_utc": "2026-11-16T05:56:39.8025936Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-mincho-printer-halfpixel-size19-regular-compat15",
+      "source": "w16-x-mincho-halfpixel-input-snapshots\\word-windows-mincho-printer-halfpixel-size19-regular-compat15.docx",
+      "sha256": "dffd770cb761e019f74b112c3087665651f5346ba0b5ec19458531b34a38fdd1",
+      "pdf": "word-windows-mincho-printer-halfpixel-size19-regular-compat15.pdf",
+      "pdf_sha256": "0e4bf4eeaab767e48064c670e5728011b03825f098e4d8e3c9c01982d2cc195c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-printer-halfpixel-size19-regular-compat15.page-001.emf",
+          "sha256": "aa367d657938f49c97866f276b69f3cd03ec40b8a8e6fcf2751bb891f07843b2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
