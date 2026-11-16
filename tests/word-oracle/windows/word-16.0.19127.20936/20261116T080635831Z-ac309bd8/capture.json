@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T080635831Z-ac309bd8",
+  "captured_at_utc": "2026-11-16T08:06:35.8361106Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-yu-justify-tier-left-size10p5-width167-compat15",
+      "source": "..\\w16-al-justify-tier-left-input-snapshots\\word-windows-yu-justify-tier-left-size10p5-width167-compat15.docx",
+      "sha256": "5878ab7b4438723ad5d5f3268e524afa3d330e06f4f3d9398a1c9d1adcb5bc62",
+      "pdf": "word-windows-yu-justify-tier-left-size10p5-width167-compat15.pdf",
+      "pdf_sha256": "cc55d0ad6e8ff4697f3e4cc09aa43f0335233b87ef42c0ff1e4550427f7f0a66",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-yu-justify-tier-left-size10p5-width167-compat15.page-001.emf",
+          "sha256": "19092917dd630e20b1795a5a64a454cd41c942dc81a36ee786b582dfe8f70c6d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T065617562Z-31bac2cb",
+  "captured_at_utc": "2026-11-16T06:56:17.5742479Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-wide-a3-yu-ascii-size10p5-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w16-ae-yu-ascii-printer-input-snapshots\\word-windows-wide-a3-yu-ascii-size10p5-compat15.docx",
+      "sha256": "41a1f50683d6a49ed109fd57fd3950490e647db8713ccb9ecdbcf375cecf945c",
+      "pdf": "word-windows-wide-a3-yu-ascii-size10p5-compat15.pdf",
+      "pdf_sha256": "ed0d650dd2657675eed54b3182580290b6f50d14369354017439ec333a791cb2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-wide-a3-yu-ascii-size10p5-compat15.page-001.emf",
+          "sha256": "d72f3e00f83c287e6319df7fcede0ce4f66b7469e5ce02625e21a9f42ff5cc4c",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

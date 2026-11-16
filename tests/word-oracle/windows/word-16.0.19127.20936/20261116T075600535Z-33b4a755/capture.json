@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T075600535Z-33b4a755",
+  "captured_at_utc": "2026-11-16T07:56:00.5396889Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-yu-justify-tier-size20-width316-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w16-ak-justify-tier-boundary-input-snapshots\\word-windows-yu-justify-tier-size20-width316-compat15.docx",
+      "sha256": "c8b5e1a5a4c4bd2c1a01c3a0592d9c28388b1d0af0d76c5b47a78c38b32fbf92",
+      "pdf": "word-windows-yu-justify-tier-size20-width316-compat15.pdf",
+      "pdf_sha256": "599300073dfab41d25a24c6e909f1aae6f576d909dad93eb1c3e13b3b4dae17f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-yu-justify-tier-size20-width316-compat15.page-001.emf",
+          "sha256": "9a7ce8216d30049d98214a9a70010960914dc67363326498c50a4c5f0a7b03fc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

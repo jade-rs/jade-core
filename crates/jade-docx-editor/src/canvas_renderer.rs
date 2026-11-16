@@ -23848,6 +23848,7 @@ where
                     let mut opportunity = WindowsMixedJustificationOpportunity {
                         space_capacity_px: 0.0,
                         auto_space_capacity_px: 0.0,
+                        inter_character_capacity_px: 0.0,
                     };
                     if left.2 == " " {
                         let balanced = paragraph_style
@@ -23882,6 +23883,14 @@ where
                                 )))
                     {
                         continue;
+                    }
+                    // Balanced spaces have zero initial capacity too; they must
+                    // not inherit the priority of an ideographic boundary.
+                    if left.2 != " "
+                        && opportunity.space_capacity_px == 0.0
+                        && opportunity.auto_space_capacity_px == 0.0
+                    {
+                        opportunity.inter_character_capacity_px = left.4.max(right.4) / 64.0;
                     }
                     owners.push((left.0, left.1));
                     opportunities.push(opportunity);

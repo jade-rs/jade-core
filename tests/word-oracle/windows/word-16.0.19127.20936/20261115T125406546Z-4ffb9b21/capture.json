@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T125406546Z-4ffb9b21",
+  "captured_at_utc": "2026-11-15T12:54:06.5504783Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-fallback-residual-calibri-ms-size12-both-balance0-compat15",
+      "source": "tmp\\w15-u-fallback-residual-input-snapshots\\word-windows-edge-fallback-residual-calibri-ms-size12-both-balance0-compat15.docx",
+      "sha256": "d9971a013b84c2cae82eaaabf8f14322613ff708cd4991fbfed3be63c1e472fa",
+      "pdf": "word-windows-edge-fallback-residual-calibri-ms-size12-both-balance0-compat15.pdf",
+      "pdf_sha256": "694adbe7a8495c84d8cce7b84b3e96bcc6186f051acbe77e8cff30daa840e69f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-fallback-residual-calibri-ms-size12-both-balance0-compat15.page-001.emf",
+          "sha256": "10abb02440dff1fb90430323d5b36df8a565b38551938891d14bc28d4a8c86b6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
