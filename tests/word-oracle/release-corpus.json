@@ -5742,6 +5742,54 @@
     {
       "fixture": "word-windows-yu-nominal-wrap-size20-width320p1-compat15",
       "docx_sha256": "e211a8659999e90e8e504fb4c32edc741c69b79feed6fddf6fe8ea3182e1d4b0"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size11p5-regular-compat15",
+      "docx_sha256": "8e0617a2996dddb51b6c6569be69f224253d7026bff121ade18ebb67c86a13f4"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size12p5-regular-compat15",
+      "docx_sha256": "a8b7c919626b994119224ff6caca44f1eaef337ba50a4f859b3b0dd331498b41"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size14p5-regular-compat15",
+      "docx_sha256": "3ad0af25c59c7e4d99a1aa6d49be76ad9f6b1881019427e2aa600c4f2636eccb"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size15p5-regular-compat15",
+      "docx_sha256": "7f2226fc48b64de39cd2375ecfd516855a3d633e771eea1c74a49abcda7f0583"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size17p5-regular-compat15",
+      "docx_sha256": "5eb894f7ae8017418632d5d7a906a7a279595fcdc183db637ea5087e0e59ffa4"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size20-regular-compat15",
+      "docx_sha256": "b331f5f8e6c7b544b4d27bdbfdeacb33529e99be0ca6ab5448cecd11f46e3d6a"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size22-regular-compat15",
+      "docx_sha256": "74c7937495c52ac71ef651e28b9c496e886bba96aa3d8433ae01c3f7d2afe6c7"
+    },
+    {
+      "fixture": "word-windows-yu-wide-halfpoint-size8p5-regular-compat15",
+      "docx_sha256": "d525ab2143af4d3d048f2e4f79606c0e896eb1d1ef043cca50f46e79b2eb55b6"
+    },
+    {
+      "fixture": "word-windows-cjk-cell-yu-ideographic-gap-size12p5-regular-compat15",
+      "docx_sha256": "7d4e12331908f1ed33a5928cfbb0ee4c9efc0a03a14b6fe1dcd02adc5e3cb2ca"
+    },
+    {
+      "fixture": "word-windows-cjk-cell-yu-ideographic-gap-size14p5-regular-compat15",
+      "docx_sha256": "42d7ff46336f78571ada2ba2f64a6d5ba63c805aee04271ef8dbec6c787cb715"
+    },
+    {
+      "fixture": "word-windows-cjk-cell-yu-ideographic-gap-size17p5-regular-compat15",
+      "docx_sha256": "d14e4bb76a880ccd2e8c9bf4d8904bc9f42f5d9389c8687b37858e6db9ec7406"
+    },
+    {
+      "fixture": "word-windows-cjk-cell-yu-ideographic-gap-size8p5-regular-compat15",
+      "docx_sha256": "01f5edbbd697924b101228b5a4add73e5e0378a52048185b16342bc8313c8ac4"
     }
   ]
 }

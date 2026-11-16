@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T192249598Z-78fe5998",
+  "captured_at_utc": "2026-11-16T19:22:49.6024378Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-yu-wide-halfpoint-size15p5-regular-compat15",
+      "source": "w17-d-yu-wide-halfpoint-input-snapshots\\word-windows-yu-wide-halfpoint-size15p5-regular-compat15.docx",
+      "sha256": "7f2226fc48b64de39cd2375ecfd516855a3d633e771eea1c74a49abcda7f0583",
+      "pdf": "word-windows-yu-wide-halfpoint-size15p5-regular-compat15.pdf",
+      "pdf_sha256": "0f5691bb3adf30b0a9dd35a12c74e016d1c2bf852f2b46b581c182f076921064",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-yu-wide-halfpoint-size15p5-regular-compat15.page-001.emf",
+          "sha256": "7a920389f11f6e3349ef3e85f7cae535ee409d7cea86c6cd9bf7c6a3fb885243",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
