@@ -3318,6 +3318,11 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         .trim_matches(|ch| ch == '\'' || ch == '"')
         .trim();
     match family {
+        // Captured Windows Word Malgun Gothic: OS/2/hhea 2229/-495,
+        // 2048 units per em. Keep Mac's independently measured policy.
+        "Malgun Gothic" if word_layout_platform() == WordLayoutPlatform::Windows => {
+            Some((2229.0, 495.0, 2048.0))
+        }
         // Source-matched Arial Unicode MS subsets in the unchanged Word Mac
         // rich-paste-cr and unicode-segmentation PDFs: hhea 2189/-555,
         // 2048 units/em, no line gap; also present in the macOS font.

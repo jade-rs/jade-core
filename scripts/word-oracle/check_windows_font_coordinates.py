@@ -16,7 +16,7 @@ from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = 'fca0f90eaa271059c49ef6c669a2c39ce1627c34a93bc419a2a02a546c54111d'
+INDEX_SHA256 = '0284a37e32a748a91f494842be4d6bfd58f06c34e74bb4c56c515d49cb8d6620'
 
 
 def has_visible_vector_ink(pdf):
@@ -51,7 +51,7 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 745, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 789, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         require('no_visible_vector_ink' not in case
@@ -81,8 +81,18 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 134351, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 134879, 'Total font coverage changed')
     return cases
+
+
+def require_original_font_programs_registered(directory, rendered):
+    supplied = {hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in directory.iterdir()
+                if path.is_file() and path.suffix.lower() in ('.ttf', '.otf', '.ttc')}
+    registered = {hashlib.sha256(Path(face['path']).read_bytes()).hexdigest()
+                  for face in rendered['fonts']}
+    require(bool(supplied) and supplied <= registered,
+            'Renderer omitted supplied original Word font programs')
 
 
 def check_windows(executable, output, root=ROOT):
@@ -104,13 +114,16 @@ def check_windows(executable, output, root=ROOT):
                             str(painted_path), '--unclipped-tables', *options], check=True)
             actual = read_json(actual_path)
             require(actual['input_sha256'] == case['source']['sha256'], 'Wrong rendered input')
+            require_original_font_programs_registered(fonts, actual)
             compare(drawing, actual, case['name'] + '/EMF')
             compare(pdf_origins(original_pdf, True), actual, case['name'] + '/PDF-unclipped')
             visible_path = target / 'visible.json'
             subprocess.run([str(executable), str(source), str(visible_path), 'windows',
                             *options], check=True)
             visible = pdf_origins(original_pdf)
-            compare(visible, read_json(visible_path), case['name'] + '/PDF-visible')
+            rendered_visible = read_json(visible_path)
+            require_original_font_programs_registered(fonts, rendered_visible)
+            compare(visible, rendered_visible, case['name'] + '/PDF-visible')
             require(painted_path.read_bytes() != original_pdf.read_bytes(), 'Word self-comparison')
             compare(visible, pdf_origins(painted_path), case['name'] + '/painted-PDF')
             if case.get('no_visible_vector_ink'):
@@ -135,4 +148,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 134351 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 134879 glyph origins')

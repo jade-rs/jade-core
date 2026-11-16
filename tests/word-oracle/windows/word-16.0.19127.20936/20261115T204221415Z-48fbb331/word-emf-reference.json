@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T204221415Z-48fbb331",
+  "captured_at_utc": "2026-11-15T20:42:21.4183920Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-script-fallback-arial-hant-ko-compat15",
+      "docx_sha256": "878f0d09148374a900035fbd35659d91b47753e10d3aaf3c71c1c6415614e597",
+      "pdf_sha256": "b007a48a98563cc35ecd554413989c7c7fed0a50d4e4b1ca7dda9255e841ded6",
+      "pdf_file": "word-windows-edge-script-fallback-arial-hant-ko-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-script-fallback-arial-hant-ko-compat15.page-001.emf",
+          "sha256": "73c8ec9b4826da5c5d497fd8ce29622dc76278478b6e9bd808391debb0cb865f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "漢",
+          95.75678290667203,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          107.75637976214472,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          122.75587583148557,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          133.43551703285627,
+          112.55732611174459
+        ],
+        [
+          1,
+          "漢",
+          144.11515823422695,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          156.11475508969963,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          171.1142511590405,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          181.79389236041118,
+          112.55732611174459
+        ],
+        [
+          1,
+          "漢",
+          192.47353356178186,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          204.35313444869985,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          219.35263051804068,
+          112.55732611174459
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T204238211Z-80f4f3fd",
+  "captured_at_utc": "2026-11-15T20:42:38.2149699Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-script-fallback-calibri-hang-zh-compat15",
+      "docx_sha256": "507876817407751446a150dbef7a1a7a2c18225365ac97b5d7974c8a3cd61fc3",
+      "pdf_sha256": "77bd3c4be1c59e6337c72bb2a3fb28e1191d7520e34314eeb263532aea61ac81",
+      "pdf_file": "word-windows-edge-script-fallback-calibri-hang-zh-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-script-fallback-calibri-hang-zh-compat15.page-001.emf",
+          "sha256": "65bc22153f084ff2f0a7038ba63d936c293e8e1de7f1a9d8d8412a37e8c28a43",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          95.1568030638984,
+          122.39709236031928
+        ],
+        [
+          1,
+          "글",
+          107.15639991937108,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          122.15589598871193,
+          122.39709236031928
+        ],
+        [
+          1,
+          "A",
+          131.3955855674259,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          141.47524692602298,
+          122.39709236031928
+        ],
+        [
+          1,
+          "글",
+          153.47484378149565,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          168.47433985083651,
+          122.39709236031928
+        ],
+        [
+          1,
+          "A",
+          177.71402942955046,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          187.79369078814753,
+          122.39709236031928
+        ],
+        [
+          1,
+          "글",
+          199.7932876436202,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          214.79278371296107,
+          122.39709236031928
+        ]
+      ]
+    }
+  ]
+}

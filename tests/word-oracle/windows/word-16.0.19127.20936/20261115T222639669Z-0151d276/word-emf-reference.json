@@ -1,0 +1,110 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261115T222639669Z-0151d276",
+  "captured_at_utc": "2026-11-15T22:26:39.6744582Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15",
+      "docx_sha256": "0358e233197e75f1fb8d3d3a6ffae095fefd2a602891112bfbfb92c15a841d58",
+      "pdf_sha256": "9a8bbf752be58ba75d9ce0cfcde72cec451318345020b33498539df529331b02",
+      "pdf_file": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15.page-001.emf",
+          "sha256": "f5c4eef848849f2dd2965b4c5b95808cc87a6a8070b494c63372315e5cfadf35",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          95.1568030638984,
+          122.39709236031928
+        ],
+        [
+          1,
+          "税",
+          107.15639991937108,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          122.15589598871193,
+          122.39709236031928
+        ],
+        [
+          1,
+          "A",
+          131.3955855674259,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          141.47524692602298,
+          122.39709236031928
+        ],
+        [
+          1,
+          "税",
+          153.47484378149565,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          168.47433985083651,
+          122.39709236031928
+        ],
+        [
+          1,
+          "A",
+          177.71402942955046,
+          122.39709236031928
+        ],
+        [
+          1,
+          "한",
+          187.79369078814753,
+          122.39709236031928
+        ],
+        [
+          1,
+          "税",
+          199.7932876436202,
+          122.39709236031928
+        ],
+        [
+          1,
+          "B",
+          214.79278371296107,
+          122.39709236031928
+        ]
+      ]
+    }
+  ]
+}

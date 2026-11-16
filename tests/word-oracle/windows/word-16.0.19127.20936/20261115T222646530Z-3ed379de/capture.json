@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T222646530Z-3ed379de",
+  "captured_at_utc": "2026-11-15T22:26:46.5348883Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15",
+      "source": "..\\w16-r2-mixed-script-input-snapshots\\word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15.docx",
+      "sha256": "d231e4037485666e1b00d85e3625db46aa558a92c14c930c8c3630759ad79c42",
+      "pdf": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15.pdf",
+      "pdf_sha256": "f35ba4d92183b5926ef78994db8c32f6d72246a911d242626654b829c96f4207",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15.page-001.emf",
+          "sha256": "f5c4eef848849f2dd2965b4c5b95808cc87a6a8070b494c63372315e5cfadf35",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

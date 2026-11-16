@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T193937717Z-362e31cb",
+  "captured_at_utc": "2026-11-15T19:39:37.7209972Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-language-calibri-val-ko-ko-ko-compat15",
+      "source": "..\\w16-q-lang-input-snapshots\\word-windows-edge-language-calibri-val-ko-ko-ko-compat15.docx",
+      "sha256": "b1080b716ef5ce1f872aaf605e508dc26ecb85cd529a5ba8984743e2d4bc72fa",
+      "pdf": "word-windows-edge-language-calibri-val-ko-ko-ko-compat15.pdf",
+      "pdf_sha256": "aec9c0f10eef8603470d11d6cb2363b0d6902c7174e2111777cac13fc197aeb8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-language-calibri-val-ko-ko-ko-compat15.page-001.emf",
+          "sha256": "e80f66023f3ce623d76e538f8736d7491907e436e253d1e69a3f8060b4c854b4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

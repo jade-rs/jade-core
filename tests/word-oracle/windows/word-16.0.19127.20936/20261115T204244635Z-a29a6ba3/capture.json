@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T204244635Z-a29a6ba3",
+  "captured_at_utc": "2026-11-15T20:42:44.6391042Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-script-fallback-calibri-hans-ko-compat15",
+      "source": "..\\w16-r-script-input-snapshots\\word-windows-edge-script-fallback-calibri-hans-ko-compat15.docx",
+      "sha256": "7d9772505f29eb81fee0955415ca876ba337d9432cfe9f8a366ab5f7c53b1acb",
+      "pdf": "word-windows-edge-script-fallback-calibri-hans-ko-compat15.pdf",
+      "pdf_sha256": "aba3a59de77cf0a8a3018992d0d57f83868582c575658cb2bacd460771c62e5b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-script-fallback-calibri-hans-ko-compat15.page-001.emf",
+          "sha256": "ec5529320c09245df5b45bbdc192acefdcc163059268b427721eabd44add3c92",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

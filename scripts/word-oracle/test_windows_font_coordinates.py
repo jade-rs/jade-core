@@ -10,6 +10,93 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_long_printer_metric_controls_reproduce_archived_sources(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_printer_metric_probes import generate as generate_printer
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'printer'
+            self.assertEqual(generate_printer(output), 22)
+            self.assertEqual(len(list(output.glob('*.docx'))), 22)
+            for source in output.glob('*.docx'):
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                    match = re.fullmatch(r'word-windows-printer-metric-(arial|mincho)-size([0-9]+(?:p5)?)-(regular|bold|italic|bolditalic)-compat15', source.stem)
+                    self.assertIsNotNone(match)
+                    expected = 'AgABCXYZ ' if match[1] == 'arial' else '日本語' * 4
+                    with ZipFile(source) as archive:
+                        root = ET.fromstring(archive.read('word/document.xml'))
+                        runs = root.findall('w:body/w:p/w:r', ns)
+                        self.assertEqual([run.find('w:t', ns).text for run in runs], [expected] * 3)
+                        for run in runs:
+                            props = run.find('w:rPr', ns)
+                            self.assertEqual(props.find('w:sz', ns).get('{'+ns['w']+'}val'),
+                                             str(int(float(match[2].replace('p', '.')) * 2)))
+                            self.assertEqual(props.find('w:b', ns) is not None, 'bold' in match[3])
+                            self.assertEqual(props.find('w:i', ns) is not None, 'italic' in match[3])
+
+    def test_mixed_script_fallback_controls_reproduce_original_word_inputs(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_mixed_script_fallback_probes import generate as generate_mixed
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        texts = {'jpan-hang': '税한', 'hang-jpan': '한税', 'hans-hang': '汉한'}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'mixed'
+            self.assertEqual(generate_mixed(output), 18)
+            self.assertEqual(len(list(output.glob('*.docx'))), 18)
+            for source in output.glob('*.docx'):
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                    match = re.fullmatch(r'word-windows-edge-mixed-script-fallback-(arial|calibri)-(jpan-hang|hang-jpan|hans-hang)-(ja|zh|ko)-compat15', source.stem)
+                    self.assertIsNotNone(match)
+                    with ZipFile(source) as archive:
+                        root = ET.fromstring(archive.read('word/document.xml'))
+                        self.assertEqual([node.text for node in root.findall('w:body/w:p/w:r/w:t', ns)],
+                                         [f'A{texts[match[2]]}B '] * 3)
+
+    def test_supplied_fallback_font_programs_must_be_registered(self):
+        from check_windows_font_coordinates import require_original_font_programs_registered
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fonts = root / 'fonts'
+            fonts.mkdir()
+            first, second, unrelated = fonts / 'first.ttf', fonts / 'second.ttf', root / 'other.ttf'
+            first.write_bytes(b'original requested face')
+            second.write_bytes(b'original implicit fallback face')
+            unrelated.write_bytes(b'unrelated fallback')
+            for paths in ([first], [first, unrelated]):
+                with self.assertRaisesRegex(ValueError, 'omitted supplied original Word font'):
+                    require_original_font_programs_registered(fonts, {'fonts': [{'path': str(p)} for p in paths]})
+            require_original_font_programs_registered(fonts, {'fonts': [{'path': str(p)} for p in [first, second, unrelated]]})
+
+    def test_script_fallback_controls_reproduce_originals_and_japanese_recaptures(self):
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        from generate_windows_script_fallback_probes import generate as generate_scripts
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        texts = dict(jpan='税あ', hans='汉语', hant='漢語', hang='한글')
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'scripts'
+            self.assertEqual(generate_scripts(output), 24)
+            self.assertEqual(len(list(output.glob('*.docx'))), 24)
+            for source in output.glob('*.docx'):
+                face, script, language = source.stem.split('-')[-4:-1]
+                with self.subTest(source=source.name):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                    with ZipFile(source) as archive:
+                        root = ET.fromstring(archive.read('word/document.xml'))
+                        self.assertEqual([node.text for node in root.findall('w:body/w:p/w:r/w:t', ns)],
+                                         [f'A{texts[script]}B '] * 3)
+                    if script == 'jpan':
+                        parent = sources / (f'word-windows-edge-language-{face}-eastasia-'
+                                            f'{language}-{language}-{language}-compat15.docx')
+                        self.assertEqual(source.read_bytes(), parent.read_bytes())
+
     def test_language_controls_match_captured_inputs_without_inherited_language(self):
         from zipfile import ZipFile
         import xml.etree.ElementTree as ET
@@ -111,8 +198,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 745)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 311)
+        self.assertEqual(len(verify()), 789)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 355)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf
