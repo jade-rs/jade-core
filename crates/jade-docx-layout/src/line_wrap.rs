@@ -3151,6 +3151,11 @@ fn windows_ascii_pair_adjustment(
         Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(unit_px)) => {
             crate::line_metrics::word_windows_arial_pair_kerning_px(unit_px, left, right)
         }
+        Some(crate::line_metrics::WordAsciiMetrics::ArialWindowsStyled(unit_px, style)) => {
+            crate::line_metrics::word_windows_styled_arial_pair_kerning_px(
+                unit_px, style, left, right,
+            )
+        }
         Some(crate::line_metrics::WordAsciiMetrics::Calibri(unit_px, false)) => {
             crate::line_metrics::word_windows_calibri_pair_kerning_px(unit_px, left, right)
         }

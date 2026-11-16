@@ -2081,7 +2081,7 @@ mod tests {
         );
         assert_eq!(
             style.windows_cjk_bold_extra_px(&style.font_descriptor_east_asia),
-            0.08
+            12.0 / 0.75 / 256.0
         );
         let original = style.clone();
         for replacement in [

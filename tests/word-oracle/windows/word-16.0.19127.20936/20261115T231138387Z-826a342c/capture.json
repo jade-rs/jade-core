@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T231138387Z-826a342c",
+  "captured_at_utc": "2026-11-15T23:11:38.3919075Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-printer-metric-arial-size24-bold-compat15",
+      "source": "..\\w16-s-printer-metric-input-snapshots\\word-windows-printer-metric-arial-size24-bold-compat15.docx",
+      "sha256": "1ae43926fa05266cb252d29e5d07553d19859e8dd6077215843b7635822dadec",
+      "pdf": "word-windows-printer-metric-arial-size24-bold-compat15.pdf",
+      "pdf_sha256": "7427f969a49f5cfc484bbb5e21a8a4600660db75aafd4046d40b78fb1d1d45fa",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metric-arial-size24-bold-compat15.page-001.emf",
+          "sha256": "768d60ee5c578471a9640b6c5174df3d10ba9e67c7e095e1819504f729f2c9cc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

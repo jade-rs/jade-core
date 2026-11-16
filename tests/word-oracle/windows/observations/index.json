@@ -25907,6 +25907,282 @@
           "opened_filename": "word-windows-printer-metric-mincho-size9-regular-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T014510298Z-ff94084d.zip",
+      "archive_sha256": "ef4cfc734ea410e64f34fdbbacf43f09dfa0f06dda207cd7ca6228d2eac22e20",
+      "capture_id": "20261116T014510298Z-ff94084d",
+      "capture_sha256": "932bbea1ab86bdb8ba548b454584e27dbf3a5dec38bddfb868ba4399107d9432",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-size12-bold-compat15",
+          "source_sha256": "e668194bd63db0b9767e58cec03af090d426818e81639aef2de28669510b3836",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-size12-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-size12-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T014514370Z-9cdf250c.zip",
+      "archive_sha256": "64e422c525a93e90b36457a79b9ad76560abbaab137244768bf9acfe02715440",
+      "capture_id": "20261116T014514370Z-9cdf250c",
+      "capture_sha256": "cc77192ff994ac6b15666fe8905c727de145d829110819ae85df0a2fc2d83deb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-size12-bolditalic-compat15",
+          "source_sha256": "ae6a9da1973684a5b5fa1d3861ef54ee4f0a1bf03f360f60bf956df20b7cade7",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-size12-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-size12-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T014517575Z-4987d3b4.zip",
+      "archive_sha256": "abf509479a1b03a11ebf991d560178d2ed7ccadf1e4bd94999ba1ec76e4a850d",
+      "capture_id": "20261116T014517575Z-4987d3b4",
+      "capture_sha256": "a09d2aafe5da60450d9d11780a2ef94b8bf8e27741f25b3d166f10a447093cfd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-size12-italic-compat15",
+          "source_sha256": "60dac26c10088ed129b70ef3761db60737fa62b539471eefb21b70b9d3dfff02",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-size12-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-size12-italic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T014519402Z-ee5ca13b.zip",
+      "archive_sha256": "0d47c6cfa672b7a3e6d5997f1f0823f1be2fe1e43cd14936ab2c0b29e29bb0cc",
+      "capture_id": "20261116T014519402Z-ee5ca13b",
+      "capture_sha256": "f48e58739f116a7e07bbb5f7e6dff07a5d52c542169a042fbbd25817ed044fa3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-size24-bold-compat15",
+          "source_sha256": "c420974c56dcc3a7f6f0c9cbd4e2920e763c8ebc05fa9eb43f57119b280ce8f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-size24-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-size24-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T014522876Z-48850faf.zip",
+      "archive_sha256": "3a004f689ca18332a25783721ed557507596477bb2e0b7168385c4968817a979",
+      "capture_id": "20261116T014522876Z-48850faf",
+      "capture_sha256": "53f99ff22393ba00a2469609c917507913b936b71bf3e4a90791e3a0c4c2a494",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-size24-bolditalic-compat15",
+          "source_sha256": "1e8b0adf09c838808ecce920445f93f4a44a7f45adbc855805b1fb7bc4ea9329",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-size24-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-size24-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T014526130Z-f7659573.zip",
+      "archive_sha256": "bcc3027d15de6e6643435420ad10a73ca449e0b12b22a301d244058affce477a",
+      "capture_id": "20261116T014526130Z-f7659573",
+      "capture_sha256": "496b9baa65b2851e56bd54ccd0c23d759594e64b36753042365a1a0a561a96e5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-size24-italic-compat15",
+          "source_sha256": "2130e03337bf63bf640b1c769f19103a51c9b8bb70fdc87fad788c7580fe6f30",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-size24-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T021509881Z-d1a635dc.zip",
+      "archive_sha256": "70b442b3d157d0cf34ffe34850edd2fc863a1b80ff9ced238351864c9cb7283b",
+      "capture_id": "20261116T021509881Z-d1a635dc",
+      "capture_sha256": "b871bb0483cae55265d5428ddf6717e9df70718db0d3cd38f4aabb8098670502",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-plain-size12-bold-compat15",
+          "source_sha256": "6c2fd4d4900e047a11a628fa76371205408270fb21a6613f9148d9737ce1bc11",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-plain-size12-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-plain-size12-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T021512274Z-2b6652c0.zip",
+      "archive_sha256": "925e8946e875c8da7e4533cd815463141b9e9e766fd970f71f31c03cfbcfe727",
+      "capture_id": "20261116T021512274Z-2b6652c0",
+      "capture_sha256": "2f0eb8c55199a1711e2816977f72d5751eae569fd05a845a8f6cfb8064a74a27",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-plain-size12-bolditalic-compat15",
+          "source_sha256": "007421b9e04b9f36d700826c64a3f13dd6b04a13b89ded68fb4d0723e8ab5bf5",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-plain-size12-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-plain-size12-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T021513905Z-57e9813e.zip",
+      "archive_sha256": "97c12676c46afebd15980a73fbc027b1b2586b41bc4f926a76f20b6bd204ed3e",
+      "capture_id": "20261116T021513905Z-57e9813e",
+      "capture_sha256": "7067606680d40f8a934f984d4a128c789c2809b193cf95125d1eb87b2a4df458",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15",
+          "source_sha256": "da911c7451206df5737d550665b17a4ea32652f9962bec328d2186f9f3720482",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-plain-size12-italic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T021516949Z-45f4b41c.zip",
+      "archive_sha256": "b7ac55a29f350b6e066a88d862f0ddbf6a5c64d47efcbd22b640ea799ce64d74",
+      "capture_id": "20261116T021516949Z-45f4b41c",
+      "capture_sha256": "7d6a4cd3486f531ee7e2261c2ec99a30ff20b23bbb456e5e8cd77eb9ad801ea7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-plain-size24-bold-compat15",
+          "source_sha256": "bfd3e1310db39fa10da8eba522002416612a6dfa8c0dbc85797099d35044e38d",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-plain-size24-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-plain-size24-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T021520240Z-f2291462.zip",
+      "archive_sha256": "82629ebebaeb832681188fb5640300c5f9260fa7ea6f98bddb47a383d7828142",
+      "capture_id": "20261116T021520240Z-f2291462",
+      "capture_sha256": "a7aa1abfb1e325dea279a6bebd8313d3c6f2153c30c538133035d8dc197d0bc2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-plain-size24-bolditalic-compat15",
+          "source_sha256": "d75091ac87901e05d0bcaf40f1d3d4c52d297d6f963179e9433767aa5ef4b50b",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-plain-size24-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-plain-size24-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T021523334Z-31dcd35f.zip",
+      "archive_sha256": "3f90882abbcd55ace82e8a50311324160d4630072fee560a7d8c188b42c57451",
+      "capture_id": "20261116T021523334Z-31dcd35f",
+      "capture_sha256": "6a7bc793e7b644da8ffe1e24a21efa4fafa5f311e1ea19f8fac89e8d9cd9e236",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-styled-arial-pair-matrix-plain-size24-italic-compat15",
+          "source_sha256": "b572d4d1af41f237d499f38ad4e79ae4e562f14ef2913b33e563a10b1f777f5c",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-styled-arial-pair-matrix-plain-size24-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-styled-arial-pair-matrix-plain-size24-italic-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -25948,6 +26224,10 @@
     {
       "file": "tests/word-oracle/windows/calibri-kerning-font-facts.json",
       "sha256": "68593c4e3bcdd2b8d949348b4eb9a3637f4beabd87dbad590fe1be935e1053f5"
+    },
+    {
+      "file": "tests/word-oracle/windows/styled-arial-kerning-font-facts.json",
+      "sha256": "eb4451252dfc0375d736eaf852fbc18da59b2f4246cf557a9c4dca16de40b676"
     }
   ]
 }

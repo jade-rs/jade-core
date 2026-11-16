@@ -1,10 +1,10 @@
 Shared Mac and Windows coordinate assertions
 ===========================================
 
-Current verified Windows coverage is 789 typography cases / 134,879 origins,
-including 355 shaded controls, 61 note-rule cases and 1,185 release inputs.
-The versioned observation archive retains 797 captures / 1,708 documents /
-1,663 source byte groups. Previous records and every Mac expectation remain
+Current verified Windows coverage is 833 typography cases / 142,553 origins,
+including 393 shaded controls, 61 note-rule cases and 1,229 release inputs.
+The versioned observation archive retains 809 captures / 1,720 documents /
+1,675 source byte groups. Previous records and every Mac expectation remain
 unchanged. Newer Word captures append evidence instead of replacing a version.
 
 `platform-coordinates.json` links each unchanged Mac corpus `source.docx` to its
@@ -41,8 +41,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 789 font/typography
-documents (134,879 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 833 font/typography
+documents (142,553 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -442,8 +442,9 @@ Twenty-two additional Word 16.0.19127.20936 originals repeat Latin or Japanese
 text to expose cumulative advance errors: Arial in four styles at 12/20/24pt,
 and regular/bold MS Mincho at 9/10.5/12/20/40pt. The originals, source hashes,
 PDFs and raw 600dpi EMFs remain in the versioned observation archive. All 22
-background comparisons pass; fourteen controls still expose horizontal errors
-and remain unpromoted. Word's own EMF/PDF origins agree within the existing
+background comparisons pass. Twenty-one controls now pass the complete gate;
+the long regular 10.5pt MS Mincho control still exposes horizontal drift and
+remains unpromoted. Word's own EMF/PDF origins agree within the existing
 0.375pt limit for all 22, so their renderer disagreement remains actionable.
 The generator reproduces all original source bytes; no expectation is fitted
 to the native renderer and no tolerance is changed.
@@ -460,4 +461,30 @@ its failed capture metadata, exact input, executable hash and original error log
 are archived separately. A failed open cannot supply coordinate expectations or
 be relabelled as a successful capture. The original Mac source and Mac goldens
 remain unchanged. Native coordinate comparisons run over the independently
-registered Windows references, including the 789 font cases and shared originals.
+registered Windows references, including the 833 font cases and shared originals.
+
+Styled Arial kerning and long bold Mincho cells
+--------------------------------------------
+
+Windows selects the original Arial bold, italic and bold-italic `kern` tables
+independently of the unchanged regular face. The numeric font facts retain the
+full original program hashes and versions; the renderer receives the original
+Word PDF font programs, never expected coordinates. Windows MS Mincho synthetic
+bold CJK cells use the 1/256 em increment measured in the long 9/10.5/12/20/40pt
+EMF and PDF controls. The former short-run 1/200 em estimate accumulated drift.
+Mac kerning and synthetic bold retain their original policies.
+
+Forty-four additional inputs are asserted after the prior 789 cases: seventeen
+earlier styled mixed-script controls, twenty-one long printer-metric controls,
+and six independently captured plain pair matrices. Each matrix exercises all
+97 nonzero printable-ASCII pair kinds in the three original styled font tables,
+at 12pt or 24pt. All four coordinate planes and absence of extra vector paint
+must pass for the plain matrices. The prior 789 typography and 1,185 release
+entries remain an unchanged prefix. All originals retain Word 16.0.19127.20936,
+its executable identity, exact inputs, original PDF and raw EMFs.
+
+Six separately captured shaded pair matrices also match all four text-coordinate
+planes. They expose 2.1pt/4.2pt gaps between adjacent paragraph backgrounds and
+remain unpromoted observations. Their failing backgrounds are preserved, while
+the plain inputs independently isolate and assert kerning. No background gate,
+coordinate tolerance or original Mac reference is weakened.
