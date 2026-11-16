@@ -3358,6 +3358,9 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             let fixed_em = if script == ScriptCategory::EastAsia
                 && paragraph_style.is_some_and(|paragraph| {
                     paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                        || (paragraph.word_platform
+                            == crate::line_metrics::WordLayoutPlatform::Windows
+                            && paragraph.oracle_advance_px_by_text_offset.is_none())
                 })
                 && font_descriptor_hash == style.font_descriptor_east_asia_hash
                 && is_fixed_fullwidth_cjk_scalar(grapheme)
