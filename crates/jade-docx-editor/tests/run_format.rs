@@ -109,6 +109,44 @@ fn full_format() -> HeadlessRunFormat {
 }
 
 #[test]
+fn text_edits_preserve_imported_kerning_thresholds_above_the_font_size_ceiling() {
+    use jade_docx_editor::commands::insert_text::InsertTextCommand;
+
+    for (fixture, threshold, half_points) in [
+        (
+            "word-windows-nominal-wrap-kerning-yu-disabled-width319p95-compat15.docx",
+            16383.5,
+            32767,
+        ),
+        (
+            "word-windows-nominal-wrap-kerning-yu-enabled-width319p95-compat15.docx",
+            0.0,
+            0,
+        ),
+    ] {
+        let mut document = load(fixture);
+        let paragraph = paragraph_with_text(&document, 1);
+        let range = SelectionRange::collapsed(TextPosition::new(paragraph, 0));
+        let mut selection = Some(range);
+        CommandExecutor::new()
+            .execute(
+                Box::new(InsertTextCommand::new(range, "Z".into(), None)),
+                &mut CommandContext::new(&mut document, &mut selection),
+            )
+            .expect("edit");
+        let xml = document_xml(&document);
+        assert!(
+            xml.contains(&format!(r#"<w:kern w:val="{half_points}"/>"#)),
+            "{fixture}: {xml}"
+        );
+        let reopened = load_bytes(&document.export_docx().expect("export"));
+        let format = format_at(&reopened, paragraph, 0);
+        assert_eq!(format.kerning, Some(threshold), "{fixture}");
+        assert_eq!(format.font_size, Some(20.0), "{fixture}");
+    }
+}
+
+#[test]
 fn the_font_dialog_writes_every_property_and_reads_back() {
     let mut document = load("hello.docx");
     let paragraph = paragraph_with_text(&document, 4);
