@@ -3,10 +3,21 @@ use jade_docx_reader::document::{
 };
 
 mod windows_arial_kern;
+mod windows_arial_styled_kern;
 mod windows_calibri_kern;
 
 pub(crate) fn word_windows_arial_pair_kerning_px(unit_px: f64, left: u8, right: u8) -> Option<f64> {
     windows_arial_kern::pair_units(left, right).map(|units| unit_px * f64::from(units))
+}
+
+pub(crate) fn word_windows_styled_arial_pair_kerning_px(
+    unit_px: f64,
+    style: usize,
+    left: u8,
+    right: u8,
+) -> Option<f64> {
+    windows_arial_styled_kern::pair_units(style, left, right)
+        .map(|units| unit_px * f64::from(units))
 }
 
 pub(crate) fn word_windows_calibri_pair_kerning_px(
@@ -1222,7 +1233,8 @@ pub fn word_fixed_ascii_advance_px(font_descriptor: &str) -> Option<f64> {
         | WordAsciiMetrics::Aptos(_, _)
         | WordAsciiMetrics::Bookman(_)
         | WordAsciiMetrics::TimesNewRoman(_, _, _)
-        | WordAsciiMetrics::ArialWindows(_) => None,
+        | WordAsciiMetrics::ArialWindows(_)
+        | WordAsciiMetrics::ArialWindowsStyled(..) => None,
     }
 }
 
@@ -1231,6 +1243,7 @@ pub(crate) enum WordAsciiMetrics {
     Fixed(f64),
     // Kerning-only font facts, consumed exclusively by the Windows branch.
     ArialWindows(f64),
+    ArialWindowsStyled(f64, usize),
     // Pixels per font unit, resolved once rather than divided per glyph.
     // Pixels per font unit; whether source-observed Mac upright facts apply.
     YuMincho(f64, bool),
@@ -2203,7 +2216,7 @@ impl WordAsciiMetrics {
         }
         match self {
             Self::Fixed(advance) => Some(advance),
-            Self::ArialWindows(_) => None,
+            Self::ArialWindows(_) | Self::ArialWindowsStyled(..) => None,
             Self::YuGothicLight(unit_px) => {
                 // Numeric hmtx facts in the unchanged numbering Word PDF.
                 // Unobserved characters and other Yu Gothic faces keep fallback.
@@ -2752,6 +2765,12 @@ fn parse_word_ascii_metrics(
         "Arial" if platform == WordLayoutPlatform::Windows && !bold && !italic => {
             Some(WordAsciiMetrics::ArialWindows(em_px / 2048.0))
         }
+        "Arial" if platform == WordLayoutPlatform::Windows => {
+            Some(WordAsciiMetrics::ArialWindowsStyled(
+                em_px / 2048.0,
+                usize::from(bold) | (usize::from(italic) << 1),
+            ))
+        }
         "ＭＳ 明朝"
         | "MS 明朝"
         | "MS Mincho"
@@ -3219,13 +3238,14 @@ pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: 
         .trim()
         .trim_matches(['\'', '"']);
     // Windows Word 16.0.19127's MS Mincho synthetic bold CJK advances:
-    // the paired Latin/CJK sweeps at 9, 10.5, 12, 20 and 40pt retain the
-    // full CJK cell plus 1/200 em. Real Latin bold and half cells are separate.
+    // The long original EMF/PDF sweeps at 9, 10.5, 12, 20 and 40pt retain
+    // the full CJK cell plus 1/256 em. The former short-run 1/200 estimate
+    // accumulates horizontal drift. Real Latin bold and half cells are separate.
     if matches!(family, "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "ＭＳ明朝")
         && size_pt.is_finite()
         && size_pt > 0.0
     {
-        f64::from(size_pt) * 96.0 / 72.0 / 200.0
+        f64::from(size_pt) * 96.0 / 72.0 / 256.0
     } else {
         0.0
     }
@@ -6836,10 +6856,58 @@ mod tests {
             );
         }
         assert_eq!(word_windows_arial_pair_kerning_px(unit, 0, b'A'), None);
-        assert!(word_ascii_metrics("bold 10.5pt 'Arial'").is_none());
-        assert!(word_ascii_metrics("italic 10.5pt 'Arial'").is_none());
+        for (prefix, expected_style) in [("bold ", 1), ("italic ", 2), ("bold italic ", 3)] {
+            let metrics = word_ascii_metrics(&format!("{prefix}10.5pt 'Arial'")).unwrap();
+            let WordAsciiMetrics::ArialWindowsStyled(styled_unit, style) = metrics else {
+                panic!("styled kerning-only metrics")
+            };
+            assert_eq!(style, expected_style);
+            assert_eq!(styled_unit, unit);
+            assert_eq!(metrics.advance_px(b'A'), None);
+            assert_eq!(metrics.pair_kerning_px(b'P', b'A'), None);
+            // All three original styled font programs use -76/2048 here,
+            // while the unchanged regular program uses -113/2048.
+            assert_eq!(
+                word_windows_styled_arial_pair_kerning_px(unit, style, b' ', b'A'),
+                Some(-76.0 * unit)
+            );
+            assert_eq!(
+                word_windows_styled_arial_pair_kerning_px(unit, style, b'B', b'C'),
+                Some(0.0)
+            );
+            assert_eq!(
+                word_windows_styled_arial_pair_kerning_px(unit, style, 0, b'A'),
+                None
+            );
+        }
         set_word_layout_platform(WordLayoutPlatform::Mac);
-        assert!(word_ascii_metrics("10.5pt 'Arial'").is_none());
+        for prefix in ["", "bold ", "italic ", "bold italic "] {
+            assert!(word_ascii_metrics(&format!("{prefix}10.5pt 'Arial'")).is_none());
+        }
+    }
+
+    #[test]
+    fn long_windows_mincho_bold_cells_preserve_mac_emboldening() {
+        let previous = word_layout_platform();
+        for size in [9.0, 10.5, 12.0, 20.0, 40.0] {
+            let descriptor = format!("bold {size}pt 'MS Mincho'");
+            let em_px = size * 96.0 / 72.0;
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            assert_eq!(
+                word_windows_cjk_synthetic_bold_extra_advance_px(&descriptor),
+                em_px / 256.0
+            );
+            assert_eq!(word_synthetic_bold_extra_advance_px(&descriptor), 0.0);
+            assert_eq!(
+                word_windows_cjk_synthetic_bold_extra_advance_px(&format!("{size}pt 'MS Mincho'")),
+                0.0
+            );
+            set_word_layout_platform(WordLayoutPlatform::Mac);
+            assert!(
+                (word_synthetic_bold_extra_advance_px(&descriptor) - em_px / 50.0).abs() < 1e-9
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T231205054Z-0147017a",
+  "captured_at_utc": "2026-11-15T23:12:05.0580555Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-printer-metric-mincho-size20-regular-compat15",
+      "source": "..\\w16-s-printer-metric-input-snapshots\\word-windows-printer-metric-mincho-size20-regular-compat15.docx",
+      "sha256": "375956dc8b1fa871731d7214407646647c63f2d960228fbfc448f4d78bb23882",
+      "pdf": "word-windows-printer-metric-mincho-size20-regular-compat15.pdf",
+      "pdf_sha256": "91c1a45005139f342f0215f5bfa11cd311c63b2755e96ef3069992f87fb06cf5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-printer-metric-mincho-size20-regular-compat15.page-001.emf",
+          "sha256": "429e09e7c6f514013539ad36e8adcf471c13bc3bbb1114d6ddf1ca558721fd71",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
