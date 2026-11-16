@@ -3262,7 +3262,18 @@ pub(crate) fn word_windows_cjk_extra_advances_px(font_descriptor: &str) -> [f64;
     // half-device ems also need separate screen/print investigation.
     if !half_device {
         let half_point = (f64::from(size_pt).fract() - 0.5).abs() <= 1e-6;
-        if !(half_point && matches!(family, "MS Mincho" | "ＭＳ 明朝" | "MS 明朝" | "ＭＳ明朝"))
+        if !(half_point
+            && matches!(
+                family,
+                "MS Mincho"
+                    | "ＭＳ 明朝"
+                    | "MS 明朝"
+                    | "ＭＳ明朝"
+                    | "Yu Mincho"
+                    | "游明朝"
+                    | "游明朝体"
+                    | "YuMincho"
+            ))
         {
             return [0.0; 3];
         }

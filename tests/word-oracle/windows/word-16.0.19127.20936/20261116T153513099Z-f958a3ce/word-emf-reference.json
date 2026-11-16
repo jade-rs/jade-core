@@ -1,0 +1,74 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261116T153513099Z-f958a3ce",
+  "captured_at_utc": "2026-11-16T15:35:13.1024958Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-cjk-cell-yu-ideographic-gap-size12p5-regular-compat15",
+      "docx_sha256": "7d4e12331908f1ed33a5928cfbb0ee4c9efc0a03a14b6fe1dcd02adc5e3cb2ca",
+      "pdf_sha256": "affc91d1a1c739ddab3b34bdede80b43f4806468fb283db9e5fde8799db8405e",
+      "pdf_file": "word-windows-cjk-cell-yu-ideographic-gap-size12p5-regular-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-yu-ideographic-gap-size12p5-regular-compat15.page-001.emf",
+          "sha256": "ed9b3aedc63893c2ea97efca8b92fe98acdf7e0508fa713c213b3cfdb717c735",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.08214393710311,
+          121.6771094640821
+        ],
+        [
+          1,
+          "本",
+          385.0897036589053,
+          121.6771094640821
+        ],
+        [
+          1,
+          "日",
+          397.5700181433323,
+          121.6771094640821
+        ],
+        [
+          1,
+          "本",
+          697.8175839129119,
+          121.6771094640821
+        ],
+        [
+          1,
+          "日",
+          710.2978983973389,
+          121.6771094640821
+        ],
+        [
+          1,
+          "本",
+          1010.5454641669186,
+          121.6771094640821
+        ]
+      ]
+    }
+  ]
+}
