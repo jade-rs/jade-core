@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T153452422Z-b0707f07",
+  "captured_at_utc": "2026-11-16T15:34:52.4260389Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-cjk-cell-yu-halfwidth-kana-size11p5-regular-compat15",
+      "source": "tmp\\w16-bx-nonhalf-cell-input-snapshots\\word-windows-cjk-cell-yu-halfwidth-kana-size11p5-regular-compat15.docx",
+      "sha256": "5db13cb818b12cc24c07e3a4476204bb22253f168184ac2fa7d29f5b168a79d0",
+      "pdf": "word-windows-cjk-cell-yu-halfwidth-kana-size11p5-regular-compat15.pdf",
+      "pdf_sha256": "af605b164904a946a60dfbacc24d9f5ab6f8066cd63230ce2f713c6116348a3d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-yu-halfwidth-kana-size11p5-regular-compat15.page-001.emf",
+          "sha256": "142cd6d38082cb54754c23fc71492b985ddfd0c549ee185bc4ed971d31550112",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
