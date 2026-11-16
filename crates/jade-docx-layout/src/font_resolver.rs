@@ -1703,15 +1703,19 @@ impl ResolvedRunStyle {
     /// Returns a cheap `Rc::clone` of the font descriptor for the given grapheme.
     #[inline]
     pub fn descriptor_for_grapheme_rc(&self, grapheme: &str, script: ScriptCategory) -> Rc<str> {
-        if self.font_slot_for_grapheme(grapheme, script) == ResolvedFontSlot::EastAsia {
+        let slot = self.font_slot_for_grapheme(grapheme, script);
+        if self.windows_hangul_font.is_some() && slot == ResolvedFontSlot::EastAsia {
             if let Some(font) = self.hangul_fallback_for_grapheme(grapheme) {
                 return Rc::clone(&font.descriptor);
             }
         }
-        Rc::clone(self.descriptor_for_slot(self.font_slot_for_grapheme(grapheme, script)))
+        Rc::clone(self.descriptor_for_slot(slot))
     }
 
-    #[inline]
+    // Keep Unicode script lookup out of ordinary font-key callers. The common
+    // path checks the optional Windows fallback before entering this helper.
+    #[cold]
+    #[inline(never)]
     fn hangul_fallback_for_grapheme(&self, grapheme: &str) -> Option<&ScriptFallbackFont> {
         use unicode_script::{Script, UnicodeScript};
         let font = self.windows_hangul_font.as_deref()?;
@@ -1732,6 +1736,7 @@ impl ResolvedRunStyle {
 
     /// Resolves the descriptor, its stable hash, and an optional renderer-owned
     /// measurement-cache id in one script-selection pass.
+    #[inline(always)]
     pub fn descriptor_key_for_grapheme(
         &self,
         grapheme: &str,
@@ -1743,14 +1748,14 @@ impl ResolvedRunStyle {
 
     /// Resolves the font slot together with its descriptor cache key so callers
     /// can carry the already-resolved slot into later rendering stages.
-    #[inline]
+    #[inline(always)]
     pub fn font_key_for_grapheme(
         &self,
         grapheme: &str,
         script: ScriptCategory,
     ) -> (ResolvedFontSlot, &str, u64, Option<u32>) {
         let slot = self.font_slot_for_grapheme(grapheme, script);
-        if slot == ResolvedFontSlot::EastAsia {
+        if self.windows_hangul_font.is_some() && slot == ResolvedFontSlot::EastAsia {
             if let Some(font) = self.hangul_fallback_for_grapheme(grapheme) {
                 return (slot, &font.descriptor, font.hash, None);
             }
