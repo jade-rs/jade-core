@@ -10,6 +10,46 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_printer_context_and_wrap_controls_reproduce_original_captured_sources(self):
+        from generate_windows_printer_context_probes import generate as generate_context
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        for group, count in [('context', 8), ('wrap', 5)]:
+            with self.subTest(group=group), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'controls'
+                self.assertEqual(generate_context(output, group), count)
+                self.assertEqual(len(list(output.glob('*.docx'))), count)
+                for source in output.glob('*.docx'):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_ms_font_alias_controls_reproduce_original_captured_sources(self):
+        from generate_windows_ms_font_alias_probes import generate as generate_aliases
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'aliases'
+            self.assertEqual(generate_aliases(output), 6)
+            self.assertEqual(len(list(output.glob('*.docx'))), 6)
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_wide_cjk_controls_reproduce_original_captured_sources(self):
+        from generate_windows_wide_cjk_size_probes import generate as generate_wide
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        for group, count in [('sizes', 16), ('half-device', 12), ('large-half-device', 15)]:
+            with self.subTest(group=group), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory) / 'controls'
+                self.assertEqual(generate_wide(output, group), count)
+                for source in output.glob('*.docx'):
+                    self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
+    def test_cjk_half_cells_and_spaces_reproduce_original_captured_sources(self):
+        from generate_windows_cjk_cell_probes import generate as generate_cells
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'cells'
+            self.assertEqual(generate_cells(output), 16)
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes(), source.name)
+
     def test_long_printer_metric_controls_reproduce_archived_sources(self):
         from zipfile import ZipFile
         import xml.etree.ElementTree as ET
@@ -198,8 +238,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 905)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 465)
+        self.assertEqual(len(verify()), 996)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 556)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf

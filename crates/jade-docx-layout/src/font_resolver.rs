@@ -409,6 +409,14 @@ fn windows_latin_east_asia_fallback_face(name: &str) -> bool {
         .any(|face| name.trim().eq_ignore_ascii_case(face))
 }
 
+// Original Windows Word alias controls use MS Mincho for Japanese in
+// these requests. Authored alternate names retain their existing priority,
+// and Mac keeps every authored family name.
+fn windows_ms_font_alias_for_east_asia(name: &str) -> bool {
+    let name = name.trim();
+    matches!(name, "Mincho" | "MS-Mincho" | "MS-Gothic") && document_font_alt_names(name).is_empty()
+}
+
 /// A glyphless rule reserves its authored East Asian face, even when actual
 /// Japanese glyphs in that face need Windows Word's MS Mincho fallback.
 /// Preserve every Mac descriptor and every other named-face policy.
@@ -960,8 +968,10 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
                 || fonts_ref
                     .and_then(|fonts| fonts.preferred_east_asia())
                     .is_some())
-            && east_candidate.is_some_and(windows_latin_east_asia_fallback_face))
-    {
+            && east_candidate.is_some_and(|family| {
+                windows_latin_east_asia_fallback_face(family)
+                    || windows_ms_font_alias_for_east_asia(family)
+            })) {
         Some("MS Mincho")
     } else {
         east_candidate
@@ -1270,7 +1280,85 @@ struct CachedCjkMetrics {
     descriptors: [Rc<str>; 4],
     observed_em_px: [Option<f64>; 4],
     compatible_em_px: [Option<f64>; 4],
-    windows_bold_extra_px: std::cell::OnceCell<[f64; 4]>,
+    // Only the East Asian slot is hot for printer realization. Retain its
+    // allocation with the facts so replaced public slots cannot inherit them,
+    // without growing the shared CJK metric allocation for every painted run.
+    windows_cjk_extra_px: std::cell::OnceCell<(Rc<str>, WindowsCjkAdvances)>,
+}
+
+#[derive(Clone, Copy, Debug)]
+enum WindowsCjkAdvances {
+    None,
+    SyntheticBold(f64),
+    Printer { full: f64, half: f64 },
+}
+
+impl WindowsCjkAdvances {
+    fn from_cells(cells: [f64; 3]) -> Self {
+        if cells == [0.0; 3] {
+            Self::None
+        } else if cells[0] == cells[2] {
+            Self::Printer {
+                full: cells[0],
+                half: cells[1],
+            }
+        } else {
+            debug_assert!(cells[0] == cells[1] && cells[2] == 0.0);
+            Self::SyntheticBold(cells[0])
+        }
+    }
+
+    fn cell(self, index: usize) -> f64 {
+        match self {
+            Self::None => 0.0,
+            Self::SyntheticBold(extra) => {
+                if index == 2 {
+                    0.0
+                } else {
+                    extra
+                }
+            }
+            Self::Printer { full, half } => {
+                if index == 1 {
+                    half
+                } else {
+                    full
+                }
+            }
+        }
+    }
+
+    fn realize(self, text: &str, known_cell: Option<f64>) -> (f64, f64) {
+        match self {
+            Self::None => (0.0, 0.0),
+            Self::SyntheticBold(extra) => (
+                if text.chars().all(char::is_whitespace) {
+                    0.0
+                } else {
+                    extra
+                },
+                0.0,
+            ),
+            Self::Printer { full, half } => {
+                let extra = if known_cell == Some(1.0) {
+                    full
+                } else if known_cell == Some(0.5) {
+                    if text == " " {
+                        0.0
+                    } else {
+                        half
+                    }
+                } else if text.chars().all(char::is_whitespace) {
+                    0.0
+                } else {
+                    full
+                };
+                // Word's exact-width controls fit nominal cells, then paint
+                // their realized printer advances. Synthetic ink is separate.
+                (extra, extra)
+            }
+        }
+    }
 }
 
 /// Runtime style metadata exposed to `LineWrapContext`.
@@ -1530,26 +1618,44 @@ impl ResolvedRunStyle {
                 descriptors,
                 observed_em_px,
                 compatible_em_px,
-                windows_bold_extra_px: std::cell::OnceCell::new(),
+                windows_cjk_extra_px: std::cell::OnceCell::new(),
             })
         })
     }
 
     #[inline(always)]
-    pub(crate) fn windows_cjk_bold_extra_px(&self, descriptor: &str) -> f64 {
+    pub(crate) fn windows_cjk_extra_px(&self, descriptor: &str, cell: usize) -> f64 {
+        self.windows_cjk_advances(descriptor).cell(cell)
+    }
+
+    #[inline(always)]
+    pub(crate) fn windows_cjk_realized_advance_px(
+        &self,
+        descriptor: &str,
+        text: &str,
+        known_cell: Option<f64>,
+    ) -> (f64, f64) {
+        self.windows_cjk_advances(descriptor)
+            .realize(text, known_cell)
+    }
+
+    #[inline(always)]
+    fn windows_cjk_advances(&self, descriptor: &str) -> WindowsCjkAdvances {
         let cached = self.cjk_metrics();
-        let extras = cached.windows_bold_extra_px.get_or_init(|| {
-            cached.descriptors.each_ref().map(|descriptor| {
-                crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(descriptor)
-            })
+        let (key, extra) = cached.windows_cjk_extra_px.get_or_init(|| {
+            let descriptor = Rc::clone(&cached.descriptors[0]);
+            let extra = WindowsCjkAdvances::from_cells(
+                crate::line_metrics::word_windows_cjk_extra_advances_px(&descriptor),
+            );
+            (descriptor, extra)
         });
-        for (key, extra) in cached.descriptors.iter().zip(extras) {
-            if std::ptr::eq(key.as_ref(), descriptor) {
-                return *extra;
-            }
+        if std::ptr::eq(key.as_ref(), descriptor) {
+            return *extra;
         }
         // Public slot replacement must not reuse facts for the old allocation.
-        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(descriptor)
+        WindowsCjkAdvances::from_cells(crate::line_metrics::word_windows_cjk_extra_advances_px(
+            descriptor,
+        ))
     }
 
     #[inline]
@@ -2068,7 +2174,7 @@ mod tests {
         );
     }
     #[test]
-    fn windows_cjk_bold_cache_tracks_clones_and_replaced_slots() {
+    fn windows_cjk_advance_cache_tracks_clones_and_replaced_slots() {
         let mut style = ResolvedRunStyle::new(
             "12pt Arial",
             "italic bold 10.5pt 'MS Mincho'",
@@ -2080,12 +2186,13 @@ mod tests {
             None,
         );
         assert_eq!(
-            style.windows_cjk_bold_extra_px(&style.font_descriptor_east_asia),
+            style.windows_cjk_extra_px(&style.font_descriptor_east_asia, 0),
             12.0 / 0.75 / 256.0
         );
         let original = style.clone();
         for replacement in [
             "12pt 'MS Mincho'",
+            "10.5pt 'MS Mincho'",
             "bold 40pt 'MS Mincho'",
             "bold 12pt 'Yu Mincho'",
         ] {
@@ -2097,12 +2204,13 @@ mod tests {
                     &current.font_descriptor_east_asia,
                     &current.font_descriptor_complex,
                 ] {
-                    assert_eq!(
-                        current.windows_cjk_bold_extra_px(descriptor),
-                        crate::line_metrics::word_windows_cjk_synthetic_bold_extra_advance_px(
-                            descriptor
-                        )
-                    );
+                    for cell in 0..3 {
+                        assert_eq!(
+                            current.windows_cjk_extra_px(descriptor, cell),
+                            crate::line_metrics::word_windows_cjk_extra_advances_px(descriptor)
+                                [cell]
+                        );
+                    }
                 }
             }
         }
@@ -2488,6 +2596,45 @@ mod tests {
                 styles[0].font_descriptor_east_asia,
                 styles[1].font_descriptor_east_asia
             );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_ms_font_alias_cjk_selection_preserves_mac_family_names() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for name in ["Mincho", "MS-Mincho", "MS-Gothic"] {
+                let properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some(name.into()),
+                        h_ansi: Some(name.into()),
+                        east_asia: Some(name.into()),
+                        ..RunFonts::default()
+                    }),
+                    east_asia_language: Some("ja-JP".into()),
+                    ..RunProperties::default()
+                };
+                let families = resolve_font_families(Some(&properties));
+                let descriptor = families.to_descriptor_set("", 10.5).east_asia;
+                let metrics =
+                    crate::line_metrics::word_east_asian_font_vertical_metrics_px(&descriptor);
+                match platform {
+                    WordLayoutPlatform::Windows => {
+                        assert!(families.east_asia_stack().starts_with("'MS Mincho'"));
+                        assert_eq!(metrics, Some((14.109375, 4.046875)));
+                    }
+                    WordLayoutPlatform::Mac => {
+                        assert!(families.east_asia_stack().starts_with(name));
+                        let expected = (name == "Mincho").then_some((14.109375, 4.046875));
+                        assert_eq!(metrics, expected);
+                    }
+                }
+            }
         }
         set_word_layout_platform(previous);
     }

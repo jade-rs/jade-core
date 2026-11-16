@@ -1,0 +1,146 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261116T102638165Z-c837fff1",
+  "captured_at_utc": "2026-11-16T10:26:38.1695959Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-large-half-device-independent-mincho-size40p5-regular-compat15",
+      "docx_sha256": "3721bda4c0ad490c8f621caf72fddbca25bdd2dbf56219fcf389e90ff729223c",
+      "pdf_sha256": "325268363b0a18d60b99c75a3b26d7d0f31e9a174297a4c69e1b3a652649c39e",
+      "pdf_file": "word-windows-large-half-device-independent-mincho-size40p5-regular-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-large-half-device-independent-mincho-size40p5-regular-compat15.page-001.emf",
+          "sha256": "dfa8c04900d7f78deed5f9b3327c5061f00bd8cbceec9845d0e2564f4efbcf97",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.08214393710311,
+          140.75665621436715
+        ],
+        [
+          1,
+          "本",
+          125.64316601149078,
+          140.75665621436715
+        ],
+        [
+          1,
+          "語",
+          166.20418808587843,
+          140.75665621436715
+        ],
+        [
+          1,
+          "日",
+          206.64520713637737,
+          140.75665621436715
+        ],
+        [
+          1,
+          "本",
+          247.20622921076503,
+          140.75665621436715
+        ],
+        [
+          1,
+          "語",
+          287.76725128515267,
+          140.75665621436715
+        ],
+        [
+          1,
+          "日",
+          328.2082703356516,
+          140.75665621436715
+        ],
+        [
+          1,
+          "本",
+          368.76929241003927,
+          140.75665621436715
+        ],
+        [
+          1,
+          "語",
+          409.33031448442694,
+          140.75665621436715
+        ],
+        [
+          1,
+          "日",
+          449.7713335349259,
+          140.75665621436715
+        ],
+        [
+          1,
+          "本",
+          490.33235560931354,
+          140.75665621436715
+        ],
+        [
+          1,
+          "語",
+          530.8933776837013,
+          140.75665621436715
+        ],
+        [
+          1,
+          "日",
+          571.3343967342001,
+          140.75665621436715
+        ],
+        [
+          1,
+          "本",
+          611.8954188085878,
+          140.75665621436715
+        ],
+        [
+          1,
+          "語",
+          652.4564408829755,
+          140.75665621436715
+        ],
+        [
+          1,
+          "日",
+          692.8974599334745,
+          140.75665621436715
+        ],
+        [
+          1,
+          "本",
+          733.458482007862,
+          140.75665621436715
+        ],
+        [
+          1,
+          "語",
+          774.0195040822497,
+          140.75665621436715
+        ]
+      ]
+    }
+  ]
+}

@@ -26144,7 +26144,8 @@ where
             if let Some(buf) = commands_out.as_deref_mut() {
                 buf.push(DrawCommand::Restore);
             }
-            let visual_overflow = (line_layout.visual_end_x() - right_limit).max(0.0);
+            let overflow_visual_end_x = line_layout.visual_end_x();
+            let visual_overflow = (overflow_visual_end_x - right_limit).max(0.0);
             if visual_overflow > f64::EPSILON {
                 let last_cluster_layout = wrapped_line.clusters.last();
                 let last_cluster = last_cluster_layout.map(|cluster| cluster.text.clone());
@@ -26164,11 +26165,15 @@ where
                     && last_cluster_layout.is_some_and(|cluster| cluster.can_hang_line_end)
                     && last_cluster_width_x
                         .is_some_and(|width| visual_overflow <= width + f64::EPSILON);
-                let line_text = wrapped_line
+                let line_text_bytes = wrapped_line
                     .segments
                     .iter()
-                    .map(|segment| segment.text.as_str())
-                    .collect::<String>();
+                    .map(|segment| segment.text.len())
+                    .sum();
+                let mut line_text = String::with_capacity(line_text_bytes);
+                for segment in &wrapped_line.segments {
+                    line_text.push_str(&segment.text);
+                }
                 self.line_overflow_debug_regions
                     .borrow_mut()
                     .push(LineOverflowDebugInfo {
@@ -26177,7 +26182,7 @@ where
                         line: line_index,
                         text: line_text,
                         right_limit_x: right_limit,
-                        visual_end_x: line_layout.visual_end_x(),
+                        visual_end_x: overflow_visual_end_x,
                         cursor_end_x: line_layout.cursor_end_x(),
                         overflow_x: visual_overflow,
                         absolute_top,
@@ -26196,7 +26201,7 @@ where
                         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
                 {
                     let clear_x = right_limit.floor();
-                    let clear_width = (line_layout.visual_end_x().ceil() - clear_x).max(1.0);
+                    let clear_width = (overflow_visual_end_x.ceil() - clear_x).max(1.0);
                     if draw_enabled {
                         context.clear_rect(clear_x, clip_top, clear_width, clip_height);
                     }

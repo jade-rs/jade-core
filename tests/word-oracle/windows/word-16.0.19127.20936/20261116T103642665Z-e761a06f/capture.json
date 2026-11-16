@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T103642665Z-e761a06f",
+  "captured_at_utc": "2026-11-16T10:36:42.6701972Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-cjk-cell-mincho-halfwidth-kana-size22p5-regular-compat15",
+      "source": "w16-bb-cjk-cell-input-snapshots\\word-windows-cjk-cell-mincho-halfwidth-kana-size22p5-regular-compat15.docx",
+      "sha256": "4c12fa3802213d541b9012d1847a9f951b65fd2e6a4f737da7fa9167582c2d44",
+      "pdf": "word-windows-cjk-cell-mincho-halfwidth-kana-size22p5-regular-compat15.pdf",
+      "pdf_sha256": "a51fba892d7423268c827fc05075f73d5089e2176b4ec7382a48e6cfa7e57fc7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-cjk-cell-mincho-halfwidth-kana-size22p5-regular-compat15.page-001.emf",
+          "sha256": "c1f829d5b3b68e466361f2d7e7b8abd2fd059d94c65ad2dd491aecee93a7eb2f",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

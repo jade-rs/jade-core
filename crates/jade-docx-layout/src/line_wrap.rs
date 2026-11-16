@@ -2871,6 +2871,8 @@ pub struct TextAdvanceStep<'a> {
     pub font_descriptor: &'a str,
     pub font_descriptor_hash: u64,
     pub measured_glyph_width: f64,
+    /// Subtract from painted advance when fitting a Windows printer cell.
+    pub printer_fit_correction_px: f64,
     pub advance: GraphemeAdvance,
 }
 
@@ -2893,6 +2895,8 @@ struct ComputedTextAdvanceStep<'a> {
     measured_width_is_oracle: bool,
     /// The advance came from a fixed-pitch face's cell, not the host.
     monospace_cell: bool,
+    /// Regular printer realization changes paint positions, not nominal fit.
+    printer_fit_correction_px: f64,
     advance: GraphemeAdvance,
 }
 
@@ -3088,7 +3092,7 @@ fn pair_has_fixed_cjk_advances(
     style: &ResolvedRunStyle,
     state: &TextAdvanceState,
     measured_width: f64,
-    _paragraph_style: Option<&ParagraphStyle>,
+    paragraph_style: Option<&ParagraphStyle>,
 ) -> bool {
     if script != ScriptCategory::EastAsia
         || !is_fixed_fullwidth_cjk_scalar(grapheme)
@@ -3116,15 +3120,25 @@ fn pair_has_fixed_cjk_advances(
     let Some(em) = style.fixed_east_asia_em_px() else {
         return false;
     };
-    // A synthetic bold stroke increases the standalone advance but does
-    // not change whether the underlying face uses a fixed CJK cell.
-    let bold_extra =
-        crate::line_metrics::word_synthetic_bold_extra_advance_px(&style.font_descriptor_east_asia);
+    // Classify the same realized cell used by standalone measurement. A
+    // printer-grid correction does not turn a fixed face into a shaped pair:
+    // asking a stand-in for that pair can invent kerning and change wrapping.
+    let windows = paragraph_style.is_some_and(|paragraph| {
+        paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+            && paragraph.oracle_advance_px_by_text_offset.is_none()
+    });
+    let full_extra = if windows {
+        style.windows_cjk_extra_px(&style.font_descriptor_east_asia, 0)
+    } else {
+        crate::line_metrics::word_synthetic_bold_extra_advance_px(&style.font_descriptor_east_asia)
+    };
     let cell = |text: &str| {
-        em + if text.trim().is_empty() {
+        em + if windows && text == "　" {
+            style.windows_cjk_extra_px(&style.font_descriptor_east_asia, 2)
+        } else if text.trim().is_empty() {
             0.0
         } else {
-            bold_extra
+            full_extra
         }
     };
     let tolerance = fixed_cjk_metric_tolerance_px(em);
@@ -3250,20 +3264,28 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             .and_then(|advances| advances.get(&offset).copied())
     });
     let measured_width_is_oracle = oracle_measured_glyph_width.is_some();
+    let known_cell = (!measured_width_is_oracle)
+        .then(|| crate::line_metrics::word_monospace_cell_em(grapheme))
+        .flatten();
     // A space has no ink to embolden: Word for Mac sets scroll-offset-repro's
     // bold `第６章　賃金` ideographic space at its plain width. (A bold ASCII
     // space takes its advance from `word_ascii_metrics` before this.)
-    let synthetic_bold_extra = if measured_width_is_oracle || is_whitespace_text(grapheme) {
-        0.0
+    let (synthetic_bold_extra, printer_fit_extra) = if measured_width_is_oracle {
+        (0.0, 0.0)
     } else if script == ScriptCategory::EastAsia
         && paragraph_style.is_some_and(|p| {
             p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
                 && p.oracle_advance_px_by_text_offset.is_none()
         })
     {
-        style.windows_cjk_bold_extra_px(font_descriptor)
+        style.windows_cjk_realized_advance_px(font_descriptor, grapheme, known_cell)
+    } else if is_whitespace_text(grapheme) {
+        (0.0, 0.0)
     } else {
-        crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor)
+        (
+            crate::line_metrics::word_synthetic_bold_extra_advance_px(font_descriptor),
+            0.0,
+        )
     };
     // ＭＳ 明朝 / ＭＳ ゴシック set every glyph on a full/half-em grid and have
     // no kerning, so neither the advance nor pair kerning comes from the
@@ -3271,8 +3293,8 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
     // Proportional MS PGothic and Mac emoji also have known standalone advances.
     let (mut requested_face_width, monospace_cell) = if measured_width_is_oracle {
         (None, false)
-    } else if let Some(width) = crate::line_metrics::word_monospace_cell_em(grapheme)
-        .and_then(|cell| style.monospace_em_px(font_descriptor).map(|em| em * cell))
+    } else if let Some(width) =
+        known_cell.and_then(|cell| style.monospace_em_px(font_descriptor).map(|em| em * cell))
     {
         (Some(width), true)
     } else {
@@ -3557,6 +3579,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         measured_glyph_width,
         measured_width_is_oracle,
         monospace_cell,
+        printer_fit_correction_px: printer_fit_extra * style.text_scale_x.max(0.01),
         advance,
     })
 }
@@ -3743,6 +3766,7 @@ where
             font_descriptor: computed.font_descriptor,
             font_descriptor_hash: computed.font_descriptor_hash,
             measured_glyph_width: computed.measured_glyph_width,
+            printer_fit_correction_px: computed.printer_fit_correction_px,
             advance: computed.advance,
         })?;
         update_text_advance_state(
@@ -8918,8 +8942,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 } else {
                     0.0
                 };
+                let candidate_fit_width =
+                    (candidate_width - computed.printer_fit_correction_px).max(0.0);
                 let candidate_overflow =
-                    current_width + candidate_width + remaining_word_width + trailing_overhang
+                    current_width + candidate_fit_width + remaining_word_width + trailing_overhang
                         - effective_available;
                 let mac_overflow = candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && paragraph_style.word_platform
@@ -9129,7 +9155,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     buffer_start_abs = grapheme_start_abs;
                 }
 
-                fit_total_width = candidate_width;
+                fit_total_width = candidate_fit_width;
                 // Final line positioning applies its own contextual advance
                 // adjustment to these stored, isolated cluster widths.
                 glyph_total_width = if shaped_arabic.is_some() {
@@ -10881,7 +10907,8 @@ fn measure_wrapped_line_width<C: LineWrapContext, const SHAPE_ARABIC: bool>(
                         + step.advance.implicit_numeric_gap
                         + step.advance.kerning_adjustment
                         + step.advance.snap_leading
-                        + glyph_box_width;
+                        + glyph_box_width
+                        - step.printer_fit_correction_px;
                     Ok(())
                 },
             )?;
@@ -14364,6 +14391,7 @@ mod tests {
                 font_descriptor: &computed.font_descriptor,
                 font_descriptor_hash: computed.font_descriptor_hash,
                 measured_glyph_width: computed.measured_glyph_width,
+                printer_fit_correction_px: 0.0,
                 advance: computed.advance,
             })?;
             state.prev_prev_grapheme = state.prev_grapheme.take();
@@ -14446,6 +14474,95 @@ mod tests {
         .unwrap();
         assert_eq!(kern, -92.0 * 6.0 / 2048.0);
         assert_eq!(*ctx.pair_measurements.borrow(), 0);
+    }
+
+    #[test]
+    fn windows_printer_cells_fit_the_original_word_nominal_line_width() {
+        let text = "日本語".repeat(30);
+        let descriptor = "10.50pt 'MS Mincho'";
+        let mut ctx = TestContext::new(9.0);
+        ctx.style = ResolvedRunStyle::new(
+            descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, false, None,
+        );
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Windows,
+            ..Default::default()
+        };
+        // Five independent original Word captures: at 419.9pt only 39 cells
+        // fit, but 420pt fits 40 even though their painted pitch exceeds 1em.
+        for (width_pt, expected) in [
+            (419.9, [39, 39, 12]),
+            (420.0, [40, 40, 10]),
+            (420.1, [40, 40, 10]),
+            (420.3, [40, 40, 10]),
+            (420.5, [40, 40, 10]),
+        ] {
+            let lines = wrap_text_into_lines(
+                &ctx,
+                &text,
+                &[make_run(&text)],
+                0.0,
+                &paragraph,
+                0,
+                width_pt / 0.75,
+            )
+            .unwrap();
+            assert_eq!(
+                lines
+                    .iter()
+                    .map(|line| line.clusters.len())
+                    .collect::<Vec<_>>(),
+                expected,
+                "{width_pt}pt"
+            );
+            assert!((lines[0].clusters[0].width * 0.75 - (10.5 + 3.0 / 550.0)).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn printer_cjk_cells_do_not_inherit_standin_pair_kerning() {
+        use crate::line_metrics::WordLayoutPlatform;
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            for descriptor in [
+                "10.50pt 'MS Mincho'",
+                "10.50pt 'Yu Mincho'",
+                "bold 10.50pt 'MS Mincho'",
+                "bold 10.50pt 'Yu Mincho'",
+            ] {
+                let mut ctx = CountingKerningContext::new(true);
+                ctx.glyph_width = 14.0;
+                ctx.pair_adjustment = -1.0;
+                let style = ResolvedRunStyle::new(
+                    descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, true, None,
+                );
+                let paragraph = ParagraphStyle {
+                    word_platform: platform,
+                    ..Default::default()
+                };
+                let mut cache = FxHashMap::default();
+                let mut adjustment = 0.0;
+                walk_text_advance_steps(
+                    &ctx,
+                    "日本　語",
+                    &style,
+                    Some(&paragraph),
+                    &TextAdvanceState::default(),
+                    None,
+                    &mut cache,
+                    |step| {
+                        adjustment += step.advance.kerning_adjustment;
+                        Ok(())
+                    },
+                )
+                .unwrap();
+                assert_eq!(adjustment, 0.0, "{platform:?} {descriptor}");
+                assert_eq!(
+                    *ctx.pair_measurements.borrow(),
+                    0,
+                    "{platform:?} {descriptor}"
+                );
+            }
+        }
     }
 
     #[test]
@@ -19970,21 +20087,30 @@ mod tests {
 
     #[test]
     fn ruby_narrower_than_its_base_leaves_the_base_alone() {
+        use crate::line_metrics::WordLayoutPlatform;
         let text = "か東京都特許さ";
         let runs = ruby_runs(text, 3..18, "とう", "distributespace");
-        let lines = wrap_text_into_lines(
-            &EmWidthContext,
-            text,
-            &runs,
-            0.0,
-            &ParagraphStyle::default(),
-            0,
-            400.0,
-        )
-        .expect("wrap");
-        for cluster in &lines[0].clusters {
-            assert!((cluster.width * 72.0 / 96.0 - 10.5).abs() < 1e-6);
-            assert!(cluster.layout.as_ref().unwrap().leading_advance.abs() < 1e-9);
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            let paragraph = ParagraphStyle {
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&EmWidthContext, text, &runs, 0.0, &paragraph, 0, 400.0)
+                    .expect("wrap");
+            // Mac keeps its nominal cell. The original Windows Word full-cell
+            // controls retain the small printer-grid adjustment at 10.5pt.
+            let expected = match platform {
+                WordLayoutPlatform::Mac => 10.5,
+                WordLayoutPlatform::Windows => 10.5 + 3.0 / 550.0,
+            };
+            for cluster in &lines[0].clusters {
+                assert!(
+                    (cluster.width * 72.0 / 96.0 - expected).abs() < 1e-6,
+                    "{platform:?}"
+                );
+                assert!(cluster.layout.as_ref().unwrap().leading_advance.abs() < 1e-9);
+            }
         }
     }
 
@@ -23013,8 +23139,9 @@ mod tests {
     /// never from the host's stand-in face (jlsi/jade#469).
     #[test]
     fn ms_fixed_pitch_advances_follow_their_cells_without_host_measurement() {
+        use crate::line_metrics::WordLayoutPlatform;
         let text = "日本ab ｱ。é";
-        let wrap = |family: &str| {
+        let wrap = |family: &str, platform| {
             let descriptor: Rc<str> = Rc::from(format!("10.50pt '{family}', serif").as_str());
             let mut ctx = TestContext::new(9.0);
             ctx.style = ResolvedRunStyle::new(
@@ -23027,39 +23154,39 @@ mod tests {
                 false,
                 None,
             );
-            let lines = wrap_text_into_lines(
-                &ctx,
-                text,
-                &[make_run(text)],
-                0.0,
-                &ParagraphStyle::default(),
-                0,
-                1000.0,
-            )
-            .unwrap();
+            let paragraph = ParagraphStyle {
+                word_platform: platform,
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 1000.0)
+                    .unwrap();
             assert_eq!(lines.len(), 1);
             let widths: Vec<f64> = lines[0].clusters.iter().map(|c| c.width).collect();
             (widths, ctx.recorded_measurements())
         };
-        for family in ["MS Mincho", "ＭＳ ゴシック", "ＭＳ明朝", "MS-Gothic"] {
-            let (widths, measured) = wrap(family);
-            // 10.5pt = 14px: full cells 14, half cells 7; é is not a known
-            // cell and keeps the stand-in's 9px.
-            assert_eq!(
-                widths,
-                vec![14.0, 14.0, 7.0, 7.0, 7.0, 7.0, 14.0, 9.0],
-                "{family}"
-            );
-            for grapheme in ["日", "本", "a", "b", " ", "ｱ", "。"] {
-                assert!(
-                    !measured.iter().any(|text| text == grapheme),
-                    "{family}: {grapheme:?} was measured by the host: {measured:?}"
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            // Backed by the original full/half-width Word controls. Latin
+            // half cells retain their existing metrics; é keeps host shaping.
+            let (full, half) = match platform {
+                WordLayoutPlatform::Mac => (14.0, 7.0),
+                WordLayoutPlatform::Windows => (14.007272727272728, 6.998260869565217),
+            };
+            for family in ["MS Mincho", "ＭＳ ゴシック", "ＭＳ明朝", "MS-Gothic"] {
+                let (widths, measured) = wrap(family, platform);
+                assert_eq!(
+                    widths,
+                    vec![full, full, 7.0, 7.0, 7.0, half, full, 9.0],
+                    "{platform:?} {family}"
                 );
+                for grapheme in ["日", "本", "a", "b", " ", "ｱ", "。"] {
+                    assert!(!measured.iter().any(|text| text == grapheme),
+                        "{platform:?} {family}: {grapheme:?} was measured by the host: {measured:?}");
+                }
             }
+            let (widths, _) = wrap("MS PMincho", platform);
+            assert_eq!(widths, vec![9.0; 8]);
         }
-        // The proportional siblings keep the host's widths.
-        let (widths, _) = wrap("MS PMincho");
-        assert_eq!(widths, vec![9.0; 8]);
     }
 
     #[test]
@@ -23125,7 +23252,17 @@ mod tests {
                             Some(0),
                         )
                         .unwrap();
-                        let fixed_width = cell.filter(|_| fixed).map(|cell| 14.0 * cell);
+                        let fixed_width = cell.filter(|_| fixed).map(|cell| {
+                            if platform == WordLayoutPlatform::Windows && oracle.is_none() {
+                                match grapheme {
+                                    "日" | "。" | "𠀀" => 14.007272727272728,
+                                    "ｱ" => 6.998260869565217,
+                                    _ => 14.0 * cell,
+                                }
+                            } else {
+                                14.0 * cell
+                            }
+                        });
                         let emoji_width =
                             (emoji && platform == WordLayoutPlatform::Mac).then_some(14.0);
                         let word_width = fixed_width.or(emoji_width);
