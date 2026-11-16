@@ -4990,6 +4990,30 @@
     {
       "fixture": "word-windows-styled-arial-pair-matrix-plain-size24-italic-compat15",
       "docx_sha256": "b572d4d1af41f237d499f38ad4e79ae4e562f14ef2913b33e563a10b1f777f5c"
+    },
+    {
+      "fixture": "word-windows-styled-arial-pair-matrix-size12-bold-compat15",
+      "docx_sha256": "e668194bd63db0b9767e58cec03af090d426818e81639aef2de28669510b3836"
+    },
+    {
+      "fixture": "word-windows-styled-arial-pair-matrix-size12-bolditalic-compat15",
+      "docx_sha256": "ae6a9da1973684a5b5fa1d3861ef54ee4f0a1bf03f360f60bf956df20b7cade7"
+    },
+    {
+      "fixture": "word-windows-styled-arial-pair-matrix-size12-italic-compat15",
+      "docx_sha256": "60dac26c10088ed129b70ef3761db60737fa62b539471eefb21b70b9d3dfff02"
+    },
+    {
+      "fixture": "word-windows-styled-arial-pair-matrix-size24-bold-compat15",
+      "docx_sha256": "c420974c56dcc3a7f6f0c9cbd4e2920e763c8ebc05fa9eb43f57119b280ce8f3"
+    },
+    {
+      "fixture": "word-windows-styled-arial-pair-matrix-size24-bolditalic-compat15",
+      "docx_sha256": "1e8b0adf09c838808ecce920445f93f4a44a7f45adbc855805b1fb7bc4ea9329"
+    },
+    {
+      "fixture": "word-windows-styled-arial-pair-matrix-size24-italic-compat15",
+      "docx_sha256": "2130e03337bf63bf640b1c769f19103a51c9b8bb70fdc87fad788c7580fe6f30"
     }
   ]
 }

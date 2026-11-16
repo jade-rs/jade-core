@@ -18317,6 +18317,17 @@ where
         }
         let paragraph_offset = 0usize;
         let current_direction = self.current_text_direction;
+        // Word shades the whole grid pitch after a matching adjacent shaded
+        // paragraph. The initial paragraph alone leaves its leading unpainted.
+        let windows_shading_continuation = paragraph_style.word_platform
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !self.spacing_scan_from_story
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && windows_paragraph_shading_continues_at(
+                self.spacing_scan_body_elements(),
+                body_element_index,
+            );
 
         let prefix_replay = self
             .prefix_replay_until
@@ -18338,6 +18349,7 @@ where
         // entries from earlier render modes (e.g. before toggling comments/formatting marks) could
         // be replayed incorrectly.
         if (prefix_replay || fast_replay || shift_replay)
+            && !windows_shading_continuation
             && self.active_float_exclusions.is_empty()
             && self.float_lookahead.is_none()
             && self.float_lookahead_pin.is_none()
@@ -18670,6 +18682,9 @@ where
             && options.render_comments
             && Self::paragraph_contains_comment_anchors(paragraph);
         let cache_eligible = !has_comment_anchors
+            // These commands depend on the preceding paragraph's shading.
+            // Do not reuse an own-paragraph-only draw cache for this case.
+            && !windows_shading_continuation
             // Full diagnostics must rebuild auxiliary metadata absent from
             // cached draw commands. Keep normal editing caches intact.
             && self.auxiliary_story_capture_mode != AuxiliaryStoryCaptureMode::Full
@@ -21069,6 +21084,7 @@ where
                                 !(self.dark_mode_text && is_default_page_background_shading(c))
                             })
                         }),
+                    windows_shading_continuation,
                     paragraph_box_borders
                         .and_then(|borders| {
                             resolve_paragraph_box_borders(
@@ -23297,6 +23313,7 @@ where
         exact_line_baseline_share: Option<f64>,
         pending_numbering: Option<&PendingNumberingRender>,
         paragraph_shading: Option<ShadingPaint>,
+        windows_shading_continuation: bool,
         paragraph_borders: Option<Rc<ResolvedParagraphBorders>>,
         commands_out: Option<&mut Vec<DrawCommand>>,
         selection_lines_out: Option<&mut Vec<SelectionLineLayout>>,
@@ -24759,12 +24776,14 @@ where
                     // first-line indent. Only the first grid line omits its
                     // leading blank area; later lines shade the whole pitch.
                     let padding = points_to_px(1.44);
-                    let first_leading =
-                        if line_index == 0 && paragraph_style.word_grid_line_sizing.is_some() {
-                            top_leading.max(0.0)
-                        } else {
-                            0.0
-                        };
+                    let first_leading = if line_index == 0
+                        && !windows_shading_continuation
+                        && paragraph_style.word_grid_line_sizing.is_some()
+                    {
+                        top_leading.max(0.0)
+                    } else {
+                        0.0
+                    };
                     (
                         paragraph_base_x + paragraph_style.first_line_indent.min(0.0) - padding,
                         top + first_leading,
@@ -41737,6 +41756,37 @@ fn paragraph_border_box_continues_at(elements: &[BodyElement], upper_index: usiz
     adjacent_paragraphs(elements, upper_index).is_some_and(|(upper, lower)| {
         word_paragraphs_share_border_box(upper.properties.as_ref(), lower.properties.as_ref())
     })
+}
+
+fn windows_paragraph_shading_continues_at(elements: &[BodyElement], lower_index: usize) -> bool {
+    let Some((upper, lower)) = lower_index
+        .checked_sub(1)
+        .and_then(|index| adjacent_paragraphs(elements, index))
+    else {
+        return false;
+    };
+    let (Some(upper), Some(lower)) = (upper.properties.as_ref(), lower.properties.as_ref()) else {
+        return false;
+    };
+    if upper.borders.is_some() || lower.borders.is_some() || lower.page_break_before == Some(true) {
+        return false;
+    }
+    let Some(shading) = lower.shading.as_ref().filter(|shading| {
+        shading.pattern().is_none() && shading.resolved_background_color().is_some()
+    }) else {
+        return false;
+    };
+    upper.shading.as_ref() == Some(shading)
+        && upper.spacing.as_ref().is_none_or(|spacing| {
+            spacing.after.unwrap_or(0.0) == 0.0
+                && spacing.after_lines.unwrap_or(0.0) == 0.0
+                && !spacing.after_auto
+        })
+        && lower.spacing.as_ref().is_none_or(|spacing| {
+            spacing.before.unwrap_or(0.0) == 0.0
+                && spacing.before_lines.unwrap_or(0.0) == 0.0
+                && !spacing.before_auto
+        })
 }
 
 /// `(lower drops its space before, upper drops its space after)` for the

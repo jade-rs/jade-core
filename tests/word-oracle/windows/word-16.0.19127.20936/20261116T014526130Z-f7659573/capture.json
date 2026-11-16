@@ -1,0 +1,85 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T014526130Z-f7659573",
+  "captured_at_utc": "2026-11-16T01:45:26.1340749Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-styled-arial-pair-matrix-size24-italic-compat15",
+      "source": "..\\w16-u-styled-arial-pair-matrix-input-snapshots\\word-windows-styled-arial-pair-matrix-size24-italic-compat15.docx",
+      "sha256": "2130e03337bf63bf640b1c769f19103a51c9b8bb70fdc87fad788c7580fe6f30",
+      "pdf": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.pdf",
+      "pdf_sha256": "c10d41e0f4529641d82677e52ebd1480491f61dd328b43e311256fa3aa022800",
+      "pages": 6,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.page-001.emf",
+          "sha256": "f5fb21a79c099d670d9f5bbe41a8356ef542e46dbf9deedd13c278adbddf0dd4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.page-002.emf",
+          "sha256": "7fecea5b167b5ac224c5855d5ca6a3a88cf680bc9654eee5d1b9ef0ea6c04d0e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.page-003.emf",
+          "sha256": "0f874464107beb17ac0d4e57885775014b791526c0da49f8688e08500b64432a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 4,
+          "file": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.page-004.emf",
+          "sha256": "b68dfc7fa2c0ce9a5691d84e2571f70e47fda24fce21aa265183bf5944496dce",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 5,
+          "file": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.page-005.emf",
+          "sha256": "cceb41097f8654052bdff5d445e114411b9015f91f0e6684fb088917f9ca8273",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 6,
+          "file": "word-windows-styled-arial-pair-matrix-size24-italic-compat15.page-006.emf",
+          "sha256": "d6554d51018c3534df6f5a96231734eb53d7b5c6126ab890fb74fb707e0f287a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
