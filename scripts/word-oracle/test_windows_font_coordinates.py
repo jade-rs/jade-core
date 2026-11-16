@@ -10,6 +10,30 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_yu_nominal_wrap_boundaries_reproduce_word_originals(self):
+        from generate_windows_yu_nominal_wrap_probes import generate as nominal_wrap
+        from zipfile import ZipFile
+        import xml.etree.ElementTree as ET
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'}
+        sources = ROOT / 'tests/word-oracle/windows/observations/sources'
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(nominal_wrap(output), 5)
+            widths = []
+            for source in output.glob('*.docx'):
+                self.assertEqual(source.read_bytes(), (sources / source.name).read_bytes())
+                self.assertEqual(source.read_bytes(), (ROOT / 'public/fixtures' / source.name).read_bytes())
+                with ZipFile(source) as archive:
+                    root = ET.fromstring(archive.read('word/document.xml'))
+                attr = '{' + ns['w'] + '}'
+                section = root.find('w:body/w:sectPr', ns)
+                page, margins = section.find('w:pgSz', ns), section.find('w:pgMar', ns)
+                widths.append((int(page.get(attr + 'w')) - int(margins.get(attr + 'left'))
+                               - int(margins.get(attr + 'right'))) / 20)
+                self.assertEqual(''.join(t.text for t in root.findall('.//w:t', ns)), '日' * 128)
+                self.assertEqual({s.get(attr + 'val') for s in root.findall('.//w:rPr/w:sz', ns)}, {'40'})
+            self.assertEqual(sorted(widths), [319.9, 319.95, 320.0, 320.05, 320.1])
+
     def test_independent_nonhalf_and_halfwrap_sources_reproduce_word_originals(self):
         from generate_windows_nonhalf_cell_probes import generate as nonhalf
         from generate_windows_printer_halfwrap_probes import generate as halfwrap
@@ -252,8 +276,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 1016)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 576)
+        self.assertEqual(len(verify()), 1021)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 581)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf

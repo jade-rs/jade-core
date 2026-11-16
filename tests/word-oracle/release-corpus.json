@@ -5722,6 +5722,26 @@
     {
       "fixture": "word-windows-cjk-cell-mincho-ideographic-gap-size8p5-regular-compat15",
       "docx_sha256": "6dc18eb3aeb87c7d25581fb224abd4b094baa4e16c43106d637ad99dead125b1"
+    },
+    {
+      "fixture": "word-windows-yu-nominal-wrap-size20-width319p9-compat15",
+      "docx_sha256": "4a5e4378d33b9999baa45f5f388a784b4a5e66b5092a327d47568d0f35e47757"
+    },
+    {
+      "fixture": "word-windows-yu-nominal-wrap-size20-width319p95-compat15",
+      "docx_sha256": "ec613f40a6760acabd690d6c030aa7d2b8091d26571d6a13ce4a88721d7fcc7b"
+    },
+    {
+      "fixture": "word-windows-yu-nominal-wrap-size20-width320-compat15",
+      "docx_sha256": "aedf19ed0c8b001b21e3911cfe51f60de7cdf2a171e1518e77e213627f3cdc50"
+    },
+    {
+      "fixture": "word-windows-yu-nominal-wrap-size20-width320p05-compat15",
+      "docx_sha256": "82371a07c44daf599122ab5c4534d68a6514abcc59edfc10bfc31e21fed929de"
+    },
+    {
+      "fixture": "word-windows-yu-nominal-wrap-size20-width320p1-compat15",
+      "docx_sha256": "e211a8659999e90e8e504fb4c32edc741c69b79feed6fddf6fe8ea3182e1d4b0"
     }
   ]
 }
