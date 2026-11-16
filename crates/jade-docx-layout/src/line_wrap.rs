@@ -2385,9 +2385,11 @@ pub fn distribute_east_asian_justification(
 pub struct WindowsMixedJustificationOpportunity {
     pub space_capacity_px: f64,
     pub auto_space_capacity_px: f64,
+    /// Expansion reserved for an ideographic boundary before uniform spacing.
+    pub inter_character_capacity_px: f64,
 }
 
-/// Apply bounded word-space expansion, then script-boundary expansion, then
+/// Apply bounded word-space, script-boundary and ideographic expansion, then
 /// share the remaining width across all eligible boundaries. The caller owns
 /// glyph placement; neither this plan nor its capacities use reference output.
 pub fn distribute_windows_mixed_justification(
@@ -2399,12 +2401,15 @@ pub fn distribute_windows_mixed_justification(
         return shares;
     }
     let mut remaining = extra;
-    for auto_space in [false, true] {
+    for tier in 0..3 {
+        if remaining <= 0.0 {
+            break;
+        }
         let capacity = |opportunity: &WindowsMixedJustificationOpportunity| {
-            let value = if auto_space {
-                opportunity.auto_space_capacity_px
-            } else {
-                opportunity.space_capacity_px
+            let value = match tier {
+                0 => opportunity.space_capacity_px,
+                1 => opportunity.auto_space_capacity_px,
+                _ => opportunity.inter_character_capacity_px,
             };
             if value.is_finite() {
                 value.max(0.0)
@@ -2447,14 +2452,17 @@ mod windows_mixed_justification_tests {
             Opportunity {
                 space_capacity_px: 4.0,
                 auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
             },
             Opportunity {
                 space_capacity_px: 0.0,
                 auto_space_capacity_px: 5.0,
+                inter_character_capacity_px: 0.0,
             },
             Opportunity {
                 space_capacity_px: 0.0,
                 auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
             },
         ];
         assert_eq!(distribute(&opportunities, 3.0), [3.0, 0.0, 0.0]);
@@ -2468,18 +2476,22 @@ mod windows_mixed_justification_tests {
             Opportunity {
                 space_capacity_px: 2.5,
                 auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
             },
             Opportunity {
                 space_capacity_px: 0.0,
                 auto_space_capacity_px: 5.0,
+                inter_character_capacity_px: 0.0,
             },
             Opportunity {
                 space_capacity_px: 0.0,
                 auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.5,
             },
             Opportunity {
                 space_capacity_px: 3.0,
                 auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
             },
         ];
         for extra in [0.0, 0.5, 5.5, 7.0, 10.5, 57.25] {
@@ -2489,6 +2501,7 @@ mod windows_mixed_justification_tests {
             let scaled = opportunities.map(|op| Opportunity {
                 space_capacity_px: op.space_capacity_px * 1.5,
                 auto_space_capacity_px: op.auto_space_capacity_px * 1.5,
+                inter_character_capacity_px: op.inter_character_capacity_px * 1.5,
             });
             for (actual, expected) in distribute(&scaled, extra * 1.5).iter().zip(original) {
                 assert!((actual - expected * 1.5).abs() < 1e-10);
@@ -2497,10 +2510,40 @@ mod windows_mixed_justification_tests {
     }
 
     #[test]
+    fn ideographic_expansion_precedes_uniform_residual_without_expanding_spaces() {
+        let opportunities = [
+            Opportunity {
+                space_capacity_px: 2.0,
+                auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 4.0,
+                inter_character_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 1.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
+            },
+        ];
+        assert_eq!(distribute(&opportunities, 3.0), [2.0, 1.0, 0.0, 0.0]);
+        assert_eq!(distribute(&opportunities, 6.5), [2.0, 4.0, 0.5, 0.0]);
+        assert_eq!(distribute(&opportunities, 9.0), [2.5, 4.5, 1.5, 0.5]);
+    }
+
+    #[test]
     fn invalid_slack_cannot_move_glyphs() {
         let opportunities = [Opportunity {
             space_capacity_px: 4.0,
             auto_space_capacity_px: 5.0,
+            inter_character_capacity_px: 0.0,
         }];
         for extra in [-1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             assert_eq!(distribute(&opportunities, extra), [0.0]);

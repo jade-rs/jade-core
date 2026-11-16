@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T064806811Z-52673d9b",
+  "captured_at_utc": "2026-11-16T06:48:06.8154168Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-wide-a3-ms-mincho-size19p5-compat15",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w16-ac-wide-size-face-input-snapshots\\word-windows-wide-a3-ms-mincho-size19p5-compat15.docx",
+      "sha256": "fd8f62de1215ac6de14e929b3b3159de7d25d252f4570130275cba9c80863f3b",
+      "pdf": "word-windows-wide-a3-ms-mincho-size19p5-compat15.pdf",
+      "pdf_sha256": "dcee966ac4b51a859eb7151678d35f2de204da721df8915eb9ca565104351a02",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-wide-a3-ms-mincho-size19p5-compat15.page-001.emf",
+          "sha256": "e7fe919677f1e16948fe6afb169480a5fbbb156fa578daed17a0017adddefea2",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
