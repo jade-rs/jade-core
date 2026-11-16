@@ -8,7 +8,57 @@ import zipfile
 from check_platform_coordinates import ROOT, checked_file, read_json, require, repo_file
 
 INDEX = Path('tests/word-oracle/windows/observations/index.json')
-INDEX_SHA256 = 'fbeaec0af1bd2819e6498346bc64496bcdfa6ec14d76141178f48fc0a9337d4b'
+INDEX_SHA256 = 'b39c940bfaa4bb21bddcf8de829bf31692bed3390c763cf4805ac5765a412f21'
+
+
+def verify_rejected_attempt(root, rejection, attempt):
+    """Retain a failed Word open without treating it as a coordinate reference."""
+    archive = checked_file(root, dict(file=attempt['archive'], sha256=attempt['archive_sha256']))
+    word = attempt['word']
+    require(re.fullmatch(r'\d+\.\d+\.\d+\.\d+', word['product_version']),
+            'Rejected attempt requires the complete Word version')
+    require(re.fullmatch(r'[a-f0-9]{64}', word['executable_sha256']),
+            'Rejected attempt requires executable identity')
+    require(archive.parent.name == 'word-' + word['product_version'], 'Wrong rejection version')
+    require(attempt['open_mode'] == 'normal-read-only', 'Wrong rejected open mode')
+    with zipfile.ZipFile(archive) as bundle:
+        require(set(bundle.namelist()) == {'capture.json', 'inputs/source.docx', 'capture-error.log'}
+                and len(bundle.namelist()) == 3, 'Rejected attempt contains drawing expectations')
+        raw = bundle.read('capture.json')
+        require(hashlib.sha256(raw).hexdigest() == attempt['capture_sha256'],
+                'Rejected Word metadata changed')
+        capture = json.loads(raw.decode('utf-8-sig'))
+        require(capture['schema'] == 2 and capture['platform'] == 'windows'
+                and capture['status'] == 'failed' and capture['documents'] == [],
+                'Rejected Word open must not become a successful drawing capture')
+        require(capture['word'] == word and capture['capture_id'] == attempt['capture_id'],
+                'Rejected Word provenance changed')
+        require(hashlib.sha256(bundle.read('inputs/source.docx')).hexdigest()
+                == attempt['source_sha256'] == rejection['source_sha256'],
+                'Rejected source identity changed')
+        error = bundle.read('capture-error.log')
+        require(bool(error) and hashlib.sha256(error).hexdigest() == attempt['error_sha256'],
+                'Original Word open error changed')
+
+
+def verify_mac_input_coverage(index, root=ROOT):
+    """Every imported Mac source needs Windows evidence or an explicit refusal."""
+    observed = {d['source_sha256'] for c in index['captures'] for d in c['documents']}
+    rejected = {r['source_sha256'] for r in index['rejected_sources']}
+    manifests = sorted((root / 'tests/word-oracle/mac-elsa-synthetic').glob('*/manifest.json'))
+    require(bool(manifests), 'Missing imported Mac corpus')
+    counts = [0, 0]
+    for path in manifests:
+        manifest = read_json(path)
+        digest = hashlib.sha256(path.with_name('source.docx').read_bytes()).hexdigest()
+        require(digest == manifest['sourceSha256'], 'Imported Mac source identity changed')
+        if digest in observed:
+            counts[0] += 1
+        elif digest in rejected:
+            counts[1] += 1
+        else:
+            require(False, f'Mac original missing Windows observation: {path.parent.name}')
+    return tuple(counts)
 
 
 def verify(root=ROOT):
@@ -68,11 +118,14 @@ def verify(root=ROOT):
                 count += 1
             require(len(bundle.namelist()) == len(members) and set(bundle.namelist()) == members,
                     'Unexpected/duplicate/missing archive files')
-    require(len(identities) == 733 and count == 1644, 'Original observation coverage removed')
+    require(len(identities) == 797 and count == 1708, 'Original observation coverage removed')
     for rejection in index['rejected_sources']:
         checked_file(root, dict(file=rejection['source'], sha256=rejection['source_sha256']))
         require(bool(rejection['word_product_version']) and bool(rejection['reason']),
                 'Missing rejected-input provenance')
+        for attempt in rejection.get('attempts', []):
+            verify_rejected_attempt(root, rejection, attempt)
+    verify_mac_input_coverage(index, root)
     return len(identities), count, len(source_hashes)
 
 

@@ -244,6 +244,9 @@ pub fn set_host_font_families(families: Option<Vec<String>>) {
 pub const DEFAULT_LATIN_FONT_STACK: &str = "'Times New Roman', serif";
 /// Fallback CSS font stack optimized for East Asian glyphs.
 pub const DEFAULT_EAST_ASIA_FONT_STACK: &str = "'MS Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'Noto Serif CJK JP', serif";
+// Windows Word also uses these implicit faces when the requested Latin face
+// lacks Simplified Chinese or Hangul glyphs. Keep the Mac family list intact.
+const WINDOWS_EAST_ASIA_FONT_STACK: &str = "'MS Mincho', SimSun, 'Malgun Gothic', 'Yu Mincho', 'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'Noto Serif CJK JP', serif";
 /// Capture fallback stack for complex scripts with limited document hints.
 pub const DEFAULT_COMPLEX_FONT_STACK: &str = "'Times New Roman', serif";
 
@@ -941,8 +944,9 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
         })
     };
     let platform = crate::line_metrics::word_layout_platform();
-    // Windows Word's Japanese Arial/Calibri probes select MS Mincho for the East
-    // Asian slot. This must select that slot's metrics as well as its paint.
+    // Arial/Calibri's Japanese fallback is independent of the direct language
+    // tag in the captured Windows controls. Other scripts can use the later
+    // fallback faces when MS Mincho does not cover their glyphs.
     let east_candidate = if (platform == crate::line_metrics::WordLayoutPlatform::Mac
         && ((!language_is("zh")
             && !language_is("ko")
@@ -952,14 +956,22 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
             || (language_is("ja")
                 && east_candidate.is_some_and(|family| family.trim() == "Noto Sans"))))
         || (platform == crate::line_metrics::WordLayoutPlatform::Windows
-            && language_is("ja")
+            && (language_is("ja")
+                || fonts_ref
+                    .and_then(|fonts| fonts.preferred_east_asia())
+                    .is_some())
             && east_candidate.is_some_and(windows_latin_east_asia_fallback_face))
     {
         Some("MS Mincho")
     } else {
         east_candidate
     };
-    let east_stack = normalize_font_stack(east_candidate, DEFAULT_EAST_ASIA_FONT_STACK);
+    let east_defaults = if platform == crate::line_metrics::WordLayoutPlatform::Windows {
+        WINDOWS_EAST_ASIA_FONT_STACK
+    } else {
+        DEFAULT_EAST_ASIA_FONT_STACK
+    };
+    let east_stack = normalize_font_stack(east_candidate, east_defaults);
 
     let complex_candidate = fonts_ref
         .and_then(|fonts| fonts.preferred_complex())
@@ -1288,6 +1300,7 @@ pub struct ResolvedRunStyle {
     // a Latin East Asian face with MS Mincho.
     requested_east_asia_font_is_distinct: bool,
     requested_east_asia_uses_latin_fallback: bool,
+    windows_hangul_font: Option<Rc<ScriptFallbackFont>>,
     /// Whether the descriptors ask for ligatures or contextual alternates
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
     /// as kerning is, so a ligature's width reaches layout.
@@ -1301,6 +1314,12 @@ pub struct ResolvedRunStyle {
     fixed_cjk_metrics: std::cell::OnceCell<Rc<CachedCjkMetrics>>,
     fixed_east_asia_descriptor: Option<Rc<str>>,
     fixed_east_asia_em_px: f64,
+}
+
+#[derive(Debug)]
+struct ScriptFallbackFont {
+    descriptor: Rc<str>,
+    hash: u64,
 }
 
 impl ResolvedRunStyle {
@@ -1328,6 +1347,19 @@ impl ResolvedRunStyle {
                 .or(props.font_family.as_deref())
                 .is_some_and(windows_latin_east_asia_fallback_face)
         });
+        self.windows_hangul_font = None;
+        if self.requested_east_asia_uses_latin_fallback
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+        {
+            if let Some((prefix, families)) = self.font_descriptor_east_asia.split_once("pt ") {
+                let descriptor: Rc<str> = format!("{prefix}pt 'Malgun Gothic', {families}").into();
+                self.windows_hangul_font = Some(Rc::new(ScriptFallbackFont {
+                    hash: hash_font_descriptor(&descriptor),
+                    descriptor,
+                }));
+            }
+        }
         self
     }
 
@@ -1429,6 +1461,7 @@ impl ResolvedRunStyle {
             font_hint,
             requested_east_asia_font_is_distinct: false,
             requested_east_asia_uses_latin_fallback: false,
+            windows_hangul_font: None,
             joins_characters,
             has_font_features,
             fixed_ascii_metrics: std::cell::OnceCell::new(),
@@ -1670,7 +1703,22 @@ impl ResolvedRunStyle {
     /// Returns a cheap `Rc::clone` of the font descriptor for the given grapheme.
     #[inline]
     pub fn descriptor_for_grapheme_rc(&self, grapheme: &str, script: ScriptCategory) -> Rc<str> {
+        if self.font_slot_for_grapheme(grapheme, script) == ResolvedFontSlot::EastAsia {
+            if let Some(font) = self.hangul_fallback_for_grapheme(grapheme) {
+                return Rc::clone(&font.descriptor);
+            }
+        }
         Rc::clone(self.descriptor_for_slot(self.font_slot_for_grapheme(grapheme, script)))
+    }
+
+    #[inline]
+    fn hangul_fallback_for_grapheme(&self, grapheme: &str) -> Option<&ScriptFallbackFont> {
+        use unicode_script::{Script, UnicodeScript};
+        let font = self.windows_hangul_font.as_deref()?;
+        grapheme
+            .chars()
+            .any(|ch| ch.script() == Script::Hangul)
+            .then_some(font)
     }
 
     pub fn descriptor_and_hash_for_grapheme(
@@ -1702,6 +1750,11 @@ impl ResolvedRunStyle {
         script: ScriptCategory,
     ) -> (ResolvedFontSlot, &str, u64, Option<u32>) {
         let slot = self.font_slot_for_grapheme(grapheme, script);
+        if slot == ResolvedFontSlot::EastAsia {
+            if let Some(font) = self.hangul_fallback_for_grapheme(grapheme) {
+                return (slot, &font.descriptor, font.hash, None);
+            }
+        }
         match slot {
             ResolvedFontSlot::LatinAscii => (
                 slot,
@@ -1760,6 +1813,46 @@ pub fn apply_hint_to_script(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_hangul_fallback_is_selected_per_grapheme_and_preserves_mac() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let properties = RunProperties {
+                font_family: Some("Arial".into()),
+                ..Default::default()
+            };
+            let style = resolve_run_style_for_wrap(Some(&properties), None);
+            for grapheme in ["税", "あ", "汉", "漢", "한", "글", "한"] {
+                let (_, descriptor, hash, _) =
+                    style.font_key_for_grapheme(grapheme, ScriptCategory::EastAsia);
+                if platform == WordLayoutPlatform::Windows && ["한", "글", "한"].contains(&grapheme)
+                {
+                    assert!(descriptor.contains("pt 'Malgun Gothic',"), "{descriptor}");
+                } else {
+                    assert_eq!(descriptor, style.font_descriptor_east_asia.as_ref());
+                }
+                assert_eq!(hash, hash_font_descriptor(descriptor));
+                assert_eq!(
+                    style
+                        .descriptor_for_grapheme_rc(grapheme, ScriptCategory::EastAsia)
+                        .as_ref(),
+                    descriptor
+                );
+            }
+            assert_eq!(
+                style.descriptor_for_grapheme("A", ScriptCategory::Latin),
+                style.font_descriptor_latin_ascii.as_ref()
+            );
+            assert_eq!(
+                style.descriptor_for_grapheme("ع", ScriptCategory::Complex),
+                style.font_descriptor_complex.as_ref()
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn font_family_cache_keeps_latin_and_complex_slot_requests_independent() {
         use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
@@ -2438,7 +2531,7 @@ mod tests {
             };
             assert!(resolve_font_families(Some(&properties))
                 .east_asia_stack()
-                .starts_with("Calibri"));
+                .starts_with("'MS Mincho'"));
         }
         set_word_layout_platform(previous);
     }
@@ -2677,6 +2770,7 @@ mod tests {
     #[test]
     fn mac_draws_a_named_latin_east_asia_face_in_ms_mincho() {
         use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
         let props = |east_asia: &str| RunProperties {
             fonts: Some(RunFonts {
                 ascii: Some("Times New Roman".into()),
@@ -2722,20 +2816,26 @@ mod tests {
         };
         let mac_chinese = resolve_font_families(Some(&chinese));
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert_eq!(
-            mac_without_east_asia.east_asia_stack(),
-            resolve_font_families(Some(&latin_only)).east_asia_stack()
-        );
-        assert_eq!(
-            mac_chinese.east_asia_stack(),
-            resolve_font_families(Some(&chinese)).east_asia_stack()
-        );
+        assert!(mac_without_east_asia.east_asia_stack().starts_with("Arial"));
+        assert!(mac_chinese.east_asia_stack().starts_with("Arial"));
+        assert!(resolve_font_families(Some(&latin_only))
+            .east_asia_stack()
+            .starts_with("Arial"));
+        // Original Windows captures use MS Mincho for Japanese glyphs even
+        // under Chinese/Korean language tags; Mac keeps its existing stack.
+        assert!(resolve_font_families(Some(&chinese))
+            .east_asia_stack()
+            .starts_with("'MS Mincho'"));
         let windows = resolve_font_families(Some(&props("Arial")));
-        assert!(!windows.east_asia_stack().starts_with("'MS Mincho'"));
+        assert!(windows.east_asia_stack().starts_with("'MS Mincho'"));
+        set_word_layout_platform(previous);
     }
 
     #[test]
-    fn resolve_font_families_bridges_arial_to_east_asian_sans_fallbacks() {
+    fn windows_arial_fallback_retains_implicit_chinese_and_korean_fonts() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let previous = crate::line_metrics::word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
         let props = RunProperties {
             fonts: Some(RunFonts {
                 east_asia: Some("Arial".into()),
@@ -2745,16 +2845,10 @@ mod tests {
         };
 
         let resolved = resolve_font_families(Some(&props));
-        assert!(
-            resolved.east_asia_stack().contains("'Arial Unicode MS'"),
-            "expected east Asia stack to include Arial Unicode MS: {}",
-            resolved.east_asia_stack()
-        );
-        assert!(
-            resolved.east_asia_stack().contains("'Noto Sans JP'"),
-            "expected east Asia stack to include Noto Sans JP: {}",
-            resolved.east_asia_stack()
-        );
+        assert!(resolved.east_asia_stack().starts_with("'MS Mincho'"));
+        assert!(resolved.east_asia_stack().contains("SimSun"));
+        assert!(resolved.east_asia_stack().contains("'Malgun Gothic'"));
+        set_word_layout_platform(previous);
     }
 
     #[test]

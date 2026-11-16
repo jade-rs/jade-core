@@ -1,10 +1,10 @@
 Shared Mac and Windows coordinate assertions
 ===========================================
 
-Current verified Windows coverage is 745 typography cases / 134,351 origins,
-including 311 shaded controls, 61 note-rule cases and 1,141 release inputs.
-The versioned observation archive retains 733 captures / 1,644 documents /
-1,605 source byte groups. Previous records and every Mac expectation remain
+Current verified Windows coverage is 789 typography cases / 134,879 origins,
+including 355 shaded controls, 61 note-rule cases and 1,185 release inputs.
+The versioned observation archive retains 797 captures / 1,708 documents /
+1,663 source byte groups. Previous records and every Mac expectation remain
 unchanged. Newer Word captures append evidence instead of replacing a version.
 
 `platform-coordinates.json` links each unchanged Mac corpus `source.docx` to its
@@ -41,8 +41,8 @@ The checker also requires every previously asserted shared case and its original
 Windows version/capture ID. Adding newer Word versions cannot silently remove an
 older version's assertion.
 
-The separate `windows/font-coordinates.json` registry asserts 745 font/typography
-documents (134,351 glyph origins) against Word 16.0.19127.20936. Its Windows CI
+The separate `windows/font-coordinates.json` registry asserts 789 font/typography
+documents (134,879 glyph origins) against Word 16.0.19127.20936. Its Windows CI
 gate extracts font programs from the preserved original Word PDFs and passes
 only those fonts and the original DOCX to the renderer. Expected coordinates
 are never renderer inputs. This permits exact font testing on hosted runners
@@ -65,15 +65,29 @@ comparison before promotion.
 
 Twelve controls now pass all four coordinate comparisons and the production
 background gate, including both orders of the mixed-language runs. They are
-asserted in the typography registry. Eight uniform Chinese/Korean language-tag
-controls still expose a fallback-height difference on Japanese text and remain
-unpromoted observations. Original evidence and the 0.375pt limit are unchanged.
+asserted in the typography registry. The eight uniform Chinese/Korean language-tag
+controls now also pass after the Windows fallback-height correction, so all twenty
+are asserted. Original evidence and the 0.375pt limit are unchanged.
 
 The Windows applied-style cache includes both optional language fields because
 they select fallback faces and line metrics even when authored font slots are
 unchanged. A regression edits languages in place, restores missing values and
 replays cached paragraphs, comparing layout and actual paint with fresh frames.
 Mac uses its existing cache and font-selection paths.
+
+Twenty-four additional script controls cross Arial/Calibri and Japanese,
+Simplified Chinese, Traditional Chinese and Hangul text with three language
+tags. The six Japanese inputs reproduce earlier source bytes exactly under
+new capture IDs. Word selects MS Mincho, SimSun or Malgun Gothic according to
+the glyphs in these controls; changing only the language tag does not change
+that selection. All eighteen unique non-Japanese inputs now pass the complete
+coordinate/background gate and are asserted; the six byte-identical Japanese
+recaptures remain archived aliases of existing inputs.
+
+The Windows font gate also checks that every font program extracted from the
+original Word PDF is registered by the renderer. Matching logical text origins
+alone can miss a substituted missing-glyph box; discarding an implicit fallback
+font must fail before a case can be accepted. The Mac font list is unchanged.
 
 An additional [graphic-text gate](GRAPHIC_TEXT.md) asserts 62 versioned Windows
 cases against original physical glyph copies, visible colors and absolute
@@ -394,3 +408,56 @@ requested Latin East Asian faces use that average without ordinary-space pair
 kerning, including during wrap repair. Mac font metrics, spacing and expectation
 files remain unchanged; 372 source-identical comparisons preserve exact glyphs,
 pages, screen pixels and all PDF page pixels/drawings.
+
+Mixed-script fallback observations
+----------------------------------
+
+Eighteen additional Word 16.0.19127.20936 captures mix Japanese/Hangul,
+Hangul/Japanese and Simplified Chinese/Hangul within the same run. Arial and
+Calibri controls vary the Japanese, Chinese and Korean East Asian language tags.
+The complete original inputs, PDFs, raw EMFs and executable identity are retained
+alongside the earlier 24 single-script controls; the generator reproduces every
+archived source byte. All eighteen now pass the complete coordinate/background gate and are asserted
+individually in the font and release registries.
+
+The fallback prototype passes all four origin comparisons and the production
+background gate for all 42 controls. Hangul uses Malgun Gothic's measured
+2229/495 vertical units (2048 units/em) per grapheme, while Japanese and Chinese
+characters retain their own font selection. Mac descriptors and metrics retain
+their separate policy; no Mac golden or tolerance is updated.
+
+Forty-four additional unique source controls are asserted: eight uniform-language
+controls, eighteen single-script controls and eighteen mixed-script controls.
+Six byte-identical Japanese recaptures remain archived aliases of existing inputs.
+The prior 745 font and 1,141 release records remain an unchanged prefix. Local
+validation retains all 745 previous cases, all 44 additions, 434 exact Mac-mode
+before/after comparisons, all-feature editor 2,895 and layout 849 passing tests,
+and strict all-target/all-feature Clippy. Actual macOS and Windows native CI
+remain required before merge; the native gate asserts all 789 current cases.
+
+Long printer-metric observations
+--------------------------------
+
+Twenty-two additional Word 16.0.19127.20936 originals repeat Latin or Japanese
+text to expose cumulative advance errors: Arial in four styles at 12/20/24pt,
+and regular/bold MS Mincho at 9/10.5/12/20/40pt. The originals, source hashes,
+PDFs and raw 600dpi EMFs remain in the versioned observation archive. All 22
+background comparisons pass; fourteen controls still expose horizontal errors
+and remain unpromoted. Word's own EMF/PDF origins agree within the existing
+0.375pt limit for all 22, so their renderer disagreement remains actionable.
+The generator reproduces all original source bytes; no expectation is fitted
+to the native renderer and no tolerance is changed.
+
+Mac source coverage in Windows observations
+------------------------------------------
+
+Windows CI also asserts that every imported Mac DOCX has an original Windows
+Word capture or an explicit versioned Word-open refusal. Adding a Mac fixture
+without either evidence fails this coverage assertion. Currently 578 of the 579
+Mac originals have Windows Word 16.0.19127.20936 output. The remaining unchanged
+`adjacent-fixed-table-grids` source is rejected by Word's normal read-only open;
+its failed capture metadata, exact input, executable hash and original error log
+are archived separately. A failed open cannot supply coordinate expectations or
+be relabelled as a successful capture. The original Mac source and Mac goldens
+remain unchanged. Native coordinate comparisons run over the independently
+registered Windows references, including the 789 font cases and shared originals.

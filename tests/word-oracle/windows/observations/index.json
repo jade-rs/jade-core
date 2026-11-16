@@ -24435,6 +24435,1478 @@
           "opened_filename": "word-windows-edge-language-calibri-val-zh-zh-zh-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204201374Z-f405280f.zip",
+      "archive_sha256": "eb923a89655ba227701b42ffcec41cb131ecfbc6078a765c50ac42e492b30d0c",
+      "capture_id": "20261115T204201374Z-f405280f",
+      "capture_sha256": "7cd4d4656a99e88f2637e7f0b6dcd3cb9902e48917eeafef9518ada407f0f3a1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hang-ja-compat15",
+          "source_sha256": "0b689a4ceee289664f3ff107f64e1ecbb019bd4294c029fbd5040451198b4966",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hang-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hang-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204204912Z-dd2464ab.zip",
+      "archive_sha256": "d93ea7d77c1a3752f5b84d813121d1819cb000f1d2e4ec55060292ace38eb97b",
+      "capture_id": "20261115T204204912Z-dd2464ab",
+      "capture_sha256": "42a95c226e43aeb339b1ef1c8e51292a57c80226581270947818db4da27b60e4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hang-ko-compat15",
+          "source_sha256": "5cf4b43503d6ee19e2cb5c658080b4efeaf8b5a17790ec87f421677c654e3cba",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hang-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hang-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204207681Z-6935b767.zip",
+      "archive_sha256": "a8fc76cbd20c01f4edae38cb5f52352713ebb5e70d574e982271f61410cd8f5a",
+      "capture_id": "20261115T204207681Z-6935b767",
+      "capture_sha256": "4a17415a419976734ea22f28741a0abd73dbe31025cf8e34d0b17e4a320a0129",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hang-zh-compat15",
+          "source_sha256": "ce27929f42003f2e74838139052aa7675efcbb92328ebb7d73c881b92a42cacb",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hang-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hang-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204208993Z-5ad86428.zip",
+      "archive_sha256": "f0b29996c8935627f85871d1859f5865a0aa82fada5591afed2df357cdef1f90",
+      "capture_id": "20261115T204208993Z-5ad86428",
+      "capture_sha256": "5a011939465878278af24d3d92123318c56ef4437a8d3b12d680d4cc7a903b7f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hans-ja-compat15",
+          "source_sha256": "669e7527886790a0608f84e8490eb275b29d37445ad9647f8ce98d703e5a23b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hans-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hans-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204213130Z-d2cfc332.zip",
+      "archive_sha256": "50d0d57e2852ba2e76449503f5d5dbaf1f52fef534e65697e5e091b5e4bebe15",
+      "capture_id": "20261115T204213130Z-d2cfc332",
+      "capture_sha256": "3199c4648821f1b21612704b387c6bd67ca169db17a56e676b2112e7fbedf6b3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hans-ko-compat15",
+          "source_sha256": "3a495763d0747da28da8f4584768a9d1f7bf13af878d908f7d7eacc21e4bec82",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hans-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hans-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204215918Z-b1fbf362.zip",
+      "archive_sha256": "4751a7055a32157f96bb65105c4d74a4740a4eaecc33e5335bb1c511a5cbd866",
+      "capture_id": "20261115T204215918Z-b1fbf362",
+      "capture_sha256": "c94b84462d7d9e82e330789b314b53ff3aef7fa79958ccbbbb5615032dc36782",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hans-zh-compat15",
+          "source_sha256": "276ce3d6eeecab597bd46d418cacb0858dd75dac99ccc5fefe3ef6727d0432c3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hans-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hans-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204218659Z-357d1605.zip",
+      "archive_sha256": "61d8886eb09877a39996cc73969a0a0119d8c73fc712a8544e0ab29a02453308",
+      "capture_id": "20261115T204218659Z-357d1605",
+      "capture_sha256": "d9f831d054119859a45e43209e90e3a0781c2c954511638b9b9fea161919f310",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hant-ja-compat15",
+          "source_sha256": "7087428cb384624ce1c8a20d26d4fab99d40991f4eaacb0a031b82e44139b387",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hant-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hant-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204221415Z-48fbb331.zip",
+      "archive_sha256": "84f2ab2ccd76eb812fa7e91cf83cd6979843191a297e956ba303f531ac4bee77",
+      "capture_id": "20261115T204221415Z-48fbb331",
+      "capture_sha256": "ff0ab899a30fb491ca6010fa22d82640ba421385c61679b779b668bbc6b2ed1e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hant-ko-compat15",
+          "source_sha256": "878f0d09148374a900035fbd35659d91b47753e10d3aaf3c71c1c6415614e597",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hant-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hant-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204224125Z-df1113ee.zip",
+      "archive_sha256": "fb95214fdf2867886fc865f84c9ee852f985139ced51a48ac431424acc199948",
+      "capture_id": "20261115T204224125Z-df1113ee",
+      "capture_sha256": "005552803b3dafe42d96b1f909ca06dfac495f9a18a4a05dae6d0327504408a5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-hant-zh-compat15",
+          "source_sha256": "ce48a36de2c52bfe8fc565cd55b1c2cc448154fb1076fed3ab9b95805c0348ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-hant-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-hant-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204226869Z-5a4a45a0.zip",
+      "archive_sha256": "290e16ec5bb747096ad3d02b4cea1b2ae228911278a8e4b84de1cb0544b49e61",
+      "capture_id": "20261115T204226869Z-5a4a45a0",
+      "capture_sha256": "042fdbd2b1314f9004998aa0b369e99b116540ff3998ec5097818f17d95c10ac",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-jpan-ja-compat15",
+          "source_sha256": "fc478ee910dcf52f8d292ab822a2cfbb1cedaa3fc0de389c3ae9b41836140b35",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-jpan-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-jpan-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204229968Z-ad0f2550.zip",
+      "archive_sha256": "a90a14ee01a2a4752946e0897a74894395b84f24485a843ec556c8fdc26a64ec",
+      "capture_id": "20261115T204229968Z-ad0f2550",
+      "capture_sha256": "24c122259a79d72d30d3cccf258843bf6b07f91a221788edcfe6192c4ea4fff6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-jpan-ko-compat15",
+          "source_sha256": "dad48b19d38fecc49896e5c52e377b3918d5f9236344cfcf6c372b9e0a908aee",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-jpan-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-jpan-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204231259Z-2c0a56f9.zip",
+      "archive_sha256": "11defc1c3fb227e81a764f28be012e0ac9315c086135943296598bdaffd4ae55",
+      "capture_id": "20261115T204231259Z-2c0a56f9",
+      "capture_sha256": "cfdebc8eecce5424a016351460da7dbb58cd3c2c401dc2e51aee6b259aaf9717",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-arial-jpan-zh-compat15",
+          "source_sha256": "9c0955978b133a7c439560b2e453b9ddac701d0f3d6ad5efadd4997abe9a39ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-arial-jpan-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-arial-jpan-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204233998Z-ae99a690.zip",
+      "archive_sha256": "827295839deab03de04517af17cb1cbb4f7c8aef97c908c515634212ca51992d",
+      "capture_id": "20261115T204233998Z-ae99a690",
+      "capture_sha256": "e4a6effb108621a01d74a27b24dba75c52a2fdcbdb60f918db4de73e719566b7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hang-ja-compat15",
+          "source_sha256": "ab3fa911527bb25855c64102ec60b85f3cdddc804d022da4b9682344635b8c78",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hang-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hang-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204235411Z-eda91092.zip",
+      "archive_sha256": "4879c63a3f2f3b5729b8614aa921fc5188d07c5a6767c75be9193a15ba358018",
+      "capture_id": "20261115T204235411Z-eda91092",
+      "capture_sha256": "2c594a574ae90909328cb98e57cdcf9c8a89d9c7945cd77a406a58af48c8b2f8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hang-ko-compat15",
+          "source_sha256": "f464687ea7c09a8f7e7d8d6bd64f3b89f921ae3dc81a73359628f4dbb6d04580",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hang-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hang-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204238211Z-80f4f3fd.zip",
+      "archive_sha256": "665bfa33af310567eb4346cfeaa135edb526a3c424474d6d7a29880125d12bb1",
+      "capture_id": "20261115T204238211Z-80f4f3fd",
+      "capture_sha256": "339d72efec6d0cb0c07084a8a8418cc49e2981baec4f02b04d73bae610351361",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hang-zh-compat15",
+          "source_sha256": "507876817407751446a150dbef7a1a7a2c18225365ac97b5d7974c8a3cd61fc3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hang-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hang-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204240936Z-06f53c65.zip",
+      "archive_sha256": "d38650e17f5afd459d31404811980a4b43980cd0cec25a10b7826a54ba1ba76a",
+      "capture_id": "20261115T204240936Z-06f53c65",
+      "capture_sha256": "dca470f2f62bf5e97fc70c52afa4803ee55c886ee02d46fe1e98112d76c62253",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hans-ja-compat15",
+          "source_sha256": "9172a044232979b52fa3a479a39e1ddaabaa807a4f5e166241c3d40c72c494e6",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hans-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hans-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204244635Z-a29a6ba3.zip",
+      "archive_sha256": "f922b3b28ab9014f067b7e6e4c8043316667de00625fe6b3d09c4384abe7efc8",
+      "capture_id": "20261115T204244635Z-a29a6ba3",
+      "capture_sha256": "6cfcffecdedb87945589e40c767f4074ee7f3fc70bfa6ba1fb22328a2e1e8c69",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hans-ko-compat15",
+          "source_sha256": "7d9772505f29eb81fee0955415ca876ba337d9432cfe9f8a366ab5f7c53b1acb",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hans-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hans-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204246015Z-3d26a650.zip",
+      "archive_sha256": "6e1d5d170bf3e63a7ef2c4b48f3691fe57a995c7e80a359a925450ba6d34a151",
+      "capture_id": "20261115T204246015Z-3d26a650",
+      "capture_sha256": "3ff7c057411aefb1ef9c1b97151570db1b46df373f3b8eb2abef10491cd9e4c8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hans-zh-compat15",
+          "source_sha256": "e86cff06ab21dcadd6ea8d730db3704083dfc03fe5bda41191ef15a276be83d1",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hans-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hans-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204248791Z-7e3b12ce.zip",
+      "archive_sha256": "208658d98eae0eaf0e8fa9d942f9a2506e1eea89f1e00216eadc9ccf073b2ca2",
+      "capture_id": "20261115T204248791Z-7e3b12ce",
+      "capture_sha256": "9ea717a2e5852dac23c2f2a02086c491377bbf6381f49a4f544f8c36fd8e6aaf",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hant-ja-compat15",
+          "source_sha256": "c49e2788a11e123927f65607cc0e7b12d4e79822410a021aec7dfc0186f1e0e4",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hant-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hant-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204251526Z-7eb1b3a1.zip",
+      "archive_sha256": "fe0ca145d1438326d91f9bbd0edb4ed343d5f41daa34e5629ad650daccaff57d",
+      "capture_id": "20261115T204251526Z-7eb1b3a1",
+      "capture_sha256": "f46b5630a66fa188e9b8f7b158215f0ad6b69f9b21b8aa35a6fff8f040533f82",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hant-ko-compat15",
+          "source_sha256": "f416a970b6681a0fbe0d27de548c7527f3aa994e17cb785c83797f4a68080779",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hant-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hant-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204254249Z-ba43fa03.zip",
+      "archive_sha256": "7a4ec2ff1477f8a2558a64e6cafca4ad6bde18efecba0db8d448180170bbebf5",
+      "capture_id": "20261115T204254249Z-ba43fa03",
+      "capture_sha256": "35b8b32f36e674952343d3c8682193524b57d9d73d00688165f0fb28d8124ce4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-hant-zh-compat15",
+          "source_sha256": "d1d22628d7df72dbe2f22ad145306cdee148a4fc1dcca21c20e0a901014b4bf3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-hant-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-hant-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204257003Z-309992db.zip",
+      "archive_sha256": "ddbc97ca388530c7f96440106bdaf845b876ab7cdc381a4855da3d74ec8ea19d",
+      "capture_id": "20261115T204257003Z-309992db",
+      "capture_sha256": "c8fafffea1fc4ab80a0fac70263c289d4580b497d4c23b398a73861f748360c8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-jpan-ja-compat15",
+          "source_sha256": "cdb623167803ffb3f6cf9c5224b1678309bf5dd9318a53ec2c45498872f0f41d",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-jpan-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-jpan-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204300664Z-14e63b34.zip",
+      "archive_sha256": "34adbe19e5211504ffd7a2a3673d9b5ac4f57a39a14a9b691198d66ef213699e",
+      "capture_id": "20261115T204300664Z-14e63b34",
+      "capture_sha256": "d19a1cf66e456376804ea922986772f218bcfe88f20bebef2498197ae8c30bfc",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-jpan-ko-compat15",
+          "source_sha256": "2ddf02c37c9a13be029e5c0c17242a8fb2ae8e353ff0a158ae7ce9e655b818da",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-jpan-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-jpan-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T204303390Z-7e67d81e.zip",
+      "archive_sha256": "cf85cdced908b35dcddac46c62c04585c5990546156c6e21e8c20d2721455881",
+      "capture_id": "20261115T204303390Z-7e67d81e",
+      "capture_sha256": "d966d2f83049adfa32beb2bffa74c3644a2e46f42fb1dc0517b601c457bc5bf9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-script-fallback-calibri-jpan-zh-compat15",
+          "source_sha256": "b8c1dddafe9dae8a71ef2ee06aa66575c9dea9fc70a622f0a925599f26190df5",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-script-fallback-calibri-jpan-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-script-fallback-calibri-jpan-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222611784Z-e790086a.zip",
+      "archive_sha256": "1138ca64db8a28565c193d1d78de1fdb0be0901a7d0e7d7570dd7fce1ca3b5ae",
+      "capture_id": "20261115T222611784Z-e790086a",
+      "capture_sha256": "881799a5636d53fbf376d156585d58e39a53f6ce6a5cfab0f061bd6ba09f2aba",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-ja-compat15",
+          "source_sha256": "efd5482b6e37db81cf3198669ed3836a8b2fc7b8f262692fd0e7b555ef72f1ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-hang-jpan-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222614255Z-0511447d.zip",
+      "archive_sha256": "e121fdb79795aeb774bddae71331f79684f386359e1c30d0c3c4d09563b47a7d",
+      "capture_id": "20261115T222614255Z-0511447d",
+      "capture_sha256": "154790f9abeca18a6ec34f1475e89375100893e13f7fa238bb8cfdd0238fb47d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-ko-compat15",
+          "source_sha256": "38bf8cf5c6f3b961c44bc6515057a64dc0f2b364e1426470909a4f6bd005ff8d",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-hang-jpan-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222617226Z-bd0d3768.zip",
+      "archive_sha256": "40b633bffe36d853161f75c0cffaffa3111953ba8d1f57270f04a48a03524647",
+      "capture_id": "20261115T222617226Z-bd0d3768",
+      "capture_sha256": "7b3753db324d731256ad9d77714c1d14b3ee8c843f5a8cffd3ed23090ec05a94",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-zh-compat15",
+          "source_sha256": "4dbf643fb425b8a270af4fc5430b4b9814bcaf19c3802cef11f9b5c8d8e5ab1e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-hang-jpan-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222618826Z-9030e229.zip",
+      "archive_sha256": "5a98eeaa34ac2817ece5bcd2b9a76feb4c5a90d12c3cbfddf2ea35dd482df6a2",
+      "capture_id": "20261115T222618826Z-9030e229",
+      "capture_sha256": "6a12e0822f6b863e63afcfebd29d0ec16b4630e320d7547596593bb4cb7979e2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-hans-hang-ja-compat15",
+          "source_sha256": "7de05d00966263241d24fa743afdc4b56e9d7f028cd4f106e21b0acad04ca013",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-hans-hang-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-hans-hang-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222624318Z-dea7bafa.zip",
+      "archive_sha256": "13004f7d262f66b779f039aaf1c51c7a58882ba4e072e4fb9bab399e2e1ed2e6",
+      "capture_id": "20261115T222624318Z-dea7bafa",
+      "capture_sha256": "4949521abb99f1b3e75f851d7adc034abb6f591a2f74a600f882061e659f2be4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-hans-hang-ko-compat15",
+          "source_sha256": "f26e689f3b927bf1ae96743ec008685f6095021c5ebbf142a45412606b223cd4",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-hans-hang-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-hans-hang-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222627361Z-9d1e24e4.zip",
+      "archive_sha256": "d3fcca98809daab1e33f1d9bc976b0325c35848ed5b55d66fa2b0e29b9f9e73c",
+      "capture_id": "20261115T222627361Z-9d1e24e4",
+      "capture_sha256": "c78ac4af093821b888f5b2a82256b6a50489f31d32c78d18a4bea1b5463d6c31",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-hans-hang-zh-compat15",
+          "source_sha256": "02c7588f7f0e01f027c6587b2eb23835d03212f6bdb2342b3e92e15afcbc7e43",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-hans-hang-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-hans-hang-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222630554Z-c3222e63.zip",
+      "archive_sha256": "f68a3d65228a01feaeb6d72cf36465436ba12b5c9c45da911c3e8d7265468cd6",
+      "capture_id": "20261115T222630554Z-c3222e63",
+      "capture_sha256": "b663b2f243e795a8471fdb28343de837d41efd08a34d4d1eacbe131348c22a64",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ja-compat15",
+          "source_sha256": "1d9c6685a32222f56c8fce3e96ec269e7b925202bfb84b9b57f847689d34e9a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-jpan-hang-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222633561Z-eab4d6f9.zip",
+      "archive_sha256": "c1684fe136bf1fab672fc9c5a4d07a2064bcdf4c60d35c662d64189a3b03b539",
+      "capture_id": "20261115T222633561Z-eab4d6f9",
+      "capture_sha256": "8fa071061bf57bdd03bbb986660e711b4be92efe2798ccf892469a8a7e0301a3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15",
+          "source_sha256": "83a2badee0b021236be6a84eb93239ef3f5235531397eb814c24aec785d7c33d",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222636602Z-c51c0dee.zip",
+      "archive_sha256": "ef13cc10e00d52fd9f1a041aec7789786fa979eef72ce32596c3a2349a629e23",
+      "capture_id": "20261115T222636602Z-c51c0dee",
+      "capture_sha256": "f218973ae8c5e4c1b67207b8cded9b921eec6cf29b91ee1163062f6363b3716d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-zh-compat15",
+          "source_sha256": "3c54b1b923c5659808a41d36e9dcb132671a549bffbefadb0f590c55f9a99d32",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-arial-jpan-hang-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222639669Z-0151d276.zip",
+      "archive_sha256": "f68a32dd64cb83c1313d3731dd9c0ab06c63f797598afcced6970b36d9019639",
+      "capture_id": "20261115T222639669Z-0151d276",
+      "capture_sha256": "3a79dd234a8353dc1f1e31016ef296c3e8d9c718b9116627ab02aa59fd0b4714",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15",
+          "source_sha256": "0358e233197e75f1fb8d3d3a6ffae095fefd2a602891112bfbfb92c15a841d58",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222643605Z-d0d94987.zip",
+      "archive_sha256": "2112ee7c569931d529703672db57874ca35c26e76955260ce72a49a486567a1b",
+      "capture_id": "20261115T222643605Z-d0d94987",
+      "capture_sha256": "945ece5ead782365f30bad1804bb21e562a242c4b4fb5aac6f382fb9e26c432c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ko-compat15",
+          "source_sha256": "78c3f5cb903d440a3efc62f74188fbc8f6a00fa113231d4f40d48e6bacea8353",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222646530Z-3ed379de.zip",
+      "archive_sha256": "59f39aec5388dc06a6e7935512a02cce0fc08fe6d35d3e64bfd16a5f306594a5",
+      "capture_id": "20261115T222646530Z-3ed379de",
+      "capture_sha256": "861aa63027806ed2108e448228d05ea64a34e4df8ac70d94b38065d569d0ae39",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15",
+          "source_sha256": "d231e4037485666e1b00d85e3625db46aa558a92c14c930c8c3630759ad79c42",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222649409Z-4d8de984.zip",
+      "archive_sha256": "b3c764404a1cc4c1436e06c2215d53faee2625b132bab448f9350907c4f711b5",
+      "capture_id": "20261115T222649409Z-4d8de984",
+      "capture_sha256": "fe3d083dfde4c1df9c7a3aaad778b83b8bf85bcfcb053f7b223d5b9b3a5f4a4e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-ja-compat15",
+          "source_sha256": "9de59bdbc56e2f102625a6950a4058e7475d1120f28a6af09a01d69452411640",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-hans-hang-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222652383Z-a1d85d6e.zip",
+      "archive_sha256": "1d821107f2c7a0fc7c916b271dfbd23b3574a8d210c417aa7bcaa31f0e796908",
+      "capture_id": "20261115T222652383Z-a1d85d6e",
+      "capture_sha256": "30459f421e9972cd6eadd1219b1deb68a84b2537d44ae16566143e011e9d2fd2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-ko-compat15",
+          "source_sha256": "0b90212b82c5dcd02ad7135564a3db1d2405a38a7b84e5887e100f2e61f768ee",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-hans-hang-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222653935Z-541b9656.zip",
+      "archive_sha256": "e72cf7de54c9985444870ec1da33bd463e0eba7fd01fdec21ab537ca85042860",
+      "capture_id": "20261115T222653935Z-541b9656",
+      "capture_sha256": "250c13bb6099daab89c5cb67f96ca210c63e04a5c516b726f8b0b4bc1bd0f636",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-zh-compat15",
+          "source_sha256": "cb9848970500c3b2da6dd9d127a3970550b13adc0a443cb2e1d56c92f9157fd3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-hans-hang-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222656816Z-66cb017c.zip",
+      "archive_sha256": "c680f747725d5eef5670d3b33f8813e8a63f540efa21b9a69fc5e11513fd7934",
+      "capture_id": "20261115T222656816Z-66cb017c",
+      "capture_sha256": "77fa8eeebbca2bb213a6e0a5dc7c9a36668b30c8ef26e689f61872732ab68aab",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ja-compat15",
+          "source_sha256": "769c6d532ed4c2276a8ad595b3013590657452bdff3a17b27054dafb7d90a61c",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ja-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ja-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222700720Z-25056289.zip",
+      "archive_sha256": "df4e576cfa7f267298e56c04d2ddc0833271d553088eeacfdd65cd02d53ba571",
+      "capture_id": "20261115T222700720Z-25056289",
+      "capture_sha256": "b5877f4be626b62468928d3f1b670ca19b59e854a553c9601bccf655f626ca16",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ko-compat15",
+          "source_sha256": "9e12a2f6422146f2ddda6d913ff773fc901d125198e3d16a5bc6574307325a33",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ko-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ko-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T222703774Z-c36f0599.zip",
+      "archive_sha256": "37a57bc582906a2b8f9dd63906c6c73595255565e0115dcf02d167c4f4dee1df",
+      "capture_id": "20261115T222703774Z-c36f0599",
+      "capture_sha256": "5940970e27ab4694b0435e0949d00617aca95f25ecfaf8ec77a83f17ffa63d58",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-zh-compat15",
+          "source_sha256": "0613ecfd8d7e13d2dfa5c1c7b0428bb7531ec8479be5154edb95eb4d84e2efad",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-edge-mixed-script-fallback-calibri-jpan-hang-zh-compat15.docx"
+          ],
+          "opened_filename": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-zh-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231114678Z-dad18878.zip",
+      "archive_sha256": "1cbc9a47890ac8911f7d3eba3877edace71d566167f97ccc6711a17257d372d5",
+      "capture_id": "20261115T231114678Z-dad18878",
+      "capture_sha256": "41bb65f29ac0d61d968e5195975c38c5498487c4900500a24850b4fa4b43363b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size12-bold-compat15",
+          "source_sha256": "9667b48a6ef28c59085b6062903ecdbea98ceada39272116d99aec8b17a0fb97",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size12-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size12-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231118201Z-1cb2c1d6.zip",
+      "archive_sha256": "c12a215d1a7d73750eaf99cc67ed1a0bccebfaf6dfb8d7603a3585d856a403cc",
+      "capture_id": "20261115T231118201Z-1cb2c1d6",
+      "capture_sha256": "37072d201776574ee24871c26dc63b758768a104bf16b9638e88fbf8ffdfe5bd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size12-bolditalic-compat15",
+          "source_sha256": "2c33ae254a72e46b8e442405c2fe09a94de6af6c64e702d29322dd429e0bccd9",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size12-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size12-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231120992Z-eda1e1e9.zip",
+      "archive_sha256": "80de4541c7cdc84a0f9793d5c6844296483500f9e11212d5f8058fdb962a7fb4",
+      "capture_id": "20261115T231120992Z-eda1e1e9",
+      "capture_sha256": "e94e05524b27743499d971feaa172c3f366b0739767875190eb59f359b6ce1de",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size12-italic-compat15",
+          "source_sha256": "ba7685f0e4dea4f4587ef6e0913b25f34d6914dfe09074db5252a59e0af94054",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size12-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size12-italic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231123712Z-7b9c5d34.zip",
+      "archive_sha256": "63784d73e52d8a383536da2eb2e4ca10b911b79a76c21bbe47985df1058490b9",
+      "capture_id": "20261115T231123712Z-7b9c5d34",
+      "capture_sha256": "672fba586ed076709c655d9b75e533708e6ae66337fb30d70486fcfff67c14ed",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size12-regular-compat15",
+          "source_sha256": "3188371838004d77cf27f1d1d4e4effd745f9c428245313877753f872011cdc1",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size12-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size12-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231128871Z-cf37f820.zip",
+      "archive_sha256": "05bb99fa5c776a2b7d5a1bf9a166844e1111cc688ba441257a9a3a10f2e5a0c5",
+      "capture_id": "20261115T231128871Z-cf37f820",
+      "capture_sha256": "7bb81e8289e38c4ca1907b9cbdb6d807bcd1ef5c63bdc6c8c237a5eedf64e746",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size20-bold-compat15",
+          "source_sha256": "866d8b0b093fc2fa6e27d3bf30fd7a25b211217d6b915dedeced2babd998c1ed",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size20-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size20-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231131600Z-c23f2b72.zip",
+      "archive_sha256": "2db26523eb9fdac8d3ad3265a4b7320564151ae0bd92996c85a912f3d0665dcb",
+      "capture_id": "20261115T231131600Z-c23f2b72",
+      "capture_sha256": "89a0fba161409692bb3c051b6517d702d414aab1512e80c8a90cc23e6688f568",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size20-bolditalic-compat15",
+          "source_sha256": "4d193d2f2873975df87fa32eb8d75ee9ef49f6635255ba093c57db13769c5c1c",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size20-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size20-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231134299Z-df8ef816.zip",
+      "archive_sha256": "3428a4de47ca6b24ba35a398206a1dc1c1d17d8e8c494b9da9c26518326af75b",
+      "capture_id": "20261115T231134299Z-df8ef816",
+      "capture_sha256": "a6ca833e0e0f365a3ca2f45611af99faa034c8becb5ca61e016baeb86883625e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size20-italic-compat15",
+          "source_sha256": "d74bbedbfa1cc8e8c54ac9fdd2cb3176912f7f679a79919825f5caaf30517538",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size20-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size20-italic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231135623Z-86a19bd2.zip",
+      "archive_sha256": "3db268cb978d30f1dad6285250b4c81698916e22a55c2a7d39bc21279d44b524",
+      "capture_id": "20261115T231135623Z-86a19bd2",
+      "capture_sha256": "f793b8cde1a87557af15f7ddb77047b6e6760b65fb28a9d2b7a79bc187d57782",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size20-regular-compat15",
+          "source_sha256": "bd81e3df270dfbc59fd6951c8e07896fdcb18ad33352e5002bee1f38c399dc89",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size20-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size20-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231138387Z-826a342c.zip",
+      "archive_sha256": "34c5f68b341d665ca82be206f3092a073dad133447d75e017c7d06eef8ee11a5",
+      "capture_id": "20261115T231138387Z-826a342c",
+      "capture_sha256": "439281ad5b68815bc616ffa2058c983fd257bc4aa07866f2e30d5ed662bbf34b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size24-bold-compat15",
+          "source_sha256": "1ae43926fa05266cb252d29e5d07553d19859e8dd6077215843b7635822dadec",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size24-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size24-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231141147Z-f767837f.zip",
+      "archive_sha256": "3839b1b6f0b78d288a4a52dada8fedfae63a8f93344ae2e02010b8c237385be9",
+      "capture_id": "20261115T231141147Z-f767837f",
+      "capture_sha256": "b07283e05eb179b34ffe7ebf37a42fb7a10d1140e20c5869c10ade933778f383",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size24-bolditalic-compat15",
+          "source_sha256": "871f35204968c957f72866befb669f79b81476150e2043b40a9975e056ec6330",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size24-bolditalic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size24-bolditalic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231144782Z-befcac7c.zip",
+      "archive_sha256": "d364a3a08cfeb99c07d0c413cb50904bfbc2763ae98f5e74b70a7a9d99ee1cba",
+      "capture_id": "20261115T231144782Z-befcac7c",
+      "capture_sha256": "cb7227c0b709a251fa9dfd61946e5c14f56645d0cb83561ce6be1df52c290063",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size24-italic-compat15",
+          "source_sha256": "58361f0e08e06d45b6872a68adeba97bf89563752c4df3cde68e3c07f7601b71",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size24-italic-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size24-italic-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231147520Z-271d72dd.zip",
+      "archive_sha256": "0c232e5d2b2c68aaf92e0fc022cbb266f773f65ac44c6b9a8021791de7f7ebe5",
+      "capture_id": "20261115T231147520Z-271d72dd",
+      "capture_sha256": "486eff6d37494e3bf4828174a7bfb713b3ea086789a134e1453b770695f49458",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-arial-size24-regular-compat15",
+          "source_sha256": "3b7ad0b86cdeb9cb95f46b3dba906fef045f2e80d96e962245198c5468bdcc5e",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-arial-size24-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-arial-size24-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231150238Z-24726b95.zip",
+      "archive_sha256": "9ca9fbd3afada7cf8a6006127e1b136dce5dc16aa357b97e12d2684c29c23822",
+      "capture_id": "20261115T231150238Z-24726b95",
+      "capture_sha256": "365da048697c74872088bec301c84143da35d3d769d9380049676ab848628096",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size10p5-bold-compat15",
+          "source_sha256": "bee837205673fb3a48ac3f4aa6b4b3ce1df96ce0674b7e73a2f24f6a82e9e30b",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size10p5-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size10p5-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231151602Z-44b422a2.zip",
+      "archive_sha256": "0c35d18e955d96ddfb61792f3a2297346a02f94514edae75a02b90d3a63947c8",
+      "capture_id": "20261115T231151602Z-44b422a2",
+      "capture_sha256": "2e458549b2a2c4542361ff3b0c991042478bc530385c067d7d985505ad131813",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size10p5-regular-compat15",
+          "source_sha256": "26e1054f4e9b27792f63af932f694dd37e4ffab0f7f4a6c241fa5557fb7c55c2",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size10p5-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size10p5-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231154368Z-f70cf524.zip",
+      "archive_sha256": "031df770b67c55bcd546fc9dde3724d35bd18d678a3eb3bfb660fc3af5179489",
+      "capture_id": "20261115T231154368Z-f70cf524",
+      "capture_sha256": "3adde9f7c08f9d9e72894e8191ac5ad30f1c3aa11c702d69f827e28bc847a7de",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size12-bold-compat15",
+          "source_sha256": "92fd2cd6c1049b1d1a30afd10b24ebb6014f35a59056aa7c4a8a3ee80bfb67f6",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size12-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size12-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231157142Z-50148521.zip",
+      "archive_sha256": "4f2cbe63cb885aba9a374a553b4c03215d110498d9acef67b3d7c059ae8d23a3",
+      "capture_id": "20261115T231157142Z-50148521",
+      "capture_sha256": "c7510cf1514fbdbe2afad208c88ce6f0d9031f07a0bb989a5e7985a6b71030c8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size12-regular-compat15",
+          "source_sha256": "c5f78db28c927a401247d255e99840b785a0d93f5b416141e9fbb2aa50af63a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size12-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size12-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231202294Z-4f6d0ed7.zip",
+      "archive_sha256": "06d50bdaf90b2d58386b31ca89c73beb88757b3c470bcb8aecdc42b1681b1c28",
+      "capture_id": "20261115T231202294Z-4f6d0ed7",
+      "capture_sha256": "74a7d006fe3aa8118ef189c40986889dabf01551645f8a61251c82221ee228b3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size20-bold-compat15",
+          "source_sha256": "db2f49494095335b97b3814d98250c8988f0876bed9d4a82eb4108847b30d8ab",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size20-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size20-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231205054Z-0147017a.zip",
+      "archive_sha256": "0b2e87fcf97e37ffdc632971f125fbdaf082224410868fe197dacb04f27377f8",
+      "capture_id": "20261115T231205054Z-0147017a",
+      "capture_sha256": "b15b5715792c474d0a7faee45d185b5153ebe5374c78d6a35f1d50f33cc9f700",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size20-regular-compat15",
+          "source_sha256": "375956dc8b1fa871731d7214407646647c63f2d960228fbfc448f4d78bb23882",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size20-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size20-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231207772Z-92de403c.zip",
+      "archive_sha256": "de79a241c759701466b5b3038e4c9309623d02eb55b59f578ef643d4de03f0f2",
+      "capture_id": "20261115T231207772Z-92de403c",
+      "capture_sha256": "9afa7c2d761b1cd2e1ef22ecb3c2d80838f10f83174267db57e3e3f6decfb48a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size40-bold-compat15",
+          "source_sha256": "625637de98410b1acad8bf3bdb9639588fd35c6b9a320973b1b1f499448e7b6c",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size40-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size40-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231210502Z-6e6c18d6.zip",
+      "archive_sha256": "c2b496595c35e3e5f2370f3704518f80ed6be2ab04f42173320b88cda0292462",
+      "capture_id": "20261115T231210502Z-6e6c18d6",
+      "capture_sha256": "b9e8cc4d209a162c1932054a53a017e4c2aabddf1679836092dd237fdda622da",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size40-regular-compat15",
+          "source_sha256": "b1cc28db6bdd8d5777890a512d678fa732dc07fe0cfa0ca838c5d5c4e9d9b39c",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size40-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size40-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231213233Z-e2bbc9ba.zip",
+      "archive_sha256": "14cf7f6bbd16795bf3732aec61367c86072cfd3c28f26216d7b38c976987ad87",
+      "capture_id": "20261115T231213233Z-e2bbc9ba",
+      "capture_sha256": "1b2bde797c662dd57cc3e75b44ca230bf472b6140f743c31945888440cc999d5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size9-bold-compat15",
+          "source_sha256": "398794b7f02957432f13afa5501e1ba3edc5fc917501d137614d40e812d66a68",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size9-bold-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size9-bold-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T231215992Z-74c3292f.zip",
+      "archive_sha256": "01baf86802e51336762bc169740cfcb350c1cd6e46534a0cea15723b05380dbc",
+      "capture_id": "20261115T231215992Z-74c3292f",
+      "capture_sha256": "873ede6cd70c2dea8309df42c77dee537ca67e47b59b4557d5cd738e899869f9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metric-mincho-size9-regular-compat15",
+          "source_sha256": "48a7e94bbb6df8ed440e0b5b1588d9e3ed36ff494e51f3b975e98adb239cba3b",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-printer-metric-mincho-size9-regular-compat15.docx"
+          ],
+          "opened_filename": "word-windows-printer-metric-mincho-size9-regular-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -24442,7 +25914,26 @@
       "source": "tests/word-oracle/mac-elsa-synthetic/adjacent-fixed-table-grids/source.docx",
       "source_sha256": "027b0eed0c02e0daf5eb3303b3a6c419f5e5ed3cbc5abdd228ad69d31e35f5c4",
       "word_product_version": "16.0.19127.20936",
-      "reason": "Windows Word rejects the unchanged original as corrupt in normal read-only and explicit read-only repair opens; no Windows coordinates invented."
+      "reason": "Windows Word rejects the unchanged original as corrupt in normal read-only and explicit read-only repair opens; no Windows coordinates invented.",
+      "attempts": [
+        {
+          "archive": "tests/word-oracle/windows/observations/rejections/word-16.0.19127.20936/20261115T233916681Z-3835f201-failed.zip",
+          "archive_sha256": "195a7cdf53cbc8558eede35927e468e577d1e7d4ae9c75922a8b333634885647",
+          "capture_sha256": "df497d5c5a3467653cafaca93e6637e09be275725b52add283e08fcd2e9adea3",
+          "error_sha256": "37d01c667cbf7249a33340790837153478faa40dfa0ad7f6f6994a757e3b8e83",
+          "source_sha256": "027b0eed0c02e0daf5eb3303b3a6c419f5e5ed3cbc5abdd228ad69d31e35f5c4",
+          "capture_id": "20261115T233916681Z-3835f201",
+          "word": {
+            "product_version": "16.0.19127.20936",
+            "file_version": "16.0.19127.20936",
+            "application_version": "16.0",
+            "application_build": "16.0.19127",
+            "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+          },
+          "open_mode": "normal-read-only",
+          "capture_tool_sha256": "b6a0b4dff72621dad87ece085ca1bb4dcbe855d91be029cd7ffa80bfd9df0367"
+        }
+      ]
     }
   ],
   "font_facts": [

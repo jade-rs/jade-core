@@ -4638,6 +4638,182 @@
     {
       "fixture": "word-windows-edge-language-calibri-val-ko-zh-ja-compat15",
       "docx_sha256": "35d9b037feb837294cbbd19302a442ec80a25b3ee2ac62d5e64d5d8ab8f75168"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-eastasia-ko-ko-ko-compat15",
+      "docx_sha256": "dad48b19d38fecc49896e5c52e377b3918d5f9236344cfcf6c372b9e0a908aee"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-eastasia-zh-zh-zh-compat15",
+      "docx_sha256": "9c0955978b133a7c439560b2e453b9ddac701d0f3d6ad5efadd4997abe9a39ac"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-val-ko-ko-ko-compat15",
+      "docx_sha256": "c119cfaf1ed5102bf20e25cc64ce3cfbfa80cd099af8d961c6227bee43584649"
+    },
+    {
+      "fixture": "word-windows-edge-language-arial-val-zh-zh-zh-compat15",
+      "docx_sha256": "40b203715146fdf7879ac663de0d9d75e34ce390f5585216566c85a3eafb4620"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-eastasia-ko-ko-ko-compat15",
+      "docx_sha256": "2ddf02c37c9a13be029e5c0c17242a8fb2ae8e353ff0a158ae7ce9e655b818da"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-eastasia-zh-zh-zh-compat15",
+      "docx_sha256": "b8c1dddafe9dae8a71ef2ee06aa66575c9dea9fc70a622f0a925599f26190df5"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-val-ko-ko-ko-compat15",
+      "docx_sha256": "b1080b716ef5ce1f872aaf605e508dc26ecb85cd529a5ba8984743e2d4bc72fa"
+    },
+    {
+      "fixture": "word-windows-edge-language-calibri-val-zh-zh-zh-compat15",
+      "docx_sha256": "f84ddd0323fe2841f17e156081460d6e1ad76c1887384859a695c1dda9e6df80"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hang-ja-compat15",
+      "docx_sha256": "0b689a4ceee289664f3ff107f64e1ecbb019bd4294c029fbd5040451198b4966"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hang-ko-compat15",
+      "docx_sha256": "5cf4b43503d6ee19e2cb5c658080b4efeaf8b5a17790ec87f421677c654e3cba"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hang-zh-compat15",
+      "docx_sha256": "ce27929f42003f2e74838139052aa7675efcbb92328ebb7d73c881b92a42cacb"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hans-ja-compat15",
+      "docx_sha256": "669e7527886790a0608f84e8490eb275b29d37445ad9647f8ce98d703e5a23b6"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hans-ko-compat15",
+      "docx_sha256": "3a495763d0747da28da8f4584768a9d1f7bf13af878d908f7d7eacc21e4bec82"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hans-zh-compat15",
+      "docx_sha256": "276ce3d6eeecab597bd46d418cacb0858dd75dac99ccc5fefe3ef6727d0432c3"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hant-ja-compat15",
+      "docx_sha256": "7087428cb384624ce1c8a20d26d4fab99d40991f4eaacb0a031b82e44139b387"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hant-ko-compat15",
+      "docx_sha256": "878f0d09148374a900035fbd35659d91b47753e10d3aaf3c71c1c6415614e597"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-arial-hant-zh-compat15",
+      "docx_sha256": "ce48a36de2c52bfe8fc565cd55b1c2cc448154fb1076fed3ab9b95805c0348ca"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hang-ja-compat15",
+      "docx_sha256": "ab3fa911527bb25855c64102ec60b85f3cdddc804d022da4b9682344635b8c78"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hang-ko-compat15",
+      "docx_sha256": "f464687ea7c09a8f7e7d8d6bd64f3b89f921ae3dc81a73359628f4dbb6d04580"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hang-zh-compat15",
+      "docx_sha256": "507876817407751446a150dbef7a1a7a2c18225365ac97b5d7974c8a3cd61fc3"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hans-ja-compat15",
+      "docx_sha256": "9172a044232979b52fa3a479a39e1ddaabaa807a4f5e166241c3d40c72c494e6"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hans-ko-compat15",
+      "docx_sha256": "7d9772505f29eb81fee0955415ca876ba337d9432cfe9f8a366ab5f7c53b1acb"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hans-zh-compat15",
+      "docx_sha256": "e86cff06ab21dcadd6ea8d730db3704083dfc03fe5bda41191ef15a276be83d1"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hant-ja-compat15",
+      "docx_sha256": "c49e2788a11e123927f65607cc0e7b12d4e79822410a021aec7dfc0186f1e0e4"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hant-ko-compat15",
+      "docx_sha256": "f416a970b6681a0fbe0d27de548c7527f3aa994e17cb785c83797f4a68080779"
+    },
+    {
+      "fixture": "word-windows-edge-script-fallback-calibri-hant-zh-compat15",
+      "docx_sha256": "d1d22628d7df72dbe2f22ad145306cdee148a4fc1dcca21c20e0a901014b4bf3"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-ja-compat15",
+      "docx_sha256": "efd5482b6e37db81cf3198669ed3836a8b2fc7b8f262692fd0e7b555ef72f1ac"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-ko-compat15",
+      "docx_sha256": "38bf8cf5c6f3b961c44bc6515057a64dc0f2b364e1426470909a4f6bd005ff8d"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-hang-jpan-zh-compat15",
+      "docx_sha256": "4dbf643fb425b8a270af4fc5430b4b9814bcaf19c3802cef11f9b5c8d8e5ab1e"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-hans-hang-ja-compat15",
+      "docx_sha256": "7de05d00966263241d24fa743afdc4b56e9d7f028cd4f106e21b0acad04ca013"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-hans-hang-ko-compat15",
+      "docx_sha256": "f26e689f3b927bf1ae96743ec008685f6095021c5ebbf142a45412606b223cd4"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-hans-hang-zh-compat15",
+      "docx_sha256": "02c7588f7f0e01f027c6587b2eb23835d03212f6bdb2342b3e92e15afcbc7e43"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ja-compat15",
+      "docx_sha256": "1d9c6685a32222f56c8fce3e96ec269e7b925202bfb84b9b57f847689d34e9a1"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15",
+      "docx_sha256": "83a2badee0b021236be6a84eb93239ef3f5235531397eb814c24aec785d7c33d"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-zh-compat15",
+      "docx_sha256": "3c54b1b923c5659808a41d36e9dcb132671a549bffbefadb0f590c55f9a99d32"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ja-compat15",
+      "docx_sha256": "0358e233197e75f1fb8d3d3a6ffae095fefd2a602891112bfbfb92c15a841d58"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-ko-compat15",
+      "docx_sha256": "78c3f5cb903d440a3efc62f74188fbc8f6a00fa113231d4f40d48e6bacea8353"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-hang-jpan-zh-compat15",
+      "docx_sha256": "d231e4037485666e1b00d85e3625db46aa558a92c14c930c8c3630759ad79c42"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-ja-compat15",
+      "docx_sha256": "9de59bdbc56e2f102625a6950a4058e7475d1120f28a6af09a01d69452411640"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-ko-compat15",
+      "docx_sha256": "0b90212b82c5dcd02ad7135564a3db1d2405a38a7b84e5887e100f2e61f768ee"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-hans-hang-zh-compat15",
+      "docx_sha256": "cb9848970500c3b2da6dd9d127a3970550b13adc0a443cb2e1d56c92f9157fd3"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ja-compat15",
+      "docx_sha256": "769c6d532ed4c2276a8ad595b3013590657452bdff3a17b27054dafb7d90a61c"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-ko-compat15",
+      "docx_sha256": "9e12a2f6422146f2ddda6d913ff773fc901d125198e3d16a5bc6574307325a33"
+    },
+    {
+      "fixture": "word-windows-edge-mixed-script-fallback-calibri-jpan-hang-zh-compat15",
+      "docx_sha256": "0613ecfd8d7e13d2dfa5c1c7b0428bb7531ec8479be5154edb95eb4d84e2efad"
     }
   ]
 }

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261115T222633561Z-eab4d6f9",
+  "captured_at_utc": "2026-11-15T22:26:33.5651446Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15",
+      "source": "..\\w16-r2-mixed-script-input-snapshots\\word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15.docx",
+      "sha256": "83a2badee0b021236be6a84eb93239ef3f5235531397eb814c24aec785d7c33d",
+      "pdf": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15.pdf",
+      "pdf_sha256": "2308ebe2527539adbba111b357e3a51307a9b304b3b98e865e8c5252d8f5cb83",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-edge-mixed-script-fallback-arial-jpan-hang-ko-compat15.page-001.emf",
+          "sha256": "288890d6a4c9b6b24457a3cc41faf6bf1142edd1fdaf6891a88b39341c9e54b8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
