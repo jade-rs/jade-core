@@ -2208,6 +2208,131 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "aptos-kerning-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-kerning-mac/source.docx",
+        "sha256": "cccaf89345964897688f85562d324c059a2e6752be78b47e7a4ccb695ae1b2fd"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-kerning-mac/manifest.json",
+        "sha256": "b11df2347950cb5506cff69a2a5812cfe070ec35bb097fc77649f01af2423157"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004240145Z-5f9102be.zip",
+            "sha256": "0464d3cd017f8aaf4c705067c59903e1420ecb6f6ace41781cb416d542334ff5"
+          },
+          "capture_sha256": "1bb5dee6000d290444ea67685c11f9e36d4850874044df2ba8b5157e199d4de4",
+          "capture_id": "20261114T004240145Z-5f9102be",
+          "fixture": "ww14-aptos-kerning-mac-cccaf893",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "aptos-numeric-ranges-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-numeric-ranges-mac/source.docx",
+        "sha256": "24393143f3def21b3ad253dedf6d642e68d0f0087f9bb770726bf0d7a237bdf1"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-numeric-ranges-mac/manifest.json",
+        "sha256": "b1447c2d75f5f8cfe4e90ee67919d1a9493b5b0e29907dc5bbf85263842def9e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004240145Z-5f9102be.zip",
+            "sha256": "0464d3cd017f8aaf4c705067c59903e1420ecb6f6ace41781cb416d542334ff5"
+          },
+          "capture_sha256": "1bb5dee6000d290444ea67685c11f9e36d4850874044df2ba8b5157e199d4de4",
+          "capture_id": "20261114T004240145Z-5f9102be",
+          "fixture": "ww14-aptos-numeric-ranges-mac-24393143",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "aptos-range-compat-15-en-US-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-range-compat-15-en-US-mac/source.docx",
+        "sha256": "c1b4aae97ca9d59c97cdf6530085511fae805c92575328bcf6daae3fd1589cf2"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-range-compat-15-en-US-mac/manifest.json",
+        "sha256": "6eb428141d75f5ab709421485bd24cc8ab81635fdf883ead89f5ef5e3fe0a73e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004240145Z-5f9102be.zip",
+            "sha256": "0464d3cd017f8aaf4c705067c59903e1420ecb6f6ace41781cb416d542334ff5"
+          },
+          "capture_sha256": "1bb5dee6000d290444ea67685c11f9e36d4850874044df2ba8b5157e199d4de4",
+          "capture_id": "20261114T004240145Z-5f9102be",
+          "fixture": "ww14-aptos-range-compat-15-en-us-mac-c1b4aae9",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "column-table-fixed-preferred-width-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/column-table-fixed-preferred-width-mac/source.docx",
+        "sha256": "c9d087ca03e36ef6587c0d3a15e24e86653e25de6cbbce006fd25d25672d0350"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/column-table-fixed-preferred-width-mac/manifest.json",
+        "sha256": "8996fbdfbad7cf25b1db96835df5efb851c4667a643587e90ae7841e6221658d"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004559814Z-c5e13cee.zip",
+            "sha256": "81702af836b28810390eca288aaeec300d2db2e712b930fdd9847033c631b9f4"
+          },
+          "capture_sha256": "d14b4b87993cab2460c5a1b227acda3bc89a0071d10259efb6c6d83dd53cfc80",
+          "capture_id": "20261114T004559814Z-c5e13cee",
+          "fixture": "ww14-probe-width-equal-dxa-2400-dxa-2000-c9d087ca",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "column-table-fixed-preferred-width-smaller-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/column-table-fixed-preferred-width-smaller-mac/source.docx",
+        "sha256": "d5e29606636761ae6549a3f94978d70c4d36ab5dc0f49d40181d0a0758423850"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/column-table-fixed-preferred-width-smaller-mac/manifest.json",
+        "sha256": "098719254e784cb0eeecaa808722c4019f11f0a7f3ad463758fa95d1288c5071"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004346218Z-5f779447.zip",
+            "sha256": "46bd1eb24d90415953dc34d64bc6ae547ccfc543d39e591f08bccaf2fe3f86ca"
+          },
+          "capture_sha256": "c51e7649164c118146ef60e44a0549e1c60c664285468246ce59a294521bafe0",
+          "capture_id": "20261114T004346218Z-5f779447",
+          "fixture": "ww14-probe-column-fixed-dxa-1600-d5e29606",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

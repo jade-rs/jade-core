@@ -1,0 +1,61 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T203727569Z-fdc28915",
+  "captured_at_utc": "2026-11-17T20:37:27.5737098Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-column-table-single-width80-center-compat15",
+      "source": "w18-s-column-table-widths-input-snapshots\\word-windows-column-table-single-width80-center-compat15.docx",
+      "sha256": "3d63109a9ff205cda10df623c764b5cd00a7361dc94a64884c8d7f11721f1b68",
+      "pdf": "word-windows-column-table-single-width80-center-compat15.pdf",
+      "pdf_sha256": "3459f88572d71587fdaa4df218553c648f5c2b37d35a89a0038a617735a80b35",
+      "pages": 3,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-column-table-single-width80-center-compat15.page-001.emf",
+          "sha256": "0cb44765a3a5510a12c14adfaf50b558da42231d5be409bf4815c4d16303c04f",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-column-table-single-width80-center-compat15.page-002.emf",
+          "sha256": "24db3d480dbe87c64845af4a0f481f426f2ae348b28554633637e8dfddc7ec1f",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-column-table-single-width80-center-compat15.page-003.emf",
+          "sha256": "ba0da3423dcc36d238a8d47278bf69668e9c14d661040d3a346900d484550c29",
+          "width_pt": 595.3,
+          "height_pt": 400.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -142,6 +142,21 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_column_table_sources_and_word_output_contrasts_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    step = job.fetch("steps").find { |item| item["name"] == "Verify unpromoted original Windows Word observations" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_includes step.fetch("run"), "test_windows_column_table_probes.py"
+    gate = job.fetch("steps").find { |item| item["name"] == "Assert Windows table screen, PDF and vector-rule coordinates" }
+    refute_nil gate
+    refute gate.key?("if")
+    refute gate.fetch("continue-on-error", false)
+    assert_includes gate.fetch("run"), "test_windows_column_table_gate.py"
+    assert_includes gate.fetch("run"), "check_windows_column_tables.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+  end
+
   def test_shared_originals_use_independent_required_platform_comparisons
     {
       "word-mac-browser-coordinates" => [
