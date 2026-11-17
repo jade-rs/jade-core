@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T222315880Z-04f89388",
+  "captured_at_utc": "2026-11-17T22:23:15.8832248Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14",
+      "source": "w18-t-minimum-line-metrics-input-snapshots\\word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14.docx",
+      "sha256": "b7336380e51317658934ae4ace653a9697f974d009565365928fbea02da012b0",
+      "pdf": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14.pdf",
+      "pdf_sha256": "320a449c7a7d52066d04a3b8e30079b76f097a0ebf65aa6d3ad80b9f85931e21",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14.page-001.emf",
+          "sha256": "d57c5afccc3814e562cfb053ec9d0097835ae189c14500e56a2de3778a206218",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

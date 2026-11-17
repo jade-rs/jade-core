@@ -40624,6 +40624,2490 @@
           "opened_filename": "word-windows-column-table-unequal-width80-right-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222043907Z-985651f2.zip",
+      "archive_sha256": "ae729b45ffc5b2624eaa76b5d792263ded6495cc1fd42ad89f06040e9a3254d5",
+      "capture_id": "20261117T222043907Z-985651f2",
+      "capture_sha256": "5f3cd81779c8ae3f9e6aefc76720d04d25c44c6d48a152fa69d36c1f97e19936",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-mixed20p10-min12-compat14",
+          "source_sha256": "e1dbb3d8a5ce4adfdc52f506dc3a64d1d69d358199afa37fa964bdc5a36a50bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222043907Z-985651f2/inputs/word-windows-minimum-line-arial-latin-mixed20p10-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-mixed20p10-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222046015Z-d27e0d5f.zip",
+      "archive_sha256": "3bd56b6a1c23984011f827287890630bd41dfe047203eeb69321c0f1665f2490",
+      "capture_id": "20261117T222046015Z-d27e0d5f",
+      "capture_sha256": "3a620894a8e0b2c3009d249a753e5d9dd62dab71fde435558a72260cc80719ad",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-mixed20p10-min12-compat15",
+          "source_sha256": "299aa305fd69f2c2ca7dc1caf8ebea4948b3b4116b6777940dce492acb9905de",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222046015Z-d27e0d5f/inputs/word-windows-minimum-line-arial-latin-mixed20p10-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-mixed20p10-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222051156Z-047129ab.zip",
+      "archive_sha256": "78c0356d802242add2cb3ad2e194cf686457f373310f6849b73175cb0c5d2ed7",
+      "capture_id": "20261117T222051156Z-047129ab",
+      "capture_sha256": "51dd1513b5432b70f4e5892517436af19410f77b213e29a6215e27ad94456a18",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-mixed20p10-min20-compat14",
+          "source_sha256": "875d27aaa0d7b22da5562448e3f62679dd666f664653784f8cce705e9ae7f0cf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222051156Z-047129ab/inputs/word-windows-minimum-line-arial-latin-mixed20p10-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-mixed20p10-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222053879Z-ca1e677c.zip",
+      "archive_sha256": "be169520d654b1ca3c05838dffaa030cfaab17a22e0fed200e7324f62195e8ab",
+      "capture_id": "20261117T222053879Z-ca1e677c",
+      "capture_sha256": "152c53f96eeb88ce2ee8e9ed0b7759ad5efa0c15f1a6a1d250a5d7f526dfd9ec",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-mixed20p10-min20-compat15",
+          "source_sha256": "5a2e56060a720c7d6355ca21c57f1e52a4a0b987e0e6bef0fa00d7f59b1796cf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222053879Z-ca1e677c/inputs/word-windows-minimum-line-arial-latin-mixed20p10-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-mixed20p10-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222056588Z-e8486f31.zip",
+      "archive_sha256": "5684e05d8cdb0716f447c2de45f928461105c2ad59ca8b8d1b81cd60967c28c8",
+      "capture_id": "20261117T222056588Z-e8486f31",
+      "capture_sha256": "074e6bbb64ae265206c61ae20b398c34f17c38175d9b1fa89c5898b683036c65",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-mixed20p10-min28-compat14",
+          "source_sha256": "655114a46591ad97b8d8da57dffa13271172ff581df0654420c60d6c17375358",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222056588Z-e8486f31/inputs/word-windows-minimum-line-arial-latin-mixed20p10-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-mixed20p10-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222057928Z-6267622e.zip",
+      "archive_sha256": "f4e73acd644a7f29bfe63519d8af2d8d160bf3f007beb9904d5745b00f2c6e1d",
+      "capture_id": "20261117T222057928Z-6267622e",
+      "capture_sha256": "bb37eb8355200ec55e77d6af580954b30506bfa4b4df9c3c7788c0155755ecd2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-mixed20p10-min28-compat15",
+          "source_sha256": "eec2c8b5875fe393edb0e051ab1cf8b2c5cbd504f5988d56bf0a1e761f337366",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222057928Z-6267622e/inputs/word-windows-minimum-line-arial-latin-mixed20p10-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-mixed20p10-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222100640Z-77c60afa.zip",
+      "archive_sha256": "f0f87df519946bff37a2c38f330928d88646513817f02a948b3761c08cb9ccfd",
+      "capture_id": "20261117T222100640Z-77c60afa",
+      "capture_sha256": "3b8632ef4233d2a317436331060038dd9cf2102ef411add6b783219fa77ee73d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform12-min12-compat14",
+          "source_sha256": "6b0b7b6941a8009c70fbf82d53714e63d37ea5c3cf378ada5fce0b2b9040ed83",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222100640Z-77c60afa/inputs/word-windows-minimum-line-arial-latin-uniform12-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform12-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222103360Z-541c62f3.zip",
+      "archive_sha256": "21c5e714649707af55277c457e6db4e36425fbef7c3fc566709c3dc161e6fc80",
+      "capture_id": "20261117T222103360Z-541c62f3",
+      "capture_sha256": "6cfce01b91b4bbde73fd9b36b00b4eb8a8a167d192ab3a7eec01dc078a61fbcd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform12-min12-compat15",
+          "source_sha256": "19eaa1cad731f19707fe187c1e020be1fe4f50335201950094e8583561c0e3f0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222103360Z-541c62f3/inputs/word-windows-minimum-line-arial-latin-uniform12-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform12-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222107093Z-2d5a43d8.zip",
+      "archive_sha256": "d96baf57cd9ae99d7626c26b7114db3affada9e5fbf7ec3e293a1dc28e4169d2",
+      "capture_id": "20261117T222107093Z-2d5a43d8",
+      "capture_sha256": "415dc8d7dd7b74f00991fab8658dc75cb5a3250a6201e2323e9588aa00143fd8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform12-min20-compat14",
+          "source_sha256": "ab2c4f985b0c3432469415461fde4ebb6cf839f4611934bd3144b49bbcf4d757",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222107093Z-2d5a43d8/inputs/word-windows-minimum-line-arial-latin-uniform12-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform12-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222109876Z-5aa549b1.zip",
+      "archive_sha256": "bbb1fba10455b14b3b56dc891b2223310e53e1a704fa37811a1d402e5b75e3b4",
+      "capture_id": "20261117T222109876Z-5aa549b1",
+      "capture_sha256": "ec6e13cd59fc83db35e8923d0970343fe4075912c2c528acd7b18c7dff3365ea",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform12-min20-compat15",
+          "source_sha256": "b56b0433ddfab559ead59a8204c4709b3c032ac519a5bd0a053004c181d027a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222109876Z-5aa549b1/inputs/word-windows-minimum-line-arial-latin-uniform12-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform12-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222112582Z-a1e080d8.zip",
+      "archive_sha256": "2e904f91cb7ee99410e4d69ba41ce5be7b22f228640a6c31b144d9563b968a85",
+      "capture_id": "20261117T222112582Z-a1e080d8",
+      "capture_sha256": "e71d23f3c32813abb94d84deffa10643b7a439d1e2b3e6c1120580f66cab50fc",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform12-min28-compat14",
+          "source_sha256": "749bc2642ddcf0b2693dbf81c1c9637e84a2f379421835d5b733727437cd8c18",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222112582Z-a1e080d8/inputs/word-windows-minimum-line-arial-latin-uniform12-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform12-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222115364Z-23b22f4e.zip",
+      "archive_sha256": "dbf89d646c9f6b0745a9640acbb95006813c06fe31ee2eecbc81344c6d887e59",
+      "capture_id": "20261117T222115364Z-23b22f4e",
+      "capture_sha256": "0040eed36a8266393fe55fa5d2ef8f3cd1e721ee0c009effcf41a5af80fe15a1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform12-min28-compat15",
+          "source_sha256": "f019bf14c7b806b1965cf7ad5bbcfee8d0a608f24cd6c2732a48c9d197b2d32f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222115364Z-23b22f4e/inputs/word-windows-minimum-line-arial-latin-uniform12-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform12-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222118068Z-4a630b35.zip",
+      "archive_sha256": "dc627ff9d2613e5649f2455f41249b0edf97decae0d1579b1057feb6e50c47a2",
+      "capture_id": "20261117T222118068Z-4a630b35",
+      "capture_sha256": "e594c5c199a441041f3211719f3c250900214af5773df993276c06bb50801158",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform20-min12-compat14",
+          "source_sha256": "52535e68c407a231cb26d4ee1d82c3d6f3a688cac3b2a3f7eac59d8a213f5251",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222118068Z-4a630b35/inputs/word-windows-minimum-line-arial-latin-uniform20-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform20-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222120800Z-e9b2088f.zip",
+      "archive_sha256": "b3d5a89eeffc80f6c71815b88fd8f021a25695b96b86b5a9b463b26f2e1c3c38",
+      "capture_id": "20261117T222120800Z-e9b2088f",
+      "capture_sha256": "cb46599cda620c7896e64aae49ad58d503bffb06a2c7d9b724cbb0218cef0c52",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform20-min12-compat15",
+          "source_sha256": "26163fb5a9647605c318814e391bfce0b92dafc8e9a5bdda1a8fd6639e202edf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222120800Z-e9b2088f/inputs/word-windows-minimum-line-arial-latin-uniform20-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform20-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222124387Z-47764c5c.zip",
+      "archive_sha256": "f9b07a1c349b57dfa4d8ac45397520e436cf970636973255a2bba1da41a95747",
+      "capture_id": "20261117T222124387Z-47764c5c",
+      "capture_sha256": "d0490043438cb96f438d644f90ad09bd8d5845f6cf09fe62a8c71bcff974b9e3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform20-min20-compat14",
+          "source_sha256": "7ecbbc8b7370782a6534c9528dff0ccca355bf8841649f071c819889a27069a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222124387Z-47764c5c/inputs/word-windows-minimum-line-arial-latin-uniform20-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform20-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222127140Z-dd3a2feb.zip",
+      "archive_sha256": "d58c53c95c190026eba90873208e1ab3cd870e4484e2a8e1debd39c29fb79176",
+      "capture_id": "20261117T222127140Z-dd3a2feb",
+      "capture_sha256": "0eedd5e6c17aec6a5f2ac604b17bf9c5d37574e9ce93d307f72f2ff9ddda9fbf",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform20-min20-compat15",
+          "source_sha256": "0d38fcff6d339085a731890160e15cb88f1287ca8f47ed74a02a0b332284fece",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222127140Z-dd3a2feb/inputs/word-windows-minimum-line-arial-latin-uniform20-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform20-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222129860Z-1ffb9b2a.zip",
+      "archive_sha256": "ae95a58a3a4c60a00e0aa2e60c2b9f0da940a162afa1c2b8a148713f3b9e16d3",
+      "capture_id": "20261117T222129860Z-1ffb9b2a",
+      "capture_sha256": "315098ca9d53ef0434a4e2b41d7898b129991762ffe30c1a577a2094d8882e98",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform20-min28-compat14",
+          "source_sha256": "c21074e3cd6cda376fda2bfe9571bead28662fc2a2761522bffb98f48b9fa186",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222129860Z-1ffb9b2a/inputs/word-windows-minimum-line-arial-latin-uniform20-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform20-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222132603Z-b14ae161.zip",
+      "archive_sha256": "ec0b09d14b521b73eb22c990c68d35847262c69db38617b92e865ca0f920246b",
+      "capture_id": "20261117T222132603Z-b14ae161",
+      "capture_sha256": "bd38215747cd834df47cd3cb44ddb9a878a902dd1470c9ad90ca06d341f5d36a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-arial-latin-uniform20-min28-compat15",
+          "source_sha256": "b924c080b63527c313ac10b44517588f112c64b4caa5b468903aae2da263e036",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222132603Z-b14ae161/inputs/word-windows-minimum-line-arial-latin-uniform20-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-arial-latin-uniform20-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222135312Z-885884c7.zip",
+      "archive_sha256": "2fe3bd33c263de4be1818f356d322aaaf62b7c883b6bf0af7d69ac2734e713b3",
+      "capture_id": "20261117T222135312Z-885884c7",
+      "capture_sha256": "60d64bfabb5c799715aa9116e8ef75d9b64cb59f222ca6eb4aed8d099ee52285",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-mixed20p10-min12-compat14",
+          "source_sha256": "550625aa2b4bdbad5df49ed4c417d3ca5db3d580d1b409dee7ab281b7b346c46",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222135312Z-885884c7/inputs/word-windows-minimum-line-courier-new-latin-mixed20p10-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-mixed20p10-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222138244Z-0d33be7a.zip",
+      "archive_sha256": "87e7d3d72f238cbf1cdfccefadc71f81608f9fce2be136e220f7d43fe0ccb1db",
+      "capture_id": "20261117T222138244Z-0d33be7a",
+      "capture_sha256": "7c783bbf8e24eb9172a0befb4b001527445cbf50d0312a1c545c59e107ad1f6c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-mixed20p10-min12-compat15",
+          "source_sha256": "5fdb905deb4f2af175666b15344e01d403a0d69eb0d69e12e0bf9669d5c92701",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222138244Z-0d33be7a/inputs/word-windows-minimum-line-courier-new-latin-mixed20p10-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-mixed20p10-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222141287Z-e126f3ae.zip",
+      "archive_sha256": "0d319eb9b21a7466c944e63eabbcc4d2a4922b102ede3214419c8e6579588073",
+      "capture_id": "20261117T222141287Z-e126f3ae",
+      "capture_sha256": "c97cd0d91f3ddc4fc5d954040cd23c4ff2a478de7e0741b0c388f60dcf93d464",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-mixed20p10-min20-compat14",
+          "source_sha256": "fdaa8e620a262ad9087434822b72b6326fd51697722d2a276dc8515f78ca8c79",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222141287Z-e126f3ae/inputs/word-windows-minimum-line-courier-new-latin-mixed20p10-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-mixed20p10-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222142612Z-96e16e7b.zip",
+      "archive_sha256": "a974686a2862d0b8420ce27df03edff83d1d2137c45405a5c656868d35f634f6",
+      "capture_id": "20261117T222142612Z-96e16e7b",
+      "capture_sha256": "ab54a520f6ece76ac4269333034b3955a26f78e8f007605b00f4fe64409483e4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-mixed20p10-min20-compat15",
+          "source_sha256": "6df74be13dcfba86cd6ed082934b2801a18350375da29ed834ea8e024706c199",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222142612Z-96e16e7b/inputs/word-windows-minimum-line-courier-new-latin-mixed20p10-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-mixed20p10-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222145355Z-d9d4b443.zip",
+      "archive_sha256": "a7b7236a88e6b4360e0ca07fdf424dc525c3a6e86ac4404886d18963bb1956af",
+      "capture_id": "20261117T222145355Z-d9d4b443",
+      "capture_sha256": "a5dd99ec44f2386b6663a0f158202fed39d88251ccd2d63bf85e33f24579c852",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-mixed20p10-min28-compat14",
+          "source_sha256": "45a0f071710234e69ddb6a54980fbc2f82aeef3d40b4cf3d8dc4a465f8e836a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222145355Z-d9d4b443/inputs/word-windows-minimum-line-courier-new-latin-mixed20p10-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-mixed20p10-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222148062Z-3c4f658f.zip",
+      "archive_sha256": "758eea0cb6d0586968f01c05116333549aa10976f24907ddbc3a70a3c0629117",
+      "capture_id": "20261117T222148062Z-3c4f658f",
+      "capture_sha256": "a0458962a85bbee4bc06ee498598282342246bdcb4f9a594389dd43a27602ead",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-mixed20p10-min28-compat15",
+          "source_sha256": "cb14b30322bbe67c3aaad8508089a5175181643cc8fab23d4a78b9f429b375ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222148062Z-3c4f658f/inputs/word-windows-minimum-line-courier-new-latin-mixed20p10-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-mixed20p10-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222150810Z-6b9aa5bb.zip",
+      "archive_sha256": "6909215572fe2539cd502240dd14041b87fd8a775268bf7d1b6dffff931ed69c",
+      "capture_id": "20261117T222150810Z-6b9aa5bb",
+      "capture_sha256": "916c5d83b9a8a313ade90c73e274559ff37374f5d9421529b7b241e9adbb5365",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat14",
+          "source_sha256": "79abc7861b6e9804d5f206c3db7f7e135906865abff23f1934108e7687249dc3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222150810Z-6b9aa5bb/inputs/word-windows-minimum-line-courier-new-latin-uniform12-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222153727Z-9ae675a9.zip",
+      "archive_sha256": "f33759f9875f9f6be283fd655e0886623c3ecd27be9974ef829de2fb0dd34756",
+      "capture_id": "20261117T222153727Z-9ae675a9",
+      "capture_sha256": "af73e7b367cc662228be64ba5cd984e81b96b0ee20a5a6020da83a87f0619e36",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15",
+          "source_sha256": "4bdb3ffd0f9dd2d707934601b7b16df13df55a258a7bbe9e4e7b7c49522b53d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222153727Z-9ae675a9/inputs/word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform12-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222156469Z-93d80516.zip",
+      "archive_sha256": "6f0f95da98b66c978b6df78def353c4a368cd05c386519bd33b98a5b9a128d8f",
+      "capture_id": "20261117T222156469Z-93d80516",
+      "capture_sha256": "aeb95af134b134de4f66fa8e028d830c35c10007ce7acc78a32a82adc5d75f4a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform12-min20-compat14",
+          "source_sha256": "b6d87daae9b57b2630acd5cb91d0de5f98b2e6f179bc5dd0b4fb3ad634f70440",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222156469Z-93d80516/inputs/word-windows-minimum-line-courier-new-latin-uniform12-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform12-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222159187Z-cdaa5126.zip",
+      "archive_sha256": "de0823ef32eda5b8712a9d8a407537eef40c23c923a4aff561876d08af5df55c",
+      "capture_id": "20261117T222159187Z-cdaa5126",
+      "capture_sha256": "aacb7865b3631ec335c41ff842a5e56788355531faea94dfbfaeb699cba7ba89",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform12-min20-compat15",
+          "source_sha256": "8ff1556897ae12210dc7c8d05f68bd257f8153cb36962bd83e3f6eae5288d245",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222159187Z-cdaa5126/inputs/word-windows-minimum-line-courier-new-latin-uniform12-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform12-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222201942Z-c2fdad2a.zip",
+      "archive_sha256": "51bff594e68c465724b29640074a1fd93d541255762fa75084fd45306e6c0330",
+      "capture_id": "20261117T222201942Z-c2fdad2a",
+      "capture_sha256": "e1fbffb0348d4aebd86c4db8d64b0bfe60f1d1574c03a7db663d9b576a605161",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform12-min28-compat14",
+          "source_sha256": "ab823415db3324b4b59adacccab9e2286306f52f4ec6d2fadf516b2d6c1be07a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222201942Z-c2fdad2a/inputs/word-windows-minimum-line-courier-new-latin-uniform12-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform12-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222203258Z-c5000843.zip",
+      "archive_sha256": "977beb7bcb0beea959c06e3051281eab80b540a0c0e51f610f5271cf087ab6b5",
+      "capture_id": "20261117T222203258Z-c5000843",
+      "capture_sha256": "e15db5c1f40921c65d1822302d58ac29634e0052df4f0beef01f5bcf370554a6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform12-min28-compat15",
+          "source_sha256": "9f6bf7656a64b758c6e9ffa643e5ac19227d88ef9f029e8bdd8a2b675867add3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222203258Z-c5000843/inputs/word-windows-minimum-line-courier-new-latin-uniform12-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform12-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222206015Z-505bac79.zip",
+      "archive_sha256": "b022602c4f6e672adc225da2e7b36ffa186b10207c44c658e238347ad09d7af2",
+      "capture_id": "20261117T222206015Z-505bac79",
+      "capture_sha256": "f484d5d84565b7b0772e9079f2df6aced5174e33696fa062f5865e755b641150",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform20-min12-compat14",
+          "source_sha256": "2d65782ee859dc0b0650f7d491e6082fa1a954bb32078b61e35b26dac846a329",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222206015Z-505bac79/inputs/word-windows-minimum-line-courier-new-latin-uniform20-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform20-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222208751Z-9f8cdf29.zip",
+      "archive_sha256": "d343a8b9906d32b074228f68acc4a43fb64ca201a6d0384c5b373224d0ead841",
+      "capture_id": "20261117T222208751Z-9f8cdf29",
+      "capture_sha256": "1d6ecb2053174fa393c87046e57f3c4f12ff23cbfcf0a660c7bfc314d8a7c23d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform20-min12-compat15",
+          "source_sha256": "0ad363c9757eb2042ad89c101da37a908761bfde692e1fd0374debe36410acf6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222208751Z-9f8cdf29/inputs/word-windows-minimum-line-courier-new-latin-uniform20-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform20-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222211475Z-14191978.zip",
+      "archive_sha256": "a5d212d5270e0bbbb0955fcb146689a88bb6bd6e1bedd02d41b82666ada2e55b",
+      "capture_id": "20261117T222211475Z-14191978",
+      "capture_sha256": "47506d9009fe60858e1275311a4447fd45aad5cc10b71f474f37fef517476777",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform20-min20-compat14",
+          "source_sha256": "7894dbdcf5a99612a1a88ab2879cb9110f6d699edd1df87ab2d8ec526c2f810a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222211475Z-14191978/inputs/word-windows-minimum-line-courier-new-latin-uniform20-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform20-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222214166Z-fb63e9bc.zip",
+      "archive_sha256": "8707a302efcba6e0b19fceef459182c143ed76781ef8e1a14f7538288813b3e1",
+      "capture_id": "20261117T222214166Z-fb63e9bc",
+      "capture_sha256": "0755bebe1d7e5982fd1c5837b642c2155d3f96568b8be69cfd36986c0cd730e6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform20-min20-compat15",
+          "source_sha256": "b59778483b281cfab62c34de997670c967aada88d6d3599a866ec07829254dbc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222214166Z-fb63e9bc/inputs/word-windows-minimum-line-courier-new-latin-uniform20-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform20-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222216889Z-f90449b3.zip",
+      "archive_sha256": "44738eb54e83121c6846cb515df2c457def532fe7476038ce0e63dcfdf694c2e",
+      "capture_id": "20261117T222216889Z-f90449b3",
+      "capture_sha256": "432543c7e4e60c2efae6645c6008bdadcce30dcaf297453b99e43ea26a8cfc62",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform20-min28-compat14",
+          "source_sha256": "02b1d436dfed9765ae2571916e83022667a13b0d165733c58e853ad41f562144",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222216889Z-f90449b3/inputs/word-windows-minimum-line-courier-new-latin-uniform20-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform20-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222219597Z-acd71bed.zip",
+      "archive_sha256": "262515cf81ce24a880bfc7fc532bf2a7026c0574fb9e097083e53c00ed42560e",
+      "capture_id": "20261117T222219597Z-acd71bed",
+      "capture_sha256": "b16a2481e3a24fd80f0cfb7271309f30ebb93777d759495254c93a0c1fbdf04c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-courier-new-latin-uniform20-min28-compat15",
+          "source_sha256": "97c912010855b97fc1f6d5afa371b34f5bb05142372215fa6024d5002d1b5d8d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222219597Z-acd71bed/inputs/word-windows-minimum-line-courier-new-latin-uniform20-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-courier-new-latin-uniform20-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222222380Z-b484a6cc.zip",
+      "archive_sha256": "03ceb20801d1effd5ac5f227aef450e5d6a6776760c590506c5e748dec36e7b7",
+      "capture_id": "20261117T222222380Z-b484a6cc",
+      "capture_sha256": "1a80f654ba8c8b47611509966ee9c98420fab5fb657a2a8536c272574919f557",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min12-compat14",
+          "source_sha256": "272a4407a1b8a9fd4b3d1a0031c5cdb4e6d0e49dad58ad64e3e4e0466b0a8019",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222222380Z-b484a6cc/inputs/word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222225153Z-e3303ff4.zip",
+      "archive_sha256": "ade01c6c900f7508fb690a2a33d592d253bb2a8825fbe2685bc8f1524c407844",
+      "capture_id": "20261117T222225153Z-e3303ff4",
+      "capture_sha256": "af7df96da2d60a1bc3b993cac0aaf6abd50a3248735b03a94bce469841d2b61a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min12-compat15",
+          "source_sha256": "53a4619b9c4ae695f7cc02f7d132dfbf62cecb45fd471922f32ec3d13c23343d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222225153Z-e3303ff4/inputs/word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222227925Z-502e10b1.zip",
+      "archive_sha256": "4dc0742fbfb65900d5cfd688cb70c35fb3cdd13f7611fbb1cbd5a88fd4c89f16",
+      "capture_id": "20261117T222227925Z-502e10b1",
+      "capture_sha256": "1cfbb014ada7ec34382bde58b6e9aa8fc242256520aa2066bbcf716190688a9f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min20-compat14",
+          "source_sha256": "d7a60779ce8b1155769dcf0d094736cb2bec928bb6e9bbb34a4ed667f0b41c90",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222227925Z-502e10b1/inputs/word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222229252Z-686ea2a8.zip",
+      "archive_sha256": "5fb8c8bf264ef7b05d05cb4dc47fdb0ffa4cc02f8cf144475d3a513439fd6587",
+      "capture_id": "20261117T222229252Z-686ea2a8",
+      "capture_sha256": "d19619e806c50e1f42c3551177b0ecf600786381a3c0876303679a5d2edd0165",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min20-compat15",
+          "source_sha256": "3d94ed42cb31228db59e46d8f282413a97b7de37e2057a925c40d6f06dd3ed76",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222229252Z-686ea2a8/inputs/word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222232039Z-ea1d0e86.zip",
+      "archive_sha256": "3918e17e634549baf8d2878814dd0f33e688a13f2a150f17450785e593d9b604",
+      "capture_id": "20261117T222232039Z-ea1d0e86",
+      "capture_sha256": "fb4f44321067007aa46d5182da4586cbbf564af57ff7de42e8b0628f47f9a47b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min28-compat14",
+          "source_sha256": "7a63b7303e3177c578a5e988e5f50b9797fe116ed1f124b9ab93ee835282a4c4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222232039Z-ea1d0e86/inputs/word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222234794Z-650822f4.zip",
+      "archive_sha256": "d29be8244b1c54b2f150be4681abdcb5bcb286a53797a7b49983aee1480c7663",
+      "capture_id": "20261117T222234794Z-650822f4",
+      "capture_sha256": "d03d0d40aaf2c6702dc88f00390bd25b4fdfc43e875f3f52166c6892480af1b0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min28-compat15",
+          "source_sha256": "52877db7366a0274bf20da3d902347dea408ee946f6ea5c9d16940dcebd9a4a3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222234794Z-650822f4/inputs/word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-mixed20p10-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222237564Z-79c44e7d.zip",
+      "archive_sha256": "f1dafcdd297c8b2fb1df9d3b8b9ec9242380f02f9f3428b3130012c8bb4090b9",
+      "capture_id": "20261117T222237564Z-79c44e7d",
+      "capture_sha256": "fd3266e2252fa7b6e489535987690ac6e90bb90f971e4eea10596a40d5df0c9b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min12-compat14",
+          "source_sha256": "ca52fe139a83dc69fd22d22d82c62c85253e79b5427f3184a8192491e230fe40",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222237564Z-79c44e7d/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform12-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222240319Z-1268fa0e.zip",
+      "archive_sha256": "a803b9649270a4c2dd13970b4f4ea6fd4a801ed8512bfa1d1130896b5414031b",
+      "capture_id": "20261117T222240319Z-1268fa0e",
+      "capture_sha256": "cfeb26a72f281aa5c1750184a5e3c4189b6a73531e1c28ac83397f9dc3de8a39",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min12-compat15",
+          "source_sha256": "3892b5d4b4d0077bad66ee878ff482176340071cd1b8487c1d82fc92681c0379",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222240319Z-1268fa0e/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform12-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222243104Z-f99b6266.zip",
+      "archive_sha256": "7c837bfc238399835a71f8030c562e4d7dcb9505ea4fbb85efc6f9f0cc6f3e18",
+      "capture_id": "20261117T222243104Z-f99b6266",
+      "capture_sha256": "0dc0e77fb671ee48767637adc06f88a24f3f651468fd90c3aa471db7a5ad4c8b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min20-compat14",
+          "source_sha256": "77843b7133b36410bc68280c4e4ec3b58e31ff657e271585e32dfd6f57400d5b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222243104Z-f99b6266/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform12-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222245847Z-318da8d9.zip",
+      "archive_sha256": "a5adf8794f5b6b23dc251930de4fa41b2869c6348e38cfd84e47d79e2ed5507b",
+      "capture_id": "20261117T222245847Z-318da8d9",
+      "capture_sha256": "8de8082a47a8edf75e0bf4d473cd49b365d67c69254eddbb45852be10dfc720c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min20-compat15",
+          "source_sha256": "33136fd01453c0ed89496c068a0508faa4c245cdaedf2208cfec921c601ee006",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222245847Z-318da8d9/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform12-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222248588Z-9f589480.zip",
+      "archive_sha256": "be3d01af47cb2deed5f5b7529d45401fc252f9c861b05e62f9d4ba2bd5e9fa20",
+      "capture_id": "20261117T222248588Z-9f589480",
+      "capture_sha256": "1773313b8995300a569a855b2ee6aa8802229fcb878dd03247ff00af13dfa12f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min28-compat14",
+          "source_sha256": "7b49ee2a88e7f7ec8a808b976fa9a8e455270008d8feda5555115e0462c36404",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222248588Z-9f589480/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform12-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222249926Z-e38657a4.zip",
+      "archive_sha256": "e210aeeda4348da879fa10f0b728ab3d5a8c580ba47126189f8fd162b453a01e",
+      "capture_id": "20261117T222249926Z-e38657a4",
+      "capture_sha256": "0767f895df38b8b1627678401850db3d26d2b934d33ab3459c005fab879d9ae1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min28-compat15",
+          "source_sha256": "2b3e6d33d595fbeb03dfb7d28f80846d11a913ea66054ee11fcf5cc03177cdb0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222249926Z-e38657a4/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform12-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform12-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222252684Z-749ba674.zip",
+      "archive_sha256": "c549edddc4b8da839398ebb1f5539653762c1a3a73bf09571eb862c122bbe300",
+      "capture_id": "20261117T222252684Z-749ba674",
+      "capture_sha256": "d8ac3b5033712f2710ce2c4f6e11149e883439ce9596ab73bfc2bc9d33c9bf2f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat14",
+          "source_sha256": "e4c5c61c874d8ad7201ad1b2968ce4f89c54dc1c9aaf7e7d43890febfb8161c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222252684Z-749ba674/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222255678Z-1e82bc66.zip",
+      "archive_sha256": "a633d93bc269c2810203dd4466099e5363680dec161a04ae59f333412a9a94da",
+      "capture_id": "20261117T222255678Z-1e82bc66",
+      "capture_sha256": "f00aace1b68dbc024ed1add459df18326e69bdeba15a3d47462a6defd91032c4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15",
+          "source_sha256": "4b8bfbcea8baaa60f5dbb65e055d6319572f9a1c92862bdbccf8f39568168d61",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222255678Z-1e82bc66/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222257014Z-81ac1265.zip",
+      "archive_sha256": "492384d0920bbfd48edf9971116f4ff014c46212f752e2ca7f324bc819f27a86",
+      "capture_id": "20261117T222257014Z-81ac1265",
+      "capture_sha256": "55533d8483272d330936fb09e7bb7a47b4646e10b08229e4ec3e9c10e0cd0843",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min20-compat14",
+          "source_sha256": "9422fcf91ddedf3e364a89daea1c810bd59a32c4adf534c4f8bb4445cc8efe67",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222257014Z-81ac1265/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform20-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222259797Z-36b87065.zip",
+      "archive_sha256": "f0b9d13babb6f8cb7f6ae5107269d36e37d6e61801b0bbed0d8abb99f7de6a90",
+      "capture_id": "20261117T222259797Z-36b87065",
+      "capture_sha256": "62be92f8c0e2496569bf2f296df9b66e2430eac56b54a22ca06af0b2268852c7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min20-compat15",
+          "source_sha256": "56443caeb7b9f6f7c11d557e1d51bc17174ba439ef9c0bd2ed734bd67b2c532c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222259797Z-36b87065/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform20-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222302555Z-b3b79c56.zip",
+      "archive_sha256": "f14b287e6ded073262d07c87fde73320234c819b8466275e1a7ac44e5d73796f",
+      "capture_id": "20261117T222302555Z-b3b79c56",
+      "capture_sha256": "6322241f183f13d13b64f8fa0f73edcd74490c72c54d6fd18f9415431a958029",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min28-compat14",
+          "source_sha256": "7a9413ebe600af060da31308b883df79a51c31db41a05a0980292660e95fe59d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222302555Z-b3b79c56/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform20-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222305342Z-8ed452c5.zip",
+      "archive_sha256": "7a44910928198bc0b62a0af3d0024b253cdb09449d1c6fc4a6732df387994d96",
+      "capture_id": "20261117T222305342Z-8ed452c5",
+      "capture_sha256": "9aa5f6c3144e09ddc4b708994e06476ad4a9516f39ca9454b2f283709159fdf4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min28-compat15",
+          "source_sha256": "f4baffc2814e283730265ff21cd42414318ff91c58c90bff3d0ac0be434506a3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222305342Z-8ed452c5/inputs/word-windows-minimum-line-ms-mincho-cjk-uniform20-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-cjk-uniform20-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222310355Z-7d8ba0af.zip",
+      "archive_sha256": "57a15708e66a3621a9c2ad85da98527d44e4e2e32ec1d7869be09d3618678608",
+      "capture_id": "20261117T222310355Z-7d8ba0af",
+      "capture_sha256": "5252cec91958707cc25825c4c658a6b47ee2c8cae430ebc1c6daf72a953395e4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min12-compat14",
+          "source_sha256": "4e6a6b0bf0dd811c028fc12299cec73c94dd36115ce8599f67a8da1ccdba7a18",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222310355Z-7d8ba0af/inputs/word-windows-minimum-line-ms-mincho-latin-mixed20p10-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222313107Z-2a7bd113.zip",
+      "archive_sha256": "4bc00ded61cafe3ec5878b1364b8faa730c4538c95f36103903e506b7e787887",
+      "capture_id": "20261117T222313107Z-2a7bd113",
+      "capture_sha256": "f6cbc5a846467705b7703f37547336b4582ca8069c0beb0b9cc2409c49f0e842",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min12-compat15",
+          "source_sha256": "c7bf70ab7cf0d2c70588e9feccc2bb39fc2e66581e95f5a6b9decfadec6d88d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222313107Z-2a7bd113/inputs/word-windows-minimum-line-ms-mincho-latin-mixed20p10-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222315880Z-04f89388.zip",
+      "archive_sha256": "bd198113fc8b7808f1e4267f4fd86df5f738997592bf0bc391d3d0fefb07a09f",
+      "capture_id": "20261117T222315880Z-04f89388",
+      "capture_sha256": "c78471d16ee5a50becab9b86230a5dd5a156285867a9e5ed1a1c09c4db92e415",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14",
+          "source_sha256": "b7336380e51317658934ae4ace653a9697f974d009565365928fbea02da012b0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222315880Z-04f89388/inputs/word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222318617Z-8882158e.zip",
+      "archive_sha256": "27a8d7b252411d2469f22b4582f9113469f12635c2ba70e915b32153784262b6",
+      "capture_id": "20261117T222318617Z-8882158e",
+      "capture_sha256": "6f0fd03e44d9ec070eb9e4272ee5c1485c49030482d90d3486d7cd56f7dcc9e6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat15",
+          "source_sha256": "9d33c2a25e85a7c7f9b1ee7f1f0857c912c40b66b7091af856f35dd2275d2284",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222318617Z-8882158e/inputs/word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222321331Z-e6f299d3.zip",
+      "archive_sha256": "04985672f87ce0405287944890d9b2dec723905675b8da6903a66c49a7275a16",
+      "capture_id": "20261117T222321331Z-e6f299d3",
+      "capture_sha256": "7d58170a9d4452ce0bd9dad78792c62e4f790b74031612cbb6b48bc22c0a317e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min28-compat14",
+          "source_sha256": "173580434e2c71927e2c772dbc676848c299ebf6d4ff0490a213dd943b5fa996",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222321331Z-e6f299d3/inputs/word-windows-minimum-line-ms-mincho-latin-mixed20p10-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222324071Z-6ba8a153.zip",
+      "archive_sha256": "ecd819a685760cbbc79380f0733e11b80f7a837d23c1a33a9730ae1c4b26c4c2",
+      "capture_id": "20261117T222324071Z-6ba8a153",
+      "capture_sha256": "33a5bbb5498e13da5b9a17c700380cd5a94e447750e90d26a59cab4538e85493",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min28-compat15",
+          "source_sha256": "cb8dd352d49015fca37d8b292cd08b7fd837dbfd5a6a489eb8acd534290bc7f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222324071Z-6ba8a153/inputs/word-windows-minimum-line-ms-mincho-latin-mixed20p10-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-mixed20p10-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222329001Z-0ef1ce76.zip",
+      "archive_sha256": "7ad90b2f42c2c91dbb96f0f28853f2d85b3236d6aa0c82ac71e950a662d4d0a2",
+      "capture_id": "20261117T222329001Z-0ef1ce76",
+      "capture_sha256": "135152c0f2814cae72826d3b6f15b1a82c4cb745e196a16fcaca8e23f2a3e54a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform12-min12-compat14",
+          "source_sha256": "9e8882eabde81f9bd18f0dff49d129f44048e7d777e449ba2454f59cb6e2246f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222329001Z-0ef1ce76/inputs/word-windows-minimum-line-ms-mincho-latin-uniform12-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform12-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222330356Z-4e4535b7.zip",
+      "archive_sha256": "2a794f89fcab90300d2874cdaf9b1829ab5c20efdc5ed2339bbd6957afb9fa1c",
+      "capture_id": "20261117T222330356Z-4e4535b7",
+      "capture_sha256": "d18e4152f5ef30845b1f28c84fa6824c488b61f090e862c0fc7d05e30013107d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform12-min12-compat15",
+          "source_sha256": "a38a48085e337ac42d8e255076c13dadca117317079feb1c099106571d32a5c4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222330356Z-4e4535b7/inputs/word-windows-minimum-line-ms-mincho-latin-uniform12-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform12-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222331678Z-30d2eb6d.zip",
+      "archive_sha256": "d2ddac204fdcd551f679dc5b6cb2ef67b1439660ebe4f485b7d9df24c6a0063f",
+      "capture_id": "20261117T222331678Z-30d2eb6d",
+      "capture_sha256": "15737cacb9c040ce9c7172f6ce11a379cfd6d9a751176dfbaca8d56a7e7d0d7d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform12-min20-compat14",
+          "source_sha256": "30a57f2239f920860a371ce4bcf114574e422dab294f393ab33cad38849d017d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222331678Z-30d2eb6d/inputs/word-windows-minimum-line-ms-mincho-latin-uniform12-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform12-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222334425Z-b9a52d86.zip",
+      "archive_sha256": "746090ca166d817e6b31c6cda03b0795054768a9397ed99f632ae3e2a59c4f40",
+      "capture_id": "20261117T222334425Z-b9a52d86",
+      "capture_sha256": "08335374308c062d33b681a57ea39a13bc9c332a5dc7b4ee817475a659d82b49",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform12-min20-compat15",
+          "source_sha256": "1f28a482dfddec723c8e0a8e04a7d7ce7683f480468c4042d17e28aa61dfea73",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222334425Z-b9a52d86/inputs/word-windows-minimum-line-ms-mincho-latin-uniform12-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform12-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222337170Z-9a37f4c6.zip",
+      "archive_sha256": "546c51f3c45a3d523970e8b103bb101f7161979bc7376c3d1c36d8e2a235384b",
+      "capture_id": "20261117T222337170Z-9a37f4c6",
+      "capture_sha256": "5730840429f4aa517ac3b33ca73dd396bbe66d387c357842a0a1ecdac69db9d4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform12-min28-compat14",
+          "source_sha256": "cc8d43dcb5746a349a505c7aaee3a8c144f43695cff9cccd82675679e85172ad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222337170Z-9a37f4c6/inputs/word-windows-minimum-line-ms-mincho-latin-uniform12-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform12-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222339872Z-2a1ca3a3.zip",
+      "archive_sha256": "7af5405e40d46409a8f80b2c146c7e3e3cb65a6a0d09c0d5f8fe4e89dc66a073",
+      "capture_id": "20261117T222339872Z-2a1ca3a3",
+      "capture_sha256": "1de449f1a54b287663f61040b18a0ff92683e021760ec7b5aaf0dd697d9fa66c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform12-min28-compat15",
+          "source_sha256": "0065dfa0e2e9d59658197967dd84394ad2f06314e0ba29852d52ea9b38fd5635",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222339872Z-2a1ca3a3/inputs/word-windows-minimum-line-ms-mincho-latin-uniform12-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform12-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222344914Z-98d34318.zip",
+      "archive_sha256": "818dcc84a3105e95716dd7300880358fe07fc65922647791bb2df2821c039ae9",
+      "capture_id": "20261117T222344914Z-98d34318",
+      "capture_sha256": "8751532ce6a043f92dff05bcc4be64fe1bc9802e00f1209547e7dee52de41209",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform20-min12-compat14",
+          "source_sha256": "8da64cb612b1d6e55dc1ea01a9134926859e86fc993f0274327408034d8e0e56",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222344914Z-98d34318/inputs/word-windows-minimum-line-ms-mincho-latin-uniform20-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform20-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222347669Z-803c9636.zip",
+      "archive_sha256": "f507fe897852e80f01deda2c218555d43f63c280f59f459eb633af03cf333006",
+      "capture_id": "20261117T222347669Z-803c9636",
+      "capture_sha256": "bd9338bea5a1382687238a85a80e840547561ef0055f2005ee52869896a4b91f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform20-min12-compat15",
+          "source_sha256": "3e4984d8f4f1830106ac5ae4cf38c61bf77e593de36dd43a83e02f2d1a5abd52",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222347669Z-803c9636/inputs/word-windows-minimum-line-ms-mincho-latin-uniform20-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform20-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222348979Z-9fa7f2e8.zip",
+      "archive_sha256": "2847cd5a9ae44ef316ab291823664787c70728ad528f8a361c99f51c2803daf2",
+      "capture_id": "20261117T222348979Z-9fa7f2e8",
+      "capture_sha256": "6c0b4e039a082532374061c237958965c965e0186b281c4dbc1ec25d7d122d66",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform20-min20-compat14",
+          "source_sha256": "59971b56dff4d2caf0d6d924a0fb4b3719e1b514d7acc8abefec700c88f4b5bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222348979Z-9fa7f2e8/inputs/word-windows-minimum-line-ms-mincho-latin-uniform20-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform20-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222350333Z-9736061c.zip",
+      "archive_sha256": "8ae0a6775393f1f2a0c84e5a0ce4996864c62a35d8c317eec3bb7026a5f4a80d",
+      "capture_id": "20261117T222350333Z-9736061c",
+      "capture_sha256": "95bfbbfde190b1be8e5f61682042a0d2dbf3b1297ffa8484408034a15d61aa0d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform20-min20-compat15",
+          "source_sha256": "26f82a9fa8cb8a59f13d8fbed6dfc76bf363cc4255e6d84077c9277d4569c306",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222350333Z-9736061c/inputs/word-windows-minimum-line-ms-mincho-latin-uniform20-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform20-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222353087Z-4479e472.zip",
+      "archive_sha256": "8bbd1407fc032547ce7abd68cf5f1182ab8bf92ebfcebe7cde3a8091369da1fc",
+      "capture_id": "20261117T222353087Z-4479e472",
+      "capture_sha256": "965ff19e822af4757c2a7453199f1d67b5cf9cf7ed8350ad0537020cfe1b16e4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform20-min28-compat14",
+          "source_sha256": "3204b845aad7a1783c6bafd5035f26093c3fcd0a2ebebe67dd0ce4f201ef220d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222353087Z-4479e472/inputs/word-windows-minimum-line-ms-mincho-latin-uniform20-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform20-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222355842Z-5d97b088.zip",
+      "archive_sha256": "38a5a95e91997e31d49507bdc783a3809145f027a2828cd18727c5d034127c14",
+      "capture_id": "20261117T222355842Z-5d97b088",
+      "capture_sha256": "37041cac871ff780b0b7a0f2aec45172cb920d3b9b1fcc42e64989fd45fb8a19",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-ms-mincho-latin-uniform20-min28-compat15",
+          "source_sha256": "32bd5da5b5eac1d4357339bceada6e360f9ff890266f15f144ce3d239c3003fa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222355842Z-5d97b088/inputs/word-windows-minimum-line-ms-mincho-latin-uniform20-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-ms-mincho-latin-uniform20-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222358568Z-cd2bc855.zip",
+      "archive_sha256": "6c1cd5c7d98157fa456b3d23e08a94d8e098ec82089b4c792beb788b1876fe16",
+      "capture_id": "20261117T222358568Z-cd2bc855",
+      "capture_sha256": "8a884c3a09f935c647d6922f9d27c10b3d9d3bbf09e9809f5d6372552d24e293",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min12-compat14",
+          "source_sha256": "f1840cf66318f1e4bdfd395cb56ee6dc75352a98719f47a6dc4b9c5c2c1e418c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222358568Z-cd2bc855/inputs/word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222401354Z-70958088.zip",
+      "archive_sha256": "58026d3eb2c9661fed79c94376e9cff70fe92a22bae9327570e8b29841e4eb44",
+      "capture_id": "20261117T222401354Z-70958088",
+      "capture_sha256": "a86c2a0388ce200eae816d914e9bf7034085d182572e638a4fdb6b485b9f1848",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min12-compat15",
+          "source_sha256": "3afa5ef295891b5ca64e9df2c1710a21bd0a3cd6a54adb2fba8219c0954af8f7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222401354Z-70958088/inputs/word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222404108Z-d7bd3431.zip",
+      "archive_sha256": "120f3db5d81b86085bab659c5ea0d9e7a093e19a97d398470cec6d2f5362bce4",
+      "capture_id": "20261117T222404108Z-d7bd3431",
+      "capture_sha256": "9e0ae9463c927d0c351ec8e4e5008ed4be6760f13f095ca166b2108f8346cef7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min20-compat14",
+          "source_sha256": "3c836d55939692118f6a4b2f71fe04d9318ae66aac61216fd33027f53f25cf30",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222404108Z-d7bd3431/inputs/word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222406875Z-69ea1c79.zip",
+      "archive_sha256": "7b9e8e991a6b0854737ac38f13dd4038f25cbca24b3ce0bedd93d0eb4c72b32e",
+      "capture_id": "20261117T222406875Z-69ea1c79",
+      "capture_sha256": "8a0dd4d68c000cae56bedd57399ed8422ef3dd269bae56ea0f50b20d436ab0e1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min20-compat15",
+          "source_sha256": "3d754db1896de493094c7f93458775bf4593e8dbe0f6c6ca02a379224dcea4da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222406875Z-69ea1c79/inputs/word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222409616Z-4f107e92.zip",
+      "archive_sha256": "044bdbb701daa1b471f2216fed4eb813e871c8c8b75c4b67708f488218761e4d",
+      "capture_id": "20261117T222409616Z-4f107e92",
+      "capture_sha256": "e7019f875ea0b18a2a279ea0625900604958ccf72bb55052ec4951b1b516772e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min28-compat14",
+          "source_sha256": "2b2e7482dce2ce194d6203035d112d21c61e458a19a14f8b3935a08aec77baeb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222409616Z-4f107e92/inputs/word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222414763Z-8f7bd6a8.zip",
+      "archive_sha256": "aeee8c2a65a5e8552df9be9b0ebbd0980d2510da6c50299ce3de67ad4600988c",
+      "capture_id": "20261117T222414763Z-8f7bd6a8",
+      "capture_sha256": "46511e8c627b7b59322c20a0f5f38288bb7d6d4f4c8450f8ce051e179fde9fcf",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min28-compat15",
+          "source_sha256": "aee54200c5dd2d703190b4f03c948199066d6cfcfe9b250d5288a94661315472",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222414763Z-8f7bd6a8/inputs/word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-mixed20p10-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222417531Z-3b995a1e.zip",
+      "archive_sha256": "3dbb7e78fc60c439204e83a831129a69208ed0e1600ad8d236a682daf075afb6",
+      "capture_id": "20261117T222417531Z-3b995a1e",
+      "capture_sha256": "9d512e2b90c15f0a331cffa401b05cf2975bd69662de3e8d1f7e8e1065430856",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min12-compat14",
+          "source_sha256": "0f27495219ae5036a43278b16c5e1d11b415861d6e1b1eedc8a85817c48dd64b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222417531Z-3b995a1e/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform12-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222420256Z-2ecaa910.zip",
+      "archive_sha256": "0a723140a26633f9d8a58d79aca4c00659ae8964339317b4929a1ff61ce2a122",
+      "capture_id": "20261117T222420256Z-2ecaa910",
+      "capture_sha256": "5f04fd582de655916945649059e97b65ea46784cbb3ee007540d643bf5c06f53",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min12-compat15",
+          "source_sha256": "3706fef152bbac41ef59010a6223d31a8f2808ec87d905ab8a8f2289a6bd27c4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222420256Z-2ecaa910/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform12-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222423007Z-d99f85e0.zip",
+      "archive_sha256": "eef72cff8c9408b96d2930a4e41512140b445ee0485a78907e10a8287a6ef1a7",
+      "capture_id": "20261117T222423007Z-d99f85e0",
+      "capture_sha256": "44b919203422e7c78bf5d28b88c219194cd7812dbdad71306788e360d81dac59",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min20-compat14",
+          "source_sha256": "d70bf461f2fc02c6430c950e11e88c07c3ca91668cab410d86080ddb8c8488c1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222423007Z-d99f85e0/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform12-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222425733Z-80cd02fc.zip",
+      "archive_sha256": "fcc990d35b7969424551117ddf8867c1ecf88d3ed486365d14bafe712fc11e29",
+      "capture_id": "20261117T222425733Z-80cd02fc",
+      "capture_sha256": "05459e71c82c97ff2f865cd931521b8d66ed0ae28d3c7cfb9b24712eac96736c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min20-compat15",
+          "source_sha256": "91eb74831bedbd781a9e13ea28b92e5af823d06d349f3d14f42b8d8d6c4c3fc0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222425733Z-80cd02fc/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform12-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222428490Z-7a781270.zip",
+      "archive_sha256": "8a13e2d263f40746a31a0215a10305452afd075122025861c6da473f282a4a4f",
+      "capture_id": "20261117T222428490Z-7a781270",
+      "capture_sha256": "ad089e9e9e525f21a8f9334e4abbca37737cd7afcd062330ec3a9831f96a2345",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min28-compat14",
+          "source_sha256": "e807d137ca0ab8642f58fd621a7778cf6eb62af84f347f18e7c01378b520bcbc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222428490Z-7a781270/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform12-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222432139Z-33df9d15.zip",
+      "archive_sha256": "9b3f334656a98757ece862baf2c47d80f71cb16a84d6a8c4e876174e2f8586dc",
+      "capture_id": "20261117T222432139Z-33df9d15",
+      "capture_sha256": "0d24e6e34a5f6ed6e5f32969a47755661fc65d455490eb7a46a56aa464f6a869",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min28-compat15",
+          "source_sha256": "974457ea5537f55fba378a43b8e383559cccd6eb6d529b493c37cbc0ecbf8f12",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222432139Z-33df9d15/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform12-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform12-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222434911Z-f4535390.zip",
+      "archive_sha256": "b45c40c297bbcb076190b2f672af4106e38a0210b38b43488b6a17a6af48d0ba",
+      "capture_id": "20261117T222434911Z-f4535390",
+      "capture_sha256": "62dd1c6de36dad60c83ec0b357a5a1e6373d862e07262509c02ca10d845e5762",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min12-compat14",
+          "source_sha256": "30cc69676314089fb17d3a99e7a0fbf09588f5d5e0187c9162e41fb0970853e0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222434911Z-f4535390/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform20-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222437648Z-9f799b2e.zip",
+      "archive_sha256": "664c95f143bc28b2fb21d618dc6a76626879e77de14708faced2be59ed531290",
+      "capture_id": "20261117T222437648Z-9f799b2e",
+      "capture_sha256": "69aeee5366422f165871bce45db7f392c493ed689dd6a2f6cbcf832452955f70",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min12-compat15",
+          "source_sha256": "9ee352cab062624bb10850abdbb29a8f2573c40161d6bae783bc40cfbf814d6b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222437648Z-9f799b2e/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform20-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222440420Z-7cf054a1.zip",
+      "archive_sha256": "92d0b09157e48c42f77e0f8d09ae26924599a603b096c63ec9cc712b14dcd4e1",
+      "capture_id": "20261117T222440420Z-7cf054a1",
+      "capture_sha256": "ba701f1ffe720148179d7876cb6cbb1394711b36d33e5c2390100331503c196c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min20-compat14",
+          "source_sha256": "f2ffdae2b567401e7dc4faa6e162366fe5aa8fba5913468a7c4ed6b7ead6b28f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222440420Z-7cf054a1/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform20-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222443161Z-af500d81.zip",
+      "archive_sha256": "e5d8c65788fcd9443428b334b423bcb39bac8f31d63e7809fa21876ed9fe2853",
+      "capture_id": "20261117T222443161Z-af500d81",
+      "capture_sha256": "ce32ddfbd0b61faf0bd40db7c69fd27d16ea1001436b76a39989885138ffc7d7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min20-compat15",
+          "source_sha256": "044b8888535ff786d1083cad19284263bc286ffb2de1da6db122f5e07c7fafc2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222443161Z-af500d81/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform20-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222445915Z-88a052d1.zip",
+      "archive_sha256": "cd445103b13d6e7d484437092bcd07a730934811d81631cfbfb8cd58e8966306",
+      "capture_id": "20261117T222445915Z-88a052d1",
+      "capture_sha256": "a0b3b593dd9d48af2c56fb5514141e8ef0a03c1c0da15fc003ad4e492f475e20",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min28-compat14",
+          "source_sha256": "e4134b7235cb07ac11f31a77fbc371483b3f7b8185f6ef524f031d202db99cbe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222445915Z-88a052d1/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform20-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222448674Z-7375dac5.zip",
+      "archive_sha256": "45b85ae1ee68baf93dd848bdad7201a3307959fa59fd3ff0046362f969fe5893",
+      "capture_id": "20261117T222448674Z-7375dac5",
+      "capture_sha256": "8d474fda5b33927dd9b5bc71177b3756d91b6ede822d0fe5f74f2e17714e78b9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min28-compat15",
+          "source_sha256": "601cd25fdc3dc5af323fd99e2adb797d052e8c6c9daeacc7551c7444c6cf73cd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222448674Z-7375dac5/inputs/word-windows-minimum-line-yu-mincho-cjk-uniform20-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-cjk-uniform20-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222451423Z-bf9a2258.zip",
+      "archive_sha256": "b0e7ec3db2e2a1f8e98974b9af33cdfac12206172cb93ad36580d276c9b3b51e",
+      "capture_id": "20261117T222451423Z-bf9a2258",
+      "capture_sha256": "3e011455fee9d3f597203b3b7aa9b1d377a262b3a2915ea8033c0cd37570a47e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min12-compat14",
+          "source_sha256": "a69e6331bf062451138194aeaf92ad8f55e8469058f0555cacc74e61e80806ed",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222451423Z-bf9a2258/inputs/word-windows-minimum-line-yu-mincho-latin-mixed20p10-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222454146Z-3160c51f.zip",
+      "archive_sha256": "c90f7f3407a27f96c6a271a856960d2a63994e6259d5d19623b4f71ecd055349",
+      "capture_id": "20261117T222454146Z-3160c51f",
+      "capture_sha256": "56ab0bc2ab8d451d1cdf197ba73dd5ca5573ed911156fad288bced9473e03342",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min12-compat15",
+          "source_sha256": "9976d68ed092ebab5a51913573bd1d9e402ae2442a573ac05f848f1ca3e0d29e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222454146Z-3160c51f/inputs/word-windows-minimum-line-yu-mincho-latin-mixed20p10-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222456884Z-989214da.zip",
+      "archive_sha256": "082c9be5be0f267bb72e1cc836806efc7efc4717ed63800185e5ce26771fca5e",
+      "capture_id": "20261117T222456884Z-989214da",
+      "capture_sha256": "172b56b827243888449715de17a29b1f0560ef2804c5a3b9f9c1d66054d8ef50",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min20-compat14",
+          "source_sha256": "943b8db00f148a692cb2f19c809ab611dfa0f405ffc45f1c95a824375b996d09",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222456884Z-989214da/inputs/word-windows-minimum-line-yu-mincho-latin-mixed20p10-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222459637Z-42a06aac.zip",
+      "archive_sha256": "18bd11f7b177bddea04423c49e62e2a14285ba516b4f4ee6cf2fa4ecc3c8f81b",
+      "capture_id": "20261117T222459637Z-42a06aac",
+      "capture_sha256": "1fd37e06c2fef694ee53a829433e3fb3294106d2837442e220cfd7f13dc21df3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min20-compat15",
+          "source_sha256": "77951df485814e63db2635395d0a33d9dee154d961b2c2634b26dae44a704dfd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222459637Z-42a06aac/inputs/word-windows-minimum-line-yu-mincho-latin-mixed20p10-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222503277Z-44d4a167.zip",
+      "archive_sha256": "180b4b4dc1796ad04cea91b94d5701176cbcfe6a8c3129c60386a660a0bf5a22",
+      "capture_id": "20261117T222503277Z-44d4a167",
+      "capture_sha256": "a5c1357212ba1d55e6b93505b11996cf68076b2f42c19b486386e6fd1ab995aa",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min28-compat14",
+          "source_sha256": "1117895656c4dbc1c9e7a22544f5a2de01b52a9b1410806d271b3d4e73eb547a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222503277Z-44d4a167/inputs/word-windows-minimum-line-yu-mincho-latin-mixed20p10-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222504692Z-d0a8bab1.zip",
+      "archive_sha256": "dcd650f41ccd4b4d76bbdb856f836f8cc1c16c6e2d7b27a2443be22184ca1c05",
+      "capture_id": "20261117T222504692Z-d0a8bab1",
+      "capture_sha256": "9a1755577ec6327a2706c3a4fb55527e7cdb1e039ac85ce14213e63d073f8e86",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min28-compat15",
+          "source_sha256": "ae17359caff3d4d9a80eef26e8f5f333aaffda54a5bcac4bcd902f677cf3ced8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222504692Z-d0a8bab1/inputs/word-windows-minimum-line-yu-mincho-latin-mixed20p10-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-mixed20p10-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222507463Z-a78fcccf.zip",
+      "archive_sha256": "8a82c3dcd83f0641f1713773d299e449ecceadd72206d4cd43faf3e09bb71c81",
+      "capture_id": "20261117T222507463Z-a78fcccf",
+      "capture_sha256": "4f77abf724a4dd8f581ca77e4199b96dbfe1d7d166feac160c5a89479fe32cf5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform12-min12-compat14",
+          "source_sha256": "ff210147303c12371cd3a923288fa2e3ce14da05fa26591cd8aa46466025689f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222507463Z-a78fcccf/inputs/word-windows-minimum-line-yu-mincho-latin-uniform12-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform12-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222508880Z-4119d6ac.zip",
+      "archive_sha256": "8932211454a4fd89d3239385e0660045d09ff02b750049cb63618d43d1027c21",
+      "capture_id": "20261117T222508880Z-4119d6ac",
+      "capture_sha256": "4f34534fde102b4b87014e30b9ad5d6007f6ec756a332720e446302a9bd4e486",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform12-min12-compat15",
+          "source_sha256": "e2e809d4ece228ddcbf3aef7616d39eda1cdc08bd1a07b6bf3e3355f5ecf23a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222508880Z-4119d6ac/inputs/word-windows-minimum-line-yu-mincho-latin-uniform12-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform12-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222511607Z-c62d0907.zip",
+      "archive_sha256": "7678292fc0c1e3c417ce6981d1170da51a3751257c4d6cf490342e4ea4f0d7c2",
+      "capture_id": "20261117T222511607Z-c62d0907",
+      "capture_sha256": "d53b37ca019c2f33e35f6b850a794f0e8fac88dc2c3452ebde0420f71683819e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform12-min20-compat14",
+          "source_sha256": "39f5de9c99d67078d72307af72e922a5d486282d7fe77971de3f4a888c109ce3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222511607Z-c62d0907/inputs/word-windows-minimum-line-yu-mincho-latin-uniform12-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform12-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222512961Z-f451ff88.zip",
+      "archive_sha256": "65c85dc90af545a0f34c5db76b87cbff757d121723aa47d899324d8cd8379f75",
+      "capture_id": "20261117T222512961Z-f451ff88",
+      "capture_sha256": "ab4be8c228bee418f6f9ee3925879a1c87139413ec5ae3b959652e1aee4de270",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform12-min20-compat15",
+          "source_sha256": "0e174f2791fc90ddbec90e3b574840e51222fd097cf8d40a242756fc3079b609",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222512961Z-f451ff88/inputs/word-windows-minimum-line-yu-mincho-latin-uniform12-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform12-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222516619Z-4834776e.zip",
+      "archive_sha256": "fee8eead95fe2988f7c490c6f950505763997a1a89528ee032dc68cb398e5b8d",
+      "capture_id": "20261117T222516619Z-4834776e",
+      "capture_sha256": "1454ea5a26dc876c447f1f44885f884e29c49a225d581c09d095a417d6243ac4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform12-min28-compat14",
+          "source_sha256": "c62db2baaff4317fbb9fa31d9c9db7c28df27dc93d05c5dfdc4de9ba23ead0a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222516619Z-4834776e/inputs/word-windows-minimum-line-yu-mincho-latin-uniform12-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform12-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222519386Z-4d10a697.zip",
+      "archive_sha256": "3fe83712e640f5a617e527555d5ccdda9a72674f0b825556239f60e321670a10",
+      "capture_id": "20261117T222519386Z-4d10a697",
+      "capture_sha256": "27ec8a64b5dc1b642dd07b8a3d635df85be55e959f7a461acd01922e115e181c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform12-min28-compat15",
+          "source_sha256": "1fb4653c1151e5ef4e0dd03a51d255bc893872d7a379671637f9b7ac97be4f02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222519386Z-4d10a697/inputs/word-windows-minimum-line-yu-mincho-latin-uniform12-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform12-min28-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222522187Z-d36ff386.zip",
+      "archive_sha256": "56e4d5076a37dca24d4faf24341d8d4406810062ed5423d2529525b9d347665b",
+      "capture_id": "20261117T222522187Z-d36ff386",
+      "capture_sha256": "31253ba09661b47a950cafa0bd925a6a870a88217741167c176e3f1792b93dd5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform20-min12-compat14",
+          "source_sha256": "82d853ec13962591f42cf085cb0a9b903065f4fbb4c29bd50b341668366c071f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222522187Z-d36ff386/inputs/word-windows-minimum-line-yu-mincho-latin-uniform20-min12-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min12-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222524956Z-31d52aec.zip",
+      "archive_sha256": "4a83e552b139086fc97500850857eae94651073670f8f5d25ad188b380cdde7a",
+      "capture_id": "20261117T222524956Z-31d52aec",
+      "capture_sha256": "a48260e5d8ae94d160f03cb93b6b8a7ceb704c2e0d74f6476edeeeb0dc8d034c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform20-min12-compat15",
+          "source_sha256": "8e1ff676674d05b6ec3da3c25f43439e42dea1c235869711c9a8aa6f7d16d21a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222524956Z-31d52aec/inputs/word-windows-minimum-line-yu-mincho-latin-uniform20-min12-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min12-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222527713Z-b594f70e.zip",
+      "archive_sha256": "89e1820a3dabce520ac7dee8fbbbf0cb6cf9af2fb93409864d32f894271ba65f",
+      "capture_id": "20261117T222527713Z-b594f70e",
+      "capture_sha256": "8f228660c51b9578c79deb75effd82194614b9764394459741368da24b2bff02",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform20-min20-compat14",
+          "source_sha256": "d594d4ce43cc83c250f63887c102a3a29888b90296a00e975383e6c9f712056d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222527713Z-b594f70e/inputs/word-windows-minimum-line-yu-mincho-latin-uniform20-min20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222532760Z-94600574.zip",
+      "archive_sha256": "e4ee468597bdaa3164defaf87c39093a5b1e1592e9132353fd23b0debe3864b6",
+      "capture_id": "20261117T222532760Z-94600574",
+      "capture_sha256": "3a05366a9c981159ec09e559d3c533e59b8ef675b47377936f393a44880516a3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform20-min20-compat15",
+          "source_sha256": "79f9fee4787d5204fb0192cc9ee310b228966d2c28679f179ab3c9296e85802f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222532760Z-94600574/inputs/word-windows-minimum-line-yu-mincho-latin-uniform20-min20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222535524Z-826197ff.zip",
+      "archive_sha256": "e182ceac3ec7070680698e8bef1e415eb405562f28061790eb3f0eea154b656d",
+      "capture_id": "20261117T222535524Z-826197ff",
+      "capture_sha256": "cee72f56afbfda49647ad66870ea106fc888c142690f61811c0393c0d1a2c763",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat14",
+          "source_sha256": "160256f046f63267d669dca66dab1f74914d6a101ad537ff698b08fd6287e89c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222535524Z-826197ff/inputs/word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat14.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T222538238Z-f4ab0dd5.zip",
+      "archive_sha256": "ba7ed9cf3dae8fc6cad18470cd7d461c966d92d089ceb8e26ad9ade1eba64639",
+      "capture_id": "20261117T222538238Z-f4ab0dd5",
+      "capture_sha256": "a1315a0062e4e0fff504f1840b191ea1b37e48762e97ad651ae1f973e37d29c7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat15",
+          "source_sha256": "7494752b3798d8eb77ed21ae536c51781af608ce5e31cbda33cc98539603ad02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T222538238Z-f4ab0dd5/inputs/word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat15.docx"
+          ],
+          "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -40693,6 +43177,10 @@
     {
       "file": "tests/word-oracle/windows/column-table-observations.json",
       "sha256": "fb434b043a55317d73c436f1dd63a11aba2049ec1f8b205a9029cc36a700db45"
+    },
+    {
+      "file": "tests/word-oracle/windows/minimum-line-observations.json",
+      "sha256": "2f886daaff8c633def9ab3c79f58012cb21db4e8fca5bb1a3673d7530ec6ef2d"
     }
   ]
 }
