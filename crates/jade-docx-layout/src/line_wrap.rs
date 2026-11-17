@@ -11596,7 +11596,9 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
     initial_soft_starts: &[usize],
     lines: &mut [WrappedLine],
 ) -> Result<(), C::Error> {
-    if initial_soft_starts.is_empty() {
+    if initial_soft_starts.is_empty()
+        || paragraph_style.word_platform != crate::line_metrics::WordLayoutPlatform::Windows
+    {
         return Ok(());
     }
     let adjust = |previous_previous: Option<&str>,
@@ -11653,13 +11655,42 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
             {
                 return Ok(());
             }
-            if let Some(kern) = windows_ascii_pair_adjustment(
+            let mut kern = windows_ascii_pair_adjustment(
                 &style,
                 descriptor,
                 previous.text.as_bytes()[0],
                 current.text.as_bytes()[0],
                 Some(paragraph_style),
-            ) {
+            );
+            if kern.is_none()
+                && crate::line_metrics::split_font_descriptor(descriptor).is_some_and(
+                    |(_, family)| {
+                        let family = family
+                            .split(',')
+                            .next()
+                            .unwrap_or_default()
+                            .trim()
+                            .trim_matches(['\'', '"']);
+                        family.eq_ignore_ascii_case("Aptos")
+                            || family.eq_ignore_ascii_case("Aptos Display")
+                    },
+                )
+            {
+                // Initial measurement uses the selected Aptos font's pair
+                // width. If word-boundary repair rejoins an initial soft
+                // break inside We, restore that same pair instead of leaving
+                // the second glyph at its unkerned origin. The inverse removes
+                // a pair across a newly introduced line break.
+                let pair = [previous.text.as_bytes()[0], current.text.as_bytes()[0]];
+                let measure =
+                    |text| ctx.measure_text_with_hash(text, descriptor, right.font_descriptor_hash);
+                kern = Some(
+                    measure(std::str::from_utf8(&pair).expect("ASCII pair"))?
+                        - measure(&previous.text)?
+                        - measure(&current.text)?,
+                );
+            }
+            if let Some(kern) = kern.filter(|kern| kern.is_finite()) {
                 let delta = direction * kern * style.text_scale_x.max(0.01);
                 right.leading_advance += delta;
                 current.width += delta;
@@ -11799,13 +11830,36 @@ fn prevent_mid_word_breaks(
         // East Asian text right before the word also ends a line there, when
         // the whole word then fits the next one: Word sets `新規` | `MLPM契約`
         // (trust-beneficiary-sale-keep-next page 8).
-        if allow_mid_word_break
-            && !has_preceding_latin_break_opportunity(prev_line)
-            && !(follows_east_asian_text(prev_line)
+        // Windows Word's Aptos 20pt controls allow the break after the minus
+        // in ` -12`, but keep the following digits together. The default
+        // mid-word rule must not turn that into ` -1` | `2`. Preserve Mac's
+        // existing treatment of a word-initial hyphen.
+        let windows_negative_number = paragraph_style.word_platform
+            == crate::line_metrics::WordLayoutPlatform::Windows
+            && prev_line
+                .clusters
+                .last()
+                .is_some_and(|c| is_ascii_digit_grapheme(&c.text))
+            && next_line
+                .clusters
+                .first()
+                .is_some_and(|c| is_ascii_digit_grapheme(&c.text))
+            && prev_line
+                .clusters
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, c)| !is_ascii_digit_grapheme(&c.text))
+                .is_some_and(|(i, c)| {
+                    c.text == "-" && i > 0 && prev_line.clusters[i - 1].is_whitespace
+                });
+        let has_word_boundary = has_preceding_latin_break_opportunity(prev_line)
+            || windows_negative_number
+            || (follows_east_asian_text(prev_line)
                 && split_latin_word_width(prev_line, next_line)
                     <= paragraph_style.available_width_for_line(base_available, idx)
-                        + WRAP_FIT_TOLERANCE_PX)
-        {
+                        + WRAP_FIT_TOLERANCE_PX);
+        if allow_mid_word_break && !has_word_boundary {
             continue;
         }
 
@@ -20814,6 +20868,115 @@ mod tests {
         );
         assert_eq!(narrower[1].break_kind, LineBreakKind::Hard);
         assert_eq!(line_text(&narrower[2]), "X");
+    }
+
+    #[test]
+    fn windows_wrap_keeps_digits_after_a_negative_sign_together() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let ctx = TestContext::new(10.0);
+        let text = "AB -12 XY";
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            ..ParagraphStyle::default()
+        };
+        let lines =
+            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 50.0).unwrap();
+        let line_text = |line: &WrappedLine| {
+            line.clusters
+                .iter()
+                .map(|c| c.text.as_str())
+                .collect::<String>()
+        };
+        assert_eq!(line_text(&lines[0]), "AB -");
+        assert_eq!(line_text(&lines[1]), "12 XY");
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac_paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Mac,
+            ..paragraph
+        };
+        let mac_lines =
+            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &mac_paragraph, 0, 50.0)
+                .unwrap();
+        assert_eq!(line_text(&mac_lines[0]), "AB -1");
+    }
+
+    #[test]
+    fn windows_wrap_repair_restores_measured_aptos_pair() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        struct KernedContext(TestContext);
+        impl LineWrapContext for KernedContext {
+            type Error = ();
+            fn resolve_run_style(
+                &self,
+                properties: Option<&RunProperties>,
+            ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+                self.0.resolve_run_style(properties)
+            }
+            fn measure_text(&self, text: &str, _: &str) -> Result<f64, Self::Error> {
+                Ok(text.len() as f64 * 10.0 - if text == "We" { 3.0 } else { 0.0 })
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut inner = TestContext::new(10.0);
+        inner.style = ResolvedRunStyle::new(
+            "20.00pt Aptos",
+            "20.00pt Aptos",
+            "20.00pt Aptos",
+            "20.00pt Aptos",
+            0.0,
+            1.0,
+            true,
+            None,
+        );
+        let ctx = KernedContext(inner);
+        let paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            ..ParagraphStyle::default()
+        };
+        let text = "WA We";
+        let mut lines =
+            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 1000.0)
+                .unwrap();
+        let e = lines[0]
+            .clusters
+            .iter()
+            .position(|c| c.text == "e")
+            .unwrap();
+        let original = lines[0].clusters[e].clone();
+        assert_eq!(original.layout.as_ref().unwrap().leading_advance, -3.0);
+        // The initial greedy break was inside We; word-boundary repair joins
+        // e back to W. Preserve unrelated leading while restoring the pair.
+        lines[0].clusters[e].width += 5.0;
+        lines[0].clusters[e]
+            .layout
+            .as_mut()
+            .unwrap()
+            .leading_advance += 5.0;
+        let mut mac_lines = lines.clone();
+        let mac_paragraph = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Mac,
+            ..paragraph.clone()
+        };
+        reconcile_windows_ascii_wrap_kerning(
+            &ctx,
+            &mac_paragraph,
+            &[original.start],
+            &mut mac_lines,
+        )
+        .unwrap();
+        assert_eq!(mac_lines[0].clusters[e].width, original.width + 5.0);
+        reconcile_windows_ascii_wrap_kerning(&ctx, &paragraph, &[original.start], &mut lines)
+            .unwrap();
+        assert_eq!(lines[0].clusters[e].width, original.width + 2.0);
+        assert_eq!(
+            lines[0].clusters[e]
+                .layout
+                .as_ref()
+                .unwrap()
+                .leading_advance,
+            -1.0
+        );
     }
 
     #[test]

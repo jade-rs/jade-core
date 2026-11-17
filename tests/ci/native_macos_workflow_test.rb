@@ -130,6 +130,18 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute_includes editing.fetch("run"), "--ignored"
   end
 
+  def test_windows_native_assertions_stop_at_the_first_failed_command
+    %w[windows-word-baselines windows-native-editing].each do |name|
+      job = @workflow.fetch("jobs").fetch(name)
+      assert_equal "bash", job.fetch("defaults").fetch("run").fetch("shell"), name
+      job.fetch("steps").select { |step| step.key?("run") }.each do |step|
+        assert_equal "bash", step.fetch("shell", "bash"), step.fetch("name", name)
+        refute_includes step.fetch("run"), "set +e", name
+        refute_includes step.fetch("run"), "|| true", name
+      end
+    end
+  end
+
   def test_shared_originals_use_independent_required_platform_comparisons
     {
       "word-mac-browser-coordinates" => [
@@ -182,6 +194,7 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute step.key?("if")
     refute step.fetch("continue-on-error", false)
     assert_includes step.fetch("run"), "test_windows_numeric_spacing_probes.py"
+    assert_includes step.fetch("run"), "test_windows_courier_grid_probes.py"
     assert_includes step.fetch("run"), "check_windows_font_coordinates.py --native-executable"
   end
 

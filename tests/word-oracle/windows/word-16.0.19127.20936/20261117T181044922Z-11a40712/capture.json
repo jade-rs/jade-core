@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T181044922Z-11a40712",
+  "captured_at_utc": "2026-11-17T18:10:44.9256708Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-run-boundary-without-hyphens-compat15",
+      "source": "w18-u-aptos-run-boundaries-input-snapshots\\word-windows-aptos-run-boundary-without-hyphens-compat15.docx",
+      "sha256": "994a3ac07c6c914644f9775d93c4030a931df27c909f1ab3beea4f8201554a38",
+      "pdf": "word-windows-aptos-run-boundary-without-hyphens-compat15.pdf",
+      "pdf_sha256": "a7d9311ce6dc11285729890d930f10c8b9ea11b4646f337bf86612d5c94361d7",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-run-boundary-without-hyphens-compat15.page-001.emf",
+          "sha256": "6e24a3a56be1affeefaad8f1da472499457f4b276964c911e989e1af55863c27",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

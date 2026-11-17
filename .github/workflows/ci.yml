@@ -242,6 +242,11 @@ jobs:
   windows-word-baselines:
     name: Windows Word baselines by version
     runs-on: windows-latest
+    defaults:
+      run:
+        # GitHub runs explicit bash with -e -o pipefail. An earlier Python
+        # assertion must fail the step even if a later command would pass.
+        shell: bash
     # All versioned originals are mandatory; the expanded corpus also runs
     # border, print and editing gates after the four-plane font comparisons.
     timeout-minutes: 75
@@ -279,6 +284,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_family_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_subset_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_wrap_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_header_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_table_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_heading_break_probes.py
@@ -327,6 +333,7 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_coordinates.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_numeric_spacing_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_courier_grid_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_paragraph_backgrounds.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
@@ -367,6 +374,9 @@ jobs:
   windows-native-editing:
     name: Windows native editing and font reuse
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 60
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target/windows-native-editing

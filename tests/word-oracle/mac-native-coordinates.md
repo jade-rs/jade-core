@@ -29,6 +29,10 @@ comparison steps to remain unconditional, on their respective OS runners,
 without allowing failures or narrowing the Mac command to selected cases.
 The platform regression suite checks every registered pair independently and
 rejects deliberate X and Y displacement in each original coordinate set.
+Windows coordinate and editing jobs explicitly use GitHub's fail-fast Bash
+shell (`-e -o pipefail`), so an earlier assertion cannot be hidden by a later
+successful command in the same step. The workflow contract test requires this
+shell on every executable step in both Windows jobs.
 The original DOCX and reference hashes are verified, and the existing Mac
 tolerances are preserved. Windows captures retain Word version/build and
 capture identity rather than overwriting the Mac goldens.
