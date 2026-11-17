@@ -1,0 +1,85 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T185834117Z-40deb4ee",
+  "captured_at_utc": "2026-11-17T18:58:34.1289038Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15",
+      "source": "w18-z-adjacent-fixed-grids-mode15-input-snapshots\\word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.docx",
+      "sha256": "b3b123606df5b2b607505171193ea5b930a4c36c5275a818da4ab22776bf9bf3",
+      "pdf": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.pdf",
+      "pdf_sha256": "0a148b743cb3785f9c3fbc96c3cd12546a4d278ae72b14a16b5621702a90fc04",
+      "pages": 6,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.page-001.emf",
+          "sha256": "c61248eb947e86bc1fe5844fbe6b7bf2035a9b51c91034173d231be1875c30e1",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.page-002.emf",
+          "sha256": "c7e9d0592572913795d3f7ac08c825972e2efad3a7eb7c1c5c6913e8c53a2388",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.page-003.emf",
+          "sha256": "0213ffdc615f46414cf476ada9eac3b0660d8baaf7fc52c49080b57fdf77dfa6",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 4,
+          "file": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.page-004.emf",
+          "sha256": "6bbc3caf89d83620546567fc65b246d360e73da079d4b7d74c6f94d9b4a383e6",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 5,
+          "file": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.page-005.emf",
+          "sha256": "f743afd16205881a6f8ea58c4015b909ed20132eeff338e9b9f1931a31f336e3",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 6,
+          "file": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.page-006.emf",
+          "sha256": "886a97087c22f7776f7c8a6597a2e73b8d606afd7a6d4821258bb78de2775543",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

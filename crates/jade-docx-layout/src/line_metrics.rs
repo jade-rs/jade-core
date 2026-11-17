@@ -3782,10 +3782,11 @@ fn word_latin_font_vertical_units(
         }
         "Tahoma" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2049.0, 423.0)),
         "Verdana" => Some((2059.0, 430.0)),
-        // Word for Mac positions Courier New using the face's hhea box.
-        "Courier New" | "'Courier New'" if word_layout_platform() == WordLayoutPlatform::Mac => {
-            Some((1705.0, 615.0))
-        }
+        // Word for Mac uses hhea; Windows Word 16.0.19127.20936 uses
+        // Courier New 6.95's identical usWin box (1705/615, 2048 upem).
+        // Both give an 11.895pt single-line pitch at 10.5pt, rather than
+        // the generic 1.3em fallback. Keep the existing Mac metrics exact.
+        "Courier New" | "'Courier New'" => Some((1705.0, 615.0)),
         "Aptos" | "Aptos Display" => Some((1923.0, 577.0)),
         _ => None,
     }

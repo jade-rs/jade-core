@@ -3026,7 +3026,7 @@ where
                 .as_ref()
                 .and_then(|document| document.body.as_ref())
                 .and_then(|body| {
-                    word_mac_adjacent_fixed_grid(
+                    word_adjacent_fixed_grid(
                         &body.elements,
                         body_element_index,
                         table,
@@ -10514,7 +10514,7 @@ impl WindowsPositiveSpacingGrid {
 }
 
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
-    if let Some(widths) = word_mac_constrained_fixed_grid(table, column_count, available_width) {
+    if let Some(widths) = word_constrained_fixed_grid(table, column_count, available_width) {
         return widths;
     }
 
@@ -10630,17 +10630,29 @@ fn uniform_single_column_cell_percentage(table: &Table) -> Option<f64> {
         .then_some(fraction)
 }
 
-fn word_mac_constrained_fixed_grid(
+fn word_constrained_fixed_grid(
     table: &Table,
     column_count: usize,
     available_width: f64,
 ) -> Option<Vec<f64>> {
-    if jade_docx_layout::line_metrics::word_layout_platform()
-        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        || resolve_table_layout_mode(table) != TableLayoutMode::Fixed
-        || column_count == 0
-    {
+    if resolve_table_layout_mode(table) != TableLayoutMode::Fixed || column_count == 0 {
         return None;
+    }
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        // The original Windows two-row controls distribute conflicting
+        // preferred cell widths within tblW, with either a narrow or a wide
+        // serialized grid. Keep the single-row/column Windows rules intact.
+        return (column_count > 1 && table.rows.len() > 1)
+            .then(|| {
+                constrained_fixed_grid(
+                    table.rows.iter(),
+                    column_count,
+                    absolute_table_width(table)?,
+                )
+            })
+            .flatten();
     }
     if column_count == 1 && !table.style.contains_key("width") {
         if let Some(width) = word_mac_automatic_fixed_percentage_column(table) {
@@ -10756,17 +10768,16 @@ fn absolute_table_width(table: &Table) -> Option<f64> {
     parse_length_to_px(width).filter(|width| *width > 0.0)
 }
 
-fn word_mac_adjacent_fixed_grid(
+fn word_adjacent_fixed_grid(
     elements: &[BodyElement],
     index: usize,
     table: &Table,
     column_count: usize,
 ) -> Option<(Vec<f64>, bool)> {
-    if jade_docx_layout::line_metrics::word_layout_platform()
-        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        || column_count == 0
-        || table_floats(table)
-    {
+    // Both original Mac and Windows Word 16.0.19127.20936 share the grid
+    // of these consecutive fixed tables. Keep the existing Mac calculation;
+    // treating Windows tables independently shifts the narrow row by 53pt.
+    if column_count == 0 || table_floats(table) {
         return None;
     }
     let is_matching = |other: &&Table| {

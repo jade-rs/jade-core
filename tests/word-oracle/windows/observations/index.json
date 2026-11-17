@@ -38530,7 +38530,8 @@
           "name": "word-windows-adjacent-fixed-table-grids-bound-namespace",
           "source_sha256": "683283a4185f2eb0d94f31b835394e5f6e46266d2159f0738166319eb5fa152a",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183041923Z-f1d7bcac/inputs/word-windows-adjacent-fixed-table-grids-bound-namespace.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183041923Z-f1d7bcac/inputs/word-windows-adjacent-fixed-table-grids-bound-namespace.docx",
+            "public/fixtures/word-windows-adjacent-fixed-table-grids-bound-namespace.docx"
           ],
           "opened_filename": "word-windows-adjacent-fixed-table-grids-bound-namespace.docx"
         }
@@ -38553,7 +38554,8 @@
           "name": "word-windows-courier-line-size10p5-bold-compat14",
           "source_sha256": "2237124961cbd1bae4580c26505e5e38ca456afa3ba272a428edd635ffb3a595",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183632477Z-6ad94f7a/inputs/word-windows-courier-line-size10p5-bold-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183632477Z-6ad94f7a/inputs/word-windows-courier-line-size10p5-bold-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-bold-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-bold-compat14.docx"
         }
@@ -38576,7 +38578,8 @@
           "name": "word-windows-courier-line-size10p5-bold-compat15",
           "source_sha256": "a22a7d3b58fb74dc8e6b7f0834aaf63720e7b8494cf64c5f1d2f6c12a76f379f",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183636730Z-73ccbfc4/inputs/word-windows-courier-line-size10p5-bold-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183636730Z-73ccbfc4/inputs/word-windows-courier-line-size10p5-bold-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-bold-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-bold-compat15.docx"
         }
@@ -38599,7 +38602,8 @@
           "name": "word-windows-courier-line-size10p5-bolditalic-compat14",
           "source_sha256": "df816929e83ade03bee5470f7d69261957dbfdb879ba189989678280bb98ab49",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183639831Z-3e62ef12/inputs/word-windows-courier-line-size10p5-bolditalic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183639831Z-3e62ef12/inputs/word-windows-courier-line-size10p5-bolditalic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-bolditalic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-bolditalic-compat14.docx"
         }
@@ -38622,7 +38626,8 @@
           "name": "word-windows-courier-line-size10p5-bolditalic-compat15",
           "source_sha256": "15617583f1b0c7fbe049f6daaac661056c504fd9188c6a2f38bca103f16f73fe",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183645299Z-0c308ff1/inputs/word-windows-courier-line-size10p5-bolditalic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183645299Z-0c308ff1/inputs/word-windows-courier-line-size10p5-bolditalic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-bolditalic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-bolditalic-compat15.docx"
         }
@@ -38645,7 +38650,8 @@
           "name": "word-windows-courier-line-size10p5-italic-compat14",
           "source_sha256": "718b51b24648a6ad9722efcfa0c77ffc392655f4b85691359962f3ced20349f8",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183648315Z-a66b1bf3/inputs/word-windows-courier-line-size10p5-italic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183648315Z-a66b1bf3/inputs/word-windows-courier-line-size10p5-italic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-italic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-italic-compat14.docx"
         }
@@ -38668,7 +38674,8 @@
           "name": "word-windows-courier-line-size10p5-italic-compat15",
           "source_sha256": "35e1a461d0721901c8a2c48e9d6e100a90dd04825b1a65d3ba2f5c0153cb1522",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183651275Z-3ef57320/inputs/word-windows-courier-line-size10p5-italic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183651275Z-3ef57320/inputs/word-windows-courier-line-size10p5-italic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-italic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-italic-compat15.docx"
         }
@@ -38691,7 +38698,8 @@
           "name": "word-windows-courier-line-size10p5-regular-compat14",
           "source_sha256": "9de01c76cc9c2d50053020c1ca7cc1472ca43124cfa8c7f52915ecde8712806f",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183654292Z-f6f8b2bf/inputs/word-windows-courier-line-size10p5-regular-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183654292Z-f6f8b2bf/inputs/word-windows-courier-line-size10p5-regular-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-regular-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-regular-compat14.docx"
         }
@@ -38714,7 +38722,8 @@
           "name": "word-windows-courier-line-size10p5-regular-compat15",
           "source_sha256": "0e58ad634bc3bd3db3b8e9292aa04131a309d827b40c37293f181564c3e55879",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183657259Z-af073ef9/inputs/word-windows-courier-line-size10p5-regular-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183657259Z-af073ef9/inputs/word-windows-courier-line-size10p5-regular-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size10p5-regular-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size10p5-regular-compat15.docx"
         }
@@ -38737,7 +38746,8 @@
           "name": "word-windows-courier-line-size12-bold-compat14",
           "source_sha256": "a1ba03c642f92722e9416eafd93c67fc60eccc2aa3c9089a8d79b5bcbacf8b5b",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183700283Z-78e0c95e/inputs/word-windows-courier-line-size12-bold-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183700283Z-78e0c95e/inputs/word-windows-courier-line-size12-bold-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size12-bold-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-bold-compat14.docx"
         }
@@ -38760,7 +38770,8 @@
           "name": "word-windows-courier-line-size12-bold-compat15",
           "source_sha256": "b55a9df1b888440394b3206368081b67dafeaa66d8fdc2884d9bc2553fc6682e",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183703489Z-8b4d2e8c/inputs/word-windows-courier-line-size12-bold-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183703489Z-8b4d2e8c/inputs/word-windows-courier-line-size12-bold-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size12-bold-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-bold-compat15.docx"
         }
@@ -38783,7 +38794,8 @@
           "name": "word-windows-courier-line-size12-bolditalic-compat14",
           "source_sha256": "2c3fab3004d1c0190236f3bd186e0c83be97d1f87942ecc861ae9ac07570160a",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183706451Z-c93c0e33/inputs/word-windows-courier-line-size12-bolditalic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183706451Z-c93c0e33/inputs/word-windows-courier-line-size12-bolditalic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size12-bolditalic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-bolditalic-compat14.docx"
         }
@@ -38806,7 +38818,8 @@
           "name": "word-windows-courier-line-size12-bolditalic-compat15",
           "source_sha256": "b29e845666f40bf953be77c62fa5f5a406a983e42eb52ab13613b86d58f4cdf9",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183709496Z-d99aa980/inputs/word-windows-courier-line-size12-bolditalic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183709496Z-d99aa980/inputs/word-windows-courier-line-size12-bolditalic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size12-bolditalic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-bolditalic-compat15.docx"
         }
@@ -38829,7 +38842,8 @@
           "name": "word-windows-courier-line-size12-italic-compat14",
           "source_sha256": "08d28088cbadc90549bae3adb79e3f5055e9b38924324708e4d60a567fe32a4b",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183712547Z-70515b1c/inputs/word-windows-courier-line-size12-italic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183712547Z-70515b1c/inputs/word-windows-courier-line-size12-italic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size12-italic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-italic-compat14.docx"
         }
@@ -38852,7 +38866,8 @@
           "name": "word-windows-courier-line-size12-italic-compat15",
           "source_sha256": "7e1854083ad9e59919b80cd57b5f89bd1b2ec418d33300538e1e6d3f3e768143",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183715504Z-e3a8e3f1/inputs/word-windows-courier-line-size12-italic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183715504Z-e3a8e3f1/inputs/word-windows-courier-line-size12-italic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size12-italic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-italic-compat15.docx"
         }
@@ -38875,7 +38890,8 @@
           "name": "word-windows-courier-line-size12-regular-compat14",
           "source_sha256": "c9887665ed87505c1cd3c2048b3eec25a3b04fb88f754d5c6a08a928049873c5",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183718673Z-b8676682/inputs/word-windows-courier-line-size12-regular-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183718673Z-b8676682/inputs/word-windows-courier-line-size12-regular-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size12-regular-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-regular-compat14.docx"
         }
@@ -38898,7 +38914,8 @@
           "name": "word-windows-courier-line-size12-regular-compat15",
           "source_sha256": "bb5d60bc9ab3c25fdb081044aaa3b335cda4ed681d41fa501172a972716451c0",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183722779Z-3e0e45ac/inputs/word-windows-courier-line-size12-regular-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183722779Z-3e0e45ac/inputs/word-windows-courier-line-size12-regular-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size12-regular-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size12-regular-compat15.docx"
         }
@@ -38921,7 +38938,8 @@
           "name": "word-windows-courier-line-size20-bold-compat14",
           "source_sha256": "2802db59438444f70f86649fcd1e529bb0a06fcef5360e3d62baa3b6fdca9561",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183725813Z-3cf5e106/inputs/word-windows-courier-line-size20-bold-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183725813Z-3cf5e106/inputs/word-windows-courier-line-size20-bold-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size20-bold-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-bold-compat14.docx"
         }
@@ -38944,7 +38962,8 @@
           "name": "word-windows-courier-line-size20-bold-compat15",
           "source_sha256": "39330658feeadd2e67aa9a5f3557dc243a0a2a5a225281b9553d91f5294db83a",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183727409Z-39343611/inputs/word-windows-courier-line-size20-bold-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183727409Z-39343611/inputs/word-windows-courier-line-size20-bold-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size20-bold-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-bold-compat15.docx"
         }
@@ -38967,7 +38986,8 @@
           "name": "word-windows-courier-line-size20-bolditalic-compat14",
           "source_sha256": "028b66dfa6342d1baa4d40e492b1a5b4b6b7df29c0dc1568acc5e79ae7698b04",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183730393Z-6cd47022/inputs/word-windows-courier-line-size20-bolditalic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183730393Z-6cd47022/inputs/word-windows-courier-line-size20-bolditalic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size20-bolditalic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-bolditalic-compat14.docx"
         }
@@ -38990,7 +39010,8 @@
           "name": "word-windows-courier-line-size20-bolditalic-compat15",
           "source_sha256": "75b37bffd1a65a9a1f246cb1c0992cdda69df09bfbbabc7839b473e735ecf89d",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183733385Z-c285a856/inputs/word-windows-courier-line-size20-bolditalic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183733385Z-c285a856/inputs/word-windows-courier-line-size20-bolditalic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size20-bolditalic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-bolditalic-compat15.docx"
         }
@@ -39013,7 +39034,8 @@
           "name": "word-windows-courier-line-size20-italic-compat14",
           "source_sha256": "8e4467c53ba9da5a22b8e4fd68e50de096298da78e276b4b77e3a8207deb8fff",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183736382Z-ac64e537/inputs/word-windows-courier-line-size20-italic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183736382Z-ac64e537/inputs/word-windows-courier-line-size20-italic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size20-italic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-italic-compat14.docx"
         }
@@ -39036,7 +39058,8 @@
           "name": "word-windows-courier-line-size20-italic-compat15",
           "source_sha256": "9273862b39f1751486cbb07f0034aab82764ee6cf31fe2489cf627c8ef9e392a",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183739347Z-f3c51229/inputs/word-windows-courier-line-size20-italic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183739347Z-f3c51229/inputs/word-windows-courier-line-size20-italic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size20-italic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-italic-compat15.docx"
         }
@@ -39059,7 +39082,8 @@
           "name": "word-windows-courier-line-size20-regular-compat14",
           "source_sha256": "d6d02c42423f2731cd8cddcaec3c9b963241e2715933f08629984bdce75ee2c2",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183742370Z-d925eb76/inputs/word-windows-courier-line-size20-regular-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183742370Z-d925eb76/inputs/word-windows-courier-line-size20-regular-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size20-regular-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-regular-compat14.docx"
         }
@@ -39082,7 +39106,8 @@
           "name": "word-windows-courier-line-size20-regular-compat15",
           "source_sha256": "6b353a1281c0d3fa77a83554e9381413eeb3dbfd7b4a15554e2ddce143a3e87f",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183745404Z-245be3ab/inputs/word-windows-courier-line-size20-regular-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183745404Z-245be3ab/inputs/word-windows-courier-line-size20-regular-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size20-regular-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size20-regular-compat15.docx"
         }
@@ -39105,7 +39130,8 @@
           "name": "word-windows-courier-line-size40-bold-compat14",
           "source_sha256": "6c5468621a7ad8549d75432b1e1a27a18b6085599da2dd842199dd515c7724f2",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183748320Z-1c7a7faf/inputs/word-windows-courier-line-size40-bold-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183748320Z-1c7a7faf/inputs/word-windows-courier-line-size40-bold-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size40-bold-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-bold-compat14.docx"
         }
@@ -39128,7 +39154,8 @@
           "name": "word-windows-courier-line-size40-bold-compat15",
           "source_sha256": "97986d4372afe51e853240119644770c3bff64406634481c67c38cf9a4c1b782",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183751316Z-dd77a65a/inputs/word-windows-courier-line-size40-bold-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183751316Z-dd77a65a/inputs/word-windows-courier-line-size40-bold-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size40-bold-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-bold-compat15.docx"
         }
@@ -39151,7 +39178,8 @@
           "name": "word-windows-courier-line-size40-bolditalic-compat14",
           "source_sha256": "f50349e0e87625f2308295162ed76618fa6ca30d290984998ea104f30faaf22b",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183754312Z-2c480930/inputs/word-windows-courier-line-size40-bolditalic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183754312Z-2c480930/inputs/word-windows-courier-line-size40-bolditalic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size40-bolditalic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-bolditalic-compat14.docx"
         }
@@ -39174,7 +39202,8 @@
           "name": "word-windows-courier-line-size40-bolditalic-compat15",
           "source_sha256": "a9dd408f2fc8f049bc54c74cc364a15e44a86920d587b7b8290417f0657bccf3",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183758415Z-96289fca/inputs/word-windows-courier-line-size40-bolditalic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183758415Z-96289fca/inputs/word-windows-courier-line-size40-bolditalic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size40-bolditalic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-bolditalic-compat15.docx"
         }
@@ -39197,7 +39226,8 @@
           "name": "word-windows-courier-line-size40-italic-compat14",
           "source_sha256": "6305bfd65e9f6e7eaa369b12bc114ead61079c38e0c1a39dfa52add35c2fa0f3",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183800018Z-c8bc519c/inputs/word-windows-courier-line-size40-italic-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183800018Z-c8bc519c/inputs/word-windows-courier-line-size40-italic-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size40-italic-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-italic-compat14.docx"
         }
@@ -39220,7 +39250,8 @@
           "name": "word-windows-courier-line-size40-italic-compat15",
           "source_sha256": "bac6ac1aa0f0cddcfb5f10393c096a80772ffa78b9f03258496cb91ab512a9b8",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183802955Z-fdc161a4/inputs/word-windows-courier-line-size40-italic-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183802955Z-fdc161a4/inputs/word-windows-courier-line-size40-italic-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size40-italic-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-italic-compat15.docx"
         }
@@ -39243,7 +39274,8 @@
           "name": "word-windows-courier-line-size40-regular-compat14",
           "source_sha256": "87d50bf3c21f956af4e25ccb7eec741f5b0cdb800fa96c82beac1862b9ea76b1",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183806000Z-21129076/inputs/word-windows-courier-line-size40-regular-compat14.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183806000Z-21129076/inputs/word-windows-courier-line-size40-regular-compat14.docx",
+            "public/fixtures/word-windows-courier-line-size40-regular-compat14.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-regular-compat14.docx"
         }
@@ -39266,9 +39298,34 @@
           "name": "word-windows-courier-line-size40-regular-compat15",
           "source_sha256": "ec579e17f25fe2ba7ae1f4829e784e6940cd04a26e522b9f1e231e2b87a0f312",
           "source_aliases": [
-            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183809043Z-99431580/inputs/word-windows-courier-line-size40-regular-compat15.docx"
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T183809043Z-99431580/inputs/word-windows-courier-line-size40-regular-compat15.docx",
+            "public/fixtures/word-windows-courier-line-size40-regular-compat15.docx"
           ],
           "opened_filename": "word-windows-courier-line-size40-regular-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T185834117Z-40deb4ee.zip",
+      "archive_sha256": "ad75a612991545b660137bd1d6c82f8a9063e2eb33db5ff7fc8302af33b9f806",
+      "capture_id": "20261117T185834117Z-40deb4ee",
+      "capture_sha256": "472f24d3639aab781cbfbf26cb55bc25ce95c822c553d351b64eba5e6f3db320",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15",
+          "source_sha256": "b3b123606df5b2b607505171193ea5b930a4c36c5275a818da4ab22776bf9bf3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261117T185834117Z-40deb4ee/inputs/word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.docx",
+            "public/fixtures/word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.docx"
+          ],
+          "opened_filename": "word-windows-adjacent-fixed-table-grids-bound-namespace-compat15.docx"
         }
       ]
     }
@@ -39335,7 +39392,7 @@
     },
     {
       "file": "tests/word-oracle/windows/wrap-and-courier-observations.json",
-      "sha256": "0876a9f0023383659d47717196604b47dfe49922008b4fe8dcc82b0d6da1455a"
+      "sha256": "625d407e26a52117d02a50326f70dd17cc5e305da7a0eeb3bf1d840d6b40d00e"
     }
   ]
 }
