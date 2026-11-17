@@ -1,10 +1,10 @@
 Shared Mac and Windows coordinate assertions
 ===========================================
 
-Current verified Windows coverage is 833 typography cases / 142,553 origins,
-including 393 shaded controls, 61 note-rule cases and 1,229 release inputs.
-The versioned observation archive retains 809 captures / 1,720 documents /
-1,675 source byte groups. Previous records and every Mac expectation remain
+Current registered Windows coverage is 1,060 typography cases / 163,507 origins,
+including 613 shaded controls, 61 note-rule cases and 1,454 release inputs.
+The versioned observation archive retains 1,057 captures / 1,968 documents /
+1,921 source byte groups. Previous records and every Mac expectation remain
 unchanged. Newer Word captures append evidence instead of replacing a version.
 
 `platform-coordinates.json` links each unchanged Mac corpus `source.docx` to its
@@ -18,6 +18,21 @@ Expected coordinates belong to the Word platform/version that produced them.
 Mac and Windows coordinates may differ; neither platform's expectation is
 substituted for the other's. Mac tolerances remain those of the original Mac
 manifest. Windows uses the existing 0.375 pt limit on both axes without fitting.
+
+The shared registry includes 12 unchanged Mac originals, including
+`floating-square-wrap-mac` and `floating-wrap-sides-mac`. Their Mac captures
+remain Word 16.114 (build 16.114.26101123, macOS 27.0.1); their Windows captures
+remain Word 16.0.19127.20936, with the executable hash retained in `capture.json`.
+The OS difference in `endnote-mac` is an explicit negative test: each original
+passes its own expectation and fails the other platform's expectation. The
+test suite also moves both axes for every registered pair and requires failure.
+
+Nine additional floating-wrap controls vary only compatibility modes 12/14/15
+in three original Mac documents. All nine original Windows captures are retained;
+five controls currently pass all four Windows drawing/PDF comparisons. The four
+remaining observations retain their actual Word output and are not substituted
+for passing expectations. `generate_windows_float_lookahead_probes.py` reproduces
+all nine byte-for-byte, and CI asserts that other DOCX parts remain unchanged.
 
 GitHub Actions runs the original Mac corpus browser assertions on macOS and
 checks that every registered shared case remains included. On Windows, the

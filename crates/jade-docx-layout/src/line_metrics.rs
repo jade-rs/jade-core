@@ -134,6 +134,19 @@ impl WordProportionalLineSizing {
         if word_layout_platform() != WordLayoutPlatform::Mac || snap || !all_faces_known {
             return None;
         }
+        Self::from_spacing(spacing)
+    }
+
+    /// Explicit proportional text-box spacing scales the requested-face line
+    /// box on both Word platforms. Keep implicit Windows single spacing and
+    /// the body paragraph's platform policy on their existing paths.
+    pub fn for_text_box(spacing: Option<&Spacing>) -> Option<Self> {
+        let spacing = spacing?;
+        spacing.line?;
+        Self::from_spacing(Some(spacing))
+    }
+
+    fn from_spacing(spacing: Option<&Spacing>) -> Option<Self> {
         let minimum_pt = word_minimum_line_height_pt(spacing).map(f64::from);
         let multiple = if minimum_pt.is_some() {
             1.0
@@ -4820,6 +4833,55 @@ mod monospace_tests;
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn explicit_text_box_multiple_uses_the_font_box_without_changing_windows_body_policy() {
+        use super::*;
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        let spacing = Spacing {
+            after: Some(10.0),
+            line: Some(1.15),
+            line_rule: Some("auto".into()),
+            ..Spacing::default()
+        };
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let sizing = WordProportionalLineSizing::for_text_box(Some(&spacing)).unwrap();
+            assert!((sizing.line_height_px(Some(16.0), 14.0) - 18.4).abs() < 1e-6);
+            assert_eq!(sizing.line_height_px(None, 14.0), 14.0);
+            let body = WordProportionalLineSizing::new(Some(&spacing), false, true);
+            if platform == WordLayoutPlatform::Mac {
+                assert_eq!(body, Some(sizing));
+            } else {
+                assert!(body.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn text_box_multiple_keeps_implicit_and_exact_spacing_on_existing_paths() {
+        use super::*;
+        assert!(WordProportionalLineSizing::for_text_box(None).is_none());
+        assert!(WordProportionalLineSizing::for_text_box(Some(&Spacing {
+            after: Some(10.0),
+            ..Spacing::default()
+        }))
+        .is_none());
+        for rule in ["exact", "exactly"] {
+            assert!(WordProportionalLineSizing::for_text_box(Some(&Spacing {
+                line: Some(14.0),
+                line_rule: Some(rule.into()),
+                ..Spacing::default()
+            }))
+            .is_none());
+        }
+    }
+
     #[test]
     fn windows_styled_latin_gaps_use_original_font_program_averages() {
         use super::*;

@@ -1,4 +1,4 @@
-//! Word for Mac's look-ahead float wrap before the next anchor paragraph.
+//! Word's look-ahead float wrap before the next anchor paragraph.
 //!
 //! Word lays a paragraph out around a square-wrapped shape anchored in the
 //! paragraph after it (`floating-square-wrap`, `floating-wrap-sides`,
@@ -115,8 +115,6 @@ where
             .document_east_asian_rules
             .compatibility_mode
             .is_none_or(|mode| mode > 15)
-            || jade_docx_layout::line_metrics::word_layout_platform()
-                != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
             || self.measuring_keep_next
             || self.pageless_mode
             || self.rendering_header_footer_story

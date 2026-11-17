@@ -255,6 +255,58 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "floating-square-wrap-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-square-wrap-mac/source.docx",
+        "sha256": "66004027672929d429fba9659e2cec4f3e648c0311b0e5aba339f1ac4657dff6"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-square-wrap-mac/manifest.json",
+        "sha256": "9984bd1996bc0c5a713bb5ae9e09b0d411a5b5e0656d3797ba052a7c2bf403f6"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-floating-square-wrap-66004027",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "floating-wrap-sides-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-wrap-sides-mac/source.docx",
+        "sha256": "33a9df9946ed6df47bca02a13ccc41c829db7332aeb6ec38e5c183dac3c32f46"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-wrap-sides-mac/manifest.json",
+        "sha256": "09b1c4d653f166321aee4a39f0dfde3cb8898bd4035a37659c6cf6433043bf6e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/capture.json",
+            "sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261114T004143028Z-b4cb9887/word-emf-reference.json",
+            "sha256": "f8c7c2b438b36178538212fe9b7cc87bcb135d3766fafe42ef2108d0f922b01d"
+          },
+          "fixture": "ww14-floating-wrap-sides-33a9df99",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
