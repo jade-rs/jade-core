@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T074338944Z-02a91d86",
+  "captured_at_utc": "2026-11-17T07:43:38.9470718Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-ms-mincho-size20-digit-cjk-de-implicit-compat15",
+      "source": "w17-k-ms-auto-space-input-snapshots\\word-windows-ms-mincho-size20-digit-cjk-de-implicit-compat15.docx",
+      "sha256": "8802324dfa1c3ef106e0888b26d9d447c82383172bb2f244844618eef1c37bdf",
+      "pdf": "word-windows-ms-mincho-size20-digit-cjk-de-implicit-compat15.pdf",
+      "pdf_sha256": "bb52ca33fad7c8835fd9e1b2e8783180ef59dfc7eb1cf51f84ae8632078a5385",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-mincho-size20-digit-cjk-de-implicit-compat15.page-001.emf",
+          "sha256": "d9b0f734e218d96cf8bfcc0d3d82f304c73e8e3bd156eedc13d08835c3330c6e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
