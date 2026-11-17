@@ -15886,8 +15886,14 @@ where
                             self.active_keep_next_group_end = Some(last);
                         }
                     }
-                    self.float_lookahead =
-                        self.float_lookahead_for(&body.elements, body_element_index, end);
+                    // The existing snapshot fact covers every square-wrapped
+                    // body drawing. Ordinary documents need no per-paragraph
+                    // lookahead scan, on either Word platform.
+                    self.float_lookahead = if horizontal_float_wrap {
+                        self.float_lookahead_for(&body.elements, body_element_index, end)
+                    } else {
+                        None
+                    };
                     self.prepare_paragraph_join(
                         &body.elements,
                         body_element_index,
