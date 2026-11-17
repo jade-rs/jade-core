@@ -96,6 +96,8 @@ pub struct InstalledFace {
     /// The family it belongs to, lowercased: the typographic family name,
     /// else the family name — how CoreText groups a family's faces.
     family: String,
+    /// The legacy family used when retaining implicit Windows reference faces.
+    windows_family: String,
 }
 
 /// Installed faces by every name they answer to.
@@ -180,12 +182,18 @@ impl FontLibrary {
                 continue;
             };
             let id = library.faces.len();
+            let windows_family = windows_families
+                .iter()
+                .next()
+                .cloned()
+                .unwrap_or_else(|| family.clone());
             library.faces.push(InstalledFace {
                 path: path.clone(),
                 index: info.index,
                 weight: info.weight.0,
                 italic: !matches!(info.style, fontdb::Style::Normal),
                 family,
+                windows_family,
             });
             for name in families {
                 library.by_family.entry(name).or_default().push(id);
@@ -309,7 +317,16 @@ impl FontLibrary {
                 .iter()
                 .filter(|face| !selected.contains(&(face.path.as_path(), face.index)))
                 .map(|face| FontFace {
-                    family: face.family.clone(),
+                    // Extra subsets must retain their own Windows family too:
+                    // a Display subset registered under typographic `Aptos`
+                    // can otherwise shadow a correctly selected Aptos alias.
+                    family: if jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    {
+                        face.windows_family.clone()
+                    } else {
+                        face.family.clone()
+                    },
                     weight: face.weight,
                     italic: face.italic,
                     path: face.path.clone(),
@@ -530,6 +547,7 @@ mod tests {
                 weight,
                 italic: false,
                 family: "aptos".into(),
+                windows_family: "aptos display".into(),
             });
         }
         library.by_family.insert("aptos".into(), vec![0, 1]);
@@ -554,6 +572,54 @@ mod tests {
     }
 
     #[test]
+    fn windows_reference_subsets_keep_legacy_families_and_mac_grouping() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut library = FontLibrary::default();
+        for (path, family) in [
+            ("aptos.ttf", "aptos"),
+            ("display.ttf", "aptos display"),
+            ("aptos-subset.ttf", "aptos"),
+            ("display-subset.ttf", "aptos display"),
+        ] {
+            library.faces.push(InstalledFace {
+                path: PathBuf::from(path),
+                index: 0,
+                weight: 400,
+                italic: false,
+                family: "aptos".into(),
+                windows_family: family.into(),
+            });
+        }
+        library.by_family.insert("aptos".into(), vec![0, 1, 2, 3]);
+        library.by_face_name.insert("aptos display".into(), 1);
+        library.windows_by_family.insert("aptos".into(), vec![0, 2]);
+        library
+            .windows_by_family
+            .insert("aptos display".into(), vec![1, 3]);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac_before = library.reference_faces_for(["Aptos", "Aptos Display"]);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let (windows, missing) = library.reference_faces_for(["Aptos", "Aptos Display"]);
+        assert!(missing.is_empty());
+        assert_eq!(windows.len(), 4);
+        assert_eq!(windows[0].family, "aptos");
+        assert_eq!(windows[0].path, PathBuf::from("aptos-subset.ttf"));
+        assert_eq!(windows[1].family, "aptos display");
+        assert_eq!(windows[1].path, PathBuf::from("display-subset.ttf"));
+        assert_eq!(windows[2].family, "Aptos");
+        assert_eq!(windows[3].family, "Aptos Display");
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            library.reference_faces_for(["Aptos", "Aptos Display"]),
+            mac_before
+        );
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn reference_faces_retain_implicit_and_same_style_subset_programs() {
         use super::*;
         let mut library = FontLibrary::default();
@@ -568,6 +634,7 @@ mod tests {
                 weight: 400,
                 italic: false,
                 family: family.into(),
+                windows_family: family.into(),
             });
         }
         library.by_family.insert("requested".into(), vec![0, 1]);
