@@ -1,0 +1,131 @@
+{
+  "schema": 1,
+  "purpose": "Font design-unit advances and short ASCII shaping, independent of all document coordinates. The original Word PDF subsets omit OpenType layout tables.",
+  "generated_at": "2026-11-17T16:03:54.500927+00:00",
+  "uharfbuzz": "0.57.0",
+  "harfbuzz": "15.0.0",
+  "programs": [
+    {
+      "face": 0,
+      "sha256": "95980114fcfd42f2f9c446dae429b70582bf2f03097d68433ea9e7d85a49da0b",
+      "family": [
+        "Aptos"
+      ],
+      "style": [
+        "Regular"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 1,
+      "sha256": "888909eceb9acd84157078cc097c11f8a94a34ff3bd3fe08194ce7866f5998d1",
+      "family": [
+        "Aptos"
+      ],
+      "style": [
+        "Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 2,
+      "sha256": "cf4b35ac6d81e0eb42ffa44c3829b710c058de6fa3cf2c7cdad0407e22538877",
+      "family": [
+        "Aptos"
+      ],
+      "style": [
+        "Bold"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 3,
+      "sha256": "7d7ba35b867c5873274466c743a9812c7bca1a0828f137f7697ae311664f41b9",
+      "family": [
+        "Aptos"
+      ],
+      "style": [
+        "Bold Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 4,
+      "sha256": "af7a83e6f1d18b62535a8ee97939ab8653d5ac1fe1861cdb8fce829d3878d901",
+      "family": [
+        "Aptos Display"
+      ],
+      "style": [
+        "Regular"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 5,
+      "sha256": "a47bafebfe957f26bd59cfd2d063950c547cb505ce0c8e0951f496dc5eaae432",
+      "family": [
+        "Aptos Display"
+      ],
+      "style": [
+        "Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 6,
+      "sha256": "e66a3774f5c9f2799f1a7f4734f5d1ad942cc9aeb173eb2c94bc09a5f1bf1142",
+      "family": [
+        "Aptos Display"
+      ],
+      "style": [
+        "Bold"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    },
+    {
+      "face": 7,
+      "sha256": "67efa2915e860d32365f01fae22400a0ab5a36d7942dd2024dd210910894f0f2",
+      "family": [
+        "Aptos Display"
+      ],
+      "style": [
+        "Bold Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "upem": 2048
+    }
+  ],
+  "pair_rows": 8507,
+  "data_sha256": "4128d794f0a5816388baaae3e962173c6129b6f6a4840b325f7e4aa62be82547",
+  "data": {
+    "file": "crates/jade-docx-layout/src/aptos_short_shaping_data.rs",
+    "sha256": "4128d794f0a5816388baaae3e962173c6129b6f6a4840b325f7e4aa62be82547"
+  },
+  "font_provenance": {
+    "file": "tests/word-oracle/windows/office-cloud-font-observations.json",
+    "sha256": "bae4d7a6f85404c1d515b98c1d8548155f6f70ccfe89b82fdf51053869d7fa6f"
+  }
+}

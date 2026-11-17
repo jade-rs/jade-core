@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T142256732Z-311c1cbf",
+  "captured_at_utc": "2026-11-17T14:22:56.7357674Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-hints-arial-size14-default-compat14",
+      "source": "w17-q-numeric-hints-input-snapshots\\word-windows-numeric-hints-arial-size14-default-compat14.docx",
+      "sha256": "69f4af51aee7193e18b92767024523acf81d5bfc27b1b46cc8857a144f6186f8",
+      "pdf": "word-windows-numeric-hints-arial-size14-default-compat14.pdf",
+      "pdf_sha256": "fcf38cd4767e96375f4d0077516175456d6427ec4fbb8af91925c93f11f90551",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-hints-arial-size14-default-compat14.page-001.emf",
+          "sha256": "af400bcb0e107099797fed1fcfdb2fbd4105f85ce0af4575cd0e00fdd5e2bf6c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

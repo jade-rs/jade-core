@@ -1784,18 +1784,21 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
 
     // Only a digit right before East Asian text needs its face's metrics, so
     // the descriptor is parsed at those boundaries alone.
-    let trailing_auto_space = (paragraph_style
-        .is_some_and(|style| style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac)
-        && is_ascii_digit_grapheme(grapheme)
+    let trailing_auto_space = (is_ascii_digit_grapheme(grapheme)
         && next_grapheme.is_some_and(is_auto_space_east_asian_text))
     .then(|| {
         font_descriptor.and_then(|descriptor| {
-            crate::line_metrics::word_auto_space_metrics_with_balance(
-                descriptor,
-                paragraph_style.is_some_and(|style| {
-                    style.east_asian_rules.balance_single_byte_double_byte_width
-                }),
-            )
+            let paragraph = paragraph_style?;
+            if paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Mac {
+                crate::line_metrics::word_auto_space_metrics_with_balance(
+                    descriptor,
+                    paragraph
+                        .east_asian_rules
+                        .balance_single_byte_double_byte_width,
+                )
+            } else {
+                windows_numeric_space_metrics(paragraph, resolved_style, descriptor)
+            }
         })
     })
     .flatten();
@@ -2014,6 +2017,26 @@ pub struct ImplicitNumericGapContext<'a> {
     pub prev_auto_space: Option<crate::line_metrics::WordAutoSpace>,
 }
 
+fn windows_numeric_space_metrics(
+    paragraph: &ParagraphStyle,
+    resolved: Option<&ResolvedRunStyle>,
+    descriptor: &str,
+) -> Option<crate::line_metrics::WordAutoSpace> {
+    if paragraph.word_platform != crate::line_metrics::WordLayoutPlatform::Windows
+        || paragraph
+            .east_asian_rules
+            .balance_single_byte_double_byte_width
+    {
+        return None;
+    }
+    let resolved = resolved?;
+    // A named, inherited Japanese face still supplies the CJK cell when a
+    // directly authored Latin rFonts element has the Default hint. Retain
+    // the existing policy for requested Latin East Asian faces and unknowns.
+    resolved.observed_cjk_em_px(&resolved.font_descriptor_east_asia)?;
+    crate::line_metrics::word_windows_numeric_auto_space_metrics(descriptor)
+}
+
 pub fn implicit_numeric_east_asian_gap_width(
     paragraph_style: &ParagraphStyle,
     context: ImplicitNumericGapContext<'_>,
@@ -2074,9 +2097,23 @@ fn implicit_numeric_east_asian_gap_width_with_style(
         return 0.0;
     }
 
+    let windows_metrics = if current_is_digit {
+        font_descriptor.and_then(|descriptor| {
+            windows_numeric_space_metrics(paragraph_style, resolved_style, descriptor)
+        })
+    } else if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && !paragraph_style
+            .east_asian_rules
+            .balance_single_byte_double_byte_width
+    {
+        prev_auto_space
+    } else {
+        None
+    };
+
     if !paragraph_style.enable_line_break_rules
         && (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-            || fixed_em_px().is_none())
+            || (fixed_em_px().is_none() && windows_metrics.is_none()))
     {
         return 0.0;
     }
@@ -2100,6 +2137,13 @@ fn implicit_numeric_east_asian_gap_width_with_style(
         return 0.0;
     }
     if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows {
+        if let Some(metrics) = windows_metrics {
+            return if current_is_digit {
+                metrics.leading_gap_px()
+            } else {
+                metrics.trailing_gap_px(false)
+            };
+        }
         if let Some(em) = fixed_em_px() {
             return em * 0.25;
         }
@@ -3203,7 +3247,33 @@ fn windows_ascii_pair_adjustment(
     font_descriptor: &str,
     left: u8,
     right: u8,
+    paragraph: Option<&ParagraphStyle>,
 ) -> Option<f64> {
+    if (left == b'-' || right == b'-')
+        && paragraph.is_some_and(|p| {
+            p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && p.east_asian_rules
+                    .compatibility_mode
+                    .is_some_and(|mode| mode < 15)
+        })
+        && crate::line_metrics::split_font_descriptor(font_descriptor).is_some_and(|(_, family)| {
+            matches!(
+                family
+                    .split(',')
+                    .next()
+                    .unwrap_or_default()
+                    .trim()
+                    .trim_matches(['\'', '"']),
+                "Aptos" | "Aptos Display"
+            )
+        })
+    {
+        // Original Windows Word mode-14 numeric and punctuation controls
+        // break shaping at ASCII hyphens, including explicitly requested
+        // number spacing. Their otherwise identical mode-15 controls retain
+        // font kerning. Do not change Mac or unobserved font families.
+        return Some(0.0);
+    }
     match style.ascii_metrics_for_descriptor(font_descriptor) {
         Some(crate::line_metrics::WordAsciiMetrics::ArialWindows(unit_px)) => {
             crate::line_metrics::word_windows_arial_pair_kerning_px(unit_px, left, right)
@@ -3464,7 +3534,13 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                 {
                     Some(0.0)
                 } else {
-                    windows_ascii_pair_adjustment(style, font_descriptor, left, right)
+                    windows_ascii_pair_adjustment(
+                        style,
+                        font_descriptor,
+                        left,
+                        right,
+                        paragraph_style,
+                    )
                 }
             } else {
                 None
@@ -3567,6 +3643,14 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             && style
                 .monospace_em_px(&style.font_descriptor_latin_ascii)
                 .is_none()
+            && paragraph_style.is_none_or(|paragraph| {
+                windows_numeric_space_metrics(
+                    paragraph,
+                    Some(style),
+                    &style.font_descriptor_latin_ascii,
+                )
+                .is_none()
+            })
             && paragraph_style.is_none_or(|style| {
                 crate::line_metrics::word_default_hint_suppresses_numeric_auto_space(
                     style.word_platform,
@@ -11574,6 +11658,7 @@ fn reconcile_windows_ascii_wrap_kerning<C: LineWrapContext>(
                 descriptor,
                 previous.text.as_bytes()[0],
                 current.text.as_bytes()[0],
+                Some(paragraph_style),
             ) {
                 let delta = direction * kern * style.text_scale_x.max(0.01);
                 right.leading_advance += delta;
@@ -15131,6 +15216,64 @@ mod tests {
 
         assert_eq!(state.prev_grapheme.as_deref(), Some("V"));
         assert_eq!(*ctx.pair_measurements.borrow(), 2);
+    }
+
+    #[test]
+    fn windows_legacy_aptos_hyphens_do_not_inherit_modern_pair_measurements() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for family in ["Aptos", "Aptos Display", "Unobserved Face"] {
+            for mode in [None, Some(12), Some(14), Some(15)] {
+                let descriptor: Rc<str> = Rc::from(format!("14.00pt '{family}'"));
+                let mut ctx = CountingKerningContext::new(true);
+                ctx.pair_adjustment = -2.0;
+                ctx.style = ResolvedRunStyle::new(
+                    Rc::clone(&descriptor),
+                    Rc::clone(&descriptor),
+                    Rc::clone(&descriptor),
+                    descriptor,
+                    0.0,
+                    1.0,
+                    true,
+                    None,
+                );
+                let mut paragraph = ParagraphStyle {
+                    word_platform: WordLayoutPlatform::Windows,
+                    ..Default::default()
+                };
+                paragraph.east_asian_rules.compatibility_mode = mode;
+                let mut kerns = Vec::new();
+                walk_text_advance_steps(
+                    &ctx,
+                    "1-1",
+                    &ctx.style,
+                    Some(&paragraph),
+                    &TextAdvanceState::default(),
+                    None,
+                    &mut FxHashMap::default(),
+                    |step| {
+                        kerns.push(step.advance.kerning_adjustment);
+                        Ok(())
+                    },
+                )
+                .expect("numeric range");
+                let legacy = family != "Unobserved Face" && mode.is_some_and(|m| m < 15);
+                assert_eq!(
+                    kerns,
+                    if legacy {
+                        vec![0.0; 3]
+                    } else {
+                        vec![0.0, -2.0, -2.0]
+                    },
+                    "{family}, compatibility={mode:?}"
+                );
+                assert_eq!(*ctx.pair_measurements.borrow(), if legacy { 0 } else { 2 });
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
@@ -20705,7 +20848,8 @@ mod tests {
         let cluster = &mut lines[0].clusters[period];
         let original_width = cluster.width;
         let original_leading = cluster.layout.as_ref().unwrap().leading_advance;
-        let kern = windows_ascii_pair_adjustment(&ctx.style, "20.00pt Arial", b'y', b'.').unwrap();
+        let kern =
+            windows_ascii_pair_adjustment(&ctx.style, "20.00pt Arial", b'y', b'.', None).unwrap();
         assert!(kern < -1.0, "exercise the measured Arial y-period pair");
         assert!((original_leading - kern).abs() < 1e-9);
         // A period originally measured at a soft line start has no y-period
@@ -24091,6 +24235,62 @@ mod tests {
         .expect("walk default-hint number run");
 
         assert_eq!(numeric_gap, 0.0);
+    }
+
+    #[test]
+    fn windows_default_hint_keeps_inherited_japanese_numeric_gaps() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let measure = |dn, east_asia: &str| {
+            let ctx = TestContext::new(10.0);
+            let mut style = ResolvedRunStyle::new(
+                "14.00pt Aptos".to_owned(),
+                "14.00pt Aptos".to_owned(),
+                format!("14.00pt {east_asia}"),
+                "14.00pt Aptos".to_owned(),
+                0.0,
+                1.0,
+                false,
+                None,
+            );
+            style.font_hint = Some(FontHint::Default);
+            let mut paragraph = ParagraphStyle {
+                word_platform: WordLayoutPlatform::Windows,
+                ..ParagraphStyle::default()
+            };
+            paragraph.east_asian_rules.auto_space_dn = dn;
+            let mut gaps = Vec::new();
+            walk_text_advance_steps(
+                &ctx,
+                "第11表",
+                &style,
+                Some(&paragraph),
+                &TextAdvanceState::default(),
+                None,
+                &mut FxHashMap::default(),
+                |step| {
+                    gaps.push(step.advance.implicit_numeric_gap * 0.75);
+                    Ok(())
+                },
+            )
+            .expect("walk inherited Japanese numeric boundaries");
+            gaps
+        };
+        let default = measure(None, "Yu Mincho");
+        let enabled = measure(Some(true), "Yu Mincho");
+        let disabled = measure(Some(false), "Yu Mincho");
+        let unobserved = measure(None, "Unknown");
+        set_word_layout_platform(previous);
+        assert_eq!(default, enabled);
+        assert_eq!(disabled, [0.0; 4]);
+        assert_eq!(unobserved, [0.0; 4]);
+        // Original Word default/on minus off: 3.48pt before the digit,
+        // approximately 3.918pt after it in the 14pt Aptos control.
+        assert!((default[1] - 3.48).abs() < 0.05, "{default:?}");
+        assert!((default[3] - 3.918).abs() < 0.08, "{default:?}");
     }
 
     #[test]

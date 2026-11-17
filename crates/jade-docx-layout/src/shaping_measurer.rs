@@ -40,6 +40,9 @@ use std::path::Path;
 use std::rc::Rc;
 use unicode_segmentation::UnicodeSegmentation;
 
+#[path = "aptos_short_shaping.rs"]
+mod aptos_short_shaping;
+
 /// Full-width punctuation whose *left* half is blank (opening brackets).
 /// Chromium trims that half whenever another full-width punctuation precedes it.
 const FULLWIDTH_OPEN: &[char] = &[
@@ -104,6 +107,7 @@ struct RegisteredFace {
     family: String,
     weight: u16,
     style: RegisteredFontStyle,
+    aptos_subset_metrics: Option<usize>,
     // SAFETY INVARIANT: `face` borrows `bytes`. Declared first so it is dropped
     // before the buffer it points into, and `bytes` is never mutated or
     // reallocated after construction, so the `'static` lifetime is never
@@ -321,10 +325,13 @@ impl ShapingMeasurer {
         let face = Face::from_slice(borrowed, collection_index).ok_or_else(|| {
             format!("failed to parse font face (collection index {collection_index})")
         })?;
+        let family = family.into();
+        let aptos_subset_metrics = aptos_short_shaping::subset_face(&face, &family, weight, style);
         self.faces.push(RegisteredFace {
-            family: family.into(),
+            family,
             weight,
             style,
+            aptos_subset_metrics,
             face,
             _bytes: owned,
             shape_plans: RefCell::new(ShapePlanCache::default()),
@@ -433,6 +440,22 @@ impl ShapingMeasurer {
             (px * 100.0).floor() / 100.0
         } else {
             px
+        }
+    }
+
+    fn advance_font_size_px(&self, size_pt: f32, face: &RegisteredFace) -> f64 {
+        if crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows
+            && (face.family.eq_ignore_ascii_case("Aptos")
+                || face.family.eq_ignore_ascii_case("Aptos Display"))
+        {
+            // The original Windows Word compatibility/style/number-spacing
+            // controls use the requested size for these actual faces. The
+            // 18.66px truncation at 14pt accumulates false narrowing. Base
+            // this on the selected face, not a missing requested family.
+            points_to_px(size_pt)
+        } else {
+            self.font_size_px(size_pt)
         }
     }
 
@@ -627,13 +650,20 @@ impl ShapingMeasurer {
         text: &str,
         face_index: usize,
         cjk: bool,
-        size_px: f64,
+        size_pt: f32,
         features: &[Feature],
     ) -> f64 {
         let Some(entry) = self.faces.get(face_index) else {
             return 0.0;
         };
+        let size_px = self.advance_font_size_px(size_pt, entry);
         let kern_enabled = !(cjk && self.options.disable_kern_for_cjk);
+        if let Some(units) = entry
+            .aptos_subset_metrics
+            .and_then(|face| aptos_short_shaping::advance_units(face, text, kern_enabled, features))
+        {
+            return f64::from(units) / f64::from(entry.face.units_per_em()) * size_px;
+        }
         let shaped = shape_run(entry, text, kern_enabled, features);
         let units: i32 = shaped
             .glyph_positions()
@@ -704,7 +734,7 @@ impl TextMeasurer for ShapingMeasurer {
                         &text[run_start..offset],
                         face_index,
                         cjk,
-                        size_px,
+                        stack.size_pt,
                         &stack.features,
                     );
                     run_start = offset;
@@ -718,7 +748,7 @@ impl TextMeasurer for ShapingMeasurer {
                 &text[run_start..],
                 face_index,
                 cjk,
-                size_px,
+                stack.size_pt,
                 &stack.features,
             );
         }
@@ -845,6 +875,59 @@ mod tests {
             1,
             "only one plan is needed for the same face/script/direction/features"
         );
+    }
+
+    #[test]
+    fn windows_aptos_advances_use_requested_size_only_for_the_selected_face() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut measurer = measurer(ShapingOptions::CHROMIUM_PARITY);
+        let normal12 = measurer.measure_text("AV", "12pt 'Noto Sans JP'").unwrap();
+        let fallback14 = measurer.measure_text("AV", "14pt Aptos").unwrap();
+        assert!((fallback14 / normal12 - 18.66 / 16.0).abs() < 1e-12);
+        for family in ["Aptos", "Aptos Display"] {
+            measurer
+                .register_font_path(
+                    family,
+                    400,
+                    RegisteredFontStyle::Normal,
+                    bundled_font_path("NotoSansJP-Regular.ttf"),
+                )
+                .unwrap();
+            let exact14 = measurer
+                .measure_text("AV", &format!("14pt '{family}'"))
+                .unwrap();
+            assert!((exact14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+        }
+        let normal14 = measurer.measure_text("AV", "14pt 'Noto Sans JP'").unwrap();
+        assert!((normal14 - fallback14).abs() < 1e-12);
+        for family in ["aptos", "APTOS DISPLAY"] {
+            let mut registered =
+                ShapingMeasurer::with_options(12.0, ShapingOptions::CHROMIUM_PARITY);
+            registered
+                .register_font_path(
+                    family,
+                    400,
+                    RegisteredFontStyle::Normal,
+                    bundled_font_path("NotoSansJP-Regular.ttf"),
+                )
+                .unwrap();
+            let exact14 = registered
+                .measure_text("AV", &format!("14pt '{family}'"))
+                .unwrap();
+            assert!((exact14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for family in ["Aptos", "Aptos Display", "Noto Sans JP"] {
+            let mac14 = measurer
+                .measure_text("AV", &format!("14pt '{family}'"))
+                .unwrap();
+            assert!((mac14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

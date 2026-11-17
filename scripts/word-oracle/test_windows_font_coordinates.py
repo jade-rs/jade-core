@@ -435,7 +435,7 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 1187)
+        self.assertEqual(len(verify()), 1287)
         self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 613)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):

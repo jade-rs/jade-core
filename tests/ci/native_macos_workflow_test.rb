@@ -168,6 +168,23 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_numeric_spacing_sources_and_platform_shaping_are_required
+    jobs = @workflow.fetch("jobs")
+    %w[windows-word-baselines native-macos].each do |name|
+      step = jobs.fetch(name).fetch("steps").find { |item| item["name"] == "Assert native shaping platform boundaries" }
+      refute_nil step, name
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      assert_equal "cargo test --manifest-path crates/jade-docx-layout/Cargo.toml --locked --features native-shaping --lib", step.fetch("run")
+    end
+    step = jobs.fetch("windows-word-baselines").fetch("steps").find { |item| item["name"] == "Assert Windows font coordinates with original Word embedded fonts" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_includes step.fetch("run"), "test_windows_numeric_spacing_probes.py"
+    assert_includes step.fetch("run"), "check_windows_font_coordinates.py --native-executable"
+  end
+
   def test_windows_screen_and_pdf_origins_remain_independently_required
     job = @workflow.fetch("jobs").fetch("windows-word-baselines")
     assert_equal "windows-latest", job.fetch("runs-on")
