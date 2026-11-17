@@ -5890,6 +5890,30 @@
     {
       "fixture": "word-windows-float-lookahead-square-compat14",
       "docx_sha256": "86f66e9c32c87c40931e2d171f81b2ee1a409b2adfa7294abd8be5f18a6fffe7"
+    },
+    {
+      "fixture": "word-windows-title-calibri22-sides-spacing0-compat15",
+      "docx_sha256": "ca9ff9bb39aae72a6d4c3fdc33380050a428083bcb7fba9926053483f99442f4"
+    },
+    {
+      "fixture": "word-windows-title-calibri22-sides-spacing1-compat15",
+      "docx_sha256": "5eaa2bd7668c2c0cbcdb70bf31c69f20326fd365f0ae3d83d71215bf6def3572"
+    },
+    {
+      "fixture": "word-windows-title-calibri22-square-spacing0-compat15",
+      "docx_sha256": "8dc6193394f41b09ce83a2bb636e6151e938befe06d985c6f4f8bf07d33884da"
+    },
+    {
+      "fixture": "word-windows-title-calibri22-square-spacing1-compat15",
+      "docx_sha256": "c62c2dd25df6d0f86dcbfa2d2feea66835433b15e7596f72b6e3a92fb0dc8a82"
+    },
+    {
+      "fixture": "word-windows-title-calibri22-square-spacing4-compat15",
+      "docx_sha256": "2a298cd5ebebf40a77908817691b5bd4f43cc02750425898aba46844df817dc2"
+    },
+    {
+      "fixture": "word-windows-title-calibri22-square-spacing6-compat15",
+      "docx_sha256": "11a457fddff8430e63be0401adce1d5f6c900ef22485c63813d8e455b767374e"
     }
   ]
 }

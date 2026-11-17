@@ -1,0 +1,405 @@
+{
+  "schema": 1,
+  "description": "One-property Title tracking controls; baseline status is historical, never a current renderer expectation.",
+  "baseline_native": {
+    "source_commit": "b59df21db4ab6aa8ac70fee8215d201de6af1f8a",
+    "executable_sha256": "e3d955455b28d48b07319399b2837aa135e21b32fef28c6becd5fa0dcc96d8cd",
+    "source_sha256": {
+      "crates/jade-docx-layout/src/font_resolver.rs": "25f3aead40d4262edc1cf14aafc5b0c0aa52bf65cd47e2bceedf19c276de32d9",
+      "crates/jade-docx-layout/src/line_metrics.rs": "f480fa6622febb117271f491df27e309e3f40217d5de1ddd573a2c720f31f840",
+      "crates/jade-docx-layout/src/line_wrap.rs": "70ec5359dae7ac06bb2c35bf02b94c6eabde10140b265f390b01828b84c6286e",
+      "crates/jade-docx-layout/src/line_metrics/windows_arial_styled_kern.rs": "420a3dc6ce5b971225bd5d75e9b8b6ba2fecc843aeeacc5b63b54492e31e4b07",
+      "crates/jade-docx-editor/src/canvas_renderer.rs": "860ee5ff407786ce4e7f7eebb04996804973bf043fcd9befb79a4ff0aa0cbac2",
+      "crates/jade-docx-editor/src/canvas_renderer/run_style_key.rs": "febdd378e36363150c591b7628cb3f1d6599eb2c21a33b30fd37a024ff78d009",
+      "crates/jade-docx-editor/src/word_document.rs": "04986b33765ae1fddb52c85045bd857b31b8c6866b6c3d23cbab6953981e6139",
+      "crates/jade-docx-editor/tests/run_format.rs": "66a10fd48ea3b432464016cdb237a6408547ed5946d7f4c596cc1eef4d2ac74d",
+      "crates/jade-docx-editor/src/canvas_renderer/float_lookahead.rs": "406a2cc4cd12c5f9874fe83860c128a780db348afcfc0b9e3b31ba33579d644d"
+    }
+  },
+  "cases": [
+    {
+      "name": "word-windows-title-calibri22-sides-spacing0-compat15",
+      "spacing_twips": 0,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing0-compat15.docx",
+        "sha256": "ca9ff9bb39aae72a6d4c3fdc33380050a428083bcb7fba9926053483f99442f4"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042048546Z-a1f1f0a3.zip",
+        "sha256": "5702d2d2d28d61ab36761ab47cd20addca3e1a533b5f8ba2264b66826fc0572e"
+      },
+      "capture_id": "20261117T042048546Z-a1f1f0a3",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_all_planes_pass": true,
+      "original_title_max_pdf_emf_gap_pt": 0.1070153808593659
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing1-compat15",
+      "spacing_twips": 1,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing1-compat15.docx",
+        "sha256": "5eaa2bd7668c2c0cbcdb70bf31c69f20326fd365f0ae3d83d71215bf6def3572"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042052440Z-794df477.zip",
+        "sha256": "7aa9afd5418ec4fe30e51613db49e5ddcb1f7b188e45d3f306b955f03824e0f0"
+      },
+      "capture_id": "20261117T042052440Z-794df477",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_all_planes_pass": true,
+      "original_title_max_pdf_emf_gap_pt": 0.3129187011718386
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing10-compat15",
+      "spacing_twips": 10,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing10-compat15.docx",
+        "sha256": "f10e957c96e99f7848dbfaa6a5613d91b9814207e06cfaccec6e4f8ee5469759"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042054084Z-b3d2af19.zip",
+        "sha256": "d86c6e85ae83b82df9373e04f7d945df7fb3f7200f979d46bdc16968747cc369"
+      },
+      "capture_id": "20261117T042054084Z-b3d2af19",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-sides-spacing10-compat15/PDF-unclipped/13: axis mismatch: Word [1, 'i', 204.424560546875, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-sides-spacing10-compat15/PDF-visible/13: axis mismatch: Word [1, 'i', 204.424560546875, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-sides-spacing10-compat15/painted-PDF/13: axis mismatch: Word [1, 'i', 204.424560546875, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.5058886718749704
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing2-compat15",
+      "spacing_twips": 2,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing2-compat15.docx",
+        "sha256": "c3a85bf61789c2e58c679c74dc0b197555c6c5c071de450ea5b8d3a54ccda5c8"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042056963Z-e0c66442.zip",
+        "sha256": "fddad852211c90c8352bb749ecb3e0ee8e9e078017f24fb7ad75dd9f915a745a"
+      },
+      "capture_id": "20261117T042056963Z-e0c66442",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-sides-spacing2-compat15/PDF-unclipped/13: axis mismatch: Word [1, 'i', 198.42950439453125, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-sides-spacing2-compat15/PDF-visible/13: axis mismatch: Word [1, 'i', 198.42950439453125, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-sides-spacing2-compat15/painted-PDF/13: axis mismatch: Word [1, 'i', 198.42950439453125, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.48511352539060226
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing3-compat15",
+      "spacing_twips": 3,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing3-compat15.docx",
+        "sha256": "35c44d770af38cced069b510e6d896d45dfec38c66c37bf92b2b816a5b684b77"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042100251Z-88f67311.zip",
+        "sha256": "263a94a885320442e7ecafa2d450993c21efce0dfed6d5b681efc7ee924a3e77"
+      },
+      "capture_id": "20261117T042100251Z-88f67311",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-sides-spacing3-compat15/PDF-unclipped/13: axis mismatch: Word [1, 'i', 199.1541748046875, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-sides-spacing3-compat15/PDF-visible/13: axis mismatch: Word [1, 'i', 199.1541748046875, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-sides-spacing3-compat15/painted-PDF/13: axis mismatch: Word [1, 'i', 199.1541748046875, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.5212341308593409
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing4-compat15",
+      "spacing_twips": 4,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing4-compat15.docx",
+        "sha256": "18d06cb7b1dc8272040ae1d1bc5948e52469e48649a5c7946738bff65bb7fdfd"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042103182Z-65db054c.zip",
+        "sha256": "a4c60377c94e8ed0c3b9250e76bfdae009aaea073a92aa3f8f290ecc544fb42d"
+      },
+      "capture_id": "20261117T042103182Z-65db054c",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-sides-spacing4-compat15/PDF-unclipped/21: axis mismatch: Word [1, 'i', 276.1459655761719, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-sides-spacing4-compat15/PDF-visible/21: axis mismatch: Word [1, 'i', 276.1459655761719, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-sides-spacing4-compat15/painted-PDF/21: axis mismatch: Word [1, 'i', 276.1459655761719, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.5016955566406409
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing6-compat15",
+      "spacing_twips": 6,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing6-compat15.docx",
+        "sha256": "d3030bde66353a7d8370192452ee4db4ab727c156dab214d31e0886dbf216bb1"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042104758Z-2f9af23e.zip",
+        "sha256": "67f73422d64b6cac4417ef67d1482ccb1fc324c8afbf8c658d6e48fe516e8f0a"
+      },
+      "capture_id": "20261117T042104758Z-2f9af23e",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-sides-spacing6-compat15/PDF-unclipped/16: axis mismatch: Word [1, 'P', 235.14663696289062, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-sides-spacing6-compat15/PDF-visible/16: axis mismatch: Word [1, 'P', 235.14663696289062, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-sides-spacing6-compat15/painted-PDF/16: axis mismatch: Word [1, 'P', 235.14663696289062, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.5723291015625023
+    },
+    {
+      "name": "word-windows-title-calibri22-sides-spacing8-compat15",
+      "spacing_twips": 8,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-sides-spacing8-compat15.docx",
+        "sha256": "f5dd58301bf98c45ab64c57b04231572e20b0eae3da23d26aab174265c9b705b"
+      },
+      "parent_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042107645Z-ec93969d.zip",
+        "sha256": "dd79fd0ce2ab84c8b60adcb535a5fdfd3c4fe47fed024db9a09587e9ccaefaf5"
+      },
+      "capture_id": "20261117T042107645Z-ec93969d",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-sides-spacing8-compat15/PDF-unclipped/13: axis mismatch: Word [1, 'i', 202.8434295654297, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-sides-spacing8-compat15/PDF-visible/13: axis mismatch: Word [1, 'i', 202.8434295654297, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-sides-spacing8-compat15/painted-PDF/13: axis mismatch: Word [1, 'i', 202.8434295654297, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.5669384765624841
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing0-compat15",
+      "spacing_twips": 0,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing0-compat15.docx",
+        "sha256": "8dc6193394f41b09ce83a2bb636e6151e938befe06d985c6f4f8bf07d33884da"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042110586Z-ef7f9614.zip",
+        "sha256": "87237e2b2a3f023c65cdda9c24d78c87c94ba4ba70d969399a9cf5eb43b88ad6"
+      },
+      "capture_id": "20261117T042110586Z-ef7f9614",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_all_planes_pass": true,
+      "original_title_max_pdf_emf_gap_pt": 0.067047119140625
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing1-compat15",
+      "spacing_twips": 1,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing1-compat15.docx",
+        "sha256": "c62c2dd25df6d0f86dcbfa2d2feea66835433b15e7596f72b6e3a92fb0dc8a82"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042113767Z-05fe5bef.zip",
+        "sha256": "1ff58bd59091c31bd6fc7a526248ce5e80344ab71939ed657b458b44d1f9c80d"
+      },
+      "capture_id": "20261117T042113767Z-05fe5bef",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_all_planes_pass": true,
+      "original_title_max_pdf_emf_gap_pt": 0.2043493652343784
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing10-compat15",
+      "spacing_twips": 10,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing10-compat15.docx",
+        "sha256": "301528bfe97610abde8010a385a4379eed7547245db033ef61459c51801a8c93"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042115179Z-3e4976ed.zip",
+        "sha256": "a3f1d7612874af3eb11ee9f3d5de8e930d9140bec73e972af84b7c27788e65eb"
+      },
+      "capture_id": "20261117T042115179Z-3e4976ed",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-square-spacing10-compat15/PDF-unclipped/16: axis mismatch: Word [1, 'a', 235.80538940429688, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-square-spacing10-compat15/PDF-visible/16: axis mismatch: Word [1, 'a', 235.80538940429688, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-square-spacing10-compat15/painted-PDF/16: axis mismatch: Word [1, 'a', 235.80538940429688, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.37068481445311363
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing2-compat15",
+      "spacing_twips": 2,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing2-compat15.docx",
+        "sha256": "de97e1df812e0e3c51e2d31b2324b17bc83a91b35b03d6ccda3125a9f454c676"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042118061Z-4cccfd5c.zip",
+        "sha256": "13d92dc4901b168def6bf30045efeda137c523729acac6a762e957d17ed7fdb5"
+      },
+      "capture_id": "20261117T042118061Z-4cccfd5c",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-square-spacing2-compat15/PDF-unclipped/14: axis mismatch: Word [1, 'W', 202.2505645751953, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-square-spacing2-compat15/PDF-visible/14: axis mismatch: Word [1, 'W', 202.2505645751953, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-square-spacing2-compat15/painted-PDF/14: axis mismatch: Word [1, 'W', 202.2505645751953, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.3546710205077943
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing3-compat15",
+      "spacing_twips": 3,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing3-compat15.docx",
+        "sha256": "a660d0a0dd3071098b937ddf761c87dfda0873f616f832469822a9a953bc30d8"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042120883Z-7f8777cf.zip",
+        "sha256": "038c1cf8a7e20f257c22b8239c33a8a191831599dea90063f3b7f149929532d6"
+      },
+      "capture_id": "20261117T042120883Z-7f8777cf",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-square-spacing3-compat15/PDF-unclipped/16: axis mismatch: Word [1, 'a', 229.50291442871094, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-square-spacing3-compat15/PDF-visible/16: axis mismatch: Word [1, 'a', 229.50291442871094, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-square-spacing3-compat15/painted-PDF/16: axis mismatch: Word [1, 'a', 229.50291442871094, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.3147216796874943
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing4-compat15",
+      "spacing_twips": 4,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing4-compat15.docx",
+        "sha256": "2a298cd5ebebf40a77908817691b5bd4f43cc02750425898aba46844df817dc2"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042123749Z-deacc837.zip",
+        "sha256": "dffcb9a26da867d507d6570410d653d6eea7dcc077e362d5374367369a5e119b"
+      },
+      "capture_id": "20261117T042123749Z-deacc837",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_all_planes_pass": true,
+      "original_title_max_pdf_emf_gap_pt": 0.3304620361328148
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing6-compat15",
+      "spacing_twips": 6,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing6-compat15.docx",
+        "sha256": "11a457fddff8430e63be0401adce1d5f6c900ef22485c63813d8e455b767374e"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042125163Z-63a18e49.zip",
+        "sha256": "5d09ff790802591ee4fd68287806a9fb5b7e3265bc6e38d998476028b9105730"
+      },
+      "capture_id": "20261117T042125163Z-63a18e49",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_all_planes_pass": true,
+      "original_title_max_pdf_emf_gap_pt": 0.4160247802734318
+    },
+    {
+      "name": "word-windows-title-calibri22-square-spacing8-compat15",
+      "spacing_twips": 8,
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-title-calibri22-square-spacing8-compat15.docx",
+        "sha256": "abcb78fbd55ae030b7555ac1bb8d9885f0b0b80bd532e8dd75946a811438c232"
+      },
+      "parent_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T042129760Z-605f088b.zip",
+        "sha256": "98f236e1123ce0627fba3272c0b44f34d65cc12469bf4bd38e8f20dfe8091845"
+      },
+      "capture_id": "20261117T042129760Z-605f088b",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "word-windows-title-calibri22-square-spacing8-compat15/PDF-unclipped/16: axis mismatch: Word [1, 'a', 233.96075439453125, 71.4000244140625]",
+        "PDF-visible": "word-windows-title-calibri22-square-spacing8-compat15/PDF-visible/16: axis mismatch: Word [1, 'a', 233.96075439453125, 71.4000244140625]",
+        "painted-PDF": "word-windows-title-calibri22-square-spacing8-compat15/painted-PDF/16: axis mismatch: Word [1, 'a', 233.96075439453125, 71.4000244140625]"
+      },
+      "baseline_all_planes_pass": false,
+      "original_title_max_pdf_emf_gap_pt": 0.41531982421872726
+    }
+  ]
+}

@@ -367,6 +367,10 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         }
     }
 
+    fn text_output_dpi(&self) -> Option<f64> {
+        self.inner.text_output_dpi()
+    }
+
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         if self.record(|| PaintOp::FillText(Rc::from(text), x, y)) {
             return Ok(());

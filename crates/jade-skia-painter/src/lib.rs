@@ -251,6 +251,7 @@ struct SharedSurface {
     /// Whether colours are mapped onto a dark page as they are drawn. See
     /// [`SkiaPainter::set_dark_paper`].
     dark_paper: std::cell::Cell<bool>,
+    text_output_dpi: std::cell::Cell<Option<f64>>,
 }
 
 enum PaintSurface {
@@ -264,6 +265,13 @@ enum PaintSurface {
 }
 
 impl SkiaPainter {
+    /// Selects physical text sizing for an explicit print target.
+    pub fn set_text_output_dpi(&self, dpi: Option<f64>) {
+        self.shared
+            .text_output_dpi
+            .set(dpi.filter(|value| value.is_finite() && *value > 0.0));
+    }
+
     /// The font on the current surface, including painter changes and the
     /// descriptor restored by `save` / `restore`.
     pub fn font_descriptor(&self) -> Rc<str> {
@@ -393,6 +401,7 @@ impl SkiaPainter {
                 fill_text_calls: std::cell::Cell::new(0),
                 effect_text: RefCell::new(Vec::new()),
                 dark_paper: std::cell::Cell::new(false),
+                text_output_dpi: std::cell::Cell::new(None),
             }),
         }
     }
@@ -1852,6 +1861,10 @@ impl Painter for SkiaPainter {
         self.shared.style.borrow_mut().text_baseline = TextBaseline::parse(value);
     }
 
+    fn text_output_dpi(&self) -> Option<f64> {
+        self.shared.text_output_dpi.get()
+    }
+
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         self.shared
             .fill_text_calls
@@ -2253,5 +2266,26 @@ impl Painter for SkiaPainter {
     fn use_fill_style_for_stroke(&self) {
         let fill = self.shared.style.borrow().fill;
         self.shared.style.borrow_mut().stroke = fill;
+    }
+}
+
+#[cfg(test)]
+mod print_target_tests {
+    use super::*;
+    use jade_painter::capture::RoutedPainter;
+
+    #[test]
+    fn physical_text_resolution_survives_deferred_layer_capture() {
+        let painter = SkiaPainter::new_recording(4.0, 4.0).unwrap();
+        let sink = Rc::new(RefCell::new(Vec::new()));
+        let routed = RoutedPainter::new(painter.clone(), Some(sink.clone()));
+        assert_eq!(routed.text_output_dpi(), None);
+        painter.save();
+        painter.set_text_output_dpi(Some(600.0));
+        painter.restore();
+        assert_eq!(routed.text_output_dpi(), Some(600.0));
+        assert!(sink.borrow().is_empty());
+        painter.set_text_output_dpi(Some(f64::NAN));
+        assert_eq!(routed.text_output_dpi(), None);
     }
 }

@@ -141,6 +141,7 @@ class NativeMacosWorkflowTest < Minitest::Test
         "windows-latest", "Assert shared Mac originals against Windows Word version expectations",
         ["test_platform_coordinates.py",
          "test_windows_float_lookahead_probes.py",
+         "test_windows_calibri_title_tracking_probes.py",
          "check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"]
       ]
     }.each do |name, (runner, step_name, commands)|
@@ -164,6 +165,25 @@ class NativeMacosWorkflowTest < Minitest::Test
         assert_includes command.lines.map(&:strip), "node scripts/ci/check_mac_word_coordinates.mjs"
       end
     end
+  end
+
+  def test_windows_screen_and_pdf_origins_remain_independently_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find do |item|
+      item["name"] == "Assert independent Windows Word screen and vector PDF origins"
+    end
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    command = step.fetch("run")
+    assert_includes command, "test_windows_output_contexts.py"
+    assert_includes command, "check_windows_output_contexts.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+    refute_includes command, "|| true"
+    refute_includes command, "--skip"
+    refute_includes command, "--ignored"
   end
 
   def test_windows_graphic_text_keeps_required_paint_and_rejection_checks

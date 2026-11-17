@@ -177,6 +177,12 @@ impl SkiaRenderHost {
             }
             PdfRenderingMode::Vector => SkiaPainter::new_recording(width, height)?,
         };
+        if options.rendering == PdfRenderingMode::Vector
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            first.set_text_output_dpi(Some(600.0));
+        }
         for (family, weight, italic, face) in &fonts.faces {
             first.register_face_styled(family, *weight, *italic, face.clone());
         }
@@ -244,6 +250,13 @@ impl SkiaRenderHost {
             surface.set_dark_paper(self.dark_paper.get());
             surface
         };
+        if self.recording
+            && self.pdf_options.rendering == PdfRenderingMode::Vector
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            surface.set_text_output_dpi(Some(600.0));
+        }
         // Parsed faces, not bytes. A new Skia surface starts with none, and a
         // document that paginates mid-render creates surfaces on the hot path —
         // re-parsing megabytes of font file per page put half a repaint in

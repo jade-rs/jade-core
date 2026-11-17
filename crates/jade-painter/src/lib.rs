@@ -149,6 +149,11 @@ pub trait Painter {
     }
     /// Sets the baseline the y coordinate of text operations refers to.
     fn set_text_baseline(&self, value: &str);
+    /// Physical text resolution of an explicit print/export target. Screen
+    /// painters leave this unset; layout retains logical font metrics.
+    fn text_output_dpi(&self) -> Option<f64> {
+        None
+    }
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error>;
     /// Draws a span with additional invisible shaping context when supported.
     /// Text extraction should retain the source text.

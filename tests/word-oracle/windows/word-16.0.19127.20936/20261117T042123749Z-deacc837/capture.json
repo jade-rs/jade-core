@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T042123749Z-deacc837",
+  "captured_at_utc": "2026-11-17T04:21:23.7519357Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-title-calibri22-square-spacing4-compat15",
+      "source": "..\\w17-i-calibri-title-tracking-input-snapshots\\word-windows-title-calibri22-square-spacing4-compat15.docx",
+      "sha256": "2a298cd5ebebf40a77908817691b5bd4f43cc02750425898aba46844df817dc2",
+      "pdf": "word-windows-title-calibri22-square-spacing4-compat15.pdf",
+      "pdf_sha256": "cf99e64b09a7b06a6409991f9b2e453d2f1624fefb0f642bbf92410ec25e2f90",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-title-calibri22-square-spacing4-compat15.page-001.emf",
+          "sha256": "039bbc9e0994258ec4e41fee6cec4fd43ec9bcfbfbd19a5565562ef92d2f03b4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
