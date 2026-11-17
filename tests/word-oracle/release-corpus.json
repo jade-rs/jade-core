@@ -6106,6 +6106,38 @@
     {
       "fixture": "word-windows-ms-mincho-size20-latin-cjk-de-implicit-compat15",
       "docx_sha256": "008ef59a6e3f84ab09b9305a786d7ef8e9d3083aed1feda275180079d031159d"
+    },
+    {
+      "fixture": "word-windows-aptos-family-aptos-only-size12-compat14",
+      "docx_sha256": "296978fc1dbc87037865f8b52a0106dea2b8ddc31498e3c1cfc970f86bd922d5"
+    },
+    {
+      "fixture": "word-windows-aptos-family-aptos-only-size20-compat14",
+      "docx_sha256": "c85c7961939dbcfb842d22a7b9195ab12439f7f350542bd5a4b7f18c66d13854"
+    },
+    {
+      "fixture": "word-windows-aptos-family-aptos-then-display-size12-compat14",
+      "docx_sha256": "7c7233ccdfa18909d0b69c0b8da90c09c456d6e53bb027f0d5922ae912c52a6a"
+    },
+    {
+      "fixture": "word-windows-aptos-family-aptos-then-display-size20-compat14",
+      "docx_sha256": "9dcaa29af662899d83d6258fe5e47223b6f1684a3f5dd6aa89a33d7ec96c02a6"
+    },
+    {
+      "fixture": "word-windows-aptos-family-display-only-size12-compat14",
+      "docx_sha256": "48ded00fbcdbc074c1b9200227801a4d49e2bd27ecfdb5396a85c5aa640397b8"
+    },
+    {
+      "fixture": "word-windows-aptos-family-display-only-size20-compat14",
+      "docx_sha256": "85768edbda35b8ccfa2f58d79581128931540b9a24007d5d4642086b957d9eb7"
+    },
+    {
+      "fixture": "word-windows-aptos-family-display-then-aptos-size12-compat14",
+      "docx_sha256": "1108db4410f4c9f93e41c09ec99f6c7ec8544d98a96076725a4d5de4d01d6df6"
+    },
+    {
+      "fixture": "word-windows-aptos-family-display-then-aptos-size20-compat14",
+      "docx_sha256": "094a4c847988abc18eaeec8c7ce6d89ca38265c4d2a9d240ffb67e1999c8841f"
     }
   ]
 }

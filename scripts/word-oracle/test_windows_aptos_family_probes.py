@@ -7,11 +7,32 @@ import unittest
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
-from check_platform_coordinates import ROOT, compare, pdf_origins, read_json
-from extract_windows_emf import emf_glyphs
+from check_platform_coordinates import ROOT, checked_file, compare, pdf_origins, read_json
+from extract_windows_emf import emf_glyphs, extract
 
 
 class WindowsAptosFamilyProbes(unittest.TestCase):
+    def test_promoted_origins_keep_the_original_capture_name_and_actual_mode(self):
+        cases = {c['name']: c for c in self.cases()}
+        registry = read_json(ROOT / 'tests/word-oracle/windows/font-coordinates.json')
+        promoted = [c for c in registry['fixtures'] if c['name'] in cases]
+        self.assertEqual(len(promoted), 8)
+        for case in promoted:
+            fact = cases[case['name']]
+            with self.subTest(case=case['name']):
+                self.assertEqual(case['capture_document_name'], fact['original_capture_document_name'])
+                source = checked_file(ROOT, case['source'])
+                self.assertEqual(source.read_bytes(), (ROOT / fact['source']).read_bytes())
+                manifest = checked_file(ROOT, case['capture'])
+                capture = read_json(manifest)
+                self.assertEqual(capture['word'], fact['word'])
+                document, = capture['documents']
+                self.assertEqual(document['name'], case['capture_document_name'])
+                self.assertEqual(document['compatibility_mode'], 14)
+                self.assertEqual((manifest.parent / 'inputs' / (document['name'] + '.docx')).read_bytes(),
+                                 source.read_bytes())
+                self.assertEqual(read_json(checked_file(ROOT, case['drawing_reference'])), extract(manifest))
+
     def cases(self):
         return read_json(ROOT / 'tests/word-oracle/windows/aptos-family-probes/observations.json')['fixtures']
 

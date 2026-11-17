@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "purpose": "Unpromoted Windows Word observations; known baseline differences are not passing expectations.",
+  "purpose": "Original Windows Word measurements and historical pre-fix differences; current accepted coordinate expectations are registered separately in font-coordinates.json.",
   "capture_name_note": "Original capture filenames say compat15; Word actually opened the unchanged Mac-derived settings in compatibility mode 14. Original evidence is preserved, and canonical aliases record mode 14.",
   "fixtures": [
     {
