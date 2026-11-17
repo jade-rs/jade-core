@@ -5814,6 +5814,62 @@
     {
       "fixture": "word-windows-nominal-wrap-kerning-yu-enabled-width320-compat15",
       "docx_sha256": "2ad56d77d1530e0854b541e8b99c167c8f87bf21d35c58c47d2b4ce080d97db6"
+    },
+    {
+      "fixture": "word-windows-yu-advance-b-inherit-size9p5-compat15",
+      "docx_sha256": "35e62195a42e50ec8dbc67b38b3ed1221c6ff5a643d39a4d97f74e8fd7937fdb"
+    },
+    {
+      "fixture": "word-windows-yu-advance-b-zero-size9p5-compat15",
+      "docx_sha256": "477f81c986dd4cca8fd941d6b9972822f6cc830fb720df2aee8083c618c72a7c"
+    },
+    {
+      "fixture": "word-windows-yu-advance-bc-inherit-size16-compat15",
+      "docx_sha256": "4f8c842b5588b268da64faf69f3e1e44e01963fba81462e6bbe4f404c4ea4ff9"
+    },
+    {
+      "fixture": "word-windows-yu-advance-bc-inherit-size9p5-compat15",
+      "docx_sha256": "789e8b63e19954075d3a3ad3be6f28fbfbc92cea45583c7206ea46316d965e17"
+    },
+    {
+      "fixture": "word-windows-yu-advance-bc-zero-size16-compat15",
+      "docx_sha256": "5af8a49d41ef1aab6c22b7e989c9006cd1008372209620f03a07fb8740c8586d"
+    },
+    {
+      "fixture": "word-windows-yu-advance-bc-zero-size9p5-compat15",
+      "docx_sha256": "f05ab28b010d88c116f1c6fa32ec81a8ba1eb3440cb2043b215259ec283761b1"
+    },
+    {
+      "fixture": "word-windows-yu-advance-space-a-inherit-size16-compat15",
+      "docx_sha256": "3fb3d70f911a81a1934ef55b9c5a8cb82ec444dc34e3c204d9e36c19386e6de3"
+    },
+    {
+      "fixture": "word-windows-yu-advance-space-a-inherit-size9p5-compat15",
+      "docx_sha256": "201f3056f5c691f437d50938606e9c404a26cf056477b88d595510cbf648d39c"
+    },
+    {
+      "fixture": "word-windows-yu-advance-space-a-zero-size16-compat15",
+      "docx_sha256": "aac441609da1cb4ed6d5fbcfe748a793eca6946a3e3bf7c66662b8f28fed2f38"
+    },
+    {
+      "fixture": "word-windows-yu-advance-space-a-zero-size9p5-compat15",
+      "docx_sha256": "693810a98dba545227b063997c7e41244fdbd8323d2b9fd351725f3457c43253"
+    },
+    {
+      "fixture": "word-windows-yu-advance-z-space-inherit-size16-compat15",
+      "docx_sha256": "1c1f671fd88fd08fc0dbc8d8dbdc296c59f746ad56d98b27eddf4aaa9790ac14"
+    },
+    {
+      "fixture": "word-windows-yu-advance-z-space-inherit-size9p5-compat15",
+      "docx_sha256": "690a5f6a5ddc21b9f2d7eaf71fec4b1ef457c7d2e41c63f7ddbd9a0a328c92e9"
+    },
+    {
+      "fixture": "word-windows-yu-advance-z-space-zero-size16-compat15",
+      "docx_sha256": "6800afab80d719c682b31101aaaf8f480440ca7337de3d3b6d0dd3f4b4107d85"
+    },
+    {
+      "fixture": "word-windows-yu-advance-z-space-zero-size9p5-compat15",
+      "docx_sha256": "a9b477c2be9b47dd8bfcda62e8d99c7fe1237c0a658c569dd4fe96a846792b24"
     }
   ]
 }
