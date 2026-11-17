@@ -7,3 +7,6 @@ third_party/ironcalc-base/** -whitespace
 # Coordinate evidence is SHA-256 checked byte-for-byte on every platform.
 tests/word-oracle/**/*.json -text
 tests/word-oracle/*.json -text
+
+# Generated font-unit data has a reproducible byte digest on every host.
+crates/jade-docx-layout/src/aptos_short_shaping_data.rs text eol=lf

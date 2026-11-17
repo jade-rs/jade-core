@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T144242100Z-d3a0ffed",
+  "captured_at_utc": "2026-11-17T14:42:42.1033754Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-styles-arial-size14-italic-compat14",
+      "source": "w17-q-numeric-styles-input-snapshots\\word-windows-numeric-styles-arial-size14-italic-compat14.docx",
+      "sha256": "637a1a94b3e4346a546888e290628e7f0f2f980dc0cd08ca708894bfc081a771",
+      "pdf": "word-windows-numeric-styles-arial-size14-italic-compat14.pdf",
+      "pdf_sha256": "77dfacc85c113c7f301f428b62656e7645f2848fe48c14bc378693cf8f9308fb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-styles-arial-size14-italic-compat14.page-001.emf",
+          "sha256": "7c0bb9112a23e00902e520938de94d2dcbcecb767ac0f8c316283e77fc2f7a55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

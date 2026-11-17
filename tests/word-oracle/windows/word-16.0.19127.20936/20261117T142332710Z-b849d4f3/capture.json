@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T142332710Z-b849d4f3",
+  "captured_at_utc": "2026-11-17T14:23:32.7131990Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-hints-calibri-size14-explicit-ea-compat15",
+      "source": "w17-q-numeric-hints-input-snapshots\\word-windows-numeric-hints-calibri-size14-explicit-ea-compat15.docx",
+      "sha256": "e06903cb61860d7fa83e60d97a5b1bfcb43ccdf401d2bb80c714ff7168150f49",
+      "pdf": "word-windows-numeric-hints-calibri-size14-explicit-ea-compat15.pdf",
+      "pdf_sha256": "9f6f2453a541525b6dc14934335b570634571d1405361e8053428057772794b5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-hints-calibri-size14-explicit-ea-compat15.page-001.emf",
+          "sha256": "c6aa603b541d4f5216bd44d473da2372b1a51801f4c79365daa60f7ff29a7002",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

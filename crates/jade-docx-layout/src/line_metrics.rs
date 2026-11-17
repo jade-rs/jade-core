@@ -1099,6 +1099,33 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
     })
 }
 
+/// Numeric boundaries independently observed beside a fixed Japanese face.
+/// These metrics do not change Windows letter spacing or Mac policy.
+pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Option<WordAutoSpace> {
+    let (size_pt, family) = split_font_descriptor(descriptor)?;
+    let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
+    if !size_pt.is_finite() || size_pt <= 0.0 {
+        return None;
+    }
+    if matches!(family, "Arial" | "Calibri") {
+        return word_windows_latin_auto_space_metrics(descriptor, false);
+    }
+    // Original Word 16.0.19127.20936 controls use the Aptos 2.01
+    // OS/2 xAvgCharWidth for the digit-to-Japanese half-average gap.
+    // Keep these Windows numeric metrics separate from Mac and autoSpaceDE.
+    let (bold, italic) = font_descriptor_style(descriptor);
+    let style = usize::from(bold) * 2 + usize::from(italic);
+    let average = match family {
+        "Aptos" => [1148.0, 1150.0, 1202.0, 1204.0][style],
+        "Aptos Display" => [1105.0, 1105.0, 1161.0, 1161.0][style],
+        _ => return None,
+    };
+    Some(WordAutoSpace {
+        em_px: f64::from(size_pt) * 96.0 / 72.0,
+        trailing_share: 2.0 * average / 2048.0,
+    })
+}
+
 /// Windows balanced cells for faces whose font-average policy has been
 /// checked independently of the following Latin letter. Regular Arial retains
 /// its established cell/kerning path: an average alone shifts EMF origins in
@@ -3326,6 +3353,15 @@ pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: 
         .unwrap_or_default()
         .trim()
         .trim_matches(['\'', '"']);
+    // Inherited Yu Mincho controls from Windows Word 16.0.19127.20936
+    // retain 1/1024 em per bold CJK cell. The 12/14/20/40pt long runs
+    // distinguish it from both nominal cells and MS Mincho's heavier bold.
+    if matches!(family, "Yu Mincho" | "游明朝" | "游明朝体" | "YuMincho")
+        && size_pt.is_finite()
+        && size_pt > 0.0
+    {
+        return f64::from(size_pt) * 96.0 / 72.0 / 1024.0;
+    }
     // Windows Word 16.0.19127's MS Mincho synthetic bold CJK advances:
     // The long original EMF/PDF sweeps at 9, 10.5, 12, 20 and 40pt retain
     // the full CJK cell plus 1/256 em. The former short-run 1/200 estimate

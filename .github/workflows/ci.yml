@@ -242,7 +242,9 @@ jobs:
   windows-word-baselines:
     name: Windows Word baselines by version
     runs-on: windows-latest
-    timeout-minutes: 45
+    # All versioned originals are mandatory; the expanded corpus also runs
+    # border, print and editing gates after the four-plane font comparisons.
+    timeout-minutes: 75
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target/windows-word-baselines
       RUSTUP_TOOLCHAIN: stable
@@ -304,6 +306,8 @@ jobs:
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_borders.py
       - name: Build vector drawing probe
         run: cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+      - name: Assert native shaping platform boundaries
+        run: cargo test --manifest-path crates/jade-docx-layout/Cargo.toml --locked --features native-shaping --lib
       - name: Assert Office cached-font discovery against original Word output
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_office_cloud_fonts.py
@@ -322,6 +326,7 @@ jobs:
       - name: Assert Windows font coordinates with original Word embedded fonts
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_coordinates.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_numeric_spacing_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_paragraph_backgrounds.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
@@ -439,6 +444,9 @@ jobs:
 
       - name: Verify unadjusted Word for Mac probe coordinates
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+
+      - name: Assert native shaping platform boundaries
+        run: cargo test --manifest-path crates/jade-docx-layout/Cargo.toml --locked --features native-shaping --lib
 
       - name: Verify native PDF structure and representative rendering
         env:

@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T142244057Z-3a4bd932",
+  "captured_at_utc": "2026-11-17T14:22:44.0599098Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-hints-aptos-size14-eastasia-compat15",
+      "source": "w17-q-numeric-hints-input-snapshots\\word-windows-numeric-hints-aptos-size14-eastasia-compat15.docx",
+      "sha256": "d0fb84e5c4453803c4bed258969258ca73f28cfc355313ceaf1c8b7e4af036ff",
+      "pdf": "word-windows-numeric-hints-aptos-size14-eastasia-compat15.pdf",
+      "pdf_sha256": "583c2ef59c5fd0115aa8bda492fae166007a8d29b42628ae64307560db33ef9f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-hints-aptos-size14-eastasia-compat15.page-001.emf",
+          "sha256": "869f7a52328688161cd6bc90a5d548534cf2d47096ec79fe65bf5c99fa04a586",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

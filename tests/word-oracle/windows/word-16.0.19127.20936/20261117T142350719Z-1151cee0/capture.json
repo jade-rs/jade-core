@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T142350719Z-1151cee0",
+  "captured_at_utc": "2026-11-17T14:23:50.7235127Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-numeric-hints-display-size14-eastasia-compat15",
+      "source": "w17-q-numeric-hints-input-snapshots\\word-windows-numeric-hints-display-size14-eastasia-compat15.docx",
+      "sha256": "4f5bb77f35bc34a65cc74c527222e1b8437b0485f261135d005092034a1530b7",
+      "pdf": "word-windows-numeric-hints-display-size14-eastasia-compat15.pdf",
+      "pdf_sha256": "eae34d042e50d8deb087dbddda7cc2dca896b3f0f9efb08035732f3e663fc63c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-numeric-hints-display-size14-eastasia-compat15.page-001.emf",
+          "sha256": "00cd7c8fa4c922802a4d2c003db8234d040b7159875f3a4112224ae04bee5bad",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
