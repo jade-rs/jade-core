@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T181613770Z-6f83f9cd",
+  "captured_at_utc": "2026-11-17T18:16:13.7738781Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-repeated-hyphens-display-size14-italic-compat14",
+      "source": "w18-v-repeated-hyphens-input-snapshots\\word-windows-aptos-repeated-hyphens-display-size14-italic-compat14.docx",
+      "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459",
+      "pdf": "word-windows-aptos-repeated-hyphens-display-size14-italic-compat14.pdf",
+      "pdf_sha256": "5f17f34097544763a4f30fc7aac6693cef58211beab0227fdb256d860670de97",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-repeated-hyphens-display-size14-italic-compat14.page-001.emf",
+          "sha256": "037ea54787640d4bac5247d37d488d64b22f020ff91f847264f80dd1cfc75b15",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

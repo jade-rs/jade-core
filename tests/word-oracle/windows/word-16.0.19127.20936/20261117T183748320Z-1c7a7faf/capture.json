@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T183748320Z-1c7a7faf",
+  "captured_at_utc": "2026-11-17T18:37:48.3242914Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-courier-line-size40-bold-compat14",
+      "source": "w18-y-courier-line-metrics-input-snapshots\\word-windows-courier-line-size40-bold-compat14.docx",
+      "sha256": "6c5468621a7ad8549d75432b1e1a27a18b6085599da2dd842199dd515c7724f2",
+      "pdf": "word-windows-courier-line-size40-bold-compat14.pdf",
+      "pdf_sha256": "a9235e0068a9d6ed08544f8ecccb03f3fc302ff36bc7ab62ee5337839b9ed047",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-courier-line-size40-bold-compat14.page-001.emf",
+          "sha256": "bc40b331f7a1bdc6d269e948f56ba3296e12afbb018586947ad7fa658937364c",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
