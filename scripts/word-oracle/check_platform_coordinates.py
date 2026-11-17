@@ -13,8 +13,9 @@ import math
 from pathlib import Path
 import subprocess
 import sys
+from zipfile import ZipFile
 
-from extract_windows_emf import extract
+from extract_windows_emf import extract, emf_glyphs
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
@@ -31,6 +32,81 @@ REQUIRED_CAPTURES = {
     'footnote-table-textbox-order-mac': '20261114T004143028Z-b4cb9887',
     'footnote-mac': '20261114T004143028Z-b4cb9887',
     'footnote-table-each-page-mac': '20261114T004143028Z-b4cb9887',
+    'align-center-mac': '20261114T020438767Z-bfed5b87',
+    'alignment-mac': '20261114T020441411Z-af6ea560',
+    'aptos-range-compat-14-en-US-mac': '20261114T004240145Z-5f9102be',
+    'ascii-punctuation-mac': '20261114T004252975Z-a999e8fb',
+    'cell-alignment-mac': '20261114T004252975Z-a999e8fb',
+    'column-break-mac': '20261114T004252975Z-a999e8fb',
+    'decimal-tabs-mac': '20261114T004252975Z-a999e8fb',
+    'direction-with-selection-mac': '20261114T004143028Z-b4cb9887',
+    'eqruby-grid-mac': '20261114T004202539Z-7cf29738',
+    'eqruby-nogrid-mac': '20261114T004202539Z-7cf29738',
+    'fractional-picture-anchors-mac': '20261114T020548688Z-7207704a',
+    'header-footer-sections-mac': '20261114T004143028Z-b4cb9887',
+    'header-tab-overflow-long-mac': '20261114T020253083Z-9dcfef94',
+    'indents-mac': '20261114T004309406Z-2c388f57',
+    'inline-image-position-grid-mac': '20261114T004813814Z-c21deb91',
+    'inline-image-position-nogrid-mac': '20261114T004813814Z-c21deb91',
+    'inline-image-rotation-table-picture-only-mac': '20261114T004309406Z-2c388f57',
+    'jade-script-baseline-20261030': '20261114T004704886Z-7e8168a7',
+    'kana-mac': '20261114T004309406Z-2c388f57',
+    'keep-mac': '20261114T004309406Z-2c388f57',
+    'latin-break-budget-620': '20261114T004309406Z-2c388f57',
+    'latin-break-budget-638': '20261114T004309406Z-2c388f57',
+    'latin-break-budget-645': '20261114T004309406Z-2c388f57',
+    'latin-break-budget-652': '20261114T004309406Z-2c388f57',
+    'latin-break-budget-659': '20261114T004309406Z-2c388f57',
+    'line-numbering-mac': '20261114T004322231Z-e7a4d03f',
+    'line-spacing-mac': '20261114T004322231Z-e7a4d03f',
+    'merged-table-over-page-mac': '20261114T005709592Z-772bee19',
+    'mirror-margins-mac': '20261114T004322231Z-e7a4d03f',
+    'mirror-margins-parity-mac': '20261114T020311702Z-0fc768f7',
+    'nested-after-spacing-oversized-48-0': '20261114T004322231Z-e7a4d03f',
+    'nested-after-spacing-repeat-header': '20261114T004322231Z-e7a4d03f',
+    'nested-after-spacing-short-5pt': '20261114T004334255Z-b74a0cd3',
+    'nested-merged-tables-mac': '20261114T004334255Z-b74a0cd3',
+    'note-styles-creation-mac': '20261114T020313084Z-50588e4b',
+    'numbering-by-style-mac': '20261114T020314478Z-267eae10',
+    'numbering-restart-mac': '20261114T020324309Z-57157ab7',
+    'odd-even-stories-mac': '20261114T004334255Z-b74a0cd3',
+    'paragraph-spacing-mac': '20261114T004346218Z-5f779447',
+    'probe-unequal-left-narrow-first-1-1': '20261114T004533252Z-4b33f3f3',
+    'probe-unequal-left-narrow-first-2-1': '20261114T004547596Z-7db3b26c',
+    'probe-unequal-left-wide-first-1-1': '20261114T004547596Z-7db3b26c',
+    'probe-unequal-left-wide-first-2-1': '20261114T004547596Z-7db3b26c',
+    'ruby-grid-mac': '20261114T004214564Z-4ebc9049',
+    'ruby-nogrid-mac': '20261114T004214564Z-4ebc9049',
+    'ruby-wide-grid-mac': '20261114T004214564Z-4ebc9049',
+    'ruby-wide-nogrid-mac': '20261114T004214564Z-4ebc9049',
+    'run-styles-mac': '20261114T020737875Z-7d16155a',
+    'script-position-mac': '20261114T020739586Z-407e2e78',
+    'section-break-types-mac': '20261114T021536775Z-818619fb',
+    'sections-mac': '20261114T020750373Z-ad48fa89',
+    'story-inline-picture-metrics-mac': '20261114T020753623Z-4d5f0b2b',
+    'table-boundary-cant-split-mac': '20261114T004633221Z-54077165',
+    'table-oversized-row-after-spacing-fresh-fit': '20261114T020835626Z-17c9262c',
+    'table-row-after-spacing-short-5pt': '20261114T004647940Z-877c5941',
+    'table-vertical-merge-page-break-mac': '20261114T004202539Z-7cf29738',
+    'table3x2merged-mac': '20261114T004647940Z-877c5941',
+    'tabs-mac': '20261114T004647940Z-877c5941',
+    'textbox-exact-line-matrix-mac': '20261114T004647940Z-877c5941',
+    'textbox-fixed-pitch-matrix-mac': '20261114T004647940Z-877c5941',
+    'toc-sequence-page-number-mac': '20261114T004202539Z-7cf29738',
+    'underline-kinds-mac': '20261114T004202539Z-7cf29738',
+    'unequal-columns-mac': '20261114T004647940Z-877c5941',
+    'vert-align-sweep-2-browser-mac': '20261114T020406409Z-43ea3b48',
+    'vert-align-sweep-browser-mac': '20261114T004647940Z-877c5941',
+    'widow-control-mac': '20261114T004704886Z-7e8168a7',
+    'word-mac-probe-distribute-single': '20261114T004202539Z-7cf29738',
+    'word-mac-probe-indent': '20261114T004214564Z-4ebc9049',
+    'word-mac-probe-numbering-label': '20261114T004214564Z-4ebc9049',
+    'word-mac-probe-numbering-label-faces': '20261114T004214564Z-4ebc9049',
+    'word-mac-probe-object-space-runs-unbalanced': '20261114T004214564Z-4ebc9049',
+    'word-mac-probe-squeeze-conditions-nocompress': '20261114T020348514Z-150cc80a',
+    'word-mac-probe-squeeze-plain': '20261114T020357360Z-c1ab8e03',
+    'word-mac-probe-vert-align-sweep-2': '20261114T004704886Z-7e8168a7',
+    'wrong-num-mac': '20261114T020410811Z-30c286b3',
 }
 
 
@@ -161,6 +237,62 @@ def extract_fonts(pdf, directory):
     require(count > 0, 'Original Word PDF contains no usable embedded fonts')
 
 
+def archive_reference(root, case, windows):
+    """Read one document from an immutable, possibly multi-document capture.
+
+    Drawing origins are decoded from original EMFs in memory. The archive and
+    capture metadata remain byte-for-byte original; no selected capture or
+    renderer-derived expected positions are generated.
+    """
+    archive = checked_file(root, windows['archive'])
+    with ZipFile(archive) as bundle:
+        members = bundle.namelist()
+        require(len(members) == len(set(members)) and all(
+            not Path(name).is_absolute() and ':' not in name and '\\' not in name
+            and '..' not in Path(name).parts for name in members),
+            'Invalid or duplicate original archive member')
+        raw = bundle.read('capture.json')
+        require(hashlib.sha256(raw).hexdigest() == windows['capture_sha256'],
+                'Original archived capture metadata changed')
+        capture = json.loads(raw.decode('utf-8-sig'))
+        require(capture['schema'] == 2 and capture['platform'] == 'windows'
+                and capture['status'] == 'complete', 'Incomplete or mislabelled Windows capture')
+        require(capture['capture_id'] == windows['capture_id'], 'Archived capture identity changed')
+        require(capture['word']['product_version'] == windows['word_product_version'],
+                'Windows Word version changed')
+        require(capture['word']['executable_sha256'] == windows['word_executable_sha256'],
+                'Windows Word executable changed')
+        require(archive.parent.name == 'word-' + windows['word_product_version'],
+                'Wrong archived Word version directory')
+        documents = [d for d in capture['documents'] if d['name'] == windows['fixture']]
+        require(len(documents) == 1, 'Missing or duplicate archived Windows input')
+        document = documents[0]
+        # Older captures predate this field. Keep their missing provenance;
+        # never relabel them as a newer capture or accept a recorded repair.
+        require(document.get('open_mode') in (None, 'normal-read-only'),
+                'Archived input was repaired or converted')
+        require(document['sha256'] == case['source']['sha256'], 'Windows source identity changed')
+        source = checked_file(root, case['source'])
+        require(bundle.read('inputs/' + document['name'] + '.docx') == source.read_bytes(),
+                'Windows input differs from Mac original')
+        require(hashlib.sha256(bundle.read(document['pdf'])).hexdigest() == document['pdf_sha256'],
+                'Original archived Windows Word PDF changed')
+        pages = document['metafiles']
+        require([p['page'] for p in pages] == list(range(1, document['pages'] + 1)),
+                'Archived Word page coverage changed')
+        glyphs = []
+        for page in pages:
+            data = bundle.read(page['file'])
+            require(hashlib.sha256(data).hexdigest() == page['sha256'],
+                    'Original archived Windows Word EMF changed')
+            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt']))
+        drawing = dict(page_count=document['pages'], glyphs=glyphs)
+        require(capture.get('table_glyph_projection', 'visible') in ('visible', 'unclipped'),
+                'Unknown archived drawing projection')
+        require(windows.get('font_source') == 'original-word-pdf', 'Unknown archived font source')
+    return archive, capture, document, drawing
+
+
 def verify(root=ROOT):
     index = read_json(root / INDEX)
     require(index['schema'] == 1 and bool(index['fixtures']), 'Empty platform registry')
@@ -188,6 +320,15 @@ def verify(root=ROOT):
         require(bool(case['windows']), 'Missing Windows version expectations')
         captures = set()
         for windows in case['windows']:
+            if 'archive' in windows:
+                require('capture' not in windows and 'drawing_reference' not in windows,
+                        'Ambiguous original Windows reference')
+                archive, capture, document, fixture = archive_reference(root, case, windows)
+                key = (capture['word']['product_version'], capture['capture_id'])
+                require(key not in captures, 'Duplicate Word version/capture')
+                captures.add(key)
+                cases.append((name, source, archive, document, fixture, 'original-word-pdf'))
+                continue
             manifest = checked_file(root, windows['capture'])
             capture = read_json(manifest)
             key = (capture['word']['product_version'], capture['capture_id'])
@@ -228,10 +369,22 @@ def check_windows(executable, output, root=ROOT):
     output.mkdir(parents=True, exist_ok=True)
     checked = 0
     for name, source, manifest, document, drawing, font_source in cases:
-        target = output / name / manifest.parent.name
+        archived = manifest.suffix == '.zip'
+        if archived:
+            with ZipFile(manifest) as bundle:
+                capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+                original_pdf_bytes = bundle.read(document['pdf'])
+        else:
+            capture = read_json(manifest)
+        target = output / name / capture['capture_id']
         target.mkdir(parents=True, exist_ok=True)
         actual_path, painted_path = target / 'native.json', target / 'native.pdf'
-        original_pdf = manifest.parent / document['pdf']
+        if archived:
+            original_pdf = target / 'original-word.pdf'
+            require(not original_pdf.exists(), 'Refusing to replace extracted original PDF')
+            original_pdf.write_bytes(original_pdf_bytes)
+        else:
+            original_pdf = manifest.parent / document['pdf']
         options = []
         if font_source == 'original-word-pdf':
             extract_fonts(original_pdf, target / 'fonts')
@@ -239,16 +392,25 @@ def check_windows(executable, output, root=ROOT):
         subprocess.run([str(executable), str(source), str(actual_path), 'windows',
                         str(painted_path), '--unclipped-tables', *options], check=True)
         actual = read_json(actual_path)
-        checked += compare(drawing, actual, name + '/EMF')
         compare(pdf_origins(original_pdf, True), actual, name + '/PDF-unclipped')
         visible_path = target / 'visible.json'
         subprocess.run([str(executable), str(source), str(visible_path), 'windows', *options], check=True)
         visible = pdf_origins(original_pdf)
-        compare(visible, read_json(visible_path), name + '/PDF-visible')
+        actual_visible = read_json(visible_path)
+        for model in (actual, actual_visible):
+            require(model['input_sha256'] == hashlib.sha256(source.read_bytes()).hexdigest(),
+                    'Wrong shared rendered input')
+            if archived:
+                from check_windows_font_coordinates import require_original_font_programs_registered
+                require_original_font_programs_registered(target / 'fonts', model)
+        projection = capture.get('table_glyph_projection', 'visible')
+        checked += compare(drawing, actual if projection == 'unclipped' else actual_visible,
+                           name + '/EMF')
+        compare(visible, actual_visible, name + '/PDF-visible')
         require(painted_path.read_bytes() != original_pdf.read_bytes(), 'Word self-comparison')
         compare(visible, pdf_origins(painted_path), name + '/painted-PDF')
         print(f'{name}: {document["pages"]} pages, {len(drawing["glyphs"])} glyphs, '
-              f'Windows Word {read_json(manifest)["word"]["product_version"]}: PASS')
+              f'Windows Word {capture["word"]["product_version"]}: PASS', flush=True)
     return checked
 
 
