@@ -271,6 +271,7 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_observations.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_family_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_header_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_table_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_heading_break_probes.py

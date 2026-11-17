@@ -1,3 +1,5 @@
 PyMuPDF==2.0
 numpy==2.3.5
 pypdf==6.10.0
+# Reproduce probe XML without dropping Word's namespace declarations.
+lxml==6.1.1
