@@ -2182,6 +2182,32 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "aptos-ascii-advances-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+        "sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/manifest.json",
+        "sha256": "af874d9facade4bb0d5ed1b479ce266b061a901c6aeff0e1c63e35d2e092b7ab"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "capture": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1/capture.json",
+            "sha256": "d7fe5f32a886abe9958717fe87cc4a946d2ac87ef91d1d2c1a8008663b5f1b1e"
+          },
+          "drawing_reference": {
+            "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1/word-emf-reference.json",
+            "sha256": "42e74165911cdc51c2a08ec091e5b83d03af6f3b283b21a1da83b5c9c2a73626"
+          },
+          "fixture": "aptos-ascii-advances-mac",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

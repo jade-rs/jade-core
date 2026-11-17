@@ -20,6 +20,7 @@ from extract_windows_emf import extract, emf_glyphs
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'aptos-ascii-advances-mac': '20261117T123854554Z-f62dd6d1',
     'floating-square-wrap-mac': '20261114T004143028Z-b4cb9887',
     'floating-wrap-sides-mac': '20261114T004143028Z-b4cb9887',
     'word-mac-probe-floating-horizontal-15': '20261114T015622405Z-203d1791',
@@ -400,7 +401,7 @@ def check_windows(executable, output, root=ROOT):
         for model in (actual, actual_visible):
             require(model['input_sha256'] == hashlib.sha256(source.read_bytes()).hexdigest(),
                     'Wrong shared rendered input')
-            if archived:
+            if font_source == 'original-word-pdf':
                 from check_windows_font_coordinates import require_original_font_programs_registered
                 require_original_font_programs_registered(target / 'fonts', model)
         projection = capture.get('table_glyph_projection', 'visible')

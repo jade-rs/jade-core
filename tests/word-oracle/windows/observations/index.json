@@ -34647,6 +34647,283 @@
           "opened_filename": "word-windows-aptos-mixed-style-display-size40-regular-compat14.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124911630Z-67da959a.zip",
+      "archive_sha256": "1a163b1db7fc69526d5a527871521419bd55aba56f22891725cf9b639cbb84e3",
+      "capture_id": "20261117T124911630Z-67da959a",
+      "capture_sha256": "38c9788fba4973f4120540d713defcd7e0f6825379a41e7333374eea3a3d4240",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size14-bold-compat14",
+          "source_sha256": "7fe0e7769c0b01c85cb942b4ef894efe41369e9c2d483e1689d3f81e2208e163",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size14-bold-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size14-bold-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124915826Z-9cc30666.zip",
+      "archive_sha256": "2aed7b1e1ea448dfc98ca1ac91c775b72c5cae4ef86b8b3dfcaf3d0f0aab902a",
+      "capture_id": "20261117T124915826Z-9cc30666",
+      "capture_sha256": "d63cbfb691c7b3fbf4227565847ee7c09bd11a004dac267887c9fa4e8308071c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size14-bolditalic-compat14",
+          "source_sha256": "706417a99267b698df56d9866a8c6a73c73d80ecbd90bf930f497712e27ddc34",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size14-bolditalic-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size14-bolditalic-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124919140Z-a7faac35.zip",
+      "archive_sha256": "8a34f18e81db262a60629dba4bf4e1cfc25d840c83630cd51542de562da2ea39",
+      "capture_id": "20261117T124919140Z-a7faac35",
+      "capture_sha256": "89752c5f25ea6b7094141426d10a8071de4c8ebe7a558326c578ad862c2f285c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size14-italic-compat14",
+          "source_sha256": "8e9ef8333e520707250b36ad4b6b198ed1f21bdbf7190b3337f9737c0ec66f6a",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size14-italic-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size14-italic-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124922437Z-8c7117f1.zip",
+      "archive_sha256": "821e269a461d7e85274943d282a4bc10b28f67086599c38a5bcb5f553abd5e47",
+      "capture_id": "20261117T124922437Z-8c7117f1",
+      "capture_sha256": "5ba20bf3da0348f6e0e5d5189eb7c7274e63d40f0f6ffd617e2e002d3eab6030",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size14-regular-compat14",
+          "source_sha256": "4a19d3caaf326274a4a03ceae9d383c2d1e9bb4cc05397ad7ae1ac8208d02dc7",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size14-regular-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size14-regular-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124925725Z-2c36711d.zip",
+      "archive_sha256": "b490531d654c2b911872074fb1721d59e514747a94ba68334f37be50ddf8db2d",
+      "capture_id": "20261117T124925725Z-2c36711d",
+      "capture_sha256": "ac59188c11554fc3e653ab592fcc72335d8b83106691c9c87a52591b4982558d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size40-bold-compat14",
+          "source_sha256": "dd05ac799e56bfaa6fb9fb21a9845d15408ece10f0bfad1303233a83d4fe4e3c",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size40-bold-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size40-bold-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124930200Z-2012a82b.zip",
+      "archive_sha256": "2ebf5c48ab273f417707268473ca04bb36d305dd56b7b9cdb205023b68282de5",
+      "capture_id": "20261117T124930200Z-2012a82b",
+      "capture_sha256": "c4688e9dd77806ac83cf3a23f81fef1927b7f0e50dbb56f2f24a4107c0add43b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size40-bolditalic-compat14",
+          "source_sha256": "5b6743b4784e9a98189fad5b8fc8e340566fd74bd6f809a2a467134cb1e6c471",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size40-bolditalic-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size40-bolditalic-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124933503Z-261475d1.zip",
+      "archive_sha256": "d27c7e92e81b5b8ed15830545f194f384817cd8928e7f8ad29f75b9479764a76",
+      "capture_id": "20261117T124933503Z-261475d1",
+      "capture_sha256": "64e56f559406a075f4976a6f63cb355a22a6e0e678f0b910fb8c7727f5b1bcf7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size40-italic-compat14",
+          "source_sha256": "dfeb922fdeca52c800e8fc34c9735c2463005739ba3ea27f1e5c8ff5a8819d88",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size40-italic-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size40-italic-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124936778Z-51fa7107.zip",
+      "archive_sha256": "adb26f06c8a6f34901508ef3a441a59c61a13457e42e2a676dbb3b7cbece9714",
+      "capture_id": "20261117T124936778Z-51fa7107",
+      "capture_sha256": "b9f8098b9bdc201580c71f2e823c7eaa0c407c81f0cd91c69fbc823229e44813",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-subset-families-size40-regular-compat14",
+          "source_sha256": "165767bcbbfa43f2d9f6511b51a57ad391c597cbcfb12188d5c877226e1162fa",
+          "source_aliases": [
+            "public/fixtures/word-windows-aptos-subset-families-size40-regular-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-subset-families-size40-regular-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1.zip",
+      "archive_sha256": "778eec928e590c374868b55a203cedbdee283bf7949ccc9eea28fc85aade51e0",
+      "capture_id": "20261117T123854554Z-f62dd6d1",
+      "capture_sha256": "d7fe5f32a886abe9958717fe87cc4a946d2ac87ef91d1d2c1a8008663b5f1b1e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "aptos-ascii-advances-mac",
+          "source_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+          "source_aliases": [
+            "public/fixtures/aptos-ascii-advances-mac.docx",
+            "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx"
+          ],
+          "opened_filename": "aptos-ascii-advances-mac.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123858363Z-557602b1.zip",
+      "archive_sha256": "d263ba430c1db4ca3f25e7c2df82a1fe83ab56f123882b84ce7012768936dff4",
+      "capture_id": "20261117T123858363Z-557602b1",
+      "capture_sha256": "aef6769b0d1bf80d476fe989dcbb57f13a86249489b641bd621eaef4047f5c20",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "aptos-ascii-kerning-mac",
+          "source_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+          "source_aliases": [
+            "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx"
+          ],
+          "opened_filename": "aptos-ascii-kerning-mac.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123901418Z-dc6f6941.zip",
+      "archive_sha256": "3e225e6ea9f6849b3bdc92b339e80c902eede866b756ed5bb9903ce4ef3554cd",
+      "capture_id": "20261117T123901418Z-dc6f6941",
+      "capture_sha256": "4e80e28b0c89baad1d6f2af05403e2293b9329a4cf157710854f2cce2fc80ab3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "aptos-kerning-mac",
+          "source_sha256": "cccaf89345964897688f85562d324c059a2e6752be78b47e7a4ccb695ae1b2fd",
+          "source_aliases": [
+            "tests/word-oracle/mac-elsa-synthetic/aptos-kerning-mac/source.docx"
+          ],
+          "opened_filename": "aptos-kerning-mac.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123904316Z-73717485.zip",
+      "archive_sha256": "05c99c7324d7f82fa7f4819f8774b089416546b32f0ef450670dbccc00d688f5",
+      "capture_id": "20261117T123904316Z-73717485",
+      "capture_sha256": "46a4c26c38db94888bb621bf1f4f6304fdcd7fcff7048da1dc3ef16c1d95e5be",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "aptos-numeric-ranges-mac",
+          "source_sha256": "24393143f3def21b3ad253dedf6d642e68d0f0087f9bb770726bf0d7a237bdf1",
+          "source_aliases": [
+            "tests/word-oracle/mac-elsa-synthetic/aptos-numeric-ranges-mac/source.docx"
+          ],
+          "opened_filename": "aptos-numeric-ranges-mac.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

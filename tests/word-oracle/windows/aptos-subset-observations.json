@@ -1,0 +1,4240 @@
+{
+  "schema": 1,
+  "purpose": "Original Word font-subset controls and same-source old/current font evidence; baseline flags remain historical.",
+  "fixtures": [
+    {
+      "name": "word-windows-aptos-subset-families-size14-bold-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124911630Z-67da959a.zip",
+        "sha256": "1a163b1db7fc69526d5a527871521419bd55aba56f22891725cf9b639cbb84e3"
+      },
+      "capture_id": "20261117T124911630Z-67da959a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "7fe0e7769c0b01c85cb942b4ef894efe41369e9c2d483e1689d3f81e2208e163",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size14-bold-compat14.docx",
+        "sha256": "7fe0e7769c0b01c85cb942b4ef894efe41369e9c2d483e1689d3f81e2208e163"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124911630Z-67da959a/capture.json",
+        "sha256": "38c9788fba4973f4120540d713defcd7e0f6825379a41e7333374eea3a3d4240"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124911630Z-67da959a/word-emf-reference.json",
+        "sha256": "16846061564166d23584630b8eea6e28336c1685a60b8f7c554f7aaca3792295"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos,Bold",
+          "sha256": "5399186797614b1358985e7f54fb9adfcb875b6873136bf5a9b0e98274325109",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,Bold",
+          "sha256": "5399186797614b1358985e7f54fb9adfcb875b6873136bf5a9b0e98274325109",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display,Bold",
+          "sha256": "b01bada9107ffedc04dc02ddc70d41b97acda0d3f51bb7c47bfff61824eac973",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Display Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display,Bold",
+          "sha256": "b01bada9107ffedc04dc02ddc70d41b97acda0d3f51bb7c47bfff61824eac973",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Display Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold"
+          ],
+          "weight": 700
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 14,
+      "bold": true,
+      "italic": false,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size14-bolditalic-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124915826Z-9cc30666.zip",
+        "sha256": "2aed7b1e1ea448dfc98ca1ac91c775b72c5cae4ef86b8b3dfcaf3d0f0aab902a"
+      },
+      "capture_id": "20261117T124915826Z-9cc30666",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "706417a99267b698df56d9866a8c6a73c73d80ecbd90bf930f497712e27ddc34",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size14-bolditalic-compat14.docx",
+        "sha256": "706417a99267b698df56d9866a8c6a73c73d80ecbd90bf930f497712e27ddc34"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124915826Z-9cc30666/capture.json",
+        "sha256": "d63cbfb691c7b3fbf4227565847ee7c09bd11a004dac267887c9fa4e8308071c"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124915826Z-9cc30666/word-emf-reference.json",
+        "sha256": "84826407ae2e2933e01c38ece063c738368ab84ccee91cab641bf53a130c004c"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos,BoldItalic",
+          "sha256": "eea038cdeb5a2a1a13d002daec6266885ab772a3f160301e1213b9c0f9eb8637",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,BoldItalic",
+          "sha256": "eea038cdeb5a2a1a13d002daec6266885ab772a3f160301e1213b9c0f9eb8637",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display,BoldItalic",
+          "sha256": "4b1f2f64f529e59f6dce67b8cda9271efcdfca29efbc7cc3e0812d09eae5d232",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Display Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display,BoldItalic",
+          "sha256": "4b1f2f64f529e59f6dce67b8cda9271efcdfca29efbc7cc3e0812d09eae5d232",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Display Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold Italic"
+          ],
+          "weight": 700
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 14,
+      "bold": true,
+      "italic": true,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size14-italic-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124919140Z-a7faac35.zip",
+        "sha256": "8a34f18e81db262a60629dba4bf4e1cfc25d840c83630cd51542de562da2ea39"
+      },
+      "capture_id": "20261117T124919140Z-a7faac35",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "8e9ef8333e520707250b36ad4b6b198ed1f21bdbf7190b3337f9737c0ec66f6a",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size14-italic-compat14.docx",
+        "sha256": "8e9ef8333e520707250b36ad4b6b198ed1f21bdbf7190b3337f9737c0ec66f6a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124919140Z-a7faac35/capture.json",
+        "sha256": "89752c5f25ea6b7094141426d10a8071de4c8ebe7a558326c578ad862c2f285c"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124919140Z-a7faac35/word-emf-reference.json",
+        "sha256": "cd475b24d1e40173ce76e4410a5561b1906a01e2778a250d852cc3715e436b69"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos,Italic",
+          "sha256": "c85fe6b983a3afbf98814a535b219f5d38416d24e353967a6548a5e3f9176327",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,Italic",
+          "sha256": "c85fe6b983a3afbf98814a535b219f5d38416d24e353967a6548a5e3f9176327",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display,Italic",
+          "sha256": "4ac4d1ac9ffccc29e1c76ad6c60055e3b9224321be6c4cee06641dd7da1df393",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Display Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display,Italic",
+          "sha256": "4ac4d1ac9ffccc29e1c76ad6c60055e3b9224321be6c4cee06641dd7da1df393",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Display Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Italic"
+          ],
+          "weight": 400
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 14,
+      "bold": false,
+      "italic": true,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size14-regular-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124922437Z-8c7117f1.zip",
+        "sha256": "821e269a461d7e85274943d282a4bc10b28f67086599c38a5bcb5f553abd5e47"
+      },
+      "capture_id": "20261117T124922437Z-8c7117f1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "4a19d3caaf326274a4a03ceae9d383c2d1e9bb4cc05397ad7ae1ac8208d02dc7",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size14-regular-compat14.docx",
+        "sha256": "4a19d3caaf326274a4a03ceae9d383c2d1e9bb4cc05397ad7ae1ac8208d02dc7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124922437Z-8c7117f1/capture.json",
+        "sha256": "5ba20bf3da0348f6e0e5d5189eb7c7274e63d40f0f6ffd617e2e002d3eab6030"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124922437Z-8c7117f1/word-emf-reference.json",
+        "sha256": "38167952b509da7a11cffb4446293a66e6ff33e71b133b49fc04e3aa72cce8d6"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "9a6b1f78541e6b0aa1e64236f70ef5b728dbb8113fe7389e46c5e935b0f7f7a8",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos",
+          "sha256": "9a6b1f78541e6b0aa1e64236f70ef5b728dbb8113fe7389e46c5e935b0f7f7a8",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display",
+          "sha256": "0db476b031a06c19c3c12298ae51f1b61476c256d252fb4d100ead4621a83d9f",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display",
+          "sha256": "0db476b031a06c19c3c12298ae51f1b61476c256d252fb4d100ead4621a83d9f",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 14,
+      "bold": false,
+      "italic": false,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size40-bold-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124925725Z-2c36711d.zip",
+        "sha256": "b490531d654c2b911872074fb1721d59e514747a94ba68334f37be50ddf8db2d"
+      },
+      "capture_id": "20261117T124925725Z-2c36711d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "dd05ac799e56bfaa6fb9fb21a9845d15408ece10f0bfad1303233a83d4fe4e3c",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size40-bold-compat14.docx",
+        "sha256": "dd05ac799e56bfaa6fb9fb21a9845d15408ece10f0bfad1303233a83d4fe4e3c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124925725Z-2c36711d/capture.json",
+        "sha256": "ac59188c11554fc3e653ab592fcc72335d8b83106691c9c87a52591b4982558d"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124925725Z-2c36711d/word-emf-reference.json",
+        "sha256": "d515aad88fba230b7432e7fc20885ea8a89d4eae89d84145518c286acf11c335"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos,Bold",
+          "sha256": "5399186797614b1358985e7f54fb9adfcb875b6873136bf5a9b0e98274325109",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,Bold",
+          "sha256": "5399186797614b1358985e7f54fb9adfcb875b6873136bf5a9b0e98274325109",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display,Bold",
+          "sha256": "b01bada9107ffedc04dc02ddc70d41b97acda0d3f51bb7c47bfff61824eac973",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Display Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display,Bold",
+          "sha256": "b01bada9107ffedc04dc02ddc70d41b97acda0d3f51bb7c47bfff61824eac973",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Display Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold"
+          ],
+          "weight": 700
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 40,
+      "bold": true,
+      "italic": false,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size40-bolditalic-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124930200Z-2012a82b.zip",
+        "sha256": "2ebf5c48ab273f417707268473ca04bb36d305dd56b7b9cdb205023b68282de5"
+      },
+      "capture_id": "20261117T124930200Z-2012a82b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "5b6743b4784e9a98189fad5b8fc8e340566fd74bd6f809a2a467134cb1e6c471",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size40-bolditalic-compat14.docx",
+        "sha256": "5b6743b4784e9a98189fad5b8fc8e340566fd74bd6f809a2a467134cb1e6c471"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124930200Z-2012a82b/capture.json",
+        "sha256": "c4688e9dd77806ac83cf3a23f81fef1927b7f0e50dbb56f2f24a4107c0add43b"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124930200Z-2012a82b/word-emf-reference.json",
+        "sha256": "4e600308f16b01827fd1016be7415ddd27a2f0ff68c235650c8d77b79ffe9601"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos,BoldItalic",
+          "sha256": "eea038cdeb5a2a1a13d002daec6266885ab772a3f160301e1213b9c0f9eb8637",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,BoldItalic",
+          "sha256": "eea038cdeb5a2a1a13d002daec6266885ab772a3f160301e1213b9c0f9eb8637",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display,BoldItalic",
+          "sha256": "4b1f2f64f529e59f6dce67b8cda9271efcdfca29efbc7cc3e0812d09eae5d232",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Display Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display,BoldItalic",
+          "sha256": "4b1f2f64f529e59f6dce67b8cda9271efcdfca29efbc7cc3e0812d09eae5d232",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Display Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold Italic"
+          ],
+          "weight": 700
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 40,
+      "bold": true,
+      "italic": true,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size40-italic-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124933503Z-261475d1.zip",
+        "sha256": "d27c7e92e81b5b8ed15830545f194f384817cd8928e7f8ad29f75b9479764a76"
+      },
+      "capture_id": "20261117T124933503Z-261475d1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "dfeb922fdeca52c800e8fc34c9735c2463005739ba3ea27f1e5c8ff5a8819d88",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size40-italic-compat14.docx",
+        "sha256": "dfeb922fdeca52c800e8fc34c9735c2463005739ba3ea27f1e5c8ff5a8819d88"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124933503Z-261475d1/capture.json",
+        "sha256": "64e56f559406a075f4976a6f63cb355a22a6e0e678f0b910fb8c7727f5b1bcf7"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124933503Z-261475d1/word-emf-reference.json",
+        "sha256": "846e61b39d059285ea2840bce1d939b24a0cd3527e85df356c60fe4eea80941a"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos,Italic",
+          "sha256": "c85fe6b983a3afbf98814a535b219f5d38416d24e353967a6548a5e3f9176327",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,Italic",
+          "sha256": "c85fe6b983a3afbf98814a535b219f5d38416d24e353967a6548a5e3f9176327",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display,Italic",
+          "sha256": "4ac4d1ac9ffccc29e1c76ad6c60055e3b9224321be6c4cee06641dd7da1df393",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Display Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display,Italic",
+          "sha256": "4ac4d1ac9ffccc29e1c76ad6c60055e3b9224321be6c4cee06641dd7da1df393",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Display Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Italic"
+          ],
+          "weight": 400
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 40,
+      "bold": false,
+      "italic": true,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "word-windows-aptos-subset-families-size40-regular-compat14",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T124936778Z-51fa7107.zip",
+        "sha256": "adb26f06c8a6f34901508ef3a441a59c61a13457e42e2a676dbb3b7cbece9714"
+      },
+      "capture_id": "20261117T124936778Z-51fa7107",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "165767bcbbfa43f2d9f6511b51a57ad391c597cbcfb12188d5c877226e1162fa",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-subset-families-size40-regular-compat14.docx",
+        "sha256": "165767bcbbfa43f2d9f6511b51a57ad391c597cbcfb12188d5c877226e1162fa"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124936778Z-51fa7107/capture.json",
+        "sha256": "b9f8098b9bdc201580c71f2e823c7eaa0c407c81f0cd91c69fbc823229e44813"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T124936778Z-51fa7107/word-emf-reference.json",
+        "sha256": "29243d5c7335df35ad89cb4435414acdd4d12a6373028c1e32a5e62d4ae1f1eb"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "9a6b1f78541e6b0aa1e64236f70ef5b728dbb8113fe7389e46c5e935b0f7f7a8",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos",
+          "sha256": "9a6b1f78541e6b0aa1e64236f70ef5b728dbb8113fe7389e46c5e935b0f7f7a8",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 16,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos Display",
+          "sha256": "0db476b031a06c19c3c12298ae51f1b61476c256d252fb4d100ead4621a83d9f",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 18,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos Display",
+          "sha256": "0db476b031a06c19c3c12298ae51f1b61476c256d252fb4d100ead4621a83d9f",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        }
+      ],
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "size_pt": 40,
+      "bold": false,
+      "italic": false,
+      "text": "HH XX 88",
+      "families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "kern_thresholds_halfpoints": [
+        200,
+        2
+      ],
+      "paragraph_count": 4,
+      "compatibility_mode": 14
+    },
+    {
+      "name": "aptos-ascii-advances-mac",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1.zip",
+        "sha256": "778eec928e590c374868b55a203cedbdee283bf7949ccc9eea28fc85aade51e0"
+      },
+      "capture_id": "20261117T123854554Z-f62dd6d1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": true,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "original_mac_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "previous_capture_id": "20261114T004240145Z-5f9102be",
+      "previous_word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "old_new_word_coordinates": "same Word version old/new capture/103: axis mismatch: Word [1, '!', 85.08000183105469, 141.97998046875]",
+      "previous_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "2c13507107fe813d89cd9e99de63de559911a85a0b57903a46bb1d40de43d6e4",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Calibri-Italic",
+          "sha256": "f2afba0a24f38fe287e3d7d582d53414a57f7564cf28429ad2223ab9e9806736",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [],
+          "version": [
+            "Version 6.27"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Calibri-Bold",
+          "sha256": "bf8bb130a5250ddc907aed2fd146e313925dde3d7425ebb8995941190d0d9bd3",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [],
+          "version": [
+            "Version 6.27"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDIEE+Calibri-BoldItalic",
+          "sha256": "cdc336b6c783e0314efe90994ee28a369f080c34ad6c84885e9fe3a6b2205a67",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [],
+          "version": [
+            "Version 6.27"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos Display",
+          "sha256": "b45df5871b1bbd73b395b1a0469c120b69c8e566e5978ab0fce1e93fa5cee017",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        }
+      ],
+      "current_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "2c13507107fe813d89cd9e99de63de559911a85a0b57903a46bb1d40de43d6e4",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Aptos,Italic",
+          "sha256": "2d7d6444b8973c1e9e570fc0442ea17d946f93c5081ba3bef9759ce9352be7d3",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos,Bold",
+          "sha256": "2cfa90bbf67694afb329aefc6617f8940dfea98c155766162ac57bac337e8b82",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,BoldItalic",
+          "sha256": "a2b7f618334c3bb2809292d737aa1eee326c191293e334b1912ad40356c84046",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos Display",
+          "sha256": "b45df5871b1bbd73b395b1a0469c120b69c8e566e5978ab0fce1e93fa5cee017",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos Display,Italic",
+          "sha256": "11d36210f4e1c074805f6de727cd8325eb824cc9d29c524a62f309e5354f26ca",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos Display,Bold",
+          "sha256": "af442f7a0b25b9db27a11faa44f464512faca9bee3740fc53d841d30435ff725",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos Display,BoldItalic",
+          "sha256": "b1f726fee151b15c3a8a2eb1e7a5a935d7712160f82ba2766ccd092f94d0b9c2",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        }
+      ],
+      "source": {
+        "file": "public/fixtures/aptos-ascii-advances-mac.docx",
+        "sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1/capture.json",
+        "sha256": "d7fe5f32a886abe9958717fe87cc4a946d2ac87ef91d1d2c1a8008663b5f1b1e"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1/word-emf-reference.json",
+        "sha256": "42e74165911cdc51c2a08ec091e5b83d03af6f3b283b21a1da83b5c9c2a73626"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "2c13507107fe813d89cd9e99de63de559911a85a0b57903a46bb1d40de43d6e4",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,Italic",
+          "sha256": "2d7d6444b8973c1e9e570fc0442ea17d946f93c5081ba3bef9759ce9352be7d3",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 13,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos,Bold",
+          "sha256": "2cfa90bbf67694afb329aefc6617f8940dfea98c155766162ac57bac337e8b82",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 15,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos,BoldItalic",
+          "sha256": "a2b7f618334c3bb2809292d737aa1eee326c191293e334b1912ad40356c84046",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 17,
+          "extension": "ttf",
+          "postscript_name": "BCDJEE+Aptos Display",
+          "sha256": "b45df5871b1bbd73b395b1a0469c120b69c8e566e5978ab0fce1e93fa5cee017",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 19,
+          "extension": "ttf",
+          "postscript_name": "BCDKEE+Aptos Display,Italic",
+          "sha256": "11d36210f4e1c074805f6de727cd8325eb824cc9d29c524a62f309e5354f26ca",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Display Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 21,
+          "extension": "ttf",
+          "postscript_name": "BCDLEE+Aptos Display,Bold",
+          "sha256": "af442f7a0b25b9db27a11faa44f464512faca9bee3740fc53d841d30435ff725",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Display Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 23,
+          "extension": "ttf",
+          "postscript_name": "BCDMEE+Aptos Display,BoldItalic",
+          "sha256": "b1f726fee151b15c3a8a2eb1e7a5a935d7712160f82ba2766ccd092f94d0b9c2",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Display Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold Italic"
+          ],
+          "weight": 700
+        }
+      ]
+    }
+  ],
+  "historical_controls": [
+    {
+      "name": "aptos-ascii-advances-mac",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1.zip",
+        "sha256": "778eec928e590c374868b55a203cedbdee283bf7949ccc9eea28fc85aade51e0"
+      },
+      "capture_id": "20261117T123854554Z-f62dd6d1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": true,
+      "actual_compatibility_mode": 14,
+      "promoted": true,
+      "original_mac_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "previous_capture_id": "20261114T004240145Z-5f9102be",
+      "previous_word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "old_new_word_coordinates": "same Word version old/new capture/103: axis mismatch: Word [1, '!', 85.08000183105469, 141.97998046875]",
+      "previous_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "2c13507107fe813d89cd9e99de63de559911a85a0b57903a46bb1d40de43d6e4",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Calibri-Italic",
+          "sha256": "f2afba0a24f38fe287e3d7d582d53414a57f7564cf28429ad2223ab9e9806736",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [],
+          "version": [
+            "Version 6.27"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Calibri-Bold",
+          "sha256": "bf8bb130a5250ddc907aed2fd146e313925dde3d7425ebb8995941190d0d9bd3",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [],
+          "version": [
+            "Version 6.27"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDIEE+Calibri-BoldItalic",
+          "sha256": "cdc336b6c783e0314efe90994ee28a369f080c34ad6c84885e9fe3a6b2205a67",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [],
+          "version": [
+            "Version 6.27"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos Display",
+          "sha256": "b45df5871b1bbd73b395b1a0469c120b69c8e566e5978ab0fce1e93fa5cee017",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        }
+      ],
+      "current_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "2c13507107fe813d89cd9e99de63de559911a85a0b57903a46bb1d40de43d6e4",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Aptos,Italic",
+          "sha256": "2d7d6444b8973c1e9e570fc0442ea17d946f93c5081ba3bef9759ce9352be7d3",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos,Bold",
+          "sha256": "2cfa90bbf67694afb329aefc6617f8940dfea98c155766162ac57bac337e8b82",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,BoldItalic",
+          "sha256": "a2b7f618334c3bb2809292d737aa1eee326c191293e334b1912ad40356c84046",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos Display",
+          "sha256": "b45df5871b1bbd73b395b1a0469c120b69c8e566e5978ab0fce1e93fa5cee017",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos Display,Italic",
+          "sha256": "11d36210f4e1c074805f6de727cd8325eb824cc9d29c524a62f309e5354f26ca",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos Display,Bold",
+          "sha256": "af442f7a0b25b9db27a11faa44f464512faca9bee3740fc53d841d30435ff725",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos Display,BoldItalic",
+          "sha256": "b1f726fee151b15c3a8a2eb1e7a5a935d7712160f82ba2766ccd092f94d0b9c2",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        }
+      ],
+      "source": {
+        "file": "public/fixtures/aptos-ascii-advances-mac.docx",
+        "sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1/capture.json",
+        "sha256": "d7fe5f32a886abe9958717fe87cc4a946d2ac87ef91d1d2c1a8008663b5f1b1e"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T123854554Z-f62dd6d1/word-emf-reference.json",
+        "sha256": "42e74165911cdc51c2a08ec091e5b83d03af6f3b283b21a1da83b5c9c2a73626"
+      },
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "2c13507107fe813d89cd9e99de63de559911a85a0b57903a46bb1d40de43d6e4",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 11,
+          "extension": "ttf",
+          "postscript_name": "BCDGEE+Aptos,Italic",
+          "sha256": "2d7d6444b8973c1e9e570fc0442ea17d946f93c5081ba3bef9759ce9352be7d3",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 13,
+          "extension": "ttf",
+          "postscript_name": "BCDHEE+Aptos,Bold",
+          "sha256": "2cfa90bbf67694afb329aefc6617f8940dfea98c155766162ac57bac337e8b82",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 15,
+          "extension": "ttf",
+          "postscript_name": "BCDIEE+Aptos,BoldItalic",
+          "sha256": "a2b7f618334c3bb2809292d737aa1eee326c191293e334b1912ad40356c84046",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Bold Italic"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 17,
+          "extension": "ttf",
+          "postscript_name": "BCDJEE+Aptos Display",
+          "sha256": "b45df5871b1bbd73b395b1a0469c120b69c8e566e5978ab0fce1e93fa5cee017",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 19,
+          "extension": "ttf",
+          "postscript_name": "BCDKEE+Aptos Display,Italic",
+          "sha256": "11d36210f4e1c074805f6de727cd8325eb824cc9d29c524a62f309e5354f26ca",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Italic"
+          ],
+          "full_name": [
+            "Aptos Display Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Italic"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 21,
+          "extension": "ttf",
+          "postscript_name": "BCDLEE+Aptos Display,Bold",
+          "sha256": "af442f7a0b25b9db27a11faa44f464512faca9bee3740fc53d841d30435ff725",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold"
+          ],
+          "full_name": [
+            "Aptos Display Bold"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold"
+          ],
+          "weight": 700
+        },
+        {
+          "xref": 23,
+          "extension": "ttf",
+          "postscript_name": "BCDMEE+Aptos Display,BoldItalic",
+          "sha256": "b1f726fee151b15c3a8a2eb1e7a5a935d7712160f82ba2766ccd092f94d0b9c2",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Bold Italic"
+          ],
+          "full_name": [
+            "Aptos Display Bold Italic"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display Bold Italic"
+          ],
+          "weight": 700
+        }
+      ]
+    },
+    {
+      "name": "aptos-ascii-kerning-mac",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123858363Z-557602b1.zip",
+        "sha256": "d263ba430c1db4ca3f25e7c2df82a1fe83ab56f123882b84ce7012768936dff4"
+      },
+      "capture_id": "20261117T123858363Z-557602b1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": false,
+      "original_mac_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+      "previous_capture_id": "20261114T004240145Z-5f9102be",
+      "previous_word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "old_new_word_coordinates": "PASS",
+      "previous_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "c2f3d4eefbcded87a91945c5590e97221c759ee1764ce9756b898e4040837c4e",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Aptos",
+          "sha256": "c2f3d4eefbcded87a91945c5590e97221c759ee1764ce9756b898e4040837c4e",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos,Italic",
+          "sha256": "5ce9ea2e4d076ee1423d6eca5d1dc8cc448b396cdd5b561fc4624d6383027b71",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,Italic",
+          "sha256": "5ce9ea2e4d076ee1423d6eca5d1dc8cc448b396cdd5b561fc4624d6383027b71",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos,Bold",
+          "sha256": "b37dc8284e7f40374868b72777120acd530bf67f9158234ba712b53bfe0fd6ca",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos,Bold",
+          "sha256": "b37dc8284e7f40374868b72777120acd530bf67f9158234ba712b53bfe0fd6ca",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos,BoldItalic",
+          "sha256": "e0c5c5dc62320b74c0f07c7a3da731488f0f747c9d72e4085485ef989742fdfa",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos,BoldItalic",
+          "sha256": "e0c5c5dc62320b74c0f07c7a3da731488f0f747c9d72e4085485ef989742fdfa",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDNEE+Aptos Display",
+          "sha256": "7224b20e7a7eccc01f943a94c38d18ffe7e7b51084843adf0fa1638d1d3cbe22",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDOEE+Aptos Display",
+          "sha256": "7224b20e7a7eccc01f943a94c38d18ffe7e7b51084843adf0fa1638d1d3cbe22",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDPEE+Aptos Display,Italic",
+          "sha256": "93c91a92858ee96a35444f95367c060dd4497fac0d9f95cefb86aa6451d86c3c",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEAEE+Aptos Display,Italic",
+          "sha256": "93c91a92858ee96a35444f95367c060dd4497fac0d9f95cefb86aa6451d86c3c",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEBEE+Aptos Display,Bold",
+          "sha256": "23b150e0dba024128852ac69708b19cf955b7dab5b6584c2d3bf698f06fd96ff",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCECEE+Aptos Display,Bold",
+          "sha256": "23b150e0dba024128852ac69708b19cf955b7dab5b6584c2d3bf698f06fd96ff",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEDEE+Aptos Display,BoldItalic",
+          "sha256": "0dcb8a96e1d7627931913157feb4e469b2168c5818e263ef60929d933b3063b7",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEEEE+Aptos Display,BoldItalic",
+          "sha256": "0dcb8a96e1d7627931913157feb4e469b2168c5818e263ef60929d933b3063b7",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        }
+      ],
+      "current_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "c2f3d4eefbcded87a91945c5590e97221c759ee1764ce9756b898e4040837c4e",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Aptos",
+          "sha256": "c2f3d4eefbcded87a91945c5590e97221c759ee1764ce9756b898e4040837c4e",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos,Italic",
+          "sha256": "5ce9ea2e4d076ee1423d6eca5d1dc8cc448b396cdd5b561fc4624d6383027b71",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,Italic",
+          "sha256": "5ce9ea2e4d076ee1423d6eca5d1dc8cc448b396cdd5b561fc4624d6383027b71",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos,Bold",
+          "sha256": "b37dc8284e7f40374868b72777120acd530bf67f9158234ba712b53bfe0fd6ca",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos,Bold",
+          "sha256": "b37dc8284e7f40374868b72777120acd530bf67f9158234ba712b53bfe0fd6ca",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos,BoldItalic",
+          "sha256": "e0c5c5dc62320b74c0f07c7a3da731488f0f747c9d72e4085485ef989742fdfa",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos,BoldItalic",
+          "sha256": "e0c5c5dc62320b74c0f07c7a3da731488f0f747c9d72e4085485ef989742fdfa",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDNEE+Aptos Display",
+          "sha256": "7224b20e7a7eccc01f943a94c38d18ffe7e7b51084843adf0fa1638d1d3cbe22",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDOEE+Aptos Display",
+          "sha256": "7224b20e7a7eccc01f943a94c38d18ffe7e7b51084843adf0fa1638d1d3cbe22",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDPEE+Aptos Display,Italic",
+          "sha256": "93c91a92858ee96a35444f95367c060dd4497fac0d9f95cefb86aa6451d86c3c",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEAEE+Aptos Display,Italic",
+          "sha256": "93c91a92858ee96a35444f95367c060dd4497fac0d9f95cefb86aa6451d86c3c",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEBEE+Aptos Display,Bold",
+          "sha256": "23b150e0dba024128852ac69708b19cf955b7dab5b6584c2d3bf698f06fd96ff",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCECEE+Aptos Display,Bold",
+          "sha256": "23b150e0dba024128852ac69708b19cf955b7dab5b6584c2d3bf698f06fd96ff",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEDEE+Aptos Display,BoldItalic",
+          "sha256": "0dcb8a96e1d7627931913157feb4e469b2168c5818e263ef60929d933b3063b7",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEEEE+Aptos Display,BoldItalic",
+          "sha256": "0dcb8a96e1d7627931913157feb4e469b2168c5818e263ef60929d933b3063b7",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        }
+      ]
+    },
+    {
+      "name": "aptos-kerning-mac",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123901418Z-dc6f6941.zip",
+        "sha256": "3e225e6ea9f6849b3bdc92b339e80c902eede866b756ed5bb9903ce4ef3554cd"
+      },
+      "capture_id": "20261117T123901418Z-dc6f6941",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "cccaf89345964897688f85562d324c059a2e6752be78b47e7a4ccb695ae1b2fd",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": false,
+      "original_mac_source": "tests/word-oracle/mac-elsa-synthetic/aptos-kerning-mac/source.docx",
+      "previous_capture_id": "20261114T004240145Z-5f9102be",
+      "previous_word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "old_new_word_coordinates": "PASS",
+      "previous_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "8ce537aa3729f5abe80c4983769722595717c7dd2013fe387d2cb7a5375811d8",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Aptos",
+          "sha256": "8ce537aa3729f5abe80c4983769722595717c7dd2013fe387d2cb7a5375811d8",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos,Bold",
+          "sha256": "ee25271b433f744f0f0092ac46f7768b729f820a6eec4feb0e113e1a5b7650e3",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,Bold",
+          "sha256": "ee25271b433f744f0f0092ac46f7768b729f820a6eec4feb0e113e1a5b7650e3",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos,Italic",
+          "sha256": "0d8b7b7dd71c24400a249d3aaa11059dec379b9388a1874ad6e867c7a4641aea",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos,Italic",
+          "sha256": "0d8b7b7dd71c24400a249d3aaa11059dec379b9388a1874ad6e867c7a4641aea",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos Display",
+          "sha256": "981f8cf2ece0cbdb7d640e66325b3c8badfad14a7ac13e5cf1c91a1edfe1bb0b",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos Display",
+          "sha256": "981f8cf2ece0cbdb7d640e66325b3c8badfad14a7ac13e5cf1c91a1edfe1bb0b",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDNEE+Aptos Display,Bold",
+          "sha256": "5aeabb4b7e3c9c55d30e4a0511d1cc3573d4a501d016074c7014cb750b789800",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDOEE+Aptos Display,Bold",
+          "sha256": "5aeabb4b7e3c9c55d30e4a0511d1cc3573d4a501d016074c7014cb750b789800",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDPEE+Aptos Display,Italic",
+          "sha256": "c769e84f7b3ad01bd9964065dde64c34e13e50211a03443ec4343ab0f2e7b7e9",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEAEE+Aptos Display,Italic",
+          "sha256": "c769e84f7b3ad01bd9964065dde64c34e13e50211a03443ec4343ab0f2e7b7e9",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        }
+      ],
+      "current_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "8ce537aa3729f5abe80c4983769722595717c7dd2013fe387d2cb7a5375811d8",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+Aptos",
+          "sha256": "8ce537aa3729f5abe80c4983769722595717c7dd2013fe387d2cb7a5375811d8",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos,Bold",
+          "sha256": "ee25271b433f744f0f0092ac46f7768b729f820a6eec4feb0e113e1a5b7650e3",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,Bold",
+          "sha256": "ee25271b433f744f0f0092ac46f7768b729f820a6eec4feb0e113e1a5b7650e3",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos,Italic",
+          "sha256": "0d8b7b7dd71c24400a249d3aaa11059dec379b9388a1874ad6e867c7a4641aea",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos,Italic",
+          "sha256": "0d8b7b7dd71c24400a249d3aaa11059dec379b9388a1874ad6e867c7a4641aea",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos Display",
+          "sha256": "981f8cf2ece0cbdb7d640e66325b3c8badfad14a7ac13e5cf1c91a1edfe1bb0b",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos Display",
+          "sha256": "981f8cf2ece0cbdb7d640e66325b3c8badfad14a7ac13e5cf1c91a1edfe1bb0b",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDNEE+Aptos Display,Bold",
+          "sha256": "5aeabb4b7e3c9c55d30e4a0511d1cc3573d4a501d016074c7014cb750b789800",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDOEE+Aptos Display,Bold",
+          "sha256": "5aeabb4b7e3c9c55d30e4a0511d1cc3573d4a501d016074c7014cb750b789800",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDPEE+Aptos Display,Italic",
+          "sha256": "c769e84f7b3ad01bd9964065dde64c34e13e50211a03443ec4343ab0f2e7b7e9",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEAEE+Aptos Display,Italic",
+          "sha256": "c769e84f7b3ad01bd9964065dde64c34e13e50211a03443ec4343ab0f2e7b7e9",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        }
+      ]
+    },
+    {
+      "name": "aptos-numeric-ranges-mac",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T123904316Z-73717485.zip",
+        "sha256": "05c99c7324d7f82fa7f4819f8774b089416546b32f0ef450670dbccc00d688f5"
+      },
+      "capture_id": "20261117T123904316Z-73717485",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "source_sha256": "24393143f3def21b3ad253dedf6d642e68d0f0087f9bb770726bf0d7a237bdf1",
+      "baseline_executable_sha256": "89fd69dfe871d11ac74e263c24e865e258ac34892585fab5cde3cae1a7079956",
+      "baseline_all_planes_pass": false,
+      "actual_compatibility_mode": 14,
+      "promoted": false,
+      "original_mac_source": "tests/word-oracle/mac-elsa-synthetic/aptos-numeric-ranges-mac/source.docx",
+      "previous_capture_id": "20261114T004240145Z-5f9102be",
+      "previous_word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "old_new_word_coordinates": "PASS",
+      "previous_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "ae40c30e1ebba8cc6dc0212e829df2ed58e26fe251087c9606d55b9e0caa1ced",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "919a6d49ccf913ec6f8f4ba355d06fcb6cf81bf2fb8921d63006d8aee4acba82",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+YuMincho-Regular",
+          "sha256": "919a6d49ccf913ec6f8f4ba355d06fcb6cf81bf2fb8921d63006d8aee4acba82",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos",
+          "sha256": "ae40c30e1ebba8cc6dc0212e829df2ed58e26fe251087c9606d55b9e0caa1ced",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,Italic",
+          "sha256": "9603178572f15bb3086d955b7ed6dec494646411af706c43937413845d2ab7e5",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos,Italic",
+          "sha256": "9603178572f15bb3086d955b7ed6dec494646411af706c43937413845d2ab7e5",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos,Bold",
+          "sha256": "6d41af4c88c85283dae971579191eb8819a8046a017a69a7ef45809a8ea1e748",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos,Bold",
+          "sha256": "6d41af4c88c85283dae971579191eb8819a8046a017a69a7ef45809a8ea1e748",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos,BoldItalic",
+          "sha256": "1337486cf43f0ebf2ff002164bb454349fb9bc9b26f4d494b848908c502b9b0c",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDNEE+Aptos,BoldItalic",
+          "sha256": "1337486cf43f0ebf2ff002164bb454349fb9bc9b26f4d494b848908c502b9b0c",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDOEE+Aptos Display",
+          "sha256": "9174477f19aa0e36c2691a6f7de875bd13ab0d2fd70eadcb7706f65b39f499c4",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDPEE+Aptos Display",
+          "sha256": "9174477f19aa0e36c2691a6f7de875bd13ab0d2fd70eadcb7706f65b39f499c4",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEAEE+Aptos Display,Italic",
+          "sha256": "5f88985db6892a7ebb5a6c9bea12bc9cca7613a359ec6a1b3827d62af63e01ce",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEBEE+Aptos Display,Italic",
+          "sha256": "5f88985db6892a7ebb5a6c9bea12bc9cca7613a359ec6a1b3827d62af63e01ce",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCECEE+Aptos Display,Bold",
+          "sha256": "85087f012f8d4fe575e0a2240f690f00c0e22cf63ace4136d858bc3c7f19f0f2",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEDEE+Aptos Display,Bold",
+          "sha256": "85087f012f8d4fe575e0a2240f690f00c0e22cf63ace4136d858bc3c7f19f0f2",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEEEE+Aptos Display,BoldItalic",
+          "sha256": "d80e3dc27799784f689ad8fce8b00d3a99385b916c154a9319540b302d535c56",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEFEE+Aptos Display,BoldItalic",
+          "sha256": "d80e3dc27799784f689ad8fce8b00d3a99385b916c154a9319540b302d535c56",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        }
+      ],
+      "current_fonts": [
+        {
+          "pdf_name": "BCDEEE+Aptos",
+          "sha256": "ae40c30e1ebba8cc6dc0212e829df2ed58e26fe251087c9606d55b9e0caa1ced",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "919a6d49ccf913ec6f8f4ba355d06fcb6cf81bf2fb8921d63006d8aee4acba82",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDGEE+YuMincho-Regular",
+          "sha256": "919a6d49ccf913ec6f8f4ba355d06fcb6cf81bf2fb8921d63006d8aee4acba82",
+          "family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDHEE+Aptos",
+          "sha256": "ae40c30e1ebba8cc6dc0212e829df2ed58e26fe251087c9606d55b9e0caa1ced",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDIEE+Aptos,Italic",
+          "sha256": "9603178572f15bb3086d955b7ed6dec494646411af706c43937413845d2ab7e5",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDJEE+Aptos,Italic",
+          "sha256": "9603178572f15bb3086d955b7ed6dec494646411af706c43937413845d2ab7e5",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDKEE+Aptos,Bold",
+          "sha256": "6d41af4c88c85283dae971579191eb8819a8046a017a69a7ef45809a8ea1e748",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDLEE+Aptos,Bold",
+          "sha256": "6d41af4c88c85283dae971579191eb8819a8046a017a69a7ef45809a8ea1e748",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDMEE+Aptos,BoldItalic",
+          "sha256": "1337486cf43f0ebf2ff002164bb454349fb9bc9b26f4d494b848908c502b9b0c",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDNEE+Aptos,BoldItalic",
+          "sha256": "1337486cf43f0ebf2ff002164bb454349fb9bc9b26f4d494b848908c502b9b0c",
+          "family": [
+            "Aptos"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCDOEE+Aptos Display",
+          "sha256": "9174477f19aa0e36c2691a6f7de875bd13ab0d2fd70eadcb7706f65b39f499c4",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCDPEE+Aptos Display",
+          "sha256": "9174477f19aa0e36c2691a6f7de875bd13ab0d2fd70eadcb7706f65b39f499c4",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEAEE+Aptos Display,Italic",
+          "sha256": "5f88985db6892a7ebb5a6c9bea12bc9cca7613a359ec6a1b3827d62af63e01ce",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCEBEE+Aptos Display,Italic",
+          "sha256": "5f88985db6892a7ebb5a6c9bea12bc9cca7613a359ec6a1b3827d62af63e01ce",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 400
+        },
+        {
+          "pdf_name": "BCECEE+Aptos Display,Bold",
+          "sha256": "85087f012f8d4fe575e0a2240f690f00c0e22cf63ace4136d858bc3c7f19f0f2",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEDEE+Aptos Display,Bold",
+          "sha256": "85087f012f8d4fe575e0a2240f690f00c0e22cf63ace4136d858bc3c7f19f0f2",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEEEE+Aptos Display,BoldItalic",
+          "sha256": "d80e3dc27799784f689ad8fce8b00d3a99385b916c154a9319540b302d535c56",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        },
+        {
+          "pdf_name": "BCEFEE+Aptos Display,BoldItalic",
+          "sha256": "d80e3dc27799784f689ad8fce8b00d3a99385b916c154a9319540b302d535c56",
+          "family": [
+            "Aptos Display"
+          ],
+          "style": [
+            "Bold Italic"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "weight": 700
+        }
+      ]
+    }
+  ]
+}

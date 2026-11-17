@@ -6330,6 +6330,42 @@
     {
       "fixture": "word-windows-aptos-mixed-style-display-size40-regular-compat14",
       "docx_sha256": "999e5a95e0e1f63df3c7d572100019224600fe31838eee916c30aa722985948b"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size14-bold-compat14",
+      "docx_sha256": "7fe0e7769c0b01c85cb942b4ef894efe41369e9c2d483e1689d3f81e2208e163"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size14-bolditalic-compat14",
+      "docx_sha256": "706417a99267b698df56d9866a8c6a73c73d80ecbd90bf930f497712e27ddc34"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size14-italic-compat14",
+      "docx_sha256": "8e9ef8333e520707250b36ad4b6b198ed1f21bdbf7190b3337f9737c0ec66f6a"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size14-regular-compat14",
+      "docx_sha256": "4a19d3caaf326274a4a03ceae9d383c2d1e9bb4cc05397ad7ae1ac8208d02dc7"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size40-bold-compat14",
+      "docx_sha256": "dd05ac799e56bfaa6fb9fb21a9845d15408ece10f0bfad1303233a83d4fe4e3c"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size40-bolditalic-compat14",
+      "docx_sha256": "5b6743b4784e9a98189fad5b8fc8e340566fd74bd6f809a2a467134cb1e6c471"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size40-italic-compat14",
+      "docx_sha256": "dfeb922fdeca52c800e8fc34c9735c2463005739ba3ea27f1e5c8ff5a8819d88"
+    },
+    {
+      "fixture": "word-windows-aptos-subset-families-size40-regular-compat14",
+      "docx_sha256": "165767bcbbfa43f2d9f6511b51a57ad391c597cbcfb12188d5c877226e1162fa"
+    },
+    {
+      "fixture": "aptos-ascii-advances-mac",
+      "docx_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed"
     }
   ]
 }
