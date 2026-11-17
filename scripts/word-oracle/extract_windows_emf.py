@@ -149,20 +149,24 @@ def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
             if dx_at < 76 or dx_at + count * stride * 4 > size:
                 raise ValueError('Missing or truncated character advances')
             text = record[text_at:text_at + count * 2].decode('utf-16-le')
-            if len(text) != count:
-                raise ValueError('Surrogate-pair advances need explicit support')
             advances = struct.unpack_from('<' + 'i' * (count * stride), record, dx_at)
             # Word paints the recorded whole-page canvas onto its own paper.
             # EMF printer millimetres can be rounded; PageSetup points retain
             # twip precision. This conversion uses no native glyph positions.
             pt_x, pt_y = width_pt / canvas[0], height_pt / canvas[1]
-            for index, char in enumerate(text):
+            unit_index = 0
+            for char in text:
                 if not char.isspace() and unicodedata.category(char) != 'Cc':
                     glyphs.append([page, char, (x + translation[0]) * pt_x,
                                    (y + translation[1]) * pt_y])
-                x += advances[index * stride]
+                # EMR_EXTTEXTOUTW indexes its advances by UTF-16 code unit,
+                # while Python iterates Unicode scalars. A supplementary
+                # character paints once and consumes both recorded advances.
+                next_unit = unit_index + (2 if ord(char) > 0xffff else 1)
+                x += sum(advances[unit_index * stride:next_unit * stride:stride])
                 if stride == 2:
-                    y += advances[index * stride + 1]
+                    y += sum(advances[unit_index * stride + 1:next_unit * stride:stride])
+                unit_index = next_unit
         elif kind == 14:
             eof = True
         offset += size
