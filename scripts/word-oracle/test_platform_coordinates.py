@@ -10,7 +10,53 @@ import check_platform_coordinates as check
 
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
-        self.assertGreaterEqual(len(check.verify()), 1)
+        cases = check.verify()
+        self.assertGreaterEqual(len(cases), 87)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 75)
+
+    def reject_archive_edit(self, edit, message):
+        original = check.read_json
+        index = copy.deepcopy(original(check.ROOT / check.INDEX))
+        case = next(c for c in index['fixtures'] if 'archive' in c['windows'][0])
+        edit(case['windows'][0])
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == check.ROOT / check.INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, message):
+                check.verify()
+
+    def test_archive_bytes_and_original_metadata_are_required(self):
+        self.reject_archive_edit(lambda w: w['archive'].update(sha256='0' * 64),
+                                 'Evidence changed')
+        self.reject_archive_edit(lambda w: w.update(capture_sha256='0' * 64),
+                                 'Original archived capture metadata changed')
+
+    def test_archived_word_version_executable_and_capture_cannot_be_relabelled(self):
+        self.reject_archive_edit(lambda w: w.update(word_product_version='0.0.0.0'),
+                                 'Windows Word version changed')
+        self.reject_archive_edit(lambda w: w.update(word_executable_sha256='0' * 64),
+                                 'Windows Word executable changed')
+        self.reject_archive_edit(lambda w: w.update(capture_id='other-capture'),
+                                 'Archived capture identity changed')
+
+    def test_archived_input_and_original_font_programs_cannot_be_substituted(self):
+        self.reject_archive_edit(lambda w: w.update(fixture='other-input'),
+                                 'Missing or duplicate archived Windows input')
+        self.reject_archive_edit(lambda w: w.update(font_source='expected-positions'),
+                                 'Unknown archived font source')
+
+    def test_archive_reference_cannot_silently_choose_a_second_origin(self):
+        self.reject_archive_edit(lambda w: w.update(drawing_reference=w['archive']),
+                                 'Ambiguous original Windows reference')
+
+    def test_old_mac_version_gaps_remain_original_provenance(self):
+        index = check.read_json(check.ROOT / check.INDEX)
+        archived = [c for c in index['fixtures'] if 'archive' in c['windows'][0]]
+        missing = []
+        for case in archived:
+            manifest = check.read_json(check.checked_file(check.ROOT, case['mac_manifest']))
+            if 'version' not in manifest['reference']:
+                missing.append(case['mac_case'])
+        self.assertEqual(len(missing), 17)
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word
