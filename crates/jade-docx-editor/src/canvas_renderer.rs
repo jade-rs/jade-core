@@ -34418,6 +34418,11 @@ where
             || text_style.emboss
             || text_style.imprint
             || text_style.effects.is_some()
+            || crate::draw_command::executor::windows_pdf_text::eligible(
+                context,
+                segment_text,
+                text_style,
+            )
         {
             // Use the same precomputed glyph positions and effect executor as
             // cache replay; a fresh/export paint must retain character effects.

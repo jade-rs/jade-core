@@ -301,6 +301,7 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_float_lookahead_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_title_tracking_probes.py
           python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Reconstruct versioned Windows script metrics from original Word output
         run: |
@@ -313,6 +314,10 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert independent Windows Word screen and vector PDF origins
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_output_contexts.py
+          python scripts/word-oracle/check_windows_output_contexts.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text.py

@@ -12,6 +12,8 @@ use rustc_hash::{FxHashMap, FxHasher};
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
 use unicode_segmentation::UnicodeSegmentation;
 
+pub(crate) mod windows_pdf_text;
+
 /// Maximum number of entries in the grapheme width cache.
 /// Graphemes are typically single characters or small clusters,
 /// so this provides good coverage for most text rendering scenarios.
@@ -1449,6 +1451,13 @@ fn draw_text_run_glyphs<P: Painter>(
             font_state,
             isolated_windows_outline,
         );
+    }
+
+    if let Some(dpi) = context.text_output_dpi() {
+        if windows_pdf_text::try_draw(context, text, x, y, style, fonts, glyphs, font_state, dpi)? {
+            record_replay_fallback_run(glyphs.len() as u64);
+            return Ok(());
+        }
     }
 
     // Draw each glyph at its pre-calculated position.
