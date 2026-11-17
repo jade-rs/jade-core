@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261116T220339351Z-7dd434fc",
+  "captured_at_utc": "2026-11-16T22:03:39.3547072Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-yu-advance-space-a-zero-size9p5-compat15",
+      "source": "w17-f-yu-advance-pairs-input-snapshots\\word-windows-yu-advance-space-a-zero-size9p5-compat15.docx",
+      "sha256": "693810a98dba545227b063997c7e41244fdbd8323d2b9fd351725f3457c43253",
+      "pdf": "word-windows-yu-advance-space-a-zero-size9p5-compat15.pdf",
+      "pdf_sha256": "14055420897a964d031d1726107dc3f75b0178cd9ca55ae85c31dac63e8eff72",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-yu-advance-space-a-zero-size9p5-compat15.page-001.emf",
+          "sha256": "b8e44c076bac2cdbda402828df38efc01021281d3a01ce3346528819fb377b94",
+          "width_pt": 1190.55,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

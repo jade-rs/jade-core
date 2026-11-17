@@ -1,0 +1,672 @@
+{
+  "schema": 1,
+  "word_product_version": "16.0.19127.20936",
+  "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+  "capture_open_mode": "normal-read-only",
+  "axis_tolerance_pt": 0.375,
+  "baseline": {
+    "core_tree": "7f05c40a0556986b0da1c28279568f1decab2223",
+    "executable_sha256": "fee2959c831d56864d9e97e627632623ba5320f1b074fd39209d9f23638fd1f5",
+    "source_sha256": {
+      "crates/jade-docx-layout/src/font_resolver.rs": "25f3aead40d4262edc1cf14aafc5b0c0aa52bf65cd47e2bceedf19c276de32d9",
+      "crates/jade-docx-layout/src/line_metrics.rs": "f5ff6e3a8d51526ef272c2d3eddea9bceb2409e1adafa3a137188cc653fc46ed",
+      "crates/jade-docx-layout/src/line_wrap.rs": "70ec5359dae7ac06bb2c35bf02b94c6eabde10140b265f390b01828b84c6286e",
+      "crates/jade-docx-layout/src/line_metrics/windows_arial_styled_kern.rs": "420a3dc6ce5b971225bd5d75e9b8b6ba2fecc843aeeacc5b63b54492e31e4b07",
+      "crates/jade-docx-editor/src/canvas_renderer.rs": "6684572b7d0c8595a9e7d56c919fd1b53b5e128a7d5a5a8b1fdebfd2a4900816",
+      "crates/jade-docx-editor/src/canvas_renderer/run_style_key.rs": "febdd378e36363150c591b7628cb3f1d6599eb2c21a33b30fd37a024ff78d009",
+      "crates/jade-docx-editor/src/word_document.rs": "04986b33765ae1fddb52c85045bd857b31b8c6866b6c3d23cbab6953981e6139",
+      "crates/jade-docx-editor/tests/run_format.rs": "66a10fd48ea3b432464016cdb237a6408547ed5946d7f4c596cc1eef4d2ac74d"
+    },
+    "rust_toolchain": "1.93.1-x86_64-pc-windows-msvc"
+  },
+  "cases": [
+    {
+      "name": "word-windows-yu-advance-b-inherit-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "b",
+      "kerning_authored": "inherit",
+      "text_per_run": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-b-inherit-size9p5-compat15.docx",
+        "sha256": "35e62195a42e50ec8dbc67b38b3ed1221c6ff5a643d39a4d97f74e8fd7937fdb"
+      },
+      "capture_id": "20261116T220257733Z-66a94b5c",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220257733Z-66a94b5c.zip",
+        "sha256": "af1b3fae415cbc6618bba19c8549fd855d6e31b6ba351f7abe6d87e12d55651f"
+      },
+      "glyph_count": 90,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.40251339340557024,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-b-zero-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "b",
+      "kerning_authored": "zero",
+      "text_per_run": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-b-zero-size9p5-compat15.docx",
+        "sha256": "477f81c986dd4cca8fd941d6b9972822f6cc830fb720df2aee8083c618c72a7c"
+      },
+      "capture_id": "20261116T220303924Z-d379ac65",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220303924Z-d379ac65.zip",
+        "sha256": "b18e6dafa53805575fbe0d7f4aba63b0a6cbc7a4fa91031761c93ea2b91138ec"
+      },
+      "glyph_count": 90,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.40251339340557024,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-bc-inherit-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "bc",
+      "kerning_authored": "inherit",
+      "text_per_run": "BCBCBCBCBCBCBCBCBCBCBCBC",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-bc-inherit-size9p5-compat15.docx",
+        "sha256": "789e8b63e19954075d3a3ad3be6f28fbfbc92cea45583c7206ea46316d965e17"
+      },
+      "capture_id": "20261116T220309710Z-3fa02e4e",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220309710Z-3fa02e4e.zip",
+        "sha256": "bfdc8e69d7def696f3ec3bab697c11a7e3e0749dfb86a9e2170d26aa6ffe4626"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.2176563319461593,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-bc-zero-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "bc",
+      "kerning_authored": "zero",
+      "text_per_run": "BCBCBCBCBCBCBCBCBCBCBCBC",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-bc-zero-size9p5-compat15.docx",
+        "sha256": "f05ab28b010d88c116f1c6fa32ec81a8ba1eb3440cb2043b215259ec283761b1"
+      },
+      "capture_id": "20261116T220314065Z-6f5028c5",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220314065Z-6f5028c5.zip",
+        "sha256": "f92e0bc1f7fadac3f3fe8edaaae3cb9434a1b4aa4a10f6265945a66a1d27909d"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.2176563319461593,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-z-inherit-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "z",
+      "kerning_authored": "inherit",
+      "text_per_run": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-inherit-size9p5-compat15.docx",
+        "sha256": "9cf610e6a0d64cdde30838eafb48cd3d760c16a6aa5a6b6c406b384f345b0507"
+      },
+      "capture_id": "20261116T220345221Z-2f63e6e7",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220345221Z-2f63e6e7.zip",
+        "sha256": "bcfb1681256e8748b5f98d53fce19399f823ba9f47b82c467452fffae301abdc"
+      },
+      "glyph_count": 108,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.9636969534911941,
+      "single_geometry_can_satisfy_original_planes": false,
+      "baseline_planes": {
+        "EMF": "FAIL",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-z-zero-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "z",
+      "kerning_authored": "zero",
+      "text_per_run": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-zero-size9p5-compat15.docx",
+        "sha256": "a7d82bd5730932f12e4378689beea1e463c941de5a5afedc0d5e43d0c5919419"
+      },
+      "capture_id": "20261116T220403388Z-501dc6ca",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220403388Z-501dc6ca.zip",
+        "sha256": "51cb3aef8b650b3fafed3b5532f5a33561c41a1b7ca034d7bafe3e0bb401e564"
+      },
+      "glyph_count": 108,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.9636969534911941,
+      "single_geometry_can_satisfy_original_planes": false,
+      "baseline_planes": {
+        "EMF": "FAIL",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-z-space-inherit-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "z-space",
+      "kerning_authored": "inherit",
+      "text_per_run": "z z z z z z z z z z z z ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-space-inherit-size9p5-compat15.docx",
+        "sha256": "690a5f6a5ddc21b9f2d7eaf71fec4b1ef457c7d2e41c63f7ddbd9a0a328c92e9"
+      },
+      "capture_id": "20261116T220350993Z-51c01265",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220350993Z-51c01265.zip",
+        "sha256": "170d8e9fd0eb57f59e7406ddea3f2b7702a7aaff8caddb46680826fdb429788a"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.4385504340490911,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-z-space-zero-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "z-space",
+      "kerning_authored": "zero",
+      "text_per_run": "z z z z z z z z z z z z ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-space-zero-size9p5-compat15.docx",
+        "sha256": "a9b477c2be9b47dd8bfcda62e8d99c7fe1237c0a658c569dd4fe96a846792b24"
+      },
+      "capture_id": "20261116T220357612Z-358ca093",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220357612Z-358ca093.zip",
+        "sha256": "dee966534b6074cbf59007f3c9454a52c9daefe94650f5fac272d6dafd23e76c"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.4385504340490911,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-space-a-inherit-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "space-a",
+      "kerning_authored": "inherit",
+      "text_per_run": " A A A A A A A A A A A A",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-space-a-inherit-size9p5-compat15.docx",
+        "sha256": "201f3056f5c691f437d50938606e9c404a26cf056477b88d595510cbf648d39c"
+      },
+      "capture_id": "20261116T220332529Z-facd4947",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220332529Z-facd4947.zip",
+        "sha256": "0430fcae40c147bd015f03b0f92333d35780985828ab4c2d35c077b1f4259b7f"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.2666774273350825,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-space-a-zero-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "space-a",
+      "kerning_authored": "zero",
+      "text_per_run": " A A A A A A A A A A A A",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-space-a-zero-size9p5-compat15.docx",
+        "sha256": "693810a98dba545227b063997c7e41244fdbd8323d2b9fd351725f3457c43253"
+      },
+      "capture_id": "20261116T220339351Z-7dd434fc",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220339351Z-7dd434fc.zip",
+        "sha256": "614a16bdaac7700a9485e3a844557b7f7d5d6753507d6c98872ca2cf81054a4a"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.2666774273350825,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-mixed-inherit-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "mixed",
+      "kerning_authored": "inherit",
+      "text_per_run": "AgABCxyz AgABCxyz AgABCxyz ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-mixed-inherit-size9p5-compat15.docx",
+        "sha256": "41301c85eaa5e3cdf36a1b84347db775c15742948852a16f68f28233f8288e33"
+      },
+      "capture_id": "20261116T220320907Z-7acdfd19",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220320907Z-7acdfd19.zip",
+        "sha256": "6e4914aa73b0b0edd9999645853a0da6c8d1fdbeb0e35f5aa8f86f886a518a9d"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.3875746504071458,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-mixed-zero-size9p5-compat15",
+      "size_pt": 9.5,
+      "pattern": "mixed",
+      "kerning_authored": "zero",
+      "text_per_run": "AgABCxyz AgABCxyz AgABCxyz ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-mixed-zero-size9p5-compat15.docx",
+        "sha256": "d932ad1847a2a81ac1636bc94adb6a626dda9aaa4cfa2f534c5120e41b82465a"
+      },
+      "capture_id": "20261116T220326765Z-9bfa8a99",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220326765Z-9bfa8a99.zip",
+        "sha256": "931419dbec854aba819b42068abb95f849084a6c626e1b20126d62bd6b8af74b"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.3875746504071458,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-b-inherit-size16-compat15",
+      "size_pt": 16,
+      "pattern": "b",
+      "kerning_authored": "inherit",
+      "text_per_run": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-b-inherit-size16-compat15.docx",
+        "sha256": "6df290a66d86058c68af7d962a0cd483f78846efa602b153e2bbd07ed46a789e"
+      },
+      "capture_id": "20261116T220253455Z-8f3c99b0",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220253455Z-8f3c99b0.zip",
+        "sha256": "c92feae9f8d653cf93a08b8ab5b972a61599312fb619715d23b152f407a2a621"
+      },
+      "glyph_count": 90,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.084809034339969,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "FAIL",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-b-zero-size16-compat15",
+      "size_pt": 16,
+      "pattern": "b",
+      "kerning_authored": "zero",
+      "text_per_run": "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-b-zero-size16-compat15.docx",
+        "sha256": "08b3a21901846b40b89c72509351834cf5fd4d93063b99e6d94ccd6b94a37980"
+      },
+      "capture_id": "20261116T220300707Z-d91df8fe",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220300707Z-d91df8fe.zip",
+        "sha256": "787d5224ff20eef4b2324c9359dff9b45f45e725bd576927625339af6c10adf8"
+      },
+      "glyph_count": 90,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.084809034339969,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "FAIL",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-bc-inherit-size16-compat15",
+      "size_pt": 16,
+      "pattern": "bc",
+      "kerning_authored": "inherit",
+      "text_per_run": "BCBCBCBCBCBCBCBCBCBCBCBC",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-bc-inherit-size16-compat15.docx",
+        "sha256": "4f8c842b5588b268da64faf69f3e1e44e01963fba81462e6bbe4f404c4ea4ff9"
+      },
+      "capture_id": "20261116T220306862Z-09f8867f",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220306862Z-09f8867f.zip",
+        "sha256": "d932bdaae466e5d2b063118d4e024773df10a059e983894e6320bc3b133efc1b"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.37637943144386554,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-bc-zero-size16-compat15",
+      "size_pt": 16,
+      "pattern": "bc",
+      "kerning_authored": "zero",
+      "text_per_run": "BCBCBCBCBCBCBCBCBCBCBCBC",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-bc-zero-size16-compat15.docx",
+        "sha256": "5af8a49d41ef1aab6c22b7e989c9006cd1008372209620f03a07fb8740c8586d"
+      },
+      "capture_id": "20261116T220311249Z-477de275",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220311249Z-477de275.zip",
+        "sha256": "10fab5e0f62f76bbb8d99367b6b9205bb5c09c8c16a02c091534dee74f6f99b1"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.37637943144386554,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-z-inherit-size16-compat15",
+      "size_pt": 16,
+      "pattern": "z",
+      "kerning_authored": "inherit",
+      "text_per_run": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-inherit-size16-compat15.docx",
+        "sha256": "55cbb6d770ff1a574192f45202edfc3e1952d356b092caaeafea55c3cfba8810"
+      },
+      "capture_id": "20261116T220342361Z-3e011694",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220342361Z-3e011694.zip",
+        "sha256": "01e16f62adebfbc16d3277b1e9192759bbc02fc99280d24b7d6e00b55dbdb996"
+      },
+      "glyph_count": 108,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.11697711604290362,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "FAIL",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-z-zero-size16-compat15",
+      "size_pt": 16,
+      "pattern": "z",
+      "kerning_authored": "zero",
+      "text_per_run": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-zero-size16-compat15.docx",
+        "sha256": "3e8e76d28bd617fe6a56928a68eaa4c565ba81518b6910bef16117e278a75c43"
+      },
+      "capture_id": "20261116T220400548Z-254970d1",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220400548Z-254970d1.zip",
+        "sha256": "b9b4ffe5a54b79064652116cd8af30bf9ce38e7e40835ce8be10250a6f2fe856"
+      },
+      "glyph_count": 108,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.11697711604290362,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "FAIL",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-z-space-inherit-size16-compat15",
+      "size_pt": 16,
+      "pattern": "z-space",
+      "kerning_authored": "inherit",
+      "text_per_run": "z z z z z z z z z z z z ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-space-inherit-size16-compat15.docx",
+        "sha256": "1c1f671fd88fd08fc0dbc8d8dbdc296c59f746ad56d98b27eddf4aaa9790ac14"
+      },
+      "capture_id": "20261116T220348175Z-27c5f64f",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220348175Z-27c5f64f.zip",
+        "sha256": "f14ae88b0cfd56aa291aed2d66989b4af0fd0ff88c5d13250a04eca45c6e6753"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.563259512108516,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-z-space-zero-size16-compat15",
+      "size_pt": 16,
+      "pattern": "z-space",
+      "kerning_authored": "zero",
+      "text_per_run": "z z z z z z z z z z z z ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-z-space-zero-size16-compat15.docx",
+        "sha256": "6800afab80d719c682b31101aaaf8f480440ca7337de3d3b6d0dd3f4b4107d85"
+      },
+      "capture_id": "20261116T220352546Z-f9555fc7",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220352546Z-f9555fc7.zip",
+        "sha256": "8910d59ef7ed4e68dc80fb8674ac1979613b1e338c7aae03443b7ede565aa778"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.563259512108516,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-space-a-inherit-size16-compat15",
+      "size_pt": 16,
+      "pattern": "space-a",
+      "kerning_authored": "inherit",
+      "text_per_run": " A A A A A A A A A A A A",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-space-a-inherit-size16-compat15.docx",
+        "sha256": "3fb3d70f911a81a1934ef55b9c5a8cb82ec444dc34e3c204d9e36c19386e6de3"
+      },
+      "capture_id": "20261116T220329697Z-05dffa36",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220329697Z-05dffa36.zip",
+        "sha256": "bf45c8e7e7312423b9e2f132d12a4adab31799847b29a828faea70fda4fa361a"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.2928472665994377,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-space-a-zero-size16-compat15",
+      "size_pt": 16,
+      "pattern": "space-a",
+      "kerning_authored": "zero",
+      "text_per_run": " A A A A A A A A A A A A",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-space-a-zero-size16-compat15.docx",
+        "sha256": "aac441609da1cb4ed6d5fbcfe748a793eca6946a3e3bf7c66662b8f28fed2f38"
+      },
+      "capture_id": "20261116T220335467Z-73e5b050",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220335467Z-73e5b050.zip",
+        "sha256": "88a05d42c46f12e0b83c0c68f137cc1ce23b4cc6a98f0955258f81dcc915e0c4"
+      },
+      "glyph_count": 36,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.2928472665994377,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "PASS",
+        "PDF-visible": "PASS",
+        "painted-PDF": "PASS"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": true
+    },
+    {
+      "name": "word-windows-yu-advance-mixed-inherit-size16-compat15",
+      "size_pt": 16,
+      "pattern": "mixed",
+      "kerning_authored": "inherit",
+      "text_per_run": "AgABCxyz AgABCxyz AgABCxyz ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-mixed-inherit-size16-compat15.docx",
+        "sha256": "cf1b8029ce4e46b6a3b547ba229596c8ecd03089148f695c342d7f34de1136db"
+      },
+      "capture_id": "20261116T220317053Z-ac938f6f",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220317053Z-ac938f6f.zip",
+        "sha256": "18b40c2e04b9e056e0c885158f14abb2b4f36de4fdec479271a2131c7c8ebf6c"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.3931737668498272,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    },
+    {
+      "name": "word-windows-yu-advance-mixed-zero-size16-compat15",
+      "size_pt": 16,
+      "pattern": "mixed",
+      "kerning_authored": "zero",
+      "text_per_run": "AgABCxyz AgABCxyz AgABCxyz ",
+      "source": {
+        "file": "tests/word-oracle/windows/observations/sources/word-windows-yu-advance-mixed-zero-size16-compat15.docx",
+        "sha256": "1a800caeb7c512f0c8d1229e85cb932bf543944b4818a17562f11089fdcbc952"
+      },
+      "capture_id": "20261116T220323862Z-1469d409",
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261116T220323862Z-1469d409.zip",
+        "sha256": "42f95745e808d43d296e17ba3ddd158c5039f5a9e0daa47769e339f7272e6a4e"
+      },
+      "glyph_count": 72,
+      "maximum_word_emf_pdf_axis_difference_pt": 0.3931737668498272,
+      "single_geometry_can_satisfy_original_planes": true,
+      "baseline_planes": {
+        "EMF": "PASS",
+        "PDF-unclipped": "FAIL",
+        "PDF-visible": "FAIL",
+        "painted-PDF": "FAIL"
+      },
+      "baseline_background": "PASS",
+      "coordinate_ci_fixture": false
+    }
+  ]
+}

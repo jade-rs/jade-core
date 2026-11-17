@@ -10,6 +10,116 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_yu_latin_use_fe_layout_controls_preserve_identical_word_origins(self):
+        from zipfile import ZipFile
+        from generate_windows_yu_latin_advance_probes import generate_fe_layout
+        from extract_windows_emf import emf_glyphs
+        from check_platform_coordinates import ordered, pdf_origins, checked_file
+        facts = json.loads((ROOT / 'tests/word-oracle/windows/yu-latin-fe-layout-observations.json')
+                           .read_text())
+        self.assertEqual(len(facts['cases']), 10)
+        planes = {}
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(generate_fe_layout(output), 10)
+            for case in facts['cases']:
+                with self.subTest(name=case['name']):
+                    source = checked_file(ROOT, case['source'])
+                    self.assertEqual((output / source.name).read_bytes(), source.read_bytes())
+                    parent = checked_file(ROOT, dict(
+                        file='tests/word-oracle/windows/observations/sources/' + case['parent_name'] + '.docx',
+                        sha256=case['parent_sha256']))
+                    with ZipFile(source) as after, ZipFile(parent) as before:
+                        self.assertEqual(after.namelist(), before.namelist())
+                        for name in before.namelist():
+                            expected = before.read(name)
+                            if name == 'word/settings.xml':
+                                expected = expected.replace(b'<w:useFELayout/>',
+                                    ('<w:useFELayout w:val="' + case['use_fe_layout'] + '"/>').encode())
+                            self.assertEqual(after.read(name), expected)
+                    with ZipFile(checked_file(ROOT, case['archive'])) as archive:
+                        capture = json.loads(archive.read('capture.json').decode('utf-8-sig'))
+                        self.assertEqual(capture['capture_id'], case['capture_id'])
+                        self.assertEqual(capture['word']['product_version'], facts['word_product_version'])
+                        self.assertEqual(capture['word']['executable_sha256'], facts['word_executable_sha256'])
+                        document, = capture['documents']
+                        self.assertEqual(archive.read('inputs/' + source.name), source.read_bytes())
+                        drawing = []
+                        for page in document['metafiles']:
+                            drawing.extend(emf_glyphs(archive.read(page['file']), page['page'],
+                                                      page['width_pt'], page['height_pt'], set()))
+                        pdf_path = Path(directory) / 'original.pdf'
+                        pdf_path.write_bytes(archive.read(document['pdf']))
+                        planes[case['parent_name'], case['use_fe_layout']] = (
+                            ordered(drawing), ordered(pdf_origins(pdf_path, True)['glyphs']))
+        parents = {case['parent_name'] for case in facts['cases']}
+        self.assertEqual(len(parents), 5)
+        for parent in parents:
+            self.assertEqual(planes[parent, '0'], planes[parent, '1'])
+        self.assertEqual(len(facts['isolation']), 5)
+        self.assertTrue(all(row['word_max_on_off_axis_difference_pt'] == {'EMF': 0.0, 'PDF': 0.0}
+                            for row in facts['isolation']))
+
+    def test_yu_latin_controls_reproduce_all_original_sources(self):
+        from generate_windows_yu_latin_advance_probes import generate as latin_controls
+        facts = json.loads((ROOT / 'tests/word-oracle/windows/yu-latin-advance-observations.json')
+                           .read_text())
+        accepted = {case[0]['name'] for case in verify()}
+        self.assertEqual(len(facts['cases']), 24)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'controls'
+            self.assertEqual(latin_controls(output), 24)
+            for case in facts['cases']:
+                with self.subTest(name=case['name']):
+                    generated = (output / (case['name'] + '.docx')).read_bytes()
+                    self.assertEqual(generated, (ROOT / case['source']['file']).read_bytes())
+                    self.assertEqual(case['coordinate_ci_fixture'], case['name'] in accepted)
+                    if case['coordinate_ci_fixture']:
+                        self.assertEqual(generated, (ROOT / 'public/fixtures'
+                                                     / (case['name'] + '.docx')).read_bytes())
+        self.assertEqual(sum(case['coordinate_ci_fixture'] for case in facts['cases']), 14)
+
+    def test_yu_latin_original_plane_conflicts_are_preserved_without_relaxing_tolerance(self):
+        from zipfile import ZipFile
+        from extract_windows_emf import emf_glyphs
+        from check_platform_coordinates import ordered, pdf_origins, checked_file
+        facts = json.loads((ROOT / 'tests/word-oracle/windows/yu-latin-advance-observations.json')
+                           .read_text())
+        self.assertEqual(facts['axis_tolerance_pt'], 0.375)
+        conflicts = []
+        with tempfile.TemporaryDirectory() as directory:
+            pdf_path = Path(directory) / 'original.pdf'
+            for case in facts['cases']:
+                with self.subTest(name=case['name']), ZipFile(checked_file(ROOT, case['archive'])) as archive:
+                    capture = json.loads(archive.read('capture.json').decode('utf-8-sig'))
+                    document, = capture['documents']
+                    self.assertEqual(capture['capture_id'], case['capture_id'])
+                    self.assertEqual(capture['word']['product_version'], facts['word_product_version'])
+                    self.assertEqual(capture['word']['executable_sha256'], facts['word_executable_sha256'])
+                    self.assertEqual(document['open_mode'], facts['capture_open_mode'])
+                    self.assertEqual(document['sha256'], case['source']['sha256'])
+                    self.assertEqual(archive.read('inputs/' + case['name'] + '.docx'),
+                                     checked_file(ROOT, case['source']).read_bytes())
+                    drawing = []
+                    for page in document['metafiles']:
+                        drawing.extend(emf_glyphs(archive.read(page['file']), page['page'],
+                                                  page['width_pt'], page['height_pt'], set()))
+                    pdf_path.write_bytes(archive.read(document['pdf']))
+                    screen, printed = ordered(drawing), ordered(pdf_origins(pdf_path, True)['glyphs'])
+                    self.assertEqual([g[:2] for g in screen], [g[:2] for g in printed])
+                    self.assertEqual(len(screen), case['glyph_count'])
+                    deviation = max(abs(a[axis] - b[axis]) for a, b in zip(screen, printed)
+                                    for axis in (2, 3))
+                    self.assertAlmostEqual(deviation, case['maximum_word_emf_pdf_axis_difference_pt'], places=6)
+                    compatible = deviation <= 2 * facts['axis_tolerance_pt']
+                    self.assertEqual(compatible, case['single_geometry_can_satisfy_original_planes'])
+                    if not compatible:
+                        self.assertFalse(case['coordinate_ci_fixture'])
+                        conflicts.append(case['name'])
+        self.assertEqual(sorted(conflicts), [
+            'word-windows-yu-advance-z-inherit-size9p5-compat15',
+            'word-windows-yu-advance-z-zero-size9p5-compat15'])
+
     def test_explicit_kerning_wrap_controls_reproduce_word_originals(self):
         from generate_windows_explicit_kerning_wrap_probes import generate as explicit_wrap
         from zipfile import ZipFile
@@ -325,8 +435,8 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 1039)
-        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 599)
+        self.assertEqual(len(verify()), 1053)
+        self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 613)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):
         import pymupdf
