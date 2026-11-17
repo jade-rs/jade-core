@@ -20869,6 +20869,158 @@
       "word_product_version": "16.0.19127.20936",
       "glyph_count": 2,
       "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-only-size12-compat14",
+      "capture_document_name": "word-windows-aptos-family-aptos-only-size12-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095731268Z-f27a048c/capture.json",
+        "sha256": "bed39389f5dbf68b4a00e79683517b91438c9f688f0b16570a36656057ae5208"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095731268Z-f27a048c/word-emf-reference.json",
+        "sha256": "d45dfad04faca3288bb5a7ec05e25526591561fc4f83fa9f9f526f362688a731"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-aptos-only-size12-compat14.docx",
+        "sha256": "296978fc1dbc87037865f8b52a0106dea2b8ddc31498e3c1cfc970f86bd922d5"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 7,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-only-size20-compat14",
+      "capture_document_name": "word-windows-aptos-family-aptos-only-size20-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095735304Z-fb25acd7/capture.json",
+        "sha256": "5b3a81abe0d5cad3be4618e04964925ea018e87ce99f7eade0b21efada2f2d46"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095735304Z-fb25acd7/word-emf-reference.json",
+        "sha256": "330772bb9bcb85bdeaadbea5d55084b7e31dd6bae3ff6dc3f039c19d07c24cae"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-aptos-only-size20-compat14.docx",
+        "sha256": "c85c7961939dbcfb842d22a7b9195ab12439f7f350542bd5a4b7f18c66d13854"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 7,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-then-display-size12-compat14",
+      "capture_document_name": "word-windows-aptos-family-aptos-then-display-size12-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095738506Z-1cdbd4ba/capture.json",
+        "sha256": "daf832f3173db6f434b5a0239e1938d754b8aef2b371030d72c0926510d17444"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095738506Z-1cdbd4ba/word-emf-reference.json",
+        "sha256": "3736b20f95c43d7d7afcabae27eded5a018985205e78b752939870ebdf6b0ee8"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-aptos-then-display-size12-compat14.docx",
+        "sha256": "7c7233ccdfa18909d0b69c0b8da90c09c456d6e53bb027f0d5922ae912c52a6a"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-then-display-size20-compat14",
+      "capture_document_name": "word-windows-aptos-family-aptos-then-display-size20-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095741595Z-435eecc0/capture.json",
+        "sha256": "64b698a7c559c69951ab7b539dd429bfbc0a86ab562d70e9c6f8208a62a58be8"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095741595Z-435eecc0/word-emf-reference.json",
+        "sha256": "20b175361682e279a1c688a52ef47519e9397bb9a0fe26a229817eb76830f12a"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-aptos-then-display-size20-compat14.docx",
+        "sha256": "9dcaa29af662899d83d6258fe5e47223b6f1684a3f5dd6aa89a33d7ec96c02a6"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-display-only-size12-compat14",
+      "capture_document_name": "word-windows-aptos-family-display-only-size12-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095744735Z-2969c83a/capture.json",
+        "sha256": "4923fdc655109b1bf7956af5a7ca56a5b449bd390a617ca0fa4d74565ce0ad93"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095744735Z-2969c83a/word-emf-reference.json",
+        "sha256": "ebf84e38f2635708896cd77d5faaa4e4b3d4e5e1c257a942d0b7dafaed423e20"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-display-only-size12-compat14.docx",
+        "sha256": "48ded00fbcdbc074c1b9200227801a4d49e2bd27ecfdb5396a85c5aa640397b8"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 7,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-display-only-size20-compat14",
+      "capture_document_name": "word-windows-aptos-family-display-only-size20-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095750362Z-5f9301fd/capture.json",
+        "sha256": "5bca9c144e316704be3edeed639e49db1170c64f9fc48892a020b97ec337f12f"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095750362Z-5f9301fd/word-emf-reference.json",
+        "sha256": "e6b8064beeee5b6c62d33838ade496e1f304805049ca781c434d66adfc63797c"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-display-only-size20-compat14.docx",
+        "sha256": "85768edbda35b8ccfa2f58d79581128931540b9a24007d5d4642086b957d9eb7"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 7,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-display-then-aptos-size12-compat14",
+      "capture_document_name": "word-windows-aptos-family-display-then-aptos-size12-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095752117Z-a3b1b68c/capture.json",
+        "sha256": "17c1eeb90a262656865751d0716f0caf4b773abf0f9bee596e0ff3b147128a65"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095752117Z-a3b1b68c/word-emf-reference.json",
+        "sha256": "0e07ff8926d74bbb4f970b9566f556afb5751927db4518cd4d04e545c2d3f113"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-display-then-aptos-size12-compat14.docx",
+        "sha256": "1108db4410f4c9f93e41c09ec99f6c7ec8544d98a96076725a4d5de4d01d6df6"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-aptos-family-display-then-aptos-size20-compat14",
+      "capture_document_name": "word-windows-aptos-family-display-then-aptos-size20-compat15",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095755336Z-405f0198/capture.json",
+        "sha256": "20f5d799b5f7ef9ea40e48d3ebeb7f8c2845a025f2f5daebf6b32082531f7e98"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T095755336Z-405f0198/word-emf-reference.json",
+        "sha256": "bdb793c164048d9eba0d1d51ddeb4f483dd9fd07b8c5c488c4454e92b94ab100"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-aptos-family-display-then-aptos-size20-compat14.docx",
+        "sha256": "094a4c847988abc18eaeec8c7ce6d89ca38265c4d2a9d240ffb67e1999c8841f"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null
     }
   ]
 }

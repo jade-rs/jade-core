@@ -3638,9 +3638,9 @@ pub fn word_sizes_east_asian_lines_from_faces(_document_uses_east_asian_layout: 
 /// 16.113 prints for single, 1.15 and 1.5 auto spacing at 11 and 12pt
 /// (Calibri 13.44pt at 11pt, Cambria 12.88pt, Arial and Times New Roman
 /// 12.64pt, Century 13.2pt). Word for Windows reads the same height from
-/// `usWin*` plus the external leading for these faces; Aptos is Mac-only
-/// because its Windows metrics give a taller box Word for Windows has not
-/// been traced for.
+/// `usWin*` plus the external leading for these faces. Aptos uses its hhea
+/// box on both platforms: Windows Word 16.0.19127.20936 originals at 12/20pt
+/// preserve the 1923-unit first baseline and 2500-unit single-line pitch.
 ///
 /// Like [`word_east_asian_font_vertical_units`], this depends on the
 /// requested face, not on the host's stand-in for it.
@@ -3750,9 +3750,7 @@ fn word_latin_font_vertical_units(
         "Courier New" | "'Courier New'" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((1705.0, 615.0))
         }
-        "Aptos" | "Aptos Display" if word_layout_platform() == WordLayoutPlatform::Mac => {
-            Some((1923.0, 577.0))
-        }
+        "Aptos" | "Aptos Display" => Some((1923.0, 577.0)),
         _ => None,
     }
 }
@@ -6223,15 +6221,17 @@ mod tests {
             let height = word_latin_font_line_height_pt(descriptor).expect(descriptor);
             assert!((height - word_pt).abs() < 0.13, "{descriptor}: {height}");
         }
-        assert_eq!(word_latin_font_line_height_pt("11.00pt Aptos"), None);
+        let windows_aptos =
+            word_latin_font_line_height_pt("11.00pt Aptos").expect("Aptos on Windows");
         set_word_layout_platform(WordLayoutPlatform::Mac);
         let aptos = word_latin_font_line_height_pt("11.00pt Aptos").expect("Aptos on Mac");
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert!((aptos - 13.44).abs() < 0.13, "{aptos}");
+        assert_eq!(windows_aptos, aptos);
     }
 
     #[test]
-    fn mac_aptos_display_uses_the_original_word_pdf_vertical_metrics() {
+    fn aptos_display_preserves_mac_metrics_and_matches_windows_word_metrics() {
         set_word_layout_platform(WordLayoutPlatform::Mac);
         let height = word_latin_font_line_height_pt("20.00pt 'Aptos Display'");
         let metrics = word_font_vertical_metrics_px("20.00pt 'Aptos Display'");
@@ -6247,7 +6247,11 @@ mod tests {
         assert!((descent - 20.0 * 96.0 / 72.0 * 577.0 / 2048.0).abs() < 1e-8);
         assert_eq!(
             word_latin_font_line_height_pt("20.00pt 'Aptos Display'"),
-            None
+            height
+        );
+        assert_eq!(
+            word_font_vertical_metrics_px("20.00pt 'Aptos Display'"),
+            metrics
         );
     }
 
