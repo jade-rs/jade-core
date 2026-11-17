@@ -102,6 +102,7 @@ pub struct InstalledFace {
 #[derive(Default)]
 pub struct FontLibrary {
     by_family: HashMap<String, Vec<usize>>,
+    windows_by_family: HashMap<String, Vec<usize>>,
     by_face_name: HashMap<String, usize>,
     faces: Vec<InstalledFace>,
 }
@@ -157,6 +158,7 @@ impl FontLibrary {
                         .map(|(family, _)| family.to_lowercase())
                         .collect();
                     let typographic = named(ttf_parser::name_id::TYPOGRAPHIC_FAMILY);
+                    let windows_families = named(ttf_parser::name_id::FAMILY);
                     let mut face_names = named(ttf_parser::name_id::FULL_NAME);
                     face_names.extend(named(ttf_parser::name_id::POST_SCRIPT_NAME));
                     face_names.insert(info.post_script_name.to_lowercase());
@@ -168,10 +170,10 @@ impl FontLibrary {
                         families.extend(typographic);
                         face_names.extend(named(ttf_parser::name_id::FAMILY));
                     }
-                    Some((families, face_names))
+                    Some((families, windows_families, face_names))
                 })
                 .flatten();
-            let Some((families, face_names)) = names else {
+            let Some((families, windows_families, face_names)) = names else {
                 continue;
             };
             let Some(family) = info.families.first().map(|(name, _)| name.to_lowercase()) else {
@@ -188,11 +190,32 @@ impl FontLibrary {
             for name in families {
                 library.by_family.entry(name).or_default().push(id);
             }
+            for name in windows_families {
+                library.windows_by_family.entry(name).or_default().push(id);
+            }
             for name in face_names {
                 library.by_face_name.entry(name).or_insert(id);
             }
         }
         library
+    }
+
+    fn family_ids(&self, name: &str) -> Option<&[usize]> {
+        // Windows Word groups regular/bold/italic by the legacy family.
+        // Aptos Display's typographic family is Aptos; treating its legacy
+        // name as one full face could register a bold font as regular when
+        // that file happened to be indexed first. Preserve CoreText grouping
+        // for Mac, including Mac layout replays on a Windows host.
+        let ids = if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            self.windows_by_family
+                .get(name)
+                .or_else(|| self.by_family.get(name))
+        } else {
+            self.by_family.get(name)
+        };
+        ids.map(Vec::as_slice)
     }
 
     /// The faces `name` finds, each with the weight it answers for: every
@@ -201,7 +224,7 @@ impl FontLibrary {
     /// heavier face of its family nearest bold as the bold.
     pub fn find(&self, name: &str) -> Vec<(&InstalledFace, u16)> {
         let key = name.trim().to_lowercase();
-        if let Some(ids) = self.by_family.get(&key) {
+        if let Some(ids) = self.family_ids(&key) {
             let mut seen = BTreeSet::new();
             return ids
                 .iter()
@@ -231,7 +254,7 @@ impl FontLibrary {
     /// Whether any face answers to `name`.
     pub fn has(&self, name: &str) -> bool {
         let key = name.trim().to_lowercase();
-        self.by_family.contains_key(&key) || self.by_face_name.contains_key(&key)
+        self.family_ids(&key).is_some() || self.by_face_name.contains_key(&key)
     }
 
     /// The faces to register for `families`, each under the name it was asked
@@ -493,6 +516,43 @@ fn unescape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_legacy_family_keeps_bold_and_regular_faces_without_changing_mac() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut library = FontLibrary::default();
+        for (path, weight) in [("display-bold.ttf", 700), ("display-regular.ttf", 400)] {
+            library.faces.push(InstalledFace {
+                path: PathBuf::from(path),
+                index: 0,
+                weight,
+                italic: false,
+                family: "aptos".into(),
+            });
+        }
+        library.by_family.insert("aptos".into(), vec![0, 1]);
+        library.by_face_name.insert("aptos display".into(), 0);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac_before = library.faces_for(["Aptos Display"]).0;
+        library
+            .windows_by_family
+            .insert("aptos display".into(), vec![0, 1]);
+        assert_eq!(library.faces_for(["Aptos Display"]).0, mac_before);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let windows = library.faces_for(["Aptos Display"]).0;
+        assert_eq!(windows.len(), 2);
+        assert_eq!(windows[0].weight, 700);
+        assert_eq!(windows[0].path, PathBuf::from("display-bold.ttf"));
+        assert_eq!(windows[1].weight, 400);
+        assert_eq!(windows[1].path, PathBuf::from("display-regular.ttf"));
+        assert!(library.has("Aptos Display"));
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(library.faces_for(["Aptos Display"]).0, mac_before);
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn reference_faces_retain_implicit_and_same_style_subset_programs() {
         use super::*;
