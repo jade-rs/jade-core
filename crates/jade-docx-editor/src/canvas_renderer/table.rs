@@ -2953,7 +2953,11 @@ where
             self.document_east_asian_rules.compatibility_mode,
         );
         let mut column_widths = compute_column_widths(table, column_count, sizing_width);
-        if word_mac_column_table {
+        let windows_fixed_preferred_width = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !percentage_width
+            && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
+        if word_mac_column_table || windows_fixed_preferred_width {
             // Word uses the preferred total for fixed tables in columns and
             // resolves percentage totals against the column frame. Preserve
             // the proportions of the saved grid.
@@ -3421,7 +3425,22 @@ where
         };
 
         let table_start_page = self.current_page_number;
-        let alignment_widths = (word_mac_column_table
+        let windows_fixed_header_alignment = windows_fixed_preferred_width
+            && use_column_frame
+            && !table.bidi_visual
+            && header_row_count > 0
+            && !has_merge_owners
+            && self.footnote_reserve_px == 0.0
+            && table.rows.iter().zip(&hidden_rows).all(|(row, &hidden)| {
+                hidden
+                    || (row.height_rule == Some(TableRowHeightRule::Exact)
+                        && row.height.is_some()
+                        && !table_row_has_note_references(row))
+            });
+        let windows_legacy_print_alignment = windows_fixed_header_alignment
+            && self.page_export_mode
+            && compatibility_mode.is_some_and(|mode| mode < 15);
+        let alignment_widths = ((word_mac_column_table || windows_legacy_print_alignment)
             && !self.pageless_mode
             && self.paragraph_frame_column.is_none()
             && !self.measuring_keep_next
@@ -3480,6 +3499,15 @@ where
         });
         let alignment_widths = if rtl_spaced_auto_grid.is_some() || rtl_repeated_header_auto_grid {
             Some((last_column_width, self.current_column_width()))
+        } else if windows_fixed_header_alignment {
+            // Windows keeps the opening column's alignment frame through all
+            // repeated-header fragments. Legacy PDF output instead uses the
+            // last occupied opening-page column, as calculated above; screen
+            // coordinates and modern PDF output keep the opening frame.
+            alignment_widths.or(Some((
+                self.current_column_width(),
+                self.current_column_width(),
+            )))
         } else {
             alignment_widths
         };
@@ -9533,6 +9561,17 @@ fn compute_inline_body_table_x_inner(
         value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end")
     });
     let unindented = !ignored_indent && !has_indent;
+    if !ignored_indent
+        && effective_indent == Some(0.0)
+        && !table.bidi_visual
+        && !separated
+        && trailing
+        && compatibility_mode.is_some_and(|mode| mode >= 15)
+    {
+        // A zero inherited/direct indent does not suppress the modern
+        // trailing-border half-width used by an unindented right table.
+        return x - trailing_cell_border_half_px(table);
+    }
     if unindented && compatibility_mode.is_some_and(|mode| mode >= 15) {
         if table.bidi_visual {
             if separated {

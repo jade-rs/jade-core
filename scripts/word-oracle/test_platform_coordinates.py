@@ -11,7 +11,7 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 87)
+        self.assertGreaterEqual(len(cases), 93)
         self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 75)
 
     def reject_archive_edit(self, edit, message):
@@ -56,7 +56,7 @@ class PlatformCoordinates(unittest.TestCase):
             manifest = check.read_json(check.checked_file(check.ROOT, case['mac_manifest']))
             if 'version' not in manifest['reference']:
                 missing.append(case['mac_case'])
-        self.assertEqual(len(missing), 17)
+        self.assertEqual(len(missing), 19)
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word

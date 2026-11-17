@@ -18,7 +18,9 @@ mode 14, unequal column widths, center/right table alignment. Screen and PDF
 expectations must remain independent. The source test asserts this contrast
 from the original Word files and rejects substituting a single coordinate set.
 
-Raw capture integrity and source/provenance tests are required in Windows CI.
-Raw observation success does not declare Jade coordinates correct. Drawing
-promotion also needs the corresponding screen, PDF and nonempty table-rule
-comparisons, with unchanged per-axis tolerances and Mac originals.
+Windows CI requires raw capture integrity, source/provenance tests and
+`check_windows_column_tables.py`. The drawing gate checks all 54 cases with
+their original embedded Word fonts, independent screen and PDF expectations,
+nonempty table-rule unions in both directions and unchanged live pixels after
+PDF export. Both axes retain the existing 0.375pt tolerance. The 54 identical
+public inputs are also included in the editable release corpus.

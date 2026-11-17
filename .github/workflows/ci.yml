@@ -343,6 +343,10 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_output_contexts.py
           python scripts/word-oracle/check_windows_output_contexts.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows table screen, PDF and vector-rule coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_column_table_gate.py
+          python scripts/word-oracle/check_windows_column_tables.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text.py

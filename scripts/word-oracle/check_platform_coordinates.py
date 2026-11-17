@@ -20,6 +20,11 @@ from extract_windows_emf import extract, emf_glyphs
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'aptos-kerning-mac': '20261114T004240145Z-5f9102be',
+    'aptos-numeric-ranges-mac': '20261114T004240145Z-5f9102be',
+    'aptos-range-compat-15-en-US-mac': '20261114T004240145Z-5f9102be',
+    'column-table-fixed-preferred-width-mac': '20261114T004559814Z-c5e13cee',
+    'column-table-fixed-preferred-width-smaller-mac': '20261114T004346218Z-5f779447',
     'aptos-ascii-advances-mac': '20261117T123854554Z-f62dd6d1',
     'floating-square-wrap-mac': '20261114T004143028Z-b4cb9887',
     'floating-wrap-sides-mac': '20261114T004143028Z-b4cb9887',

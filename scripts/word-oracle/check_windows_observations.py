@@ -8,7 +8,7 @@ import zipfile
 from check_platform_coordinates import ROOT, checked_file, read_json, require, repo_file
 
 INDEX = Path('tests/word-oracle/windows/observations/index.json')
-INDEX_SHA256 = 'd5a5c0f9395a986beab0f53d7b8e05670d2b43d123f56c49107e61dbcb2c4a66'
+INDEX_SHA256 = 'c6d6bc253ed04f4929598028ad2146910c011865cd506937d978874b557d5171'
 
 
 def verify_rejected_attempt(root, rejection, attempt):
