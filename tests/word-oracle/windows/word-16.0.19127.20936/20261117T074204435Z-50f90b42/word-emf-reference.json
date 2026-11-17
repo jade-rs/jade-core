@@ -1,0 +1,50 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261117T074204435Z-50f90b42",
+  "captured_at_utc": "2026-11-17T07:42:04.4395552Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-ms-gothic-size11-cjk-digit-de-implicit-compat15",
+      "docx_sha256": "46a3d6ca79d070b89c85cca803920866d8d285a8eee4e6e541208e5d8b9ac164",
+      "pdf_sha256": "0f6f972439a13d6ec04167bc9be80b45941480469a7087e96d50fcee5898add3",
+      "pdf_file": "word-windows-ms-gothic-size11-cjk-digit-de-implicit-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-gothic-size11-cjk-digit-de-implicit-compat15.page-001.emf",
+          "sha256": "c5cd7a786a07552da95d778db9378aab085dcd9e833c11116503dbd34ee76566",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "亜",
+          71.99758113283612,
+          81.59806157354618
+        ],
+        [
+          1,
+          "1",
+          85.7971175166297,
+          81.59806157354618
+        ]
+      ]
+    }
+  ]
+}

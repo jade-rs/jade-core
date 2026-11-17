@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T074320830Z-8635f841",
+  "captured_at_utc": "2026-11-17T07:43:20.8328752Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-ms-mincho-size11-latin-cjk-de-disabled-compat15",
+      "source": "w17-k-ms-auto-space-input-snapshots\\word-windows-ms-mincho-size11-latin-cjk-de-disabled-compat15.docx",
+      "sha256": "3c5055579be66e961379f8040aae0ad6b99e10bd326b3b9a7106d81c8c4e1593",
+      "pdf": "word-windows-ms-mincho-size11-latin-cjk-de-disabled-compat15.pdf",
+      "pdf_sha256": "1d1d9f4766a1777e1fd5b61538400598d81eb7cb9d94459effefd19a7dcae584",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-mincho-size11-latin-cjk-de-disabled-compat15.page-001.emf",
+          "sha256": "7956c0109b1e19f3bf0445c7cb2b0b55461c9b94ededb36a8bd2d4b9abb0f909",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

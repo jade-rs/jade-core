@@ -142,6 +142,7 @@ class NativeMacosWorkflowTest < Minitest::Test
         ["test_platform_coordinates.py",
          "test_windows_float_lookahead_probes.py",
          "test_windows_calibri_title_tracking_probes.py",
+         "test_windows_ms_auto_spacing_probes.py",
          "check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"]
       ]
     }.each do |name, (runner, step_name, commands)|

@@ -1,0 +1,50 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261117T074309388Z-f0059927",
+  "captured_at_utc": "2026-11-17T07:43:09.3909993Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-ms-mincho-size11-cjk-latin-de-disabled-compat15",
+      "docx_sha256": "bf3598aaa7f0f026920a51540f1d17a9550ee91b703f60f327617d04cbf6845e",
+      "pdf_sha256": "4e83e0612b5f678bdac98db6fdd039fa7acef20a357b42a2c8a7590e54a8572b",
+      "pdf_file": "word-windows-ms-mincho-size11-cjk-latin-de-disabled-compat15.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ms-mincho-size11-cjk-latin-de-disabled-compat15.page-001.emf",
+          "sha256": "51f01f528f4ebcc5d376f31a80af51adbf77b69bff36af08c97603cdc9cd40e8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "亜",
+          71.99758113283612,
+          81.59806157354618
+        ],
+        [
+          1,
+          "A",
+          83.03721023987099,
+          81.59806157354618
+        ]
+      ]
+    }
+  ]
+}

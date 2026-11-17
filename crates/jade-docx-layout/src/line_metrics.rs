@@ -1029,6 +1029,8 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
 /// on both sides of balanced Times New Roman letters next to Japanese text.
 /// Without balancing, the trailing gap uses half the face's OS/2 average width.
 /// Yu Mincho's 9.5–16pt mixed-script sweeps use a quarter em on both sides.
+/// Regular fixed-pitch MS faces also use the authored run's quarter em,
+/// observed at 10.5/11/20pt in the original Windows exact-line/grid probe.
 /// Other faces retain their measured policy until their origins are captured.
 pub(crate) fn word_windows_latin_auto_space_metrics(
     font_descriptor: &str,
@@ -1042,7 +1044,9 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
     if matches!(
         family,
         "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular"
-    ) {
+    ) || (is_word_monospace_family(family)
+        && font_descriptor_style(font_descriptor) == (false, false))
+    {
         return Some(WordAutoSpace {
             em_px: f64::from(size_pt) * 96.0 / 72.0,
             trailing_share: 1.0,
@@ -4918,6 +4922,29 @@ mod tests {
             assert!((balanced.trailing_gap_px(false) - balanced.leading_gap_px()).abs() < 1e-9);
         }
         assert!(word_windows_latin_auto_space_metrics("bold 12.00pt Unknown", false).is_none());
+    }
+
+    #[test]
+    fn windows_fixed_pitch_japanese_latin_gaps_scale_with_the_authored_run() {
+        use super::*;
+        for face in ["MS Mincho", "ＭＳ 明朝", "MS Gothic", "ＭＳ ゴシック"] {
+            for size in [10.5, 11.0, 20.0] {
+                for balance in [false, true] {
+                    let descriptor = format!("{size:.2}pt '{face}'");
+                    let metrics =
+                        word_windows_latin_auto_space_metrics(&descriptor, balance).unwrap();
+                    assert!((metrics.leading_gap_px() - size / 3.0).abs() < 1e-9);
+                    assert!((metrics.trailing_gap_px(false) - size / 3.0).abs() < 1e-9);
+                }
+            }
+        }
+        for descriptor in [
+            "20pt 'MS PMincho'",
+            "20pt 'MS PGothic'",
+            "bold 20pt 'MS Mincho'",
+        ] {
+            assert!(word_windows_latin_auto_space_metrics(descriptor, false).is_none());
+        }
     }
 
     #[test]
