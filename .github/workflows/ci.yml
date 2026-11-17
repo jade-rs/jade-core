@@ -242,7 +242,9 @@ jobs:
   windows-word-baselines:
     name: Windows Word baselines by version
     runs-on: windows-latest
-    timeout-minutes: 45
+    # All versioned originals are mandatory; the expanded corpus also runs
+    # border, print and editing gates after the four-plane font comparisons.
+    timeout-minutes: 75
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target/windows-word-baselines
       RUSTUP_TOOLCHAIN: stable
