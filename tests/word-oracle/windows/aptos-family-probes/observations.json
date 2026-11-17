@@ -1,0 +1,243 @@
+{
+  "schema": 1,
+  "purpose": "Unpromoted Windows Word observations; known baseline differences are not passing expectations.",
+  "capture_name_note": "Original capture filenames say compat15; Word actually opened the unchanged Mac-derived settings in compatibility mode 14. Original evidence is preserved, and canonical aliases record mode 14.",
+  "fixtures": [
+    {
+      "name": "word-windows-aptos-family-aptos-only-size12-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-aptos-only-size12-compat14.docx",
+      "source_sha256": "296978fc1dbc87037865f8b52a0106dea2b8ddc31498e3c1cfc970f86bd922d5",
+      "original_capture_document_name": "word-windows-aptos-family-aptos-only-size12-compat15",
+      "capture_id": "20261117T095731268Z-f27a048c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos"
+      ],
+      "font_size_pt": 12,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-only-size20-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-aptos-only-size20-compat14.docx",
+      "source_sha256": "c85c7961939dbcfb842d22a7b9195ab12439f7f350542bd5a4b7f18c66d13854",
+      "original_capture_document_name": "word-windows-aptos-family-aptos-only-size20-compat15",
+      "capture_id": "20261117T095735304Z-fb25acd7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos"
+      ],
+      "font_size_pt": 20,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-then-display-size12-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-aptos-then-display-size12-compat14.docx",
+      "source_sha256": "7c7233ccdfa18909d0b69c0b8da90c09c456d6e53bb027f0d5922ae912c52a6a",
+      "original_capture_document_name": "word-windows-aptos-family-aptos-then-display-size12-compat15",
+      "capture_id": "20261117T095738506Z-1cdbd4ba",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "font_size_pt": 12,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-aptos-then-display-size20-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-aptos-then-display-size20-compat14.docx",
+      "source_sha256": "9dcaa29af662899d83d6258fe5e47223b6f1684a3f5dd6aa89a33d7ec96c02a6",
+      "original_capture_document_name": "word-windows-aptos-family-aptos-then-display-size20-compat15",
+      "capture_id": "20261117T095741595Z-435eecc0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos",
+        "Aptos Display"
+      ],
+      "font_size_pt": 20,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-display-only-size12-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-display-only-size12-compat14.docx",
+      "source_sha256": "48ded00fbcdbc074c1b9200227801a4d49e2bd27ecfdb5396a85c5aa640397b8",
+      "original_capture_document_name": "word-windows-aptos-family-display-only-size12-compat15",
+      "capture_id": "20261117T095744735Z-2969c83a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos Display"
+      ],
+      "font_size_pt": 12,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-display-only-size20-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-display-only-size20-compat14.docx",
+      "source_sha256": "85768edbda35b8ccfa2f58d79581128931540b9a24007d5d4642086b957d9eb7",
+      "original_capture_document_name": "word-windows-aptos-family-display-only-size20-compat15",
+      "capture_id": "20261117T095750362Z-5f9301fd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos Display"
+      ],
+      "font_size_pt": 20,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-display-then-aptos-size12-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-display-then-aptos-size12-compat14.docx",
+      "source_sha256": "1108db4410f4c9f93e41c09ec99f6c7ec8544d98a96076725a4d5de4d01d6df6",
+      "original_capture_document_name": "word-windows-aptos-family-display-then-aptos-size12-compat15",
+      "capture_id": "20261117T095752117Z-a3b1b68c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos Display",
+        "Aptos"
+      ],
+      "font_size_pt": 12,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    },
+    {
+      "name": "word-windows-aptos-family-display-then-aptos-size20-compat14",
+      "source": "tests/word-oracle/windows/aptos-family-probes/word-windows-aptos-family-display-then-aptos-size20-compat14.docx",
+      "source_sha256": "094a4c847988abc18eaeec8c7ce6d89ca38265c4d2a9d240ffb67e1999c8841f",
+      "original_capture_document_name": "word-windows-aptos-family-display-then-aptos-size20-compat15",
+      "capture_id": "20261117T095755336Z-405f0198",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "paragraph_families": [
+        "Aptos Display",
+        "Aptos"
+      ],
+      "font_size_pt": 20,
+      "text": "AV To 11x",
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "baseline_executable_sha256": "0b6db62daafcfac3ad6b4865535ce8ec4ca125408ee19992770b59347133cf50",
+      "baseline_planes_pass": {
+        "EMF": false,
+        "PDF-unclipped": false,
+        "PDF-visible": false,
+        "painted-PDF": false
+      }
+    }
+  ]
+}
