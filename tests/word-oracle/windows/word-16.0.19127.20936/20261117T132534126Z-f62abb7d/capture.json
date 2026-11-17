@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261117T132534126Z-f62abb7d",
+  "captured_at_utc": "2026-11-17T13:25:34.1303573Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-office-cloud-aptos-size12-width240-compat14",
+      "source": "w17-p-cloud-wrap-input-snapshots\\word-windows-office-cloud-aptos-size12-width240-compat14.docx",
+      "sha256": "f25360ca96477da36463a8bea2186127495ec6dfce0d407d94d49ef420a460a5",
+      "pdf": "word-windows-office-cloud-aptos-size12-width240-compat14.pdf",
+      "pdf_sha256": "97ba10ee3e054551f7b66415370a479c58cccced01ad138b57e2f87773c96fe1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-office-cloud-aptos-size12-width240-compat14.page-001.emf",
+          "sha256": "cb3c35bbba98617ffea42c2da6f9292200a2b607d80ad6b75377ca080c5921cd",
+          "width_pt": 384.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,912 @@
+{
+  "schema": 1,
+  "purpose": "Immutable Office cloud font wrapping observations; baseline flags measure automatic system selection without an override, not reference-font replay.",
+  "fixtures": [
+    {
+      "name": "word-windows-office-cloud-aptos-size12-width120-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size12-width120-compat14.docx",
+        "sha256": "be2bc4eb741352db56e2655aca7b468ec225d8187e8c7bed60f42ad24898cb50"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132530382Z-2d33a334/capture.json",
+        "sha256": "582cf6fa84db0d015e60dcc71d48897ff677dff86fcdd87216b71d4cef2570a3"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132530382Z-2d33a334/word-emf-reference.json",
+        "sha256": "fe0bb992da4b59d07ef5c64ad19949de7674c96795a77655b71ed8cb04a7061a"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132530382Z-2d33a334.zip",
+        "sha256": "e75a5415e91e448d8074ce638d8da485363c987c3fd4c6022f38440d8619d374"
+      },
+      "capture_id": "20261117T132530382Z-2d33a334",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos",
+      "font_size_pt": 12,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 120,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "61a0d361ce93efb8b8e70c712f8e8030bdb4ca68e3b7c947e7846e9774b5bcd2",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size12-width240-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size12-width240-compat14.docx",
+        "sha256": "f25360ca96477da36463a8bea2186127495ec6dfce0d407d94d49ef420a460a5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132534126Z-f62abb7d/capture.json",
+        "sha256": "b2f742ca2c0e4a27eccf2d3be18ef26c117d06dcea75b1a823d3f8c1f3b8d5c7"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132534126Z-f62abb7d/word-emf-reference.json",
+        "sha256": "80d5361e324989f59605c026daa556b94ce5e1dcbcaf555900d4c897b416874d"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132534126Z-f62abb7d.zip",
+        "sha256": "495a041942e378337367cc711a8302e9367cdd5c289044c452e26b12778f64e2"
+      },
+      "capture_id": "20261117T132534126Z-f62abb7d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos",
+      "font_size_pt": 12,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 240,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "61a0d361ce93efb8b8e70c712f8e8030bdb4ca68e3b7c947e7846e9774b5bcd2",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size20-width120-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size20-width120-compat14.docx",
+        "sha256": "11adbd3dc0a9786df67760d69f1f93769196a89335753b9bdcb11cafa2cad3d8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132537072Z-521b3177/capture.json",
+        "sha256": "c9c0298488de41fc5e71e7aa82cdfff6daff9f55e4b2ed59029a25d37eb23235"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132537072Z-521b3177/word-emf-reference.json",
+        "sha256": "738868e398c6d1e4247127632a3c4d1f11f9232fd5d645ef536d890a373e0856"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132537072Z-521b3177.zip",
+        "sha256": "018c4dfbfbc40613e4f09e8498b50e2d28990d2956a6dc4e46ad06350d39654c"
+      },
+      "capture_id": "20261117T132537072Z-521b3177",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos",
+      "font_size_pt": 20,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 120,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "61a0d361ce93efb8b8e70c712f8e8030bdb4ca68e3b7c947e7846e9774b5bcd2",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size20-width240-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size20-width240-compat14.docx",
+        "sha256": "a8972c99f6a3ee3f5d2bc8b1bfd18fcbcff08700a0f117182669471736124b78"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132540102Z-94da732d/capture.json",
+        "sha256": "6c2771cf664d95d237437cae94e1ce03602fb72967687298c8bdcb30b8944dda"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132540102Z-94da732d/word-emf-reference.json",
+        "sha256": "01d18a788c95fffdaf933003534260105d64524073b1eaf389cde579f5d93d8c"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132540102Z-94da732d.zip",
+        "sha256": "bca21e82aec22866f0c5c1d11a7c5950059eddaf56966eb5f4bcce05807709a9"
+      },
+      "capture_id": "20261117T132540102Z-94da732d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos",
+      "font_size_pt": 20,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 240,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos",
+          "sha256": "61a0d361ce93efb8b8e70c712f8e8030bdb4ca68e3b7c947e7846e9774b5bcd2",
+          "legacy_family": [
+            "Aptos"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-display-size12-width120-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size12-width120-compat14.docx",
+        "sha256": "8d47d8b3cb5718efab94e325c97a3be9ab6e953ce28d8ebeea072002d9a5c3ea"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132543016Z-846a6779/capture.json",
+        "sha256": "c6af92e27373c10a0dd8bd0086558da43c3f5a38445d284bfc477cd65dbf5ef3"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132543016Z-846a6779/word-emf-reference.json",
+        "sha256": "c8f2f0402ed9bc564f0fa2b1dd1587eb03bd5df30342ec6f8bb5297be7bd37f3"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132543016Z-846a6779.zip",
+        "sha256": "e9ca7e477a3f0fc7279bbceb5c3d022ef01d0ceaee16c800944a8abe5f88a253"
+      },
+      "capture_id": "20261117T132543016Z-846a6779",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos Display",
+      "font_size_pt": 12,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 120,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos Display",
+          "sha256": "dae676e40c2d494931457f5df13ad2b297d4e45e8c052f365ea101e5ab23917c",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-display-size12-width240-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size12-width240-compat14.docx",
+        "sha256": "6b3f7600776c50a50d39e1bb6ac85f75ce075a35490ba775156f17bfde6ecff2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132547126Z-368c07a0/capture.json",
+        "sha256": "eb9bba42f19f2cc6835bbb2bee198e1aec9c135b34935cc3b67e77c513f75201"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132547126Z-368c07a0/word-emf-reference.json",
+        "sha256": "de0cb07fdbd973de3c72df92e8feba3ecc4740bc63ae390e611e605124c4b6c8"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132547126Z-368c07a0.zip",
+        "sha256": "2d8ceac8da0d94fb4365aa9767e1aae22e9b5415746c234a6b92e4ded2b43168"
+      },
+      "capture_id": "20261117T132547126Z-368c07a0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos Display",
+      "font_size_pt": 12,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 240,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos Display",
+          "sha256": "dae676e40c2d494931457f5df13ad2b297d4e45e8c052f365ea101e5ab23917c",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-display-size20-width120-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size20-width120-compat14.docx",
+        "sha256": "6b9b4766d896e15b0152df04ec33b6c7a961f941a5e6e6de5931e58dcdae3f72"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132550048Z-fb351ceb/capture.json",
+        "sha256": "299ba658c3e4fb87d37504e28c398f6c50b24c92628de7c88d6e1fd15a927dbc"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132550048Z-fb351ceb/word-emf-reference.json",
+        "sha256": "d814bd04cc76464b8ae2d86830eca7c3cfe7f184cfac2084b23b482bf65f72be"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132550048Z-fb351ceb.zip",
+        "sha256": "377989ecc888b25c4b8e796ef225db77495ae67ed42a7b31541c64df54265a47"
+      },
+      "capture_id": "20261117T132550048Z-fb351ceb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos Display",
+      "font_size_pt": 20,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 120,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos Display",
+          "sha256": "dae676e40c2d494931457f5df13ad2b297d4e45e8c052f365ea101e5ab23917c",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    },
+    {
+      "name": "word-windows-office-cloud-display-size20-width240-compat14",
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size20-width240-compat14.docx",
+        "sha256": "fef7b90aa146cbccd634bc078f6d2c679b732669fc9fa111fc662eab32d58d2e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132553000Z-489b9d65/capture.json",
+        "sha256": "291241c8ff4d7fa6f50f5b1017bd26ee9762150e1240e109dc523ac929f1fd11"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132553000Z-489b9d65/word-emf-reference.json",
+        "sha256": "74e33403c3d20b61659ae1f0e70531e61cd08e70b5ad3e0b3286ba1a4d4393a6"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132553000Z-489b9d65.zip",
+        "sha256": "a1aab9343bcdf8fda9318adf6791f73c38eefc5de7ea5f4a7d4ad785dfe591ed"
+      },
+      "capture_id": "20261117T132553000Z-489b9d65",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "actual_compatibility_mode": 14,
+      "font_family": "Aptos Display",
+      "font_size_pt": 20,
+      "bold": false,
+      "italic": false,
+      "paragraph_count": 2,
+      "text": "Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. Office cloud fonts keep Word line wrapping stable. 0123456789 AV To. ",
+      "column_width_pt": 240,
+      "parent_source": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-advances-mac/source.docx",
+      "parent_sha256": "99959a64ca4025fb4f270291db8430d61ea18232c7b53d557d3ee750577176ed",
+      "original_word_font_programs": [
+        {
+          "xref": 5,
+          "extension": "ttf",
+          "postscript_name": "BCDEEE+Aptos Display",
+          "sha256": "dae676e40c2d494931457f5df13ad2b297d4e45e8c052f365ea101e5ab23917c",
+          "legacy_family": [
+            "Aptos Display"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Aptos Display"
+          ],
+          "version": [
+            "Version 2.01;O365"
+          ],
+          "typographic_family": [
+            "Aptos"
+          ],
+          "typographic_subfamily": [
+            "Display"
+          ],
+          "weight": 400
+        },
+        {
+          "xref": 9,
+          "extension": "ttf",
+          "postscript_name": "BCDFEE+YuMincho-Regular",
+          "sha256": "5f8ab7e7252c42d13cae968805098ebcb3ad7bd7055d9e73e6cd3bfd4b87a318",
+          "legacy_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "subfamily": [
+            "Regular"
+          ],
+          "full_name": [
+            "Yu Mincho Regular",
+            "游明朝 Regular"
+          ],
+          "version": [
+            "Version 1.92"
+          ],
+          "typographic_family": [
+            "Yu Mincho",
+            "游明朝"
+          ],
+          "typographic_subfamily": [
+            "Regular"
+          ],
+          "weight": 400
+        }
+      ],
+      "baseline_executable_sha256": "bebe0a37cc34bf4c9ab82e90eec0a48f3fc285824a8636c14cb9cae609c68834",
+      "baseline_all_planes_pass": false
+    }
+  ],
+  "actual_system_full_font_programs": [
+    {
+      "sha256": "7d7ba35b867c5873274466c743a9812c7bca1a0828f137f7697ae311664f41b9",
+      "legacy_family": [
+        "Aptos"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Bold Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 700,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos/26205970649.ttf"
+    },
+    {
+      "sha256": "888909eceb9acd84157078cc097c11f8a94a34ff3bd3fe08194ce7866f5998d1",
+      "legacy_family": [
+        "Aptos"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 400,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos/26395700251.ttf"
+    },
+    {
+      "sha256": "95980114fcfd42f2f9c446dae429b70582bf2f03097d68433ea9e7d85a49da0b",
+      "legacy_family": [
+        "Aptos"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Regular"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 400,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos/30153066857.ttf"
+    },
+    {
+      "sha256": "cf4b35ac6d81e0eb42ffa44c3829b710c058de6fa3cf2c7cdad0407e22538877",
+      "legacy_family": [
+        "Aptos"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Bold"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 700,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos/32483553004.ttf"
+    },
+    {
+      "sha256": "67efa2915e860d32365f01fae22400a0ab5a36d7942dd2024dd210910894f0f2",
+      "legacy_family": [
+        "Aptos Display"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Bold Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 700,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos Display/25576969643.ttf"
+    },
+    {
+      "sha256": "af7a83e6f1d18b62535a8ee97939ab8653d5ac1fe1861cdb8fce829d3878d901",
+      "legacy_family": [
+        "Aptos Display"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Regular"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 400,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos Display/30169865670.ttf"
+    },
+    {
+      "sha256": "a47bafebfe957f26bd59cfd2d063950c547cb505ce0c8e0951f496dc5eaae432",
+      "legacy_family": [
+        "Aptos Display"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Italic"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 400,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos Display/31638818185.ttf"
+    },
+    {
+      "sha256": "e66a3774f5c9f2799f1a7f4734f5d1ad942cc9aeb173eb2c94bc09a5f1bf1142",
+      "legacy_family": [
+        "Aptos Display"
+      ],
+      "typographic_family": [
+        "Aptos"
+      ],
+      "style": [
+        "Bold"
+      ],
+      "version": [
+        "Version 2.01;O365"
+      ],
+      "weight": 700,
+      "has_GPOS": true,
+      "has_kern": true,
+      "cache_relative_path": "Microsoft/FontCache/4/CloudFonts/Aptos Display/32677218994.ttf"
+    }
+  ]
+}

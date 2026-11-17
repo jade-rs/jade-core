@@ -34924,6 +34924,190 @@
           "opened_filename": "aptos-numeric-ranges-mac.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132530382Z-2d33a334.zip",
+      "archive_sha256": "e75a5415e91e448d8074ce638d8da485363c987c3fd4c6022f38440d8619d374",
+      "capture_id": "20261117T132530382Z-2d33a334",
+      "capture_sha256": "582cf6fa84db0d015e60dcc71d48897ff677dff86fcdd87216b71d4cef2570a3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-aptos-size12-width120-compat14",
+          "source_sha256": "be2bc4eb741352db56e2655aca7b468ec225d8187e8c7bed60f42ad24898cb50",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-aptos-size12-width120-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-aptos-size12-width120-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132534126Z-f62abb7d.zip",
+      "archive_sha256": "495a041942e378337367cc711a8302e9367cdd5c289044c452e26b12778f64e2",
+      "capture_id": "20261117T132534126Z-f62abb7d",
+      "capture_sha256": "b2f742ca2c0e4a27eccf2d3be18ef26c117d06dcea75b1a823d3f8c1f3b8d5c7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-aptos-size12-width240-compat14",
+          "source_sha256": "f25360ca96477da36463a8bea2186127495ec6dfce0d407d94d49ef420a460a5",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-aptos-size12-width240-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-aptos-size12-width240-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132537072Z-521b3177.zip",
+      "archive_sha256": "018c4dfbfbc40613e4f09e8498b50e2d28990d2956a6dc4e46ad06350d39654c",
+      "capture_id": "20261117T132537072Z-521b3177",
+      "capture_sha256": "c9c0298488de41fc5e71e7aa82cdfff6daff9f55e4b2ed59029a25d37eb23235",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-aptos-size20-width120-compat14",
+          "source_sha256": "11adbd3dc0a9786df67760d69f1f93769196a89335753b9bdcb11cafa2cad3d8",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-aptos-size20-width120-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-aptos-size20-width120-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132540102Z-94da732d.zip",
+      "archive_sha256": "bca21e82aec22866f0c5c1d11a7c5950059eddaf56966eb5f4bcce05807709a9",
+      "capture_id": "20261117T132540102Z-94da732d",
+      "capture_sha256": "6c2771cf664d95d237437cae94e1ce03602fb72967687298c8bdcb30b8944dda",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-aptos-size20-width240-compat14",
+          "source_sha256": "a8972c99f6a3ee3f5d2bc8b1bfd18fcbcff08700a0f117182669471736124b78",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-aptos-size20-width240-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-aptos-size20-width240-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132543016Z-846a6779.zip",
+      "archive_sha256": "e9ca7e477a3f0fc7279bbceb5c3d022ef01d0ceaee16c800944a8abe5f88a253",
+      "capture_id": "20261117T132543016Z-846a6779",
+      "capture_sha256": "c6af92e27373c10a0dd8bd0086558da43c3f5a38445d284bfc477cd65dbf5ef3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-display-size12-width120-compat14",
+          "source_sha256": "8d47d8b3cb5718efab94e325c97a3be9ab6e953ce28d8ebeea072002d9a5c3ea",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-display-size12-width120-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-display-size12-width120-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132547126Z-368c07a0.zip",
+      "archive_sha256": "2d8ceac8da0d94fb4365aa9767e1aae22e9b5415746c234a6b92e4ded2b43168",
+      "capture_id": "20261117T132547126Z-368c07a0",
+      "capture_sha256": "eb9bba42f19f2cc6835bbb2bee198e1aec9c135b34935cc3b67e77c513f75201",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-display-size12-width240-compat14",
+          "source_sha256": "6b3f7600776c50a50d39e1bb6ac85f75ce075a35490ba775156f17bfde6ecff2",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-display-size12-width240-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-display-size12-width240-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132550048Z-fb351ceb.zip",
+      "archive_sha256": "377989ecc888b25c4b8e796ef225db77495ae67ed42a7b31541c64df54265a47",
+      "capture_id": "20261117T132550048Z-fb351ceb",
+      "capture_sha256": "299ba658c3e4fb87d37504e28c398f6c50b24c92628de7c88d6e1fd15a927dbc",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-display-size20-width120-compat14",
+          "source_sha256": "6b9b4766d896e15b0152df04ec33b6c7a961f941a5e6e6de5931e58dcdae3f72",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-display-size20-width120-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-display-size20-width120-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T132553000Z-489b9d65.zip",
+      "archive_sha256": "a1aab9343bcdf8fda9318adf6791f73c38eefc5de7ea5f4a7d4ad785dfe591ed",
+      "capture_id": "20261117T132553000Z-489b9d65",
+      "capture_sha256": "291241c8ff4d7fa6f50f5b1017bd26ee9762150e1240e109dc523ac929f1fd11",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-office-cloud-display-size20-width240-compat14",
+          "source_sha256": "fef7b90aa146cbccd634bc078f6d2c679b732669fc9fa111fc662eab32d58d2e",
+          "source_aliases": [
+            "public/fixtures/word-windows-office-cloud-display-size20-width240-compat14.docx"
+          ],
+          "opened_filename": "word-windows-office-cloud-display-size20-width240-compat14.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
