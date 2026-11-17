@@ -53,9 +53,19 @@ pub fn math_faces_for(faces: &[FontFace], configured_family: Option<&str>) -> Ve
 pub fn office_font_directories() -> Vec<PathBuf> {
     let mut directories = Vec::new();
     #[cfg(target_os = "windows")]
-    if let Some(list) = std::env::var_os("JADE_OFFICE_FONT_DIR") {
-        directories
-            .extend(std::env::split_paths(&list).filter(|path| !path.as_os_str().is_empty()));
+    {
+        if let Some(list) = std::env::var_os("JADE_OFFICE_FONT_DIR") {
+            directories
+                .extend(std::env::split_paths(&list).filter(|path| !path.as_os_str().is_empty()));
+        }
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+                let cache = PathBuf::from(local).join("Microsoft").join("FontCache");
+                directories.extend(windows_cloud_font_directories(&cache));
+            }
+        }
     }
     directories.extend(
         [
@@ -66,6 +76,29 @@ pub fn office_font_directories() -> Vec<PathBuf> {
         ]
         .map(PathBuf::from),
     );
+    directories
+}
+
+/// Office's cache generation is independent of its Word product version.
+/// Discover existing CloudFonts directories rather than assuming generation 4
+/// or recognizing individual font names. Preview fonts are not document fonts.
+#[cfg(any(target_os = "windows", test))]
+fn windows_cloud_font_directories(cache: &std::path::Path) -> Vec<PathBuf> {
+    let mut directories = Vec::new();
+    let unversioned = cache.join("CloudFonts");
+    if unversioned.is_dir() {
+        directories.push(unversioned);
+    }
+    if let Ok(entries) = std::fs::read_dir(cache) {
+        directories.extend(
+            entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path().join("CloudFonts"))
+                .filter(|path| path.is_dir()),
+        );
+    }
+    directories.sort();
+    directories.dedup();
     directories
 }
 
@@ -110,11 +143,25 @@ pub struct FontLibrary {
 }
 
 impl FontLibrary {
-    /// The faces in Office's directories and the system's, indexed once per
-    /// process.
-    pub fn system() -> &'static FontLibrary {
+    fn system_cache() -> &'static OnceLock<FontLibrary> {
         static LIBRARY: OnceLock<FontLibrary> = OnceLock::new();
-        LIBRARY.get_or_init(|| {
+        #[cfg(target_os = "windows")]
+        {
+            static WINDOWS_LIBRARY: OnceLock<FontLibrary> = OnceLock::new();
+            if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                return &WINDOWS_LIBRARY;
+            }
+        }
+        &LIBRARY
+    }
+
+    /// Office and system faces, indexed once for each layout platform. Mac
+    /// replays on Windows retain their original inventory even if a Windows
+    /// document initialized Office's cloud-font inventory first.
+    pub fn system() -> &'static FontLibrary {
+        Self::system_cache().get_or_init(|| {
             let mut database = fontdb::Database::new();
             // Office's first: where a family is in both, its faces win, as
             // they are the ones Office draws with.
@@ -533,6 +580,58 @@ fn unescape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn cloud_font_discovery_handles_cache_generations_without_preview_faces() {
+        let root = std::env::temp_dir().join(format!(
+            "jade-cloud-font-discovery-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        assert!(!root.exists());
+        assert!(windows_cloud_font_directories(&root).is_empty());
+        let paths = [
+            "3/CloudFonts",
+            "4/CloudFonts",
+            "4/PreviewFont",
+            "next/CloudFonts",
+        ];
+        for name in paths {
+            std::fs::create_dir_all(root.join(name)).unwrap();
+        }
+        assert_eq!(
+            windows_cloud_font_directories(&root),
+            ["3/CloudFonts", "4/CloudFonts", "next/CloudFonts"].map(|name| root.join(name))
+        );
+        for name in paths {
+            std::fs::remove_dir(root.join(name)).unwrap();
+        }
+        for name in ["3", "4", "next"] {
+            std::fs::remove_dir(root.join(name)).unwrap();
+        }
+        std::fs::remove_dir(root).unwrap();
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn windows_cloud_inventory_cache_cannot_replace_the_mac_cache() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mac = FontLibrary::system_cache();
+        let before = office_font_directories();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert!(!std::ptr::eq(mac, FontLibrary::system_cache()));
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(std::ptr::eq(mac, FontLibrary::system_cache()));
+        assert_eq!(office_font_directories(), before);
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn windows_legacy_family_keeps_bold_and_regular_faces_without_changing_mac() {
         use jade_docx_layout::line_metrics::{

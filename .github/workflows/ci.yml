@@ -304,6 +304,10 @@ jobs:
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_borders.py
       - name: Build vector drawing probe
         run: cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+      - name: Assert Office cached-font discovery against original Word output
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_office_cloud_fonts.py
+          python scripts/word-oracle/check_windows_office_cloud_fonts.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert shared Mac originals against Windows Word version expectations
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py

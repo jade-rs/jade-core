@@ -22047,6 +22047,150 @@
       "word_product_version": "16.0.19127.20936",
       "glyph_count": 816,
       "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size12-width120-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132530382Z-2d33a334/capture.json",
+        "sha256": "582cf6fa84db0d015e60dcc71d48897ff677dff86fcdd87216b71d4cef2570a3"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132530382Z-2d33a334/word-emf-reference.json",
+        "sha256": "fe0bb992da4b59d07ef5c64ad19949de7674c96795a77655b71ed8cb04a7061a"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size12-width120-compat14.docx",
+        "sha256": "be2bc4eb741352db56e2655aca7b468ec225d8187e8c7bed60f42ad24898cb50"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size12-width240-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132534126Z-f62abb7d/capture.json",
+        "sha256": "b2f742ca2c0e4a27eccf2d3be18ef26c117d06dcea75b1a823d3f8c1f3b8d5c7"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132534126Z-f62abb7d/word-emf-reference.json",
+        "sha256": "80d5361e324989f59605c026daa556b94ce5e1dcbcaf555900d4c897b416874d"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size12-width240-compat14.docx",
+        "sha256": "f25360ca96477da36463a8bea2186127495ec6dfce0d407d94d49ef420a460a5"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size20-width120-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132537072Z-521b3177/capture.json",
+        "sha256": "c9c0298488de41fc5e71e7aa82cdfff6daff9f55e4b2ed59029a25d37eb23235"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132537072Z-521b3177/word-emf-reference.json",
+        "sha256": "738868e398c6d1e4247127632a3c4d1f11f9232fd5d645ef536d890a373e0856"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size20-width120-compat14.docx",
+        "sha256": "11adbd3dc0a9786df67760d69f1f93769196a89335753b9bdcb11cafa2cad3d8"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-aptos-size20-width240-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132540102Z-94da732d/capture.json",
+        "sha256": "6c2771cf664d95d237437cae94e1ce03602fb72967687298c8bdcb30b8944dda"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132540102Z-94da732d/word-emf-reference.json",
+        "sha256": "01d18a788c95fffdaf933003534260105d64524073b1eaf389cde579f5d93d8c"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-aptos-size20-width240-compat14.docx",
+        "sha256": "a8972c99f6a3ee3f5d2bc8b1bfd18fcbcff08700a0f117182669471736124b78"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-display-size12-width120-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132543016Z-846a6779/capture.json",
+        "sha256": "c6af92e27373c10a0dd8bd0086558da43c3f5a38445d284bfc477cd65dbf5ef3"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132543016Z-846a6779/word-emf-reference.json",
+        "sha256": "c8f2f0402ed9bc564f0fa2b1dd1587eb03bd5df30342ec6f8bb5297be7bd37f3"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size12-width120-compat14.docx",
+        "sha256": "8d47d8b3cb5718efab94e325c97a3be9ab6e953ce28d8ebeea072002d9a5c3ea"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-display-size12-width240-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132547126Z-368c07a0/capture.json",
+        "sha256": "eb9bba42f19f2cc6835bbb2bee198e1aec9c135b34935cc3b67e77c513f75201"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132547126Z-368c07a0/word-emf-reference.json",
+        "sha256": "de0cb07fdbd973de3c72df92e8feba3ecc4740bc63ae390e611e605124c4b6c8"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size12-width240-compat14.docx",
+        "sha256": "6b3f7600776c50a50d39e1bb6ac85f75ce075a35490ba775156f17bfde6ecff2"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-display-size20-width120-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132550048Z-fb351ceb/capture.json",
+        "sha256": "299ba658c3e4fb87d37504e28c398f6c50b24c92628de7c88d6e1fd15a927dbc"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132550048Z-fb351ceb/word-emf-reference.json",
+        "sha256": "d814bd04cc76464b8ae2d86830eca7c3cfe7f184cfac2084b23b482bf65f72be"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size20-width120-compat14.docx",
+        "sha256": "6b9b4766d896e15b0152df04ec33b6c7a961f941a5e6e6de5931e58dcdae3f72"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
+    },
+    {
+      "name": "word-windows-office-cloud-display-size20-width240-compat14",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132553000Z-489b9d65/capture.json",
+        "sha256": "291241c8ff4d7fa6f50f5b1017bd26ee9762150e1240e109dc523ac929f1fd11"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261117T132553000Z-489b9d65/word-emf-reference.json",
+        "sha256": "74e33403c3d20b61659ae1f0e70531e61cd08e70b5ad3e0b3286ba1a4d4393a6"
+      },
+      "source": {
+        "file": "public/fixtures/word-windows-office-cloud-display-size20-width240-compat14.docx",
+        "sha256": "fef7b90aa146cbccd634bc078f6d2c679b732669fc9fa111fc662eab32d58d2e"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 348,
+      "public_test_password": null
     }
   ]
 }
