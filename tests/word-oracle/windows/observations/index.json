@@ -31680,6 +31680,213 @@
           "opened_filename": "word-windows-yu-fe-layout-z-inherit-size9p5-on-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022134696Z-d5d27221.zip",
+      "archive_sha256": "c02a412685355ea4a8ab860640afff9d70cce3dc8e1cbf444303520f5262fc5e",
+      "capture_id": "20261117T022134696Z-d5d27221",
+      "capture_sha256": "421f9ec042a526f2f1c29a79813b26f3f65477a8c53656ce8f9b61bd0ca09677",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-horizontal-compat12",
+          "source_sha256": "0d7b1c67c34fd77333f4d0ab59d8247b776297502e0e95f167b15e1bfcd83074",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-horizontal-compat12.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-horizontal-compat12.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022138432Z-558d3715.zip",
+      "archive_sha256": "8b893799566d16c27c6af5569b6d29483a1848e4ac3512ff77693da2885c6db7",
+      "capture_id": "20261117T022138432Z-558d3715",
+      "capture_sha256": "fec2947f4a249bd50d99734fab879372e88050ced46623e8336aec261a9b9132",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-horizontal-compat14",
+          "source_sha256": "d0ca11134698909fc57f213253d05793b267dcf29992deb82a725f02501d0ab3",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-horizontal-compat14.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-horizontal-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022141262Z-0ef6e610.zip",
+      "archive_sha256": "ae732d10c389319c78d8e6b09fcdd86f1edf7320f52d1fb885060a3609e6dfcf",
+      "capture_id": "20261117T022141262Z-0ef6e610",
+      "capture_sha256": "ad62446d0f4086880cc070d6d76d8c78426ca9948d7d2498bcd464351255f4c0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-horizontal-compat15",
+          "source_sha256": "a86250c94c6903d654f1ff6544dc03ea8896d0fdcc3275166e5134e603b1d174",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-horizontal-compat15.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-horizontal-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022143989Z-3ca697e6.zip",
+      "archive_sha256": "64d227c2ea0ad7fd288131adc3f2057e923a640bb25feaba3f0e6bbf05480d58",
+      "capture_id": "20261117T022143989Z-3ca697e6",
+      "capture_sha256": "9c0643cc770a2883128d7bb576fa68372dc0c68d7aa804bf15b805cbd1a7dbc6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-sides-compat12",
+          "source_sha256": "71c0167fc4f71cf7f39ea64f6f2660524320d08031f795d4d58d2f2eed6e647d",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-sides-compat12.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-sides-compat12.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022147047Z-bc90d437.zip",
+      "archive_sha256": "db2b4e35d11073a0a14720ee9ab3b233a50f447cf1ad41de7379cc34f25a6fa3",
+      "capture_id": "20261117T022147047Z-bc90d437",
+      "capture_sha256": "ff4871cd2858ed36e59b5edeeac938988b11ee1b733d7f40c139cbc01fd29dcb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-sides-compat14",
+          "source_sha256": "ae4a1448d66fbc8329aaf93ed51e350c7c9a734444aecef4d376b44708960b71",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-sides-compat14.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-sides-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022150362Z-4e79c14c.zip",
+      "archive_sha256": "1d25e58e7d79a6369ab8386eb9a6fa35112fdbaa6ec7c98ef828a1e311b56aab",
+      "capture_id": "20261117T022150362Z-4e79c14c",
+      "capture_sha256": "3fc483ab40d0cc28ffee0ec691c6c7c789d5612f26f729f06198f0f37775268a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-sides-compat15",
+          "source_sha256": "b23a4ec54305200d46c7642768372e5fbeef305ad7b3598d54c9137ed2e6752a",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-sides-compat15.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-sides-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022153276Z-ad1cf403.zip",
+      "archive_sha256": "589ef78fb31b168f0bc1bbe6b25de2dbc1e536769894ad002264aeffbf4d3ffe",
+      "capture_id": "20261117T022153276Z-ad1cf403",
+      "capture_sha256": "1cd40e4607a3b7401d65ae4e516ed347f97fa24576f5f692f7562098c0d99983",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-square-compat12",
+          "source_sha256": "67ad31ea15f91b11aa810a3f0de0b4df83410887e15389d125cc50c1a1eaa403",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-square-compat12.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-square-compat12.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022156150Z-d70378a9.zip",
+      "archive_sha256": "2617dff2fd4c3b67a005e85815701d5b7b5241bf87b35edc9b86576e4cfdee6d",
+      "capture_id": "20261117T022156150Z-d70378a9",
+      "capture_sha256": "1d394e44c793fe77f2133435191016b075c43da7a7787ae1120a16a52211387b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-square-compat14",
+          "source_sha256": "86f66e9c32c87c40931e2d171f81b2ee1a409b2adfa7294abd8be5f18a6fffe7",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-square-compat14.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-square-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261117T022158947Z-3785953d.zip",
+      "archive_sha256": "9dd2fbe8ecfd26e40d79c5009fa31c52aa0b880f549d026aad8a1739a157c60b",
+      "capture_id": "20261117T022158947Z-3785953d",
+      "capture_sha256": "e1f57d4a06f4e723c6c647b8681ff1cd3ffc5774b15f110fa77faf1944388df6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-float-lookahead-square-compat15",
+          "source_sha256": "78d78380ec53ec1ea5f278a4faf82d5b98aeb022eafebe9039b70cba7a4a0831",
+          "source_aliases": [
+            "tests/word-oracle/windows/observations/sources/word-windows-float-lookahead-square-compat15.docx"
+          ],
+          "opened_filename": "word-windows-float-lookahead-square-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [

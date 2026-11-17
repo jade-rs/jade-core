@@ -30104,9 +30104,6 @@ where
         line_pitch: f64,
         before: bool,
     ) -> f64 {
-        if format.style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac {
-            return 0.0;
-        }
         format
             .spacing
             .and_then(if before {
@@ -30238,7 +30235,12 @@ where
                 format.spacing,
                 false,
                 true,
-            );
+            )
+            .or_else(|| {
+                jade_docx_layout::line_metrics::WordProportionalLineSizing::for_text_box(
+                    format.spacing,
+                )
+            });
         let Some(props) = paragraph.properties.as_ref() else {
             return Ok(format);
         };

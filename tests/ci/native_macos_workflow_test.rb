@@ -140,6 +140,7 @@ class NativeMacosWorkflowTest < Minitest::Test
       "windows-word-baselines" => [
         "windows-latest", "Assert shared Mac originals against Windows Word version expectations",
         ["test_platform_coordinates.py",
+         "test_windows_float_lookahead_probes.py",
          "check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"]
       ]
     }.each do |name, (runner, step_name, commands)|

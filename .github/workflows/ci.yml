@@ -300,6 +300,7 @@ jobs:
       - name: Assert shared Mac originals against Windows Word version expectations
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_float_lookahead_probes.py
           python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Reconstruct versioned Windows script metrics from original Word output
         run: |

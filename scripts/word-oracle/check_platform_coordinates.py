@@ -19,6 +19,8 @@ from extract_windows_emf import extract
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'floating-square-wrap-mac': '20261114T004143028Z-b4cb9887',
+    'floating-wrap-sides-mac': '20261114T004143028Z-b4cb9887',
     'word-mac-probe-floating-horizontal-15': '20261114T015622405Z-203d1791',
     'probe-hyphenation-split-word-sweep-off': '20261114T020157033Z-88c4d52e',
     'probe-contextual-paragraph-spacing-mode14': '20261114T023153447Z-6c24de77',

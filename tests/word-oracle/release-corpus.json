@@ -5870,6 +5870,26 @@
     {
       "fixture": "word-windows-yu-advance-z-space-zero-size9p5-compat15",
       "docx_sha256": "a9b477c2be9b47dd8bfcda62e8d99c7fe1237c0a658c569dd4fe96a846792b24"
+    },
+    {
+      "fixture": "word-windows-float-lookahead-horizontal-compat15",
+      "docx_sha256": "a86250c94c6903d654f1ff6544dc03ea8896d0fdcc3275166e5134e603b1d174"
+    },
+    {
+      "fixture": "word-windows-float-lookahead-sides-compat12",
+      "docx_sha256": "71c0167fc4f71cf7f39ea64f6f2660524320d08031f795d4d58d2f2eed6e647d"
+    },
+    {
+      "fixture": "word-windows-float-lookahead-sides-compat14",
+      "docx_sha256": "ae4a1448d66fbc8329aaf93ed51e350c7c9a734444aecef4d376b44708960b71"
+    },
+    {
+      "fixture": "word-windows-float-lookahead-square-compat12",
+      "docx_sha256": "67ad31ea15f91b11aa810a3f0de0b4df83410887e15389d125cc50c1a1eaa403"
+    },
+    {
+      "fixture": "word-windows-float-lookahead-square-compat14",
+      "docx_sha256": "86f66e9c32c87c40931e2d171f81b2ee1a409b2adfa7294abd8be5f18a6fffe7"
     }
   ]
 }
