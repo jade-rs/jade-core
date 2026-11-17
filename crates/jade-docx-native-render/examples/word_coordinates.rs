@@ -72,12 +72,13 @@ fn main() {
     let faces = if let Some(directory) = fonts_directory {
         // A replay can use only the fonts embedded in its original Word PDF,
         // independently of which Office fonts the CI host has installed.
+        // Keep implicit Word fallbacks as well as DOCX-named aliases.
         let library = system_fonts::FontLibrary::in_directories(&[directory]);
         let families = system_fonts::word_families(&bytes);
-        let (reference_faces, _) = library.faces_for(families.iter().map(String::as_str));
+        let (reference_faces, _) = library.reference_faces_for(families.iter().map(String::as_str));
         assert!(
             !reference_faces.is_empty(),
-            "no document fonts in reference directory"
+            "no usable fonts in reference directory"
         );
         fallback.into_iter().chain(reference_faces).collect()
     } else {

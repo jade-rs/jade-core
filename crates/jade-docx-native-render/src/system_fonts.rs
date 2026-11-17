@@ -267,6 +267,36 @@ impl FontLibrary {
         }
         (faces, missing)
     }
+
+    /// Retain every supplied font program for a reference replay, including
+    /// implicit fallback faces not named in the DOCX. Named aliases come last
+    /// so their established family/style preference remains authoritative.
+    /// This does not expand the default system-font selection.
+    pub fn reference_faces_for<'a>(
+        &self,
+        families: impl IntoIterator<Item = &'a str>,
+    ) -> (Vec<FontFace>, Vec<String>) {
+        let (named, missing) = self.faces_for(families);
+        let mut all: Vec<_> = {
+            let selected: BTreeSet<_> = named
+                .iter()
+                .map(|face| (face.path.as_path(), face.index))
+                .collect();
+            self.faces
+                .iter()
+                .filter(|face| !selected.contains(&(face.path.as_path(), face.index)))
+                .map(|face| FontFace {
+                    family: face.family.clone(),
+                    weight: face.weight,
+                    italic: face.italic,
+                    path: face.path.clone(),
+                    index: face.index,
+                })
+                .collect()
+        };
+        all.extend(named);
+        (all, missing)
+    }
 }
 
 /// The faces to open a Word document with: `fallback` first — the bundled
@@ -463,6 +493,36 @@ fn unescape_xml(value: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reference_faces_retain_implicit_and_same_style_subset_programs() {
+        use super::*;
+        let mut library = FontLibrary::default();
+        for (path, family) in [
+            ("named.ttf", "requested"),
+            ("second-subset.ttf", "requested"),
+            ("implicit-emoji.ttf", "implicit emoji"),
+        ] {
+            library.faces.push(InstalledFace {
+                path: PathBuf::from(path),
+                index: 0,
+                weight: 400,
+                italic: false,
+                family: family.into(),
+            });
+        }
+        library.by_family.insert("requested".into(), vec![0, 1]);
+        library.by_family.insert("implicit emoji".into(), vec![2]);
+        let (ordinary, _) = library.faces_for(["Requested"]);
+        assert_eq!(ordinary.len(), 1);
+        let (reference, missing) = library.reference_faces_for(["Requested", "Missing"]);
+        assert_eq!(missing, ["Missing"]);
+        assert_eq!(reference.len(), 3);
+        assert_eq!(reference[0].path, PathBuf::from("second-subset.ttf"));
+        assert_eq!(reference[1].path, PathBuf::from("implicit-emoji.ttf"));
+        assert_eq!(reference[2], ordinary[0]);
+        assert_eq!(library.faces_for(["Requested"]).0, ordinary);
+    }
+
     use super::*;
 
     #[test]

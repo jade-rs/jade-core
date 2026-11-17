@@ -5,6 +5,7 @@ from pathlib import Path
 import struct
 import tempfile
 import unittest
+from zipfile import ZipFile
 
 from extract_windows_emf import emf_glyphs, extract, verify_visible_reference
 
@@ -44,6 +45,28 @@ def advanced_text():
     return bytes(text)
 
 
+def utf16_metafile(text, advances, pdy=False):
+    encoded = text.encode('utf-16-le') if isinstance(text, str) else text
+    count = len(encoded) // 2
+    stride = 2 if pdy else 1
+    assert len(advances) == count * stride
+    dx_at = (76 + len(encoded) + 3) // 4 * 4
+    size = dx_at + len(advances) * 4
+    text_record = bytearray(size)
+    struct.pack_into('<II', text_record, 0, 84, size)
+    struct.pack_into('<Iff', text_record, 24, 1, 21590 / 5100, 27940 / 6600)
+    struct.pack_into('<iiIII', text_record, 36, 600, 700, count, 76,
+                     4 | (0x2000 if pdy else 0))
+    struct.pack_into('<I', text_record, 72, dx_at)
+    text_record[76:76 + len(encoded)] = encoded
+    struct.pack_into('<' + 'i' * len(advances), text_record, dx_at, *advances)
+    base = metafile()
+    header = bytearray(base[:108])
+    records = [base[108:124], base[124:136], bytes(text_record), base[224:]]
+    struct.pack_into('<II', header, 48, 108 + sum(map(len, records)), 1 + len(records))
+    return bytes(header) + b''.join(records)
+
+
 def advanced_metafile(commands):
     base = metafile()
     header = bytearray(base[:108])
@@ -58,6 +81,68 @@ def world_translation(x, y, mode=2):
 
 
 class DrawingOriginTests(unittest.TestCase):
+    def test_original_word_supplementary_origins_match_independent_pdf(self):
+        # Word's EMF counts UTF-16 units; its independently exported PDF
+        # supplies scalar origins. Keep the actual Word version and bytes.
+        from check_platform_coordinates import compare, pdf_origins
+        root = Path(__file__).resolve().parents[2]
+        identity = '20261114T004322231Z-e7a4d03f'
+        archive = root / ('tests/word-oracle/windows/observations/'
+                          f'word-16.0.19127.20936/{identity}.zip')
+        self.assertEqual(hashlib.sha256(archive.read_bytes()).hexdigest(),
+                         '6db9fe587c96ffd300c52d301b17e32969897e9a6aae47bd39fefbc27e2ed02c')
+        with ZipFile(archive) as bundle, tempfile.TemporaryDirectory() as directory:
+            capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+            self.assertEqual(capture['capture_id'], identity)
+            self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+            self.assertEqual(capture['word']['executable_sha256'],
+                             '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+            document, = [d for d in capture['documents']
+                         if d['name'] == 'ww14-math-display-italic-wrap-after-mac-a2f060af']
+            source = bundle.read('inputs/' + document['name'] + '.docx')
+            self.assertEqual(hashlib.sha256(source).hexdigest(),
+                             'a2f060af3124b2a24f9dbd26ad577e867638d49ff84b20b0aa6289a7e558e42a')
+            self.assertEqual(source, (root / 'tests/word-oracle/mac-elsa-synthetic/'
+                                     'math-display-italic-wrap-after-mac/source.docx').read_bytes())
+            glyphs = []
+            for page in document['metafiles']:
+                raw = bundle.read(page['file'])
+                self.assertEqual(hashlib.sha256(raw).hexdigest(), page['sha256'])
+                glyphs.extend(emf_glyphs(raw, page['page'], page['width_pt'], page['height_pt']))
+            pdf = Path(directory) / 'original.pdf'
+            raw = bundle.read(document['pdf'])
+            self.assertEqual(hashlib.sha256(raw).hexdigest(), document['pdf_sha256'])
+            pdf.write_bytes(raw)
+            emf = dict(page_count=document['pages'],
+                       glyphs=[g for g in glyphs if ord(g[1]) > 0xffff])
+            independent = pdf_origins(pdf)
+            independent['glyphs'] = [g for g in independent['glyphs'] if ord(g[1]) > 0xffff]
+            self.assertEqual(len(emf['glyphs']), 52)
+            self.assertEqual(len(independent['glyphs']), 52)
+            self.assertEqual(compare(independent, emf, 'original Word supplementary origins'), 52)
+
+    def test_supplementary_scalar_consumes_both_utf16_advances(self):
+        data = utf16_metafile('A😀日', [50, 80, 20, 100])
+        self.assertEqual(emf_glyphs(data, 1, 612, 792),
+                         [[1, 'A', 72, 84], [1, '😀', 78, 84], [1, '日', 90, 84]])
+
+    def test_surrogate_advances_consume_both_pdy_axes(self):
+        data = utf16_metafile('A😀日', [50, 1, 70, 2, 30, -1, 100, 0], pdy=True)
+        found = emf_glyphs(data, 1, 612, 792)
+        self.assertEqual([g[:2] for g in found], [[1, 'A'], [1, '😀'], [1, '日']])
+        for glyph, expected in zip(found, [(72, 84), (78, 84.12), (90, 84.24)]):
+            for actual, value in zip(glyph[2:], expected):
+                self.assertAlmostEqual(actual, value)
+
+    def test_adjacent_supplementary_scalars_do_not_shift_the_following_bmp_text(self):
+        found = emf_glyphs(utf16_metafile('𠮷😀A', [10, 20, 30, 40, 50]), 1, 612, 792)
+        self.assertEqual(found, [[1, '𠮷', 72, 84], [1, '😀', 75.6, 84], [1, 'A', 84, 84]])
+
+    def test_unpaired_utf16_surrogates_remain_invalid_evidence(self):
+        for raw in [b'\x3d\xd8', b'\x00\xde', b'\x3d\xd8A\x00']:
+            with self.subTest(raw=raw), self.assertRaises(UnicodeDecodeError):
+                emf_glyphs(utf16_metafile(raw, [10] * (len(raw) // 2)), 1, 612, 792)
+
     def test_advanced_translation_ignores_unused_record_scales(self):
         data = advanced_metafile([world_translation(10., 20.), advanced_text()])
         found = emf_glyphs(data, 1, 612, 792)
