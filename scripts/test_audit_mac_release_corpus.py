@@ -16,6 +16,30 @@ SPEC.loader.exec_module(audit)
 
 
 class CorpusAuditTests(unittest.TestCase):
+    def test_style_boolean_spelling_preserves_presence_and_value(self) -> None:
+        def document(property_xml: str) -> bytes:
+            return (
+                f'<w:document xmlns:w="{audit.WORD[1:-1]}">'
+                f'<w:r><w:rPr>{property_xml}</w:rPr><w:t>A</w:t></w:r>'
+                '</w:document>'
+            ).encode()
+
+        for tag in ("b", "i", "bCs", "iCs"):
+            with self.subTest(tag=tag):
+                enabled = audit.structural_sequence(document(f'<w:{tag}/>'))
+                disabled = audit.structural_sequence(document(f'<w:{tag} w:val="false"/>'))
+                for value in ("1", "true", "on"):
+                    self.assertEqual(enabled, audit.structural_sequence(
+                        document(f'<w:{tag} w:val="{value}"/>')))
+                for value in ("0", "false", "off"):
+                    self.assertEqual(disabled, audit.structural_sequence(
+                        document(f'<w:{tag} w:val="{value}"/>')))
+                self.assertNotEqual(enabled, disabled)
+                for present in (enabled, disabled):
+                    self.assertNotEqual(present, audit.structural_sequence(document("")))
+                self.assertNotEqual(enabled, audit.structural_sequence(
+                    document(f'<w:{tag} w:val="invalid"/>')))
+
     def test_structural_sequence_detects_reordered_elements(self) -> None:
         before = b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:bookmarkStart w:id="1"/><w:bookmarkEnd w:id="1"/></w:document>'
         after = b'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:bookmarkEnd w:id="1"/><w:bookmarkStart w:id="1"/></w:document>'

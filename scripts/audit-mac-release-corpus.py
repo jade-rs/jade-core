@@ -24,7 +24,9 @@ MINIMUM_FIXTURE_COUNT = 114
 WORD = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 XML = "{http://www.w3.org/XML/1998/namespace}"
 GFXDATA = "{urn:schemas-microsoft-com:office:office}gfxdata"
-BOOLEAN_TAGS = {WORD + "strike", WORD + "outline"}
+# CT_OnOff: an existing element without w:val means true. An absent
+# element remains distinct (it inherits formatting); false must stay false.
+BOOLEAN_TAGS = {WORD + name for name in ("strike", "outline", "b", "i", "bCs", "iCs")}
 BOOLEAN_VALUES = {"1": "true", "on": "true", "yes": "true", "0": "false", "off": "false", "no": "false"}
 # Property containers whose children the export writes in ECMA-376 sequence
 # order (jade-core/crates/jade-docx-reader/src/docx_xml/schema.rs). An export may move a

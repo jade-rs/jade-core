@@ -225,6 +225,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/ci/prepare_macos_skia.py --output "$RUNNER_TEMP/jade-skia-0.87.0-macos.tar.gz"
+      - name: Assert independent Mac and Windows original references
+        run: |
+          python3 -m unittest discover -s scripts/word-oracle -p test_platform_coordinates.py
+          python3 scripts/word-oracle/check_platform_coordinates.py
       - name: Compare Mac drawing coordinates with committed Word references
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
       - name: Upload coordinate differences
