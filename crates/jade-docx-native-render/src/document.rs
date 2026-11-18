@@ -266,6 +266,12 @@ pub struct NativeDocument {
     outline_indents: Option<Rc<std::collections::HashMap<usize, f64>>>,
     /// Configured and fallback math faces, retained across renderer rebuilds.
     math_faces: Vec<FontFace>,
+    /// The pages (0-based) a whole-document repaint draws at once: the ones a
+    /// shell shows. `None` draws every page. See [`Self::set_paint_window`].
+    paint_window: Option<std::ops::Range<usize>>,
+    /// Pages laid out since they were last drawn: their surfaces hold what
+    /// they showed before. [`Self::paint_stale_pages`] draws them.
+    stale_pages: std::collections::BTreeSet<usize>,
 }
 
 /// Binds only the selected math faces, so each family uses its own MATH
@@ -404,7 +410,50 @@ impl NativeDocument {
             math_faces,
             view_geometry: None,
             outline_indents: None,
+            paint_window: None,
+            stale_pages: std::collections::BTreeSet::new(),
         })
+    }
+
+    /// Limits what a whole-document repaint draws to `window` (0-based
+    /// pages): every page is still laid out, but only these are drawn, and
+    /// the rest are left stale for [`Self::paint_stale_pages`]. A paragraph
+    /// split or an undo near the start of a long document re-flows every page
+    /// after it, and drawing all of them is most of what it costs; a shell
+    /// shows a few. `None` (the default) draws every page, as before.
+    pub fn set_paint_window(&mut self, window: Option<std::ops::Range<usize>>) {
+        self.paint_window = window.filter(|window| !window.is_empty());
+    }
+
+    /// Whether page `page_index` was laid out again since it was last drawn,
+    /// so its pixels are out of date.
+    pub fn is_page_stale(&self, page_index: usize) -> bool {
+        self.stale_pages.contains(&page_index)
+    }
+
+    /// Whether any page waits to be drawn.
+    pub fn has_stale_pages(&self) -> bool {
+        self.stale_pages
+            .first()
+            .is_some_and(|&page| page < self.page_count())
+    }
+
+    /// Draws the stale pages among `pages` (0-based) — all of them in one pass
+    /// over the span from the first to the last. Returns whether any was
+    /// drawn. A shell calls it for the pages it is about to show, and in idle
+    /// time for the rest.
+    pub fn paint_stale_pages(&mut self, pages: std::ops::Range<usize>) -> Result<bool, String> {
+        let count = self.page_count();
+        self.stale_pages.retain(|&page| page < count);
+        let mut stale = self.stale_pages.range(pages.start..pages.end.min(count));
+        let (Some(&first), last) = (stale.next(), stale.next_back()) else {
+            return Ok(false);
+        };
+        let last = last.copied().unwrap_or(first);
+        // Nothing changed since the pass that left them stale, so the pages
+        // outside this span keep pixels that are still right.
+        self.repaint_all_drawing(Some(first..last + 1), false)?;
+        Ok(true)
     }
 
     /// Serialises the document back to a .docx.
@@ -688,6 +737,17 @@ impl NativeDocument {
 
     /// Repaints every page from scratch.
     pub fn repaint_all(&mut self) -> Result<Duration, String> {
+        self.repaint_all_drawing(self.paint_window.clone(), true)
+    }
+
+    /// Lays every page out again and draws those in `drawn` (0-based; every
+    /// page when `None`). With `others_changed`, the pages not drawn are
+    /// marked stale; without, they are known to be unchanged.
+    fn repaint_all_drawing(
+        &mut self,
+        drawn: Option<std::ops::Range<usize>>,
+        others_changed: bool,
+    ) -> Result<Duration, String> {
         let document = self
             .word_document
             .document
@@ -703,18 +763,36 @@ impl NativeDocument {
         // before deciding whether old paragraph paint can be replayed.
         self.renderer.invalidate_paragraph_content_hash_cache();
         self.renderer.mark_full_repaint();
-        self.renderer
-            .render_with_numbering(
-                &document,
-                &self.options,
-                self.word_document.numbering_part.as_ref(),
-                self.word_document.header_lines.as_deref(),
-                self.word_document.footer_lines.as_deref(),
-                Some(&self.word_document.comments),
-            )
-            .map_err(|_| "repaint failed".to_string())?;
+        let pages_before = self.page_count();
+        if let Some(drawn) = &drawn {
+            self.renderer
+                .set_visible_page_range(Some(drawn.start + 1..=drawn.end));
+        }
+        let result = self.renderer.render_with_numbering(
+            &document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+        );
+        self.renderer.clear_visible_page_range();
+        result.map_err(|_| "repaint failed".to_string())?;
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
+        }
+        let pages = self.page_count().max(pages_before);
+        match &drawn {
+            Some(drawn) => {
+                if others_changed {
+                    self.stale_pages
+                        .extend((0..pages).filter(|page| !drawn.contains(page)));
+                }
+                for page in drawn.clone() {
+                    self.stale_pages.remove(&page);
+                }
+            }
+            None => self.stale_pages.clear(),
         }
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
