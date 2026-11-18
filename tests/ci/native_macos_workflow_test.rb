@@ -194,6 +194,7 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute source.key?("if")
     refute source.fetch("continue-on-error", false)
     assert_includes source.fetch("run"), "test_windows_aptos_size_probes.py"
+    assert_includes source.fetch("run"), "test_windows_explicit_hyphen_probes.py"
     gate = job.fetch("steps").find { |item| item["name"] == "Assert Windows Aptos screen origins and validated PDF origins" }
     refute_nil gate
     refute gate.key?("if")
