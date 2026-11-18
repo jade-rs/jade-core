@@ -1,0 +1,126 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T142234045Z-58b19ea4",
+  "captured_at_utc": "2026-11-18T14:22:34.0581633Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-pdf256-nofloat-single-m14",
+      "source": "..\\w18pdf256-inputs\\word-windows-pdf256-nofloat-single-m14.docx",
+      "sha256": "d1ba99168a32dcfade4b4a39be5c6deb0df45342d2a404ecbe03d244f711fff7",
+      "pdf": "word-windows-pdf256-nofloat-single-m14.pdf",
+      "pdf_sha256": "7433656db0d6adceb48f247ebb9a43f8dccb3cd580eb1e3a9b6f515fd815a56e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-pdf256-nofloat-single-m14.page-001.emf",
+          "sha256": "476d923d815f64e9dbb263e1f1ff42d78d59d688f91feebd48ddbd123f3ec6b2",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-pdf256-nofloat-split100-m14",
+      "source": "..\\w18pdf256-inputs\\word-windows-pdf256-nofloat-split100-m14.docx",
+      "sha256": "5db535a41a1ef4702108b81d77bc77b594b766b6e9bb14a694efb16ccd8a8645",
+      "pdf": "word-windows-pdf256-nofloat-split100-m14.pdf",
+      "pdf_sha256": "fa2de4364d633633b69dfd8c5a939ce666104f0c1f415c2d9dbbb10cc254eebf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-pdf256-nofloat-split100-m14.page-001.emf",
+          "sha256": "316934fe4eea867d39b60518eb56cf90233ea10eb3a4896970d536e60ee34712",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-pdf256-nofloat-single-m15",
+      "source": "..\\w18pdf256-inputs\\word-windows-pdf256-nofloat-single-m15.docx",
+      "sha256": "f738a03cead9bad05c31833a59d649cf3a0bb0c4e011cc1f7a68a19190f06f0c",
+      "pdf": "word-windows-pdf256-nofloat-single-m15.pdf",
+      "pdf_sha256": "afb2acb50d7e4bd5a592277b6a9ac9b04a0b2f2b1bb3d869e2b40b690c24e9ed",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-pdf256-nofloat-single-m15.page-001.emf",
+          "sha256": "869fab3bc069c4713a92c2270cbf0a12e2cbfe415cfd0211c99003ed6741614e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-pdf256-nofloat-split100-m15",
+      "source": "..\\w18pdf256-inputs\\word-windows-pdf256-nofloat-split100-m15.docx",
+      "sha256": "f1fa194a73fb52ad0b7a9b5fd6e89d78bdaaa2de9cb839a0a869dc525af36064",
+      "pdf": "word-windows-pdf256-nofloat-split100-m15.pdf",
+      "pdf_sha256": "105439e36d8ef66bb20504164c42ec67aaca68e8b5ee605052e65a413466a12a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-pdf256-nofloat-split100-m15.page-001.emf",
+          "sha256": "1fd1cb636c5149922339e66911e6d7c847680bd66f4e7db5a9607fe30a49bf45",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

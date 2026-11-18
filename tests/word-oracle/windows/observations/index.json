@@ -48963,6 +48963,2735 @@
           "opened_filename": "word-windows-hyphen-mixed-break-mixed-w65-m15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T120144879Z-9889c406.zip",
+      "archive_sha256": "6666d4ad23c8b309ab98872a555cab41f0fd1e617aeb8a7cec0e751b5c869792",
+      "capture_id": "20261118T120144879Z-9889c406",
+      "capture_sha256": "633063af315c68e1a0e488b324298c2e507a27d2d1073569bc31c76e21ba4e42",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-top-bottom-s11-o26p25-b0-m14",
+          "source_sha256": "74097542c13140604891e03ad8b7c8cb64ef82bd1b95a43d1822cbb56b260ee0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b0-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o26p25-b0-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o26p25-b0-m15",
+          "source_sha256": "4c6fe523a323e282dbf020d52d1c099be66058bc5d209fc565dc723e4d2d016f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b0-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o26p25-b0-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o26p25-b7p5-m14",
+          "source_sha256": "837e098fba4b886b375a826cd77b1fbd28daea88a7dc55f3595873fbd41e4cc0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b7p5-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o26p25-b7p5-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o26p25-b7p5-m15",
+          "source_sha256": "f59901e7fa10b538d7b044f2623f0190060e2d52772036f607da5ec84b7e7905",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o26p25-b7p5-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o26p25-b7p5-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o52p5-b0-m14",
+          "source_sha256": "bba5f410182ca9f62babb8eff38a8c3e2b6aaea54f4e56e0e07c75ecbaecacf5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b0-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o52p5-b0-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o52p5-b0-m15",
+          "source_sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b0-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o52p5-b0-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o52p5-b7p5-m14",
+          "source_sha256": "fdf45279f4e78d162aa92c2bab9a46395c7ac143515f970963c2fe92f43a80c2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b7p5-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o52p5-b7p5-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o52p5-b7p5-m15",
+          "source_sha256": "c1cf9b6c399a20ed8a7fc601068c74bdd182da84864683ba0cd71c8de9ae897d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o52p5-b7p5-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o52p5-b7p5-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o78p75-b0-m14",
+          "source_sha256": "c7e47430f32e05b8567099b56db2170c1c8a13bc5ccdb110e6bed2d97b615eab",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b0-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o78p75-b0-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o78p75-b0-m15",
+          "source_sha256": "cf0156e2a0eb70bfc25ed7105efece4d683df38f38a3ec3c4e7d506a6f010188",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b0-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o78p75-b0-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o78p75-b7p5-m14",
+          "source_sha256": "66a224359973cb498d48ec1a0ac9675ad76557e8dbc29c59a23ad405077eb04d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b7p5-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o78p75-b7p5-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s11-o78p75-b7p5-m15",
+          "source_sha256": "19c78e4aa523774246779086bdb00eacebedc669ba11b9837529aea67f2635f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s11-o78p75-b7p5-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s11-o78p75-b7p5-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o26p25-b0-m14",
+          "source_sha256": "9c6c5b9d6d9826635406eb6c0b37972049093bc0fc8bf91bde5c98ff8e27a5ee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b0-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o26p25-b0-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o26p25-b0-m15",
+          "source_sha256": "7586cc9fdd9d242905d43b695bb9b0a44bc61f553192c218c102069fcd381b6a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b0-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o26p25-b0-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o26p25-b7p5-m14",
+          "source_sha256": "1954568da5fd0e24deafb2442f0b23e2277e9f2ad61057488324acc072cabe5b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b7p5-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o26p25-b7p5-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o26p25-b7p5-m15",
+          "source_sha256": "b27c3d375d7a123a7b37c198dfb68fa9fe7e9873156b2b1bc55b9873022814a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o26p25-b7p5-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o26p25-b7p5-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o52p5-b0-m14",
+          "source_sha256": "5715598e38b214f498dc5f2149e28f48a23353174b486ac1657f61f48f47ce60",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b0-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o52p5-b0-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o52p5-b0-m15",
+          "source_sha256": "bee14f609cad4a26e36ca7147d4ae1d57c8f2dffa6b45de9c05dde016da9100d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b0-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o52p5-b0-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o52p5-b7p5-m14",
+          "source_sha256": "f0b989c605ded27ea494d7f1a46e8bb7487da6aaba093a35cedb99f310c621a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b7p5-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o52p5-b7p5-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o52p5-b7p5-m15",
+          "source_sha256": "ceed8ef97528c2edf8347087f1f96fb9502bc07581c50d0de4981b6e494d6135",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o52p5-b7p5-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o52p5-b7p5-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o78p75-b0-m14",
+          "source_sha256": "b041d353f3884a405d816987fb814fa3004408eb5f0c58e4c68241cd76c4dd05",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b0-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o78p75-b0-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o78p75-b0-m15",
+          "source_sha256": "2585a2462d3b187fef002c6a92dec1edd3ae486365c1fe5215fc32842c377e91",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b0-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o78p75-b0-m15.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o78p75-b7p5-m14",
+          "source_sha256": "49f6164e180e7b524d48456f837b27fb44a31471eb61ba885b207a856aa12263",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b7p5-m14.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o78p75-b7p5-m14.docx"
+        },
+        {
+          "name": "word-windows-top-bottom-s14-o78p75-b7p5-m15",
+          "source_sha256": "2c5aaa8c9b08d1b78be521b1f43b87f91a28e18adb57a967ad145df03fcf20fb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T120144879Z-9889c406/inputs/word-windows-top-bottom-s14-o78p75-b7p5-m15.docx"
+          ],
+          "opened_filename": "word-windows-top-bottom-s14-o78p75-b7p5-m15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T142234045Z-58b19ea4.zip",
+      "archive_sha256": "c2b292dfa6e10398b8415b1bd913747956419a360697208d5edc2c94597bbbdb",
+      "capture_id": "20261118T142234045Z-58b19ea4",
+      "capture_sha256": "a3860bd648fcecfaab1ccab256af9ba9ee1cb6f4cfb3771d76e174cb5d661b11",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pdf256-nofloat-single-m14",
+          "source_sha256": "d1ba99168a32dcfade4b4a39be5c6deb0df45342d2a404ecbe03d244f711fff7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-single-m14.docx"
+          ],
+          "opened_filename": "word-windows-pdf256-nofloat-single-m14.docx"
+        },
+        {
+          "name": "word-windows-pdf256-nofloat-split100-m14",
+          "source_sha256": "5db535a41a1ef4702108b81d77bc77b594b766b6e9bb14a694efb16ccd8a8645",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-split100-m14.docx"
+          ],
+          "opened_filename": "word-windows-pdf256-nofloat-split100-m14.docx"
+        },
+        {
+          "name": "word-windows-pdf256-nofloat-single-m15",
+          "source_sha256": "f738a03cead9bad05c31833a59d649cf3a0bb0c4e011cc1f7a68a19190f06f0c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-single-m15.docx"
+          ],
+          "opened_filename": "word-windows-pdf256-nofloat-single-m15.docx"
+        },
+        {
+          "name": "word-windows-pdf256-nofloat-split100-m15",
+          "source_sha256": "f1fa194a73fb52ad0b7a9b5fd6e89d78bdaaa2de9cb839a0a869dc525af36064",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-split100-m15.docx"
+          ],
+          "opened_filename": "word-windows-pdf256-nofloat-split100-m15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T161425690Z-268b407a.zip",
+      "archive_sha256": "707a29c40a310cdd293bf459ff9036b2d800e8496f4d1a3a5480df51e9ca5b52",
+      "capture_id": "20261118T161425690Z-268b407a",
+      "capture_sha256": "aec9eb3faf7e20cb0e7654ee552205933b8131f91b79d7ca4b65da47651a31ae",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-X48-m14",
+          "source_sha256": "b4dc775b38cd07457c4c5154de50ed911f03015417cc66af5dd64236c492bc3c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-a48-m14",
+          "source_sha256": "df8adb6f68a0c58c88fb7a85ec9bf27a7fcd5286450409c3cc75fc6e3066d47a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-a48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-a48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-one48-m14",
+          "source_sha256": "1d87763daf2f59235e3dbe7d141511c71fb51969ad61a9e40165cf627f66618d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-one48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-one48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-hyphen48-m14",
+          "source_sha256": "5c153e9339f3fe3d55fd799f2152278dbd177ab831851a74d958067178e6ff5c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-hyphen48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-hyphen48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-X48-m15",
+          "source_sha256": "9ab19f3aa1ede3914e477d43d64e48d0cff13ee929970344eee27000f8aba1e8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-a48-m15",
+          "source_sha256": "1aa7902020e33055635f9d95f11c5b430f58bb49f20567d6fcd084dd84f16b07",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-a48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-a48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-one48-m15",
+          "source_sha256": "700490567aaaf56c7017c40f3b5501caa9826b95b5c413f8d5b84a31387a711c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-one48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-one48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bold-s14-hyphen48-m15",
+          "source_sha256": "1aafe0974317a1d283b109d5577f9ce4708614bbd25ead82b0d6a081cfce5c24",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bold-s14-hyphen48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bold-s14-hyphen48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-X48-m14",
+          "source_sha256": "0061f251b039ff51e86c58f78ecc810756f9fa03294f6841f0e967ccfcc55a18",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-a48-m14",
+          "source_sha256": "47e479175e3d8437d184c019ade3ff738f2d06548975d84d6c35f9cbedb25241",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-a48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-a48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-one48-m14",
+          "source_sha256": "9242a221b7166bd397f239fd9e23983d571160d6b16f4637dfedf13e8ffb3339",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-one48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-one48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14",
+          "source_sha256": "181ba050e2f9786030f317eea846ddaacbce091ba3a23e4043e7d7f43c934124",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-X48-m15",
+          "source_sha256": "03deb3ce171baec9e651ee62cc04e1f99c764d53911f601a8da23fd37153fe32",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-a48-m15",
+          "source_sha256": "f1ce9b85818a38ecb26c987c5d8a09fe41d9de52271f7e78fc70d27c7237768c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-a48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-a48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-one48-m15",
+          "source_sha256": "24c4181a9a1322eb48b81c5a06cce320ae2cb9bdb247cf3e5714fb185ae8ba2e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-one48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-one48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15",
+          "source_sha256": "535568478816a380b1e4ba22224a06446925995bf55e3be201dc4167e4af5f19",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-bolditalic-s15-hyphen48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-X48-m14",
+          "source_sha256": "6bbfbdf23f8d394ca4cf6221da533cb7f367c83836d95675a6452ac6169c427a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-a48-m14",
+          "source_sha256": "672f386d31e6c08c0422a1d73f353458c5927204d3723d84d15007cce2fd15c3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-a48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-a48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-one48-m14",
+          "source_sha256": "cd7cfac8078fde9bc3a627995363007663461c203ba9e6c11dfb994ae1473db1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-one48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-one48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-hyphen48-m14",
+          "source_sha256": "1b3622a2e622bf6bd184a3a096f26aea7f093eaf0272e10cf3f3f5c2ffed67dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-hyphen48-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-hyphen48-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-X48-m15",
+          "source_sha256": "7ebcc2480c7510a2678bb766b15117ecab38706c101af23adc3c816c03a2707f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-a48-m15",
+          "source_sha256": "e41d956a56fe23128931b24b15ebde9b3744824929ce36b9311ced5612ec11f9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-a48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-a48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-one48-m15",
+          "source_sha256": "bfd0e505590c902577ae033d631ea5d6b3b924fffdb12873b507749ec0e538fc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-one48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-one48-m15.docx"
+        },
+        {
+          "name": "word-windows-aptos-nominal-regular-s16-hyphen48-m15",
+          "source_sha256": "4b3a1b92ccb97b4e7dfd6adf76b21c2de3b23d5c525a7c119bee4d3723d98eca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T161425690Z-268b407a/inputs/word-windows-aptos-nominal-regular-s16-hyphen48-m15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-nominal-regular-s16-hyphen48-m15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T172333613Z-feff32c1.zip",
+      "archive_sha256": "f896c63472c6537cb9983ffe6a4cf9ad3f486e82442538554388fb00e24063ba",
+      "capture_id": "20261118T172333613Z-feff32c1",
+      "capture_sha256": "3d2bbaac78512d7524227286131ea144694c58e413c45875d146e7c5dac17d0a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-printer-metrics-bold-s14-X-m14-p0",
+          "source_sha256": "5c905be9759bdb0d2b7c9313a15675fd15001bbf4e36db77ff91c271418b3e85",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bold-s14-X-m14-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bold-s14-X-m14-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bold-s14-X-m14-p1",
+          "source_sha256": "2f52f7681aa2c75bfc5f3f2af9c302371995c73d1bef731046ebd5a2cbc7824c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bold-s14-X-m14-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bold-s14-X-m14-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bold-s14-X-m15-p0",
+          "source_sha256": "b0a1a341d5aafa933e3e0459c8272e555389254b840c7369e7a92fd7ba11bc1e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bold-s14-X-m15-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bold-s14-X-m15-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bold-s14-X-m15-p1",
+          "source_sha256": "ed93585148294380fd6e5d4fb308e36382c58ad81d7a7e02da9605edd09f53bb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bold-s14-X-m15-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bold-s14-X-m15-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bolditalic-s15-X-m14-p0",
+          "source_sha256": "ca192c35c50d4440ff4e6385cb80c4cab487bf0a69efeab2b64a90d7d13db041",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bolditalic-s15-X-m14-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bolditalic-s15-X-m14-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bolditalic-s15-X-m14-p1",
+          "source_sha256": "bfc1788cdce9323cbad19ee84ad9ad397d1972f559238128b1a6f2ccde500c04",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bolditalic-s15-X-m14-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bolditalic-s15-X-m14-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bolditalic-s15-X-m15-p0",
+          "source_sha256": "4702d78e48015f34ac84492c8ef768e6a8f29c46bf01037e42c8591c355ebc0a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bolditalic-s15-X-m15-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bolditalic-s15-X-m15-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-bolditalic-s15-X-m15-p1",
+          "source_sha256": "0e25bac1f6f9d4a0a33ec2a2612db5a5e8d623ed18954fbeb1b58242177e2847",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-bolditalic-s15-X-m15-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-bolditalic-s15-X-m15-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-one-m14-p0",
+          "source_sha256": "f6fe4f72689f6d14ac88040651cea0aa3acb0d50b287c0eff961146f42848a6a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-one-m14-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-one-m14-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-one-m14-p1",
+          "source_sha256": "dcaeaa2bb9cc91035a5ba4443e7eb08664b2083a45ed0ba01b97065e80617e09",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-one-m14-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-one-m14-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-hyphen-m14-p0",
+          "source_sha256": "4769d27e4e59217e1749de89bbba4a986be9e595884775683d8395378204d6fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-hyphen-m14-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-hyphen-m14-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-hyphen-m14-p1",
+          "source_sha256": "07a290920ea62a3f7e9d8a39eb2c95401657608f7dfb8f21b810a9208dbeb876",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-hyphen-m14-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-hyphen-m14-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-one-m15-p0",
+          "source_sha256": "90fb48761ab3db770215a404bcf5ecd02342fa10cab8eb032b94d436d8d59b93",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-one-m15-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-one-m15-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-one-m15-p1",
+          "source_sha256": "6448f8a06b33a1ec7e97001ed7e2061d0bae9f4ae9e007e585081457177baedc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-one-m15-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-one-m15-p1.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-hyphen-m15-p0",
+          "source_sha256": "9904e00ec5d0bca99aca98c4c10aa56c7fe699000b7eb3588f27045a3ea1782f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-hyphen-m15-p0.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-hyphen-m15-p0.docx"
+        },
+        {
+          "name": "word-windows-printer-metrics-regular-s16-hyphen-m15-p1",
+          "source_sha256": "400a20661a95dde677c40f36ed8498dbb39e890202cfbcc8b641474e4af36eb6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T172333613Z-feff32c1/inputs/word-windows-printer-metrics-regular-s16-hyphen-m15-p1.docx"
+          ],
+          "opened_filename": "word-windows-printer-metrics-regular-s16-hyphen-m15-p1.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T173559360Z-488dd93e.zip",
+      "archive_sha256": "68fb764be73eed0de27d6c8aa669d13f8da68040ee1601b5b9c12cecf7fcf212",
+      "capture_id": "20261118T173559360Z-488dd93e",
+      "capture_sha256": "59fede96aaa228ea745c1a0b1571f61786562bf61c3686727e715e151eab68f8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-positive-kern-bold-s13-X48-m14",
+          "source_sha256": "647c615eeda6d715285facced56580ec4bd03d791298707c5e1fdbc656989e41",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13-V48-m14",
+          "source_sha256": "1d4e9297c33e7600f9aad5727e8b26e3fc2249db6ef41c4827d8d55b840bc502",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13-Z48-m14",
+          "source_sha256": "836671616176ed6c9c1727e4c4f8c49cf204380e900f143545609e0f12198a7b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13p5-X48-m14",
+          "source_sha256": "51e57bde7fc61d6193dc5bd6381eca5d558db38f66fd80c898d886ad84d3ad5a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13p5-V48-m14",
+          "source_sha256": "b8af792e00c7fc68a70547cce5862bfe2e08f1bb7fba3a35a31efb4aea8259dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13p5-Z48-m14",
+          "source_sha256": "acae413cd578d34998accaa98fb323610f9724742853d45e1d2d74a1a81404a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14-X48-m14",
+          "source_sha256": "3486ccb5c97fa738419ccb25a2cee35f3b6d77049737f1facd76d0cb95e74424",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14-V48-m14",
+          "source_sha256": "0be4694a131c81189fd71f5a732ed52dc425bc4e2d6e3016acd9d749daab1c26",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14-Z48-m14",
+          "source_sha256": "160060f087171a3b5cb970381c34a3f3992ac135613c84b2c651cc732b10cbbb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14p5-X48-m14",
+          "source_sha256": "446030700c3fc17821e7b751fa0c3a736b33487a4e862041919740896624f7ba",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14p5-V48-m14",
+          "source_sha256": "f8582a529050025eaff37750c9d38b61c3d7dc8698d8ad43d3d76a3fa9bb1fed",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14p5-Z48-m14",
+          "source_sha256": "ea5de1632167ffcdb744483beef2a0528578dedde4af942e8df8a008fc5b4246",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15-X48-m14",
+          "source_sha256": "f1bc4c349a3c0182d7421efeeeb138e9ffcdf8d167888fb1251f7a239e799111",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15-V48-m14",
+          "source_sha256": "8e48c2aea8bd26959a33d2f587a4f2c90be6969722f8aab4e0f4366cda38246d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15-Z48-m14",
+          "source_sha256": "a7440bbe2fa0ac1b7b1493ac25902b95d67e1a73da53b0314f9720cc86e977e9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15p5-X48-m14",
+          "source_sha256": "9766cec6a05a4eb5cfcdcef610a8bec60b9c6bd30cf98e181e9c0f8ae6d4ffdf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15p5-V48-m14",
+          "source_sha256": "6dec607d0aff5a29c52013ee385295cb8655ba5d12ee2b3e1a6a29e83b7aa856",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15p5-Z48-m14",
+          "source_sha256": "acbdfc248e1f85f027be31b23e4f83dd9c5b9061b2343449091bceb262b46d73",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s16-X48-m14",
+          "source_sha256": "2a9a0f97fb2a695258f8472d38a527e05e16dca7103aeb066a6df3fa0ef5b7fe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s16-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s16-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s16-V48-m14",
+          "source_sha256": "15aeafc892f02d85cd116106c81048fd4a0e37bd1635bd4d5d6f01fc189980ad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s16-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s16-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s16-Z48-m14",
+          "source_sha256": "cd6c1ef311482e751606d2d9ed3b5dd5872c9b14571d9383410c7d2d8c3d4837",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s16-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s16-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s20-X48-m14",
+          "source_sha256": "bb07c1d3321e77e9270494d8ad9aaabe854bdcf2909b00f00aecf0f986cdc22a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s20-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s20-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s20-V48-m14",
+          "source_sha256": "b277e2bf777f529aabf9cd830b8e135eab4101ceff0b3a4980531ebebb1a1b7f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s20-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s20-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s20-Z48-m14",
+          "source_sha256": "e7dda6aaf1be7ba331973903553619b6e287b4cc3c78e223d521c58e154730c4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s20-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s20-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13-X48-m15",
+          "source_sha256": "031b4a88d95cc027d6232dd3887326c2e78c8a89f1c928f2dabb6554a3a655ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13-V48-m15",
+          "source_sha256": "be1fe9e20fb802804d7a047577ecef8159753f4360ccc287b922e41b20f987ef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13-Z48-m15",
+          "source_sha256": "f6eb7e072c67ea20c10cfb71d72f384add5819fe7b336790e9b2cfe82d70f22d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13p5-X48-m15",
+          "source_sha256": "bc1f284cf41e4b6c7640b75adb75e4f91162983b6e44294b990f5c4f95ba2fc0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13p5-V48-m15",
+          "source_sha256": "d3ab9c87fc1ea0afc7b6745f79e3783d63487c87025149c785fb81ebd21f47d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s13p5-Z48-m15",
+          "source_sha256": "45c1c7c18b4339874c98d634402b38b2e3511632a67cf82a59041a1de7d478dc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s13p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s13p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14-X48-m15",
+          "source_sha256": "58805950f854847173a5324e356b6225bb0c63eb394c4646f418e10aafe9f4bb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14-V48-m15",
+          "source_sha256": "cc31683bafa2e1ed665f7d6229fc687612447d34c033d41402902b71211e8b1f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14-Z48-m15",
+          "source_sha256": "95836f31922423856b61a890da92381f5b5dd5255621c0ddc20c097512e58c18",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14p5-X48-m15",
+          "source_sha256": "71f3f89ccf2d13d4eda810c7a5ebf2e6cd44adceef45aa5811a7a56393707473",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14p5-V48-m15",
+          "source_sha256": "0bf8c78cd90a65c2042e60d3e94deb50efaa3ae83e1f47a96aaa224bb21f4155",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s14p5-Z48-m15",
+          "source_sha256": "6047a49c76ad0f730d1b813781225cc8d5985719cc300f0978bd2f9157438a34",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s14p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15-X48-m15",
+          "source_sha256": "e0293371c0002cdbc465caebdba08ef50893d6ba287a5065772b4ba76a95f0b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15-V48-m15",
+          "source_sha256": "867eb0cda8240d19dd1ed822b8fd705d53bbcfdd8daaf887aaf2c06f59b3852c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15-Z48-m15",
+          "source_sha256": "33c1be3bf53560828a6bc358dd714edaf6168658dcb25708cacadd4ca92315fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15p5-X48-m15",
+          "source_sha256": "17b79e61d27b0e79c97dc103dbf247985bc24fad8b137086ffaf0836df342672",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15p5-V48-m15",
+          "source_sha256": "5376b87a30d44ce8ae1f19f7cf02e4aa79db7380685c35a3d121b904be0869df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s15p5-Z48-m15",
+          "source_sha256": "0cbed8f724ebc79d686912c4f2d435f1be3df4fe9bdc345ec59da5e15d7345e9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s15p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s16-X48-m15",
+          "source_sha256": "6478d8079fe69967c0a3b33be3440557fc6a155deee720f2da682ca81f190417",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s16-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s16-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s16-V48-m15",
+          "source_sha256": "2732675541f2dd247e2f8987552c4704aaa83f0d7c4ec7b8b614e3ef1c160aa5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s16-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s16-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s16-Z48-m15",
+          "source_sha256": "48d4a4a05e5ae1960290a462d97d71ab1f2eff1d24f32e237e2b5d1f4ff86150",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s16-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s16-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s20-X48-m15",
+          "source_sha256": "ce36e6274161e4695d3daf0f0bac7cbf9ef8d1754107dbeebbdcd6837b1539a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s20-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s20-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s20-V48-m15",
+          "source_sha256": "fdd3836e656f41c560863ccd657cb76d9dfddcc76e2cd8a949d3bbdaf9922858",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s20-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s20-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bold-s20-Z48-m15",
+          "source_sha256": "d2ba4a71bd2daa0e5721d169eaca7c76440faabeacef96ff6285e790b358041c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s20-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bold-s20-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13-X48-m14",
+          "source_sha256": "b1af4cfee96146d6eed086f568cd8c058fc91226f83566063b89483863a3226b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13-V48-m14",
+          "source_sha256": "f61e1151a6445cf860d9cd8e700b1e4ae55f174c55fa9058104e68a8ca704bd5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13-Z48-m14",
+          "source_sha256": "553abbed135fbdbb41d2e44d44b2d7ec1f5567e22972c4308ea255f5f0e79122",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13p5-X48-m14",
+          "source_sha256": "1a6fa7977b95b576b0c86b682daec2cd2d44946bbe6695515ea07fcd5ef8a537",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13p5-V48-m14",
+          "source_sha256": "d1ebdd69e7f089079d4f23d306b34da6c02599c6c9785c5de56b38af694a01dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13p5-Z48-m14",
+          "source_sha256": "c3bf2fe8fd8b516c1ee545fe23c09ca274178bec98f353e1754f5e8419cebbaf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14-X48-m14",
+          "source_sha256": "6566d88d557df818b6645b3e226c98ba1bdae837946d159657ca86a1366e2fba",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14-V48-m14",
+          "source_sha256": "3c9e1f65da15e002484fedac9f1d0afc3c305b668567a6fb43745446708efba2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14-Z48-m14",
+          "source_sha256": "bdf2ab539c0197c2d25b59202738ad4f460d5d84caa7c903ff5cb3b082190b92",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14p5-X48-m14",
+          "source_sha256": "f4a9ceafe1ace2dba17d0c7a121fac2c567bfc774cb776adf8b472bc6ef29d97",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14p5-V48-m14",
+          "source_sha256": "989afd527184bee4d2601b427babe27e78722d8b7d752642560d641a0e49455d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14p5-Z48-m14",
+          "source_sha256": "1ff8982c6e40c7ed55bf661cd0f476d430a82694b1eb7e254cdcbe581f57d94b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15-X48-m14",
+          "source_sha256": "aec5c1368e87c95a062309bc4fd3a552dc5a4b2f4bb20de4d012a192889b3038",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15-V48-m14",
+          "source_sha256": "5f030b6f4259dfdecb3fb2c33c5be47e7a743747a77dc15f80aad2c2615fea4e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15-Z48-m14",
+          "source_sha256": "8bd3eed190733ea52e08f6f3a7d862a54f43a9a399bf22f1148356a19df8983e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15p5-X48-m14",
+          "source_sha256": "2766fbcc3d7a7ec3364910ab275c5f46e32c909f7211720bdf201b0652e2e1ef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15p5-V48-m14",
+          "source_sha256": "2be05fe18b2772ea196d7a2da195cfff4f7a964484add5f1d8e9c60403c7de20",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15p5-Z48-m14",
+          "source_sha256": "e80cb6f9224dc00989909d6b38b32bd0c8bcd7413701ed6abea94943ef5f1eda",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s16-X48-m14",
+          "source_sha256": "86b2a8a357b21845265a03a1206accff3bb82ab166a397bad67a7f36afa777af",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s16-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s16-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s16-V48-m14",
+          "source_sha256": "1db7576b2b1b5c50f2c7a279959f3774eb92d8a2842316002d3cdf7571f2fad5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s16-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s16-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s16-Z48-m14",
+          "source_sha256": "af7f4edf5dc5448899d069e589d87c646cd3dffeabcbf2b4fd6c356b9d113954",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s16-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s16-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s20-X48-m14",
+          "source_sha256": "a393ff71c1ee92d75a83a8875c45b0f41ae9ae2a14035458fb1be70e48d3ea8d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s20-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s20-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s20-V48-m14",
+          "source_sha256": "4579c96bd1715ecbe421f9f25e874aca84a24ea413470a97ecbc9c65cba04614",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s20-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s20-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s20-Z48-m14",
+          "source_sha256": "de0b14582455737536998c741dea59133ed35c1f888353ac86fcb027351b41ad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s20-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s20-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13-X48-m15",
+          "source_sha256": "fa599d2265ece24e8d316676f937726373f13d2127ced6b84f17f6272a9c1c49",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13-V48-m15",
+          "source_sha256": "68ff7d2eef4a7f0d8cfea6ad572727ebfa1a4e52f759bfb97be7f3584540d32a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13-Z48-m15",
+          "source_sha256": "730e65f03c619eccd7c8b722cf2b3c87bd29154f7b87c7c9b33969cc31f41055",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13p5-X48-m15",
+          "source_sha256": "9574e481dc16e6d07423bdefa3b7c431fd2ade8db1f2fcbe3cd22d86499e21c1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13p5-V48-m15",
+          "source_sha256": "3f36aca7f799e103e699aec99711e77be2b27a928b3b7e5a43a0669e68ba64b1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s13p5-Z48-m15",
+          "source_sha256": "c888e05e8b128cfb87fde0cff5026f1b9352d6ecf9d6e301d4fac90898a6884d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s13p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s13p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14-X48-m15",
+          "source_sha256": "590c275a140f1e50ad0a0609cc7da70baad183a58c5950e39fd1484661018bfa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14-V48-m15",
+          "source_sha256": "c900996dcd876482e4d732035c8a1d7d2531a1e746bcc13c3d9b87bd25b78291",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14-Z48-m15",
+          "source_sha256": "25049ff101b6e3c5ab9ebd2214d507230095e445b1fcb9d5439f10835f2be95e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14p5-X48-m15",
+          "source_sha256": "159037ce9393ea4a9cfe54f476364b9f259a2093cc1d4eab7dbe0badb4e46a39",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14p5-V48-m15",
+          "source_sha256": "cd225892a618497d96e141d2417e31bb9f034fb1247909525c0a017742a9626a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s14p5-Z48-m15",
+          "source_sha256": "96067f6953dd1a258421572ec5574bf4abffa5d09eb6121bfebe28c2a5a3abf8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s14p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15-X48-m15",
+          "source_sha256": "c271933f3a6e7fb99cc9a78165bb9c1849a2eda17766e1c38de4cfe0a9c701ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15-V48-m15",
+          "source_sha256": "8b62047e050c4369190305c18572585373c823cfc94e53315bafc5526ac01416",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15-Z48-m15",
+          "source_sha256": "091e7610845fd51ecd42d807a9f8262effda1c404b029178d75df86f3f520f5a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15p5-X48-m15",
+          "source_sha256": "48317a677eeb79d360f730c5435738dffdca8895f5699e2b3f6c84b60521f640",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15p5-V48-m15",
+          "source_sha256": "997b1a309f05a256ba32304631592f3b68db869fd77a051e99a04dec5f19a4ad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s15p5-Z48-m15",
+          "source_sha256": "6bb5d4e17ae918ccb810be2dbdb65c0d5c7927726e1f182c7f7d5d63ffc5af5d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s15p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s16-X48-m15",
+          "source_sha256": "534a03e82cd3729a8be041849bc8c1a7fb1bdd68cccf185442272c091a6e132d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s16-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s16-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s16-V48-m15",
+          "source_sha256": "a83e6263f413fe971165e9a149dcb21e067781eb7d120c73348047e6c5fbf744",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s16-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s16-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s16-Z48-m15",
+          "source_sha256": "03fcba43b4d958ab304f21e0fbc6c63b288c0d9981a757cf587639e5a6c65c81",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s16-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s16-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s20-X48-m15",
+          "source_sha256": "3d4167ad2ec6b3a0513b4ce07006a46bb757a365f8a8007bf815588ba62728d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s20-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s20-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s20-V48-m15",
+          "source_sha256": "6d3cb5369c49edf5b3cbe1d7958145462fa7b9078e3e283c1dc2e2e39c11a68e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s20-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s20-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-bolditalic-s20-Z48-m15",
+          "source_sha256": "d3e00f5d8126ebe7e587ff120cd0da1f5b2008bee376481ff7310ad9a5b87505",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s20-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-bolditalic-s20-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13-X48-m14",
+          "source_sha256": "d438ef98483a4ed59f9d8605e6c14cdfedb038ee146f5924d07621ce493269f8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13-V48-m14",
+          "source_sha256": "50249fd550b3f0bd2ba8720d7b6778f5a61f780099b443a6d71e75c76f9d0fc7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13-Z48-m14",
+          "source_sha256": "d48a879605b008026ce29eece1275570e9b6ec18ffc449550fa2b4f889706be0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13p5-X48-m14",
+          "source_sha256": "dcddde7ef0ba9e1f1d0b6e233be899d080bbe53c5160742a3864bf0ac2bc20ea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13p5-V48-m14",
+          "source_sha256": "f5f540f46dbffb7a8c3dbec75988f5d6f43c331e25386cac373bd96610a7d481",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13p5-Z48-m14",
+          "source_sha256": "285db21db41446d187bc3c1b53b8102a520d4d106441ba6c2f10e5a767d6e957",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14-X48-m14",
+          "source_sha256": "72036e6f6cb39e9ce0834bcf8ff5cdaa68df8b1a857d46fa6a611ec76a943792",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14-V48-m14",
+          "source_sha256": "040d7efd96cbfbfa7a118570d8590a5552abdef0cbb10b21f9480844fa8bf01a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14-Z48-m14",
+          "source_sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14p5-X48-m14",
+          "source_sha256": "d6ed411f61efe15a0d6fd286e9e7d7273c20f50597e202195338cf20e72bbfd5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14p5-V48-m14",
+          "source_sha256": "c56dee111a5cca7c625e10a58dbc459235038abf4c805fe7790d41591e7431ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14p5-Z48-m14",
+          "source_sha256": "dc428af34d63232208fdce6a794bbf5b9ba777c8774dc01a7be618c1ab9c5f2b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15-X48-m14",
+          "source_sha256": "1bc01a24f2f962a1cc3c1efda441aa72d89156c65eba7bb1221a4a1a711f2adf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15-V48-m14",
+          "source_sha256": "c4ca0bffec62ed382e3a03a453fe1c2729b80cc9509fdfdccd7f387ecdb49133",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15-Z48-m14",
+          "source_sha256": "7d3b7c289a5f40667b9f5c50a7ddf2c3d457fd83783456fd760f220522dbe6cb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15p5-X48-m14",
+          "source_sha256": "d275bb5b2df028d4fdce34af2f469a20598fccccd403081abc8c8db86703ab26",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15p5-V48-m14",
+          "source_sha256": "67e30c7cf71abe33f82d19d811d746682bf5f3edca4848a206bbd807d73c5d01",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15p5-Z48-m14",
+          "source_sha256": "c79fd75f4bbc4b714d13e7652ebecdfe04a99f68bd9b0dec414700d597732b6f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s16-X48-m14",
+          "source_sha256": "fe1d8c65ca2f85dbcdb24c9e8b0c18109805dfac5716f3c94e19540e302d1f7c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s16-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s16-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s16-V48-m14",
+          "source_sha256": "353240de48865d376921a0ad1a13a1086bad46a7c8e3d4548f1b55508baf6a5d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s16-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s16-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s16-Z48-m14",
+          "source_sha256": "f4f8fe54ace9df44447dddc364f6dffc9a2a2e466c7e78ce20e61bccf096ab9b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s16-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s16-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s20-X48-m14",
+          "source_sha256": "8c83b03b4a4f31e922de70d3c4a544810841c678afd53b4d979178414471cbc0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s20-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s20-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s20-V48-m14",
+          "source_sha256": "554eaec8cff02f86485495383f4f17c0853bf67981388e73faf906fc9cd71fd8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s20-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s20-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s20-Z48-m14",
+          "source_sha256": "6c84cd184ae08fe380cd3b24b21527bb79e9579dd705d0b4a6ed241d2222e2df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s20-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s20-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13-X48-m15",
+          "source_sha256": "23f8c0a7f0fa4cc0930a0a3fe3e7f3dbcc1e3a4b29737ffa19cbf60540aafa08",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13-V48-m15",
+          "source_sha256": "1c2825dbdf95b1f1bafba0e51055d28dd8835ea63cc2e663045955689fb283b2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13-Z48-m15",
+          "source_sha256": "2bd620081ab12a8696096c41693979a1eefb31cd1283f059a23e27b4729a3cee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13p5-X48-m15",
+          "source_sha256": "dd2dcce2e38fa76ebfd5dd9c33c3e05f275c84b202d8412160b1cb73e1af0e2c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13p5-V48-m15",
+          "source_sha256": "cbc97bb29e6527cc17e074d1a5fed5d6063d797d05b5758feaa1e8be54306a3d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s13p5-Z48-m15",
+          "source_sha256": "deab55e3666aa619f083469a462408dcd8ecb39977e57a361c7ebca8f88d0abc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s13p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s13p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14-X48-m15",
+          "source_sha256": "c7ea8c864f6faa67116d4b45ceb577abc7c427406c8cf933156796a3af0c4692",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14-V48-m15",
+          "source_sha256": "ba13c1fd812536393b7b217ebf396358ae3b7b7566977452768a838d209c8357",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14-Z48-m15",
+          "source_sha256": "4d3c132f69f53779f62b0d36dc06fd5132adcbbd010ce761753315023e3a152f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14p5-X48-m15",
+          "source_sha256": "dd713238298349708e9876be47cea1eb218c62960f0595b887fccd3b3cb37403",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14p5-V48-m15",
+          "source_sha256": "11a072a72961119896e55e97107dad9a40da3e024496d1989d267366a73a1005",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s14p5-Z48-m15",
+          "source_sha256": "6f7bd3cd8184e5f863fd08830c5b812a13d77221550c898de226b9de6ba697e7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s14p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15-X48-m15",
+          "source_sha256": "7402eec16d2f53f8fc0d3a7a75e3d1621ebf5c7f9a7084fa5a8f90a04ab87d13",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15-V48-m15",
+          "source_sha256": "28a379c9a52b6f334fae84646f05aa68e05b644ce6620b8a2c780f51982df86b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15-Z48-m15",
+          "source_sha256": "63e75a4152e4d4eddfed22eb832dd9a9b144d42c0e3074070322aa13818f429a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15p5-X48-m15",
+          "source_sha256": "0b0da1d108fed56412ad43e60b349d458a21fca1adbdc04f12545b2ebbd27d56",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15p5-V48-m15",
+          "source_sha256": "779caccb0299103b4cbca87ca017299ea83f28f4b68e8502eb0fa6673ccd2d6f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s15p5-Z48-m15",
+          "source_sha256": "cdb5e42acb3876443f8cad341ea38a0181c54a9db8b71f9d4e2d93277272493d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s15p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s16-X48-m15",
+          "source_sha256": "794af29fb00e6f7c37f5b23151afd2e32dbd7410d035280c685f0b939641d91a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s16-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s16-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s16-V48-m15",
+          "source_sha256": "44f50334dfb5da8cf810dbcb95f3703e7ec3dc884b007a57a65b87389470efd0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s16-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s16-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s16-Z48-m15",
+          "source_sha256": "6a2f82ff787188ef636ab254c832c4041775a8087ad686e8250c2c8ef8721171",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s16-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s16-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s20-X48-m15",
+          "source_sha256": "d94243893a5242de82ef735fe161b04af0b3460b2c053ed26dd5f53e8c0ba4cb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s20-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s20-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s20-V48-m15",
+          "source_sha256": "b2e38d58eb575a61fb9cf91aed44f2ae436132a6b0cfa124e0c70d09c1f9935a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s20-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s20-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-italic-s20-Z48-m15",
+          "source_sha256": "35e792e8a8febdf4f92e0c23e3d54788b1aaea1156e5e1d98238adeaff3601cc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s20-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-italic-s20-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13-X48-m14",
+          "source_sha256": "444ae16d2ec32c4fcabf5af4e0f07c8389a68c94a3e07d6b048f1016e46f05cf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13-V48-m14",
+          "source_sha256": "e9118a9dea24cc7277cb5cf7ca66222bc3f5554a56ba04c659140c063d14f935",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13-Z48-m14",
+          "source_sha256": "fcd04288eaa5740455d6d0721e34fccd8792a99ccc204d0682ce8239a5690b2e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13p5-X48-m14",
+          "source_sha256": "54b2f069d754e8a2be2133a6430b3cc6ed869c1e7525e65798937a14321f54ae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13p5-V48-m14",
+          "source_sha256": "db3b3aa062de9f94ce7a9dc7a2d43e66cbbb73f53235d3bdf2a4e201ac63ef4a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13p5-Z48-m14",
+          "source_sha256": "85045949626a25329174ccea1e662ebf799e760e5b949b544b45733587353617",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14-X48-m14",
+          "source_sha256": "727a1b027c94541f40d9697b1b59778f1cad42afdbe9176e6cf72c78bf9b99a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14-V48-m14",
+          "source_sha256": "52ff3e2766abf0c6332d9593209c8c1e52f5b75b3732b3aebab037631b3ff594",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14-Z48-m14",
+          "source_sha256": "15b01528bdf03c95c38dae93b42a152941745b3b03899cddd707d199baaced45",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14p5-X48-m14",
+          "source_sha256": "ca8060c34c533cbf942cdda10b6b202f16fddaa4d796a031c7bf68c505203f34",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14p5-V48-m14",
+          "source_sha256": "d0791fe5fe1698dae55bf91c086428d0926fc2addc9df6357e932c26ab86a1de",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14p5-Z48-m14",
+          "source_sha256": "bad0a3c99fd278823fc1ba7a702be8880ab126974dbe32b15af3829002360b77",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15-X48-m14",
+          "source_sha256": "7c5dc7ebfcb3997be15efc3582e2c1d097b9b3b57c86d9c4c08c6366dd696959",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15-V48-m14",
+          "source_sha256": "b7e82a010b5a227a9df2a30cacc7993a2da0ad6f2a6391970b86e7f1514f2600",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15-Z48-m14",
+          "source_sha256": "50fa4ac9b1a76a3ce9ef5fb313c6162c003e855809e1165b31d085a27be714f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15p5-X48-m14",
+          "source_sha256": "019ea850d7242fff9c325bc047f8672fe1a56dd1874a37b55f66b257f5285ede",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15p5-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15p5-V48-m14",
+          "source_sha256": "c3ade78aae6a5c3530a085f3732112d31cb93704937aa1a16303a4f022f58221",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15p5-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15p5-Z48-m14",
+          "source_sha256": "410c8a6d3a3ae95fd892964f8f0f9f3bd5c2850a7277576570c0e6a34c5d5c51",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15p5-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s16-X48-m14",
+          "source_sha256": "e0f58a8c82c97bc4664f8cb8918522d7d76be02e28b7c9a9bc05b1f45127ec7a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s16-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s16-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s16-V48-m14",
+          "source_sha256": "385d2f2a9ac0c2769e29289d3e902fb9fd9f18699e67fda740380a0209dc9e30",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s16-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s16-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s16-Z48-m14",
+          "source_sha256": "8964e98bc589c7ab75d8d95896dab409a9c4c64efea5c7cbc9c3fb2aacf3d9c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s16-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s16-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s20-X48-m14",
+          "source_sha256": "e114ac3502ede9f84cccdb19da2ebef8562caa0506dd76dc2cadfe6ec1d47943",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s20-X48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s20-X48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s20-V48-m14",
+          "source_sha256": "79f2e3e61f910e7cde6a72cd657cdd493841369f0c718a6aca44881be1ca734f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s20-V48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s20-V48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s20-Z48-m14",
+          "source_sha256": "618a3d890ccdd23e6d57269854a0727c2bfea1cd6967a5e377f740856b2a1654",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s20-Z48-m14.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s20-Z48-m14.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13-X48-m15",
+          "source_sha256": "a14415d095332c0d66fa6a312ff091bdd3e66d0c64764c772661199db7213664",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13-V48-m15",
+          "source_sha256": "b9733d107c29f6bfda54b0056305a6bdabbd6b629f4be879eb01df668f8c4de8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13-Z48-m15",
+          "source_sha256": "337ebd0bec7f9403253c7735435b2173fe6a5628d562ef719418663f333d50cc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13p5-X48-m15",
+          "source_sha256": "3b9486f156f44508536e44b2a487a089b26fcba85bc37b4b468b792551003884",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13p5-V48-m15",
+          "source_sha256": "3a1d355b2675e909391c642f3c59be732c7beec88e5b9e7b48e8db7a06ff67b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s13p5-Z48-m15",
+          "source_sha256": "6ca58a928782d1c451d27516e93a81c8001e885defddcffc1860228878cb848d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s13p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s13p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14-X48-m15",
+          "source_sha256": "28e38a63c726a80ff9262784ae3985dff6668519eec36cbb61985fab13c94d7a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14-V48-m15",
+          "source_sha256": "a4f00730c0c570c06caa6896ad24eb854372d19e9c81f96edd70cd28d950aa6d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14-Z48-m15",
+          "source_sha256": "e605114e0f6c11251c9361d2e760ecc7cad9d48c5b76abb0f996d70a971aec21",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14p5-X48-m15",
+          "source_sha256": "3d85a8c9000b9f00e0437d75a5c1364ecf060f52c432281c4168d1e4fb53e2c0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14p5-V48-m15",
+          "source_sha256": "694be08701a9e7c290097f38279c8606fb84299e2d8ea5a4cc84a4eb4adc1b78",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s14p5-Z48-m15",
+          "source_sha256": "6617deef3c5356b06b7c9a1654739bf5410404ad4e53928314b93ebbb5f62094",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s14p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15-X48-m15",
+          "source_sha256": "cbe9808563d33f45b479110d9f769c4a2cbd43eab997971d3230a90a41a9826d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15-V48-m15",
+          "source_sha256": "133e46dd38384e934cfb9e89fbb44ad9b71fcf360cfb8045a2d2ada35f70d417",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15-Z48-m15",
+          "source_sha256": "397dd714eb9f6ac8d9a79aa0dd3c707804b9ff2283464aa40d04532d242ff95c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15p5-X48-m15",
+          "source_sha256": "ee010692630323cb536ba7b79de42a5e55f4028db80c0a43a6090a9b52a3c651",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15p5-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15p5-V48-m15",
+          "source_sha256": "c83cfa38a3812a09896b53e6d042a1366c180f4806b9f0069d6a2a97e9154b32",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15p5-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s15p5-Z48-m15",
+          "source_sha256": "d1348badfbed9d7aa6da13a4c18c93985254a3be0dc43d115eb6224c27dd0a42",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s15p5-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s16-X48-m15",
+          "source_sha256": "8f84d04a52fd8e6df4d65fa532f862081b87a9584aa7e90068c67876ad0bccab",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s16-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s16-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s16-V48-m15",
+          "source_sha256": "45c01da1475804d4d0008790b0fd87a8869bb1a3789adea067041aa52573a346",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s16-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s16-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s16-Z48-m15",
+          "source_sha256": "05df706925e12ffb4297c56e623ac70607829632c58f54f702ff95936cee4286",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s16-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s16-Z48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s20-X48-m15",
+          "source_sha256": "d67d4726f6c886a24b8bdcd8653099c16a0f8dddaf30820aee8b6382a072b9cc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s20-X48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s20-X48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s20-V48-m15",
+          "source_sha256": "8b120ef9601be7bb66ea120ed00c49dba56f4a844cd7c3c6c1d70d3bbf8bdfee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s20-V48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s20-V48-m15.docx"
+        },
+        {
+          "name": "word-windows-positive-kern-regular-s20-Z48-m15",
+          "source_sha256": "cf6d6c9cd2e5a4d29b9a1e8c1ecd7bb6bc90dec396938d5bc35b974bd1575317",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s20-Z48-m15.docx"
+          ],
+          "opened_filename": "word-windows-positive-kern-regular-s20-Z48-m15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+      "archive_sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055",
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "capture_sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step0-control",
+          "source_sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step0-control.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step0-control.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step1-explicit-black",
+          "source_sha256": "6a5c00ff1482b691881578cb033cbf3c2ebb56745a06e6cd681e845483795e2e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step1-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step1-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step1-alternating-nearblack",
+          "source_sha256": "b8ba48d6b328a721e0a03d98036338ecc33193f363ac043c387096cc0b2d13b4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step1-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step1-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step2-explicit-black",
+          "source_sha256": "795bef8aeb0253c2e55ed6fb34d35501dafa32f76f281d364e191a6424201499",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step2-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step2-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step2-alternating-nearblack",
+          "source_sha256": "b068af9845c9fdeb2988ecc2be9938e133b9d2971be03f94c22dc3d1ae270f33",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step2-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step2-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step4-explicit-black",
+          "source_sha256": "9ef626b13d4d9450c2cfd41beccc70e11ca35c60755b8d3d4054c50594daa5b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step4-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step4-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step4-alternating-nearblack",
+          "source_sha256": "61944b0d99c39987a720f9f6023f50bea3eb4061344204ddbe7e259c04789bb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step4-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step4-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step8-explicit-black",
+          "source_sha256": "03b58ce6d104f1a666c4d7c7dacf6446126d0ab9d0c66c1598fdba796fece850",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step8-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step8-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step8-alternating-nearblack",
+          "source_sha256": "591631a9b4bad20eb5d5bd947cf7b9977fce5cee01b55ea09b2b3d833e464eeb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step8-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step8-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step16-explicit-black",
+          "source_sha256": "b3e11842ce7d0ac7932684a0129a4c6e6daf71d1f8aed6978a97b59adaed7730",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step16-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step16-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step16-alternating-nearblack",
+          "source_sha256": "aed5567013454eebff97f92120877c338a7c0d6543e6f9b210d01b109c694c8d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step16-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step16-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step32-explicit-black",
+          "source_sha256": "6fd847205382472bf664f39f2319575345a8b1ffa090d2972d7447fd06b8a3bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step32-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step32-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bold-s14-m14-step32-alternating-nearblack",
+          "source_sha256": "02de7a0f92f70de72e0dd43f04b64f7ccbde70e48580856ff344b78e5f8afc22",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step32-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bold-s14-m14-step32-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step0-control",
+          "source_sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step0-control.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step0-control.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step1-explicit-black",
+          "source_sha256": "715c2dbd10723d776638610ace4f225e7d1e1372226d3c4d875ed47ff59f6dcd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step1-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step1-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step1-alternating-nearblack",
+          "source_sha256": "9836b03a24c184ee6a66a782803fb55039e74273eccfadfa55d341c0c0c80692",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step1-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step1-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step2-explicit-black",
+          "source_sha256": "f0bea227470da72050469557d26775ed0febf3429fb7047d2a9b9008ed09a116",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step2-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step2-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step2-alternating-nearblack",
+          "source_sha256": "aab7563b7e43efeceea9fc36a0794eed1cc1ff3ed43216dcaca2bec69a96ab8e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step2-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step2-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step4-explicit-black",
+          "source_sha256": "d6f0cf34f693552bdf9f25f8e249502dd261d10005c09dc332d16c552f5ceb61",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step4-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step4-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step4-alternating-nearblack",
+          "source_sha256": "830da735ab9814a8c66bb63c9ed5fa7d295a94ac227e33a24cee88d9cd2b1bda",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step4-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step4-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step8-explicit-black",
+          "source_sha256": "4fb2bbb0af691eaf588e39bc34f72b6020b96b569e876fe161b629ed87629948",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step8-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step8-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step8-alternating-nearblack",
+          "source_sha256": "ddc0ea338207d336aaa582238fc2954019562152fc6f522f168152188f74105e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step8-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step8-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step16-explicit-black",
+          "source_sha256": "e028c39b45b123d246f43dd78a28e9abd662603d2c5c1b0d5c71ea462319d89c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step16-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step16-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step16-alternating-nearblack",
+          "source_sha256": "1aeacf10fe3d27e40fbab0297d91ded70dd445f63ae10bf455585871c4f15456",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step16-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step16-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step32-explicit-black",
+          "source_sha256": "c18390e5ba4e46a95646d39dbd44d555fb799693348a599a3fdfab1e19b3d6f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step32-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step32-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-bolditalic-s15-m14-step32-alternating-nearblack",
+          "source_sha256": "f5fa417618e850e3a1a488abce8383259822174c2b25c859677ff6bdfe634ae6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step32-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-bolditalic-s15-m14-step32-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step0-control",
+          "source_sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step0-control.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step0-control.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step1-explicit-black",
+          "source_sha256": "a2b52184f4b32d6734386cab0489b69ccdac52b41bd9b39bee148c40fe9025a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step1-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step1-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step1-alternating-nearblack",
+          "source_sha256": "bab8301b9898bbff311a79ce3dc8a542be3f73836e18bff9837dfe008ac22758",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step1-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step1-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step2-explicit-black",
+          "source_sha256": "a1c1c93611ed2f63156b174a4f59bfda8d2c65d001704e0c50fcc9e822829dee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step2-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step2-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step2-alternating-nearblack",
+          "source_sha256": "e4fd57a897725a17cdf416a37c7527443bc7ab637edf25f2e183f17dd174665f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step2-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step2-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step4-explicit-black",
+          "source_sha256": "c161a700f2b79253b611e4bcb49b8bf72bab17b67c21321e445c195538a01fac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step4-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step4-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step4-alternating-nearblack",
+          "source_sha256": "ea1ee0afc5797613d14201029d4a1c6cab0b51773c82c7a90881fc68d29af2df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step4-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step4-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step8-explicit-black",
+          "source_sha256": "4fc50cad95c459823442c2a272dad10fad0538d14d1594f40cee46e69530c7ad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step8-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step8-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step8-alternating-nearblack",
+          "source_sha256": "875bd860f23f6f118d3e59eded608037b2605d34c055ebbf0fe9a397dd27c52d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step8-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step8-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step16-explicit-black",
+          "source_sha256": "f0631767594a32fca4df0830c5234152af900b586dc424d1ad9783ee14606088",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step16-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step16-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step16-alternating-nearblack",
+          "source_sha256": "2fa91524dc5fb9f3e5bdcbfffec8e3c2aa856a2b0e404cb96e68cb58d7132572",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step16-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step16-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step32-explicit-black",
+          "source_sha256": "91dd6d6936101780bca603456e6323379b60087bb09dbdcfbdc543d755d74585",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step32-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step32-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-italic-s14-m14-step32-alternating-nearblack",
+          "source_sha256": "1b1221530b6dcfb61ec99a0596af6310d7e752dee329dbdc16507fbd2e0b5266",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step32-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-italic-s14-m14-step32-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step0-control",
+          "source_sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step0-control.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step0-control.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step1-explicit-black",
+          "source_sha256": "e2bf4c64eaf38ca430aef7ee38c8117eb60f9ad948b6f937b62f873432c982d3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step1-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step1-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step1-alternating-nearblack",
+          "source_sha256": "b5d0cba92f270ab0f8e2e1b22a5c26f08de691c1622e75c05cf6496757ea6ed6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step1-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step1-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step2-explicit-black",
+          "source_sha256": "ebd0569cb9eed23483c9cd1d3023e20005a8c3914d1d7c9e46cabc26052f4975",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step2-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step2-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step2-alternating-nearblack",
+          "source_sha256": "dae9d0f806995a7df9caaeb8a4cfd91caa6d86544f0dd9ed742f7aa127c82c32",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step2-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step2-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step4-explicit-black",
+          "source_sha256": "ab46dce3b681fafffd029e1163dafa36a02a32e72179cc39b6570ba883306de3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step4-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step4-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step4-alternating-nearblack",
+          "source_sha256": "0bdb653798c1580a33140881bf3fc5930a551cab0c90a3a68923c0cf87459601",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step4-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step4-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step8-explicit-black",
+          "source_sha256": "f95760d388915acf3e53be7a6b1a4ce35ef0e3f8ad547391f33baa930dc3cd2c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step8-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step8-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step8-alternating-nearblack",
+          "source_sha256": "31682af8c739e5ae2c5df932a16171c29efba7f196f56015adb3ee2cc4db3ba3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step8-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step8-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step16-explicit-black",
+          "source_sha256": "de3773578a11eb77f0e80a73a99fcd6ea62a34edc12402b8761e8416926f0f8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step16-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step16-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step16-alternating-nearblack",
+          "source_sha256": "b9bd67d27fa84146b1dda529cd3cd3041935c3c13602797a80f3f14b3bb9d22a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step16-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step16-alternating-nearblack.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step32-explicit-black",
+          "source_sha256": "cc50b74e924d9b6b37191d1ff20a741f7dd8192860693c8e10386c99ded0a383",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step32-explicit-black.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step32-explicit-black.docx"
+        },
+        {
+          "name": "word-windows-color-span-regular-s14-m14-step32-alternating-nearblack",
+          "source_sha256": "0eae5db0697c5d4e6dea8423b08939cc42e2f5f7c21703c97fc1922c7cdc1e50",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step32-alternating-nearblack.docx"
+          ],
+          "opened_filename": "word-windows-color-span-regular-s14-m14-step32-alternating-nearblack.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T210016694Z-b59e679c.zip",
+      "archive_sha256": "5f70ab39ac6ab57514f6d7f719944d9a0b35f7943c8ffc72a85c8a5778fbdb67",
+      "capture_id": "20261118T210016694Z-b59e679c",
+      "capture_sha256": "13af5b4694e504c501bb279c4a2655e7f14911369f2a6f8b6aad7207ec879217",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-word-boundary-bold-s14-m14",
+          "source_sha256": "86a797ae0b717ff1c9490bd60a7a1d00a7c1d8e34999e9a33c5016d8045a43d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s14-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bold-s14-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bold-s15-m14",
+          "source_sha256": "64f5e5096c1e8a5bd205f660ef45da8cddcf239c3ec883c8932c5f08c48d3404",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bold-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bold-s14-m15",
+          "source_sha256": "8705a8a702f46e888e5d369a884cb77b342b77c21cf424f82ddba10c2037e54e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s14-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bold-s14-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bold-s15-m15",
+          "source_sha256": "bc244e820c217a9e3e848b82b68c3edb5eabe1f135cfb25712113264c3f34edf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bold-s15-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bold-s15-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bolditalic-s14-m14",
+          "source_sha256": "c45f0baf6803843bbe666746b69722c2b9f571cc5f04260eef18e945415c0033",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s14-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bolditalic-s14-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bolditalic-s15-m14",
+          "source_sha256": "91170ef00694e306c3e2f19894610e4b4be103844691c993a1dd3440bb90e8c7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bolditalic-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bolditalic-s14-m15",
+          "source_sha256": "01bd80c18af17732d3cf1eeba352eff9b4af893e0b4aaf16cef4fab84bdf6959",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s14-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bolditalic-s14-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-bolditalic-s15-m15",
+          "source_sha256": "236d0580f3acf54a7c16e3f51669a80baf92f1c2f3658a5cbb46b02ffcb9c3ae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-bolditalic-s15-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-bolditalic-s15-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-italic-s14-m14",
+          "source_sha256": "353d8b95e73ffc8ef65fae42cee9c0bbce90c4cae4cf9487f52d93c0aec34268",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s14-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-italic-s14-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-italic-s15-m14",
+          "source_sha256": "fce5496160379295bd09ca18f77837689087ada15b1e38706cce95e8e89eae29",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-italic-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-italic-s14-m15",
+          "source_sha256": "2d947971ae1a88c50b2fadcffe6299ad19f97f208e45e631f4580b4b1e6250a2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s14-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-italic-s14-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-italic-s15-m15",
+          "source_sha256": "09fd3222645455b06fdd499f7f83753a9451cac2d1b6565abdb66100aaeaad51",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-italic-s15-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-italic-s15-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-regular-s14-m14",
+          "source_sha256": "41e638087971a7e62978b9223cf9dfb8070165f97cd389e002646e589f79d8f9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s14-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-regular-s14-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-regular-s15-m14",
+          "source_sha256": "8bea6d361de2b995628659d971d32d39229de44f7b3a24dc6a78612fc34ac7d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-regular-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-regular-s14-m15",
+          "source_sha256": "51338b142baa3dc40fd1d153856f7e85e5c9c4b35f28a9349206d9fd57d59af3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s14-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-regular-s14-m15.docx"
+        },
+        {
+          "name": "word-windows-word-boundary-regular-s15-m15",
+          "source_sha256": "d146963c96bb67a4dbdbe8a9611e08c31e7fa7ab4ab408c0b545b2b3720443d2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/inputs/word-windows-word-boundary-regular-s15-m15.docx"
+          ],
+          "opened_filename": "word-windows-word-boundary-regular-s15-m15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -49052,6 +51781,34 @@
     {
       "file": "tests/word-oracle/windows/mixed-hyphen-observations.json",
       "sha256": "89ac5016ea6281c2006c71551db678b822b6968ae958edfafe5dd6d5749b05a4"
+    },
+    {
+      "file": "tests/word-oracle/windows/top-bottom-observations.json",
+      "sha256": "1fd6cef37f0758d221c5348132f165ec629f628ae59cd1394b67a40839ed9803"
+    },
+    {
+      "file": "tests/word-oracle/windows/pdf-segment-observations.json",
+      "sha256": "c8d85e7709ac768181aa7953e19218f9a8a724180d844798dd4d53f276d5438c"
+    },
+    {
+      "file": "tests/word-oracle/windows/aptos-nominal-observations.json",
+      "sha256": "fb9a1cf4a78f77f6d9d667242db4585c9eb4b3b447c36a448a29da11124874be"
+    },
+    {
+      "file": "tests/word-oracle/windows/printer-metric-observations.json",
+      "sha256": "0505b9065941ffb3d76c85d1bc4043cbc803246da4eb5418fc1637d6b5a11fb9"
+    },
+    {
+      "file": "tests/word-oracle/windows/positive-kerning-observations.json",
+      "sha256": "4b71a6e8935246b8f1c19215b2fcda108c80c23481e3dedd6c88be49f7826f46"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/font-facts.json",
+      "sha256": "25361876948cd57b8fb41eddb4cebc83eac6726d0b6ea34ed02a3a39687c55c9"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/font-facts.json",
+      "sha256": "25361876948cd57b8fb41eddb4cebc83eac6726d0b6ea34ed02a3a39687c55c9"
     }
   ]
 }

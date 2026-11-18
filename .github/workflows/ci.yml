@@ -304,7 +304,15 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_minimum_line_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_percentage_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_size_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_nominal_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_printer_toggle_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_positive_kerning_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_xps.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_color_span_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_header_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_table_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_heading_break_probes.py
@@ -331,7 +339,25 @@ jobs:
       - name: Verify border displacement and missing-paint rejection cases
         run: python -m unittest discover -s scripts/word-oracle -p test_windows_borders.py
       - name: Build vector drawing probe
+        id: windows-coordinate-renderer
         run: cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+      - name: Record Windows coordinate renderer provenance
+        id: windows-coordinate-renderer-provenance
+        env:
+          WORD_RENDERER_EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          python -m unittest discover -s scripts/ci -p test_word_renderer_build.py
+          python scripts/ci/record_word_renderer_build.py --executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output target/windows-word-baselines/word-renderer-build.json
+      - name: Upload verified Windows coordinate renderer
+        if: ${{ always() && steps.windows-coordinate-renderer-provenance.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-coordinate-renderer
+          path: |
+            target/windows-word-baselines/debug/examples/word_coordinates.exe
+            target/windows-word-baselines/word-renderer-build.json
+          if-no-files-found: error
+          retention-days: 14
       - name: Assert native shaping platform boundaries
         run: cargo test --manifest-path crates/jade-docx-layout/Cargo.toml --locked --features native-shaping --lib
       - name: Assert Office cached-font discovery against original Word output
@@ -363,6 +389,35 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_hyphen_paint.py
           python scripts/word-oracle/check_windows_hyphen_paint.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows Aptos nominal screen origins and validated PDF origins
+        run: python scripts/word-oracle/check_windows_aptos_nominal.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows nominal coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-aptos-nominal-differences
+          path: target/windows-aptos-nominal
+          if-no-files-found: ignore
+      - name: Assert Windows positive kerning screen and validated PDF origins
+        run: python scripts/word-oracle/check_windows_positive_kerning.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows positive kerning coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-positive-kerning-differences
+          path: target/windows-positive-kerning
+          if-no-files-found: ignore
+      - name: Assert Windows Arial and top-bottom geometry against original Word screen and PDF
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_clearance.py
+          python scripts/word-oracle/check_windows_top_bottom_clearance.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows top-bottom coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-top-bottom-coordinate-differences
+          path: target/windows-top-bottom-clearance
+          if-no-files-found: ignore
       - name: Assert independent Windows Word screen and vector PDF origins
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_output_contexts.py
@@ -383,6 +438,33 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_size_gate.py
           python scripts/word-oracle/check_windows_aptos_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert independent versioned Windows Word XPS print origins
+        run: python scripts/word-oracle/check_windows_xps.py --compare-rendered
+      - name: Upload Windows Word XPS coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-xps-differences
+          path: target/windows-word-xps
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word color-span screen and print origins
+        run: python scripts/word-oracle/check_windows_color_spans.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows color-span coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-color-span-differences
+          path: target/windows-color-spans
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word word-boundary screen and print origins
+        run: python scripts/word-oracle/check_windows_word_boundaries.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows word-boundary coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-boundary-differences
+          path: target/windows-word-boundaries
+          if-no-files-found: ignore
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text.py

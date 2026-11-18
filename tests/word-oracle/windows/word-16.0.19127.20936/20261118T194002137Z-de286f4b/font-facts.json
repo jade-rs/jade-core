@@ -1,0 +1,44 @@
+{
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "fonts": [
+    {
+      "style": "bolditalic",
+      "family": "Aptos Display",
+      "sha256": "67efa2915e860d32365f01fae22400a0ab5a36d7942dd2024dd210910894f0f2",
+      "version": [
+        "Version 2.01;O365"
+      ]
+    },
+    {
+      "style": "regular",
+      "family": "Aptos Display",
+      "sha256": "af7a83e6f1d18b62535a8ee97939ab8653d5ac1fe1861cdb8fce829d3878d901",
+      "version": [
+        "Version 2.01;O365"
+      ]
+    },
+    {
+      "style": "italic",
+      "family": "Aptos Display",
+      "sha256": "a47bafebfe957f26bd59cfd2d063950c547cb505ce0c8e0951f496dc5eaae432",
+      "version": [
+        "Version 2.01;O365"
+      ]
+    },
+    {
+      "style": "bold",
+      "family": "Aptos Display",
+      "sha256": "e66a3774f5c9f2799f1a7f4734f5d1ad942cc9aeb173eb2c94bc09a5f1bf1142",
+      "version": [
+        "Version 2.01;O365"
+      ]
+    }
+  ],
+  "scope": "OfficeAptosDisplay2.01fullfontprogramhashes/versionfacts only; originalWordPDF/XPSembeddedfontprograms retained in originaloutputs."
+}

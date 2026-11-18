@@ -1,0 +1,486 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T210016694Z-b59e679c",
+  "captured_at_utc": "2026-11-18T21:00:16.7067324Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-word-boundary-bold-s14-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bold-s14-m14.docx",
+      "sha256": "86a797ae0b717ff1c9490bd60a7a1d00a7c1d8e34999e9a33c5016d8045a43d4",
+      "pdf": "word-windows-word-boundary-bold-s14-m14.pdf",
+      "pdf_sha256": "ce38db072bb0e7ea2af2077cfa602b0bebea52530282890524370005d9553deb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bold-s14-m14.xps",
+      "xps_sha256": "b5bdda1b4e9d44c204a37ee4cc480f266de73be3255ce694a9e87df0e5350fbc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bold-s14-m14.page-001.emf",
+          "sha256": "47c477b14dab00de380569de7ac08aa1f84c3a868de56713088b1e1f661cc5e7",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bold-s15-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bold-s15-m14.docx",
+      "sha256": "64f5e5096c1e8a5bd205f660ef45da8cddcf239c3ec883c8932c5f08c48d3404",
+      "pdf": "word-windows-word-boundary-bold-s15-m14.pdf",
+      "pdf_sha256": "2e8694a91212240bf48135f203e5a5963b7d37ed9f33a584eef8eb34ba5cfee8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bold-s15-m14.xps",
+      "xps_sha256": "56473af3a749e013140b06effc290d4b8ca915b0a09f0edab0158c462afcb57c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bold-s15-m14.page-001.emf",
+          "sha256": "014cecd4ad63daa5b713aafd4004d03f6907128d1bf54fb9e9bb0a5a5a39885e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bold-s14-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bold-s14-m15.docx",
+      "sha256": "8705a8a702f46e888e5d369a884cb77b342b77c21cf424f82ddba10c2037e54e",
+      "pdf": "word-windows-word-boundary-bold-s14-m15.pdf",
+      "pdf_sha256": "87b74176f146e352182348753830b9d08a366ff27b9058fdee010f126ebae7f1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bold-s14-m15.xps",
+      "xps_sha256": "0b513bf9ef89c89126d220c86c0ef8c8e79fbc5b7f200803530b38aeac6f3828",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bold-s14-m15.page-001.emf",
+          "sha256": "d8ec82f760f63fc14476e37af0428bf5e6c2db2e16e238db9a8d9adaa911e84d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bold-s15-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bold-s15-m15.docx",
+      "sha256": "bc244e820c217a9e3e848b82b68c3edb5eabe1f135cfb25712113264c3f34edf",
+      "pdf": "word-windows-word-boundary-bold-s15-m15.pdf",
+      "pdf_sha256": "ed1cf139db3ed10c782817444d6d608bf6e625cc8c54532e4a28b34b0e2ef106",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bold-s15-m15.xps",
+      "xps_sha256": "f1db63248b4826c0dfa2dd4d1b072c9e02c6145a1a63a92e516e736f84daca64",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bold-s15-m15.page-001.emf",
+          "sha256": "ddad9923ad2c328cf113ee7302e295e5f2b6f38d3aac66236d5c346d8a04ccc7",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s14-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bolditalic-s14-m14.docx",
+      "sha256": "c45f0baf6803843bbe666746b69722c2b9f571cc5f04260eef18e945415c0033",
+      "pdf": "word-windows-word-boundary-bolditalic-s14-m14.pdf",
+      "pdf_sha256": "a1e36106a0ad5ce74ac774c9b3214c0e7d078615b61bd2a70579a95d5ce82731",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bolditalic-s14-m14.xps",
+      "xps_sha256": "e202f69da65b7984ed9f3fe4e5744ace8bf7a4bb6fafa9077bd4428f1806dc25",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bolditalic-s14-m14.page-001.emf",
+          "sha256": "95ae25843212c17473c64dbc1a9c66b34a9ebf935351f95dbb75639b03fffe84",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s15-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bolditalic-s15-m14.docx",
+      "sha256": "91170ef00694e306c3e2f19894610e4b4be103844691c993a1dd3440bb90e8c7",
+      "pdf": "word-windows-word-boundary-bolditalic-s15-m14.pdf",
+      "pdf_sha256": "970f58cb47964d184c95f9ca5553c17b6f0acb03816a94cca9c79e47072f9df6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bolditalic-s15-m14.xps",
+      "xps_sha256": "977c3d886d9b4f5767203b4aaab44786c3345fa3d6b979a9a29e71b225d29b74",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bolditalic-s15-m14.page-001.emf",
+          "sha256": "7ace20107d05739351e5cd373b4af984e5abf1a2e8c4d1ebf9c3b56182d378de",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s14-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bolditalic-s14-m15.docx",
+      "sha256": "01bd80c18af17732d3cf1eeba352eff9b4af893e0b4aaf16cef4fab84bdf6959",
+      "pdf": "word-windows-word-boundary-bolditalic-s14-m15.pdf",
+      "pdf_sha256": "b74f96db4bd258ecb746b6960a80041df959fba5aad50f2fb0bc6b5324f24604",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bolditalic-s14-m15.xps",
+      "xps_sha256": "877281d737109e6bcf76f6f1f43dfbd8b8ae5c8448b723fd579fc0cbc402e4fd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bolditalic-s14-m15.page-001.emf",
+          "sha256": "b3d5daba86660893a34fdd0c4743031a928eaa372f13b62940704f11e7237797",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-bolditalic-s15-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-bolditalic-s15-m15.docx",
+      "sha256": "236d0580f3acf54a7c16e3f51669a80baf92f1c2f3658a5cbb46b02ffcb9c3ae",
+      "pdf": "word-windows-word-boundary-bolditalic-s15-m15.pdf",
+      "pdf_sha256": "f95833d546c0eba39339f8fd86c0279b2c7637893c1253fc870bd3e5f34b80da",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-bolditalic-s15-m15.xps",
+      "xps_sha256": "39787079a43a5dcc5ee0a5c3d768abc5e3303c2b7a45999a886fe5fe972da192",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-bolditalic-s15-m15.page-001.emf",
+          "sha256": "a6debb67f2fe39d46216a515b08dfb5685e1b0f34c26cb5a852b0c508efc7a2d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s14-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-italic-s14-m14.docx",
+      "sha256": "353d8b95e73ffc8ef65fae42cee9c0bbce90c4cae4cf9487f52d93c0aec34268",
+      "pdf": "word-windows-word-boundary-italic-s14-m14.pdf",
+      "pdf_sha256": "91d5a98154283c6eb71ad81c25ad3d0e849871bddf3a5908cd7ab8a0dac9d014",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-italic-s14-m14.xps",
+      "xps_sha256": "574cb4ba59ee6b736a98801bdbc624b8f4e866668c23df596599440e6e8d71ec",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-italic-s14-m14.page-001.emf",
+          "sha256": "d46c9be80dbd214aae2a5ae155143de8866098d87c046f92d8d85abadfbfacdf",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s15-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-italic-s15-m14.docx",
+      "sha256": "fce5496160379295bd09ca18f77837689087ada15b1e38706cce95e8e89eae29",
+      "pdf": "word-windows-word-boundary-italic-s15-m14.pdf",
+      "pdf_sha256": "1d92461110305a2999b86a86f79529f74bc644029ca585e5662479c0b866f356",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-italic-s15-m14.xps",
+      "xps_sha256": "0c2ceacb0383bcee2a049b83d54f358444a8f102821401468dd97f12db8694c9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-italic-s15-m14.page-001.emf",
+          "sha256": "8e477d0e8692075b46a23f3116bb2102a8062f5425eb169a4bd36192627ac584",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s14-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-italic-s14-m15.docx",
+      "sha256": "2d947971ae1a88c50b2fadcffe6299ad19f97f208e45e631f4580b4b1e6250a2",
+      "pdf": "word-windows-word-boundary-italic-s14-m15.pdf",
+      "pdf_sha256": "a219ae410741e130b0fe47d6a38c36eb4498384ed34e7fb03219dc631f05b647",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-italic-s14-m15.xps",
+      "xps_sha256": "580d1ec27045060f57562b447a1715d0dde2c195825723fce71c6dd7bbd6c2f7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-italic-s14-m15.page-001.emf",
+          "sha256": "975f5b31112a7a7b00db4c15c9e7bc2bed52157fa3c0660a2b3c34d562da27a8",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-italic-s15-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-italic-s15-m15.docx",
+      "sha256": "09fd3222645455b06fdd499f7f83753a9451cac2d1b6565abdb66100aaeaad51",
+      "pdf": "word-windows-word-boundary-italic-s15-m15.pdf",
+      "pdf_sha256": "5b871b300543cf55be3068b22feefcfeffd313fa264ad37332d487afc173880c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-italic-s15-m15.xps",
+      "xps_sha256": "06a822611694388b5dcdec106b1d1345776d510b541878a89e8df488ec16ad15",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-italic-s15-m15.page-001.emf",
+          "sha256": "5a53b8cfcf2ebea9f1680439c18775e5db8784fd029ddee66070c569ab66e059",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s14-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-regular-s14-m14.docx",
+      "sha256": "41e638087971a7e62978b9223cf9dfb8070165f97cd389e002646e589f79d8f9",
+      "pdf": "word-windows-word-boundary-regular-s14-m14.pdf",
+      "pdf_sha256": "0c4091192c61d0ae95705a1e9ea8d0ac273f269d1517f2a9efceb3c31686f532",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-regular-s14-m14.xps",
+      "xps_sha256": "72607bc3c1929c9635096c17333fc76ede12b1edb9771212db064f8320439ee9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-regular-s14-m14.page-001.emf",
+          "sha256": "634dc41d1d7122106d0c8f2d68bb6ad0751f2b20e2756ab1d70cb402a696e422",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s15-m14",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-regular-s15-m14.docx",
+      "sha256": "8bea6d361de2b995628659d971d32d39229de44f7b3a24dc6a78612fc34ac7d8",
+      "pdf": "word-windows-word-boundary-regular-s15-m14.pdf",
+      "pdf_sha256": "472cf149e155f0a4ab9df8675930597694318412773e9dcbaf9a1fa602c47295",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-regular-s15-m14.xps",
+      "xps_sha256": "d69db98a43929175bae0239bbfd04b15bf66e69e48b6ffaadfb4f85c6bd2cbbb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-regular-s15-m14.page-001.emf",
+          "sha256": "95f6760a578ffb382045dce20a9a293620af2b47a5c896b90d9627436e3ee487",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s14-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-regular-s14-m15.docx",
+      "sha256": "51338b142baa3dc40fd1d153856f7e85e5c9c4b35f28a9349206d9fd57d59af3",
+      "pdf": "word-windows-word-boundary-regular-s14-m15.pdf",
+      "pdf_sha256": "53cddeb99bf96e42099ff5d0c793513ddc2e7f6c127f2e5b6c04f3b2c43dd048",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-regular-s14-m15.xps",
+      "xps_sha256": "4a1c608b6dcbd8798bc92d660e12303b15c341aa733dc7e3be2c1b637b44fd27",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-regular-s14-m15.page-001.emf",
+          "sha256": "5a25caaff343633279734bd148f177e8ead17365c53a4a9c5414707ed8a14e7d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-word-boundary-regular-s15-m15",
+      "source": "w18-word-boundary-inputs\\word-windows-word-boundary-regular-s15-m15.docx",
+      "sha256": "d146963c96bb67a4dbdbe8a9611e08c31e7fa7ab4ab408c0b545b2b3720443d2",
+      "pdf": "word-windows-word-boundary-regular-s15-m15.pdf",
+      "pdf_sha256": "6218f64e7c80a2ffb05527a9c705a5f3d9db81b4ba63e0ec1b05283e02fd8060",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-word-boundary-regular-s15-m15.xps",
+      "xps_sha256": "724c285233591b328a02875ea7f4ae2f0824d41625311e2ce83e4b12a58b15fd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-word-boundary-regular-s15-m15.page-001.emf",
+          "sha256": "e838b62f4144dc90936e80e68163f79980d4446479f0b480826f4ca48cbe0a52",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

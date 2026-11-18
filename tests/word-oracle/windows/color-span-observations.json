@@ -1,0 +1,2466 @@
+{
+  "schema": 1,
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261118T194002137Z-de286f4b",
+  "mac_parent_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/manifest.json",
+    "sha256": "5bdf55d8189ea1e0fff9df8a8b3e39765eddf41d0e1eb5a8302b9d74bd680e75"
+  },
+  "mac_parent_reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114.3",
+    "osVersion": "27.0.1 (26A434)",
+    "export": "Print > PDF > Save as PDF",
+    "pdfSha256": "0cfaa13cafca33030c441fc58558543b6ccd4f2819e499d205202c6ed64fa1b8",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "font_facts": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/font-facts.json",
+    "sha256": "25361876948cd57b8fb41eddb4cebc83eac6726d0b6ea34ed02a3a39687c55c9"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step0-control",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step0-control.docx",
+        "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step0-control",
+        "source_sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 0,
+        "color_mode": "control",
+        "changed_parts": [],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step1-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step1-explicit-black.docx",
+        "sha256": "6a5c00ff1482b691881578cb033cbf3c2ebb56745a06e6cd681e845483795e2e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step1-explicit-black",
+        "source_sha256": "6a5c00ff1482b691881578cb033cbf3c2ebb56745a06e6cd681e845483795e2e",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step1-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step1-alternating-nearblack.docx",
+        "sha256": "b8ba48d6b328a721e0a03d98036338ecc33193f363ac043c387096cc0b2d13b4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step1-alternating-nearblack",
+        "source_sha256": "b8ba48d6b328a721e0a03d98036338ecc33193f363ac043c387096cc0b2d13b4",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step2-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step2-explicit-black.docx",
+        "sha256": "795bef8aeb0253c2e55ed6fb34d35501dafa32f76f281d364e191a6424201499"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step2-explicit-black",
+        "source_sha256": "795bef8aeb0253c2e55ed6fb34d35501dafa32f76f281d364e191a6424201499",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step2-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step2-alternating-nearblack.docx",
+        "sha256": "b068af9845c9fdeb2988ecc2be9938e133b9d2971be03f94c22dc3d1ae270f33"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step2-alternating-nearblack",
+        "source_sha256": "b068af9845c9fdeb2988ecc2be9938e133b9d2971be03f94c22dc3d1ae270f33",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step4-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step4-explicit-black.docx",
+        "sha256": "9ef626b13d4d9450c2cfd41beccc70e11ca35c60755b8d3d4054c50594daa5b5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step4-explicit-black",
+        "source_sha256": "9ef626b13d4d9450c2cfd41beccc70e11ca35c60755b8d3d4054c50594daa5b5",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step4-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step4-alternating-nearblack.docx",
+        "sha256": "61944b0d99c39987a720f9f6023f50bea3eb4061344204ddbe7e259c04789bb5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step4-alternating-nearblack",
+        "source_sha256": "61944b0d99c39987a720f9f6023f50bea3eb4061344204ddbe7e259c04789bb5",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step8-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step8-explicit-black.docx",
+        "sha256": "03b58ce6d104f1a666c4d7c7dacf6446126d0ab9d0c66c1598fdba796fece850"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step8-explicit-black",
+        "source_sha256": "03b58ce6d104f1a666c4d7c7dacf6446126d0ab9d0c66c1598fdba796fece850",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step8-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step8-alternating-nearblack.docx",
+        "sha256": "591631a9b4bad20eb5d5bd947cf7b9977fce5cee01b55ea09b2b3d833e464eeb"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step8-alternating-nearblack",
+        "source_sha256": "591631a9b4bad20eb5d5bd947cf7b9977fce5cee01b55ea09b2b3d833e464eeb",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step16-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step16-explicit-black.docx",
+        "sha256": "b3e11842ce7d0ac7932684a0129a4c6e6daf71d1f8aed6978a97b59adaed7730"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step16-explicit-black",
+        "source_sha256": "b3e11842ce7d0ac7932684a0129a4c6e6daf71d1f8aed6978a97b59adaed7730",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step16-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step16-alternating-nearblack.docx",
+        "sha256": "aed5567013454eebff97f92120877c338a7c0d6543e6f9b210d01b109c694c8d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step16-alternating-nearblack",
+        "source_sha256": "aed5567013454eebff97f92120877c338a7c0d6543e6f9b210d01b109c694c8d",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step32-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step32-explicit-black.docx",
+        "sha256": "6fd847205382472bf664f39f2319575345a8b1ffa090d2972d7447fd06b8a3bc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step32-explicit-black",
+        "source_sha256": "6fd847205382472bf664f39f2319575345a8b1ffa090d2972d7447fd06b8a3bc",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bold-s14-m14-step32-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bold-s14-m14-step32-alternating-nearblack.docx",
+        "sha256": "02de7a0f92f70de72e0dd43f04b64f7ccbde70e48580856ff344b78e5f8afc22"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bold-s14-m14-step32-alternating-nearblack",
+        "source_sha256": "02de7a0f92f70de72e0dd43f04b64f7ccbde70e48580856ff344b78e5f8afc22",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx",
+          "sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bold-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step0-control",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step0-control.docx",
+        "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step0-control",
+        "source_sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 0,
+        "color_mode": "control",
+        "changed_parts": [],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step1-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step1-explicit-black.docx",
+        "sha256": "715c2dbd10723d776638610ace4f225e7d1e1372226d3c4d875ed47ff59f6dcd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step1-explicit-black",
+        "source_sha256": "715c2dbd10723d776638610ace4f225e7d1e1372226d3c4d875ed47ff59f6dcd",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step1-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step1-alternating-nearblack.docx",
+        "sha256": "9836b03a24c184ee6a66a782803fb55039e74273eccfadfa55d341c0c0c80692"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step1-alternating-nearblack",
+        "source_sha256": "9836b03a24c184ee6a66a782803fb55039e74273eccfadfa55d341c0c0c80692",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step2-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step2-explicit-black.docx",
+        "sha256": "f0bea227470da72050469557d26775ed0febf3429fb7047d2a9b9008ed09a116"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step2-explicit-black",
+        "source_sha256": "f0bea227470da72050469557d26775ed0febf3429fb7047d2a9b9008ed09a116",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step2-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step2-alternating-nearblack.docx",
+        "sha256": "aab7563b7e43efeceea9fc36a0794eed1cc1ff3ed43216dcaca2bec69a96ab8e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step2-alternating-nearblack",
+        "source_sha256": "aab7563b7e43efeceea9fc36a0794eed1cc1ff3ed43216dcaca2bec69a96ab8e",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step4-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step4-explicit-black.docx",
+        "sha256": "d6f0cf34f693552bdf9f25f8e249502dd261d10005c09dc332d16c552f5ceb61"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step4-explicit-black",
+        "source_sha256": "d6f0cf34f693552bdf9f25f8e249502dd261d10005c09dc332d16c552f5ceb61",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step4-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step4-alternating-nearblack.docx",
+        "sha256": "830da735ab9814a8c66bb63c9ed5fa7d295a94ac227e33a24cee88d9cd2b1bda"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step4-alternating-nearblack",
+        "source_sha256": "830da735ab9814a8c66bb63c9ed5fa7d295a94ac227e33a24cee88d9cd2b1bda",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step8-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step8-explicit-black.docx",
+        "sha256": "4fb2bbb0af691eaf588e39bc34f72b6020b96b569e876fe161b629ed87629948"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step8-explicit-black",
+        "source_sha256": "4fb2bbb0af691eaf588e39bc34f72b6020b96b569e876fe161b629ed87629948",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step8-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step8-alternating-nearblack.docx",
+        "sha256": "ddc0ea338207d336aaa582238fc2954019562152fc6f522f168152188f74105e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step8-alternating-nearblack",
+        "source_sha256": "ddc0ea338207d336aaa582238fc2954019562152fc6f522f168152188f74105e",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step16-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step16-explicit-black.docx",
+        "sha256": "e028c39b45b123d246f43dd78a28e9abd662603d2c5c1b0d5c71ea462319d89c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step16-explicit-black",
+        "source_sha256": "e028c39b45b123d246f43dd78a28e9abd662603d2c5c1b0d5c71ea462319d89c",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step16-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step16-alternating-nearblack.docx",
+        "sha256": "1aeacf10fe3d27e40fbab0297d91ded70dd445f63ae10bf455585871c4f15456"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step16-alternating-nearblack",
+        "source_sha256": "1aeacf10fe3d27e40fbab0297d91ded70dd445f63ae10bf455585871c4f15456",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step32-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step32-explicit-black.docx",
+        "sha256": "c18390e5ba4e46a95646d39dbd44d555fb799693348a599a3fdfab1e19b3d6f2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step32-explicit-black",
+        "source_sha256": "c18390e5ba4e46a95646d39dbd44d555fb799693348a599a3fdfab1e19b3d6f2",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-bolditalic-s15-m14-step32-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-bolditalic-s15-m14-step32-alternating-nearblack.docx",
+        "sha256": "f5fa417618e850e3a1a488abce8383259822174c2b25c859677ff6bdfe634ae6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-bolditalic-s15-m14-step32-alternating-nearblack",
+        "source_sha256": "f5fa417618e850e3a1a488abce8383259822174c2b25c859677ff6bdfe634ae6",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx",
+          "sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "bolditalic",
+        "font_size_pt": 15,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step0-control",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step0-control.docx",
+        "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step0-control",
+        "source_sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 0,
+        "color_mode": "control",
+        "changed_parts": [],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step1-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step1-explicit-black.docx",
+        "sha256": "a2b52184f4b32d6734386cab0489b69ccdac52b41bd9b39bee148c40fe9025a6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step1-explicit-black",
+        "source_sha256": "a2b52184f4b32d6734386cab0489b69ccdac52b41bd9b39bee148c40fe9025a6",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step1-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step1-alternating-nearblack.docx",
+        "sha256": "bab8301b9898bbff311a79ce3dc8a542be3f73836e18bff9837dfe008ac22758"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step1-alternating-nearblack",
+        "source_sha256": "bab8301b9898bbff311a79ce3dc8a542be3f73836e18bff9837dfe008ac22758",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step2-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step2-explicit-black.docx",
+        "sha256": "a1c1c93611ed2f63156b174a4f59bfda8d2c65d001704e0c50fcc9e822829dee"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step2-explicit-black",
+        "source_sha256": "a1c1c93611ed2f63156b174a4f59bfda8d2c65d001704e0c50fcc9e822829dee",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step2-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step2-alternating-nearblack.docx",
+        "sha256": "e4fd57a897725a17cdf416a37c7527443bc7ab637edf25f2e183f17dd174665f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step2-alternating-nearblack",
+        "source_sha256": "e4fd57a897725a17cdf416a37c7527443bc7ab637edf25f2e183f17dd174665f",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step4-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step4-explicit-black.docx",
+        "sha256": "c161a700f2b79253b611e4bcb49b8bf72bab17b67c21321e445c195538a01fac"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step4-explicit-black",
+        "source_sha256": "c161a700f2b79253b611e4bcb49b8bf72bab17b67c21321e445c195538a01fac",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step4-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step4-alternating-nearblack.docx",
+        "sha256": "ea1ee0afc5797613d14201029d4a1c6cab0b51773c82c7a90881fc68d29af2df"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step4-alternating-nearblack",
+        "source_sha256": "ea1ee0afc5797613d14201029d4a1c6cab0b51773c82c7a90881fc68d29af2df",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step8-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step8-explicit-black.docx",
+        "sha256": "4fc50cad95c459823442c2a272dad10fad0538d14d1594f40cee46e69530c7ad"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step8-explicit-black",
+        "source_sha256": "4fc50cad95c459823442c2a272dad10fad0538d14d1594f40cee46e69530c7ad",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step8-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step8-alternating-nearblack.docx",
+        "sha256": "875bd860f23f6f118d3e59eded608037b2605d34c055ebbf0fe9a397dd27c52d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step8-alternating-nearblack",
+        "source_sha256": "875bd860f23f6f118d3e59eded608037b2605d34c055ebbf0fe9a397dd27c52d",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step16-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step16-explicit-black.docx",
+        "sha256": "f0631767594a32fca4df0830c5234152af900b586dc424d1ad9783ee14606088"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step16-explicit-black",
+        "source_sha256": "f0631767594a32fca4df0830c5234152af900b586dc424d1ad9783ee14606088",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step16-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step16-alternating-nearblack.docx",
+        "sha256": "2fa91524dc5fb9f3e5bdcbfffec8e3c2aa856a2b0e404cb96e68cb58d7132572"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step16-alternating-nearblack",
+        "source_sha256": "2fa91524dc5fb9f3e5bdcbfffec8e3c2aa856a2b0e404cb96e68cb58d7132572",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step32-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step32-explicit-black.docx",
+        "sha256": "91dd6d6936101780bca603456e6323379b60087bb09dbdcfbdc543d755d74585"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step32-explicit-black",
+        "source_sha256": "91dd6d6936101780bca603456e6323379b60087bb09dbdcfbdc543d755d74585",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-italic-s14-m14-step32-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-italic-s14-m14-step32-alternating-nearblack.docx",
+        "sha256": "1b1221530b6dcfb61ec99a0596af6310d7e752dee329dbdc16507fbd2e0b5266"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-italic-s14-m14-step32-alternating-nearblack",
+        "source_sha256": "1b1221530b6dcfb61ec99a0596af6310d7e752dee329dbdc16507fbd2e0b5266",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+          "sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-italic-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "color-span-print",
+      "xps_gate_promotion": "color-span-xps",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step0-control",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step0-control.docx",
+        "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step0-control",
+        "source_sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 0,
+        "color_mode": "control",
+        "changed_parts": [],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step1-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step1-explicit-black.docx",
+        "sha256": "e2bf4c64eaf38ca430aef7ee38c8117eb60f9ad948b6f937b62f873432c982d3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step1-explicit-black",
+        "source_sha256": "e2bf4c64eaf38ca430aef7ee38c8117eb60f9ad948b6f937b62f873432c982d3",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step1-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step1-alternating-nearblack.docx",
+        "sha256": "b5d0cba92f270ab0f8e2e1b22a5c26f08de691c1622e75c05cf6496757ea6ed6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step1-alternating-nearblack",
+        "source_sha256": "b5d0cba92f270ab0f8e2e1b22a5c26f08de691c1622e75c05cf6496757ea6ed6",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 1,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step2-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step2-explicit-black.docx",
+        "sha256": "ebd0569cb9eed23483c9cd1d3023e20005a8c3914d1d7c9e46cabc26052f4975"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step2-explicit-black",
+        "source_sha256": "ebd0569cb9eed23483c9cd1d3023e20005a8c3914d1d7c9e46cabc26052f4975",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step2-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step2-alternating-nearblack.docx",
+        "sha256": "dae9d0f806995a7df9caaeb8a4cfd91caa6d86544f0dd9ed742f7aa127c82c32"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step2-alternating-nearblack",
+        "source_sha256": "dae9d0f806995a7df9caaeb8a4cfd91caa6d86544f0dd9ed742f7aa127c82c32",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 2,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step4-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step4-explicit-black.docx",
+        "sha256": "ab46dce3b681fafffd029e1163dafa36a02a32e72179cc39b6570ba883306de3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step4-explicit-black",
+        "source_sha256": "ab46dce3b681fafffd029e1163dafa36a02a32e72179cc39b6570ba883306de3",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step4-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step4-alternating-nearblack.docx",
+        "sha256": "0bdb653798c1580a33140881bf3fc5930a551cab0c90a3a68923c0cf87459601"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step4-alternating-nearblack",
+        "source_sha256": "0bdb653798c1580a33140881bf3fc5930a551cab0c90a3a68923c0cf87459601",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 4,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step8-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step8-explicit-black.docx",
+        "sha256": "f95760d388915acf3e53be7a6b1a4ce35ef0e3f8ad547391f33baa930dc3cd2c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step8-explicit-black",
+        "source_sha256": "f95760d388915acf3e53be7a6b1a4ce35ef0e3f8ad547391f33baa930dc3cd2c",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step8-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step8-alternating-nearblack.docx",
+        "sha256": "31682af8c739e5ae2c5df932a16171c29efba7f196f56015adb3ee2cc4db3ba3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step8-alternating-nearblack",
+        "source_sha256": "31682af8c739e5ae2c5df932a16171c29efba7f196f56015adb3ee2cc4db3ba3",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 8,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step16-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step16-explicit-black.docx",
+        "sha256": "de3773578a11eb77f0e80a73a99fcd6ea62a34edc12402b8761e8416926f0f8b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step16-explicit-black",
+        "source_sha256": "de3773578a11eb77f0e80a73a99fcd6ea62a34edc12402b8761e8416926f0f8b",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step16-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step16-alternating-nearblack.docx",
+        "sha256": "b9bd67d27fa84146b1dda529cd3cd3041935c3c13602797a80f3f14b3bb9d22a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step16-alternating-nearblack",
+        "source_sha256": "b9bd67d27fa84146b1dda529cd3cd3041935c3c13602797a80f3f14b3bb9d22a",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 16,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step32-explicit-black",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step32-explicit-black.docx",
+        "sha256": "cc50b74e924d9b6b37191d1ff20a741f7dd8192860693c8e10386c99ded0a383"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step32-explicit-black",
+        "source_sha256": "cc50b74e924d9b6b37191d1ff20a741f7dd8192860693c8e10386c99ded0a383",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "explicit-black",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    },
+    {
+      "name": "word-windows-color-span-regular-s14-m14-step32-alternating-nearblack",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/inputs/word-windows-color-span-regular-s14-m14-step32-alternating-nearblack.docx",
+        "sha256": "0eae5db0697c5d4e6dea8423b08939cc42e2f5f7c21703c97fc1922c7cdc1e50"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T194002137Z-de286f4b/capture.json",
+        "sha256": "57ed1bc7ec2e57cf07e9fa5884bf274b75b48f7f72bbee1c246139d18353df45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T194002137Z-de286f4b.zip",
+        "sha256": "e4847cb6132d80edfc35f82c421a63d4fbc7cbbdab3a3efa1a7c5cf80e706055"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261118T194002137Z-de286f4b",
+      "input_specification": {
+        "name": "word-windows-color-span-regular-s14-m14-step32-alternating-nearblack",
+        "source_sha256": "0eae5db0697c5d4e6dea8423b08939cc42e2f5f7c21703c97fc1922c7cdc1e50",
+        "parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx",
+          "sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f"
+        },
+        "parent_case": "word-windows-aptos-size-control-display-regular-size14-compat14",
+        "mac_parent": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/source.docx",
+        "mac_parent_sha256": "ce26341fd72f4480edc033ee2093d803ad8e1527723255ab0980c760b7e1dff0",
+        "style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "interval": 32,
+        "color_mode": "alternating-nearblack",
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "scope": "Originaltext/font/paragraph/packageparts preserved; onlyrunsegmentation andexplicitfontcolor change. Intervals1/2/4/8/16/32 systematic, no expectedcoordinates used. Step0byteexactcontrol."
+      },
+      "screen_gate_promotion": "color-span-screen",
+      "coordinate_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 280
+    }
+  ]
+}

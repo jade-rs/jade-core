@@ -20752,6 +20752,36 @@ where
         } else {
             None
         };
+        // Modern Windows auto lines test the font box above a top-and-bottom
+        // float, not the extra line leading below it. Resolve only faces that
+        // actually occur in this paragraph, preserving the Mac and legacy paths.
+        let float_line_bottom_leading = if !mac
+            && paragraph_style
+                .east_asian_rules
+                .compatibility_mode
+                .unwrap_or(15)
+                >= 15
+            && paragraph_style.word_grid_line_sizing.is_none()
+            && spacing_ref
+                .and_then(|spacing| spacing.line_rule.as_deref())
+                .is_none_or(|rule| rule == "auto")
+            && (current_float_exclusions
+                .iter()
+                .any(|bounds| bounds.left == f64::NEG_INFINITY && bounds.right == f64::INFINITY)
+                || self.active_float_exclusions.iter().any(|entry| {
+                    entry.page_number == self.current_page_number
+                        && entry.bounds.bottom > self.current_y
+                        && entry.bounds.left == f64::NEG_INFINITY
+                        && entry.bounds.right == f64::INFINITY
+                })) {
+            self.paragraph_word_font_lines_pt(paragraph)?
+                .1
+                .map_or(0.0, |single_pt| {
+                    (line_height - points_to_px(single_pt)).max(0.0)
+                })
+        } else {
+            0.0
+        };
         let table_space_after = self.floating_table_space_after(
             paragraph,
             body_element_index,
@@ -20765,10 +20795,9 @@ where
             column_right - paragraph_style.right_indent,
             &current_float_exclusions,
             contour_font_box,
-            paragraph_style.word_platform
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                && paragraph_style.word_grid_line_sizing.is_none(),
+            paragraph_style.word_grid_line_sizing.is_none(),
             None,
+            float_line_bottom_leading,
         );
         // The final line of unsnapped, single-spaced text includes the mark's
         // font box. Word also retains it below an inline image in an
@@ -20938,6 +20967,7 @@ where
                     contour_font_box,
                     paragraph_style.word_grid_line_sizing.is_none(),
                     table_spacing,
+                    float_line_bottom_leading,
                 );
             }
         }
@@ -38799,6 +38829,7 @@ where
         contour_font_box: Option<f64>,
         exact_clearance: bool,
         table_spacing: Option<FloatTableSpacing>,
+        line_bottom_leading: f64,
     ) -> Vec<jade_docx_layout::line_wrap::FloatLineSegment> {
         let current_page_number = self.current_page_number;
         self.active_float_exclusions.retain(|entry| {
@@ -38824,6 +38855,15 @@ where
             .filter(|bounds| bounds.bottom > first_line_top)
             .collect::<Vec<_>>();
         exclusions.extend_from_slice(current);
+        if line_bottom_leading.is_finite() && line_bottom_leading > 0.0 {
+            for bounds in &mut exclusions {
+                if bounds.left == f64::NEG_INFINITY && bounds.right == f64::INFINITY {
+                    // Eligibility only: bottom clearance and the actual floating
+                    // object's geometry retain their original coordinates.
+                    bounds.top += line_bottom_leading;
+                }
+            }
+        }
         if exclusions.is_empty() {
             return Vec::new();
         }
@@ -74767,8 +74807,17 @@ mod tests {
                 polygon: None,
             },
         });
-        let plan =
-            renderer.plan_paragraph_float_segments(0.0, 20.0, 100.0, 500.0, &[], None, false, None);
+        let plan = renderer.plan_paragraph_float_segments(
+            0.0,
+            20.0,
+            100.0,
+            500.0,
+            &[],
+            None,
+            false,
+            None,
+            0.0,
+        );
         assert_eq!(renderer.active_float_exclusions.len(), 1);
         assert_eq!(plan[0].start_x, 250.0);
         assert_eq!(plan[0].width, 250.0);
@@ -74805,6 +74854,7 @@ mod tests {
             None,
             true,
             None,
+            0.0,
         );
         assert_eq!(plain[0].width, 400.0);
         let spaced = renderer.plan_paragraph_float_segments(
@@ -74819,6 +74869,7 @@ mod tests {
                 paragraph_bottom: 120.0,
                 space_after: 10.0,
             }),
+            0.0,
         );
         assert_eq!(spaced[0].width, 300.0, "space after overlaps the table");
         assert_eq!(spaced[3].width, 400.0, "table bottom does not move");
@@ -74835,6 +74886,7 @@ mod tests {
                 paragraph_bottom: 150.0,
                 space_after: 10.0,
             }),
+            0.0,
         );
         assert_eq!(
             continued[0].width, 400.0,
@@ -74852,6 +74904,7 @@ mod tests {
                 paragraph_bottom: 120.0,
                 space_after: 4.0,
             }),
+            0.0,
         );
         assert_eq!(gap[0].width, 400.0, "space after still clears the table");
         renderer.active_float_exclusions[0].is_table = false;
@@ -74867,6 +74920,7 @@ mod tests {
                 paragraph_bottom: 120.0,
                 space_after: 10.0,
             }),
+            0.0,
         );
         assert_eq!(
             drawing[0].width, 400.0,

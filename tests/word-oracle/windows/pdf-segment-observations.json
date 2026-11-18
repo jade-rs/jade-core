@@ -1,0 +1,423 @@
+{
+  "schema": 1,
+  "purpose": "Original versioned Windows Word measurements, now required in CI for screen EMF and physical PDF geometry using original embedded fonts at unchanged0.375pt per-axis tolerance. Source DOCX, Word PDF/EMF and executable/font identities remain immutable.",
+  "mac_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+  "fixtures": [
+    {
+      "name": "word-windows-pdf256-nofloat-single-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-single-m14.docx",
+        "sha256": "d1ba99168a32dcfade4b4a39be5c6deb0df45342d2a404ecbe03d244f711fff7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/capture.json",
+        "sha256": "a3860bd648fcecfaab1ccab256af9ba9ee1cb6f4cfb3771d76e174cb5d661b11"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T142234045Z-58b19ea4.zip",
+        "sha256": "c2b292dfa6e10398b8415b1bd913747956419a360697208d5edc2c94597bbbdb"
+      },
+      "capture_id": "20261118T142234045Z-58b19ea4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-pdf256-nofloat-single-m14",
+        "source_sha256": "d1ba99168a32dcfade4b4a39be5c6deb0df45342d2a404ecbe03d244f711fff7",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "derived_from_sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+        "compatibility_mode": 14,
+        "removed_drawing": true,
+        "body_text": "OFFSET_TOP lines remain above the delayed floating shape before its resolved vertical band begins. More words fill the available upper space. BELOW_RESUME words continue only after the shape and its bottom distance. No body line may occupy the left or right side beside the shape. Repeated words keep the regression deterministic: wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap.",
+        "paint_run_split_at": null,
+        "second_run_color": null,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Norm\u00e1l",
+            "Norm\u00e1lne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "oby\u010dejn\u00e9",
+            "th\u01b0\u01a1\u0300ng",
+            "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03ac",
+            "\u041e\u0431\u044b\u0447\u043d\u044b\u0439"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-pdf256-nofloat-split100-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-split100-m14.docx",
+        "sha256": "5db535a41a1ef4702108b81d77bc77b594b766b6e9bb14a694efb16ccd8a8645"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/capture.json",
+        "sha256": "a3860bd648fcecfaab1ccab256af9ba9ee1cb6f4cfb3771d76e174cb5d661b11"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T142234045Z-58b19ea4.zip",
+        "sha256": "c2b292dfa6e10398b8415b1bd913747956419a360697208d5edc2c94597bbbdb"
+      },
+      "capture_id": "20261118T142234045Z-58b19ea4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-pdf256-nofloat-split100-m14",
+        "source_sha256": "5db535a41a1ef4702108b81d77bc77b594b766b6e9bb14a694efb16ccd8a8645",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "derived_from_sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+        "compatibility_mode": 14,
+        "removed_drawing": true,
+        "body_text": "OFFSET_TOP lines remain above the delayed floating shape before its resolved vertical band begins. More words fill the available upper space. BELOW_RESUME words continue only after the shape and its bottom distance. No body line may occupy the left or right side beside the shape. Repeated words keep the regression deterministic: wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap.",
+        "paint_run_split_at": 100,
+        "second_run_color": "000001",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Norm\u00e1l",
+            "Norm\u00e1lne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "oby\u010dejn\u00e9",
+            "th\u01b0\u01a1\u0300ng",
+            "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03ac",
+            "\u041e\u0431\u044b\u0447\u043d\u044b\u0439"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-pdf256-nofloat-single-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-single-m15.docx",
+        "sha256": "f738a03cead9bad05c31833a59d649cf3a0bb0c4e011cc1f7a68a19190f06f0c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/capture.json",
+        "sha256": "a3860bd648fcecfaab1ccab256af9ba9ee1cb6f4cfb3771d76e174cb5d661b11"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T142234045Z-58b19ea4.zip",
+        "sha256": "c2b292dfa6e10398b8415b1bd913747956419a360697208d5edc2c94597bbbdb"
+      },
+      "capture_id": "20261118T142234045Z-58b19ea4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-pdf256-nofloat-single-m15",
+        "source_sha256": "f738a03cead9bad05c31833a59d649cf3a0bb0c4e011cc1f7a68a19190f06f0c",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "derived_from_sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+        "compatibility_mode": 15,
+        "removed_drawing": true,
+        "body_text": "OFFSET_TOP lines remain above the delayed floating shape before its resolved vertical band begins. More words fill the available upper space. BELOW_RESUME words continue only after the shape and its bottom distance. No body line may occupy the left or right side beside the shape. Repeated words keep the regression deterministic: wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap.",
+        "paint_run_split_at": null,
+        "second_run_color": null,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Norm\u00e1l",
+            "Norm\u00e1lne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "oby\u010dejn\u00e9",
+            "th\u01b0\u01a1\u0300ng",
+            "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03ac",
+            "\u041e\u0431\u044b\u0447\u043d\u044b\u0439"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    },
+    {
+      "name": "word-windows-pdf256-nofloat-split100-m15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/inputs/word-windows-pdf256-nofloat-split100-m15.docx",
+        "sha256": "f1fa194a73fb52ad0b7a9b5fd6e89d78bdaaa2de9cb839a0a869dc525af36064"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T142234045Z-58b19ea4/capture.json",
+        "sha256": "a3860bd648fcecfaab1ccab256af9ba9ee1cb6f4cfb3771d76e174cb5d661b11"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T142234045Z-58b19ea4.zip",
+        "sha256": "c2b292dfa6e10398b8415b1bd913747956419a360697208d5edc2c94597bbbdb"
+      },
+      "capture_id": "20261118T142234045Z-58b19ea4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-pdf256-nofloat-split100-m15",
+        "source_sha256": "f1fa194a73fb52ad0b7a9b5fd6e89d78bdaaa2de9cb839a0a869dc525af36064",
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "source_parent_sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca",
+        "derived_from_sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+        "compatibility_mode": 15,
+        "removed_drawing": true,
+        "body_text": "OFFSET_TOP lines remain above the delayed floating shape before its resolved vertical band begins. More words fill the available upper space. BELOW_RESUME words continue only after the shape and its bottom distance. No body line may occupy the left or right side beside the shape. Repeated words keep the regression deterministic: wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap wrap.",
+        "paint_run_split_at": 100,
+        "second_run_color": "000001",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ]
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "Type0",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDFEE+Calibri",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "823b04c8b18b13b21c4f4ae5d00995b8651ed375c8c7698eebe0f722f709fc73",
+          "family": [
+            "Calibri"
+          ],
+          "style": [
+            "Regular"
+          ],
+          "version": [
+            "Version 6.27"
+          ]
+        },
+        {
+          "pdf_font_name": "BCDGEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "4ea5cde658b1e716ed7d6bff5df666f47dd444a4f7e1051771769c467bbb89cd",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Norm\u00e1l",
+            "Norm\u00e1lne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "oby\u010dejn\u00e9",
+            "th\u01b0\u01a1\u0300ng",
+            "\u039a\u03b1\u03bd\u03bf\u03bd\u03b9\u03ba\u03ac",
+            "\u041e\u0431\u044b\u0447\u043d\u044b\u0439"
+          ],
+          "version": [
+            "Version 7.07"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "required",
+      "physical_pdf_gate": "required",
+      "output_context": "independent-screen-print"
+    }
+  ]
+}
