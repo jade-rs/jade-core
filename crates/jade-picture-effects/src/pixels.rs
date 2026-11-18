@@ -100,9 +100,7 @@ pub fn decode(bytes: &[u8]) -> Option<image::RgbaImage> {
 
 pub fn encode_png(pixels: &image::RgbaImage) -> Option<Vec<u8>> {
     let mut out = std::io::Cursor::new(Vec::new());
-    image::DynamicImage::ImageRgba8(pixels.clone())
-        .write_to(&mut out, image::ImageFormat::Png)
-        .ok()?;
+    pixels.write_to(&mut out, image::ImageFormat::Png).ok()?;
     Some(out.into_inner())
 }
 
@@ -282,29 +280,57 @@ pub fn blur(pixels: &mut image::RgbaImage, radius: u32) {
     if radius == 0 || pixels.width() == 0 || pixels.height() == 0 {
         return;
     }
+    // Each pass is a clamped-edge box filter whose window is always
+    // `2 * radius + 1` samples (edge samples repeat), summed in integers and
+    // divided with truncation. A prefix sum gives each window in O(1) with
+    // the same integer result, and one scratch line replaces the whole-image
+    // copy: lines are independent within a pass.
+    let (width, height) = (pixels.width() as usize, pixels.height() as usize);
+    let longest = width.max(height);
+    let mut line = vec![[0u8; 4]; longest];
+    let mut prefix = vec![[0u64; 4]; longest + 1];
+    let samples: &mut [u8] = pixels;
     for _ in 0..2 {
         for horizontal in [true, false] {
-            let source = pixels.clone();
-            let (width, height) = (i64::from(source.width()), i64::from(source.height()));
-            for y in 0..height {
-                for x in 0..width {
-                    let mut sum = [0u32; 4];
-                    let mut count = 0;
-                    for offset in -i64::from(radius)..=i64::from(radius) {
-                        let (sx, sy) = if horizontal {
-                            ((x + offset).clamp(0, width - 1), y)
-                        } else {
-                            (x, (y + offset).clamp(0, height - 1))
-                        };
-                        let pixel = source.get_pixel(sx as u32, sy as u32);
-                        for channel in 0..4 {
-                            sum[channel] += u32::from(pixel[channel]);
-                        }
-                        count += 1;
-                    }
-                    let pixel = pixels.get_pixel_mut(x as u32, y as u32);
+            let (lines, length, step) = if horizontal {
+                (height, width, 4)
+            } else {
+                (width, height, width * 4)
+            };
+            for index in 0..lines {
+                let start = if horizontal {
+                    index * width * 4
+                } else {
+                    index * 4
+                };
+                for i in 0..length {
+                    let at = start + i * step;
+                    let pixel = [
+                        samples[at],
+                        samples[at + 1],
+                        samples[at + 2],
+                        samples[at + 3],
+                    ];
+                    line[i] = pixel;
                     for channel in 0..4 {
-                        pixel[channel] = (sum[channel] / count) as u8;
+                        prefix[i + 1][channel] = prefix[i][channel] + u64::from(pixel[channel]);
+                    }
+                }
+                let radius = i64::from(radius);
+                let last = length as i64 - 1;
+                let count = 2 * radius as u64 + 1;
+                for i in 0..length {
+                    let (low, high) = (i as i64 - radius, i as i64 + radius);
+                    let before = (-low).max(0) as u64;
+                    let after = (high - last).max(0) as u64;
+                    let from = low.max(0) as usize;
+                    let to = high.min(last) as usize;
+                    let at = start + i * step;
+                    for channel in 0..4 {
+                        let sum = before * u64::from(line[0][channel])
+                            + (prefix[to + 1][channel] - prefix[from][channel])
+                            + after * u64::from(line[length - 1][channel]);
+                        samples[at + channel] = (sum / count) as u8;
                     }
                 }
             }
@@ -780,5 +806,120 @@ mod tests {
         assert_eq!(mime, "image/jpeg");
         let read = decode(&out).unwrap();
         assert_eq!((read.width(), read.height()), (100, 100));
+    }
+
+    /// The original per-pixel blur, kept verbatim as the exactness oracle.
+    fn blur_oracle(pixels: &mut image::RgbaImage, radius: u32) {
+        if radius == 0 || pixels.width() == 0 || pixels.height() == 0 {
+            return;
+        }
+        for _ in 0..2 {
+            for horizontal in [true, false] {
+                let source = pixels.clone();
+                let (width, height) = (i64::from(source.width()), i64::from(source.height()));
+                for y in 0..height {
+                    for x in 0..width {
+                        let mut sum = [0u32; 4];
+                        let mut count = 0;
+                        for offset in -i64::from(radius)..=i64::from(radius) {
+                            let (sx, sy) = if horizontal {
+                                ((x + offset).clamp(0, width - 1), y)
+                            } else {
+                                (x, (y + offset).clamp(0, height - 1))
+                            };
+                            let pixel = source.get_pixel(sx as u32, sy as u32);
+                            for channel in 0..4 {
+                                sum[channel] += u32::from(pixel[channel]);
+                            }
+                            count += 1;
+                        }
+                        let pixel = pixels.get_pixel_mut(x as u32, y as u32);
+                        for channel in 0..4 {
+                            pixel[channel] = (sum[channel] / count) as u8;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn assert_blur_matches(source: &image::RgbaImage, radius: u32) {
+        let mut expected = source.clone();
+        blur_oracle(&mut expected, radius);
+        let mut actual = source.clone();
+        blur(&mut actual, radius);
+        assert_eq!(
+            actual.as_raw(),
+            expected.as_raw(),
+            "{}x{} radius {radius}",
+            source.width(),
+            source.height()
+        );
+    }
+
+    struct XorShift(u64);
+
+    impl XorShift {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+    }
+
+    #[test]
+    fn blur_is_byte_identical_to_the_original() {
+        let mut rng = XorShift(0x9E37_79B9_7F4A_7C15);
+        fn random(rng: &mut XorShift, width: u32, height: u32, opaque: bool) -> image::RgbaImage {
+            image::RgbaImage::from_fn(width, height, |_, _| {
+                let v = rng.next();
+                let alpha = if opaque { 255 } else { (v >> 32) as u8 };
+                image::Rgba([v as u8, (v >> 8) as u8, (v >> 16) as u8, alpha])
+            })
+        }
+        // Fixed shapes: square, non-square, 1x1, 1xN, Nx1, over every radius
+        // including ones larger than the image.
+        for (width, height) in [(1, 1), (1, 7), (9, 1), (5, 5), (13, 4), (3, 11), (16, 16)] {
+            for radius in [0, 1, 2, 3, 5, 8, 17, 40, 100] {
+                assert_blur_matches(&random(&mut rng, width, height, true), radius);
+                assert_blur_matches(&random(&mut rng, width, height, false), radius);
+                assert_blur_matches(&image::RgbaImage::new(width, height), radius);
+                assert_blur_matches(
+                    &image::RgbaImage::from_pixel(width, height, image::Rgba([255; 4])),
+                    radius,
+                );
+            }
+        }
+        // Empty images are left alone by both.
+        assert_blur_matches(&image::RgbaImage::new(0, 5), 2);
+        assert_blur_matches(&image::RgbaImage::new(5, 0), 2);
+        // Varying alpha over a colour ramp.
+        let ramp = image::RgbaImage::from_fn(12, 9, |x, y| {
+            image::Rgba([(x * 20) as u8, (y * 28) as u8, 255, (x * y * 2) as u8])
+        });
+        for radius in [1, 2, 4, 30] {
+            assert_blur_matches(&ramp, radius);
+        }
+        // A few hundred random small images with random radii.
+        for _ in 0..400 {
+            let width = (rng.next() % 24 + 1) as u32;
+            let height = (rng.next() % 24 + 1) as u32;
+            let radius = (rng.next() % 30) as u32;
+            let opaque = rng.next().is_multiple_of(2);
+            assert_blur_matches(&random(&mut rng, width, height, opaque), radius);
+        }
+    }
+
+    #[test]
+    fn encode_png_bytes_match_the_dynamic_image_path() {
+        let pixels = image::RgbaImage::from_fn(7, 5, |x, y| {
+            image::Rgba([(x * 30) as u8, (y * 40) as u8, 7, (x * y * 9) as u8])
+        });
+        let mut expected = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgba8(pixels.clone())
+            .write_to(&mut expected, image::ImageFormat::Png)
+            .unwrap();
+        assert_eq!(encode_png(&pixels).unwrap(), expected.into_inner());
     }
 }
