@@ -7678,7 +7678,7 @@ where
                 x,
                 text_y,
                 &command_style,
-                (text, &applied.resolved),
+                (text, &applied.resolved, text.contains('\u{ad}')),
                 &steps,
             )
             .map_err(PainterError::into_js_value)?;

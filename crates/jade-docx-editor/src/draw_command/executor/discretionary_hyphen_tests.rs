@@ -42,7 +42,7 @@ fn paint(style: &TextStyle, font: &str) -> Vec<Op> {
     let painter = RecordingPainter::new();
     execute_text_run_with_font_state(
         &painter,
-        "a\u{ad}b-\u{2011}",
+        &CommandText::from("a\u{ad}b-\u{2011}"),
         10.0,
         20.0,
         style,
@@ -78,7 +78,7 @@ fn windows_paints_only_visible_glyphs_at_their_original_positions() {
 #[test]
 fn mac_keeps_its_existing_source_glyph_paint_path() {
     let _restore = platform(WordLayoutPlatform::Mac);
-    assert!(!requires_windows_discretionary_hyphen_filter("a\u{ad}b"));
+    assert!(!CommandText::from("a\u{ad}b").requires_windows_control_paint());
     let actual: Vec<_> = paint(&TextStyle::default(), "12pt Arial")
         .into_iter()
         .filter_map(|op| match op {
@@ -158,7 +158,7 @@ fn literal_source_slices_paint_hyphens_with_the_original_fonts_and_positions() {
     let painter = RecordingPainter::new();
     execute_text_run_with_font_state(
         &painter,
-        text,
+        &CommandText::from(text),
         10.0,
         20.0,
         &style,
@@ -236,7 +236,7 @@ fn literal_source_ink_survives_effect_scaling_and_feature_shaping_paths() {
             .collect::<Vec<_>>();
             execute_text_run_with_font_state(
                 &reference,
-                "a-b-\u{2011}",
+                &CommandText::from("a-b-\u{2011}"),
                 10.0,
                 20.0,
                 &style,
@@ -278,7 +278,14 @@ fn a_hidden_control_does_not_change_the_font_state_of_following_text() {
         x_offset: 0.0,
     }];
     execute_text_run_with_font_state(
-        &painter, "\u{ad}", 10.0, 20.0, &style, &fonts, &control, &mut state,
+        &painter,
+        &CommandText::from("\u{ad}"),
+        10.0,
+        20.0,
+        &style,
+        &fonts,
+        &control,
+        &mut state,
     )
     .unwrap();
     assert!(painter.ops().is_empty());
@@ -289,12 +296,19 @@ fn a_hidden_control_does_not_change_the_font_state_of_following_text() {
         x_offset: 0.0,
     }];
     execute_text_run_with_font_state(
-        &painter, "b", 18.0, 20.0, &style, &fonts, &visible, &mut state,
+        &painter,
+        &CommandText::from("b"),
+        18.0,
+        20.0,
+        &style,
+        &fonts,
+        &visible,
+        &mut state,
     )
     .unwrap();
     execute_text_run_with_font_state(
         &reference,
-        "b",
+        &CommandText::from("b"),
         18.0,
         20.0,
         &style,
@@ -331,15 +345,59 @@ fn optional_hyphen_formatting_marks_remain_visible() {
 }
 
 #[test]
-fn discretionary_hyphen_byte_rejection_keeps_unicode_and_platform_identity() {
+fn discretionary_hyphen_cached_presence_keeps_unicode_and_platform_identity() {
     for value in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
         let _restore = platform(value);
         for ordinary in ["", "plain ASCII", "a\u{16d}b", "ね", "a\u{2011}b"] {
-            assert!(!requires_windows_discretionary_hyphen_filter(ordinary));
+            assert!(!CommandText::from(ordinary).requires_windows_control_paint());
         }
         assert_eq!(
-            requires_windows_discretionary_hyphen_filter("a\u{ad}b"),
+            CommandText::from("a\u{ad}b").requires_windows_control_paint(),
             value == WordLayoutPlatform::Windows
         );
     }
+}
+
+#[test]
+fn discretionary_hyphen_cached_text_preserves_legacy_wire_and_unicode_identity() {
+    for (source, has_control) in [
+        ("plain ASCII", false),
+        ("a\u{16d}bね", false),
+        ("a\u{ad}b", true),
+    ] {
+        let text = CommandText::from(source);
+        let cloned = text.clone();
+        assert!(Rc::ptr_eq(&text.text, &cloned.text));
+        assert_eq!(cloned.has_soft_hyphen(), has_control);
+        let wire = serde_json::to_string(&text).unwrap();
+        assert_eq!(wire, serde_json::to_string(source).unwrap());
+        let restored: CommandText = serde_json::from_str(&wire).unwrap();
+        assert_eq!(restored.as_ref(), source);
+        assert_eq!(restored.has_soft_hyphen(), has_control);
+    }
+}
+
+#[test]
+fn discretionary_hyphen_text_run_legacy_roundtrip_and_offset_keep_cached_presence() {
+    let source = "a\u{ad}b-\u{2011}";
+    let command = DrawCommand::TextRun {
+        text: source.into(),
+        x: 10.0,
+        y: 20.0,
+        style: TextStyle::default(),
+        fonts: vec![Rc::from("12pt Arial")],
+        glyphs: steps(),
+    };
+    let wire = serde_json::to_value(&command).unwrap();
+    let fields = wire["TextRun"].as_object().unwrap();
+    assert_eq!(fields.len(), 6);
+    assert_eq!(fields["text"], source);
+    let decoded: DrawCommand = serde_json::from_value(wire).unwrap();
+    assert_eq!(decoded, command);
+    let DrawCommand::TextRun { text, y, .. } = decoded.with_y_offset(5.0) else {
+        panic!("expected text run")
+    };
+    assert_eq!(y, 25.0);
+    assert_eq!(text.as_ref(), source);
+    assert!(text.has_soft_hyphen());
 }

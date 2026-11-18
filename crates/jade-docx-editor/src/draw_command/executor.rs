@@ -6,7 +6,7 @@
 use std::rc::Rc;
 
 use crate::document::FontHint;
-use crate::draw_command::{DrawCommand, TabLeaderStyle, TextStyle};
+use crate::draw_command::{CommandText, DrawCommand, TabLeaderStyle, TextStyle};
 use jade_painter::Painter;
 use rustc_hash::{FxHashMap, FxHasher};
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
@@ -858,21 +858,10 @@ pub fn execute_command_with_font_state<P: Painter>(
     Ok(())
 }
 
-#[inline]
-pub(crate) fn requires_windows_discretionary_hyphen_filter(text: &str) -> bool {
-    // A byte rejection keeps ordinary cached text out of the UTF-8 pattern
-    // search. Other characters can contain this continuation byte, so retain
-    // the exact control check before entering the Windows-only paint path.
-    text.as_bytes().contains(&0xad)
-        && jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        && text.contains('\u{ad}')
-}
-
 #[allow(clippy::too_many_arguments)]
 fn execute_text_run_with_font_state<P: Painter>(
     context: &P,
-    text: &str,
+    text: &CommandText,
     x: f64,
     y: f64,
     style: &TextStyle,
@@ -880,7 +869,7 @@ fn execute_text_run_with_font_state<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<(), P::Error> {
-    if requires_windows_discretionary_hyphen_filter(text) {
+    if text.requires_windows_control_paint() {
         return execute_windows_control_text(context, text, x, y, style, fonts, glyphs, font_state);
     }
     paint_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
@@ -905,49 +894,45 @@ fn execute_windows_control_text<P: Painter>(
     // dash, including on lines where no discretionary break was taken.
     let visible_glyphs;
     let literal_text;
-    let (text, glyphs) = if requires_windows_discretionary_hyphen_filter(text) {
-        if style.literal_soft_hyphen {
-            // Normalize only the temporary paint buffer. Editable text, cached
-            // source ranges, font choices and positioned origins stay intact.
-            // Browser shaping and effects otherwise hide this format character.
-            let mut remap = vec![0; text.len() + 1];
-            let mut normalized = String::with_capacity(text.len());
-            for (offset, character) in text.char_indices() {
-                remap[offset] = normalized.len();
-                normalized.push(if character == '\u{ad}' {
-                    '-'
-                } else {
-                    character
-                });
-                remap[offset + character.len_utf8()] = normalized.len();
-            }
-            literal_text = normalized;
-            visible_glyphs = glyphs
-                .iter()
-                .filter_map(|glyph| {
-                    glyph.text(text)?;
-                    let mut step = glyph.clone();
-                    step.text_start = (*remap.get(glyph.text_start as usize)?).try_into().ok()?;
-                    step.text_end = (*remap.get(glyph.text_end as usize)?).try_into().ok()?;
-                    Some(step)
-                })
-                .collect::<Vec<_>>();
-            (literal_text.as_str(), visible_glyphs.as_slice())
-        } else {
-            visible_glyphs = glyphs
-                .iter()
-                .filter(|glyph| glyph.text(text) != Some("\u{ad}"))
-                .cloned()
-                .collect::<Vec<_>>();
-            (text, visible_glyphs.as_slice())
+    let (text, glyphs) = if style.literal_soft_hyphen {
+        // Normalize only the temporary paint buffer. Editable text, cached
+        // source ranges, font choices and positioned origins stay intact.
+        // Browser shaping and effects otherwise hide this format character.
+        let mut remap = vec![0; text.len() + 1];
+        let mut normalized = String::with_capacity(text.len());
+        for (offset, character) in text.char_indices() {
+            remap[offset] = normalized.len();
+            normalized.push(if character == '\u{ad}' {
+                '-'
+            } else {
+                character
+            });
+            remap[offset + character.len_utf8()] = normalized.len();
         }
+        literal_text = normalized;
+        visible_glyphs = glyphs
+            .iter()
+            .filter_map(|glyph| {
+                glyph.text(text)?;
+                let mut step = glyph.clone();
+                step.text_start = (*remap.get(glyph.text_start as usize)?).try_into().ok()?;
+                step.text_end = (*remap.get(glyph.text_end as usize)?).try_into().ok()?;
+                Some(step)
+            })
+            .collect::<Vec<_>>();
+        (literal_text.as_str(), visible_glyphs.as_slice())
     } else {
-        (text, glyphs)
+        visible_glyphs = glyphs
+            .iter()
+            .filter(|glyph| glyph.text(text) != Some("\u{ad}"))
+            .cloned()
+            .collect::<Vec<_>>();
+        (text, visible_glyphs.as_slice())
     };
     paint_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 
-#[inline]
+#[inline(always)]
 #[allow(clippy::too_many_arguments)]
 fn paint_text_run_with_font_state<P: Painter>(
     context: &P,
@@ -3128,7 +3113,7 @@ mod painter_backend_tests {
             }
             execute_text_run_with_font_state(
                 &painter,
-                "A",
+                &CommandText::from("A"),
                 100.0,
                 200.0,
                 &effect_style,
@@ -3145,7 +3130,7 @@ mod painter_backend_tests {
             // text must not inherit a secondary layer's color or translation.
             execute_text_run_with_font_state(
                 &painter,
-                "Z",
+                &CommandText::from("Z"),
                 300.0,
                 400.0,
                 &plain,
@@ -3219,7 +3204,7 @@ mod painter_backend_tests {
             };
             execute_text_run_with_font_state(
                 &painter,
-                "A",
+                &CommandText::from("A"),
                 12.0,
                 34.0,
                 &outline,
@@ -3230,7 +3215,7 @@ mod painter_backend_tests {
             .unwrap();
             execute_text_run_with_font_state(
                 &painter,
-                "Z",
+                &CommandText::from("Z"),
                 56.0,
                 78.0,
                 &TextStyle::default(),
@@ -3385,7 +3370,7 @@ mod painter_backend_tests {
         execute_commands(
             &painter,
             &[DrawCommand::TextRun {
-                text: Rc::from(text),
+                text: text.into(),
                 x: 0.0,
                 y: 100.0,
                 style: style(),
@@ -3474,7 +3459,7 @@ mod painter_backend_tests {
                 });
             }
             execute_commands(&painter, &[DrawCommand::TextRun {
-                text: Rc::from(text),
+                text: text.into(),
                 x: 8.0,
                 y: 21.0,
                 style: style(),

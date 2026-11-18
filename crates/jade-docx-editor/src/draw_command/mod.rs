@@ -28,6 +28,94 @@ use jade_docx_layout::layout_cache::ContentHash;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 
+/// Immutable command text with control presence resolved once, including
+/// when loading the legacy string-only wire representation.
+#[derive(Clone, PartialEq, Eq)]
+pub struct CommandText {
+    text: Rc<str>,
+    has_soft_hyphen: bool,
+}
+
+impl CommandText {
+    #[inline]
+    pub(crate) fn has_soft_hyphen(&self) -> bool {
+        self.has_soft_hyphen
+    }
+
+    pub(crate) fn from_plan(text: &str, has_soft_hyphen: bool) -> Self {
+        Self {
+            text: Rc::from(text),
+            has_soft_hyphen,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn requires_windows_control_paint(&self) -> bool {
+        self.has_soft_hyphen()
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    }
+}
+
+impl From<Rc<str>> for CommandText {
+    fn from(text: Rc<str>) -> Self {
+        let has_soft_hyphen = text.contains('\u{ad}');
+        Self {
+            text,
+            has_soft_hyphen,
+        }
+    }
+}
+
+impl From<&str> for CommandText {
+    fn from(text: &str) -> Self {
+        Self::from(Rc::<str>::from(text))
+    }
+}
+
+impl From<String> for CommandText {
+    fn from(text: String) -> Self {
+        Self::from(Rc::<str>::from(text))
+    }
+}
+
+impl std::ops::Deref for CommandText {
+    type Target = str;
+    fn deref(&self) -> &str {
+        &self.text
+    }
+}
+
+impl AsRef<str> for CommandText {
+    fn as_ref(&self) -> &str {
+        &self.text
+    }
+}
+
+impl std::fmt::Debug for CommandText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self.text, f)
+    }
+}
+
+impl std::fmt::Display for CommandText {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.text)
+    }
+}
+
+impl Serialize for CommandText {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        self.text.serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CommandText {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        Rc::<str>::deserialize(deserializer).map(Self::from)
+    }
+}
+
 /// Text style information needed for drawing text.
 /// This is a serializable version of AppliedRunStyle.
 ///
@@ -220,7 +308,7 @@ impl TabLeaderStyle {
 pub enum DrawCommand {
     /// Draw a positioned glyph run with a shared style.
     TextRun {
-        text: Rc<str>,
+        text: CommandText,
         x: f64,
         y: f64,
         style: TextStyle,
@@ -1449,7 +1537,7 @@ mod tests {
     #[test]
     fn test_draw_command_text_run_with_y_offset() {
         let cmd = DrawCommand::TextRun {
-            text: Rc::from("A"),
+            text: "A".into(),
             x: 10.0,
             y: 100.0,
             style: TextStyle::default(),
