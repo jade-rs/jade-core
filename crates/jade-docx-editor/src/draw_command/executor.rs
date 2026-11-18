@@ -635,7 +635,7 @@ pub fn execute_command_with_font_state<P: Painter>(
             fonts,
             glyphs,
         } => {
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 context, text, *x, *y, style, fonts, glyphs, font_state,
             )?;
         }
@@ -858,8 +858,9 @@ pub fn execute_command_with_font_state<P: Painter>(
     Ok(())
 }
 
+#[inline(always)]
 #[allow(clippy::too_many_arguments)]
-fn execute_text_run_with_font_state<P: Painter>(
+fn execute_cached_text_run_with_font_state<P: Painter>(
     context: &P,
     text: &CommandText,
     x: f64,
@@ -872,7 +873,7 @@ fn execute_text_run_with_font_state<P: Painter>(
     if text.requires_windows_control_paint() {
         return execute_windows_control_text(context, text, x, y, style, fonts, glyphs, font_state);
     }
-    paint_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
+    execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 
 #[cold]
@@ -929,12 +930,11 @@ fn execute_windows_control_text<P: Painter>(
             .collect::<Vec<_>>();
         (text, visible_glyphs.as_slice())
     };
-    paint_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
+    execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 
-#[inline(always)]
 #[allow(clippy::too_many_arguments)]
-fn paint_text_run_with_font_state<P: Painter>(
+fn execute_text_run_with_font_state<P: Painter>(
     context: &P,
     text: &str,
     x: f64,
@@ -3111,7 +3111,7 @@ mod painter_backend_tests {
                 "emboss" => effect_style.emboss = true,
                 _ => effect_style.imprint = true,
             }
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
                 &CommandText::from("A"),
                 100.0,
@@ -3128,7 +3128,7 @@ mod painter_backend_tests {
             };
             // Reusing the same color exercises the tracker cache: the final
             // text must not inherit a secondary layer's color or translation.
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
                 &CommandText::from("Z"),
                 300.0,
@@ -3202,7 +3202,7 @@ mod painter_backend_tests {
                 font_size_pt: 20.0,
                 ..TextStyle::default()
             };
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
                 &CommandText::from("A"),
                 12.0,
@@ -3213,7 +3213,7 @@ mod painter_backend_tests {
                 &mut tracker,
             )
             .unwrap();
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
                 &CommandText::from("Z"),
                 56.0,

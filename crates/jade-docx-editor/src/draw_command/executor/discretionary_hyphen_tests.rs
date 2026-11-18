@@ -40,14 +40,16 @@ fn steps() -> Vec<GlyphRunStep> {
 
 fn paint(style: &TextStyle, font: &str) -> Vec<Op> {
     let painter = RecordingPainter::new();
-    execute_text_run_with_font_state(
+    execute_command_with_font_state(
         &painter,
-        &CommandText::from("a\u{ad}b-\u{2011}"),
-        10.0,
-        20.0,
-        style,
-        &[Rc::from(font)],
-        &steps(),
+        &DrawCommand::TextRun {
+            text: CommandText::from("a\u{ad}b-\u{2011}"),
+            x: 10.0,
+            y: 20.0,
+            style: style.clone(),
+            fonts: vec![Rc::from(font)],
+            glyphs: steps(),
+        },
         &mut FontStateTracker::new(),
     )
     .unwrap();
@@ -156,7 +158,7 @@ fn literal_source_slices_paint_hyphens_with_the_original_fonts_and_positions() {
     };
     let fonts = [Rc::from("12pt Arial"), Rc::from("12pt Calibri")];
     let painter = RecordingPainter::new();
-    execute_text_run_with_font_state(
+    execute_cached_text_run_with_font_state(
         &painter,
         &CommandText::from(text),
         10.0,
@@ -234,7 +236,7 @@ fn literal_source_ink_survives_effect_scaling_and_feature_shaping_paths() {
                 x_offset: x,
             })
             .collect::<Vec<_>>();
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &reference,
                 &CommandText::from("a-b-\u{2011}"),
                 10.0,
@@ -277,7 +279,7 @@ fn a_hidden_control_does_not_change_the_font_state_of_following_text() {
         font_index: 0,
         x_offset: 0.0,
     }];
-    execute_text_run_with_font_state(
+    execute_cached_text_run_with_font_state(
         &painter,
         &CommandText::from("\u{ad}"),
         10.0,
@@ -295,7 +297,7 @@ fn a_hidden_control_does_not_change_the_font_state_of_following_text() {
         font_index: 0,
         x_offset: 0.0,
     }];
-    execute_text_run_with_font_state(
+    execute_cached_text_run_with_font_state(
         &painter,
         &CommandText::from("b"),
         18.0,
@@ -306,7 +308,7 @@ fn a_hidden_control_does_not_change_the_font_state_of_following_text() {
         &mut state,
     )
     .unwrap();
-    execute_text_run_with_font_state(
+    execute_cached_text_run_with_font_state(
         &reference,
         &CommandText::from("b"),
         18.0,
