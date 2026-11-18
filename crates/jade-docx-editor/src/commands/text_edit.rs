@@ -14,15 +14,6 @@ fn clamp_to_char_boundary(text: &str, idx: usize) -> usize {
     i
 }
 
-fn slice_by_byte_range(text: &str, start: usize, end: usize) -> String {
-    let start = clamp_to_char_boundary(text, start);
-    let end = clamp_to_char_boundary(text, end);
-    if start >= end {
-        return String::new();
-    }
-    text.get(start..end).unwrap_or("").to_string()
-}
-
 pub(crate) fn range_contains_deleted_revision(runs: &[Run], start: usize, end: usize) -> bool {
     let mut position = 0;
     for run in runs {
@@ -110,6 +101,7 @@ pub(crate) fn create_run_from_template(template: Option<&Run>, text: &str) -> Ru
     if let Some(source) = template {
         let mut run = source.clone();
         run.text = text.to_string();
+        run.text_controls = None;
         // New text takes its neighbour's formatting, not its phonetic guide:
         // it is not part of that ruby base.
         if let Some(props) = run.properties.as_mut() {
@@ -139,6 +131,7 @@ pub(crate) fn create_run_from_template(template: Option<&Run>, text: &str) -> Ru
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -199,9 +192,9 @@ fn remove_range_from_runs(
         let local_start = start.saturating_sub(run_start).min(len);
         let local_end = end.saturating_sub(run_start).min(len);
 
-        let left = slice_by_byte_range(&run.text, 0, local_start);
-        let right = slice_by_byte_range(&run.text, local_end, len);
-        run.text = left + &right;
+        let local_start = clamp_to_char_boundary(&run.text, local_start);
+        let local_end = clamp_to_char_boundary(&run.text, local_end);
+        run.replace_text_range(local_start..local_end, "");
     }
 
     promote_emptied_ruby_starts(runs);
@@ -567,7 +560,7 @@ fn insert_into_runs(
             }
         }
         let local = clamp_to_char_boundary(&run.text, position.saturating_sub(run_start));
-        run.text.insert_str(local, insert);
+        run.replace_text_range(local..local, insert);
         return;
     }
 
@@ -1018,15 +1011,8 @@ pub(crate) fn split_runs_at_preserving_source(
         if offset > run_start && offset < run_end {
             let split_point = offset - run_start;
             let split_point = clamp_to_char_boundary(&runs[index].text, split_point);
-            let right_text = runs[index]
-                .text
-                .get(split_point..)
-                .unwrap_or("")
-                .to_string();
-            runs[index].text.truncate(split_point);
-
-            let mut new_run = runs[index].clone();
-            new_run.text = right_text;
+            let mut new_run = runs[index].with_text_range(split_point..len);
+            runs[index].replace_text_range(split_point..len, "");
             new_run.node_id = None;
             new_run.text_node_id = None;
             new_run.revision_node_id = None;
@@ -1307,27 +1293,19 @@ fn split_run_into_break_segments(run: Run) -> Vec<Run> {
     template.node_id = None;
     template.text_node_id = None;
 
-    let mut buffer = String::new();
-
-    for ch in run.text.chars() {
+    let mut start = 0;
+    for (offset, ch) in run.text.char_indices() {
         if ch == '\n' || ch == PAGE_BREAK_CHAR || ch == crate::document::COLUMN_BREAK_CHAR {
-            if !buffer.is_empty() {
-                let mut text_run = template.clone();
-                text_run.text = std::mem::take(&mut buffer);
-                segments.push(text_run);
+            if start < offset {
+                segments.push(template.with_text_range(start..offset));
             }
-            let mut break_run = template.clone();
-            break_run.text = ch.to_string();
-            segments.push(break_run);
-        } else {
-            buffer.push(ch);
+            let end = offset + ch.len_utf8();
+            segments.push(template.with_text_range(offset..end));
+            start = end;
         }
     }
-
-    if !buffer.is_empty() {
-        let mut trailing = template;
-        trailing.text = buffer;
-        segments.push(trailing);
+    if start < run.text.len() {
+        segments.push(template.with_text_range(start..run.text.len()));
     }
 
     if segments.is_empty() {
@@ -1371,6 +1349,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -1395,6 +1374,57 @@ mod tests {
                 ..RunProperties::default()
             }),
             ..text_run(text)
+        }
+    }
+
+    #[test]
+    fn source_hyphen_identity_survives_utf8_edit_split_and_break_histories() {
+        let mut run = text_run("日\u{ad}a\u{ad}b\u{ad}c");
+        run.text_controls = Some(Box::new(crate::document::RunTextControls {
+            literal_soft_hyphens: vec![3, 9],
+        }));
+        let mut expected: Vec<(char, bool)> = run
+            .text
+            .char_indices()
+            .map(|(offset, character)| (character, run.is_literal_soft_hyphen(offset)))
+            .collect();
+        let mut runs = vec![run];
+        let zero_width = ZeroWidthRuns::default();
+        for step in 0..120 {
+            let start = (step * 7 + 1) % (expected.len() + 1);
+            let end = (start + step % 3).min(expected.len());
+            let byte = |index: usize| {
+                expected[..index]
+                    .iter()
+                    .map(|(c, _)| c.len_utf8())
+                    .sum::<usize>()
+            };
+            let insert = ["🦀", "x", "\u{ad}", "\n", "日", ""][step % 6];
+            apply_text_edit(&mut runs, byte(start), byte(end), insert, &zero_width);
+            expected.splice(start..end, insert.chars().map(|c| (c, false)));
+            if step % 5 == 0 {
+                let middle = expected[..expected.len() / 2]
+                    .iter()
+                    .map(|(c, _)| c.len_utf8())
+                    .sum();
+                let tail = split_runs_at_preserving_source(&mut runs, middle, &zero_width);
+                append_runs(&mut runs, tail);
+            }
+            if step % 3 == 0 {
+                normalize_break_runs(&mut runs);
+            }
+            let actual: Vec<_> = runs
+                .iter()
+                .flat_map(|run| {
+                    run.text
+                        .char_indices()
+                        .map(|(offset, character)| (character, run.is_literal_soft_hyphen(offset)))
+                })
+                .collect();
+            assert_eq!(
+                actual, expected,
+                "source control identity after edit {step}"
+            );
         }
     }
 

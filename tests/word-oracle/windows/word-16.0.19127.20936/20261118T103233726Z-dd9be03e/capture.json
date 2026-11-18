@@ -1,0 +1,234 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T103233726Z-dd9be03e",
+  "captured_at_utc": "2026-11-18T10:32:33.7389100Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-hyphen-mixed-break-literals-w45-m14",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-literals-w45-m14.docx",
+      "sha256": "bcc3b15fc9c1772e9c829a3dab1f5dcfb61d364a446cb0e6da183fbfc98f21d8",
+      "pdf": "word-windows-hyphen-mixed-break-literals-w45-m14.pdf",
+      "pdf_sha256": "9ef9c78a28cd199a05d4c84269ccc4f1d88cd63db0ee4fc2a1b5f13f5c961340",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-literals-w45-m14.page-001.emf",
+          "sha256": "15da55ed27b1ced49aa3715e22f247ba15b72fcbcf999cf8d47d41113237380d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-literals-w45-m15",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-literals-w45-m15.docx",
+      "sha256": "ad21ae08aaef91619941fa25d60c53819d4c268376afdb46bec994ec4545f49f",
+      "pdf": "word-windows-hyphen-mixed-break-literals-w45-m15.pdf",
+      "pdf_sha256": "b9221abc04c5556b8eb18c7af15c438d97d93a66d0aa5ce3ef14f5259ee35169",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-literals-w45-m15.page-001.emf",
+          "sha256": "15da55ed27b1ced49aa3715e22f247ba15b72fcbcf999cf8d47d41113237380d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-literals-w65-m14",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-literals-w65-m14.docx",
+      "sha256": "8e6fa260bd0d2fd467fb7b23167de922b8a3af16f259b12c9309c1f3cec4c8eb",
+      "pdf": "word-windows-hyphen-mixed-break-literals-w65-m14.pdf",
+      "pdf_sha256": "d15dc9fe833246499f50d4fd9b5e4ec8e4f68a6bc9081402971b70dbdaac802d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-literals-w65-m14.page-001.emf",
+          "sha256": "2707afea2c672da91548d577eb043b9e7c6b7faf03b28d4bb382b3183f78b688",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-literals-w65-m15",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-literals-w65-m15.docx",
+      "sha256": "20ba96cf489e240e382e8f162faf1ffa225b4d5e4af7319752f2cefca3ac67dc",
+      "pdf": "word-windows-hyphen-mixed-break-literals-w65-m15.pdf",
+      "pdf_sha256": "1ab161744dd6bee8afdb0d7585d43b2103e296b7e8b75e07199a7b31be090124",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-literals-w65-m15.page-001.emf",
+          "sha256": "12cc78c3ce0207e5a452533f12ad60e24ab849e4a6180d453fdabc3d6de747c7",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-mixed-w45-m14",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-mixed-w45-m14.docx",
+      "sha256": "6a08e2b81f3e8d32d7eb9a9e3db1328242b24e4b8f18a25c470cda10ab54d2bc",
+      "pdf": "word-windows-hyphen-mixed-break-mixed-w45-m14.pdf",
+      "pdf_sha256": "38f9e9b8bb1adfcf6732b7054e6998fe387d1c91a9e8188ab2b07df0df742421",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-mixed-w45-m14.page-001.emf",
+          "sha256": "06c2dcbae022ff8c75276d2a66e6e19d4a63164b59912b8df1af15d837898647",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-mixed-w45-m15",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-mixed-w45-m15.docx",
+      "sha256": "aec18165256cab73b5686b6c5ba9786b834f6f52fff49cb8dc46d108bdde383e",
+      "pdf": "word-windows-hyphen-mixed-break-mixed-w45-m15.pdf",
+      "pdf_sha256": "55c5928d50457e5f6250978cd0cf3577b072a892b513f4f47503fbb1c8921a83",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-mixed-w45-m15.page-001.emf",
+          "sha256": "57e45df8328f298e28dddb28b5958f0ce5586a45bfae134187dd2dbc7998d1a8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-mixed-w65-m14",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-mixed-w65-m14.docx",
+      "sha256": "83c327b9d11af95fd47a558d419858b0c36acf467c07c0a8208b6e5ebd29abd8",
+      "pdf": "word-windows-hyphen-mixed-break-mixed-w65-m14.pdf",
+      "pdf_sha256": "055cad42d11576346d6a0f1bba4e5594b5aa674fe6ffc25c6420ce579af8a0c6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-mixed-w65-m14.page-001.emf",
+          "sha256": "f9d4250860e48f97c6e5dd2a491d7f3434629963a6a24ad86550a32ce9466d6b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-break-mixed-w65-m15",
+      "source": "w18xb-inputs\\word-windows-hyphen-mixed-break-mixed-w65-m15.docx",
+      "sha256": "23ebf6818d321d2446d4b112bb7287bfddf6a4d1ab58af70fca01a190c4f4f4e",
+      "pdf": "word-windows-hyphen-mixed-break-mixed-w65-m15.pdf",
+      "pdf_sha256": "a49b869995d9ddfc9310fc63db480217e86fe1f607ee138be000ac2315f01375",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-break-mixed-w65-m15.page-001.emf",
+          "sha256": "b644f22651feea2f429a55ab0bcae500b85cd7ee8c2a5755fa08d3e268d2ff78",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

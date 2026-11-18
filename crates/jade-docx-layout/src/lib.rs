@@ -12,6 +12,7 @@ pub mod layout_cache;
 pub mod line_geometry;
 pub mod line_metrics;
 pub mod line_wrap;
+pub mod literal_soft_hyphens;
 pub mod math_layout;
 pub mod measure_backend;
 pub mod note_area;

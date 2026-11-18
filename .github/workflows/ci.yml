@@ -358,6 +358,11 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert source-form Windows hyphen paint against original Word fonts
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_hyphen_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_hyphen_paint.py
+          python scripts/word-oracle/check_windows_hyphen_paint.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert independent Windows Word screen and vector PDF origins
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_output_contexts.py
@@ -399,6 +404,13 @@ jobs:
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates windows_word_arial_edge_origins -- --exact
       - name: Preserve spaced table geometry through editing and export
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_windows_coordinates spaced_tables_preserve_origins_after_edit_export_and_undo -- --exact
+      - name: Upload source-form hyphen paint differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-hyphen-paint-differences
+          path: target/windows-hyphen-paint
+          if-no-files-found: ignore
       - name: Upload Windows border differences
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

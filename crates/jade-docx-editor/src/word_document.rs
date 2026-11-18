@@ -13321,6 +13321,7 @@ impl WordDocument {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -14230,6 +14231,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14249,6 +14251,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14337,6 +14340,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: if kind == NoteKind::Footnote {
@@ -14381,6 +14385,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14400,6 +14405,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -14721,6 +14727,7 @@ impl WordDocument {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -14789,6 +14796,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -15127,6 +15135,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -15286,6 +15295,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -15395,6 +15405,7 @@ impl WordDocument {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -17647,6 +17658,7 @@ impl WordDocument {
             hyperlink: link,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18346,6 +18358,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18380,6 +18393,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -18400,6 +18414,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -18652,6 +18667,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -19358,6 +19374,7 @@ impl WordDocument {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -19617,6 +19634,7 @@ impl WordDocument {
                     hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: vec![comment_id.clone()],
                     footnote_reference_ids: Vec::new(),
@@ -19899,6 +19917,7 @@ impl WordDocument {
                     hyperlink,
                     node_id: Some(reference_run_id),
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: vec![comment_id.clone()],
                     footnote_reference_ids: Vec::new(),
@@ -22801,6 +22820,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -31638,6 +31658,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: Self::find_first_run_id_in_nodes(&old_children),
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -35311,15 +35332,8 @@ impl WordDocument {
                 while split_point > 0 && !runs[index].text.is_char_boundary(split_point) {
                     split_point = split_point.saturating_sub(1);
                 }
-                let right_text = runs[index]
-                    .text
-                    .get(split_point..)
-                    .unwrap_or("")
-                    .to_string();
-                runs[index].text.truncate(split_point);
-
-                let mut new_run = runs[index].clone();
-                new_run.text = right_text;
+                let mut new_run = runs[index].with_text_range(split_point..len);
+                runs[index].replace_text_range(split_point..len, "");
                 new_run.node_id = None;
                 new_run.text_node_id = None;
 
@@ -35384,6 +35398,7 @@ impl WordDocument {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -40261,7 +40276,7 @@ impl WordDocument {
         let mut page_break_index = 0usize;
         let mut tab_index = 0usize;
         let mut logical_offset = 0usize;
-        for ch in text.chars() {
+        for (byte_offset, ch) in text.char_indices() {
             let consumed_by_preserved = push_preserved_at_offset(
                 doc,
                 &mut nodes,
@@ -40316,7 +40331,7 @@ impl WordDocument {
                     nodes.push(XmlNode::Element(element));
                     logical_offset += 1;
                 }
-                '\u{00AD}' => {
+                '\u{00AD}' if !run.is_literal_soft_hyphen(byte_offset) => {
                     push_text_node(doc, &mut nodes, &mut buffer, &mut first_text_id);
                     nodes.push(XmlNode::Element(Self::create_soft_hyphen_element(doc)));
                     logical_offset += 1;
@@ -41778,6 +41793,25 @@ impl WordDocument {
             .iter()
             .map(|run| run.text.as_str())
             .collect();
+        // Normalization rebases each piece's source controls. Rejoining the
+        // source run must rebase every piece back, including text after a
+        // break; cloning only the first piece changes later literal hyphens
+        // into optional controls when the edited document is reopened.
+        let mut literal_offsets = Vec::new();
+        let mut start = 0;
+        for run in &runs[..pieces.len()] {
+            for (offset, _) in run.text.match_indices('\u{ad}') {
+                if run.is_literal_soft_hyphen(offset) {
+                    literal_offsets.push(start + offset);
+                }
+            }
+            start += run.text.len();
+        }
+        combined.text_controls = (!literal_offsets.is_empty()).then(|| {
+            Box::new(crate::document::RunTextControls {
+                literal_soft_hyphens: literal_offsets,
+            })
+        });
         Some((combined, pieces.len()))
     }
 
@@ -43162,6 +43196,7 @@ fn blank_run(text: &str) -> Run {
         hyperlink: None,
         node_id: None,
         text_node_id: None,
+        text_controls: None,
         revision_node_id: None,
         comment_reference_ids: Vec::new(),
         footnote_reference_ids: Vec::new(),
@@ -43680,6 +43715,7 @@ impl HtmlBlock {
                     hyperlink: None,
                     node_id: None,
                     text_node_id: None,
+                    text_controls: None,
                     revision_node_id: None,
                     comment_reference_ids: Vec::new(),
                     footnote_reference_ids: Vec::new(),
@@ -49340,6 +49376,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49427,6 +49464,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49780,6 +49818,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49902,6 +49941,7 @@ mod tests {
                         }),
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -49968,6 +50008,7 @@ mod tests {
                         }),
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50102,6 +50143,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50121,6 +50163,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50193,6 +50236,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50212,6 +50256,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -50237,6 +50282,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -58537,6 +58583,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -58617,6 +58664,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -58697,6 +58745,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -64395,6 +64444,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -64562,6 +64612,111 @@ mod tests {
     }
 
     #[test]
+    fn source_hyphen_edit_export_keeps_literal_text_and_xml_optional_control_distinct() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct RestorePlatform(WordLayoutPlatform);
+        impl Drop for RestorePlatform {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = RestorePlatform(word_layout_platform());
+        let xml = "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>日\u{ad}a</w:t><w:softHyphen/><w:t>b\u{ad}c</w:t></w:r></w:p></w:body></w:document>";
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let data = build_document_docx(xml);
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let zero_width = doc.zero_width_runs(0);
+            let paragraph = doc.paragraph_mut(0).unwrap();
+            apply_text_edit(&mut paragraph.runs, 0, 0, "🦀", &zero_width);
+            // Split immediately before the XML optional control. Both literal
+            // identities must survive moving the tail to a freshly written run.
+            let tail = split_runs_at_preserving_source(&mut paragraph.runs, 10, &zero_width);
+            paragraph.runs.extend(tail);
+            doc.sync_paragraph_text(0);
+            let raw = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+            assert_eq!(
+                raw.matches("<w:softHyphen/>").count(),
+                1,
+                "{platform:?}: {raw}"
+            );
+            assert_eq!(raw.matches('\u{ad}').count(), 2, "{platform:?}: {raw}");
+            let exported = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            let paragraph = reopened.paragraph(0).unwrap();
+            let mut offset = 0;
+            let mut literal_offsets = Vec::new();
+            let mut text = String::new();
+            for run in &paragraph.runs {
+                for (local, _) in run.text.char_indices() {
+                    if run.is_literal_soft_hyphen(local) {
+                        literal_offsets.push(offset + local);
+                    }
+                }
+                text.push_str(&run.text);
+                offset += run.text.len();
+            }
+            assert_eq!(text, "🦀日\u{ad}a\u{ad}b\u{ad}c", "{platform:?}");
+            assert_eq!(literal_offsets, [7, 13], "{platform:?}");
+        }
+    }
+
+    #[test]
+    fn literal_hyphens_after_source_soft_break_survive_edit_export_and_reopen() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct RestorePlatform(WordLayoutPlatform);
+        impl Drop for RestorePlatform {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = RestorePlatform(word_layout_platform());
+        let xml = "<w:document xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:body><w:p><w:r><w:t>日\u{ad}a</w:t><w:br/><w:t>b\u{ad}c</w:t></w:r></w:p></w:body></w:document>";
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let data = build_document_docx(xml);
+            let mut doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).unwrap();
+            let zero_width = doc.zero_width_runs(0);
+            let paragraph = doc.paragraph_mut(0).unwrap();
+            normalize_break_runs(&mut paragraph.runs);
+            apply_text_edit(&mut paragraph.runs, 0, 0, "🦀", &zero_width);
+            doc.sync_paragraph_text(0);
+            let raw = doc.raw_document.as_ref().unwrap().to_string().unwrap();
+            assert_eq!(
+                raw.matches("<w:softHyphen/>").count(),
+                0,
+                "{platform:?}: {raw}"
+            );
+            assert_eq!(raw.matches('\u{ad}').count(), 2, "{platform:?}: {raw}");
+            let exported = doc.export_docx().unwrap();
+            let reopened =
+                executor::block_on(WordDocument::load(&exported, &Options::default())).unwrap();
+            let paragraph = reopened.paragraph(0).unwrap();
+            let mut offset = 0;
+            let mut literals = Vec::new();
+            let mut text = String::new();
+            for run in &paragraph.runs {
+                for (local, _) in run.text.char_indices() {
+                    if run.is_literal_soft_hyphen(local) {
+                        literals.push(offset + local);
+                    }
+                }
+                text.push_str(&run.text);
+                offset += run.text.len();
+            }
+            assert_eq!(text, "🦀日\u{ad}a\nb\u{ad}c", "{platform:?}");
+            assert_eq!(literals, [7, 12], "{platform:?}");
+        }
+    }
+
+    #[test]
     fn no_break_hyphen_does_not_duplicate_during_run_rebuild() {
         let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -64678,6 +64833,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -64911,6 +65067,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -66101,6 +66258,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -66254,6 +66412,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -68186,6 +68345,7 @@ mod tests {
                 hyperlink: None,
                 node_id: paragraph.node_id,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),

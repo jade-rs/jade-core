@@ -46,6 +46,10 @@ pub struct TextStyle {
     /// Whether pair kerning should be applied while measuring/drawing.
     #[serde(default)]
     pub enable_pair_kerning: bool,
+    /// A derived Windows source slice paints literal U+00AD as a hyphen;
+    /// it is not the invisible `w:softHyphen` control.
+    #[serde(default, skip_serializing_if = "bool_is_false")]
+    pub literal_soft_hyphen: bool,
     /// Baseline shift in CSS pixels (for superscript/subscript)
     pub baseline_shift_px: f64,
     /// Whether to draw strikethrough
@@ -142,6 +146,10 @@ fn default_text_scale_x() -> f64 {
     1.0
 }
 
+fn bool_is_false(value: &bool) -> bool {
+    !*value
+}
+
 impl Default for TextStyle {
     fn default() -> Self {
         Self {
@@ -149,6 +157,7 @@ impl Default for TextStyle {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,

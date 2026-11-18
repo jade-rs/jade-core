@@ -858,6 +858,12 @@ pub fn execute_command_with_font_state<P: Painter>(
     Ok(())
 }
 
+pub(crate) fn requires_windows_discretionary_hyphen_filter(text: &str) -> bool {
+    text.contains('\u{ad}')
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+}
+
 #[allow(clippy::too_many_arguments)]
 fn execute_text_run_with_font_state<P: Painter>(
     context: &P,
@@ -869,6 +875,51 @@ fn execute_text_run_with_font_state<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<(), P::Error> {
+    // The soft-hyphen cluster remains in the logical layout for editing.
+    // Word paints only the separate line-end dash when that break is used.
+    // Passing U+00AD to Skia's glyph batch paints its font glyph as another
+    // dash, including on lines where no discretionary break was taken.
+    let visible_glyphs;
+    let literal_text;
+    let (text, glyphs) = if requires_windows_discretionary_hyphen_filter(text) {
+        if style.literal_soft_hyphen {
+            // Normalize only the temporary paint buffer. Editable text, cached
+            // source ranges, font choices and positioned origins stay intact.
+            // Browser shaping and effects otherwise hide this format character.
+            let mut remap = vec![0; text.len() + 1];
+            let mut normalized = String::with_capacity(text.len());
+            for (offset, character) in text.char_indices() {
+                remap[offset] = normalized.len();
+                normalized.push(if character == '\u{ad}' {
+                    '-'
+                } else {
+                    character
+                });
+                remap[offset + character.len_utf8()] = normalized.len();
+            }
+            literal_text = normalized;
+            visible_glyphs = glyphs
+                .iter()
+                .filter_map(|glyph| {
+                    glyph.text(text)?;
+                    let mut step = glyph.clone();
+                    step.text_start = (*remap.get(glyph.text_start as usize)?).try_into().ok()?;
+                    step.text_end = (*remap.get(glyph.text_end as usize)?).try_into().ok()?;
+                    Some(step)
+                })
+                .collect::<Vec<_>>();
+            (literal_text.as_str(), visible_glyphs.as_slice())
+        } else {
+            visible_glyphs = glyphs
+                .iter()
+                .filter(|glyph| glyph.text(text) != Some("\u{ad}"))
+                .cloned()
+                .collect::<Vec<_>>();
+            (text, visible_glyphs.as_slice())
+        }
+    } else {
+        (text, glyphs)
+    };
     if glyphs.is_empty() {
         return Ok(());
     }
@@ -2372,6 +2423,9 @@ mod fill_style_tests;
 mod control_mark_tests;
 
 #[cfg(test)]
+mod discretionary_hyphen_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -2418,6 +2472,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -2453,6 +2508,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -2487,6 +2543,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -2517,6 +2574,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,

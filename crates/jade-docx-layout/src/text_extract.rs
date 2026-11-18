@@ -1100,6 +1100,15 @@ fn build_paragraph_input<C: LineWrapContext>(
                 }
             }
         }
+        let first_style = run_styles.len() - 1;
+        crate::literal_soft_hyphens::mark_literal_soft_hyphens(
+            run,
+            &run_text,
+            start,
+            first_style,
+            &mut run_styles,
+            crate::line_metrics::word_layout_platform(),
+        );
     }
     if text.trim().is_empty() {
         return Ok(None);
@@ -3347,6 +3356,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -4321,6 +4331,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -4413,6 +4424,7 @@ mod tests {
                         hyperlink: None,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -4498,6 +4510,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -4526,6 +4539,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),

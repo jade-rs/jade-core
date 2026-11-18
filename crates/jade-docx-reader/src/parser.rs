@@ -1113,6 +1113,7 @@ impl DocumentParser {
                                 hyperlink: hyperlink_stack.last().cloned(),
                                 node_id: None,
                                 text_node_id: None,
+                                text_controls: None,
                                 revision_node_id: None,
                                 comment_reference_ids: Vec::new(),
                                 footnote_reference_ids: Vec::new(),
@@ -1274,6 +1275,7 @@ impl DocumentParser {
                                     hyperlink: hyperlink_stack.last().cloned(),
                                     node_id: None,
                                     text_node_id: None,
+                                    text_controls: None,
                                     revision_node_id: None,
                                     comment_reference_ids: Vec::new(),
                                     footnote_reference_ids: Vec::new(),
@@ -1911,6 +1913,7 @@ impl DocumentParser {
                                         hyperlink: hyperlink_stack.last().cloned(),
                                         node_id: None,
                                         text_node_id: None,
+                                        text_controls: None,
                                         revision_node_id: None,
                                         comment_reference_ids: Vec::new(),
                                         footnote_reference_ids: Vec::new(),
@@ -3561,7 +3564,7 @@ impl DocumentParser {
                                 // below instead of leaking into the paragraph.
                                 if !text_to_push.is_empty() {
                                     paragraph_text_len += text_to_push.len();
-                                    run.text.push_str(&text_to_push);
+                                    run.append_source_text(&text_to_push);
                                 }
                             } else {
                                 // Field result text is suppressed from the run
@@ -4847,27 +4850,20 @@ impl DocumentParser {
         template.node_id = None;
         template.text_node_id = None;
 
-        let mut buffer = String::new();
-
-        for ch in run.text.chars() {
+        let mut start = 0;
+        for (offset, ch) in run.text.char_indices() {
             if ch == '\n' {
-                if !buffer.is_empty() {
-                    let mut text_run = template.clone();
-                    text_run.text = std::mem::take(&mut buffer);
-                    segments.push(text_run);
+                if start < offset {
+                    segments.push(template.with_text_range(start..offset));
                 }
-                let mut break_run = template.clone();
-                break_run.text = "\n".to_string();
-                segments.push(break_run);
-            } else {
-                buffer.push(ch);
+                let end = offset + ch.len_utf8();
+                segments.push(template.with_text_range(offset..end));
+                start = end;
             }
         }
 
-        if !buffer.is_empty() {
-            let mut trailing = template;
-            trailing.text = buffer;
-            segments.push(trailing);
+        if start < run.text.len() {
+            segments.push(template.with_text_range(start..run.text.len()));
         }
 
         if segments.is_empty() {
@@ -9653,6 +9649,7 @@ impl DocumentParser {
                         hyperlink,
                         node_id: None,
                         text_node_id: None,
+                        text_controls: None,
                         revision_node_id: None,
                         comment_reference_ids: Vec::new(),
                         footnote_reference_ids: Vec::new(),
@@ -21066,6 +21063,31 @@ mod tests {
     }
 
     #[test]
+    fn soft_break_split_rebases_literal_controls_and_keeps_optional_controls_distinct() {
+        let body = "<w:p><w:r><w:t>日\u{ad}a</w:t><w:br/><w:t>b\u{ad}c</w:t><w:softHyphen/><w:t>d</w:t></w:r></w:p>";
+        let doc = parse_document_from_body(body);
+        let paragraph = doc.body.as_ref().unwrap().elements[0]
+            .as_paragraph()
+            .unwrap();
+        assert_eq!(paragraph.runs.len(), 3);
+        assert_eq!(paragraph.runs[0].text, "日\u{ad}a");
+        assert!(paragraph.runs[0].is_literal_soft_hyphen(3));
+        assert_eq!(paragraph.runs[1].text, "\n");
+        assert!(paragraph.runs[1].text_controls.is_none());
+        assert_eq!(paragraph.runs[2].text, "b\u{ad}c\u{ad}d");
+        assert!(paragraph.runs[2].is_literal_soft_hyphen(1));
+        assert!(!paragraph.runs[2].is_literal_soft_hyphen(4));
+        assert_eq!(
+            paragraph.runs[2]
+                .text_controls
+                .as_ref()
+                .unwrap()
+                .literal_soft_hyphens,
+            [1]
+        );
+    }
+
+    #[test]
     fn soft_break_split_keeps_reference_ids_on_one_run() {
         let run = Run {
             text: "first\nsecond".to_string(),
@@ -21077,6 +21099,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: vec!["1".to_string()],
             footnote_reference_ids: vec!["2".to_string()],

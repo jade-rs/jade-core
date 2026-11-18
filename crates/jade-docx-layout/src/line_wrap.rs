@@ -8884,7 +8884,30 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 continue;
             }
 
-            let script = classify_script(grapheme);
+            // Measurement and break rules use the visible nonbreaking glyph;
+            // source text and all logical UTF-8 ranges remain untouched.
+            let metric_grapheme = if grapheme == "\u{ad}"
+                && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && run_properties
+                    .as_ref()
+                    .is_some_and(|p| p.literal_soft_hyphen)
+            {
+                "\u{2011}"
+            } else {
+                grapheme
+            };
+            let next_grapheme = if next_grapheme == Some("\u{ad}")
+                && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                && run_styles.iter().any(|s| {
+                    s.start <= grapheme_end_abs - base_offset
+                        && s.end > grapheme_end_abs - base_offset
+                        && s.properties.as_ref().is_some_and(|p| p.literal_soft_hyphen)
+                }) {
+                Some("\u{2011}")
+            } else {
+                next_grapheme
+            };
+            let script = classify_script(metric_grapheme);
             if script != active_script {
                 active_script = script;
             }
@@ -8903,10 +8926,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
             let auto_space;
             let cluster_layout = loop {
                 let (font_slot, font_desc, font_desc_hash, font_desc_id) =
-                    style.font_key_for_grapheme(grapheme, active_script);
+                    style.font_key_for_grapheme(metric_grapheme, active_script);
                 let computed = compute_text_advance_step_with_descriptor(
                     ctx,
-                    grapheme,
+                    metric_grapheme,
                     &style,
                     Some(paragraph_style),
                     &advance_state_across_runs,
@@ -9260,7 +9283,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 };
                 update_text_advance_state(
                     &mut advance_state_across_runs,
-                    grapheme,
+                    metric_grapheme,
                     computed.measured_glyph_width,
                     computed.advance.adjusted_glyph_width,
                     computed.font_descriptor_hash,
@@ -9381,9 +9404,9 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 glyph_total_width,
                 grapheme,
                 is_whitespace,
-                paragraph_style.forbids_line_start(grapheme),
-                paragraph_style.forbids_line_end(grapheme)
-                    || paragraph_style.forbids_break_between(grapheme, next_grapheme),
+                paragraph_style.forbids_line_start(metric_grapheme),
+                paragraph_style.forbids_line_end(metric_grapheme)
+                    || paragraph_style.forbids_break_between(metric_grapheme, next_grapheme),
                 cluster_layout,
             );
             (cluster.auto_space_leading, cluster.auto_space_trailing) = auto_space;
@@ -11296,10 +11319,34 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
                         .clusters
                         .iter()
                         .all(|cluster| is_arabic_letter_cluster(&cluster.text));
+                // Moving the suffix after a compound's hyphen can overfill
+                // the final line. The Windows 35pt Arial controls require
+                // `electr` / `o-` / `magn` / `etic`, not a clipped `magnetic`.
+                // This continuation was created by word-boundary repair;
+                // it is not evidence of an intrinsically unbreakable word.
+                let follows_windows_compound_hyphen = paragraph_style.word_platform
+                    == crate::line_metrics::WordLayoutPlatform::Windows
+                    && paragraph_style.allows_mid_word_break()
+                    && !paragraph_style.bidi
+                    && line.break_kind == LineBreakKind::ParagraphEnd
+                    && line_index.checked_sub(1).is_some_and(|previous| {
+                        let previous = &lines[previous];
+                        previous.break_kind == LineBreakKind::Soft
+                            && previous.clusters.len() > 1
+                            && previous.clusters.last().is_some_and(|c| c.text == "-")
+                            && is_latin_word_grapheme(
+                                &previous.clusters[previous.clusters.len() - 2].text,
+                            )
+                    })
+                    && line.clusters.iter().all(|cluster| {
+                        cluster.kind == InlineClusterKind::Grapheme
+                            && is_latin_word_grapheme(&cluster.text)
+                    });
                 if intrinsic_width > effective_available + WRAP_FIT_TOLERANCE_PX
                     && !has_terminal_overflow_punctuation
                     && !has_word_break_opportunity
                     && !follows_arabic_separator
+                    && !follows_windows_compound_hyphen
                 {
                     break;
                 }
@@ -11833,7 +11880,7 @@ fn prevent_mid_word_breaks(
                 .last()
                 .is_some_and(|c| is_latin_word_grapheme(&c.text));
         let next_starts_latin_word = !next_line.clusters.is_empty()
-            && (is_latin_word_cluster(&next_line.clusters, 0)
+            && (is_latin_word_cluster(next_line, 0)
                 || closes_latin_word(prev_line, next_line)
                 || windows_internal_latin_hyphen);
         if !next_starts_latin_word {
@@ -11885,7 +11932,7 @@ fn prevent_mid_word_breaks(
         // legal separator before the trailing Latin word, prefer that word boundary
         // over browser-only splits such as `Worl`/`d`.
         while !prev_line.clusters.is_empty() {
-            if !is_latin_word_cluster(&prev_line.clusters, prev_line.clusters.len() - 1) {
+            if !is_latin_word_cluster(prev_line, prev_line.clusters.len() - 1) {
                 break;
             }
             if prev_line.clusters.len() <= 1 {
@@ -11953,7 +12000,8 @@ fn line_break_splits_latin_word(
 /// between digits (Word for Mac keeps `1.5in),` whole in
 /// `floating-simple-position`, UAX #14 LB25). A separator ending the clusters
 /// belongs to the word its caller has found after it.
-fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
+fn is_latin_word_cluster(line: &WrappedLine, index: usize) -> bool {
+    let clusters = &line.clusters;
     let text = clusters[index].text.as_str();
     let previous = index
         .checked_sub(1)
@@ -11972,6 +12020,24 @@ fn is_latin_word_cluster(clusters: &[InlineCluster], index: usize) -> bool {
             && clusters
                 .get(index + 1)
                 .is_none_or(|next| is_ascii_digit_grapheme(&next.text)))
+        // Only the derived Windows literal marker has this property. Keep its
+        // whole Latin token together when a preceding space provides a legal
+        // break; an XML optional control must retain its preferred break.
+        || (text == "\u{ad}"
+            && previous.is_some_and(|text| {
+                is_latin_word_grapheme(text) || is_ascii_digit_grapheme(text)
+            })
+            && clusters.get(index + 1).is_none_or(|next| {
+                is_latin_word_grapheme(&next.text) || is_ascii_digit_grapheme(&next.text)
+            })
+            && line
+                .segments
+                .iter()
+                .find(|segment| {
+                    segment.start <= clusters[index].start && clusters[index].start < segment.end
+                })
+                .and_then(|segment| segment.properties.as_deref())
+                .is_some_and(|properties| properties.literal_soft_hyphen))
 }
 
 /// Whether the Latin word ending `line` starts right after East Asian text.
@@ -11980,7 +12046,7 @@ fn follows_east_asian_text(line: &WrappedLine) -> bool {
         .iter()
         .enumerate()
         .rev()
-        .find(|(index, _)| !is_latin_word_cluster(&line.clusters, *index))
+        .find(|(index, _)| !is_latin_word_cluster(line, *index))
         .is_some_and(|(_, cluster)| {
             !cluster.forbid_line_end && is_non_whitespace_east_asian_grapheme(&cluster.text)
         })
@@ -11991,11 +12057,11 @@ fn follows_east_asian_text(line: &WrappedLine) -> bool {
 fn split_latin_word_width(prev: &WrappedLine, next: &WrappedLine) -> f64 {
     let head: f64 = (0..prev.clusters.len())
         .rev()
-        .take_while(|index| is_latin_word_cluster(&prev.clusters, *index))
+        .take_while(|index| is_latin_word_cluster(prev, *index))
         .map(|index| prev.clusters[index].width)
         .sum();
     let tail: f64 = (0..next.clusters.len())
-        .take_while(|index| is_latin_word_cluster(&next.clusters, *index))
+        .take_while(|index| is_latin_word_cluster(next, *index))
         .map(|index| next.clusters[index].width)
         .sum();
     head + tail
@@ -12004,7 +12070,7 @@ fn split_latin_word_width(prev: &WrappedLine, next: &WrappedLine) -> f64 {
 fn has_preceding_latin_break_opportunity(line: &WrappedLine) -> bool {
     let mut saw_trailing_latin = false;
     for (index, cluster) in line.clusters.iter().enumerate().rev() {
-        if is_latin_word_cluster(&line.clusters, index) {
+        if is_latin_word_cluster(line, index) {
             saw_trailing_latin = true;
             continue;
         }
@@ -12046,8 +12112,7 @@ fn detach_remaining_split_latin_word(
     }
 
     let mut moved_width = 0.0;
-    while !current.clusters.is_empty()
-        && is_latin_word_cluster(&current.clusters, current.clusters.len() - 1)
+    while !current.clusters.is_empty() && is_latin_word_cluster(current, current.clusters.len() - 1)
     {
         let Some((cluster, segment)) = detach_trailing_cluster(current) else {
             break;
@@ -17677,6 +17742,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -17705,6 +17771,7 @@ mod tests {
                             hyperlink: None,
                             node_id: None,
                             text_node_id: None,
+                            text_controls: None,
                             revision_node_id: None,
                             comment_reference_ids: Vec::new(),
                             footnote_reference_ids: Vec::new(),
@@ -25177,6 +25244,47 @@ mod tests {
             let actual = collect_line_infos(&lines);
             assert_eq!(actual[0].text, "prefix ");
             assert_eq!(actual[1].text, "X-ray");
+        }
+    }
+
+    #[test]
+    fn windows_compound_continuation_emergency_wraps_instead_of_overflowing() {
+        let ctx = TestContext::new(10.0);
+        let text = "alpha-bravo";
+        for mode in [14, 15] {
+            let paragraph = ParagraphStyle {
+                word_platform: crate::line_metrics::WordLayoutPlatform::Windows,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    compatibility_mode: Some(mode),
+                    ..EastAsianLineBreakingRules::default()
+                },
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 45.0)
+                    .unwrap();
+            let actual = collect_line_infos(&lines);
+            assert_eq!(
+                actual
+                    .iter()
+                    .map(|line| line.text.as_str())
+                    .collect::<Vec<_>>(),
+                ["alph", "a-", "brav", "o"]
+            );
+            assert_eq!(
+                actual
+                    .iter()
+                    .map(|line| line.text.as_str())
+                    .collect::<String>(),
+                text
+            );
+            assert!(lines.iter().all(|line| {
+                line.clusters
+                    .iter()
+                    .map(|cluster| cluster.width)
+                    .sum::<f64>()
+                    <= 45.0
+            }));
         }
     }
 

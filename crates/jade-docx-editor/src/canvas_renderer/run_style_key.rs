@@ -1,7 +1,25 @@
 //! Shared run-flag encoding and Windows style-cache keys.
-use jade_docx_reader::document::{FontHint, RunProperties};
+use jade_docx_reader::document::{FontHint, Run, RunProperties};
 use rustc_hash::FxHasher;
 use std::hash::{Hash, Hasher};
+
+#[inline]
+pub(super) fn hash_windows_source_controls(run: &Run, start: usize, hasher: &mut FxHasher) {
+    let Some(controls) = run.text_controls.as_ref() else {
+        return;
+    };
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
+        return;
+    }
+    for &offset in &controls.literal_soft_hyphens {
+        if run.is_literal_soft_hyphen(offset) {
+            0x534f_5552_4345_00ad_u64.hash(hasher);
+            (start + offset).hash(hasher);
+        }
+    }
+}
 
 #[inline]
 pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
@@ -61,6 +79,11 @@ pub(super) fn windows_key_impl<const INCLUDE_LANGUAGES: bool>(
         1_u8.hash(&mut hasher);
         let flags = boolean_flags(props);
         flags.hash(&mut hasher);
+        if props.literal_soft_hyphen {
+            // Ordinary style keys stay unchanged; the source-aware slice
+            // needs a distinct paint-cache identity.
+            0x4c49_5445_5241_4cadu64.hash(&mut hasher);
+        }
         optional!(1, props.style.as_ref());
         optional!(2, props.underline_kind.as_ref());
         optional!(3, props.underline_color.as_ref());
@@ -167,6 +190,26 @@ fn hash_language(language: Option<&str>, hasher: &mut FxHasher) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn literal_source_slices_do_not_share_an_optional_hyphen_paint_cache_key() {
+        let ordinary = RunProperties::default();
+        let literal = RunProperties {
+            literal_soft_hyphen: true,
+            ..Default::default()
+        };
+        assert_ne!(
+            windows_key(Some(&ordinary), None),
+            windows_key(Some(&literal), None)
+        );
+        assert!(ordinary.is_empty());
+        assert!(!literal.is_empty());
+        // Derived source flags cannot become authored OOXML run formatting.
+        assert_eq!(
+            serde_json::to_value(ordinary).unwrap(),
+            serde_json::to_value(literal).unwrap()
+        );
+    }
 
     #[test]
     fn language_hash_keeps_presence_lengths_fields_and_long_suffixes_distinct() {
