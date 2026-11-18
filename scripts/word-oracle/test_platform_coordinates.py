@@ -11,7 +11,7 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 94)
+        self.assertGreaterEqual(len(cases), 95)
         self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 75)
 
     def reject_archive_edit(self, edit, message):

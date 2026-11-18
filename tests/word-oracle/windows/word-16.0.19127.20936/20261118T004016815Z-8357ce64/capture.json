@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T004016815Z-8357ce64",
+  "captured_at_utc": "2026-11-18T00:40:16.8180615Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-pct-table-autofit-table50-grid30-cells30-compat15",
+      "source": "w18-u-percentage-table-widths-input-snapshots\\word-windows-pct-table-autofit-table50-grid30-cells30-compat15.docx",
+      "sha256": "3e16763b3f114788f29ae07b70ebac43b744fcf4e9a03fff25dece2d447a609d",
+      "pdf": "word-windows-pct-table-autofit-table50-grid30-cells30-compat15.pdf",
+      "pdf_sha256": "45ce92bb25db427f286a085198ba043336f21a2d3f8511b84b5d99a3b334cbd2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-pct-table-autofit-table50-grid30-cells30-compat15.page-001.emf",
+          "sha256": "a93b95bd7b760bb0eed49b5ffcafe86cabdb1f418611c74235dc0ed44ae4e9d6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

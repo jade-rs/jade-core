@@ -2358,6 +2358,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "borderless-table-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/borderless-table-mac/source.docx",
+        "sha256": "219dbbfbdd73599dc6a0caf012199e1dde8a3253bff13764b4990ba7071f261d"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/borderless-table-mac/manifest.json",
+        "sha256": "8b5a80f46bb9ca4fa8fc9edeb40f9a57a57ebec95a273658f6ae71dc4b1f9dd6"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004252975Z-a999e8fb.zip",
+            "sha256": "189d77201e3bdd409173c1d4ff5f70941b25c4bc44b9fdc46c9dd9cba53914aa"
+          },
+          "capture_sha256": "56c509f2195fefaa9e8ccea7fce283832d222a52fbc09a408303060348efa10d",
+          "capture_id": "20261114T004252975Z-a999e8fb",
+          "fixture": "ww14-borderless-table-mac-219dbbfb",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

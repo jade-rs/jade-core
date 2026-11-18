@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T004120477Z-57ce6921",
+  "captured_at_utc": "2026-11-18T00:41:20.4810909Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault",
+      "source": "w18-u-percentage-table-widths-input-snapshots\\word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault.docx",
+      "sha256": "2e89c2b95f93c2eef9e08631fb26d88466bcce32b9e3f9f359afcc8deb75f9a4",
+      "pdf": "word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault.pdf",
+      "pdf_sha256": "975ec9a4255fbc3ceca36bbae44abbe2b9e255aaec9f8f7500cea8e587dbf060",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault.page-001.emf",
+          "sha256": "6a8e699a41e92020ce9041bbb47f8a8e444914021b9fabea333fa28e66dc5b6d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
