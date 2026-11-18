@@ -45808,6 +45808,1527 @@
           "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells60-compatdefault.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022150399Z-0e0184fa.zip",
+      "archive_sha256": "612b3265f9ecbfeb1778df8189811153ed8351b6d1dd5ba5428ec13a4807712a",
+      "capture_id": "20261118T022150399Z-0e0184fa",
+      "capture_sha256": "0d259bd1af0747c1880242ce11c0ccd186e76e956eb15b850c787f2046019a7d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size13-compat14",
+          "source_sha256": "551563adcab5a529cedb7ad4ffb53fab2f8223d4a469918dceb7374ffe191b6e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022150399Z-0e0184fa/inputs/word-windows-aptos-size-control-display-bold-size13-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size13-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size13-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022154014Z-f623a96b.zip",
+      "archive_sha256": "9d2f7cf6b81e22f008fe4be0edf007ad797141f4c0e6358bd5a1542389893671",
+      "capture_id": "20261118T022154014Z-f623a96b",
+      "capture_sha256": "5b69bd0bfc58a2c1cc3fc2e6b07b1bea7a81f4eb8e20841d5705f1572a198e1c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size13-compat15",
+          "source_sha256": "fa39fde11425d275a2e705bedc43d5861cb259b3d358343c0b05a5c32c69c3f1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022154014Z-f623a96b/inputs/word-windows-aptos-size-control-display-bold-size13-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size13-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size13-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022156829Z-a01568ad.zip",
+      "archive_sha256": "5dc5fadda757f9e68636b8795dbf1527b4cd1672a0961e8dedb47cee13bb2c71",
+      "capture_id": "20261118T022156829Z-a01568ad",
+      "capture_sha256": "29cd20e02baba24708068148c9d6baa2ca780cd64c1da29d024a795e6b81551a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size13p5-compat14",
+          "source_sha256": "195a2cb14feea2b7bbb0c81fae66b83f3a7b3fc24cf11adc951be591bb7241cd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022156829Z-a01568ad/inputs/word-windows-aptos-size-control-display-bold-size13p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size13p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size13p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022159673Z-b6fdb542.zip",
+      "archive_sha256": "3167b9faeeaf83a9033b3b864613d26bef46c9e9107ce357471422283b563c0d",
+      "capture_id": "20261118T022159673Z-b6fdb542",
+      "capture_sha256": "cc15b69f2fe39629fc97a1d25211a97ee13dfa2a6b2acd84bca1565baba3fd58",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size13p5-compat15",
+          "source_sha256": "a14133a777520bad0bb5e52743d96fbfc46d46006de9bf981ceff01d17d9693f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022159673Z-b6fdb542/inputs/word-windows-aptos-size-control-display-bold-size13p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size13p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size13p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022201075Z-280f11a9.zip",
+      "archive_sha256": "6e04282f076d30b04316f60b10dbc0c47ca620ec7c900cd1fcd149c366b738c4",
+      "capture_id": "20261118T022201075Z-280f11a9",
+      "capture_sha256": "17fbb05f9d5c7487f65f1b7750217f46c5bcfd36a5059a48197e258fa3909898",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size14-compat14",
+          "source_sha256": "9acb311b90a6a099a6ea0106445933f5a00f19851a95476f38e6232e2eb5d430",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022201075Z-280f11a9/inputs/word-windows-aptos-size-control-display-bold-size14-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size14-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022202483Z-416493a7.zip",
+      "archive_sha256": "7982e00e52655592e7863652027d78b3cd74d53fce291b3b9ebf1af54f319257",
+      "capture_id": "20261118T022202483Z-416493a7",
+      "capture_sha256": "ef1a24912b1c56121229c59502e595349a992009614cfd021e91e7ba82f7bce9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size14-compat15",
+          "source_sha256": "cf02d80b65b8162d44bbac795848e0eff6b9b28c980db15467f7d5c06f704b43",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022202483Z-416493a7/inputs/word-windows-aptos-size-control-display-bold-size14-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size14-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022206440Z-fc7c6a40.zip",
+      "archive_sha256": "6e4b1bb33d3e5b83829f5d0cb2440d92977c4b0dbc6d2b16a1e0173399cf03ea",
+      "capture_id": "20261118T022206440Z-fc7c6a40",
+      "capture_sha256": "516f78faf7797a098c05c0a0c073901b6207b4d4432c5f3b7fc857bd7224f495",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size14p5-compat14",
+          "source_sha256": "8e4fa808ea12a9731f96ebbab62cf4bed9b4c1407327bee7bcfc76ec66f0f87c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022206440Z-fc7c6a40/inputs/word-windows-aptos-size-control-display-bold-size14p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size14p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size14p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022209263Z-26745575.zip",
+      "archive_sha256": "bf69ffe62d64fa40b248e473835f0ff549d8865967811663f348510240087666",
+      "capture_id": "20261118T022209263Z-26745575",
+      "capture_sha256": "82e22d44dba37f4d96f3adfde0959f888c483843f63d8afa25186f3456f1a1a1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size14p5-compat15",
+          "source_sha256": "5ad70cbc6bd30474bbea1fe5f924ccc89c2bb846d458d83494673965b57135df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022209263Z-26745575/inputs/word-windows-aptos-size-control-display-bold-size14p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size14p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size14p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022212035Z-803272ac.zip",
+      "archive_sha256": "b0063e1a3f13eef59b8c8d7eddb631b590bf18518011bc519d23b47827fb0343",
+      "capture_id": "20261118T022212035Z-803272ac",
+      "capture_sha256": "7c03e18d13c5849fd3f83765ca83d1909452916bb49e9b5fff0dda089c2bcdea",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size15-compat14",
+          "source_sha256": "d160a8c721ee348cd7b251ac6c1c9bc21d8649e304bd940b5b5b898b4acca1c1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022212035Z-803272ac/inputs/word-windows-aptos-size-control-display-bold-size15-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size15-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size15-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022214884Z-67a71cea.zip",
+      "archive_sha256": "484fc0da707541fdf903387f9ef5457a0908af96dff07c3bf1095998f06d4caa",
+      "capture_id": "20261118T022214884Z-67a71cea",
+      "capture_sha256": "c26179236897b546ae7e831a0720df670e6441909217a3d97563932cd7f4fc2d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size15-compat15",
+          "source_sha256": "ae233871a8bb91cb49e745e3e5f0142fcb743e9f59529a2062443488a3077d76",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022214884Z-67a71cea/inputs/word-windows-aptos-size-control-display-bold-size15-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size15-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size15-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022217697Z-dfb7ab11.zip",
+      "archive_sha256": "bf702e2ca98a52a8bfa9388c2742f7a09c0ace29eb72ebfeb25aa0e4d95d482f",
+      "capture_id": "20261118T022217697Z-dfb7ab11",
+      "capture_sha256": "e71855791ff458f04c055bbf0afc46d0dd52cac14563a88fd3344d753a45e8a6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size15p5-compat14",
+          "source_sha256": "11d9140e5179b232fd209cae164bdad175ed3c3284b28711ebd4f0d3205c7519",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022217697Z-dfb7ab11/inputs/word-windows-aptos-size-control-display-bold-size15p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size15p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size15p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022221004Z-7e22bfb5.zip",
+      "archive_sha256": "13f10f97fc464d633664c057b6ea401bf4b0649eb621aaf3ed13ee4b5abc5359",
+      "capture_id": "20261118T022221004Z-7e22bfb5",
+      "capture_sha256": "0c7d885c7e94969f7eb215b89700758195ff3076b0b8e1b0ae7f50bffe9d6f9c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size15p5-compat15",
+          "source_sha256": "8dff9297569f341b71c2c8253a8b779981195ad54198fc00bad1df29e1ce7f56",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022221004Z-7e22bfb5/inputs/word-windows-aptos-size-control-display-bold-size15p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size15p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size15p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022223801Z-334caaca.zip",
+      "archive_sha256": "bc5813e0922401f22c0393b80d5d11bceabf1330888d9c5820d9c09c3f5059ab",
+      "capture_id": "20261118T022223801Z-334caaca",
+      "capture_sha256": "cba516c4b250795ce93c7d873c397600964d073495c40f69eaaca398d8a9d97c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size16-compat14",
+          "source_sha256": "08162b4923f1e8cb3393313ee33946c068085040069b365cd5e9fbde3ae034b1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022223801Z-334caaca/inputs/word-windows-aptos-size-control-display-bold-size16-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size16-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size16-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022226570Z-7d3ae699.zip",
+      "archive_sha256": "afb5c23bec5011c914e67326b115867c62893854c51ceed86824dc3bd9ba0b86",
+      "capture_id": "20261118T022226570Z-7d3ae699",
+      "capture_sha256": "2221a017b9d3138a6932486c931d80089e3b0518fa5a52774e10a402ca28135c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size16-compat15",
+          "source_sha256": "921868100c9391c5f8cddef05d08e5ec55b6ef7a69d4c7f019999ee075e6eed1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022226570Z-7d3ae699/inputs/word-windows-aptos-size-control-display-bold-size16-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size16-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size16-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022229357Z-3ce61ecd.zip",
+      "archive_sha256": "af83973c07e76767f830a3032b15e255a93571f643c937df4dce2e592cac6f4f",
+      "capture_id": "20261118T022229357Z-3ce61ecd",
+      "capture_sha256": "85081e334082b2b978b737d767589198677ed8a5bea7c26dce917c83a05d2a3d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size20-compat14",
+          "source_sha256": "c96b7e885d488d820bc368a7e1fca17c730d15c7531c764d15a4cd5e0f90873b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022229357Z-3ce61ecd/inputs/word-windows-aptos-size-control-display-bold-size20-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022232158Z-c7cb0735.zip",
+      "archive_sha256": "620465eb43736cba5a73ef166d8d26601d7e1b367dce57ca8fb6e573b21eb994",
+      "capture_id": "20261118T022232158Z-c7cb0735",
+      "capture_sha256": "608ffb0b90149c2b675faafd21e71bf4dae8d18c7339530761fa774fe219161b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bold-size20-compat15",
+          "source_sha256": "fd259a92b03447d97cd2bf15aab026d639b2ba4732052f44f74b66491e2d6c04",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022232158Z-c7cb0735/inputs/word-windows-aptos-size-control-display-bold-size20-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bold-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bold-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022234959Z-2fca599e.zip",
+      "archive_sha256": "612a7771671f8bbfa65bd928d44561046a9ae54bc83a370f36425694b4fb94eb",
+      "capture_id": "20261118T022234959Z-2fca599e",
+      "capture_sha256": "138e0cafcd079016dba5b39d1012e004c9a48ae6a6d0ef643ed8fdfc8e2f16f8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size13-compat14",
+          "source_sha256": "bcf5befdc962a19f9c3e73924c447b291fa4e5b9e3bc748546a158cb1b3e30b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022234959Z-2fca599e/inputs/word-windows-aptos-size-control-display-bolditalic-size13-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size13-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size13-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022240096Z-89d46e19.zip",
+      "archive_sha256": "80b6960ab347a2b28b79c79f08911d86351497af35c2c560f7ee926ec171fcf3",
+      "capture_id": "20261118T022240096Z-89d46e19",
+      "capture_sha256": "40013a44a07966da715cbb95e67ffc9db062f106c0d10f1a6bb8e1afdf46d503",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size13-compat15",
+          "source_sha256": "d708b9c38ba3fe39b838b16c7ce271fb641b1e8530054dc6d97b9da73a2fc5b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022240096Z-89d46e19/inputs/word-windows-aptos-size-control-display-bolditalic-size13-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size13-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size13-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022242910Z-d57c4862.zip",
+      "archive_sha256": "f60b99bcea4677dc2ac3425a2d05c448ccc3e4bd5fce2f0aaf0072f3f7f41796",
+      "capture_id": "20261118T022242910Z-d57c4862",
+      "capture_sha256": "8054da27e9c2c4543f9c7687f07e6fd6555922a700d9e3adc3c001bb8c5c4164",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size13p5-compat14",
+          "source_sha256": "f0acc575c7154e97b6916dc1ca6e8562b55e256e3fc73867512501a55c00882d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022242910Z-d57c4862/inputs/word-windows-aptos-size-control-display-bolditalic-size13p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size13p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022245678Z-6aab2a81.zip",
+      "archive_sha256": "14ba0c1e93bed946c859cd05fc84916d58a2e36b4f01834ce2de334f327355a7",
+      "capture_id": "20261118T022245678Z-6aab2a81",
+      "capture_sha256": "02defa75a59b71bc371964e7318a5f6bc3f00c4598bbc590fd7e7e006aa8b7d8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size13p5-compat15",
+          "source_sha256": "efddbbb0ffa0ba7f978a2bd495544ab9b723ac599619568f71382946e07f99f4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022245678Z-6aab2a81/inputs/word-windows-aptos-size-control-display-bolditalic-size13p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size13p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022248477Z-f486da1c.zip",
+      "archive_sha256": "cead28efd685fcc9b5fc034a0decf39f0f64cafac484a994c6aed31be345302d",
+      "capture_id": "20261118T022248477Z-f486da1c",
+      "capture_sha256": "c4f1768e9789a525b31fe6895c2f862c148012f7d488749f0f823093fe266823",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size14-compat14",
+          "source_sha256": "c6e8d3b9f9bc03c93d73ef0a1cf0356f1854f650e7a763b09ca99f0bd699d83c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022248477Z-f486da1c/inputs/word-windows-aptos-size-control-display-bolditalic-size14-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size14-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size14-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022251269Z-c30761f1.zip",
+      "archive_sha256": "5a3f4c93ce5db2f7351b4f91a18ee10d5a5f241d118b22f77e94bc74845f1b63",
+      "capture_id": "20261118T022251269Z-c30761f1",
+      "capture_sha256": "a597f572b764a21c40e1f8ebf0e7584ea2f2bbb91f05d9d334e7de6ed5451e12",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size14-compat15",
+          "source_sha256": "51a2f3a59b0929c179e4ceca66e60b1ae8b3fe6e887fffcb78ff00ecae3c42e5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022251269Z-c30761f1/inputs/word-windows-aptos-size-control-display-bolditalic-size14-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size14-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022254067Z-efd96dea.zip",
+      "archive_sha256": "de0982b57cb6d0a890ffa66da979794f0ed84235e585853dab2c4d46b625a227",
+      "capture_id": "20261118T022254067Z-efd96dea",
+      "capture_sha256": "072787a324626727e123d8e44bd46c4b40568501b5629fa410c1060bdd0d769e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size14p5-compat14",
+          "source_sha256": "7e1f8b0ec8f726a4ec8a57a210504bb28786f3e6c4eee1d3b4b98818a821e473",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022254067Z-efd96dea/inputs/word-windows-aptos-size-control-display-bolditalic-size14p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size14p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022257737Z-d051d1e7.zip",
+      "archive_sha256": "96fb6de390f46bfd48c4481d034f6d7e69792260be1d5c45bbb5255fe594666d",
+      "capture_id": "20261118T022257737Z-d051d1e7",
+      "capture_sha256": "581e5654376c7b827a6b710def556226f318b4defce69dd5a76e8c048a993102",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size14p5-compat15",
+          "source_sha256": "21fc639baecf5eb024f409348fde2e1131188e36a21b5046646fbf26c781975f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022257737Z-d051d1e7/inputs/word-windows-aptos-size-control-display-bolditalic-size14p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size14p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022300554Z-812ffb6f.zip",
+      "archive_sha256": "b8c51aaad2393698c90f30262748bb9db367b8e881870e4b57b91755b64eb030",
+      "capture_id": "20261118T022300554Z-812ffb6f",
+      "capture_sha256": "5ff90f894c25bb64df6770a0f9d86435316a8077e1e14d2918dd54f1e7578aa2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size15-compat14",
+          "source_sha256": "8dc4980c816d123c6c30b479f3eb6291e0cd5b8885081d367df0632738481319",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022300554Z-812ffb6f/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size15-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022303342Z-d1578168.zip",
+      "archive_sha256": "b3c5b43b8d06ab335adb61972d6d43454f36de4c85803abca6ccc8175ec98be0",
+      "capture_id": "20261118T022303342Z-d1578168",
+      "capture_sha256": "065e7e87bb702159ea5b7a7b0a0865de9bd5e3ba269459cdd4da1a69f7a0df11",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size15-compat15",
+          "source_sha256": "846bda13f69e02a64deeb1c0cce46af86ecea6447d6a73cf035a8bda2e49db43",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022303342Z-d1578168/inputs/word-windows-aptos-size-control-display-bolditalic-size15-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size15-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022306125Z-faf9ac71.zip",
+      "archive_sha256": "10df57dc7e1f69147e678bef0f7f7f92d609e3647d44424502d5d76c0a3cab11",
+      "capture_id": "20261118T022306125Z-faf9ac71",
+      "capture_sha256": "8a11a9151758f63071f6869a8b7047ea211f0c0c1242311915538e7c8ea65038",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size15p5-compat14",
+          "source_sha256": "8082eea0b83a7208624a43e3e785ebad27579c74de50ee6327314c8519ed3646",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022306125Z-faf9ac71/inputs/word-windows-aptos-size-control-display-bolditalic-size15p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size15p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size15p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022308892Z-b091f877.zip",
+      "archive_sha256": "991cc32cfef6a24649c8ad3a8354fd0e6c6a889662ff41d231272db007a17224",
+      "capture_id": "20261118T022308892Z-b091f877",
+      "capture_sha256": "9fc3bbb2294bb045efecf2ddf6ad274f12c780e0ea9931c0a2060729afe22c78",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size15p5-compat15",
+          "source_sha256": "22eaa905443c9446de5aae41f495ca0f4d523e9af225b2c01b3bd5f0b71fa268",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022308892Z-b091f877/inputs/word-windows-aptos-size-control-display-bolditalic-size15p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size15p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size15p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022311691Z-b86fcb45.zip",
+      "archive_sha256": "fd54c1f047f1c588a82a96119e2df5c18854d7bcf1baffaf1de32ccae832627a",
+      "capture_id": "20261118T022311691Z-b86fcb45",
+      "capture_sha256": "f2872061fe031777a8bc9c91025b7766127f09d885069d5dfe55484294f67f81",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size16-compat14",
+          "source_sha256": "4c29074f24dc980644f2e8435ebd343cd681160a88916ef78cc2eb2b76c8eeb9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022311691Z-b86fcb45/inputs/word-windows-aptos-size-control-display-bolditalic-size16-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size16-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size16-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022325963Z-8537d4fd.zip",
+      "archive_sha256": "89adfde6608d546cb800438eb40b4cac114c2efb8ed0e6c81b07f97b6b65394e",
+      "capture_id": "20261118T022325963Z-8537d4fd",
+      "capture_sha256": "169f0c7aa01d1651717effd41832c3f2b7e011c5bcb34b376f377a5a042f0f94",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size16-compat15",
+          "source_sha256": "c22c3cc946ab9b3349fe50125d9f74b16810033247b42a86cc485596f72cc990",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022325963Z-8537d4fd/inputs/word-windows-aptos-size-control-display-bolditalic-size16-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size16-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size16-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022328761Z-1c787e0e.zip",
+      "archive_sha256": "2274e250687b7b02acc219a0d539875044bdb6a29bca1e02062cf04a4a050255",
+      "capture_id": "20261118T022328761Z-1c787e0e",
+      "capture_sha256": "288ef2a51693aa27f828cd8bf7134db9e5cc1f0242b8f9961509dd74b158525c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size20-compat14",
+          "source_sha256": "fce4d8257cd67476269eee42b03fa7a12c7c9eaae54710a459c4b806a5c69450",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022328761Z-1c787e0e/inputs/word-windows-aptos-size-control-display-bolditalic-size20-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022331561Z-f80ce0b3.zip",
+      "archive_sha256": "90519bb23b47b6aa83800f48499c1f8434270ccd151bd1d6c9f5a6ff2b2d2e02",
+      "capture_id": "20261118T022331561Z-f80ce0b3",
+      "capture_sha256": "2e28eff907030e6c8353b816dc1bf9151ae06ec32d271408c249dc7acb16866a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-bolditalic-size20-compat15",
+          "source_sha256": "a2be3b525e6a92609ee45a881a127bc15d387a0457da030c5ba0e8d060f933b2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022331561Z-f80ce0b3/inputs/word-windows-aptos-size-control-display-bolditalic-size20-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-bolditalic-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-bolditalic-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022334379Z-9e2fbbde.zip",
+      "archive_sha256": "5760ba05166d5c2f1c241948cdfc44442d546b028071538419c8fbfeff856ff4",
+      "capture_id": "20261118T022334379Z-9e2fbbde",
+      "capture_sha256": "9460d3c29fe51d86499cc9fb6dba5acbd3a8f3233fd8a493c60edfc7ea01dad4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size13-compat14",
+          "source_sha256": "c19f4bf155b4e95547a1c9098828f8df3ebc35473ab0fbeb78cc20d4687f248b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022334379Z-9e2fbbde/inputs/word-windows-aptos-size-control-display-italic-size13-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size13-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size13-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022337146Z-7f8ae584.zip",
+      "archive_sha256": "8dcd481c5499acd09adb1d4badd7f3b287c3d69f3e97709b75c389bd8b22bff0",
+      "capture_id": "20261118T022337146Z-7f8ae584",
+      "capture_sha256": "cf442f197d5cd552b2b6c980eb07a794b687398553f8a0e6ca23e51f238dd0b7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size13-compat15",
+          "source_sha256": "d2621e27cc1151ffb09e6d442438492347cdf9b0c500d7eb557e5fd0fbbc8d2b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022337146Z-7f8ae584/inputs/word-windows-aptos-size-control-display-italic-size13-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size13-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size13-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022342345Z-e15c624f.zip",
+      "archive_sha256": "8eb5683a677cdf82964cdc9fed141c1e109da96a5bfb8baeb31df482568ce6d7",
+      "capture_id": "20261118T022342345Z-e15c624f",
+      "capture_sha256": "8e40846cae030300611873524ae9057ba6c57f54cf1510676af1a391d7c8f48d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size13p5-compat14",
+          "source_sha256": "71a9a0e16f89d1ff3165b39a4649b17941cefd457362e998ffe8a83004ca0ee5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022342345Z-e15c624f/inputs/word-windows-aptos-size-control-display-italic-size13p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size13p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size13p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022345142Z-b2de79ca.zip",
+      "archive_sha256": "852f0eb164f37a83bd390b4691db6f14f0f667411b432ab34f7138a5ff3a0366",
+      "capture_id": "20261118T022345142Z-b2de79ca",
+      "capture_sha256": "07e54643abeaa66e8ea43c09ed166f4d3a69ddd203178ee0e94c7546d6f0c45f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size13p5-compat15",
+          "source_sha256": "0452af123ebbd76d6517fbe74c7b27a467af4820de55cf58aa8c94b4731dbb1b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022345142Z-b2de79ca/inputs/word-windows-aptos-size-control-display-italic-size13p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size13p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size13p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022346485Z-26586ed1.zip",
+      "archive_sha256": "53c3284567205bcb3c2a8c072bde491582949cad295e1f54dff1785e2f9610c9",
+      "capture_id": "20261118T022346485Z-26586ed1",
+      "capture_sha256": "fdf395f7c8878fcd85a035dc63d8ed4b8afb94f6b838e5b19202af8767c30149",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size14-compat14",
+          "source_sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022346485Z-26586ed1/inputs/word-windows-aptos-size-control-display-italic-size14-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size14-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size14-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022349284Z-31160e5d.zip",
+      "archive_sha256": "20f4af986b06fbdfb1f0f0b121e5af1ba2c4fbd59a5ddcd6c8c36e2ed279d27b",
+      "capture_id": "20261118T022349284Z-31160e5d",
+      "capture_sha256": "709c481447875fb247fc99c0f4d4a9d6225ccc2a9521952d32ad044bbe6756b0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size14-compat15",
+          "source_sha256": "dc817720bf68e61c0ef73581739ec7d009e2ab178db2873244059868140527f6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022349284Z-31160e5d/inputs/word-windows-aptos-size-control-display-italic-size14-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size14-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size14-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022352056Z-6504c021.zip",
+      "archive_sha256": "cb7af50b442a69a60630980190a1a6b46f04ba69f9adc29aa4b0ef727e891426",
+      "capture_id": "20261118T022352056Z-6504c021",
+      "capture_sha256": "b0a25f883c2cbdb5c8585d40247c9a0ac87ac4d0f3d3f4e6a5e74ea5e6d2f1bb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size14p5-compat14",
+          "source_sha256": "e3ec50ddcf309bd81105f28335c234c3e216bb467fd2bd917e3d09c5d0d92208",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022352056Z-6504c021/inputs/word-windows-aptos-size-control-display-italic-size14p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size14p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size14p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022354917Z-156bec12.zip",
+      "archive_sha256": "8b29eda31d280baf66f8a671ca423f4e26339d2ddfa21598ce0110e91146511c",
+      "capture_id": "20261118T022354917Z-156bec12",
+      "capture_sha256": "80ea58a34cb959edff7f2e5982df093df58a25158071b2f1a817df2dcce1b4f7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size14p5-compat15",
+          "source_sha256": "2b3caf8732b9783ea96fd019210d891be74623b781156fa3ab7e0bad4dcc5b0f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022354917Z-156bec12/inputs/word-windows-aptos-size-control-display-italic-size14p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size14p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size14p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022358568Z-ff1a82e9.zip",
+      "archive_sha256": "431682f3b1b3589c403db308408f168ff247011eec11cec430bdf7b114826358",
+      "capture_id": "20261118T022358568Z-ff1a82e9",
+      "capture_sha256": "e673a72a9c359fe0eb430efc3c38351b852d9695fff424e7bf0daade1f28c3d4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size15-compat14",
+          "source_sha256": "eec870efa54bb675e9243001e26b826508bb87208421021c1170b52f00bba378",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022358568Z-ff1a82e9/inputs/word-windows-aptos-size-control-display-italic-size15-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size15-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size15-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022401349Z-8f8c5a0d.zip",
+      "archive_sha256": "53a4d07244945124e316c32258fbf276716ab484004cb65c1ea24c57b066ca24",
+      "capture_id": "20261118T022401349Z-8f8c5a0d",
+      "capture_sha256": "3d0738ec1e7cad410912b426164c18c983462de3128b3f41ab799c96367350f4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size15-compat15",
+          "source_sha256": "fb7b7933a7591edebea7c8160c2c996b3e0871ba2788906666cf529f9bc5a18b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022401349Z-8f8c5a0d/inputs/word-windows-aptos-size-control-display-italic-size15-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size15-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size15-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022404118Z-9d3c7b49.zip",
+      "archive_sha256": "203d3d0c5c28476c6936fc0be0c9b7b1dcc86fd22d926f00d7928b59fcdeb176",
+      "capture_id": "20261118T022404118Z-9d3c7b49",
+      "capture_sha256": "df79cc370a5d4d1da0be0174f5ac61a16c3cfc78ba0236e8bc4e3d0944cbaa79",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size15p5-compat14",
+          "source_sha256": "e9ff76cc32ae6efa2b35a56ca9cffd206393f7499cdd653452c2930ce05f241e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022404118Z-9d3c7b49/inputs/word-windows-aptos-size-control-display-italic-size15p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size15p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size15p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022406949Z-25c7f23b.zip",
+      "archive_sha256": "ac0be4c40220fc19b79b0fcd5de2e4e4845bf175f585818bf60f291a4ea22193",
+      "capture_id": "20261118T022406949Z-25c7f23b",
+      "capture_sha256": "68e20fed1974458d223d255be78e976e0016c5b544b7194f068cf5b823fb4266",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size15p5-compat15",
+          "source_sha256": "b0a730fe0c16c1d3d31ff6130c2963137a8bf004f68d46abe406158a19d1c2f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022406949Z-25c7f23b/inputs/word-windows-aptos-size-control-display-italic-size15p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size15p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size15p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022408295Z-de30ad63.zip",
+      "archive_sha256": "292a44cbefff948464c1bcda05f1535f117dba0ef3664ec5835e441945ac2dc5",
+      "capture_id": "20261118T022408295Z-de30ad63",
+      "capture_sha256": "8f81550680a458594c4aadbe871d9087e5e2ac9d283ab61c7980d45a7b8af523",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size16-compat14",
+          "source_sha256": "8b5c6efe3b17c19a4f72e19a3cc9293b755db24857c620204e3752b82da76919",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022408295Z-de30ad63/inputs/word-windows-aptos-size-control-display-italic-size16-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size16-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size16-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022411070Z-74603a11.zip",
+      "archive_sha256": "78d4959518efa53a3e323d5162c12c0ca3ac4cd27e1debbbf69d246b06e641a7",
+      "capture_id": "20261118T022411070Z-74603a11",
+      "capture_sha256": "907b2fb3ab8ce2bc9068a54b1e05daadf1427789c5517b6a3d03e83d818a3480",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size16-compat15",
+          "source_sha256": "cedf3e28fcbecd19f730559f75562b287c754900bf435860e4aa81c9f0294cca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022411070Z-74603a11/inputs/word-windows-aptos-size-control-display-italic-size16-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size16-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size16-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022421815Z-6ade40af.zip",
+      "archive_sha256": "c9dee39f7932b4107e616081e66dc93a55293d7d37eab6debd336aff1887c00a",
+      "capture_id": "20261118T022421815Z-6ade40af",
+      "capture_sha256": "b843cb1ef2f50b3d263849c94ad7fd12bef48482dd4b97605cd366df57ead16a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size20-compat14",
+          "source_sha256": "b2305595f758824481b530496e40f8681221fcbb2faa71dc63c50e9e726b16a2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022421815Z-6ade40af/inputs/word-windows-aptos-size-control-display-italic-size20-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022424626Z-ed7b6f76.zip",
+      "archive_sha256": "9d11c1b3c0725fc86a8b378f5e7b25d80d4aac7a115e6d1591c01d626b8f401a",
+      "capture_id": "20261118T022424626Z-ed7b6f76",
+      "capture_sha256": "80b566c17e9560f3b7dca45035f270e18fc7771434f9bd8adc54b77d928d86d3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-italic-size20-compat15",
+          "source_sha256": "b2f9f67753e2d06b3cd5daf6d978c2cf94b7210e875a0978e0e7290032cfc613",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022424626Z-ed7b6f76/inputs/word-windows-aptos-size-control-display-italic-size20-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-italic-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-italic-size20-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022425987Z-02bf51a0.zip",
+      "archive_sha256": "d25d03a2514832b2aa33b3eb28df2f2a26ae1398a759e22540936a1a41ef16c1",
+      "capture_id": "20261118T022425987Z-02bf51a0",
+      "capture_sha256": "10ffec667b673fc019fa33585cf293a4b365e1d9a7e6ebc8510385e55dbac603",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size13-compat14",
+          "source_sha256": "0834b8bcd35c509440a46fc5f45406524228b44460bd4eb8024db59ea7db03c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022425987Z-02bf51a0/inputs/word-windows-aptos-size-control-display-regular-size13-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size13-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size13-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022428747Z-f958df90.zip",
+      "archive_sha256": "2af58aa18190cfec173b129c32ed41f85c765ec7b701a0b447736d601a00631d",
+      "capture_id": "20261118T022428747Z-f958df90",
+      "capture_sha256": "80a9407ca34b316ac616ef6c638ad7306f02679d18b4ee60f72f467c0675d743",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size13-compat15",
+          "source_sha256": "2f2a621f7d52053df70d43eaa680d7a5ce3fefbfa580ede33e5037cb2a051fb2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022428747Z-f958df90/inputs/word-windows-aptos-size-control-display-regular-size13-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size13-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size13-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022431493Z-45cb97ab.zip",
+      "archive_sha256": "c84f142f2c57f0c26da21b64c67d4207439700e8a24848efa0362b0b36756b87",
+      "capture_id": "20261118T022431493Z-45cb97ab",
+      "capture_sha256": "dceceec95bc8cf0a2e2605602d13f37689dd3b76d1856ab64f5b327789e42aa8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size13p5-compat14",
+          "source_sha256": "02dbf2302780c65443d320dc50b1e9e121120ed5c769414b22520518abaaa74d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022431493Z-45cb97ab/inputs/word-windows-aptos-size-control-display-regular-size13p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size13p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022434280Z-97d17917.zip",
+      "archive_sha256": "57265a9d604aa9d2bfca6a63db784c23fc7f5254f1ee851411b4b785a0b2fbed",
+      "capture_id": "20261118T022434280Z-97d17917",
+      "capture_sha256": "00575897f163c9745603b3bf8b3edd23ff88ff79ea4a4af6b4f3f92ff8b62dfe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size13p5-compat15",
+          "source_sha256": "31037e1b6e364c16e695c16955815542c379f2d2866d31bdb21355c7f11dbad8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022434280Z-97d17917/inputs/word-windows-aptos-size-control-display-regular-size13p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size13p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size13p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022439011Z-f0e1d682.zip",
+      "archive_sha256": "573bb11f178f8c28e6003419c4859e0c2ede1f86d649900f98d2cd228491580e",
+      "capture_id": "20261118T022439011Z-f0e1d682",
+      "capture_sha256": "8b51127f45d7d23929421b31bdba50041ff4673dbcbf376d81806fe6c6356c2b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size14-compat14",
+          "source_sha256": "74ebb43f34c62f65bbdde626c9b756317ff2bf612f868a8ec1fd5fd0e913da8f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022439011Z-f0e1d682/inputs/word-windows-aptos-size-control-display-regular-size14-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size14-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022441790Z-60ff9267.zip",
+      "archive_sha256": "fb75ea34743e97e34a3a2b4a6f9f7826ad36898de694451ad57acb5a987dd0a4",
+      "capture_id": "20261118T022441790Z-60ff9267",
+      "capture_sha256": "6cb3d9ca512ea0a06cbf3e7ff62ea51847229822965a4fee67f55eb0ce96775c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size14-compat15",
+          "source_sha256": "1834c207502c32fe19110a607780fb1503465d8183292126cb96766a96c03143",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022441790Z-60ff9267/inputs/word-windows-aptos-size-control-display-regular-size14-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size14-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022444705Z-aafccb54.zip",
+      "archive_sha256": "3849f744863d89ed3904a92258b1959e4a60e406ef5eaf0842a715ed48be0379",
+      "capture_id": "20261118T022444705Z-aafccb54",
+      "capture_sha256": "5b3821a8c5cdc5cf1b88dbb7ba02a5b2067f7c00f48789ec88e23b9e96bf52eb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size14p5-compat14",
+          "source_sha256": "ce8335ac17ef7f2d18fbf32301a17c5e9c5a1ba3bfa08190ac2cf48aa8bade8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022444705Z-aafccb54/inputs/word-windows-aptos-size-control-display-regular-size14p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size14p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size14p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022447489Z-58e8d237.zip",
+      "archive_sha256": "9e72c73c6f798c15dbe2359df7439bb40c451e94851c83abbfa5b2675b7dcdec",
+      "capture_id": "20261118T022447489Z-58e8d237",
+      "capture_sha256": "b80a2fb00af3af94471c07d075b2e45395184398ea410efcb75df0e1b0844783",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size14p5-compat15",
+          "source_sha256": "5143a9e5deb8b9b6b65aa2dbd52437440c53dc8e019d07535b6ab30e35311ad0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022447489Z-58e8d237/inputs/word-windows-aptos-size-control-display-regular-size14p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size14p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size14p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022450284Z-0066e044.zip",
+      "archive_sha256": "9486f3c4a5003c8c50dcdbdcaae57fbe1cbdd51f806cb28b60d66f750e1bf8c0",
+      "capture_id": "20261118T022450284Z-0066e044",
+      "capture_sha256": "e4772d74e91c717354ca6460bb29c3eae2d8f8ae98b25325342385b0e51eeda8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size15-compat14",
+          "source_sha256": "8ab8feb7615858668d8284302d838da0903732f304d496c4da71898a375853b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022450284Z-0066e044/inputs/word-windows-aptos-size-control-display-regular-size15-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size15-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022453947Z-600a7f1b.zip",
+      "archive_sha256": "3acb682642e3a8a51c5cfce872e9d155095d4c549ad1c4a5603cf4f251918f35",
+      "capture_id": "20261118T022453947Z-600a7f1b",
+      "capture_sha256": "562738317afb4ab40093b2bd44e733d165e2d89091fb7f87f6ab8365f209db2a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size15-compat15",
+          "source_sha256": "5cf47c37b7816a9a7545383cfbbf94dc962c467daef376b0962c5d712f1417b0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022453947Z-600a7f1b/inputs/word-windows-aptos-size-control-display-regular-size15-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size15-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size15-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022456738Z-f3a24781.zip",
+      "archive_sha256": "801558b3221c2ab2ef9f3f614f704e974fcdf9bba9b3aed8dc386a9bc85a9fbd",
+      "capture_id": "20261118T022456738Z-f3a24781",
+      "capture_sha256": "e0472b144b1d7d8283e7f95505a808e695d1a522c06817055ccb90fcf1fb8277",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size15p5-compat14",
+          "source_sha256": "a80a5300f92e276b33c3d53b8f62afdb2a12f24e7b9ba51e0a9be4616ca75ac7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022456738Z-f3a24781/inputs/word-windows-aptos-size-control-display-regular-size15p5-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size15p5-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size15p5-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022459509Z-8d842443.zip",
+      "archive_sha256": "a9564e7c6e036701302052ee7dd8e3e75407453cc99ea9cf8f0a40a56aa9caf4",
+      "capture_id": "20261118T022459509Z-8d842443",
+      "capture_sha256": "77a46c38c84045af306840e7bdf1332be404fb2c736211a654a24286d09c0f20",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size15p5-compat15",
+          "source_sha256": "fb77da10c7698bd3d19f9b810d2f456533161dd0fb14a1fa55abe467a0f04e61",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022459509Z-8d842443/inputs/word-windows-aptos-size-control-display-regular-size15p5-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size15p5-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size15p5-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022502338Z-536d4fea.zip",
+      "archive_sha256": "f84a76e8e6fdec2ac78c60ca75db0b558000d41085243ba9031662617f8d7dee",
+      "capture_id": "20261118T022502338Z-536d4fea",
+      "capture_sha256": "8452bcd02d1ea90571e7307e4c95095cca3b1db272c09496a53e05e90a9c369a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size16-compat14",
+          "source_sha256": "f6e3c00d7d40c96582f3ede2bb316ba933d1101a3b07f3b249d9dc568451470e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022502338Z-536d4fea/inputs/word-windows-aptos-size-control-display-regular-size16-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size16-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022505157Z-f9d27130.zip",
+      "archive_sha256": "1da5d798054cbca5cd382e64fa8215f670d4b0c4015a71f9cf61d4f998a106e0",
+      "capture_id": "20261118T022505157Z-f9d27130",
+      "capture_sha256": "aaf0dc48de8ba864a129e75c6041c1b7f41f23277bd77c2b27497416b770cb1d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size16-compat15",
+          "source_sha256": "16f9fa21402767a2df7266a6eb303c20999be114fc3b827226110c66fa2f5977",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022505157Z-f9d27130/inputs/word-windows-aptos-size-control-display-regular-size16-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size16-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022507930Z-95058276.zip",
+      "archive_sha256": "534018ac439b61c92d4e587724b5aa41ab16bc442a14eb2f18aa5dafbb256f6d",
+      "capture_id": "20261118T022507930Z-95058276",
+      "capture_sha256": "0f148425e94428062df32361e6464057e7a9473fae4ab4c7ffbd3c717ab78aea",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size20-compat14",
+          "source_sha256": "073702fdfac5e3a2176236df0a146de45bcf7278021b25b9ef7204cb45dc0445",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022507930Z-95058276/inputs/word-windows-aptos-size-control-display-regular-size20-compat14.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size20-compat14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size20-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T022513130Z-643f8037.zip",
+      "archive_sha256": "62b863aa3fb3a7ddb68b1843d7294e98598a1e4208bca7e5a9bdc1f8606ef7eb",
+      "capture_id": "20261118T022513130Z-643f8037",
+      "capture_sha256": "a126b0a365125c401e4799d2ff8b6493e620d20db2ce9c9c6b8d381f34858d61",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-size-control-display-regular-size20-compat15",
+          "source_sha256": "3ca3fa5a7103eed578729d0b747b06df696595c6f62dee6214cb45da21286643",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T022513130Z-643f8037/inputs/word-windows-aptos-size-control-display-regular-size20-compat15.docx",
+            "public/fixtures/word-windows-aptos-size-control-display-regular-size20-compat15.docx"
+          ],
+          "opened_filename": "word-windows-aptos-size-control-display-regular-size20-compat15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -45885,6 +47406,10 @@
     {
       "file": "tests/word-oracle/windows/percentage-table-observations.json",
       "sha256": "649749562209cf6b102cc47b49f8b5545d9ec0596c337d165531513c60309435"
+    },
+    {
+      "file": "tests/word-oracle/windows/aptos-font-size-observations.json",
+      "sha256": "a137c9072de8503becd45ac914d9363e985af64beeae04873843864c5f422ae7"
     }
   ]
 }

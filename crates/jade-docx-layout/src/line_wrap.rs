@@ -11818,9 +11818,24 @@ fn prevent_mid_word_breaks(
         let (head, tail) = lines.split_at_mut(idx);
         let prev_line = &mut head[idx - 1];
         let next_line = &mut tail[0];
+        // Windows Word keeps a letter-letter compound's hyphen off the
+        // beginning of a soft line. The Aptos size controls otherwise leave
+        // the initial X of X-ray on the preceding line when only X fits.
+        let windows_internal_latin_hyphen = paragraph_style.word_platform
+            == crate::line_metrics::WordLayoutPlatform::Windows
+            && next_line.clusters.first().is_some_and(|c| c.text == "-")
+            && next_line
+                .clusters
+                .get(1)
+                .is_some_and(|c| is_latin_word_grapheme(&c.text))
+            && prev_line
+                .clusters
+                .last()
+                .is_some_and(|c| is_latin_word_grapheme(&c.text));
         let next_starts_latin_word = !next_line.clusters.is_empty()
             && (is_latin_word_cluster(&next_line.clusters, 0)
-                || closes_latin_word(prev_line, next_line));
+                || closes_latin_word(prev_line, next_line)
+                || windows_internal_latin_hyphen);
         if !next_starts_latin_word {
             continue;
         }
@@ -25141,6 +25156,28 @@ mod tests {
             .unwrap();
         hyphen.forbid_line_end = true;
         assert!(!has_preceding_latin_break_opportunity(&lines[0]));
+    }
+
+    #[test]
+    fn windows_compound_hyphen_moves_the_prefix_when_only_its_first_letter_fits() {
+        let ctx = TestContext::new(10.0);
+        let text = "prefix X-ray";
+        for mode in [14, 15] {
+            let paragraph = ParagraphStyle {
+                word_platform: crate::line_metrics::WordLayoutPlatform::Windows,
+                east_asian_rules: EastAsianLineBreakingRules {
+                    compatibility_mode: Some(mode),
+                    ..EastAsianLineBreakingRules::default()
+                },
+                ..ParagraphStyle::default()
+            };
+            let lines =
+                wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 85.0)
+                    .unwrap();
+            let actual = collect_line_infos(&lines);
+            assert_eq!(actual[0].text, "prefix ");
+            assert_eq!(actual[1].text, "X-ray");
+        }
     }
 
     #[test]
