@@ -2333,6 +2333,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "exact-and-minimum-lines-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/exact-and-minimum-lines-mac/source.docx",
+        "sha256": "c1bb8ae4b58d80653e16a81f57143247fc2e7d821a8fc321c456a54ee6e42e4a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/exact-and-minimum-lines-mac/manifest.json",
+        "sha256": "8781c9c0b057a3b63a8b6402b47ee36acdc4c043d4db165f41ee0ff6e29fbbea"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020444292Z-63287be8.zip",
+            "sha256": "ca59821b82d43a7af24fa73ebd162a3bb664b782977994714625f8e84e94e5b2"
+          },
+          "capture_sha256": "a202c139b3e78d43727fad51ec2c55c48f715c95adc106758aa487841a86cd26",
+          "capture_id": "20261114T020444292Z-63287be8",
+          "fixture": "ww14-exact-and-minimum-lines-mac-c1bb8ae4",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

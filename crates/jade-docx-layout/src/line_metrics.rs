@@ -116,8 +116,9 @@ impl WordGridLineSizing {
         Some(((single_px * self.multiple / pitch_px).ceil().max(1.0)) * pitch_px)
     }
 }
-/// Each auto/minimum-spaced Mac line uses its own known font box. Unknown
-/// faces, exact spacing and snapped grids retain their other sizing paths.
+/// Each auto/minimum-spaced Mac line and minimum-spaced Windows line uses its
+/// own known font box. Unknown faces, exact spacing and snapped grids retain
+/// their other sizing paths.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct WordProportionalLineSizing {
     multiple: f64,
@@ -131,7 +132,11 @@ impl WordProportionalLineSizing {
     }
 
     pub fn new(spacing: Option<&Spacing>, snap: bool, all_faces_known: bool) -> Option<Self> {
-        if word_layout_platform() != WordLayoutPlatform::Mac || snap || !all_faces_known {
+        if snap
+            || !all_faces_known
+            || (word_layout_platform() != WordLayoutPlatform::Mac
+                && word_minimum_line_height_pt(spacing).is_none())
+        {
             return None;
         }
         Self::from_spacing(spacing)
@@ -4372,13 +4377,10 @@ fn proportional_line_multiple(spacing: Option<&Spacing>) -> Option<f32> {
     }
 }
 
-/// Word for Mac sizes an unsnapped atLeast line from its fonts and only then
-/// applies w:line as a lower bound. Keep the existing Windows policy until
-/// its font metrics are independently verified.
+/// Both Word platforms size an unsnapped atLeast line from its fonts and only
+/// then apply w:line as a lower bound. Windows Word 16.0.19127.20936 minimum/auto
+/// controls independently retain the requested minimum and embedded font data.
 pub fn word_minimum_line_height_pt(spacing: Option<&Spacing>) -> Option<f32> {
-    if word_layout_platform() != WordLayoutPlatform::Mac {
-        return None;
-    }
     spacing
         .filter(|spacing| spacing.line_rule.as_deref() == Some("atLeast"))
         .and_then(|spacing| spacing.line)
@@ -5453,7 +5455,16 @@ mod tests {
         assert!(WordProportionalLineSizing::new(Some(&spacing), true, true).is_none());
         assert!(WordProportionalLineSizing::new(Some(&spacing), false, false).is_none());
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert!(WordProportionalLineSizing::new(Some(&spacing), false, true).is_none());
+        let windows = WordProportionalLineSizing::new(Some(&larger_minimum), false, true)
+            .expect("Windows minimum lines use their own known font boxes");
+        assert_eq!(windows.line_height_px(Some(px(14.0)), px(30.0)), px(24.0));
+        assert!((windows.minimum_extra_above_px(px(14.0)) - px(10.0)).abs() < 1e-12);
+        assert_eq!(windows.line_height_px(Some(px(28.0)), px(30.0)), px(28.0));
+        assert_eq!(windows.minimum_extra_above_px(px(28.0)), 0.0);
+        assert!(WordProportionalLineSizing::new(Some(&exact), false, true).is_none());
+        assert!(WordProportionalLineSizing::new(Some(&spacing), true, true).is_none());
+        assert!(WordProportionalLineSizing::new(Some(&spacing), false, false).is_none());
+        assert!(WordProportionalLineSizing::new(None, false, true).is_none());
     }
 
     #[test]
@@ -5798,6 +5809,8 @@ mod tests {
     fn grid_centred_at_least_line_takes_the_word_font_box() {
         // The atLeast probe sets a 12pt atLeast line on the same baseline as an
         // auto one on an 18pt grid: both are centred with Word's font box.
+        // Unsnapped minimum lines also use that box on both Word platforms;
+        // the independent Windows minimum-line originals retain those origins.
         let at_least = Spacing {
             line: Some(12.0),
             line_rule: Some("atLeast".into()),
@@ -5807,25 +5820,30 @@ mod tests {
             line_rule: Some("exact".into()),
             ..at_least.clone()
         };
-        assert!(word_east_asian_font_metrics_apply_on_grid(
-            Some(&at_least),
-            true,
-            true
-        ));
-        assert!(!word_east_asian_font_metrics_apply_on_grid(
-            Some(&at_least),
-            true,
-            false
-        ));
-        assert!(!word_east_asian_font_metrics_apply_on_grid(
-            Some(&exact),
-            true,
-            true
-        ));
-        assert_eq!(
-            word_east_asian_font_metrics_apply_on_grid(None, true, false),
-            word_east_asian_font_metrics_apply(None, true)
-        );
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            assert!(word_east_asian_font_metrics_apply_on_grid(
+                Some(&at_least),
+                true,
+                true
+            ));
+            assert!(word_east_asian_font_metrics_apply_on_grid(
+                Some(&at_least),
+                true,
+                false
+            ));
+            assert!(!word_east_asian_font_metrics_apply_on_grid(
+                Some(&exact),
+                true,
+                true
+            ));
+            assert_eq!(
+                word_east_asian_font_metrics_apply_on_grid(None, true, false),
+                word_east_asian_font_metrics_apply(None, true)
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     fn bordered(space: u32, indent_left: Option<f32>) -> ParagraphProperties {

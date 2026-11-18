@@ -157,6 +157,21 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes gate.fetch("run"), "check_windows_column_tables.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
   end
 
+  def test_minimum_line_sources_and_native_coordinates_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    source = job.fetch("steps").find { |item| item["name"] == "Verify unpromoted original Windows Word observations" }
+    refute_nil source
+    refute source.key?("if")
+    refute source.fetch("continue-on-error", false)
+    assert_includes source.fetch("run"), "test_windows_minimum_line_probes.py"
+    gate = job.fetch("steps").find { |item| item["name"] == "Assert Windows minimum-line coordinates and preserve screen geometry" }
+    refute_nil gate
+    refute gate.key?("if")
+    refute gate.fetch("continue-on-error", false)
+    assert_includes gate.fetch("run"), "test_windows_minimum_line_gate.py"
+    assert_includes gate.fetch("run"), "check_windows_minimum_lines.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+  end
+
   def test_shared_originals_use_independent_required_platform_comparisons
     {
       "word-mac-browser-coordinates" => [
