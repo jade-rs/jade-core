@@ -77,6 +77,39 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes step.fetch("run"), "--locked --test word_mac_coordinates"
   end
 
+  def test_original_platform_expectations_are_required_in_every_coordinate_job
+    %w[word-mac-coordinates word-mac-browser-coordinates windows-word-baselines].each do |name|
+      job = @workflow.fetch("jobs").fetch(name)
+      assert_equal(name == "windows-word-baselines" ? "windows-latest" : "macos-latest", job.fetch("runs-on"), name)
+      refute job.key?("if"), name
+      refute job.key?("needs"), name
+      refute job.fetch("continue-on-error", false), name
+      steps = job.fetch("steps")
+      originals = steps.select do |step|
+        step.fetch("run", "").include?("scripts/word-oracle/check_platform_coordinates.py")
+      end
+      assert_equal 1, originals.length, name
+      step = originals.fetch(0)
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      command = step.fetch("run")
+      assert_includes command, "-p test_platform_coordinates.py", name
+      refute_match(/\|\|\s*(true|echo)|continue-on-error|--skip|--ignored/, command, name)
+      if name == "windows-word-baselines"
+        assert_includes command, "--native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+      else
+        refute_includes command, "--native-executable", name
+        renderer = steps.index do |item|
+          run = item.fetch("run", "")
+          name == "word-mac-coordinates" ? run.include?("--test word_mac_coordinates") :
+            run.include?("node scripts/ci/check_mac_word_coordinates.mjs")
+        end
+        refute_nil renderer, name
+        assert_operator steps.index(step), :<=, renderer, name
+      end
+    end
+  end
+
   def test_mac_coordinate_comparison_has_an_independent_failing_job
     job = @workflow.fetch("jobs").fetch("word-mac-coordinates")
     assert_equal "macos-latest", job.fetch("runs-on")
