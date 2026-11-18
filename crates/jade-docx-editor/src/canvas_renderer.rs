@@ -32971,7 +32971,7 @@ where
         }
 
         let mut cursor = 0.0_f64;
-        let mut has_soft_hyphen = false;
+        let has_soft_hyphen = VISUALS && segment.text.contains('\u{ad}');
         let mut glyph_steps =
             BumpVec::with_capacity_in(if VISUALS { segment_clusters.len() } else { 0 }, arena);
         let mut glyphs =
@@ -33058,7 +33058,6 @@ where
             min_top_offset = min_top_offset.min(top_offset);
             max_bottom_offset = max_bottom_offset.max(bottom_offset);
             if VISUALS {
-                has_soft_hyphen |= cluster.text.as_str() == "\u{ad}";
                 glyph_steps.push(PlannedGlyphLayoutStep {
                     text_start,
                     text_end,
@@ -33200,7 +33199,7 @@ where
         ink_bounds: FragmentInkBounds,
     ) -> Result<PlannedSegmentLayout<'arena>, JsValue> {
         let mut cursor = 0.0_f64;
-        let mut has_soft_hyphen = false;
+        let has_soft_hyphen = VISUALS && segment.text.contains('\u{ad}');
         let mut glyph_steps = BumpVec::new_in(arena);
         let mut glyphs = Vec::new();
         let font_px = points_to_px(style.font_size_pt);
@@ -33280,7 +33279,6 @@ where
                     max_bottom_offset = max_bottom_offset.max(bottom_offset);
                 }
                 if VISUALS {
-                    has_soft_hyphen |= step.grapheme == "\u{ad}";
                     glyph_steps.push(PlannedGlyphLayoutStep {
                         text_start,
                         text_end,

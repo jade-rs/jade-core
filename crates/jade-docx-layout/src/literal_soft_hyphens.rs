@@ -5,7 +5,7 @@ use crate::line_wrap::RunStyle;
 use jade_docx_reader::Run;
 use std::rc::Rc;
 
-#[inline]
+#[inline(always)]
 pub fn mark_literal_soft_hyphens(
     run: &Run,
     rendered_text: &str,
@@ -17,6 +17,18 @@ pub fn mark_literal_soft_hyphens(
     if run.text_controls.is_none() || platform != WordLayoutPlatform::Windows {
         return;
     }
+    mark_literal_soft_hyphens_present(run, rendered_text, start, first_style, styles);
+}
+
+#[cold]
+#[inline(never)]
+fn mark_literal_soft_hyphens_present(
+    run: &Run,
+    rendered_text: &str,
+    start: usize,
+    first_style: usize,
+    styles: &mut Vec<RunStyle>,
+) {
     let source: Vec<_> = run
         .text
         .match_indices('\u{ad}')
