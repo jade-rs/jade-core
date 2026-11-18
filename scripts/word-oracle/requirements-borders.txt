@@ -3,3 +3,5 @@ numpy==2.3.5
 pypdf==6.10.0
 # Reproduce probe XML without dropping Word's namespace declarations.
 lxml==6.1.1
+# Verify embedded Word font outlines before canonicalizing painted glyphs.
+fonttools==4.68.0

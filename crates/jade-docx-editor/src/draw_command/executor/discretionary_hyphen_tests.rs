@@ -329,3 +329,17 @@ fn optional_hyphen_formatting_marks_remain_visible() {
         1
     );
 }
+
+#[test]
+fn discretionary_hyphen_byte_rejection_keeps_unicode_and_platform_identity() {
+    for value in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+        let _restore = platform(value);
+        for ordinary in ["", "plain ASCII", "a\u{16d}b", "ね", "a\u{2011}b"] {
+            assert!(!requires_windows_discretionary_hyphen_filter(ordinary));
+        }
+        assert_eq!(
+            requires_windows_discretionary_hyphen_filter("a\u{ad}b"),
+            value == WordLayoutPlatform::Windows
+        );
+    }
+}

@@ -858,14 +858,38 @@ pub fn execute_command_with_font_state<P: Painter>(
     Ok(())
 }
 
+#[inline]
 pub(crate) fn requires_windows_discretionary_hyphen_filter(text: &str) -> bool {
-    text.contains('\u{ad}')
+    // A byte rejection keeps ordinary cached text out of the UTF-8 pattern
+    // search. Other characters can contain this continuation byte, so retain
+    // the exact control check before entering the Windows-only paint path.
+    text.as_bytes().contains(&0xad)
         && jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && text.contains('\u{ad}')
 }
 
 #[allow(clippy::too_many_arguments)]
 fn execute_text_run_with_font_state<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    if requires_windows_discretionary_hyphen_filter(text) {
+        return execute_windows_control_text(context, text, x, y, style, fonts, glyphs, font_state);
+    }
+    paint_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
+}
+
+#[cold]
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn execute_windows_control_text<P: Painter>(
     context: &P,
     text: &str,
     x: f64,
@@ -920,6 +944,21 @@ fn execute_text_run_with_font_state<P: Painter>(
     } else {
         (text, glyphs)
     };
+    paint_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
+}
+
+#[inline]
+#[allow(clippy::too_many_arguments)]
+fn paint_text_run_with_font_state<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
     if glyphs.is_empty() {
         return Ok(());
     }
