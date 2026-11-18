@@ -37,6 +37,14 @@ pub struct CommandText {
 }
 
 impl CommandText {
+    /// U+00AD starts with C2 in UTF-8. Reject ordinary ASCII/CJK spans with
+    /// one byte search before checking the complete scalar, so C2-prefixed
+    /// characters such as NBSP never become false control markers.
+    #[inline]
+    pub(crate) fn text_has_soft_hyphen(text: &str) -> bool {
+        text.as_bytes().contains(&0xc2) && text.contains('\u{ad}')
+    }
+
     #[inline]
     pub(crate) fn has_soft_hyphen(&self) -> bool {
         self.has_soft_hyphen
@@ -59,7 +67,7 @@ impl CommandText {
 
 impl From<Rc<str>> for CommandText {
     fn from(text: Rc<str>) -> Self {
-        let has_soft_hyphen = text.contains('\u{ad}');
+        let has_soft_hyphen = Self::text_has_soft_hyphen(&text);
         Self {
             text,
             has_soft_hyphen,

@@ -32971,7 +32971,8 @@ where
         }
 
         let mut cursor = 0.0_f64;
-        let has_soft_hyphen = VISUALS && segment.text.contains('\u{ad}');
+        let has_soft_hyphen = VISUALS
+            && crate::draw_command::CommandText::text_has_soft_hyphen(&segment.text);
         let mut glyph_steps =
             BumpVec::with_capacity_in(if VISUALS { segment_clusters.len() } else { 0 }, arena);
         let mut glyphs =
@@ -33199,7 +33200,8 @@ where
         ink_bounds: FragmentInkBounds,
     ) -> Result<PlannedSegmentLayout<'arena>, JsValue> {
         let mut cursor = 0.0_f64;
-        let has_soft_hyphen = VISUALS && segment.text.contains('\u{ad}');
+        let has_soft_hyphen = VISUALS
+            && crate::draw_command::CommandText::text_has_soft_hyphen(&segment.text);
         let mut glyph_steps = BumpVec::new_in(arena);
         let mut glyphs = Vec::new();
         let font_px = points_to_px(style.font_size_pt);

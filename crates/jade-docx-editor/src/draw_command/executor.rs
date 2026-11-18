@@ -933,6 +933,7 @@ fn execute_windows_control_text<P: Painter>(
     execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 
+#[inline(always)]
 #[allow(clippy::too_many_arguments)]
 fn execute_text_run_with_font_state<P: Painter>(
     context: &P,
@@ -1691,6 +1692,18 @@ pub(crate) fn is_single_bmp_glyph(text: &str) -> bool {
     )
 }
 
+/// A valid UTF-8 string already guarantees the continuation bytes following
+/// a leading byte. Check the scalar width and requested end once; the common
+/// consecutive batch can then borrow its source span without slicing and
+/// validating the same boundaries for every glyph.
+#[inline]
+fn is_single_bmp_glyph_range(text: &str, start: usize, end: usize) -> bool {
+    matches!(
+        (text.as_bytes().get(start), end.checked_sub(start)),
+        (Some(0..=0x7f), Some(1)) | (Some(0xc2..=0xdf), Some(2)) | (Some(0xe0..=0xef), Some(3))
+    )
+}
+
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
@@ -1730,21 +1743,19 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         if fonts.get(glyph.font_index as usize).is_none() {
             return Ok(false);
         }
-        let Some(glyph_text) = glyph.text(run_text) else {
+        let start = glyph.text_start as usize;
+        let end = glyph.text_end as usize;
+        if !is_single_bmp_glyph_range(run_text, start, end) {
             return Ok(false);
-        };
+        }
         if let Some(text) = &mut copied_text {
-            if !try_append_bmp_glyph(text, glyph_text) {
-                return Ok(false);
-            }
-        } else if !is_single_bmp_glyph(glyph_text) {
-            return Ok(false);
-        } else if glyph.text_start as usize == text_end {
-            text_end = glyph.text_end as usize;
+            text.push_str(&run_text[start..end]);
+        } else if start == text_end {
+            text_end = end;
         } else {
             let mut text = String::with_capacity(text_capacity);
             text.push_str(&run_text[text_start..text_end]);
-            text.push_str(glyph_text);
+            text.push_str(&run_text[start..end]);
             copied_text = Some(text);
         }
         match single_font_index {
@@ -3401,6 +3412,12 @@ mod painter_backend_tests {
             let expected = ch.len_utf16() == 1;
             assert_eq!(is_single_bmp_glyph(text), expected, "U+{value:04X}");
             assert_eq!(
+                is_single_bmp_glyph_range(text, 0, text.len()),
+                expected,
+                "U+{value:04X}"
+            );
+            assert_eq!(CommandText::text_has_soft_hyphen(text), ch == '\u{ad}');
+            assert_eq!(
                 try_append_bmp_glyph(&mut output, text),
                 expected,
                 "U+{value:04X}"
@@ -3471,6 +3488,36 @@ mod painter_backend_tests {
                 _ => None,
             }).collect();
             prop_assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn bmp_range_validation_matches_utf8_slicing_for_all_boundaries() {
+        let text = "A\u{a0}\u{ad}é日\u{ffff}😀Z";
+        for start in 0..=text.len() + 2 {
+            for end in 0..=text.len() + 2 {
+                assert_eq!(
+                    is_single_bmp_glyph_range(text, start, end),
+                    text.get(start..end).is_some_and(is_single_bmp_glyph),
+                    "{start}..{end}"
+                );
+            }
+        }
+        assert!(!is_single_bmp_glyph_range(text, usize::MAX, usize::MAX));
+        assert!(!is_single_bmp_glyph_range(text, 0, usize::MAX));
+        for text in [
+            "",
+            "ASCII",
+            "日本語",
+            "\u{a0}",
+            "\u{a2}",
+            "\u{ad}",
+            "a\u{ad}日",
+        ] {
+            assert_eq!(
+                CommandText::text_has_soft_hyphen(text),
+                text.contains('\u{ad}')
+            );
         }
     }
 
