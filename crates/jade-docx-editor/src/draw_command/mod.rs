@@ -65,17 +65,7 @@ impl CommandText {
         let length = text.len().checked_add(1).expect("command text too long");
         let mut encoded = Rc::<[u8]>::new_uninit_slice(length);
         let buffer = Rc::get_mut(&mut encoded).expect("new command text must be unique");
-        // SAFETY: the fresh allocation has text.len() + 1 bytes, cannot
-        // overlap the borrowed source, and u8 has the same layout as
-        // MaybeUninit<u8>. This initializes the entire text prefix; the
-        // suffix is written below before assume_init reads the allocation.
-        unsafe {
-            std::ptr::copy_nonoverlapping(
-                text.as_ptr(),
-                buffer.as_mut_ptr().cast::<u8>(),
-                text.len(),
-            );
-        }
+        buffer[..text.len()].write_copy_of_slice(text.as_bytes());
         buffer[text.len()].write(u8::from(has_soft_hyphen));
         // SAFETY: every byte was initialized above, including the cached suffix.
         // The source is valid UTF-8 and the suffix is ASCII (0 or 1), so the

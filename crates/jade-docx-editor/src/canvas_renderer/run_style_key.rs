@@ -25,7 +25,7 @@ pub(super) fn hash_windows_source_controls(run: &Run, start: usize, hasher: &mut
 pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
     // Two bits preserve None, explicit false and explicit true. They must
     // remain distinct while direct formatting is resolved through styles.
-    [
+    let encoded = [
         props.bold,
         props.italic,
         props.bold_complex,
@@ -46,12 +46,14 @@ pub(super) fn boolean_flags(props: &RunProperties) -> u64 {
     .into_iter()
     .enumerate()
     .fold(0_u64, |bits, (index, flag)| {
-        bits | (match flag {
-            None => 0,
-            Some(false) => 1,
-            Some(true) => 2,
-        } << (index * 2))
-    })
+        bits | (flag.map_or(0, |value| 2 | u64::from(value)) << (index * 2))
+    });
+    // Pack the presence bit and value bit without a per-field three-way
+    // selection, then restore the original 0/1/2 base-four digits in parallel.
+    // None, explicit false and explicit true keep exactly the same cache keys.
+    let values = encoded & 0x5555_5555_u64;
+    let present = (encoded >> 1) & 0x5555_5555_u64;
+    (present ^ values) | (values << 1)
 }
 
 pub(super) fn windows_key(properties: Option<&RunProperties>, grid: Option<f64>) -> u64 {
@@ -287,8 +289,8 @@ mod tests {
     }
     // The reference uses base-four place values of independently generated
     // ternary digits. Keep the exact key representation, not only uniqueness.
-    fn check_boolean_encoding(digits: [u8; 15]) {
-        let setters: [fn(&mut RunProperties, Option<bool>); 15] = [
+    fn check_boolean_encoding(digits: [u8; 16]) {
+        let setters: [fn(&mut RunProperties, Option<bool>); 16] = [
             |p, v| p.bold = v,
             |p, v| p.italic = v,
             |p, v| p.bold_complex = v,
@@ -304,6 +306,7 @@ mod tests {
             |p, v| p.outline = v,
             |p, v| p.emboss = v,
             |p, v| p.imprint = v,
+            |p, v| p.snap_to_grid = v,
         ];
         let mut props = RunProperties::default();
         let mut expected = 0_u64;
@@ -322,13 +325,13 @@ mod tests {
     #[test]
     fn boolean_encoding_preserves_all_single_and_paired_field_states() {
         for digit in 0..3 {
-            check_boolean_encoding([digit; 15]);
+            check_boolean_encoding([digit; 16]);
         }
-        for left in 0..15 {
-            for right in left..15 {
+        for left in 0..16 {
+            for right in left..16 {
                 for a in 0..3 {
                     for b in 0..3 {
-                        let mut digits = [0; 15];
+                        let mut digits = [0; 16];
                         digits[left] = a;
                         digits[right] = b;
                         check_boolean_encoding(digits);
@@ -342,7 +345,7 @@ mod tests {
         #![proptest_config(proptest::test_runner::Config::with_cases(256))]
         #[test]
         fn boolean_encoding_matches_ternary_field_states(
-            digits in proptest::array::uniform15(0_u8..3),
+            digits in proptest::array::uniform16(0_u8..3),
         ) {
             check_boolean_encoding(digits);
         }
