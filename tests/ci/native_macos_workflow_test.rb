@@ -194,12 +194,34 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute source.key?("if")
     refute source.fetch("continue-on-error", false)
     assert_includes source.fetch("run"), "test_windows_aptos_size_probes.py"
+    assert_includes source.fetch("run"), "test_windows_explicit_hyphen_probes.py"
     gate = job.fetch("steps").find { |item| item["name"] == "Assert Windows Aptos screen origins and validated PDF origins" }
     refute_nil gate
     refute gate.key?("if")
     refute gate.fetch("continue-on-error", false)
     assert_includes gate.fetch("run"), "test_windows_aptos_size_gate.py"
     assert_includes gate.fetch("run"), "check_windows_aptos_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+  end
+
+  def test_workspace_and_release_audit_have_bounded_individual_time_budgets
+    job = @workflow.fetch("jobs").fetch("test")
+    assert_equal 60, job.fetch("timeout-minutes")
+    refute job.fetch("continue-on-error", false)
+    steps = job.fetch("steps")
+    {
+      "Install Rust toolchain" => 10,
+      "Cargo test" => 45,
+      "Audit edited DOCX fixture corpus" => 15
+    }.each do |name, minutes|
+      step = steps.find { |item| item["name"] == name }
+      refute_nil step, name
+      assert_equal minutes, step.fetch("timeout-minutes"), name
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+    end
+    cache = steps.find { |item| item["uses"]&.start_with?("Swatinem/rust-cache@") }
+    refute_nil cache
+    assert_equal 10, cache.fetch("timeout-minutes")
   end
 
   def test_edit_export_and_reopen_audit_is_a_required_current_head_step

@@ -1,0 +1,4519 @@
+{
+  "schema": 1,
+  "purpose": "Retain all60 Windows Word captures distinguishing XML softHyphen, literal U+00AD, noBreakHyphen, ASCII hyphen and absent marker. These are Windows-derived controls from an unchanged Mac original, not new Mac captures. Pending cases are not passing coordinate baselines.",
+  "mac_parent_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/manifest.json",
+    "sha256": "c2786e5f2c87769a9a5f62f1b9ef6c41eb112dd75120bc47fe50cb15e1d02249"
+  },
+  "mac_parent_reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114.4",
+    "osVersion": "27.0.1 (26A434)",
+    "export": "Save As > PDF",
+    "pdfSha256": "99a2dc44ef90138ec339011d9b53f927271275a928e40b5047118d3703ee3f77",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width110-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050052149Z-f5064cde/inputs/word-windows-explicit-hyphen-ascii-width110-compat14.docx",
+        "sha256": "30410afcef05fe9a04cfc7d8699b9fa9a6b0edae72320b702a84b213e4f00905"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050052149Z-f5064cde/capture.json",
+        "sha256": "7d7c71935b57d3fc9abd8da283b3fcebc1f40c9498572f0108c37e34ee2612d8"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050052149Z-f5064cde.zip",
+        "sha256": "4ca73bbe325e9f2720fa3a9753529f9295c2b568605c155af043d1ff507e60f7"
+      },
+      "capture_id": "20261118T050052149Z-f5064cde",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width110-compat14",
+        "source_sha256": "30410afcef05fe9a04cfc7d8699b9fa9a6b0edae72320b702a84b213e4f00905",
+        "marker_kind": "ascii",
+        "available_width_pt": 110,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width110-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050055823Z-b53bb2c8/inputs/word-windows-explicit-hyphen-ascii-width110-compat15.docx",
+        "sha256": "8f67b17529c156fbd09cf77eb7232e44fde024c5e42eb1a46451a77b74a488e6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050055823Z-b53bb2c8/capture.json",
+        "sha256": "4445bad6cf9588a3dc914ca2aba6ecb9213cb88fdf511dec341cf19d613acaf6"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050055823Z-b53bb2c8.zip",
+        "sha256": "3c8961c06e76e512eff352a1dc5066258bdceaddd020f557fc90bbb5cf15a22f"
+      },
+      "capture_id": "20261118T050055823Z-b53bb2c8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width110-compat15",
+        "source_sha256": "8f67b17529c156fbd09cf77eb7232e44fde024c5e42eb1a46451a77b74a488e6",
+        "marker_kind": "ascii",
+        "available_width_pt": 110,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width35-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050058641Z-0d516c77/inputs/word-windows-explicit-hyphen-ascii-width35-compat14.docx",
+        "sha256": "b877d69af8dc0ce6b9fcae40f021f50e5c155b21ef83b41a26af235a8a725398"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050058641Z-0d516c77/capture.json",
+        "sha256": "9959b385528a2a1b14635e4700515bb6fcafb8f37da30b4a48d8d9d4cd3b38c9"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050058641Z-0d516c77.zip",
+        "sha256": "a49b916a54c62eade21e34b83fbb2ffb554693cbb66f6680a59edd87c77352b7"
+      },
+      "capture_id": "20261118T050058641Z-0d516c77",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width35-compat14",
+        "source_sha256": "b877d69af8dc0ce6b9fcae40f021f50e5c155b21ef83b41a26af235a8a725398",
+        "marker_kind": "ascii",
+        "available_width_pt": 35,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width35-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050101467Z-61ea4c3f/inputs/word-windows-explicit-hyphen-ascii-width35-compat15.docx",
+        "sha256": "31e1bdb4654f51d541d2ab558d45a4f90c44507e75a7b15ef56e515974b7583f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050101467Z-61ea4c3f/capture.json",
+        "sha256": "96b1d29d23166f8308c7ba41292128c5473e7ebeb07b126bdafa91dcefa9b115"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050101467Z-61ea4c3f.zip",
+        "sha256": "1f7d5876c2d2d568db8aeb70b6e515e2339ac57def1fd9a26649f64ac8e8d05c"
+      },
+      "capture_id": "20261118T050101467Z-61ea4c3f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width35-compat15",
+        "source_sha256": "31e1bdb4654f51d541d2ab558d45a4f90c44507e75a7b15ef56e515974b7583f",
+        "marker_kind": "ascii",
+        "available_width_pt": 35,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width42-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050102911Z-c69bca5a/inputs/word-windows-explicit-hyphen-ascii-width42-compat14.docx",
+        "sha256": "c68b2c4a07c0ee99abea019761ec2ab535e779cf4f701ff13c6f14b0daaed4e0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050102911Z-c69bca5a/capture.json",
+        "sha256": "8ae9119d632807710c9ab20a0773e10704f2cc1c341600a1b75344cbb0996922"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050102911Z-c69bca5a.zip",
+        "sha256": "312401a73bef23096cf8964632ba691d1e7e8f49585847ea3cb4ce8f55fd92ac"
+      },
+      "capture_id": "20261118T050102911Z-c69bca5a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width42-compat14",
+        "source_sha256": "c68b2c4a07c0ee99abea019761ec2ab535e779cf4f701ff13c6f14b0daaed4e0",
+        "marker_kind": "ascii",
+        "available_width_pt": 42,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width42-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050105674Z-df489065/inputs/word-windows-explicit-hyphen-ascii-width42-compat15.docx",
+        "sha256": "d49fdc90183e65d74af64b05508726f6bc03e3ce68cb978849824aca30f72394"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050105674Z-df489065/capture.json",
+        "sha256": "da7c9d6a16d5c13dc41163fbc06cfa0802359b55220fe0c53bca235aab46f2ba"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050105674Z-df489065.zip",
+        "sha256": "b1fbc3225ed9f63650be7747c28abf5d33e655519cddad00d717871bf0f27e32"
+      },
+      "capture_id": "20261118T050105674Z-df489065",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width42-compat15",
+        "source_sha256": "d49fdc90183e65d74af64b05508726f6bc03e3ce68cb978849824aca30f72394",
+        "marker_kind": "ascii",
+        "available_width_pt": 42,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width45-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050108479Z-d79da89f/inputs/word-windows-explicit-hyphen-ascii-width45-compat14.docx",
+        "sha256": "3f4296f8802364cdf609ab06c9696db4bd9485eff24206f3fd9a7a72061cece8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050108479Z-d79da89f/capture.json",
+        "sha256": "12857398e983b1cc49c85d290f85639949351544786c20268bd6b1a90a79e4ec"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050108479Z-d79da89f.zip",
+        "sha256": "4d7a2ec57625f5a9178e7bd7261b4bbf00c58eb724612518a253bcd3c9c311aa"
+      },
+      "capture_id": "20261118T050108479Z-d79da89f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width45-compat14",
+        "source_sha256": "3f4296f8802364cdf609ab06c9696db4bd9485eff24206f3fd9a7a72061cece8",
+        "marker_kind": "ascii",
+        "available_width_pt": 45,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width45-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050111234Z-39ffb4f8/inputs/word-windows-explicit-hyphen-ascii-width45-compat15.docx",
+        "sha256": "32010f1a5002922ccc271ccb4e784ded6c1182ae6d9e59607339d52b361ab059"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050111234Z-39ffb4f8/capture.json",
+        "sha256": "b08621e005a36c95f7ebb4aeab105493c89b657a4ad48b8007303709100a6601"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050111234Z-39ffb4f8.zip",
+        "sha256": "30bcd993702a839b92b2c73f82a58eb3992b75605d1ae76e12b2add7f80fc8d7"
+      },
+      "capture_id": "20261118T050111234Z-39ffb4f8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width45-compat15",
+        "source_sha256": "32010f1a5002922ccc271ccb4e784ded6c1182ae6d9e59607339d52b361ab059",
+        "marker_kind": "ascii",
+        "available_width_pt": 45,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width48-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050114046Z-abad40e0/inputs/word-windows-explicit-hyphen-ascii-width48-compat14.docx",
+        "sha256": "46457d0bf4178fc2fa2381e6cd790cec321bc4dcd0178b15e5b32f83d5e0d1cd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050114046Z-abad40e0/capture.json",
+        "sha256": "5e5c3358e3ea84803155fc10e228fa2d0f65b9f566cfa917dd8c9f266b988774"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050114046Z-abad40e0.zip",
+        "sha256": "926a97f20572b05f2639b2789425af146e483d5c6cad534fe4826194f724bc43"
+      },
+      "capture_id": "20261118T050114046Z-abad40e0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width48-compat14",
+        "source_sha256": "46457d0bf4178fc2fa2381e6cd790cec321bc4dcd0178b15e5b32f83d5e0d1cd",
+        "marker_kind": "ascii",
+        "available_width_pt": 48,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width48-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050116814Z-7d017a89/inputs/word-windows-explicit-hyphen-ascii-width48-compat15.docx",
+        "sha256": "4e9cbef457fa9c91f002c2a446d47dc8e05ac134a56d07d9dbbf0be0c737805b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050116814Z-7d017a89/capture.json",
+        "sha256": "e695675ac6e41249ea13dafda1f0f848b73f21512c91ca1e185d866431b66049"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050116814Z-7d017a89.zip",
+        "sha256": "8f890668e160db0d61e55a5d0ff099348ddeebb4d1b301ed33fdcbf32a5a7720"
+      },
+      "capture_id": "20261118T050116814Z-7d017a89",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width48-compat15",
+        "source_sha256": "4e9cbef457fa9c91f002c2a446d47dc8e05ac134a56d07d9dbbf0be0c737805b",
+        "marker_kind": "ascii",
+        "available_width_pt": 48,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width65-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050119631Z-1fbc2ec2/inputs/word-windows-explicit-hyphen-ascii-width65-compat14.docx",
+        "sha256": "b6bd495b8595842a6eea1a6e031a0ddeca3e8842e2596932bad938bb36f3f592"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050119631Z-1fbc2ec2/capture.json",
+        "sha256": "531cf11a47dadf9d570c91ab39a832a1b6f3e987cf6a09ef50c3bf9808e61638"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050119631Z-1fbc2ec2.zip",
+        "sha256": "b55e4cdf9399f80917535575b6478a7a1f22c36993bb36791db403958cc773aa"
+      },
+      "capture_id": "20261118T050119631Z-1fbc2ec2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width65-compat14",
+        "source_sha256": "b6bd495b8595842a6eea1a6e031a0ddeca3e8842e2596932bad938bb36f3f592",
+        "marker_kind": "ascii",
+        "available_width_pt": 65,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-ascii-width65-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050122455Z-211a92b9/inputs/word-windows-explicit-hyphen-ascii-width65-compat15.docx",
+        "sha256": "6d710bc8b8c3ff44df719d0305b35181882a1b719136cb7813fd7e6820262e19"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050122455Z-211a92b9/capture.json",
+        "sha256": "3142e48837f117950b90fddf349daaafde4ec223a8c0a5c41115d06261f1cb87"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050122455Z-211a92b9.zip",
+        "sha256": "ca632d32454fabbcc22aee84ce3f77b5e0aeca0b3948e8fce96a270cd580dcdb"
+      },
+      "capture_id": "20261118T050122455Z-211a92b9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-ascii-width65-compat15",
+        "source_sha256": "6d710bc8b8c3ff44df719d0305b35181882a1b719136cb7813fd7e6820262e19",
+        "marker_kind": "ascii",
+        "available_width_pt": 65,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width110-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050126251Z-37d68ada/inputs/word-windows-explicit-hyphen-nonbreak-element-width110-compat14.docx",
+        "sha256": "1e612b30d24469fc3a3fa3addc453a2d6a0decb632f4eee726ebdad3fa9138cb"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050126251Z-37d68ada/capture.json",
+        "sha256": "1d7bd71a4e2cb672c54ca9121ad3967468b6594acd29f7ba5e3ff969bcd0b14b"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050126251Z-37d68ada.zip",
+        "sha256": "a9660d8da5a0dcd9cf67c44fde4cf5551bad4ea182708186052379fdc2ef7a89"
+      },
+      "capture_id": "20261118T050126251Z-37d68ada",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width110-compat14",
+        "source_sha256": "1e612b30d24469fc3a3fa3addc453a2d6a0decb632f4eee726ebdad3fa9138cb",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 110,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width110-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050129106Z-9e4093d4/inputs/word-windows-explicit-hyphen-nonbreak-element-width110-compat15.docx",
+        "sha256": "d5490869fed60c6025347c77665085be75493fd010d200a87862f0ad1e2923e9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050129106Z-9e4093d4/capture.json",
+        "sha256": "2023e4d13b551b1ba16c4eaf8bede7d0edac02170c8c4d3520dc183e50a28332"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050129106Z-9e4093d4.zip",
+        "sha256": "7e74213d0a6ce8c14ccca6741f1ba6e10ad3977d483ba43aab5677965688b330"
+      },
+      "capture_id": "20261118T050129106Z-9e4093d4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width110-compat15",
+        "source_sha256": "d5490869fed60c6025347c77665085be75493fd010d200a87862f0ad1e2923e9",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 110,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width35-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050130451Z-9a9ebcac/inputs/word-windows-explicit-hyphen-nonbreak-element-width35-compat14.docx",
+        "sha256": "68d507a73d82ababb900c26e5ea44d12f8ffb91a453345494e76331833d9f821"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050130451Z-9a9ebcac/capture.json",
+        "sha256": "7577b78d113e54f6895a988a53659c5a729b7b4b1b237151c0df4481804c69db"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050130451Z-9a9ebcac.zip",
+        "sha256": "1d67320eac6a5bd0a7d570d1524a1e9c18f46b3e0e737a08739f771512d0464d"
+      },
+      "capture_id": "20261118T050130451Z-9a9ebcac",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width35-compat14",
+        "source_sha256": "68d507a73d82ababb900c26e5ea44d12f8ffb91a453345494e76331833d9f821",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 35,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width35-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050133273Z-7c05bee1/inputs/word-windows-explicit-hyphen-nonbreak-element-width35-compat15.docx",
+        "sha256": "85900f05cb345316680da85410254068db5de46536d80a951b0332539dc2b8d7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050133273Z-7c05bee1/capture.json",
+        "sha256": "62b39e67a7f05d88b01cbfe83363386fb7c197f40f0faae342bec2c527240a16"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050133273Z-7c05bee1.zip",
+        "sha256": "23ff4c29956a95eade72944a46cf38cc3ab0555da2e4ce7202a00209a9c1f7b0"
+      },
+      "capture_id": "20261118T050133273Z-7c05bee1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width35-compat15",
+        "source_sha256": "85900f05cb345316680da85410254068db5de46536d80a951b0332539dc2b8d7",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 35,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width42-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050136056Z-cdefd347/inputs/word-windows-explicit-hyphen-nonbreak-element-width42-compat14.docx",
+        "sha256": "a1814224e27e05fe3e32063964db3236ebd2b1ee563768e60306ca5b721282c6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050136056Z-cdefd347/capture.json",
+        "sha256": "9a8fe27ea6a4494db37d3cb3230b29aef54714c3412159563ed32f69db9a7034"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050136056Z-cdefd347.zip",
+        "sha256": "623ed4a1d2a9c0ee2ed1d87be9139be502f2d2f27eb61342ebdc9083ef582567"
+      },
+      "capture_id": "20261118T050136056Z-cdefd347",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width42-compat14",
+        "source_sha256": "a1814224e27e05fe3e32063964db3236ebd2b1ee563768e60306ca5b721282c6",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 42,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width42-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050138914Z-abc0fba4/inputs/word-windows-explicit-hyphen-nonbreak-element-width42-compat15.docx",
+        "sha256": "5a87d2cbeee97f37a89c5a99b2cabc8cbe2443e31aec970e7099e579ed46dac0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050138914Z-abc0fba4/capture.json",
+        "sha256": "1292501b0ed85ee3b6c562b33d5b65014f78d6c47ffbf78f7270a342761efc82"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050138914Z-abc0fba4.zip",
+        "sha256": "2ae42a1754ee49e8073700d843f32808717705a69d787f4526641fef5e8ec20d"
+      },
+      "capture_id": "20261118T050138914Z-abc0fba4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width42-compat15",
+        "source_sha256": "5a87d2cbeee97f37a89c5a99b2cabc8cbe2443e31aec970e7099e579ed46dac0",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 42,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width45-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050144101Z-1814976a/inputs/word-windows-explicit-hyphen-nonbreak-element-width45-compat14.docx",
+        "sha256": "666c221f1610dacfec5b5e2458ecba4a7ce93ec13921a19ba47429f6e14e8203"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050144101Z-1814976a/capture.json",
+        "sha256": "c8c09c110bc676725376304b78f0dbe90ae0ea9dd279b22a13756dbdd4798d97"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050144101Z-1814976a.zip",
+        "sha256": "20f34af677788a9d5707b72a9d5da1524c814b787548deb3319f51c501b5619d"
+      },
+      "capture_id": "20261118T050144101Z-1814976a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width45-compat14",
+        "source_sha256": "666c221f1610dacfec5b5e2458ecba4a7ce93ec13921a19ba47429f6e14e8203",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 45,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width45-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050146887Z-3adfb51c/inputs/word-windows-explicit-hyphen-nonbreak-element-width45-compat15.docx",
+        "sha256": "12383c69c404d2c9eda4864e7194b743ce3336831b7583595e0ac22e25575747"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050146887Z-3adfb51c/capture.json",
+        "sha256": "e55bbe8cea76e82de57c19604f6f03dabbd52fe91db58aba1735c0277003a3e7"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050146887Z-3adfb51c.zip",
+        "sha256": "08bac31882843980d514ba98bb933e796c64761470fa96f1da304b4874016f41"
+      },
+      "capture_id": "20261118T050146887Z-3adfb51c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width45-compat15",
+        "source_sha256": "12383c69c404d2c9eda4864e7194b743ce3336831b7583595e0ac22e25575747",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 45,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width48-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050149629Z-7a460c91/inputs/word-windows-explicit-hyphen-nonbreak-element-width48-compat14.docx",
+        "sha256": "9fba5db76545b60b43acb91432c005e1b795cc8ee66411ecdecfaf51828fb623"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050149629Z-7a460c91/capture.json",
+        "sha256": "a1ed998bd01c9126a35bedee040978d8ae4b25b9236926fa263c85b32ded3aa8"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050149629Z-7a460c91.zip",
+        "sha256": "ab7ff9bc6f630242c04f9918e2840d464eb27008b6ea919a802dfe8de7e4dfc3"
+      },
+      "capture_id": "20261118T050149629Z-7a460c91",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width48-compat14",
+        "source_sha256": "9fba5db76545b60b43acb91432c005e1b795cc8ee66411ecdecfaf51828fb623",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 48,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width48-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050152447Z-dcec48c1/inputs/word-windows-explicit-hyphen-nonbreak-element-width48-compat15.docx",
+        "sha256": "89542e6d5c227d586c6cbfb8bf3bc701088a8cebd44dc424759824209c49ee04"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050152447Z-dcec48c1/capture.json",
+        "sha256": "5687abe7771b3838a8444175aae2cd6a994ad212ae06ca10145ee31738b60c45"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050152447Z-dcec48c1.zip",
+        "sha256": "0ac756ce46997f3751125595cd0d0a9181a4c3ffe61fd2a49d452e8e667ee7e2"
+      },
+      "capture_id": "20261118T050152447Z-dcec48c1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width48-compat15",
+        "source_sha256": "89542e6d5c227d586c6cbfb8bf3bc701088a8cebd44dc424759824209c49ee04",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 48,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width65-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050153800Z-3fa8c634/inputs/word-windows-explicit-hyphen-nonbreak-element-width65-compat14.docx",
+        "sha256": "dbe930dc942e65d13916be32f35d0956fe05fb1f6524c93d67f1acf6f4037a56"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050153800Z-3fa8c634/capture.json",
+        "sha256": "5a9ff14ad6392f3fe815ae45b0d2f1f1fcf2efbcf9f028a12206a5e45da92189"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050153800Z-3fa8c634.zip",
+        "sha256": "2ddd43532a22023b38c2bdc5901922e0f18a91c1e84a7fea8d1a9315289c16cd"
+      },
+      "capture_id": "20261118T050153800Z-3fa8c634",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width65-compat14",
+        "source_sha256": "dbe930dc942e65d13916be32f35d0956fe05fb1f6524c93d67f1acf6f4037a56",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 65,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-nonbreak-element-width65-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050156634Z-c25c2952/inputs/word-windows-explicit-hyphen-nonbreak-element-width65-compat15.docx",
+        "sha256": "107433f12a8a7558d29a56919267eff83e9b72b11f2baac768182d5f7ef2c95c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050156634Z-c25c2952/capture.json",
+        "sha256": "ceb697b9b15bc699d798a785eaa6111bcb0365ecab0f2a929292010e68e0052f"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050156634Z-c25c2952.zip",
+        "sha256": "af5cfcfd5be4273e3b8f30a64974f333f4c05ac9884c4c05a5206f1a17737b43"
+      },
+      "capture_id": "20261118T050156634Z-c25c2952",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-nonbreak-element-width65-compat15",
+        "source_sha256": "107433f12a8a7558d29a56919267eff83e9b72b11f2baac768182d5f7ef2c95c",
+        "marker_kind": "nonbreak-element",
+        "available_width_pt": 65,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width110-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050200411Z-3f530f57/inputs/word-windows-explicit-hyphen-none-width110-compat14.docx",
+        "sha256": "fdd6bc6c07feda24505e6030ccf0531344cab1e030bb309525851a85b839fa6a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050200411Z-3f530f57/capture.json",
+        "sha256": "16bddc5b7940b2d0396b2dcd00baa9c5ec95f62c5667913d0a6b9e197ce1a847"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050200411Z-3f530f57.zip",
+        "sha256": "734bcb7e31b547cceb9a494b1eb05a444e064d8972f465c40601d17810ca7b7e"
+      },
+      "capture_id": "20261118T050200411Z-3f530f57",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width110-compat14",
+        "source_sha256": "fdd6bc6c07feda24505e6030ccf0531344cab1e030bb309525851a85b839fa6a",
+        "marker_kind": "none",
+        "available_width_pt": 110,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width110-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050203260Z-db809d47/inputs/word-windows-explicit-hyphen-none-width110-compat15.docx",
+        "sha256": "1fd21bde22cadceefd221aa79304640bb3a46fe4c80045132e9c4e553a45f240"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050203260Z-db809d47/capture.json",
+        "sha256": "c57cf1c0d7d3bee3dac803a5d343a14e91bf366b7d6e702d9c0159b7d8818e27"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050203260Z-db809d47.zip",
+        "sha256": "77962702caa7c4df7122ef964ab3420da28b4837a3a2474c357f95bf9e4784d9"
+      },
+      "capture_id": "20261118T050203260Z-db809d47",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width110-compat15",
+        "source_sha256": "1fd21bde22cadceefd221aa79304640bb3a46fe4c80045132e9c4e553a45f240",
+        "marker_kind": "none",
+        "available_width_pt": 110,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width35-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050206011Z-3d6d3479/inputs/word-windows-explicit-hyphen-none-width35-compat14.docx",
+        "sha256": "a4e470c1406bbd6c0ee725b964497e0852959ec4110a0d6ad25f5db89492a252"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050206011Z-3d6d3479/capture.json",
+        "sha256": "0bd8214af624547a6f0cf68844b992be18450866ac8a3b17c1175961d7b3984f"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050206011Z-3d6d3479.zip",
+        "sha256": "aa6281fa791b33eb2d64850f427fc464a7bf5ec90e8b6321632b7c619416609b"
+      },
+      "capture_id": "20261118T050206011Z-3d6d3479",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width35-compat14",
+        "source_sha256": "a4e470c1406bbd6c0ee725b964497e0852959ec4110a0d6ad25f5db89492a252",
+        "marker_kind": "none",
+        "available_width_pt": 35,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width35-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050208859Z-95712f28/inputs/word-windows-explicit-hyphen-none-width35-compat15.docx",
+        "sha256": "9ab66e2584d00f1b6b785d850e8a761157c8e2d685a2da0d46e70d9b56c0f92c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050208859Z-95712f28/capture.json",
+        "sha256": "674f8c514988b9f0d58e707d088bf12076c2621482cbd677a56e3ab9c38654d7"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050208859Z-95712f28.zip",
+        "sha256": "450297dca2ea922bdce9cb4078503a0f80c65442e0b91a813ac15e5f014fdcb9"
+      },
+      "capture_id": "20261118T050208859Z-95712f28",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width35-compat15",
+        "source_sha256": "9ab66e2584d00f1b6b785d850e8a761157c8e2d685a2da0d46e70d9b56c0f92c",
+        "marker_kind": "none",
+        "available_width_pt": 35,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width42-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050211647Z-3dacaa35/inputs/word-windows-explicit-hyphen-none-width42-compat14.docx",
+        "sha256": "f219a2f115c09f7350200a2357c8f5e4c45709964e8ba67a1096341731f5efee"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050211647Z-3dacaa35/capture.json",
+        "sha256": "7dd4ed0376321aaa0c07c022c84c92932d4b78b7798eb9d5fc4f8162d763fbe8"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050211647Z-3dacaa35.zip",
+        "sha256": "88d6a41bf07fcfa223b53c7876ef2a354a5e660b980c4e42b9b5e45c036e7160"
+      },
+      "capture_id": "20261118T050211647Z-3dacaa35",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width42-compat14",
+        "source_sha256": "f219a2f115c09f7350200a2357c8f5e4c45709964e8ba67a1096341731f5efee",
+        "marker_kind": "none",
+        "available_width_pt": 42,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width42-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050214461Z-eefbd10f/inputs/word-windows-explicit-hyphen-none-width42-compat15.docx",
+        "sha256": "4c83acee37a9459c352ae15d20fa452f554ff2be96d20af5c735f40060f65cc6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050214461Z-eefbd10f/capture.json",
+        "sha256": "5a37f1cd420ccb9a3629ccc69d3370915baab070a8cca14ba1cd8c30d5e4bcb1"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050214461Z-eefbd10f.zip",
+        "sha256": "345f88be8c3b03297822648ae8e6685fd9eb8cd7cff131bb6a4aee403f71d040"
+      },
+      "capture_id": "20261118T050214461Z-eefbd10f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width42-compat15",
+        "source_sha256": "4c83acee37a9459c352ae15d20fa452f554ff2be96d20af5c735f40060f65cc6",
+        "marker_kind": "none",
+        "available_width_pt": 42,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width45-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050218166Z-8b6a457b/inputs/word-windows-explicit-hyphen-none-width45-compat14.docx",
+        "sha256": "1613b7ae858dd82dfba3708e9434d2aae727b9dc4de7f9d2638da64e0dbd0a22"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050218166Z-8b6a457b/capture.json",
+        "sha256": "a751df1967f43657f5efb40c9294e636a7cbee98fbb93790a2114dd61dacd311"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050218166Z-8b6a457b.zip",
+        "sha256": "e6ede29f175e4b75a8e32e4d675a1e3a307227f7c4a25128ed28867af2194fb7"
+      },
+      "capture_id": "20261118T050218166Z-8b6a457b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width45-compat14",
+        "source_sha256": "1613b7ae858dd82dfba3708e9434d2aae727b9dc4de7f9d2638da64e0dbd0a22",
+        "marker_kind": "none",
+        "available_width_pt": 45,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width45-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050220989Z-e3e3e111/inputs/word-windows-explicit-hyphen-none-width45-compat15.docx",
+        "sha256": "b58038663028b60022b408b84d31bfc54bad1c605f4b69537bb9d627eefcd5d7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050220989Z-e3e3e111/capture.json",
+        "sha256": "6bf2098d9b04cd39afb3599078e05ed24af9e906057a49148f69a30e5fe8ad70"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050220989Z-e3e3e111.zip",
+        "sha256": "b747652798da0a40d6b56d6765a5685e7cd4be2e32434c49674e032afd76661f"
+      },
+      "capture_id": "20261118T050220989Z-e3e3e111",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width45-compat15",
+        "source_sha256": "b58038663028b60022b408b84d31bfc54bad1c605f4b69537bb9d627eefcd5d7",
+        "marker_kind": "none",
+        "available_width_pt": 45,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width48-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050223746Z-540cdfd0/inputs/word-windows-explicit-hyphen-none-width48-compat14.docx",
+        "sha256": "9a31e011f1fb1b4b1d5fcd88ae3bbb463502b79626d6d225dfe818bbb1d311d3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050223746Z-540cdfd0/capture.json",
+        "sha256": "47666311eec913b59c12530bb5219d563cbef3e8232d3acbc2cb6e16bbd3e8dc"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050223746Z-540cdfd0.zip",
+        "sha256": "35ad14003c8af0cf44ffaac6eda72e0a34ec696c639b24c63cca5cd3cf4a1556"
+      },
+      "capture_id": "20261118T050223746Z-540cdfd0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width48-compat14",
+        "source_sha256": "9a31e011f1fb1b4b1d5fcd88ae3bbb463502b79626d6d225dfe818bbb1d311d3",
+        "marker_kind": "none",
+        "available_width_pt": 48,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width48-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050226560Z-e7923a5b/inputs/word-windows-explicit-hyphen-none-width48-compat15.docx",
+        "sha256": "4c2dba3a0b26e38fe40f1decd48bb4161a317302f0a2a0283867a858ebf3f847"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050226560Z-e7923a5b/capture.json",
+        "sha256": "5e5511d7c86403ef94c1515c50cb83ade8992e568d361bb846299557ef1de945"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050226560Z-e7923a5b.zip",
+        "sha256": "3820c98d1fc8e7e3bd4cd75c7f9f4381293a0bec217e0e76f5a1a0e03aa947fb"
+      },
+      "capture_id": "20261118T050226560Z-e7923a5b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width48-compat15",
+        "source_sha256": "4c2dba3a0b26e38fe40f1decd48bb4161a317302f0a2a0283867a858ebf3f847",
+        "marker_kind": "none",
+        "available_width_pt": 48,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width65-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050229316Z-b350fbc1/inputs/word-windows-explicit-hyphen-none-width65-compat14.docx",
+        "sha256": "8f2b64e2ccd46a03d2627c732745f79460ffa80e745007ce2f0d6008c7a46dd2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050229316Z-b350fbc1/capture.json",
+        "sha256": "73e3925a9a7b5af9076d6b4b9a172f088aeeeab647a54185bef63583d60fdb83"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050229316Z-b350fbc1.zip",
+        "sha256": "5c016b8bab977c716f28891777dd78f46e27dbd4d6f7069477c7cdc665d048a5"
+      },
+      "capture_id": "20261118T050229316Z-b350fbc1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width65-compat14",
+        "source_sha256": "8f2b64e2ccd46a03d2627c732745f79460ffa80e745007ce2f0d6008c7a46dd2",
+        "marker_kind": "none",
+        "available_width_pt": 65,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-none-width65-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050234595Z-530422d2/inputs/word-windows-explicit-hyphen-none-width65-compat15.docx",
+        "sha256": "97395d49ab411018f4f39365a0995b30c1894b68422e586ea87cf118987e7957"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050234595Z-530422d2/capture.json",
+        "sha256": "9a9898aa5b7b330968bbe75c6900f8382932f5a5d0d8da56cf3e37e279399f6e"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050234595Z-530422d2.zip",
+        "sha256": "083b9b1de9ce8b6e43ad90f2438153d784e48a2f718df84af1cfc71f4f3e4eb6"
+      },
+      "capture_id": "20261118T050234595Z-530422d2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-none-width65-compat15",
+        "source_sha256": "97395d49ab411018f4f39365a0995b30c1894b68422e586ea87cf118987e7957",
+        "marker_kind": "none",
+        "available_width_pt": 65,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width110-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050237400Z-9ce43a2e/inputs/word-windows-explicit-hyphen-soft-element-width110-compat14.docx",
+        "sha256": "10317a9b1a8619cb30d30442c57a3428546a1c9c557b59975cc82ef753615e89"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050237400Z-9ce43a2e/capture.json",
+        "sha256": "db2659a1f383722c049cb68e0527bc2bca808d195adec0e246e8977db915e455"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050237400Z-9ce43a2e.zip",
+        "sha256": "72be4ab13b68bceae7deb16fea78d4562650873f860d4bf64685b6fd9120182e"
+      },
+      "capture_id": "20261118T050237400Z-9ce43a2e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width110-compat14",
+        "source_sha256": "10317a9b1a8619cb30d30442c57a3428546a1c9c557b59975cc82ef753615e89",
+        "marker_kind": "soft-element",
+        "available_width_pt": 110,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width110-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050240140Z-b8cb53af/inputs/word-windows-explicit-hyphen-soft-element-width110-compat15.docx",
+        "sha256": "44725c1f1d36b751a7f25c09764c98b3ba71cbf891d12592965315bbc05390ca"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050240140Z-b8cb53af/capture.json",
+        "sha256": "b95ba05417ef8f69fe70a3794ac885212c42eb285f938ebcb92b1aa020207f8d"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050240140Z-b8cb53af.zip",
+        "sha256": "e55fe5aa54a5e385c308f001a502a07ab831c610e2327ffc1707793987d3eb2f"
+      },
+      "capture_id": "20261118T050240140Z-b8cb53af",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width110-compat15",
+        "source_sha256": "44725c1f1d36b751a7f25c09764c98b3ba71cbf891d12592965315bbc05390ca",
+        "marker_kind": "soft-element",
+        "available_width_pt": 110,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "56c2c5a89366a6cf73c3987937aed6a76a0bd229e8827369706961833365562a",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width35-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050242972Z-a9d2d935/inputs/word-windows-explicit-hyphen-soft-element-width35-compat14.docx",
+        "sha256": "5f21d3ef4f8ab964bb27d72dddc4a6fbe8c8fb5ea07d42bdff884621ff066fbd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050242972Z-a9d2d935/capture.json",
+        "sha256": "4d70a83d865658a989a138f8072d3cbddd29e8f328afad0137b423a48c69af18"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050242972Z-a9d2d935.zip",
+        "sha256": "7b35e60916c9184b5d9492d5b85adeb9b9d9e1732aba35853d08f7fca23a8e37"
+      },
+      "capture_id": "20261118T050242972Z-a9d2d935",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width35-compat14",
+        "source_sha256": "5f21d3ef4f8ab964bb27d72dddc4a6fbe8c8fb5ea07d42bdff884621ff066fbd",
+        "marker_kind": "soft-element",
+        "available_width_pt": 35,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width35-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050245748Z-ac5eec4b/inputs/word-windows-explicit-hyphen-soft-element-width35-compat15.docx",
+        "sha256": "96ba1d984e08b82ea4d10866fab8507472935f29a8765ca163df046d8973b4cd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050245748Z-ac5eec4b/capture.json",
+        "sha256": "dc6a10b036e05cad5127ab194e247c01f0e749b97160cc49b707a88c2bcc2310"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050245748Z-ac5eec4b.zip",
+        "sha256": "695e96bba653a293f90453994165420a87615bb03b866e890c81aedfb709efea"
+      },
+      "capture_id": "20261118T050245748Z-ac5eec4b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width35-compat15",
+        "source_sha256": "96ba1d984e08b82ea4d10866fab8507472935f29a8765ca163df046d8973b4cd",
+        "marker_kind": "soft-element",
+        "available_width_pt": 35,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width42-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050248580Z-d6adf2a1/inputs/word-windows-explicit-hyphen-soft-element-width42-compat14.docx",
+        "sha256": "753de32033fe72e55ba327ccb1bb1dd3ccbb31be0896c3ed9a128934b3399656"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050248580Z-d6adf2a1/capture.json",
+        "sha256": "91771a49ff176add04ad7e931d9cf0b9aeb73ff5d0813d87debb4044725bd50e"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050248580Z-d6adf2a1.zip",
+        "sha256": "e096134224524f4f147783169867bb7920d2bab85680f8ff3fedfb47ff6d326c"
+      },
+      "capture_id": "20261118T050248580Z-d6adf2a1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width42-compat14",
+        "source_sha256": "753de32033fe72e55ba327ccb1bb1dd3ccbb31be0896c3ed9a128934b3399656",
+        "marker_kind": "soft-element",
+        "available_width_pt": 42,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width42-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050253856Z-0043a2a2/inputs/word-windows-explicit-hyphen-soft-element-width42-compat15.docx",
+        "sha256": "92f1d3f5f51fbbd70b4e391250dda0ca6d1fb332175def67ed59f3cebce769f1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050253856Z-0043a2a2/capture.json",
+        "sha256": "00f22db69a3243612ede09b9a5fb6bbdd7ed4f1b54b20dc364fd1c6ab130be1a"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050253856Z-0043a2a2.zip",
+        "sha256": "96638a085d7b1ab7f95c4f5d097bcac9d939a84b67b3ec04cfa2681ec61512de"
+      },
+      "capture_id": "20261118T050253856Z-0043a2a2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width42-compat15",
+        "source_sha256": "92f1d3f5f51fbbd70b4e391250dda0ca6d1fb332175def67ed59f3cebce769f1",
+        "marker_kind": "soft-element",
+        "available_width_pt": 42,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width45-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050256674Z-0832aa6b/inputs/word-windows-explicit-hyphen-soft-element-width45-compat14.docx",
+        "sha256": "8d151077f4af0e82eb863acdb1ef34d62618d8cf424ba069fe5ce7b423b56018"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050256674Z-0832aa6b/capture.json",
+        "sha256": "d2508fbb33f2e9d5dbd07ba2ed5845d5d5a014e1b0a254f8bb39f2185c341547"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050256674Z-0832aa6b.zip",
+        "sha256": "5e3b817a1105ff624751e219ef6d9200a624a27eed3e09dfd69b6ecc6c1bfddc"
+      },
+      "capture_id": "20261118T050256674Z-0832aa6b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width45-compat14",
+        "source_sha256": "8d151077f4af0e82eb863acdb1ef34d62618d8cf424ba069fe5ce7b423b56018",
+        "marker_kind": "soft-element",
+        "available_width_pt": 45,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width45-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050259433Z-36d779f0/inputs/word-windows-explicit-hyphen-soft-element-width45-compat15.docx",
+        "sha256": "4db9463ae37d72e2509a6e0634d257430aacf323295a749f2c3bd17770ce3198"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050259433Z-36d779f0/capture.json",
+        "sha256": "8a6fd291874499657d2a665a4fe0155845672a12a8a9d6116308640b8320046f"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050259433Z-36d779f0.zip",
+        "sha256": "1c0475d50ec44f1ef77b7efab781853581d953520ce7142f82dff6faf11718b5"
+      },
+      "capture_id": "20261118T050259433Z-36d779f0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width45-compat15",
+        "source_sha256": "4db9463ae37d72e2509a6e0634d257430aacf323295a749f2c3bd17770ce3198",
+        "marker_kind": "soft-element",
+        "available_width_pt": 45,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width48-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050302279Z-8150dad1/inputs/word-windows-explicit-hyphen-soft-element-width48-compat14.docx",
+        "sha256": "1fe37e12654ca89affffe642123663922fd87f5ec7460760d56fef3b6fbe12c1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050302279Z-8150dad1/capture.json",
+        "sha256": "9384467c86929b051187d411707459622c3ff7f23222c60a662553e6a0ad53de"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050302279Z-8150dad1.zip",
+        "sha256": "25495c3925cd564a4159301bb40ba2e1c80a147aa4e1bc49e065f66a5e4e4d10"
+      },
+      "capture_id": "20261118T050302279Z-8150dad1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width48-compat14",
+        "source_sha256": "1fe37e12654ca89affffe642123663922fd87f5ec7460760d56fef3b6fbe12c1",
+        "marker_kind": "soft-element",
+        "available_width_pt": 48,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width48-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050305001Z-77a05778/inputs/word-windows-explicit-hyphen-soft-element-width48-compat15.docx",
+        "sha256": "45ad2e43279da4363a6d31ed9ae3be3ef749291a8f000354532e68f6e9dd10e9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050305001Z-77a05778/capture.json",
+        "sha256": "b6bfcd8b7abc0777c3c6928134565d8edadf24fee491e470020922a707f2dcbb"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050305001Z-77a05778.zip",
+        "sha256": "f3e2c31ea2608aeac53ed4039bf62c2834b59fe94d3b5734a23185718670d3f1"
+      },
+      "capture_id": "20261118T050305001Z-77a05778",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width48-compat15",
+        "source_sha256": "45ad2e43279da4363a6d31ed9ae3be3ef749291a8f000354532e68f6e9dd10e9",
+        "marker_kind": "soft-element",
+        "available_width_pt": 48,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width65-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050307833Z-88a8292c/inputs/word-windows-explicit-hyphen-soft-element-width65-compat14.docx",
+        "sha256": "469307e0c41f97d77298ddbcfceba901fa4c5fd2d5b862caeb6c3391e9e6ca13"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050307833Z-88a8292c/capture.json",
+        "sha256": "e909a74f87f6a0afa1fce1ffacf1e62e4edec7b3dd606c9188fb737c51807ecc"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050307833Z-88a8292c.zip",
+        "sha256": "4d2c34b9810679bd38703cc143cbadc73e5937b067855493f47ea049ce35eee8"
+      },
+      "capture_id": "20261118T050307833Z-88a8292c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width65-compat14",
+        "source_sha256": "469307e0c41f97d77298ddbcfceba901fa4c5fd2d5b862caeb6c3391e9e6ca13",
+        "marker_kind": "soft-element",
+        "available_width_pt": 65,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-element-width65-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050311553Z-33ad5a28/inputs/word-windows-explicit-hyphen-soft-element-width65-compat15.docx",
+        "sha256": "b9919533a4a45117db315e89247e238034ff4d380fd5b2a8ae702b43c4be5e27"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050311553Z-33ad5a28/capture.json",
+        "sha256": "97966962f6a76498ac4d9001cc5fd506e66e371f034bce680ddd839afac3a4ba"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050311553Z-33ad5a28.zip",
+        "sha256": "14791e5776ebb69c9a27eb50f4107195f7548171d78c7f58f2871936a9d5e7d8"
+      },
+      "capture_id": "20261118T050311553Z-33ad5a28",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-element-width65-compat15",
+        "source_sha256": "b9919533a4a45117db315e89247e238034ff4d380fd5b2a8ae702b43c4be5e27",
+        "marker_kind": "soft-element",
+        "available_width_pt": 65,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width110-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050314395Z-685c8a41/inputs/word-windows-explicit-hyphen-soft-literal-width110-compat14.docx",
+        "sha256": "26a18cfd47513ea0723bb2ca8c7412bb82019a17ade6566e76e9fc9090a91b3f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050314395Z-685c8a41/capture.json",
+        "sha256": "80dd2879a67db8e71141c6ca2d290291e9dd2074ff40454471f7699dcd411184"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050314395Z-685c8a41.zip",
+        "sha256": "8300fea82e50cee5420332c32a025360c4b3e8ef80fda49cc9e140a32f6dd20a"
+      },
+      "capture_id": "20261118T050314395Z-685c8a41",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width110-compat14",
+        "source_sha256": "26a18cfd47513ea0723bb2ca8c7412bb82019a17ade6566e76e9fc9090a91b3f",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 110,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width110-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050317116Z-97e46d4b/inputs/word-windows-explicit-hyphen-soft-literal-width110-compat15.docx",
+        "sha256": "75af3154c84c18443643fe92284a7ae04cf89b1f9a5673befaf5da74777d1995"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050317116Z-97e46d4b/capture.json",
+        "sha256": "ecae92d1fc0b1f4651ede33bc1fb3de0c17b0d9ec89bc516a5d28bea3979bfee"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050317116Z-97e46d4b.zip",
+        "sha256": "83f8629095224d6f9d7cf4b833cc99086ba949d5bb09066d7ef9c833d56d30b8"
+      },
+      "capture_id": "20261118T050317116Z-97e46d4b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width110-compat15",
+        "source_sha256": "75af3154c84c18443643fe92284a7ae04cf89b1f9a5673befaf5da74777d1995",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 110,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width35-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050319963Z-75080885/inputs/word-windows-explicit-hyphen-soft-literal-width35-compat14.docx",
+        "sha256": "193d90ece43b708edb3df5ee6bb2d9765ec4ea05bf7b022b78bb77dc7bc40372"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050319963Z-75080885/capture.json",
+        "sha256": "b91eb149425ace0bd787d48213ece61fddbf4cef8b16bd25acc2fec135704459"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050319963Z-75080885.zip",
+        "sha256": "76cac8e44d3a386efeca9379aa32c173a985e4b5751ab5e3a183891c076bfe41"
+      },
+      "capture_id": "20261118T050319963Z-75080885",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width35-compat14",
+        "source_sha256": "193d90ece43b708edb3df5ee6bb2d9765ec4ea05bf7b022b78bb77dc7bc40372",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 35,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width35-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050322748Z-7561b27b/inputs/word-windows-explicit-hyphen-soft-literal-width35-compat15.docx",
+        "sha256": "be93d8dd81cd2440b32d3f643decb11d36414ef4a514a57a8af54b21b81cf64f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050322748Z-7561b27b/capture.json",
+        "sha256": "051317698cedd80373eb84bdcbfe68c53a8ccfd0c0eb838bc51a2e15955a1db0"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050322748Z-7561b27b.zip",
+        "sha256": "313e29ff0e218b37e3fa21508d9e091ec2c38fa1ee96d691b66a1ccc5c670a1e"
+      },
+      "capture_id": "20261118T050322748Z-7561b27b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width35-compat15",
+        "source_sha256": "be93d8dd81cd2440b32d3f643decb11d36414ef4a514a57a8af54b21b81cf64f",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 35,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width42-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050325569Z-3ca41bd3/inputs/word-windows-explicit-hyphen-soft-literal-width42-compat14.docx",
+        "sha256": "62879eafd465b0bb7131ba6b4f1d23f431a28ae0edfc2a7afaebfadc55363c3b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050325569Z-3ca41bd3/capture.json",
+        "sha256": "a482c81d288fc537ec00288b36ace7d4bf2de90892452706c7a0ea1884808740"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050325569Z-3ca41bd3.zip",
+        "sha256": "e0d38939ca662f0b42b56187d48d98ac09fa4443bb3b7363d70c798da7be2ad9"
+      },
+      "capture_id": "20261118T050325569Z-3ca41bd3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width42-compat14",
+        "source_sha256": "62879eafd465b0bb7131ba6b4f1d23f431a28ae0edfc2a7afaebfadc55363c3b",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 42,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width42-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050329350Z-49258bc8/inputs/word-windows-explicit-hyphen-soft-literal-width42-compat15.docx",
+        "sha256": "57d678847bbf5e61d5e8b0e7ed01f26fc6651bbae4f7a820aabfefb63fe95af1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050329350Z-49258bc8/capture.json",
+        "sha256": "3a44d74d7145364ed4609d3a27a1d2c226c4abfb6f937de3101942d25046df11"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050329350Z-49258bc8.zip",
+        "sha256": "b4b5088e4b923da8aade466d9861a9a376c2fed0d349525aac6d84cc5a716c18"
+      },
+      "capture_id": "20261118T050329350Z-49258bc8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width42-compat15",
+        "source_sha256": "57d678847bbf5e61d5e8b0e7ed01f26fc6651bbae4f7a820aabfefb63fe95af1",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 42,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width45-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050332202Z-29b951b0/inputs/word-windows-explicit-hyphen-soft-literal-width45-compat14.docx",
+        "sha256": "5b152d9f183c969d114739b7efa895a94793ce3a17321b279c86fa0039cf7a04"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050332202Z-29b951b0/capture.json",
+        "sha256": "92c5aac8dbdccf46d6cdd0f3366e78178d22567f5ef5475a0680374581cac060"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050332202Z-29b951b0.zip",
+        "sha256": "37e6c5dc9b6ca099adbae288eab74246e38ff7a133cbacbda9e623d19bead963"
+      },
+      "capture_id": "20261118T050332202Z-29b951b0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width45-compat14",
+        "source_sha256": "5b152d9f183c969d114739b7efa895a94793ce3a17321b279c86fa0039cf7a04",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 45,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width45-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050334937Z-e445a483/inputs/word-windows-explicit-hyphen-soft-literal-width45-compat15.docx",
+        "sha256": "44bf10085ad024ba2ebaee79c55fd1305b72295cc45652870f49a0c2277a4454"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050334937Z-e445a483/capture.json",
+        "sha256": "8c6b87588225915b0c8b57a8e847ed95ae0ca761c39c02e23982ec9a1d9834e5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050334937Z-e445a483.zip",
+        "sha256": "1cc24b714025c988dc9f71bc0be932739fef0cfc8475f743c031d8ebcc1e8123"
+      },
+      "capture_id": "20261118T050334937Z-e445a483",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width45-compat15",
+        "source_sha256": "44bf10085ad024ba2ebaee79c55fd1305b72295cc45652870f49a0c2277a4454",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 45,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width48-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050337799Z-865ee4d5/inputs/word-windows-explicit-hyphen-soft-literal-width48-compat14.docx",
+        "sha256": "85ac02c7a8c5f5bb1101cbc78f597c3950a1167ef0e4068ec4030cf9191abafe"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050337799Z-865ee4d5/capture.json",
+        "sha256": "10b71e916b28cf9a3cfb79ed42f1fd0c2e5e880838b001ca72adf0e605328510"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050337799Z-865ee4d5.zip",
+        "sha256": "1159c82e246b4775563a487ada9a1bce88c07f95dc03455da58280e71290570e"
+      },
+      "capture_id": "20261118T050337799Z-865ee4d5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width48-compat14",
+        "source_sha256": "85ac02c7a8c5f5bb1101cbc78f597c3950a1167ef0e4068ec4030cf9191abafe",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 48,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width48-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050340524Z-68ac0eec/inputs/word-windows-explicit-hyphen-soft-literal-width48-compat15.docx",
+        "sha256": "4a8d8db1dc4d61347fbcba147864da4f6839de407d57aafcf797116af6c46b90"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050340524Z-68ac0eec/capture.json",
+        "sha256": "295fae6fccc9e91ef65707e9631cd75f9f65236c9d925081551abd74b7469f79"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050340524Z-68ac0eec.zip",
+        "sha256": "d9d2272073981a01fe6ab20a0455529fd679be063d0709d602ff837af0758c9f"
+      },
+      "capture_id": "20261118T050340524Z-68ac0eec",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width48-compat15",
+        "source_sha256": "4a8d8db1dc4d61347fbcba147864da4f6839de407d57aafcf797116af6c46b90",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 48,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width65-compat14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050343356Z-4a5167e8/inputs/word-windows-explicit-hyphen-soft-literal-width65-compat14.docx",
+        "sha256": "19a554baa099195d5660f90244b7ca0e35c2745095e737a50c2cd09f46d3679f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050343356Z-4a5167e8/capture.json",
+        "sha256": "94aed688cd6ec4f47a0ad44c52624e6a3140a85aedbce55a468e2b6424cdfd68"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050343356Z-4a5167e8.zip",
+        "sha256": "7abf34d69f50196325ebd68f08a9851d551d41f0e0e6bf2c19e1973d6fa07a72"
+      },
+      "capture_id": "20261118T050343356Z-4a5167e8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width65-compat14",
+        "source_sha256": "19a554baa099195d5660f90244b7ca0e35c2745095e737a50c2cd09f46d3679f",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 65,
+        "compatibility_mode": 14,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-explicit-hyphen-soft-literal-width65-compat15",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050346127Z-817e733b/inputs/word-windows-explicit-hyphen-soft-literal-width65-compat15.docx",
+        "sha256": "084758678bd9fbc74e3f07150d5aa268adefbd321b6bdcf108043d70c03cac1a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T050346127Z-817e733b/capture.json",
+        "sha256": "d03d4b23720d242cc35178a7798ed2b77251ab271872278be8472ada632661ae"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T050346127Z-817e733b.zip",
+        "sha256": "82ca3e95919052085ae1a65787b3affba6e9fda13474afc3c234d9bd53c0d8c9"
+      },
+      "capture_id": "20261118T050346127Z-817e733b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "name": "word-windows-explicit-hyphen-soft-literal-width65-compat15",
+        "source_sha256": "084758678bd9fbc74e3f07150d5aa268adefbd321b6bdcf108043d70c03cac1a",
+        "marker_kind": "soft-literal",
+        "available_width_pt": 65,
+        "compatibility_mode": 15,
+        "source_parent": "tests/word-oracle/mac-elsa-synthetic/explicit-hyphen-wrap-boundaries-mac/source.docx",
+        "source_parent_sha256": "64e01a358c7c8c12a61d9b50068785afd05e4f3875dc199e5bdde5f3bb322f15",
+        "mac_word_version": "16.114.4",
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "paragraph_count": 1,
+        "scope": "Keep original section, source run styles, fonts, theme and all other package parts; isolate one electro/magnetic paragraph and vary only marker kind, paragraph width and compatibility mode. Derived control, not a new Word-for-Mac export."
+      },
+      "original_word_font_programs": [
+        {
+          "pdf_font_name": "BCDEEE+ArialMT",
+          "extension": "ttf",
+          "font_kind": "TrueType",
+          "program_sha256": "63aa2fe8e74409a2e772518c8f377539187353ba6af8601abf332e24f745bf3b",
+          "family": [
+            "Arial"
+          ],
+          "style": [
+            "Arrunta",
+            "Navadno",
+            "Normaali",
+            "Normal",
+            "Normale",
+            "Normalny",
+            "Normál",
+            "Normálne",
+            "Regular",
+            "Standaard",
+            "Standard",
+            "normal",
+            "obyčejné",
+            "thường",
+            "Κανονικά",
+            "Обычный"
+          ],
+          "version": [
+            "Version 7.07"
+          ],
+          "postscript_name": [
+            "ArialMT"
+          ]
+        }
+      ],
+      "coordinate_gate_promotion": "pending"
+    }
+  ]
+}

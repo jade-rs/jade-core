@@ -96,8 +96,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    # A stalled dependency install used to burn the full six-hour default.
-    timeout-minutes: 45
+    # Workspace tests can take 37 minutes before the mandatory 2,034-document
+    # edit/export/reopen audit. Keep dependency setup bounded separately.
+    timeout-minutes: 60
     env:
       # Keep hundreds of test binaries/link jobs within hosted-runner disk and memory.
       CARGO_PROFILE_DEV_DEBUG: '0'
@@ -113,13 +114,16 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        timeout-minutes: 10
 
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        timeout-minutes: 10
 
       - name: Cargo property tests (headless API)
         run: cargo test -p jade-docx-editor --all-features property_
 
       - name: Cargo test
+        timeout-minutes: 45
         run: |
           cargo test --all --all-features -- \
             --skip text_extract::tests::extracts_expected_first_wrapped_line_from_yokohama_mini \
@@ -143,6 +147,7 @@ jobs:
         run: python3 -m unittest discover -s tests/word-oracle/mac-probes-20261019/generators -p test_object_spaces_probe.py
 
       - name: Audit edited DOCX fixture corpus
+        timeout-minutes: 15
         run: |
           python3 -m unittest discover -s scripts -p test_audit_mac_release_corpus.py
           python3 scripts/audit-mac-release-corpus.py
@@ -299,6 +304,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_minimum_line_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_percentage_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_size_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_header_table_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_table_style_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_heading_break_probes.py
