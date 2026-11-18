@@ -19,6 +19,23 @@ Yu Mincho 1.92. No result is assumed to apply to another Word/font version.
 
 The required source tests reproduce every input byte, preserve all package
 parts except `document.xml` and `settings.xml`, protect the original Mac
-reference, and independently compare Word's screen and PDF origins. Pending
-coordinate observations remain identified as pending until native rendering
-passes the coordinate gate; the native renderer never supplies expected data.
+reference, and independently compare Word's screen and PDF origins.
+
+`check_windows_minimum_lines.py` asserts all 108 controls and 6,264 original
+glyph origins. It compares native screen/logical coordinates and independently
+painted PDF coordinates against original Word EMF/PDF data, checks that PDF
+export preserves screen pixels, requires the original embedded font programs,
+and rejects extra guide/border paint. Mutation tests reject moved, missing,
+reordered and repaginated glyphs. GitHub Actions requires this gate on Windows.
+
+Windows minimum-spaced lines now use each physical line's known font box and
+place additional minimum leading above that box. For the original Yu Mincho
+12pt body with a 12pt minimum, Windows Word's first baselines are 86.28/106.34pt;
+the corrected native baselines are 86.26/106.33pt. Mac keeps its original
+calculation and reference data. The original `exact-and-minimum-lines-mac`
+input is also registered with independent Mac/Windows expected coordinates.
+
+The native renderer receives source DOCX bytes and fonts, never expected
+coordinates. The original captures and font/version facts remain retained
+after promotion to a required gate. Observations outside this validated scope
+retain their pending status.
