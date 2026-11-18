@@ -3,6 +3,7 @@
 //! This module provides functions to execute DrawCommand against any
 //! [`Painter`] backend. The browser renderer supplies the canvas-backed one.
 
+use std::mem::MaybeUninit;
 use std::rc::Rc;
 
 use crate::document::FontHint;
@@ -1704,8 +1705,6 @@ fn is_single_bmp_glyph_range(text: &str, start: usize, end: usize) -> bool {
     )
 }
 
-// Keep the batch's stack buffers out of the cached-command dispatch frame.
-#[inline(never)]
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
@@ -1730,12 +1729,14 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     // Runs up to 64 glyphs use a stack buffer. Longer runs keep the
     // same exact positions in a heap buffer rather than truncating the batch.
     const LOCAL_CAPACITY: usize = 64;
-    let mut local_positions = [0.0; LOCAL_CAPACITY];
+    // Every submitted position is written below. Avoid clearing unused stack
+    // slots or zeroing a heap allocation that the loop immediately replaces.
+    let mut local_positions = [MaybeUninit::<f64>::uninit(); LOCAL_CAPACITY];
     let mut heap_positions;
     let x_positions = if glyphs.len() <= local_positions.len() {
         &mut local_positions[..glyphs.len()]
     } else {
-        heap_positions = vec![0.0; glyphs.len()];
+        heap_positions = vec![MaybeUninit::<f64>::uninit(); glyphs.len()];
         &mut heap_positions[..]
     };
     let mut single_font_index: Option<u16> = None;
@@ -1767,8 +1768,16 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
             None => single_font_index = Some(glyph.font_index),
             _ => {}
         }
-        *x_position = x + glyph.x_offset;
+        x_position.write(x + glyph.x_offset);
     }
+
+    // SAFETY: the slice and glyph list have the same length, and the completed
+    // loop wrote every slot. Early validation failures return before this
+    // conversion. MaybeUninit<f64> has f64's size/alignment, and both backing
+    // buffers stay alive and immutable through the painter call.
+    let x_positions = unsafe {
+        std::slice::from_raw_parts(x_positions.as_ptr().cast::<f64>(), x_positions.len())
+    };
 
     // Every endpoint in the borrowed span was checked by glyph.text above.
     let text = copied_text
@@ -1787,14 +1796,17 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         // Build indexes only for a validated multi-font batch, keeping buffer
         // management out of the common single-font loop. Short runs use stack
         // storage; longer runs retain their complete index list on the heap.
-        let mut local_font_indexes = [0; LOCAL_CAPACITY];
+        let mut local_font_indexes = [MaybeUninit::<u16>::uninit(); LOCAL_CAPACITY];
         let heap_font_indexes;
         let font_indexes = if glyphs.len() <= LOCAL_CAPACITY {
             let indexes = &mut local_font_indexes[..glyphs.len()];
             for (index, glyph) in indexes.iter_mut().zip(glyphs) {
-                *index = glyph.font_index;
+                index.write(glyph.font_index);
             }
-            &*indexes
+            // SAFETY: the same-length loop initialized every index above.
+            // MaybeUninit<u16> has u16's layout, and this array outlives the
+            // immutable slice passed to the painter below.
+            unsafe { std::slice::from_raw_parts(indexes.as_ptr().cast::<u16>(), indexes.len()) }
         } else {
             heap_font_indexes = glyphs
                 .iter()
