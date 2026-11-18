@@ -32,8 +32,10 @@ use std::rc::Rc;
 /// when loading the legacy string-only wire representation.
 #[derive(Clone, PartialEq, Eq)]
 pub struct CommandText {
-    text: Rc<str>,
-    has_soft_hyphen: bool,
+    // The final ASCII byte caches control presence; it is never part of the
+    // logical text or legacy wire representation. Keeping it in the shared
+    // allocation preserves the original two-word command payload.
+    encoded: Rc<str>,
 }
 
 impl CommandText {
@@ -47,14 +49,27 @@ impl CommandText {
 
     #[inline]
     pub(crate) fn has_soft_hyphen(&self) -> bool {
-        self.has_soft_hyphen
+        self.encoded.as_bytes().last() == Some(&1)
     }
 
     pub(crate) fn from_plan(text: &str, has_soft_hyphen: bool) -> Self {
-        Self {
-            text: Rc::from(text),
-            has_soft_hyphen,
+        let length = text.len().checked_add(1).expect("command text too long");
+        let mut encoded = Rc::<[u8]>::new_uninit_slice(length);
+        let buffer = Rc::get_mut(&mut encoded).expect("new command text must be unique");
+        for (slot, value) in buffer[..text.len()].iter_mut().zip(text.bytes()) {
+            slot.write(value);
         }
+        buffer[text.len()].write(u8::from(has_soft_hyphen));
+        // SAFETY: every byte was initialized above, including the cached suffix.
+        // The source is valid UTF-8 and the suffix is ASCII (0 or 1), so the
+        // complete allocation is also valid UTF-8. Both DSTs have the same
+        // byte length/alignment. into_raw transfers this single Rc ownership
+        // exactly once to from_raw; no alias is created or allocation copied.
+        let encoded = unsafe {
+            let bytes = encoded.assume_init();
+            Rc::from_raw(Rc::into_raw(bytes) as *const str)
+        };
+        Self { encoded }
     }
 
     #[inline]
@@ -67,54 +82,53 @@ impl CommandText {
 
 impl From<Rc<str>> for CommandText {
     fn from(text: Rc<str>) -> Self {
-        let has_soft_hyphen = Self::text_has_soft_hyphen(&text);
-        Self {
-            text,
-            has_soft_hyphen,
-        }
+        Self::from_plan(&text, Self::text_has_soft_hyphen(&text))
     }
 }
 
 impl From<&str> for CommandText {
     fn from(text: &str) -> Self {
-        Self::from(Rc::<str>::from(text))
+        Self::from_plan(text, Self::text_has_soft_hyphen(text))
     }
 }
 
 impl From<String> for CommandText {
     fn from(text: String) -> Self {
-        Self::from(Rc::<str>::from(text))
+        Self::from(text.as_str())
     }
 }
 
 impl std::ops::Deref for CommandText {
     type Target = str;
+    #[inline]
     fn deref(&self) -> &str {
-        &self.text
+        // The constructor always appends exactly one ASCII suffix byte.
+        &self.encoded[..self.encoded.len() - 1]
     }
 }
 
 impl AsRef<str> for CommandText {
+    #[inline]
     fn as_ref(&self) -> &str {
-        &self.text
+        self
     }
 }
 
 impl std::fmt::Debug for CommandText {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self.text, f)
+        std::fmt::Debug::fmt(self.as_ref(), f)
     }
 }
 
 impl std::fmt::Display for CommandText {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.text)
+        f.write_str(self.as_ref())
     }
 }
 
 impl Serialize for CommandText {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.text.serialize(serializer)
+        self.as_ref().serialize(serializer)
     }
 }
 

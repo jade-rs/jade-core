@@ -369,7 +369,7 @@ fn discretionary_hyphen_cached_text_preserves_legacy_wire_and_unicode_identity()
     ] {
         let text = CommandText::from(source);
         let cloned = text.clone();
-        assert!(Rc::ptr_eq(&text.text, &cloned.text));
+        assert!(Rc::ptr_eq(&text.encoded, &cloned.encoded));
         assert_eq!(cloned.has_soft_hyphen(), has_control);
         let wire = serde_json::to_string(&text).unwrap();
         assert_eq!(wire, serde_json::to_string(source).unwrap());
@@ -402,4 +402,30 @@ fn discretionary_hyphen_text_run_legacy_roundtrip_and_offset_keep_cached_presenc
     assert_eq!(y, 25.0);
     assert_eq!(text.as_ref(), source);
     assert!(text.has_soft_hyphen());
+}
+
+#[test]
+fn shared_control_cache_keeps_empty_unicode_and_terminal_control_bytes_exact() {
+    for source in [
+        "",
+        "plain",
+        "\0",
+        "\u{1}",
+        "a\0\u{1}",
+        "\u{ad}",
+        "日\u{ad}😀\0\u{1}",
+    ] {
+        let text = CommandText::from(source);
+        let cloned = text.clone();
+        drop(text);
+        assert_eq!(cloned.as_ref(), source);
+        assert_eq!(cloned.has_soft_hyphen(), source.contains('\u{ad}'));
+        assert_eq!(format!("{cloned:?}"), format!("{source:?}"));
+        assert_eq!(cloned.to_string(), source);
+        let json = serde_json::to_string(&cloned).unwrap();
+        assert_eq!(json, serde_json::to_string(source).unwrap());
+        let restored: CommandText = serde_json::from_str(&json).unwrap();
+        assert_eq!(restored.as_ref(), source);
+        assert_eq!(restored, cloned);
+    }
 }

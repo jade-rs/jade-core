@@ -3417,6 +3417,9 @@ mod painter_backend_tests {
                 "U+{value:04X}"
             );
             assert_eq!(CommandText::text_has_soft_hyphen(text), ch == '\u{ad}');
+            let stored = CommandText::from(&*text);
+            assert_eq!(stored.as_ref(), text);
+            assert_eq!(stored.has_soft_hyphen(), ch == '\u{ad}');
             assert_eq!(
                 try_append_bmp_glyph(&mut output, text),
                 expected,
