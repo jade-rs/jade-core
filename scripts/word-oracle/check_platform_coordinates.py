@@ -115,7 +115,19 @@ REQUIRED_CAPTURES = {
     'word-mac-probe-squeeze-plain': '20261114T020357360Z-c1ab8e03',
     'word-mac-probe-vert-align-sweep-2': '20261114T004704886Z-7e8168a7',
     'wrong-num-mac': '20261114T020410811Z-30c286b3',
+    'floating-simple-position-mac': '20261114T004143028Z-b4cb9887',
+    'floating-through-concave-mac': '20261114T004143028Z-b4cb9887',
+    'floating-z-order-mac': '20261114T004143028Z-b4cb9887',
 }
+
+# These original inputs have distinct screen and print origins in Windows
+# Word. Their live layout must match EMF; their actual vector PDF must match
+# Word's PDF. Existing shared screen/PDF cases retain all four assertions.
+INDEPENDENT_OUTPUT_CASES = frozenset({
+    'floating-simple-position-mac',
+    'floating-through-concave-mac',
+    'floating-z-order-mac',
+})
 
 
 def require(condition, message):
@@ -328,6 +340,12 @@ def verify(root=ROOT):
         require(bool(case['windows']), 'Missing Windows version expectations')
         captures = set()
         for windows in case['windows']:
+            expected_context = ('independent-screen-print' if name in INDEPENDENT_OUTPUT_CASES
+                                else 'shared-screen-pdf')
+            require(windows.get('output_context', 'shared-screen-pdf') == expected_context,
+                    'Established screen/PDF coordinate assertions changed')
+            require(name not in INDEPENDENT_OUTPUT_CASES or 'archive' in windows,
+                    'Independent output contexts require original archived Word outputs')
             if 'archive' in windows:
                 require('capture' not in windows and 'drawing_reference' not in windows,
                         'Ambiguous original Windows reference')
@@ -374,6 +392,7 @@ def verify(root=ROOT):
 def check_windows(executable, output, root=ROOT):
     require(sys.platform == 'win32', 'Windows font measurements require Windows')
     cases = verify(root)
+    independent = INDEPENDENT_OUTPUT_CASES
     output.mkdir(parents=True, exist_ok=True)
     checked = 0
     for name, source, manifest, document, drawing, font_source in cases:
@@ -400,7 +419,8 @@ def check_windows(executable, output, root=ROOT):
         subprocess.run([str(executable), str(source), str(actual_path), 'windows',
                         str(painted_path), '--unclipped-tables', *options], check=True)
         actual = read_json(actual_path)
-        compare(pdf_origins(original_pdf, True), actual, name + '/PDF-unclipped')
+        if name not in independent:
+            compare(pdf_origins(original_pdf, True), actual, name + '/PDF-unclipped')
         visible_path = target / 'visible.json'
         subprocess.run([str(executable), str(source), str(visible_path), 'windows', *options], check=True)
         visible = pdf_origins(original_pdf)
@@ -414,12 +434,33 @@ def check_windows(executable, output, root=ROOT):
         projection = capture.get('table_glyph_projection', 'visible')
         checked += compare(drawing, actual if projection == 'unclipped' else actual_visible,
                            name + '/EMF')
-        compare(visible, actual_visible, name + '/PDF-visible')
+        if name in independent:
+            assert_independent_outputs(drawing, actual_visible, actual,
+                                       visible_path.with_suffix('.png'), actual_path.with_suffix('.png'),
+                                       original_pdf, painted_path, name)
+        else:
+            compare(visible, actual_visible, name + '/PDF-visible')
         require(painted_path.read_bytes() != original_pdf.read_bytes(), 'Word self-comparison')
         compare(visible, pdf_origins(painted_path), name + '/painted-PDF')
         print(f'{name}: {document["pages"]} pages, {len(drawing["glyphs"])} glyphs, '
               f'Windows Word {capture["word"]["product_version"]}: PASS', flush=True)
     return checked
+
+
+def assert_independent_outputs(drawing, screen, snapshot, screen_png, snapshot_png,
+                               word_pdf, painted_pdf, label):
+    """Keep live origins stable and assert each actual output against Word."""
+    compare(drawing, screen, label + '/screen-EMF')
+    compare(drawing, snapshot, label + '/export-preserved-EMF')
+    require(screen['glyphs'] == snapshot['glyphs']
+            and screen['page_count'] == snapshot['page_count'],
+            label + ': PDF export changed live logical origins')
+    require(screen_png.read_bytes() == snapshot_png.read_bytes(),
+            label + ': PDF export changed live screen pixels')
+    require(word_pdf.read_bytes() != painted_pdf.read_bytes(), label + ': Word PDF self-comparison')
+    for unclipped in (False, True):
+        compare(pdf_origins(word_pdf, unclipped), pdf_origins(painted_pdf, unclipped),
+                label + ('/vector-PDF-unclipped' if unclipped else '/vector-PDF-visible'))
 
 
 if __name__ == '__main__':
