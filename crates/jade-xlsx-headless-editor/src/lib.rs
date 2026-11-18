@@ -3572,11 +3572,14 @@ impl HeadlessWorkbook {
 
         ensure_dense_result_fits(end.column - start.column + 1, end.row - start.row + 1)?;
 
+        let conditional = self.conditional_styles(sheet);
         let rows = (start.row..=end.row)
             .map(|row| {
                 let source_row = find_row(sheet, row);
                 (start.column..=end.column)
-                    .map(|column| self.view_in_row(sheet, source_row, CellRef::new(column, row)))
+                    .map(|column| {
+                        self.view_in_row(sheet, &conditional, source_row, CellRef::new(column, row))
+                    })
                     .collect()
             })
             .collect();
@@ -3601,11 +3604,19 @@ impl HeadlessWorkbook {
         let columns = end.column - start.column + 1;
         let row_count = end.row - start.row + 1;
         ensure_dense_result_fits(columns, row_count)?;
+        let conditional = self.conditional_styles(sheet);
         let rows = (start.row..=end.row)
             .map(|row| {
                 let source_row = find_row(sheet, row);
                 (start.column..=end.column)
-                    .map(|column| self.display_in_row(sheet, source_row, CellRef::new(column, row)))
+                    .map(|column| {
+                        self.display_in_row(
+                            sheet,
+                            &conditional,
+                            source_row,
+                            CellRef::new(column, row),
+                        )
+                    })
                     .collect()
             })
             .collect();
@@ -3629,9 +3640,10 @@ impl HeadlessWorkbook {
         };
         let mut hits = Vec::new();
         for (index, sheet) in self.workbook.sheets.iter().enumerate() {
+            let conditional = self.conditional_styles(sheet);
             for row in &sheet.rows {
                 for cell in &row.cells {
-                    let display = self.display_of(sheet, row, cell);
+                    let display = self.display_of(sheet, &conditional, row, cell);
                     let display_haystack = if case_sensitive {
                         display.clone()
                     } else {
@@ -3665,12 +3677,15 @@ impl HeadlessWorkbook {
 
     fn view(&self, sheet: &Sheet, reference: CellRef) -> CellView {
         let row = find_row(sheet, reference.row);
-        self.view_in_row(sheet, row, reference)
+        let conditional = self.conditional_styles(sheet);
+        self.view_in_row(sheet, &conditional, row, reference)
     }
 
+    /// `conditional` must have been built for `sheet`.
     fn view_in_row(
         &self,
         sheet: &Sheet,
+        conditional: &jade_xlsx_layout::conditional_format::ConditionalStyles<'_>,
         row: Option<&jade_xlsx_reader::Row>,
         reference: CellRef,
     ) -> CellView {
@@ -3685,11 +3700,7 @@ impl HeadlessWorkbook {
         let formula = sheet
             .formula_source_at(reference)
             .map(|(_, source)| formula_text::to_display_formula(source));
-        let conditional_style = jade_xlsx_layout::conditional_format::ConditionalStyles::new(
-            sheet,
-            &self.workbook.styles,
-        )
-        .for_cell(reference, value);
+        let conditional_style = conditional.for_cell(reference, value);
         let number_format = conditional_style.number_format_code.or_else(|| {
             format
                 .and_then(|format| self.workbook.styles.number_format_code(format))
@@ -3781,9 +3792,20 @@ impl HeadlessWorkbook {
         }
     }
 
+    /// The conditional-format state of one sheet. Building it walks the whole
+    /// sheet, so per-cell helpers take it by reference and each top-level
+    /// call builds one per sheet.
+    fn conditional_styles<'a>(
+        &'a self,
+        sheet: &'a Sheet,
+    ) -> jade_xlsx_layout::conditional_format::ConditionalStyles<'a> {
+        jade_xlsx_layout::conditional_format::ConditionalStyles::new(sheet, &self.workbook.styles)
+    }
+
     fn display_in_row(
         &self,
         sheet: &Sheet,
+        conditional: &jade_xlsx_layout::conditional_format::ConditionalStyles<'_>,
         row: Option<&jade_xlsx_reader::Row>,
         reference: CellRef,
     ) -> String {
@@ -3791,12 +3813,19 @@ impl HeadlessWorkbook {
             return String::new();
         };
         find_cell(row, reference.column)
-            .map(|cell| self.display_of(sheet, row, cell))
+            .map(|cell| self.display_of(sheet, conditional, row, cell))
             .unwrap_or_default()
     }
 
-    /// The text the shells would draw for this cell.
-    fn display_of(&self, sheet: &Sheet, row: &jade_xlsx_reader::Row, cell: &Cell) -> String {
+    /// The text the shells would draw for this cell. `conditional` must have
+    /// been built for `sheet`.
+    fn display_of(
+        &self,
+        sheet: &Sheet,
+        conditional: &jade_xlsx_layout::conditional_format::ConditionalStyles<'_>,
+        row: &jade_xlsx_reader::Row,
+        cell: &Cell,
+    ) -> String {
         let format = self
             .workbook
             .styles
@@ -3805,11 +3834,7 @@ impl HeadlessWorkbook {
                 cell.style_index,
                 Some(row),
             ));
-        let conditional_style = jade_xlsx_layout::conditional_format::ConditionalStyles::new(
-            sheet,
-            &self.workbook.styles,
-        )
-        .for_cell(cell.reference, &cell.value);
+        let conditional_style = conditional.for_cell(cell.reference, &cell.value);
         number_format::format_value(
             &cell.value,
             conditional_style.number_format_code.as_deref().or_else(|| {

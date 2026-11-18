@@ -1795,11 +1795,15 @@ impl GridSelection {
         self.range
     }
 
+    /// Per-header scan reference for the test oracle; rendering resolves the
+    /// range once and uses `range_has_column`.
+    #[cfg(test)]
     fn contains_column(&self, layout: &SheetLayout, index: u32) -> bool {
         let range = self.effective_range(layout);
         (range.start.column..=range.end.column).contains(&index)
     }
 
+    #[cfg(test)]
     fn contains_row(&self, layout: &SheetLayout, index: u32) -> bool {
         let range = self.effective_range(layout);
         (range.start.row..=range.end.row).contains(&index)
@@ -2006,6 +2010,16 @@ fn render_selection<P: Painter>(
     Ok(())
 }
 
+/// Whether a selection's effective range covers the column.
+fn range_has_column(range: CellRange, index: u32) -> bool {
+    (range.start.column..=range.end.column).contains(&index)
+}
+
+/// Whether a selection's effective range covers the row.
+fn range_has_row(range: CellRange, index: u32) -> bool {
+    (range.start.row..=range.end.row).contains(&index)
+}
+
 /// The side of the fill handle square, in px.
 const FILL_HANDLE_SIZE: f64 = 6.0;
 
@@ -2034,6 +2048,9 @@ fn render_headers<P: Painter>(
         return Ok(());
     }
 
+    // The selection's effective range costs a scan of the layout's cells when a
+    // single cell is selected, so it is resolved once rather than per header.
+    let selected_range = selected.map(|selection| selection.effective_range(layout));
     painter.set_fill_style_str(&style.background);
     painter.fill_rect(0.0, 0.0, surface_width, metrics.column_height);
     painter.fill_rect(0.0, 0.0, metrics.row_width, surface_height);
@@ -2055,7 +2072,7 @@ fn render_headers<P: Painter>(
                 continue;
             }
             let x = metrics.row_width + regions.frozen_width + entry.offset - regions.main.x;
-            if selected.is_some_and(|selection| selection.contains_column(layout, index)) {
+            if selected_range.is_some_and(|range| range_has_column(range, index)) {
                 painter.set_fill_style_str(&style.highlight);
                 painter.fill_rect(
                     x,
@@ -2084,7 +2101,7 @@ fn render_headers<P: Painter>(
                 continue;
             }
             let y = metrics.column_height + regions.frozen_height + entry.offset - regions.main.y;
-            if selected.is_some_and(|selection| selection.contains_row(layout, index)) {
+            if selected_range.is_some_and(|range| range_has_row(range, index)) {
                 painter.set_fill_style_str(&style.highlight);
                 painter.fill_rect(
                     metrics.outline_width,
@@ -2115,7 +2132,7 @@ fn render_headers<P: Painter>(
             continue;
         }
         let x = metrics.row_width + entry.offset;
-        if selected.is_some_and(|selection| selection.contains_column(layout, entry.index)) {
+        if selected_range.is_some_and(|range| range_has_column(range, entry.index)) {
             painter.set_fill_style_str(&style.highlight);
             painter.fill_rect(
                 x,
@@ -2144,7 +2161,7 @@ fn render_headers<P: Painter>(
             continue;
         }
         let y = metrics.column_height + entry.offset;
-        if selected.is_some_and(|selection| selection.contains_row(layout, entry.index)) {
+        if selected_range.is_some_and(|range| range_has_row(range, entry.index)) {
             painter.set_fill_style_str(&style.highlight);
             painter.fill_rect(
                 metrics.outline_width,
@@ -2415,5 +2432,131 @@ mod tests {
         assert!((below - std::f64::consts::FRAC_PI_4).abs() < 0.000_001);
         assert!(text_rotation_radians(0).is_none());
         assert!(text_rotation_radians(255).is_none());
+    }
+    /// A sheet of `columns * rows` text cells, with one merge, laid out.
+    fn big_layout(columns: u32, rows: u32) -> jade_xlsx_layout::SheetLayout {
+        use jade_xlsx_reader::{Cell, CellRange, CellRef, CellValue, Row, Sheet, StyleTable};
+        let mut sheet = Sheet {
+            name: "Sheet1".into(),
+            part_name: "xl/worksheets/sheet1.xml".into(),
+            visibility: jade_xlsx_reader::SheetVisibility::Visible,
+            columns: Vec::new(),
+            rows: Vec::new(),
+            merges: vec![CellRange {
+                start: CellRef::new(10, 50),
+                end: CellRef::new(12, 52),
+            }],
+            hyperlinks: Vec::new(),
+            comments: Vec::new(),
+            data_validations: Vec::new(),
+            conditional_formats: Vec::new(),
+            auto_filter: None,
+            filter_mode: None,
+            filter_row_state: None,
+            default_column_width_chars: None,
+            default_row_height_points: Some(15.0),
+            default_row_custom_height: false,
+            default_rows_hidden: false,
+            show_grid_lines: true,
+            show_formulas: false,
+            show_zeros: true,
+            page_break_preview: false,
+            tab_selected: false,
+            show_headers: true,
+            grid_color: None,
+            zoom_percent: None,
+            freeze_pane: None,
+            tables: Vec::new(),
+            header_footer: None,
+            row_breaks: Vec::new(),
+            column_breaks: Vec::new(),
+            page_setup: Default::default(),
+            shapes: Vec::new(),
+            array_formulas: Vec::new(),
+            data_tables: Vec::new(),
+            scenarios: None,
+            phonetic_readings: Default::default(),
+            rich_text: Default::default(),
+            tab_color: None,
+            sparkline_groups: Vec::new(),
+            ignored_errors: Vec::new(),
+            outline: Default::default(),
+            protection: None,
+        };
+        sheet.rows = (0..rows)
+            .map(|index| Row {
+                index,
+                height_points: None,
+                custom_height: false,
+                custom_format: false,
+                hidden: false,
+                style_index: None,
+                cells: (0..columns)
+                    .map(|column| Cell {
+                        reference: CellRef::new(column, index),
+                        value: CellValue::Text(format!("r{index}c{column}")),
+                        style_index: None,
+                        formula: None,
+                    })
+                    .collect(),
+            })
+            .collect();
+        jade_xlsx_layout::layout_sheet(
+            &sheet,
+            &StyleTable::default(),
+            &jade_xlsx_layout::LayoutOptions {
+                measure: std::rc::Rc::new(jade_xlsx_layout::HeuristicMeasure),
+                ..jade_xlsx_layout::LayoutOptions::default()
+            },
+        )
+    }
+
+    /// The header highlight decision resolved once per render (new) equals the
+    /// per-header scan (old, kept as `contains_column`/`contains_row`) for every
+    /// header of a several-thousand-cell sheet, scrolled away from the origin.
+    #[test]
+    fn header_selection_matches_the_per_header_scan() {
+        use super::{range_has_column, range_has_row, GridSelection};
+        use jade_xlsx_reader::CellRef;
+        let layout = big_layout(60, 100);
+        assert!(layout.cells.len() >= 5900);
+        let viewport = Rect {
+            x: 800.0,
+            y: 1200.0,
+            width: 400.0,
+            height: 300.0,
+        };
+        let visible = layout
+            .visible_range(viewport)
+            .expect("the viewport shows cells");
+        assert!(visible.first_row > 10 && visible.last_row < 99);
+        assert!(visible.first_column > 5 && visible.last_column < 59);
+        let selections = [
+            // A plain single cell, one that anchors the merge, one inside it
+            // that does not, and a real range.
+            GridSelection::cell(CellRef::new(5, 5)),
+            GridSelection::cell(CellRef::new(10, 50)),
+            GridSelection::cell(CellRef::new(11, 51)),
+            GridSelection::range(CellRef::new(9, 48), CellRef::new(14, 55)),
+            GridSelection::cell(CellRef::new(500, 500)),
+        ];
+        let mut highlighted = 0;
+        for selection in selections {
+            let range = selection.effective_range(&layout);
+            for index in 0..layout.columns.len() as u32 {
+                let old = selection.contains_column(&layout, index);
+                assert_eq!(old, range_has_column(range, index), "column {index}");
+                highlighted += usize::from(old);
+            }
+            for index in 0..layout.rows.len() as u32 {
+                let old = selection.contains_row(&layout, index);
+                assert_eq!(old, range_has_row(range, index), "row {index}");
+                highlighted += usize::from(old);
+            }
+        }
+        // The merge anchor really widens to the merged rectangle.
+        let merged = selections[1].effective_range(&layout);
+        assert_eq!((merged.end.column, merged.end.row), (12, 52));
+        assert!(highlighted > 0);
     }
 }

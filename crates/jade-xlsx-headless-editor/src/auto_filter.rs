@@ -700,6 +700,7 @@ impl HeadlessWorkbook {
         let mut group_tokens = std::collections::HashMap::<(bool, String), HashSet<String>>::new();
         let mut truncated = false;
         let mut comparison_budget = CUSTOM_COMPARISON_LIMIT;
+        let conditional = self.conditional_styles(sheet);
         for row in target.first..=target.end {
             let row = sheet
                 .rows
@@ -711,7 +712,7 @@ impl HeadlessWorkbook {
                 let cell = row.and_then(|row| find_cell(row, *column));
                 let value = cell.map(|cell| &cell.value).unwrap_or(&CellValue::Empty);
                 let display = cell
-                    .and_then(|cell| row.map(|row| self.display_of(sheet, row, cell)))
+                    .and_then(|cell| row.map(|row| self.display_of(sheet, &conditional, row, cell)))
                     .unwrap_or_default();
                 eligible &= predicate.matches(
                     value,
@@ -733,7 +734,7 @@ impl HeadlessWorkbook {
                     || matches!(&cell.value,CellValue::Text(text) if text.is_empty())
             });
             let text = cell
-                .and_then(|cell| row.map(|row| self.display_of(sheet, row, cell)))
+                .and_then(|cell| row.map(|row| self.display_of(sheet, &conditional, row, cell)))
                 .unwrap_or_default();
             let key = (blank, text.to_lowercase());
             let value = cell.map(|cell| scalar_key(&cell.value)).unwrap_or_default();
@@ -797,6 +798,7 @@ impl HeadlessWorkbook {
                             .map(|index| &sheet.rows[index]);
                         self.display_in_row(
                             sheet,
+                            &conditional,
                             row,
                             CellRef {
                                 column,
@@ -1339,6 +1341,7 @@ impl HeadlessWorkbook {
             return Err(error("filter condition evaluation limit exceeded"));
         }
         let mut comparison_budget = CUSTOM_COMPARISON_LIMIT;
+        let conditional = self.conditional_styles(sheet);
         for index in indices {
             let row = sheet
                 .rows
@@ -1354,7 +1357,9 @@ impl HeadlessWorkbook {
                     let cell = row.and_then(|row| find_cell(row, *column));
                     let value = cell.map(|cell| &cell.value).unwrap_or(&CellValue::Empty);
                     let display = cell
-                        .and_then(|cell| row.map(|row| self.display_of(sheet, row, cell)))
+                        .and_then(|cell| {
+                            row.map(|row| self.display_of(sheet, &conditional, row, cell))
+                        })
                         .unwrap_or_default();
                     filtered |= !predicate.matches(
                         value,
