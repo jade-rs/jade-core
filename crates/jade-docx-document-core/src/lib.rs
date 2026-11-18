@@ -97,6 +97,11 @@ pub mod font_resolver {
 }
 
 #[cfg(test)]
+pub mod line_metrics {
+    pub use jade_docx_layout_engine::line_metrics::*;
+}
+
+#[cfg(test)]
 pub mod text_extract {
     pub use jade_docx_layout_engine::text_extract::*;
 }

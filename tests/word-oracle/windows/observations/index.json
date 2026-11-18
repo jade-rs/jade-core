@@ -48709,6 +48709,260 @@
           "opened_filename": "word-windows-explicit-hyphen-soft-literal-width65-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7.zip",
+      "archive_sha256": "be8de0a534ebd686d40cfeff2121564bc556546df4198f371be800aac12c61b9",
+      "capture_id": "20261118T080226902Z-9f79aaf7",
+      "capture_sha256": "3ec06467a43358e01a676672925fceb2a36467ac2a3ba6ad4943e4f2a01ee1fc",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-hyphen-mixed-literal-optional-w45-m14",
+          "source_sha256": "a49b49bbaf23c86610eef856dabadc022341dc5eac490dc839b5070cbcd831d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-literal-optional-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-literal-optional-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-literal-optional-w45-m15",
+          "source_sha256": "dbcbb78d83e2bcc20f7f74c3ede165c7138b3f387bd265639de0c06ee8797039",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-literal-optional-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-literal-optional-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-literal-optional-w65-m14",
+          "source_sha256": "b61b444e301dd5340b40d5fcb063354b108f755afbdfc44cc8b1b91ebe644815",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-literal-optional-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-literal-optional-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-literal-optional-w65-m15",
+          "source_sha256": "27501da2edea9ff5cb9e9ed2f9135b57c110179df9e7b2bc3639c0e6e910ffb0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-literal-optional-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-literal-optional-w65-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-optional-literal-w45-m14",
+          "source_sha256": "de73552cc12421259c2261506ab7169d442e02023863b646a378ca49ef8f33fe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-optional-literal-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-optional-literal-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-optional-literal-w45-m15",
+          "source_sha256": "85a7582e198b077dbc8281af4e79d8872b57402bc956d55bb1a237d3a7d3c684",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-optional-literal-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-optional-literal-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-optional-literal-w65-m14",
+          "source_sha256": "26029ff4fc376a13249777de50ccf57d8cea7608f450e9dda29357f7e98c58f9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-optional-literal-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-optional-literal-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-optional-literal-w65-m15",
+          "source_sha256": "6b99eece67abde173fb4109b3c108321d785237442b49a103fb99df60ed0f3cb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-optional-literal-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-optional-literal-w65-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-separated-w45-m14",
+          "source_sha256": "fa2729c881501a537819c9bb75dbea2561070f45d83f836102545cc11a0fe4a3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-separated-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-separated-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-separated-w45-m15",
+          "source_sha256": "04875c31e5da826a00a1217baea2f5c8afd92e95a73f0d1c9e6c1a3ebe6434e1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-separated-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-separated-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-separated-w65-m14",
+          "source_sha256": "1803a18697dee336aa55c822e4165b68639efe438a8f68539e69e4a33c85efd1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-separated-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-separated-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-separated-w65-m15",
+          "source_sha256": "132738e3854eea1c34f5f32bc5c744fda05a863b3964ec640ff7e37937039463",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-separated-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-separated-w65-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-unicode-prefix-w45-m14",
+          "source_sha256": "0b6783d738588c252e4374f2817b17c13f46180f27ba615c43a9e1e3cc996fbc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-unicode-prefix-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-unicode-prefix-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-unicode-prefix-w45-m15",
+          "source_sha256": "54439257cddd1ef7449670652e8ac8456d63b748e4d37481fb12dbe47ca7c625",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-unicode-prefix-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-unicode-prefix-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-unicode-prefix-w65-m14",
+          "source_sha256": "ddc7916db8447a305a347ab7433f193ed8a33b295e26d7757072cdd819443aa2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-unicode-prefix-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-unicode-prefix-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-unicode-prefix-w65-m15",
+          "source_sha256": "5a6a2f51a86e2231f1f449a2c213eb8bf1fa4684089cf6f85571fc1aa097945f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-unicode-prefix-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-unicode-prefix-w65-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-split-runs-w45-m14",
+          "source_sha256": "103460c0a34f14a63d64cace896093a0d82a604ca8bbe03c0fdb03970e1a2c57",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-split-runs-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-split-runs-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-split-runs-w45-m15",
+          "source_sha256": "5622db19850ec1bae6b0800c4d29c2c69f9d8aac6775db0d7c5fb3084e2db007",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-split-runs-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-split-runs-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-split-runs-w65-m14",
+          "source_sha256": "3a8bfde5feb4f305a311a36c3af9bc2b852812cdcf92fb893ebe5855bf95812a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-split-runs-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-split-runs-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-split-runs-w65-m15",
+          "source_sha256": "791b1dfc763bc1ae0f2bec9bd471707287399d6bacc6f6396c0ba1c6b41dc4c3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T080226902Z-9f79aaf7/inputs/word-windows-hyphen-mixed-split-runs-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-split-runs-w65-m15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T103233726Z-dd9be03e.zip",
+      "archive_sha256": "b911bdb78aa14a4e5080cdc797337f7b2b253a602c1d07a2ed36357d667fcd78",
+      "capture_id": "20261118T103233726Z-dd9be03e",
+      "capture_sha256": "617c10fd58007f61230acfcc346142bf39fe1c44a353ef9b5a98868822a5c2ca",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-hyphen-mixed-break-literals-w45-m14",
+          "source_sha256": "bcc3b15fc9c1772e9c829a3dab1f5dcfb61d364a446cb0e6da183fbfc98f21d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-literals-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-literals-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-literals-w45-m15",
+          "source_sha256": "ad21ae08aaef91619941fa25d60c53819d4c268376afdb46bec994ec4545f49f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-literals-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-literals-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-literals-w65-m14",
+          "source_sha256": "8e6fa260bd0d2fd467fb7b23167de922b8a3af16f259b12c9309c1f3cec4c8eb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-literals-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-literals-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-literals-w65-m15",
+          "source_sha256": "20ba96cf489e240e382e8f162faf1ffa225b4d5e4af7319752f2cefca3ac67dc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-literals-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-literals-w65-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-mixed-w45-m14",
+          "source_sha256": "6a08e2b81f3e8d32d7eb9a9e3db1328242b24e4b8f18a25c470cda10ab54d2bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-mixed-w45-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-mixed-w45-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-mixed-w45-m15",
+          "source_sha256": "aec18165256cab73b5686b6c5ba9786b834f6f52fff49cb8dc46d108bdde383e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-mixed-w45-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-mixed-w45-m15.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-mixed-w65-m14",
+          "source_sha256": "83c327b9d11af95fd47a558d419858b0c36acf467c07c0a8208b6e5ebd29abd8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-mixed-w65-m14.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-mixed-w65-m14.docx"
+        },
+        {
+          "name": "word-windows-hyphen-mixed-break-mixed-w65-m15",
+          "source_sha256": "23ebf6818d321d2446d4b112bb7287bfddf6a4d1ab58af70fca01a190c4f4f4e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T103233726Z-dd9be03e/inputs/word-windows-hyphen-mixed-break-mixed-w65-m15.docx"
+          ],
+          "opened_filename": "word-windows-hyphen-mixed-break-mixed-w65-m15.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -48794,6 +49048,10 @@
     {
       "file": "tests/word-oracle/windows/explicit-hyphen-observations.json",
       "sha256": "1f90346983fa231b994feea4729124bbc9563a8ce4684e0a7f3e8a1ffcec9c7a"
+    },
+    {
+      "file": "tests/word-oracle/windows/mixed-hyphen-observations.json",
+      "sha256": "89ac5016ea6281c2006c71551db678b822b6968ae958edfafe5dd6d5749b05a4"
     }
   ]
 }

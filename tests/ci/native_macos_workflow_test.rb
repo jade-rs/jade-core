@@ -313,6 +313,26 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes step.fetch("run"), "check_windows_font_coordinates.py --native-executable"
   end
 
+  def test_windows_source_form_hyphen_paint_requires_originals_and_rejection_checks
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find do |item|
+      item["name"] == "Assert source-form Windows hyphen paint against original Word fonts"
+    end
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    command = step.fetch("run")
+    assert_includes command, "test_windows_mixed_hyphen_probes.py"
+    assert_includes command, "test_windows_hyphen_paint.py"
+    assert_includes command, "check_windows_hyphen_paint.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+    refute_includes command, "|| true"
+    refute_includes command, "--skip"
+    refute_includes command, "--ignored"
+  end
+
   def test_windows_screen_and_pdf_origins_remain_independently_required
     job = @workflow.fetch("jobs").fetch("windows-word-baselines")
     assert_equal "windows-latest", job.fetch("runs-on")

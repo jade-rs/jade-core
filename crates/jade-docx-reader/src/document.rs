@@ -27,6 +27,9 @@ pub use table_conditional::{
     TableStyleConditionalFormat, TableStyleRegionEdges,
 };
 
+mod run_text_controls;
+pub use run_text_controls::RunTextControls;
+
 /// Top-level representation of a DOCX document after parsing.
 ///
 /// The structure mirrors the parts that the renderer consumes: the document
@@ -2204,6 +2207,11 @@ pub enum NoteSeparatorKind {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Run {
     pub text: String,
+    /// Source-form annotations for controls whose Unicode text is ambiguous.
+    /// Byte offsets refer to `text`; ordinary text and optional hyphens need
+    /// no allocation. Keep these with text when editing or splitting a run.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub text_controls: Option<Box<RunTextControls>>,
     pub properties: Option<RunProperties>,
     pub image: Option<RunImage>,
     pub text_box: Option<RunTextBox>,
@@ -4269,8 +4277,9 @@ mod tests {
         // (`RunImage::signature_line`). 8 more: the underline's boxed theme
         // reference (`RunProperties::underline_theme_color`). 16 more: shading
         // foreground/background boxed theme references. 8 more: the border's
-        // boxed theme reference.
-        assert_eq!(std::mem::size_of::<Run>(), 3192);
+        // boxed theme reference. 8 more: optional, boxed source-control
+        // annotations; their offset vectors are not stored inline in every run.
+        assert_eq!(std::mem::size_of::<Run>(), 3200);
         let kind = RunFieldKind::NumPages.with_lock(true);
         let clone = kind.clone();
         match (&kind, &clone) {
@@ -6404,6 +6413,10 @@ pub struct RunProperties {
     /// read.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_effects: Option<Box<RunTextEffects>>,
+    /// Layout-only flag on a derived style slice for authored literal U+00AD.
+    /// Source identity lives on `Run::text_controls`, not inherited formatting.
+    #[serde(skip)]
+    pub literal_soft_hyphen: bool,
     /// Unmodeled `w:rPr` children preserved verbatim (see [`PreservedRunProps`]).
     /// Not serialized: this is an in-memory preservation bridge, reconstructed at
     /// load and consulted only by the export writer.
@@ -6492,7 +6505,8 @@ impl RunProperties {
     }
 
     pub fn is_empty(&self) -> bool {
-        self.preserved_rpr.0.is_empty()
+        !self.literal_soft_hyphen
+            && self.preserved_rpr.0.is_empty()
             && self.style.is_none()
             && self.bold.is_none()
             && self.italic.is_none()

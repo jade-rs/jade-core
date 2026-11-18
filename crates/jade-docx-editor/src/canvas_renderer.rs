@@ -1570,6 +1570,7 @@ struct PlannedSegmentLayout<'arena> {
     bottom_offset: f64,
     end_state: TextAdvanceState,
     glyph_steps: BumpVec<'arena, PlannedGlyphLayoutStep>,
+    has_soft_hyphen: bool,
 }
 
 #[derive(Debug, Default)]
@@ -9156,6 +9157,7 @@ where
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -10595,6 +10597,9 @@ where
             style.properties.is_some().hash(&mut hasher);
             // Hash relevant run properties that affect text measurement
             if let Some(props) = &style.properties {
+                if props.literal_soft_hyphen {
+                    0x4c49_5445_5241_4cad_u64.hash(&mut hasher);
+                }
                 // Hash the Options themselves: skipping absent fields aliases
                 // e.g. bold-only and italic-only runs with identical boundaries.
                 // Keep exact float bits, too: the cached lines retain the original
@@ -11858,8 +11863,11 @@ where
         // a temporary concatenated String on every render.
         let total_len: usize = paragraph.runs.iter().map(|run| run.text.len()).sum();
         total_len.hash(&mut hasher);
+        let mut source_start = 0;
         for run in &paragraph.runs {
             hasher.write(run.text.as_bytes());
+            run_style_key::hash_windows_source_controls(run, source_start, &mut hasher);
+            source_start += run.text.len();
         }
 
         if let Some(props) = paragraph.properties.as_ref() {
@@ -12167,7 +12175,10 @@ where
         }
 
         // Runs (text + styling + embedded objects that affect layout/drawing)
+        let mut source_start = 0;
         for run in &paragraph.runs {
+            run_style_key::hash_windows_source_controls(run, source_start, &mut hasher);
+            source_start += run.text.len();
             if content_hash.is_some() {
                 run.text.len().hash(&mut hasher);
             } else {
@@ -20421,6 +20432,7 @@ where
                 }
                 pending_note_separator = None;
                 let segment_start = current_pos;
+                let first_segment_style = run_styles.len();
                 let suppress_line_height = run.suppresses_line_height_contribution();
                 // Keep the cached identity for ordinary text; isolate any
                 // property changes made for rendering decorations.
@@ -20567,6 +20579,14 @@ where
                         inline_object: None,
                     });
                 }
+                jade_docx_layout::literal_soft_hyphens::mark_literal_soft_hyphens(
+                    run,
+                    &layout_text[segment_start..current_pos],
+                    segment_start,
+                    first_segment_style,
+                    &mut run_styles,
+                    paragraph_style.word_platform,
+                );
                 if suppress_line_height && current_pos > segment_start {
                     line_height_neutral_ranges.push((segment_start, current_pos));
                 }
@@ -23677,6 +23697,7 @@ where
             top_offset: f64,
             bottom_offset: f64,
             glyph_steps: BumpVec<'arena, PlannedGlyphLayoutStep>,
+            has_soft_hyphen: bool,
             text_alignment_shift: f64,
         }
 
@@ -24272,6 +24293,7 @@ where
                     top_offset: planned.top_offset,
                     bottom_offset: planned.bottom_offset,
                     glyph_steps: planned.glyph_steps,
+                    has_soft_hyphen: planned.has_soft_hyphen,
                     text_alignment_shift: 0.0,
                 });
                 build_state = planned.end_state;
@@ -25708,7 +25730,7 @@ where
                         *start_x,
                         text_y,
                         &text_style,
-                        &prepared.segment.text,
+                        (&prepared.segment.text, prepared.has_soft_hyphen),
                         &prepared.glyph_steps,
                     );
                 }
@@ -25717,7 +25739,11 @@ where
                     *start_x,
                     text_y,
                     &text_style,
-                    (&prepared.segment.text, style.resolved.as_ref()),
+                    (
+                        &prepared.segment.text,
+                        style.resolved.as_ref(),
+                        prepared.has_soft_hyphen,
+                    ),
                     &prepared.glyph_steps,
                 )
                 .map_err(PainterError::into_js_value)?;
@@ -25745,7 +25771,7 @@ where
                             hyphen_x,
                             text_y,
                             &text_style,
-                            "-",
+                            ("-", false),
                             &hyphen_step,
                         );
                     }
@@ -25754,7 +25780,7 @@ where
                         hyphen_x,
                         text_y,
                         &text_style,
-                        ("-", style.resolved.as_ref()),
+                        ("-", style.resolved.as_ref(), false),
                         &hyphen_step,
                     )
                     .map_err(PainterError::into_js_value)?;
@@ -29937,6 +29963,7 @@ where
                 None => text.push_str(&run.text),
             }
             if text.len() > start {
+                let first_style = run_styles.len();
                 run_styles.push(RunStyle {
                     start,
                     end: text.len(),
@@ -29945,6 +29972,14 @@ where
                     hyperlink: None,
                     inline_object: None,
                 });
+                jade_docx_layout::literal_soft_hyphens::mark_literal_soft_hyphens(
+                    run,
+                    &text[start..],
+                    start,
+                    first_style,
+                    &mut run_styles,
+                    jade_docx_layout::line_metrics::word_layout_platform(),
+                );
             }
         }
         Ok((text, run_styles, inline_maths))
@@ -30756,6 +30791,7 @@ where
                     f64,
                     f64,
                     f64,
+                    bool,
                 );
                 let mut draw_segments: BumpVec<'_, DrawSegment<'_>> =
                     BumpVec::with_capacity_in(wrapped_line.segments.len(), &render_pass_arena);
@@ -30847,6 +30883,7 @@ where
                         planned.width,
                         planned.top_offset,
                         planned.bottom_offset,
+                        planned.has_soft_hyphen,
                     ));
                     cursor_x += planned.width;
                     build_state = planned.end_state;
@@ -31012,7 +31049,15 @@ where
                 }
                 for (
                     segment_index,
-                    (segment, start_x, glyph_steps, width, top_offset, bottom_offset),
+                    (
+                        segment,
+                        start_x,
+                        glyph_steps,
+                        width,
+                        top_offset,
+                        bottom_offset,
+                        has_soft_hyphen,
+                    ),
                 ) in draw_segments.iter().enumerate()
                 {
                     if segment.text.is_empty() {
@@ -31051,7 +31096,7 @@ where
                         *start_x,
                         text_y,
                         &self.cmd_text_style(segment.properties.as_deref(), &style),
-                        (&segment.text, style.resolved.as_ref()),
+                        (&segment.text, style.resolved.as_ref(), *has_soft_hyphen),
                         glyph_steps,
                     )
                     .map_err(PainterError::into_js_value)?;
@@ -31142,7 +31187,7 @@ where
                         } else {
                             baseline + *top_offset
                         };
-                        for (next, next_x, next_glyphs, next_width, next_top, next_bottom) in
+                        for (next, next_x, next_glyphs, next_width, next_top, next_bottom, _) in
                             continuations
                         {
                             base_end = *next_x + *next_width;
@@ -32926,6 +32971,8 @@ where
         }
 
         let mut cursor = 0.0_f64;
+        let has_soft_hyphen =
+            VISUALS && crate::draw_command::CommandText::text_has_soft_hyphen(&segment.text);
         let mut glyph_steps =
             BumpVec::with_capacity_in(if VISUALS { segment_clusters.len() } else { 0 }, arena);
         let mut glyphs =
@@ -33084,6 +33131,7 @@ where
                 follows_inline_object: false,
             },
             glyph_steps,
+            has_soft_hyphen,
         }))
     }
 
@@ -33152,6 +33200,8 @@ where
         ink_bounds: FragmentInkBounds,
     ) -> Result<PlannedSegmentLayout<'arena>, JsValue> {
         let mut cursor = 0.0_f64;
+        let has_soft_hyphen =
+            VISUALS && crate::draw_command::CommandText::text_has_soft_hyphen(&segment.text);
         let mut glyph_steps = BumpVec::new_in(arena);
         let mut glyphs = Vec::new();
         let font_px = points_to_px(style.font_size_pt);
@@ -33266,6 +33316,7 @@ where
             bottom_offset: max_bottom_offset,
             end_state,
             glyph_steps,
+            has_soft_hyphen,
         })
     }
 
@@ -34064,6 +34115,9 @@ where
                 .cloned()
                 .map(Rc::new),
             caps: properties.and_then(|props| props.caps).unwrap_or(false),
+            literal_soft_hyphen: properties.is_some_and(|p| p.literal_soft_hyphen)
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
             font_size_pt,
             letter_spacing_px,
             text_scale_x,
@@ -34239,6 +34293,7 @@ where
     ) -> CmdTextStyle {
         CmdTextStyle {
             font_size_pt: style.font_size_pt,
+            literal_soft_hyphen: style.literal_soft_hyphen,
             letter_spacing_px: style.letter_spacing_px,
             text_scale_x: style.text_scale_x,
             enable_pair_kerning: style.enable_pair_kerning,
@@ -34366,9 +34421,10 @@ where
         x: f64,
         y: f64,
         text_style: &CmdTextStyle,
-        segment_text: &str,
+        segment: (&str, bool),
         glyph_steps: &[PlannedGlyphLayoutStep],
     ) {
+        let (segment_text, has_soft_hyphen) = segment;
         let mut fonts: Vec<Rc<str>> = Vec::with_capacity(glyph_steps.len().min(4));
         let mut glyphs = Vec::with_capacity(glyph_steps.len());
         let mut font_index_by_slot = [u16::MAX; 4];
@@ -34391,7 +34447,7 @@ where
             });
         }
         buf.push(DrawCommand::TextRun {
-            text: Rc::from(segment_text),
+            text: crate::draw_command::CommandText::from_plan(segment_text, has_soft_hyphen),
             x,
             y,
             style: text_style.clone(),
@@ -34406,10 +34462,10 @@ where
         x: f64,
         y: f64,
         text_style: &CmdTextStyle,
-        segment: (&str, &ResolvedRunStyle),
+        segment: (&str, &ResolvedRunStyle, bool),
         glyph_steps: &[PlannedGlyphLayoutStep],
     ) -> Result<(), P::Error> {
-        let (segment_text, resolved_style) = segment;
+        let (segment_text, resolved_style, has_soft_hyphen) = segment;
         if !self.should_draw_current_page_for_render() || glyph_steps.is_empty() {
             return Ok(());
         }
@@ -34418,6 +34474,9 @@ where
             || text_style.emboss
             || text_style.imprint
             || text_style.effects.is_some()
+            || (has_soft_hyphen
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
             || crate::draw_command::executor::windows_pdf_text::eligible(
                 context,
                 segment_text,
@@ -34432,7 +34491,7 @@ where
                 x,
                 y,
                 text_style,
-                segment_text,
+                (segment_text, has_soft_hyphen),
                 glyph_steps,
             );
             let result =
@@ -35728,7 +35787,7 @@ where
                 position.0,
                 position.1,
                 &text_style,
-                text,
+                (text, plan.has_soft_hyphen),
                 &plan.glyph_steps,
             );
         }
@@ -35737,7 +35796,7 @@ where
             position.0,
             position.1,
             &text_style,
-            (text, style.resolved.as_ref()),
+            (text, style.resolved.as_ref(), plan.has_soft_hyphen),
             &plan.glyph_steps,
         )
         .map_err(PainterError::into_js_value)?;
@@ -36647,7 +36706,17 @@ where
                 let symbol = match ch {
                     Some(' ') | Some('\u{00A0}') if self.mark_kinds.spaces => "\u{00B7}",
                     Some('\u{3000}') if self.mark_kinds.spaces => "\u{25A1}",
-                    Some('\u{00AD}') if self.mark_kinds.optional_hyphens => "\u{00AC}",
+                    Some('\u{00AD}')
+                        if self.mark_kinds.optional_hyphens
+                            && !(jade_docx_layout::line_metrics::word_layout_platform()
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                                && segment
+                                    .properties
+                                    .as_ref()
+                                    .is_some_and(|p| p.literal_soft_hyphen)) =>
+                    {
+                        "\u{00AC}"
+                    }
                     _ => continue,
                 };
                 marks.push((
@@ -41146,6 +41215,7 @@ struct DisplayMathNoteMarker<'a> {
 struct AppliedRunStyle {
     small_caps_props: Option<Rc<RunProperties>>,
     caps: bool,
+    literal_soft_hyphen: bool,
     font_size_pt: f32,
     letter_spacing_px: f64,
     text_scale_x: f64,
@@ -42238,6 +42308,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: footnote_ref
@@ -43343,6 +43414,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -53568,6 +53640,7 @@ mod tests {
         AppliedRunStyle {
             small_caps_props: None,
             caps: false,
+            literal_soft_hyphen: false,
             font_size_pt,
             letter_spacing_px: 0.0,
             text_scale_x,
@@ -53598,6 +53671,80 @@ mod tests {
         }
     }
 
+    #[test]
+    fn source_hyphen_cache_keys_follow_windows_identity_without_changing_mac_keys() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_painter::recording::RecordingPainter;
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let renderer = test_renderer();
+            let options = options_for_seek_tests();
+            let ordinary = doc_with_paragraph_texts(&["ab\u{ad}cdef"]);
+            let mut literal = ordinary.clone();
+            let BodyElement::Paragraph(p) = &mut literal.body.as_mut().unwrap().elements[0] else {
+                panic!("paragraph")
+            };
+            p.runs[0].text_controls = Some(Box::new(crate::document::RunTextControls {
+                literal_soft_hyphens: vec![2],
+            }));
+            let a = ordinary.body.as_ref().unwrap().elements[0]
+                .as_paragraph()
+                .unwrap();
+            let b = literal.body.as_ref().unwrap().elements[0]
+                .as_paragraph()
+                .unwrap();
+            assert_eq!(a.runs[0].text, b.runs[0].text);
+            let content_a = renderer.compute_paragraph_content_hash(a);
+            let content_b = renderer.compute_paragraph_content_hash(b);
+            let external = Some(ContentHash::new(12345));
+            let render_a = renderer.compute_paragraph_render_hash(a, &options, external);
+            let render_b = renderer.compute_paragraph_render_hash(b, &options, external);
+            let styles_a = vec![RunStyle {
+                start: 0,
+                end: a.runs[0].text.len(),
+                properties: None,
+                revision: None,
+                hyperlink: None,
+                inline_object: None,
+            }];
+            let mut styles_b = styles_a.clone();
+            jade_docx_layout::literal_soft_hyphens::mark_literal_soft_hyphens(
+                &b.runs[0],
+                &b.runs[0].text,
+                0,
+                0,
+                &mut styles_b,
+                platform,
+            );
+            let wrap_a = CanvasRenderer::<RecordingPainter>::compute_wrap_content_hash(
+                &a.runs[0].text,
+                &styles_a,
+            );
+            let wrap_b = CanvasRenderer::<RecordingPainter>::compute_wrap_content_hash(
+                &b.runs[0].text,
+                &styles_b,
+            );
+            if platform == WordLayoutPlatform::Windows {
+                assert_ne!(content_a, content_b);
+                assert_ne!(render_a, render_b);
+                assert_ne!(wrap_a, wrap_b);
+            } else {
+                assert_eq!(content_a, content_b);
+                assert_eq!(render_a, render_b);
+                assert_eq!(wrap_a, wrap_b);
+            }
+        }
+    }
+
     fn doc_with_paragraph_texts(texts: &[&str]) -> Document {
         let mut elements = Vec::new();
         for text in texts {
@@ -53611,6 +53758,7 @@ mod tests {
                 hyperlink: None,
                 node_id: None,
                 text_node_id: None,
+                text_controls: None,
                 revision_node_id: None,
                 comment_reference_ids: Vec::new(),
                 footnote_reference_ids: Vec::new(),
@@ -53646,6 +53794,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),
@@ -58805,7 +58954,7 @@ mod tests {
                         })
                         .collect();
                     Rc::from([DrawCommand::TextRun {
-                        text: Rc::from(text),
+                        text: text.into(),
                         x: 10.0,
                         y: 20.0 + batch as f64,
                         style: style.clone(),
@@ -58977,7 +59126,14 @@ mod tests {
         ];
 
         let mut buf = Vec::new();
-        renderer.push_text_commands_for_plan(&mut buf, 10.0, 20.0, &style, text, &steps);
+        renderer.push_text_commands_for_plan(
+            &mut buf,
+            10.0,
+            20.0,
+            &style,
+            (text, text.contains('\u{ad}')),
+            &steps,
+        );
 
         let [DrawCommand::TextRun {
             text,
@@ -60835,7 +60991,14 @@ mod tests {
         let current_start = Instant::now();
         for _ in 0..ITERS {
             let mut buf = Vec::new();
-            renderer.push_text_commands_for_plan(&mut buf, 10.0, 20.0, &style, &text, &steps);
+            renderer.push_text_commands_for_plan(
+                &mut buf,
+                10.0,
+                20.0,
+                &style,
+                (&text, text.contains('\u{ad}')),
+                &steps,
+            );
             black_box(buf);
         }
         let current_elapsed = current_start.elapsed();

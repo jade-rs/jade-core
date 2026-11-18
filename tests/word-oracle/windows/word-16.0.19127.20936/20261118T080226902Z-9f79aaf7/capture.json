@@ -1,0 +1,558 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T080226902Z-9f79aaf7",
+  "captured_at_utc": "2026-11-18T08:02:26.9140179Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-hyphen-mixed-literal-optional-w45-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-literal-optional-w45-m14.docx",
+      "sha256": "a49b49bbaf23c86610eef856dabadc022341dc5eac490dc839b5070cbcd831d9",
+      "pdf": "word-windows-hyphen-mixed-literal-optional-w45-m14.pdf",
+      "pdf_sha256": "6b15835f7e91db4d3bc877948152193517d5e035cf7745ce1d1a79ca27a83d72",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-literal-optional-w45-m14.page-001.emf",
+          "sha256": "19b69bccf2506b796f53a36098bf85ec6cf47f3d2c871f6ea64ecadee9acf8b9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-literal-optional-w45-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-literal-optional-w45-m15.docx",
+      "sha256": "dbcbb78d83e2bcc20f7f74c3ede165c7138b3f387bd265639de0c06ee8797039",
+      "pdf": "word-windows-hyphen-mixed-literal-optional-w45-m15.pdf",
+      "pdf_sha256": "aec6b0aa81c03f36944f205902ba2d77db2a7668b1af7230f2a1bb2cf79a9dc4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-literal-optional-w45-m15.page-001.emf",
+          "sha256": "19b69bccf2506b796f53a36098bf85ec6cf47f3d2c871f6ea64ecadee9acf8b9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-literal-optional-w65-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-literal-optional-w65-m14.docx",
+      "sha256": "b61b444e301dd5340b40d5fcb063354b108f755afbdfc44cc8b1b91ebe644815",
+      "pdf": "word-windows-hyphen-mixed-literal-optional-w65-m14.pdf",
+      "pdf_sha256": "c024da7b7c501dc3b50454789aa31719917c2d48fa2bcc51101c3f0cc265ebd6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-literal-optional-w65-m14.page-001.emf",
+          "sha256": "069eade7162f6a29589aa6d74639def28011625f7141e90fb8e2e24bb6895a45",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-literal-optional-w65-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-literal-optional-w65-m15.docx",
+      "sha256": "27501da2edea9ff5cb9e9ed2f9135b57c110179df9e7b2bc3639c0e6e910ffb0",
+      "pdf": "word-windows-hyphen-mixed-literal-optional-w65-m15.pdf",
+      "pdf_sha256": "5a67c532fd12b967d391542c81081422acab60a3020704b1b50d4dad7bdfa6a1",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-literal-optional-w65-m15.page-001.emf",
+          "sha256": "069eade7162f6a29589aa6d74639def28011625f7141e90fb8e2e24bb6895a45",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-optional-literal-w45-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-optional-literal-w45-m14.docx",
+      "sha256": "de73552cc12421259c2261506ab7169d442e02023863b646a378ca49ef8f33fe",
+      "pdf": "word-windows-hyphen-mixed-optional-literal-w45-m14.pdf",
+      "pdf_sha256": "1614c729e7385f256455e31f4293a1b471dac55a4da588c99f42783168d200ff",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-optional-literal-w45-m14.page-001.emf",
+          "sha256": "b10763225498617d84439da78e1c0d936f03d8170e76bf5382083f7f13a3aec7",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-optional-literal-w45-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-optional-literal-w45-m15.docx",
+      "sha256": "85a7582e198b077dbc8281af4e79d8872b57402bc956d55bb1a237d3a7d3c684",
+      "pdf": "word-windows-hyphen-mixed-optional-literal-w45-m15.pdf",
+      "pdf_sha256": "cb6ebf44acc0fcbfef53699344eeae4acb3b0d322c41872c75b73e69f7717c66",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-optional-literal-w45-m15.page-001.emf",
+          "sha256": "b10763225498617d84439da78e1c0d936f03d8170e76bf5382083f7f13a3aec7",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-optional-literal-w65-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-optional-literal-w65-m14.docx",
+      "sha256": "26029ff4fc376a13249777de50ccf57d8cea7608f450e9dda29357f7e98c58f9",
+      "pdf": "word-windows-hyphen-mixed-optional-literal-w65-m14.pdf",
+      "pdf_sha256": "4be2264bf245089285e1bb89bac2dc9825b10435eb9102eae74c391d7dc256d7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-optional-literal-w65-m14.page-001.emf",
+          "sha256": "98885bba67444d2098a3b42068cf6d69f112a93076fd96aa7175148e4dded074",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-optional-literal-w65-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-optional-literal-w65-m15.docx",
+      "sha256": "6b99eece67abde173fb4109b3c108321d785237442b49a103fb99df60ed0f3cb",
+      "pdf": "word-windows-hyphen-mixed-optional-literal-w65-m15.pdf",
+      "pdf_sha256": "0f9406399004b340b485e2e8bdacbb84a57704186436da1675343d422cd846cd",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-optional-literal-w65-m15.page-001.emf",
+          "sha256": "98885bba67444d2098a3b42068cf6d69f112a93076fd96aa7175148e4dded074",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-separated-w45-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-separated-w45-m14.docx",
+      "sha256": "fa2729c881501a537819c9bb75dbea2561070f45d83f836102545cc11a0fe4a3",
+      "pdf": "word-windows-hyphen-mixed-separated-w45-m14.pdf",
+      "pdf_sha256": "1f814f4e5dbe8f53ff1be17b1036e85b602b7b91564c4e06330804e14d6acc96",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-separated-w45-m14.page-001.emf",
+          "sha256": "8f5e2da21088be780517ae46cc70fbd7edf699f75f2e6885976bdbe9d7e9f17d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-separated-w45-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-separated-w45-m15.docx",
+      "sha256": "04875c31e5da826a00a1217baea2f5c8afd92e95a73f0d1c9e6c1a3ebe6434e1",
+      "pdf": "word-windows-hyphen-mixed-separated-w45-m15.pdf",
+      "pdf_sha256": "4f6ca2b88050c13157b6c4d48cfa25d1e45e74991086eb57123975080281b4b6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-separated-w45-m15.page-001.emf",
+          "sha256": "8f5e2da21088be780517ae46cc70fbd7edf699f75f2e6885976bdbe9d7e9f17d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-separated-w65-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-separated-w65-m14.docx",
+      "sha256": "1803a18697dee336aa55c822e4165b68639efe438a8f68539e69e4a33c85efd1",
+      "pdf": "word-windows-hyphen-mixed-separated-w65-m14.pdf",
+      "pdf_sha256": "81fa71af85e21dc63ca8db622a8ffe11ef7ef99cdb6d42b5cf3cce7064d37187",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-separated-w65-m14.page-001.emf",
+          "sha256": "2c83c7c7b178f739df10f0268744b8c27a8369bbf418f3515fd31e4c8d8e0999",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-separated-w65-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-separated-w65-m15.docx",
+      "sha256": "132738e3854eea1c34f5f32bc5c744fda05a863b3964ec640ff7e37937039463",
+      "pdf": "word-windows-hyphen-mixed-separated-w65-m15.pdf",
+      "pdf_sha256": "95691d14c124d1e2aa0b4522d54f16262bb7b52fcd98dbfecc3b481ebe96d66c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-separated-w65-m15.page-001.emf",
+          "sha256": "df74a16c30dcb437f38a56c3cae31dd6d6e162963677f66d0492bd469e0b98b7",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-unicode-prefix-w45-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-unicode-prefix-w45-m14.docx",
+      "sha256": "0b6783d738588c252e4374f2817b17c13f46180f27ba615c43a9e1e3cc996fbc",
+      "pdf": "word-windows-hyphen-mixed-unicode-prefix-w45-m14.pdf",
+      "pdf_sha256": "720df84cb6d9f738a855f7f8cc54e2e35fecef922880cfb309d0dd124cdb3430",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-unicode-prefix-w45-m14.page-001.emf",
+          "sha256": "8ab5f0cd8e0b8591a2b8e3d19501a058c678c353fb191a81d06011bd5af51630",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-unicode-prefix-w45-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-unicode-prefix-w45-m15.docx",
+      "sha256": "54439257cddd1ef7449670652e8ac8456d63b748e4d37481fb12dbe47ca7c625",
+      "pdf": "word-windows-hyphen-mixed-unicode-prefix-w45-m15.pdf",
+      "pdf_sha256": "691d415578fa6238d00365237be31ce7f81c16fc0364773bee73378dfe6e1d74",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-unicode-prefix-w45-m15.page-001.emf",
+          "sha256": "8ab5f0cd8e0b8591a2b8e3d19501a058c678c353fb191a81d06011bd5af51630",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-unicode-prefix-w65-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-unicode-prefix-w65-m14.docx",
+      "sha256": "ddc7916db8447a305a347ab7433f193ed8a33b295e26d7757072cdd819443aa2",
+      "pdf": "word-windows-hyphen-mixed-unicode-prefix-w65-m14.pdf",
+      "pdf_sha256": "5a1ea728471b1499079c8924f61baf0cb0d364859181dc0c8f69e11ef9492c59",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-unicode-prefix-w65-m14.page-001.emf",
+          "sha256": "4bdbc65f6d51f8c353b583aef257f1436ac4484cde2c2297cb37e7b5db03c87f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-unicode-prefix-w65-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-unicode-prefix-w65-m15.docx",
+      "sha256": "5a6a2f51a86e2231f1f449a2c213eb8bf1fa4684089cf6f85571fc1aa097945f",
+      "pdf": "word-windows-hyphen-mixed-unicode-prefix-w65-m15.pdf",
+      "pdf_sha256": "0917e5ac9c35e63b0ced5f3d84114080d1acd8c9b05b23d637828e1941521f4a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-unicode-prefix-w65-m15.page-001.emf",
+          "sha256": "4bdbc65f6d51f8c353b583aef257f1436ac4484cde2c2297cb37e7b5db03c87f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-split-runs-w45-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-split-runs-w45-m14.docx",
+      "sha256": "103460c0a34f14a63d64cace896093a0d82a604ca8bbe03c0fdb03970e1a2c57",
+      "pdf": "word-windows-hyphen-mixed-split-runs-w45-m14.pdf",
+      "pdf_sha256": "523502cba3425e51ad097fd08150a2ae320ed61db27deda7912476ba81f6e2cc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-split-runs-w45-m14.page-001.emf",
+          "sha256": "19b69bccf2506b796f53a36098bf85ec6cf47f3d2c871f6ea64ecadee9acf8b9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-split-runs-w45-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-split-runs-w45-m15.docx",
+      "sha256": "5622db19850ec1bae6b0800c4d29c2c69f9d8aac6775db0d7c5fb3084e2db007",
+      "pdf": "word-windows-hyphen-mixed-split-runs-w45-m15.pdf",
+      "pdf_sha256": "995fda9d40f600aef6a30d762584366883a2f42f04b24aaab5087596c4cb1af9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-split-runs-w45-m15.page-001.emf",
+          "sha256": "19b69bccf2506b796f53a36098bf85ec6cf47f3d2c871f6ea64ecadee9acf8b9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-split-runs-w65-m14",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-split-runs-w65-m14.docx",
+      "sha256": "3a8bfde5feb4f305a311a36c3af9bc2b852812cdcf92fb893ebe5855bf95812a",
+      "pdf": "word-windows-hyphen-mixed-split-runs-w65-m14.pdf",
+      "pdf_sha256": "dde499af8b854119d5d74cf3df7853a700370cbe7441d0377e5ed539added82c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-split-runs-w65-m14.page-001.emf",
+          "sha256": "069eade7162f6a29589aa6d74639def28011625f7141e90fb8e2e24bb6895a45",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hyphen-mixed-split-runs-w65-m15",
+      "source": "w18xm-inputs\\word-windows-hyphen-mixed-split-runs-w65-m15.docx",
+      "sha256": "791b1dfc763bc1ae0f2bec9bd471707287399d6bacc6f6396c0ba1c6b41dc4c3",
+      "pdf": "word-windows-hyphen-mixed-split-runs-w65-m15.pdf",
+      "pdf_sha256": "380af1cdf1ecbeb9114c012846d2537acb7a2a7997a5efc3118ebf1ab5263984",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hyphen-mixed-split-runs-w65-m15.page-001.emf",
+          "sha256": "069eade7162f6a29589aa6d74639def28011625f7141e90fb8e2e24bb6895a45",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -3,10 +3,11 @@
 //! This module provides functions to execute DrawCommand against any
 //! [`Painter`] backend. The browser renderer supplies the canvas-backed one.
 
+use std::mem::MaybeUninit;
 use std::rc::Rc;
 
 use crate::document::FontHint;
-use crate::draw_command::{DrawCommand, TabLeaderStyle, TextStyle};
+use crate::draw_command::{CommandText, DrawCommand, TabLeaderStyle, TextStyle};
 use jade_painter::Painter;
 use rustc_hash::{FxHashMap, FxHasher};
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
@@ -635,7 +636,7 @@ pub fn execute_command_with_font_state<P: Painter>(
             fonts,
             glyphs,
         } => {
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 context, text, *x, *y, style, fonts, glyphs, font_state,
             )?;
         }
@@ -858,6 +859,82 @@ pub fn execute_command_with_font_state<P: Painter>(
     Ok(())
 }
 
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+fn execute_cached_text_run_with_font_state<P: Painter>(
+    context: &P,
+    text: &CommandText,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    if text.requires_windows_control_paint() {
+        return execute_windows_control_text(context, text, x, y, style, fonts, glyphs, font_state);
+    }
+    execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
+}
+
+#[cold]
+#[inline(never)]
+#[allow(clippy::too_many_arguments)]
+fn execute_windows_control_text<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[crate::draw_command::GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<(), P::Error> {
+    // The soft-hyphen cluster remains in the logical layout for editing.
+    // Word paints only the separate line-end dash when that break is used.
+    // Passing U+00AD to Skia's glyph batch paints its font glyph as another
+    // dash, including on lines where no discretionary break was taken.
+    let visible_glyphs;
+    let literal_text;
+    let (text, glyphs) = if style.literal_soft_hyphen {
+        // Normalize only the temporary paint buffer. Editable text, cached
+        // source ranges, font choices and positioned origins stay intact.
+        // Browser shaping and effects otherwise hide this format character.
+        let mut remap = vec![0; text.len() + 1];
+        let mut normalized = String::with_capacity(text.len());
+        for (offset, character) in text.char_indices() {
+            remap[offset] = normalized.len();
+            normalized.push(if character == '\u{ad}' {
+                '-'
+            } else {
+                character
+            });
+            remap[offset + character.len_utf8()] = normalized.len();
+        }
+        literal_text = normalized;
+        visible_glyphs = glyphs
+            .iter()
+            .filter_map(|glyph| {
+                glyph.text(text)?;
+                let mut step = glyph.clone();
+                step.text_start = (*remap.get(glyph.text_start as usize)?).try_into().ok()?;
+                step.text_end = (*remap.get(glyph.text_end as usize)?).try_into().ok()?;
+                Some(step)
+            })
+            .collect::<Vec<_>>();
+        (literal_text.as_str(), visible_glyphs.as_slice())
+    } else {
+        visible_glyphs = glyphs
+            .iter()
+            .filter(|glyph| glyph.text(text) != Some("\u{ad}"))
+            .cloned()
+            .collect::<Vec<_>>();
+        (text, visible_glyphs.as_slice())
+    };
+    execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
+}
+
+#[inline(always)]
 #[allow(clippy::too_many_arguments)]
 fn execute_text_run_with_font_state<P: Painter>(
     context: &P,
@@ -1616,6 +1693,18 @@ pub(crate) fn is_single_bmp_glyph(text: &str) -> bool {
     )
 }
 
+/// A valid UTF-8 string already guarantees the continuation bytes following
+/// a leading byte. Check the scalar width and requested end once; the common
+/// consecutive batch can then borrow its source span without slicing and
+/// validating the same boundaries for every glyph.
+#[inline]
+fn is_single_bmp_glyph_range(text: &str, start: usize, end: usize) -> bool {
+    matches!(
+        (text.as_bytes().get(start), end.checked_sub(start)),
+        (Some(0..=0x7f), Some(1)) | (Some(0xc2..=0xdf), Some(2)) | (Some(0xe0..=0xef), Some(3))
+    )
+}
+
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
@@ -1625,6 +1714,13 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
     glyphs: &[crate::draw_command::GlyphRunStep],
     font_state: &mut FontStateTracker,
 ) -> Result<bool, P::Error> {
+    let Some(first_glyph) = glyphs.first() else {
+        return Ok(false);
+    };
+    let first_font_index = first_glyph.font_index;
+    let Some(first_font) = fonts.get(first_font_index as usize) else {
+        return Ok(false);
+    };
     // The buffer stores UTF-8 bytes, not glyphs: a BMP character needs up to
     // three bytes. Use the source length as a bounded estimate so dense CJK
     // runs do not repeatedly grow, without reserving an entire large source
@@ -1634,64 +1730,65 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         .clamp(glyphs.len(), glyphs.len().saturating_mul(3));
     // Cached runs normally reference consecutive characters. Borrow that source
     // span until a gap, repetition or reordering requires a concatenated copy.
-    let text_start = glyphs.first().map_or(0, |glyph| glyph.text_start as usize);
+    let text_start = first_glyph.text_start as usize;
     let mut text_end = text_start;
     let mut copied_text: Option<String> = None;
     // Runs up to 64 glyphs use a stack buffer. Longer runs keep the
     // same exact positions in a heap buffer rather than truncating the batch.
     const LOCAL_CAPACITY: usize = 64;
-    let mut local_positions = [0.0; LOCAL_CAPACITY];
+    // Every submitted position is written below. Avoid clearing unused stack
+    // slots or zeroing a heap allocation that the loop immediately replaces.
+    let mut local_positions = [MaybeUninit::<f64>::uninit(); LOCAL_CAPACITY];
     let mut heap_positions;
     let x_positions = if glyphs.len() <= local_positions.len() {
         &mut local_positions[..glyphs.len()]
     } else {
-        heap_positions = vec![0.0; glyphs.len()];
+        heap_positions = vec![MaybeUninit::<f64>::uninit(); glyphs.len()];
         &mut heap_positions[..]
     };
-    let mut single_font_index: Option<u16> = None;
     let mut single_font_run = true;
 
     for (glyph, x_position) in glyphs.iter().zip(x_positions.iter_mut()) {
-        if fonts.get(glyph.font_index as usize).is_none() {
-            return Ok(false);
-        }
-        let Some(glyph_text) = glyph.text(run_text) else {
-            return Ok(false);
-        };
-        if let Some(text) = &mut copied_text {
-            if !try_append_bmp_glyph(text, glyph_text) {
+        // The common font slot was validated before allocating buffers.
+        // Distinct slots remain distinct even when descriptors alias.
+        if glyph.font_index != first_font_index {
+            if fonts.get(glyph.font_index as usize).is_none() {
                 return Ok(false);
             }
-        } else if !is_single_bmp_glyph(glyph_text) {
+            single_font_run = false;
+        }
+        let start = glyph.text_start as usize;
+        let end = glyph.text_end as usize;
+        if !is_single_bmp_glyph_range(run_text, start, end) {
             return Ok(false);
-        } else if glyph.text_start as usize == text_end {
-            text_end = glyph.text_end as usize;
+        }
+        if let Some(text) = &mut copied_text {
+            text.push_str(&run_text[start..end]);
+        } else if start == text_end {
+            text_end = end;
         } else {
             let mut text = String::with_capacity(text_capacity);
             text.push_str(&run_text[text_start..text_end]);
-            text.push_str(glyph_text);
+            text.push_str(&run_text[start..end]);
             copied_text = Some(text);
         }
-        match single_font_index {
-            Some(index) if index != glyph.font_index => {
-                single_font_run = false;
-            }
-            None => single_font_index = Some(glyph.font_index),
-            _ => {}
-        }
-        *x_position = x + glyph.x_offset;
+        x_position.write(x + glyph.x_offset);
     }
+
+    // SAFETY: the slice and glyph list have the same length, and the completed
+    // loop wrote every slot. Early validation failures return before this
+    // conversion. MaybeUninit<f64> has f64's size/alignment, and both backing
+    // buffers stay alive and immutable through the painter call.
+    let x_positions = unsafe {
+        std::slice::from_raw_parts(x_positions.as_ptr().cast::<f64>(), x_positions.len())
+    };
 
     // Every endpoint in the borrowed span was checked by glyph.text above.
     let text = copied_text
         .as_deref()
         .unwrap_or(&run_text[text_start..text_end]);
     if single_font_run {
-        let Some(font_descriptor) = single_font_index.and_then(|index| fonts.get(index as usize))
-        else {
-            return Ok(false);
-        };
-        font_state.set_font_rc_if_changed(context, font_descriptor);
+        font_state.set_font_rc_if_changed(context, first_font);
         if !context.try_fill_glyph_run_batch(text, x_positions, y)? {
             return Ok(false);
         }
@@ -1699,14 +1796,17 @@ fn try_execute_bmp_glyph_run_batch<P: Painter>(
         // Build indexes only for a validated multi-font batch, keeping buffer
         // management out of the common single-font loop. Short runs use stack
         // storage; longer runs retain their complete index list on the heap.
-        let mut local_font_indexes = [0; LOCAL_CAPACITY];
+        let mut local_font_indexes = [MaybeUninit::<u16>::uninit(); LOCAL_CAPACITY];
         let heap_font_indexes;
         let font_indexes = if glyphs.len() <= LOCAL_CAPACITY {
             let indexes = &mut local_font_indexes[..glyphs.len()];
             for (index, glyph) in indexes.iter_mut().zip(glyphs) {
-                *index = glyph.font_index;
+                index.write(glyph.font_index);
             }
-            &*indexes
+            // SAFETY: the same-length loop initialized every index above.
+            // MaybeUninit<u16> has u16's layout, and this array outlives the
+            // immutable slice passed to the painter below.
+            unsafe { std::slice::from_raw_parts(indexes.as_ptr().cast::<u16>(), indexes.len()) }
         } else {
             heap_font_indexes = glyphs
                 .iter()
@@ -2372,6 +2472,9 @@ mod fill_style_tests;
 mod control_mark_tests;
 
 #[cfg(test)]
+mod discretionary_hyphen_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -2418,6 +2521,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -2453,6 +2557,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -2487,6 +2592,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -2517,6 +2623,7 @@ mod tests {
             letter_spacing_px: 0.0,
             text_scale_x: 1.0,
             enable_pair_kerning: false,
+            literal_soft_hyphen: false,
             baseline_shift_px: 0.0,
             strike: false,
             underline: false,
@@ -3029,9 +3136,9 @@ mod painter_backend_tests {
                 "emboss" => effect_style.emboss = true,
                 _ => effect_style.imprint = true,
             }
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
-                "A",
+                &CommandText::from("A"),
                 100.0,
                 200.0,
                 &effect_style,
@@ -3046,9 +3153,9 @@ mod painter_backend_tests {
             };
             // Reusing the same color exercises the tracker cache: the final
             // text must not inherit a secondary layer's color or translation.
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
-                "Z",
+                &CommandText::from("Z"),
                 300.0,
                 400.0,
                 &plain,
@@ -3120,9 +3227,9 @@ mod painter_backend_tests {
                 font_size_pt: 20.0,
                 ..TextStyle::default()
             };
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
-                "A",
+                &CommandText::from("A"),
                 12.0,
                 34.0,
                 &outline,
@@ -3131,9 +3238,9 @@ mod painter_backend_tests {
                 &mut tracker,
             )
             .unwrap();
-            execute_text_run_with_font_state(
+            execute_cached_text_run_with_font_state(
                 &painter,
-                "Z",
+                &CommandText::from("Z"),
                 56.0,
                 78.0,
                 &TextStyle::default(),
@@ -3288,7 +3395,7 @@ mod painter_backend_tests {
         execute_commands(
             &painter,
             &[DrawCommand::TextRun {
-                text: Rc::from(text),
+                text: text.into(),
                 x: 0.0,
                 y: 100.0,
                 style: style(),
@@ -3318,6 +3425,15 @@ mod painter_backend_tests {
             let text = ch.encode_utf8(&mut buffer);
             let expected = ch.len_utf16() == 1;
             assert_eq!(is_single_bmp_glyph(text), expected, "U+{value:04X}");
+            assert_eq!(
+                is_single_bmp_glyph_range(text, 0, text.len()),
+                expected,
+                "U+{value:04X}"
+            );
+            assert_eq!(CommandText::text_has_soft_hyphen(text), ch == '\u{ad}');
+            let stored = CommandText::from(&*text);
+            assert_eq!(stored.as_ref(), text);
+            assert_eq!(stored.has_soft_hyphen(), ch == '\u{ad}');
             assert_eq!(
                 try_append_bmp_glyph(&mut output, text),
                 expected,
@@ -3377,7 +3493,7 @@ mod painter_backend_tests {
                 });
             }
             execute_commands(&painter, &[DrawCommand::TextRun {
-                text: Rc::from(text),
+                text: text.into(),
                 x: 8.0,
                 y: 21.0,
                 style: style(),
@@ -3389,6 +3505,36 @@ mod painter_backend_tests {
                 _ => None,
             }).collect();
             prop_assert_eq!(actual, expected);
+        }
+    }
+
+    #[test]
+    fn bmp_range_validation_matches_utf8_slicing_for_all_boundaries() {
+        let text = "A\u{a0}\u{ad}é日\u{ffff}😀Z";
+        for start in 0..=text.len() + 2 {
+            for end in 0..=text.len() + 2 {
+                assert_eq!(
+                    is_single_bmp_glyph_range(text, start, end),
+                    text.get(start..end).is_some_and(is_single_bmp_glyph),
+                    "{start}..{end}"
+                );
+            }
+        }
+        assert!(!is_single_bmp_glyph_range(text, usize::MAX, usize::MAX));
+        assert!(!is_single_bmp_glyph_range(text, 0, usize::MAX));
+        for text in [
+            "",
+            "ASCII",
+            "日本語",
+            "\u{a0}",
+            "\u{a2}",
+            "\u{ad}",
+            "a\u{ad}日",
+        ] {
+            assert_eq!(
+                CommandText::text_has_soft_hyphen(text),
+                text.contains('\u{ad}')
+            );
         }
     }
 

@@ -129,7 +129,8 @@ fn transform_run_range(
     let mut transformed_len = 0;
 
     for run in &mut middle {
-        run.text = state.transform(&run.text);
+        let replacement = state.transform(&run.text);
+        run.replace_text_preserving_control_order(replacement);
         transformed_len += run.text.len();
     }
 
@@ -431,6 +432,7 @@ mod tests {
             hyperlink: None,
             node_id: None,
             text_node_id: None,
+            text_controls: None,
             revision_node_id: None,
             comment_reference_ids: Vec::new(),
             footnote_reference_ids: Vec::new(),

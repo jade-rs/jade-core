@@ -21,6 +21,7 @@ fn run(text: &str, italic: bool) -> Run {
         hyperlink: None,
         node_id: None,
         text_node_id: None,
+        text_controls: None,
         revision_node_id: None,
         comment_reference_ids: Vec::new(),
         footnote_reference_ids: Vec::new(),
