@@ -822,7 +822,7 @@ impl WordDocument {
             }
             collect(drawing, &mut referenced);
             let mut package = OpenXmlPackage {
-                files: HashMap::new(),
+                files: Default::default(),
                 relationships: Vec::new(),
                 original_size_bytes: None,
             };
@@ -850,7 +850,7 @@ impl WordDocument {
                             .cloned()
                     });
                 if let Some(bytes) = bytes {
-                    package.files.insert(path, bytes);
+                    std::sync::Arc::make_mut(&mut package.files).insert(path, bytes);
                 }
             }
             Self::resolve_images(&mut parsed, doc_part, &package);

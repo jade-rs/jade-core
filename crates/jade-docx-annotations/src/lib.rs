@@ -5,6 +5,7 @@
 //! receive the same decision without changing the meaning of those commands.
 
 use jade_docx_reader::{DocxXmlDocument, OpenXmlPackage, XmlElement, XmlNode};
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 
 const WORD_NS: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
@@ -35,7 +36,7 @@ pub async fn transform_docx_annotations(
     let tracks_lost_comments = include_comments && !include_tracked_changes;
     let mut references_before: HashMap<&'static str, HashSet<String>> = HashMap::new();
     if !include_comments {
-        for (path, bytes) in &package.files {
+        for (path, bytes) in package.files.iter() {
             if !path.ends_with(".rels") {
                 continue;
             }
@@ -61,7 +62,7 @@ pub async fn transform_docx_annotations(
             }
         }
     }
-    for (path, bytes) in &package.files {
+    for (path, bytes) in package.files.iter() {
         if removed.contains(path)
             || !path.ends_with(".xml")
             || path == "[Content_Types].xml"
@@ -176,7 +177,7 @@ pub async fn transform_docx_annotations(
     }
 
     if !include_comments {
-        for (path, bytes) in &package.files {
+        for (path, bytes) in package.files.iter() {
             if removed.contains(path) || !(path.ends_with(".rels") || path == "[Content_Types].xml")
             {
                 continue;
@@ -552,10 +553,21 @@ fn resolve_relationship_target(rels_path: &str, target: &str) -> Result<String, 
     Ok(components.join("/"))
 }
 
-fn namespace_for(
+/// The prefix map in scope for `element`. Most elements declare nothing, so
+/// they borrow the inherited map; only an element with `xmlns` attributes pays
+/// for a copy.
+fn namespace_for<'a>(
     element: &XmlElement,
-    inherited: &HashMap<String, String>,
-) -> HashMap<String, String> {
+    inherited: &'a HashMap<String, String>,
+) -> Cow<'a, HashMap<String, String>> {
+    let declares = |name: &str| name == "xmlns" || name.starts_with("xmlns:");
+    if !element
+        .attributes
+        .iter()
+        .any(|attribute| declares(&attribute.name))
+    {
+        return Cow::Borrowed(inherited);
+    }
     let mut namespace = inherited.clone();
     for attribute in &element.attributes {
         if attribute.name == "xmlns" {
@@ -564,7 +576,7 @@ fn namespace_for(
             namespace.insert(prefix.to_string(), attribute.value.clone());
         }
     }
-    namespace
+    Cow::Owned(namespace)
 }
 
 fn is_word(element: &XmlElement, namespace: &HashMap<String, String>) -> bool {
@@ -638,7 +650,8 @@ fn is_revision_name(local: &str) -> bool {
 
 fn is_comment_part(root: &XmlElement) -> bool {
     let name = local_name(&root.name);
-    let namespace = namespace_for(root, &HashMap::new());
+    let empty = HashMap::new();
+    let namespace = namespace_for(root, &empty);
     is_office_word_annotation(root, &namespace)
         && matches!(
             name,

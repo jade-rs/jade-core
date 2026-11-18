@@ -89,11 +89,10 @@ pub fn apply_headless_commands_and_execute_queries(
     let mut word_doc = executor::block_on(WordDocument::load(input_docx, &Options::default()))
         .map_err(|err| HeadlessApplyAndQueryError::Load(err.to_string()))?;
 
-    let diff_before = document_stats(&word_doc);
-    let paragraph_before = paragraph_texts(&word_doc);
-    let run_before = run_signatures(&word_doc);
-    let table_before = table_signatures(&word_doc);
-    let section_before = section_signature(&word_doc);
+    // The before-snapshot is only consumed when the caller asked for a diff.
+    let before = request
+        .include_diff
+        .then(|| DiffSnapshot::capture(&word_doc));
 
     let edit_request = HeadlessEditRequest {
         commands: request.commands.clone(),
@@ -110,23 +109,17 @@ pub fn apply_headless_commands_and_execute_queries(
         word_doc.export_docx()?
     };
 
-    let diff = if request.include_diff {
-        let diff_after = document_stats(&word_doc);
-        let paragraph_after = paragraph_texts(&word_doc);
-        let run_after = run_signatures(&word_doc);
-        let table_after = table_signatures(&word_doc);
-        let section_after = section_signature(&word_doc);
-        Some(HeadlessDocumentDiff {
-            before: diff_before,
-            after: diff_after,
-            changed_paragraphs: changed_paragraph_indices(&paragraph_before, &paragraph_after),
-            changed_runs: changed_run_indices(&run_before, &run_after),
-            changed_tables: changed_table_indices(&table_before, &table_after),
-            section_changed: section_before != section_after,
-        })
-    } else {
-        None
-    };
+    let diff = before.map(|before| {
+        let after = DiffSnapshot::capture(&word_doc);
+        HeadlessDocumentDiff {
+            before: before.stats,
+            after: after.stats,
+            changed_paragraphs: changed_paragraph_indices(&before.paragraphs, &after.paragraphs),
+            changed_runs: changed_run_indices(&before.runs, &after.runs),
+            changed_tables: changed_table_indices(&before.tables, &after.tables),
+            section_changed: before.section != after.section,
+        }
+    });
 
     Ok(HeadlessApplyAndQueryOutput {
         output_docx,
@@ -140,6 +133,26 @@ pub fn apply_headless_commands_and_execute_queries_with_diff(
     request: &HeadlessApplyAndQueryRequest,
 ) -> Result<HeadlessApplyAndQueryOutput, HeadlessApplyAndQueryError> {
     apply_headless_commands_and_execute_queries(input_docx, request)
+}
+
+struct DiffSnapshot {
+    stats: HeadlessDocumentStats,
+    paragraphs: Vec<String>,
+    runs: Vec<Vec<RunSignature>>,
+    tables: Vec<TableSignature>,
+    section: String,
+}
+
+impl DiffSnapshot {
+    fn capture(word_doc: &WordDocument) -> Self {
+        Self {
+            stats: document_stats(word_doc),
+            paragraphs: paragraph_texts(word_doc),
+            runs: run_signatures(word_doc),
+            tables: table_signatures(word_doc),
+            section: section_signature(word_doc),
+        }
+    }
 }
 
 fn document_stats(word_doc: &WordDocument) -> HeadlessDocumentStats {
@@ -234,13 +247,48 @@ struct TableSignature {
 }
 
 fn table_signatures(word_doc: &WordDocument) -> Vec<TableSignature> {
-    let mut signatures = Vec::new();
-    let mut index = 0usize;
-    while let Some(table) = word_doc.table_by_order(index) {
-        signatures.push(table_signature(table));
-        index = index.saturating_add(1);
+    tables_in_order(word_doc)
+        .into_iter()
+        .map(table_signature)
+        .collect()
+}
+
+/// Collects every table in `WordDocument::table_by_order` order (pre-order:
+/// a table, then tables nested in its cells, with tables inside paragraph text
+/// boxes visited where the paragraph occurs) in a single document walk.
+fn tables_in_order(word_doc: &WordDocument) -> Vec<&Table> {
+    let mut tables = Vec::new();
+    if let Some(body) = word_doc
+        .document
+        .as_ref()
+        .and_then(|document| document.body.as_ref())
+    {
+        collect_tables(&body.elements, &mut tables);
     }
-    signatures
+    tables
+}
+
+fn collect_tables<'a>(elements: &'a [BodyElement], out: &mut Vec<&'a Table>) {
+    for element in elements {
+        match element {
+            BodyElement::Table(table) => {
+                out.push(table.as_ref());
+                for row in &table.rows {
+                    for cell in &row.cells {
+                        collect_tables(&cell.blocks, out);
+                    }
+                }
+            }
+            BodyElement::Paragraph(paragraph) => {
+                for run in &paragraph.runs {
+                    if let Some(text_box) = run.text_box.as_ref() {
+                        collect_tables(&text_box.blocks, out);
+                    }
+                }
+            }
+            BodyElement::Math(_) => {}
+        }
+    }
 }
 
 fn table_signature(table: &Table) -> TableSignature {
@@ -359,11 +407,7 @@ fn section_signature(word_doc: &WordDocument) -> String {
 }
 
 fn table_count(word_doc: &WordDocument) -> usize {
-    let mut count = 0usize;
-    while word_doc.table_by_order(count).is_some() {
-        count = count.saturating_add(1);
-    }
-    count
+    tables_in_order(word_doc).len()
 }
 
 fn revision_count(word_doc: &WordDocument) -> usize {
@@ -433,6 +477,136 @@ mod tests {
 
         writer.finish().expect("finish zip");
         output.into_inner()
+    }
+
+    /// The original quadratic walk, kept as the oracle for `table_signatures`.
+    fn table_signatures_quadratic(word_doc: &WordDocument) -> Vec<TableSignature> {
+        let mut signatures = Vec::new();
+        let mut index = 0usize;
+        while let Some(table) = word_doc.table_by_order(index) {
+            signatures.push(table_signature(table));
+            index = index.saturating_add(1);
+        }
+        signatures
+    }
+
+    /// Many paragraphs interleaved with several tables, one of them nested.
+    fn many_blocks_fixture(table_count: usize, paragraphs_between: usize) -> Vec<u8> {
+        let input = std::fs::read(fixture_path("hello.docx")).expect("read fixture");
+        let mut body = String::new();
+        for table in 0..table_count {
+            for para in 0..paragraphs_between {
+                body.push_str(&format!(
+                    "<w:p><w:r><w:t>para {table}-{para}</w:t></w:r></w:p>"
+                ));
+            }
+            body.push_str("<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w=\"2000\"/><w:gridCol w:w=\"2000\"/></w:tblGrid>");
+            for row in 0..2 {
+                body.push_str("<w:tr>");
+                for col in 0..2 {
+                    body.push_str(&format!(
+                        "<w:tc><w:tcPr><w:tcW w:w=\"2000\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t>t{table}r{row}c{col}</w:t></w:r></w:p>"
+                    ));
+                    if table == 1 && row == 0 && col == 1 {
+                        body.push_str("<w:tbl><w:tblPr/><w:tblGrid><w:gridCol w:w=\"1000\"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w=\"1000\" w:type=\"dxa\"/></w:tcPr><w:p><w:r><w:t>nested</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p/>");
+                    } else {
+                        body.push_str("<w:p/>");
+                    }
+                    body.push_str("</w:tc>");
+                }
+                body.push_str("</w:tr>");
+            }
+            body.push_str("</w:tbl>");
+        }
+        rewrite_zip_entry(&input, "word/document.xml", |bytes| {
+            let xml = String::from_utf8(bytes.to_vec()).expect("document.xml utf8");
+            let start = xml.find("<w:body>").expect("body") + "<w:body>".len();
+            let mut out = xml[..start].to_string();
+            out.push_str(&body);
+            out.push_str(&xml[start..]);
+            out.into_bytes()
+        })
+    }
+
+    #[test]
+    fn diff_matches_oracle_on_document_with_many_paragraphs_and_tables() {
+        let input = many_blocks_fixture(6, 40);
+        let load =
+            || executor::block_on(WordDocument::load(&input, &Options::default())).expect("load");
+        let before_doc = load();
+        let before_new = table_signatures(&before_doc);
+        let before_old = table_signatures_quadratic(&before_doc);
+        assert_eq!(before_new, before_old);
+        assert_eq!(before_new.len(), 7, "6 tables plus one nested");
+        assert_eq!(table_count(&before_doc), before_old.len());
+
+        let commands = vec![
+            HeadlessCommand::SetTableCellText {
+                table_order_index: 0,
+                row: 1,
+                column: 0,
+                text: "edited".to_string(),
+            },
+            HeadlessCommand::SetTableCellText {
+                table_order_index: 4,
+                row: 0,
+                column: 1,
+                text: "edited too".to_string(),
+            },
+            HeadlessCommand::InsertText {
+                paragraph: 100,
+                offset: 0,
+                text: "X".to_string(),
+            },
+        ];
+
+        let mut oracle_doc = load();
+        apply_headless_commands_to_document(
+            &mut oracle_doc,
+            &HeadlessEditRequest {
+                commands: commands.clone(),
+            },
+        )
+        .expect("apply oracle");
+        let after_new = table_signatures(&oracle_doc);
+        let after_old = table_signatures_quadratic(&oracle_doc);
+        assert_eq!(after_new, after_old);
+        let expected_tables = changed_table_indices(&before_old, &after_old);
+        let expected_paragraphs =
+            changed_paragraph_indices(&paragraph_texts(&before_doc), &paragraph_texts(&oracle_doc));
+        assert!(!expected_tables.is_empty());
+        assert!(expected_paragraphs.contains(&100));
+
+        let request = HeadlessApplyAndQueryRequest {
+            commands,
+            queries: vec![HeadlessQuery::ParagraphText { paragraph: 0 }],
+            include_diff: true,
+            dry_run: true,
+        };
+        let with_diff = apply_headless_commands_and_execute_queries(&input, &request)
+            .expect("apply with diff")
+            .diff
+            .expect("diff requested");
+        assert_eq!(with_diff.changed_tables, expected_tables);
+        assert_eq!(with_diff.changed_paragraphs, expected_paragraphs);
+        assert_eq!(with_diff.before, document_stats(&before_doc));
+        assert_eq!(with_diff.after, document_stats(&oracle_doc));
+        assert_eq!(
+            with_diff.changed_runs,
+            changed_run_indices(&run_signatures(&before_doc), &run_signatures(&oracle_doc))
+        );
+        assert_eq!(
+            with_diff.section_changed,
+            section_signature(&before_doc) != section_signature(&oracle_doc)
+        );
+
+        let without = HeadlessApplyAndQueryRequest {
+            include_diff: false,
+            ..request
+        };
+        let output = apply_headless_commands_and_execute_queries(&input, &without)
+            .expect("apply without diff");
+        assert!(output.diff.is_none());
     }
 
     fn table_styles_fixture() -> Vec<u8> {
