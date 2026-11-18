@@ -43216,6 +43216,2598 @@
           "opened_filename": "word-windows-minimum-line-yu-mincho-latin-uniform20-min28-compat15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003824724Z-033114d9.zip",
+      "archive_sha256": "f9f5feca7e34e2f77a87832e3e066a1ca74caa2492c4de9560b9cfe7f87e75ff",
+      "capture_id": "20261118T003824724Z-033114d9",
+      "capture_sha256": "cb46d973018b804cfee5e98e60b30b130c6e97d3fa3c5fdb736fcb95ddd216c5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells10-compat14",
+          "source_sha256": "7dbc0f571584ae82a2d6c748296633d00a49eaf46843caefe5047c5d7389809c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003824724Z-033114d9/inputs/word-windows-pct-table-autofit-table100-grid10-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003828758Z-4dccc788.zip",
+      "archive_sha256": "49ac75887c2f7a3b6c13281b0dde81077526b61897b5be5e94dd9330ad7e97b5",
+      "capture_id": "20261118T003828758Z-4dccc788",
+      "capture_sha256": "4e81c81f374cf5d2f29b9c35ec6ec3d9d5dff75819884e5b35a745303867daf8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells10-compat15",
+          "source_sha256": "16f95a190bc26d8e4564b00b06515e5ba261c3823cdc576ce1f555d8293f8e86",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003828758Z-4dccc788/inputs/word-windows-pct-table-autofit-table100-grid10-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003833841Z-a9170ea7.zip",
+      "archive_sha256": "8dbf858ede3e5e343ae9406ca2a1a807766a754ec9037284cbfb218fcf4bb6c1",
+      "capture_id": "20261118T003833841Z-a9170ea7",
+      "capture_sha256": "26ea8534835eb90795fdbb539b7576c2e83734c6fce724ea564a2d61602e14c0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells10-compatdefault",
+          "source_sha256": "560f232a2040a7adf01f754d69bb2ccccc4ac073c41b92f86c7c21c1574eeaa2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003833841Z-a9170ea7/inputs/word-windows-pct-table-autofit-table100-grid10-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003836612Z-fc8ae15e.zip",
+      "archive_sha256": "eafbfeb179b55ec7de216c442c0f852f87f86f0cf791f27e209b5c00f63d8999",
+      "capture_id": "20261118T003836612Z-fc8ae15e",
+      "capture_sha256": "88cfd592ecf7e9d2f4e3a9d96cf0b64b6d29ab1f03685f68e1fa51b7f8d9973f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells30-compat14",
+          "source_sha256": "26c702e1fb346ea048370f74edba74f9f76e0cf218a0044bfc31ccc6d1c79ac5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003836612Z-fc8ae15e/inputs/word-windows-pct-table-autofit-table100-grid10-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003839375Z-aebdf1cd.zip",
+      "archive_sha256": "1e54f6c4b9bb8f6d6516c923021fd5dc414421c389f7b301f6e1b31ef596ca15",
+      "capture_id": "20261118T003839375Z-aebdf1cd",
+      "capture_sha256": "6e941e036014aea6f8ff00e0c66d4d39471e3aa128daf86fd91f30c0e9861aa5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells30-compat15",
+          "source_sha256": "eadd32e6356af4c3dde715141475ea9ff190f9a4da61fa238532a37e65442062",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003839375Z-aebdf1cd/inputs/word-windows-pct-table-autofit-table100-grid10-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003842162Z-e7c7b49e.zip",
+      "archive_sha256": "c68f80bbdf3f90f02d76b40761af31fa9bcf1666392134a4ba7e8b064e9c8987",
+      "capture_id": "20261118T003842162Z-e7c7b49e",
+      "capture_sha256": "a4a72b8bccd4dd58ce8d0702001338dd25ad39a1a306b5f98883bb263c5b0068",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells30-compatdefault",
+          "source_sha256": "2cd9a3a25dd31aa753eac500c42ffa466196d16b57a0a606b3420ad069b11a32",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003842162Z-e7c7b49e/inputs/word-windows-pct-table-autofit-table100-grid10-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003844871Z-c08d103d.zip",
+      "archive_sha256": "5be64d9a276b2fa270f1b4def4b222dacaf3349fd3f56f003f85268a2ac27936",
+      "capture_id": "20261118T003844871Z-c08d103d",
+      "capture_sha256": "7e2281ceda1461a59922852045287a36794e5820efe0c7334a8b9d5ae641996f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells60-compat14",
+          "source_sha256": "ff869d5df5861908fd7ed9551a3f339391ae75081b04710b01c0a64f974019b2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003844871Z-c08d103d/inputs/word-windows-pct-table-autofit-table100-grid10-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003847607Z-e956f8e0.zip",
+      "archive_sha256": "b1c36c07175172d6cd169d228d3224ec415746728d54d01535f459416df6616b",
+      "capture_id": "20261118T003847607Z-e956f8e0",
+      "capture_sha256": "ed2349316e651123ce4abb039b615cb7bd2ac543b4f0dc8c1ba4692c51fa8b96",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells60-compat15",
+          "source_sha256": "6dd0911c7c90535508b0b041b4586c575f82c96329a6d8a7fa957cac8c7b02be",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003847607Z-e956f8e0/inputs/word-windows-pct-table-autofit-table100-grid10-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003852762Z-772705de.zip",
+      "archive_sha256": "990d1050196752241cd83abb25f4c5a1ea1c1bfc07ec821a3183cfc2e34e2e5c",
+      "capture_id": "20261118T003852762Z-772705de",
+      "capture_sha256": "7003a555d3bd7528339c908186f6bb8d5b80937b5b2c153fa736ac8b41f85ded",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid10-cells60-compatdefault",
+          "source_sha256": "809addddd119e99691ce92716ea92e8b8a0e04e22dcc0c182dd688e2525ecd41",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003852762Z-772705de/inputs/word-windows-pct-table-autofit-table100-grid10-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid10-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid10-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003855535Z-602e25f5.zip",
+      "archive_sha256": "7069d1143f32a707159d9dde251ddbceb2f7044261411bbae01fa0116ccaf152",
+      "capture_id": "20261118T003855535Z-602e25f5",
+      "capture_sha256": "9a309fa3ada0e47a6ec4318a8f7558136bc529b073e6ad03b4a6ed00c1b00b72",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells10-compat14",
+          "source_sha256": "c35b58db6191763423e8e67930a08ed95c113dfc737c767ffde49df421ec4724",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003855535Z-602e25f5/inputs/word-windows-pct-table-autofit-table100-grid30-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003858260Z-03e46451.zip",
+      "archive_sha256": "52b1cf71d70d5b6af6fc6dd404d464819ae46db23acf5130a766d4567e2d64d0",
+      "capture_id": "20261118T003858260Z-03e46451",
+      "capture_sha256": "8c1f14b07391411787f3293729f344fe4169e9d821ddcbd609c06e0afcc9efcf",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells10-compat15",
+          "source_sha256": "ce3bc55471bed47b6c0035d484a1ac26582bc38d0e4b1ae78ccc13174c1e636f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003858260Z-03e46451/inputs/word-windows-pct-table-autofit-table100-grid30-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003901028Z-063b5164.zip",
+      "archive_sha256": "84ebfbffb2c99bbb1002ebf728ea122eba9316cf83639e89c461d4ee0ee0ac3e",
+      "capture_id": "20261118T003901028Z-063b5164",
+      "capture_sha256": "ed28eb508fc754fd56c9a4a08f1b989b7dabaddafb31387222d302dd6a08ffda",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells10-compatdefault",
+          "source_sha256": "e3c11aee9c1e0292a4c63070a220b0bf647894efce54c49526fc94eb17221b2c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003901028Z-063b5164/inputs/word-windows-pct-table-autofit-table100-grid30-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003903803Z-22031c58.zip",
+      "archive_sha256": "f9f10fc2f8a5c3d4a3e526ccc95ee1a193ee26a08729b04811024346363d483d",
+      "capture_id": "20261118T003903803Z-22031c58",
+      "capture_sha256": "81672da12fc0aad28ec70e8292688a547850e4644dfda32b4579963f483b325d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells30-compat14",
+          "source_sha256": "c0fad987414a73c2a178113bccaa04e0e0627c1a8f4f4d01f6d9f71b3b3fe1e2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003903803Z-22031c58/inputs/word-windows-pct-table-autofit-table100-grid30-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003906541Z-7808163e.zip",
+      "archive_sha256": "f41ff64a63c691b63b5ed09371a5d9cae6f88c4e135d42304265c7cb96d8b063",
+      "capture_id": "20261118T003906541Z-7808163e",
+      "capture_sha256": "7d85ed17ee47c8b1d67af8d6d649bb81bc9f862cfd0ef6de62b11ec3609d7576",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells30-compat15",
+          "source_sha256": "2f9ab187c81991df2e3b766f05330f8c9fb2fc8a6f97dc7543a92766649e7c1c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003906541Z-7808163e/inputs/word-windows-pct-table-autofit-table100-grid30-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003907902Z-47d6e30a.zip",
+      "archive_sha256": "e7fded445dec01403df5e6c6d17d61443e88ea867032ed595981eada0fe4f44d",
+      "capture_id": "20261118T003907902Z-47d6e30a",
+      "capture_sha256": "b2653fe8bbffc247e08fb612fd616523dbf52c267ade9f72a6cf5b11ae8400c9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells30-compatdefault",
+          "source_sha256": "60f0c382c4eecb52d7817f55c3a5c56eca51d9c64b1009c9862f3997c43df5a7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003907902Z-47d6e30a/inputs/word-windows-pct-table-autofit-table100-grid30-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003909254Z-22c9e54c.zip",
+      "archive_sha256": "3864658eedd2d510f893ea6bad4c567503bb2b9fedafad0ca0549b0e79411a36",
+      "capture_id": "20261118T003909254Z-22c9e54c",
+      "capture_sha256": "7afe2868aacc86012e60c60ac54d3b787b9bf29c0d83274723c2a9436e11d23b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells60-compat14",
+          "source_sha256": "f3952f4c6a268338e2e6da4254480e159088518847e108c1d171830c293ed773",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003909254Z-22c9e54c/inputs/word-windows-pct-table-autofit-table100-grid30-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003912027Z-914fcceb.zip",
+      "archive_sha256": "491e662464a35850c82b4ade0e97adc9a51f2ea0095bd46ec4ac0f24d005f7f2",
+      "capture_id": "20261118T003912027Z-914fcceb",
+      "capture_sha256": "0f3fd0d7fe349b1da22bc030d3e3ba583696a45a69261806aad2068236a2fb0d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells60-compat15",
+          "source_sha256": "7bffac0255bff64914db889461e7b5c7efc12dea4e971778abccca18f1c0ce20",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003912027Z-914fcceb/inputs/word-windows-pct-table-autofit-table100-grid30-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003914766Z-fc840053.zip",
+      "archive_sha256": "93ceda43de0a628d283be1b91e5e48eb4667f5e76d587509daa342f0680d5b24",
+      "capture_id": "20261118T003914766Z-fc840053",
+      "capture_sha256": "2cf960a8c38d79ba670cfbe3b52818a12090ccb35590483f8c2251b27e478fa9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid30-cells60-compatdefault",
+          "source_sha256": "dd0b0f4328bf9bb7bd104f2a5bc18fee79b1b92103fb69e1b7798c3d73ca7f40",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003914766Z-fc840053/inputs/word-windows-pct-table-autofit-table100-grid30-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid30-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid30-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003917474Z-205ecdd9.zip",
+      "archive_sha256": "9671812b1bd245572a0cf53e3205cac9c8a4133144d291fbcafa33fcd80f430c",
+      "capture_id": "20261118T003917474Z-205ecdd9",
+      "capture_sha256": "bd56f3d8e124554559e034f353ac8a595770798ee58c2473486f8e050a06a97c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells10-compat14",
+          "source_sha256": "254e3cd6894adb4c055a83f3ebb86679b09a4734a47a029410898edff0100f9c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003917474Z-205ecdd9/inputs/word-windows-pct-table-autofit-table100-grid60-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003920548Z-7ce57087.zip",
+      "archive_sha256": "615b88aed4148312b55d81934d47e4c3e45d4c3679c4e7b175bc4832bbaeac5f",
+      "capture_id": "20261118T003920548Z-7ce57087",
+      "capture_sha256": "ad63a44ed8ca9d33db4c529b85806b08ab08078de8d0c60c24046034f747c925",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells10-compat15",
+          "source_sha256": "c6de347382e41f3b3b195803ff0d82997500594a925c7001968bb5c364be2570",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003920548Z-7ce57087/inputs/word-windows-pct-table-autofit-table100-grid60-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003923288Z-a2a3bc76.zip",
+      "archive_sha256": "4be29218d458c69ff65fd55a4707b2322c7c7f7f4bf0389ba33c5b2771b9bab3",
+      "capture_id": "20261118T003923288Z-a2a3bc76",
+      "capture_sha256": "984e38b246294d1cc9def8a84f0af6a3a964e7b5fc1953a6b9f5540eaeba1106",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells10-compatdefault",
+          "source_sha256": "6e2762afd40bfe85d7f970b6476bc410683add198f76f425a05706b21a7b17ee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003923288Z-a2a3bc76/inputs/word-windows-pct-table-autofit-table100-grid60-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003926015Z-5e726ad5.zip",
+      "archive_sha256": "12a58dac8321277e20b5e697757de15cb5d9cfe13434a227803ccc7b72482789",
+      "capture_id": "20261118T003926015Z-5e726ad5",
+      "capture_sha256": "3538d1de6e0b9adea739f44f64510162af4bd3f67b68ee33d13cc40d9b9fdf1f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells30-compat14",
+          "source_sha256": "393684efb4566ae1c4896e391d8ad738d3fe6dd431c2dbe3852dc4348cf4c5db",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003926015Z-5e726ad5/inputs/word-windows-pct-table-autofit-table100-grid60-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003928768Z-b19dd58b.zip",
+      "archive_sha256": "7471a127cb1a4ac74f56e13586c310fcc15a412f914d7d85c93beac849016ff1",
+      "capture_id": "20261118T003928768Z-b19dd58b",
+      "capture_sha256": "cc62c7c403ea59d6fc2233a83babe891bdb75d67b34834eca7179f57030deef9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells30-compat15",
+          "source_sha256": "718f5e81593dae8e9d15fecaba519e55304cc64f90f66e968ced0c95dafa496f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003928768Z-b19dd58b/inputs/word-windows-pct-table-autofit-table100-grid60-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003931476Z-480e83e8.zip",
+      "archive_sha256": "723bd2fa316533be151019c6f17dd2784a347484f168b7ca6c3e7e80e32ceb2e",
+      "capture_id": "20261118T003931476Z-480e83e8",
+      "capture_sha256": "031dada6ebf7de010348e004ed544d6bae73455d1bb9eb952509bba037d69b0f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells30-compatdefault",
+          "source_sha256": "de265c5c14010d18dfedcd1559a3cdf917b1919ddd50e3a2c7bca2096f730a1e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003931476Z-480e83e8/inputs/word-windows-pct-table-autofit-table100-grid60-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003934439Z-c5e4ab11.zip",
+      "archive_sha256": "328e7523ba43a382ba5b05b8e89f5b727b38636ff5af27375ddef3504073febe",
+      "capture_id": "20261118T003934439Z-c5e4ab11",
+      "capture_sha256": "9fa9affb404f6cc8ee9b9f0b85fb82d2e5cd44894e1fef5b9cd824a624bb3832",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells60-compat14",
+          "source_sha256": "92853fe536d804dd8321dd7e0e65f1b592f1069f880ecf2995434bcb719cc9b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003934439Z-c5e4ab11/inputs/word-windows-pct-table-autofit-table100-grid60-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003937193Z-bb3bde75.zip",
+      "archive_sha256": "37391a0657b0843832b08015c14182e36867cf30453314daeed757c458b81f3a",
+      "capture_id": "20261118T003937193Z-bb3bde75",
+      "capture_sha256": "eaf28487b4f9ec02fc249e1ef2c22936088e57bbbfbf980d782e3d004d58a069",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells60-compat15",
+          "source_sha256": "657077d0d90bc8e74a7962d4831b8bebe56fb137b707ea47d2f4c05e363cdcb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003937193Z-bb3bde75/inputs/word-windows-pct-table-autofit-table100-grid60-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003938861Z-0efb98b2.zip",
+      "archive_sha256": "9e53242f78502769864dbc698de312ab6754ae44b97e53ada63e6a61313f56a5",
+      "capture_id": "20261118T003938861Z-0efb98b2",
+      "capture_sha256": "f02ba09f6723b147a998e1462b5f3eff4e70f55703da7a3104c46f0d6466f5f9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table100-grid60-cells60-compatdefault",
+          "source_sha256": "090e4384a880c7032a587fa4275ce09365466f4e1afa7a7d969d2908563dcab6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003938861Z-0efb98b2/inputs/word-windows-pct-table-autofit-table100-grid60-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table100-grid60-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table100-grid60-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003941612Z-0e745d29.zip",
+      "archive_sha256": "bc0b2b33b3f0465201d8b75d1a52992a6a8f8dd38e5e87fd8b4ab62fd57cc0e5",
+      "capture_id": "20261118T003941612Z-0e745d29",
+      "capture_sha256": "81875fa31643f87da93b86362ffe85e65f2f6de3fd73f3d4cb0adfbd19cee71e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells10-compat14",
+          "source_sha256": "758f8e35c0ab02fada95b82a7868784bf4864d2efdb0d77f9b106d982b49766b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003941612Z-0e745d29/inputs/word-windows-pct-table-autofit-table50-grid10-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003944367Z-a5cb587b.zip",
+      "archive_sha256": "180425bf16821ccb82b3e70927e300f2f53fb4bac239e70b75b0adf3d566d171",
+      "capture_id": "20261118T003944367Z-a5cb587b",
+      "capture_sha256": "57ceab16df1c200c3237cf8faa5291a96d43a3f9d2c5083ba9dcbc783afd48e2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells10-compat15",
+          "source_sha256": "6fdb0e0a51b654cbf0655bf5511a5fe4a0fbb8ce039feb1a89d1a821998ec06d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003944367Z-a5cb587b/inputs/word-windows-pct-table-autofit-table50-grid10-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003947088Z-ecac7942.zip",
+      "archive_sha256": "feabc3f86ec82933cfb5a3d6f42340281ecc518e35f1d5142f6176c6f37588ef",
+      "capture_id": "20261118T003947088Z-ecac7942",
+      "capture_sha256": "e61599b5cb97703c383434a3850235ffa98207d8395d3a55b2a5d28416aca6ed",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells10-compatdefault",
+          "source_sha256": "a2ede59d3e23bf7a453cf8e0c3685537215bf58a74c4237c70a79a410ecf2eb7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003947088Z-ecac7942/inputs/word-windows-pct-table-autofit-table50-grid10-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003949954Z-8206b20b.zip",
+      "archive_sha256": "49424d8d67fea76f486b2f23564176a184cbffcf6e57d73ec691b8f4c66e74f8",
+      "capture_id": "20261118T003949954Z-8206b20b",
+      "capture_sha256": "609b6d42bf3dea1db8b493a303f8ad2738e2f557a980e3c6c3e94f3ecb95aad9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells30-compat14",
+          "source_sha256": "07bb72df66c124f61601800b96724f6cbe2f9d36c2d48e01e8868dcd4440cdba",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003949954Z-8206b20b/inputs/word-windows-pct-table-autofit-table50-grid10-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003953033Z-5bcf2a9f.zip",
+      "archive_sha256": "d18cdf8721ac6b0acb3bf566e468a77630415d9c2ba1185f971ead18316eae9b",
+      "capture_id": "20261118T003953033Z-5bcf2a9f",
+      "capture_sha256": "0006de3a5c1ce5be7d0509f870155685325fbb21c7d3ce093768c0e51828bdd5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells30-compat15",
+          "source_sha256": "5cb90c0aa05b613de4fb923330806ac81deaf48d98ca8346472c45ea744106cd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003953033Z-5bcf2a9f/inputs/word-windows-pct-table-autofit-table50-grid10-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003954404Z-8d9e019e.zip",
+      "archive_sha256": "fe1b1a0c72cff1de279ec9fa8634bffa935080a4f1c2701e65fe1d64480fcc5b",
+      "capture_id": "20261118T003954404Z-8d9e019e",
+      "capture_sha256": "617db7a8beb7739716e780e84d227c5a1f8e2cbe361a0731530412866ac39f7e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells30-compatdefault",
+          "source_sha256": "bb807df1b53a19120eefa7a9ab5c19bf29952e08905025cc6593198689d70824",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003954404Z-8d9e019e/inputs/word-windows-pct-table-autofit-table50-grid10-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003957149Z-c659064a.zip",
+      "archive_sha256": "73ed144c415e894a1eea7dc70b5e43a9bd0fe09872ad4201b6fe4f7873d4cff9",
+      "capture_id": "20261118T003957149Z-c659064a",
+      "capture_sha256": "aa5e98a563890940f4af193ff626ac0fc3961a8a42ba6f1a5075388a9a6cc137",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells60-compat14",
+          "source_sha256": "69d49fae9e82cdfb225853cefd9830f1d9081cfb2235d8bdf99c6b32b08296a2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003957149Z-c659064a/inputs/word-windows-pct-table-autofit-table50-grid10-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T003959917Z-d855874b.zip",
+      "archive_sha256": "0d656a084d7eef9d5054c333fa7ae63ea109b640391c816d55fe3e613097e4f9",
+      "capture_id": "20261118T003959917Z-d855874b",
+      "capture_sha256": "e040d612837df6199ab5a466846b3bcd027e55d42e4d06862ec61015af8b179d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells60-compat15",
+          "source_sha256": "23aa69aaf3f1e25fe076946bf0220a91afeed23136c8968d8cd96ade0b8b3815",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T003959917Z-d855874b/inputs/word-windows-pct-table-autofit-table50-grid10-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004002718Z-be1f4f0d.zip",
+      "archive_sha256": "f65407f2609ff0a1f1fa0aa3f01d0acaf56dab9a785089a88fb6b727d119ae4a",
+      "capture_id": "20261118T004002718Z-be1f4f0d",
+      "capture_sha256": "cde1686fcd85ba4c56c775f1aac47bc07be80414dd8c91c3b2f7a8f25ef7e80e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid10-cells60-compatdefault",
+          "source_sha256": "a9e292e3b6912ad19d70dc35004dfd019a5d0dd1ba72d157b8d7b8ae451d7558",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004002718Z-be1f4f0d/inputs/word-windows-pct-table-autofit-table50-grid10-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid10-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid10-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004005813Z-8cf1af42.zip",
+      "archive_sha256": "55bf2cfbfb82b821bf659ddda43dfb8b8fdbc4866f14ec4673ca23cf7b39d881",
+      "capture_id": "20261118T004005813Z-8cf1af42",
+      "capture_sha256": "5d178cd87fc66721fe5cdfe5ff8e4192b4c3835b801ae2d9ef0d56c3b896a757",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells10-compat14",
+          "source_sha256": "70ac6e0fe73dce51dd4f6cbe020ed22a31e86ec1c4e4419ffbe20f29754d0854",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004005813Z-8cf1af42/inputs/word-windows-pct-table-autofit-table50-grid30-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004008578Z-c3c6d58a.zip",
+      "archive_sha256": "198ecadcd85dd70fb0ef363c54464a0a71da64578e9c000ce9f96b60f0e7a5a3",
+      "capture_id": "20261118T004008578Z-c3c6d58a",
+      "capture_sha256": "ccf0c1acc71658ee402ec7ce932333a78b7fac7dbd2fe810e6c71236f4937242",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells10-compat15",
+          "source_sha256": "c5a96fe8bc252f0e9528075929da6111ae2f655808ad991bf05dd4fdff674c54",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004008578Z-c3c6d58a/inputs/word-windows-pct-table-autofit-table50-grid30-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004011315Z-68c9f1e0.zip",
+      "archive_sha256": "0b7f0b9088ef689d7da8bc15adbcbf49afd0387f5e153db9d0ce0b258fb8a9a1",
+      "capture_id": "20261118T004011315Z-68c9f1e0",
+      "capture_sha256": "f599703c14b214029f30e818a5fba5e7983c609fcb4b9f4a9890ca194d37476b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells10-compatdefault",
+          "source_sha256": "7deccf1a19134e2422424fbd3b4158bfcc397b55f91172b8b8bfd8292dccb4fb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004011315Z-68c9f1e0/inputs/word-windows-pct-table-autofit-table50-grid30-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004014076Z-7ecfbf42.zip",
+      "archive_sha256": "cff11a118f6875d6e25d9e3773a83d6327626523e0dbb6e6d65c126cce77b710",
+      "capture_id": "20261118T004014076Z-7ecfbf42",
+      "capture_sha256": "550d19d1b776d907b42be5531fac87ad20d7ea26e259c73d7f190caabd00cd11",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells30-compat14",
+          "source_sha256": "327f679c6df6ab6ef4df6bd2c4fa16faec3fc6cea5b37818964366cc3d4e06ef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004014076Z-7ecfbf42/inputs/word-windows-pct-table-autofit-table50-grid30-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004016815Z-8357ce64.zip",
+      "archive_sha256": "4863cf7e74ca5c316ae8659c9a3c52a1cbe5b2d005c443c27f5d24f2249afc2f",
+      "capture_id": "20261118T004016815Z-8357ce64",
+      "capture_sha256": "408e06547590819326131ac4762d1a3b4a38975924ac53784d0bd3010c0b37a3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells30-compat15",
+          "source_sha256": "3e16763b3f114788f29ae07b70ebac43b744fcf4e9a03fff25dece2d447a609d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004016815Z-8357ce64/inputs/word-windows-pct-table-autofit-table50-grid30-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004019601Z-e19bcdec.zip",
+      "archive_sha256": "9bbe0032db59e200ecab5c62332d4d675be832d355f653b9821b5a000b0128e1",
+      "capture_id": "20261118T004019601Z-e19bcdec",
+      "capture_sha256": "7a1087f945bced25b84189d24d7bea3075df0127f5d6e78e92fa6eb37befd75c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells30-compatdefault",
+          "source_sha256": "978f9516a9651f198cc08968e696f4d4548dc3f0049e7a904bf287eae41a82e3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004019601Z-e19bcdec/inputs/word-windows-pct-table-autofit-table50-grid30-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004024595Z-fbfd22c9.zip",
+      "archive_sha256": "407a45ceafc7704f6d3e6172298f18d54ad1742dddcb48e61cca0e007ea014f9",
+      "capture_id": "20261118T004024595Z-fbfd22c9",
+      "capture_sha256": "a9ed11b6b3d84e60ed88979b555f3c1454977c6e8f81234e9e8b78e2574c576a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells60-compat14",
+          "source_sha256": "c1dea7bd665eb6abe08bee06da620f12b6332e756e8fe7eb092bec47278ab1dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004024595Z-fbfd22c9/inputs/word-windows-pct-table-autofit-table50-grid30-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004025934Z-b255ea08.zip",
+      "archive_sha256": "68169e4255a15f14624e34ffa96197d4ba6602481de2071e32daecb215e3c80c",
+      "capture_id": "20261118T004025934Z-b255ea08",
+      "capture_sha256": "8599e457960e89eb509d8f8e0899bc366be0dcc82597d7523c6d776248f4fa62",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells60-compat15",
+          "source_sha256": "8f3221b6030aa639ada775caf98ecfb0661822c2025b76eeb89b0f6f02479593",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004025934Z-b255ea08/inputs/word-windows-pct-table-autofit-table50-grid30-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004028668Z-2979f564.zip",
+      "archive_sha256": "3c7fa031691a82e1292d87dd06310b301ab5ea1103b40d7380252dcdb3c77b38",
+      "capture_id": "20261118T004028668Z-2979f564",
+      "capture_sha256": "4aa36d02a2dc6e0a0acfa85038caa949fce0efaa4129e764791dd75e70bf904b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid30-cells60-compatdefault",
+          "source_sha256": "e1b3df4fb61fac5afe5a215d257f6e8aafb7fc7a7049a6b0868173144fc160ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004028668Z-2979f564/inputs/word-windows-pct-table-autofit-table50-grid30-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid30-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid30-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004031377Z-3ddd965a.zip",
+      "archive_sha256": "8164ee6de5b979842e3ba175ed40347247aed548530d7719665190b5d97eb5cf",
+      "capture_id": "20261118T004031377Z-3ddd965a",
+      "capture_sha256": "05dd4ad565f21dd7bd1a72df494fb1b2728f3fbed1a913c31aaa02b721c6179b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells10-compat14",
+          "source_sha256": "23522efa991c22f6fcf145ccc9fa3a06152c04f06a6dae190503bdfffbab6b7a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004031377Z-3ddd965a/inputs/word-windows-pct-table-autofit-table50-grid60-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004034102Z-fb9dcef5.zip",
+      "archive_sha256": "4b6a289a7e66ef95eb1d23b9be5ac8ed4fc317df65296121e1ba277f40337f50",
+      "capture_id": "20261118T004034102Z-fb9dcef5",
+      "capture_sha256": "5c01bcff41460ae59026d5f8de881bc02a0fc076e7b7312a6e1bee6cd192c3f9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells10-compat15",
+          "source_sha256": "7f864fdd99a93f080954f13ec7420d45c37965170b431a0374cb69b11a1c5e5b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004034102Z-fb9dcef5/inputs/word-windows-pct-table-autofit-table50-grid60-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004035489Z-05d3b762.zip",
+      "archive_sha256": "eb2a6e10d1675c8b62a785df6d3b99f02687eca123ac2106a9b0a2cb44596b1e",
+      "capture_id": "20261118T004035489Z-05d3b762",
+      "capture_sha256": "122f87f646b8c3831e4d71df32fe20bd5787f07eb905324857507e6fe065ffe1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells10-compatdefault",
+          "source_sha256": "7c986d9a1407c8227e6235e0bc739ebedb98428ec02a86718c4be41011eed97d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004035489Z-05d3b762/inputs/word-windows-pct-table-autofit-table50-grid60-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004042784Z-8f17a08b.zip",
+      "archive_sha256": "4023669f3cdf9586cff5862117ccc166fd9df0b2caf976cc8ad11305ad09e4df",
+      "capture_id": "20261118T004042784Z-8f17a08b",
+      "capture_sha256": "ddc3f8db917c6973f0fd72a3cf07c4158c5d17369f3b5b97cc33a3566e6b9d88",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells30-compat14",
+          "source_sha256": "9c0a36708424587d19919087e05b1929c8908bf67f0dc160f6e7c9c494199408",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004042784Z-8f17a08b/inputs/word-windows-pct-table-autofit-table50-grid60-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004045525Z-5cec7845.zip",
+      "archive_sha256": "5e2da2b449c24274f81f18e9b433e718034e4c466b5d38b16571dedefdddf28c",
+      "capture_id": "20261118T004045525Z-5cec7845",
+      "capture_sha256": "2eae54bc1a84c7105d6380bdcfb26efee3abab811b98c70dfe4f5c751b97b374",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells30-compat15",
+          "source_sha256": "8270041942815d1bda1258af452323cb9f0c8d65585c0eff3bdc7927abcc4bfe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004045525Z-5cec7845/inputs/word-windows-pct-table-autofit-table50-grid60-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004048251Z-fc049964.zip",
+      "archive_sha256": "21d0514414a020e5aaf1e637784c24bce6940b79853e48bee5e23e1bd9026f53",
+      "capture_id": "20261118T004048251Z-fc049964",
+      "capture_sha256": "a06e56b69009d6d09f8db3cedac764c2dc7b35a8fb14766585369f94a9659e90",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells30-compatdefault",
+          "source_sha256": "878cfb4d225f756c558cd3c3f3245ef40e7a5d64e6822ec6e4b3dbc7cce6b939",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004048251Z-fc049964/inputs/word-windows-pct-table-autofit-table50-grid60-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004050979Z-72e5b807.zip",
+      "archive_sha256": "218765c73e4368a29fc4c77231fe8cf56c16e859c491041149a9856a46d0ac10",
+      "capture_id": "20261118T004050979Z-72e5b807",
+      "capture_sha256": "1ca8b55c492b49697e18cfe0d1948565a3ba007227820fcd461dd36ef5de520c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells60-compat14",
+          "source_sha256": "e828966b5b8a8025182b4b1e3b52c094c7119d77049dd953755163cd6e24f90e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004050979Z-72e5b807/inputs/word-windows-pct-table-autofit-table50-grid60-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004052307Z-b68b0ce7.zip",
+      "archive_sha256": "6ce31f45d911ec186094922a6573ac70e78be29121e2da04ff65a92795d37e00",
+      "capture_id": "20261118T004052307Z-b68b0ce7",
+      "capture_sha256": "a71dd236a3d9c71ea80c1f9467d505b30aaedc1e3275a2e4ff034667b1e0529a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells60-compat15",
+          "source_sha256": "eb58451094156e4c1de495914447eb44a050a5ab47bf745c204accc38672453a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004052307Z-b68b0ce7/inputs/word-windows-pct-table-autofit-table50-grid60-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004055098Z-ed515c1d.zip",
+      "archive_sha256": "836349894872e9d7c06e79aa06ac3172226d7a61ff394c21382895ba64241859",
+      "capture_id": "20261118T004055098Z-ed515c1d",
+      "capture_sha256": "383d253c4d07ecb5ca2b64cd57d09cca724300801073d845d4d304d10ab04129",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-autofit-table50-grid60-cells60-compatdefault",
+          "source_sha256": "de7b87f2aa4cb0a8dca36ffa23cc33309207f6be409cdfc06fc68faed4b0aea2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004055098Z-ed515c1d/inputs/word-windows-pct-table-autofit-table50-grid60-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-autofit-table50-grid60-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-autofit-table50-grid60-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004058802Z-4567c134.zip",
+      "archive_sha256": "870c2cdd154f97c14d00b060629bce8e5b9a6ede6aa3293fcfa8702da07fad6d",
+      "capture_id": "20261118T004058802Z-4567c134",
+      "capture_sha256": "ded490caed8f8e3e35ce77a9880b47d10d250008cce8252e1394f19f384adcb2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells10-compat14",
+          "source_sha256": "4dc7f5794f886d9d599f2c9cb5ecd95556634fa99eea3a721ce61afce99319b4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004058802Z-4567c134/inputs/word-windows-pct-table-fixed-table100-grid10-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004101559Z-815ff56d.zip",
+      "archive_sha256": "a706c3caa43ffb6eb58937a6d7de50d97ccde13404abf5159ba3134355c21a37",
+      "capture_id": "20261118T004101559Z-815ff56d",
+      "capture_sha256": "e9aafbd24c89dadf4d11135fc4441e8319207132152aac1053280838968eb17e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells10-compat15",
+          "source_sha256": "434064090b463c558172120b266fce117b4ca33fb66ff98fd56adece66754c1a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004101559Z-815ff56d/inputs/word-windows-pct-table-fixed-table100-grid10-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004104270Z-faf763fb.zip",
+      "archive_sha256": "16f5c01ae430a58ceaf1e80af9a37865c9a7087f216e22857ab1e3a602e228a4",
+      "capture_id": "20261118T004104270Z-faf763fb",
+      "capture_sha256": "fa1096481bbe48f3fb1ffbb9d8bf3628382ce879f38318077b5ac877ec3b4a4e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells10-compatdefault",
+          "source_sha256": "eb297550231cec8009b848d778b67ac29c6e99a5b2789017dbb0450e80667115",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004104270Z-faf763fb/inputs/word-windows-pct-table-fixed-table100-grid10-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004105606Z-60b8bd78.zip",
+      "archive_sha256": "9fa92fefce30723a11a8fb3c85ab41fbd2988c6561da6bfaf3fdc4735414f7f7",
+      "capture_id": "20261118T004105606Z-60b8bd78",
+      "capture_sha256": "64661bcf2024842a065c5987fae4df7c38f556989f2fb2a5e15dec4ea9714591",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells30-compat14",
+          "source_sha256": "e1ef1a5810f49d82c74c80df9278e28665a99ca4a94f865de5c778107d49b9bd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004105606Z-60b8bd78/inputs/word-windows-pct-table-fixed-table100-grid10-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004108341Z-277cf310.zip",
+      "archive_sha256": "d3d77808f027d0a9ba4037365c6f1d6b5903fa0c8f8b47a79c2ca6b70b52c2e7",
+      "capture_id": "20261118T004108341Z-277cf310",
+      "capture_sha256": "4c5967703f73feb5ce73b62c8f7af6421b913ded11852c1797979c95abc3cc1d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells30-compat15",
+          "source_sha256": "415181a00240c47947a7f5c5ce8297c8fe4685492ada3e9fa1bbcc7dddc4658f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004108341Z-277cf310/inputs/word-windows-pct-table-fixed-table100-grid10-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004111124Z-82c0572a.zip",
+      "archive_sha256": "649bbdcfd02140293400eb42df6fca60bc3826de799695037e9c85b9ac9bb4d9",
+      "capture_id": "20261118T004111124Z-82c0572a",
+      "capture_sha256": "9a17d52ae2bdb2b1c57dac70868075bdcbe6fc778bf93c390782141185f0d096",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells30-compatdefault",
+          "source_sha256": "1e1e486c4c2f05149192d68e4971fcc353fb8b74008a900ef34961e96a2a3bd0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004111124Z-82c0572a/inputs/word-windows-pct-table-fixed-table100-grid10-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004114948Z-044d1e09.zip",
+      "archive_sha256": "071a54f59b951a98034883bab76a5ec2027454adcabfb2de1dd968f38a74496b",
+      "capture_id": "20261118T004114948Z-044d1e09",
+      "capture_sha256": "6354d52e7130b3e56982ece67b2203d8a92767ce87d5cddb763ff8e86caec5d6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells60-compat14",
+          "source_sha256": "b97a7add34a5b5470209e9d4db28a6976474ef78d370709d4cb9395ae9c0f0c2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004114948Z-044d1e09/inputs/word-windows-pct-table-fixed-table100-grid10-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004117745Z-bf9eb6d5.zip",
+      "archive_sha256": "e5ef5d0549a71bdbecd9c9782585531a2be147a8b9773ea2ee59feb6d4a9a785",
+      "capture_id": "20261118T004117745Z-bf9eb6d5",
+      "capture_sha256": "8b2dc238f30a288049714aeabcb27aef50c76f4c46468cca3ddccdbd4222041c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells60-compat15",
+          "source_sha256": "4c39cda99980497d2fd43fd3c1cc03cd8d3c02f7277347a3cb5630217f53f3ec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004117745Z-bf9eb6d5/inputs/word-windows-pct-table-fixed-table100-grid10-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004120477Z-57ce6921.zip",
+      "archive_sha256": "d9a3892caa8186f631aff35947472dc1b89e2df226ad069b7682c0b723f08f29",
+      "capture_id": "20261118T004120477Z-57ce6921",
+      "capture_sha256": "43d03c3ea4e123f2b35c2121b70d8d1575bf8478a247a19b0ef695f92a54fef0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault",
+          "source_sha256": "2e89c2b95f93c2eef9e08631fb26d88466bcce32b9e3f9f359afcc8deb75f9a4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004120477Z-57ce6921/inputs/word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid10-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004123244Z-135ada24.zip",
+      "archive_sha256": "4f620d3e3eba1beb7cb36801d29e451090791515b6970496ee168484b34068fa",
+      "capture_id": "20261118T004123244Z-135ada24",
+      "capture_sha256": "76df623bd748af6ed53029b0368bb195d35445e5ce96aaf3f428779d8431e7db",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells10-compat14",
+          "source_sha256": "51ba83f54bfd5fdd3317a591ee3433226ca25a74c007ebb11faeb034621dcb71",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004123244Z-135ada24/inputs/word-windows-pct-table-fixed-table100-grid30-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004125972Z-012505a0.zip",
+      "archive_sha256": "af559a9e3a10d09709fec77c7834064c4b2f79ddeed2fa59d3da86ef47f7a00e",
+      "capture_id": "20261118T004125972Z-012505a0",
+      "capture_sha256": "50601df87ca7563f876bafd3f59660e0be7d5416e9d61cc982bb220123b0887f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells10-compat15",
+          "source_sha256": "af0d5f90f8da9efa86f28827d5dbdb01eac714204a392adab2c61dfaea21de18",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004125972Z-012505a0/inputs/word-windows-pct-table-fixed-table100-grid30-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004128727Z-30423b49.zip",
+      "archive_sha256": "874755f6803b938ebf5bdbd883ed885f85639de3313ea095cea5fc56aa3ebae6",
+      "capture_id": "20261118T004128727Z-30423b49",
+      "capture_sha256": "51b9bf4a91a3bc823789f765d95f0569d0898f9514a8ef953ac6ad03988a48c6",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells10-compatdefault",
+          "source_sha256": "728a5e300c758381e89d3b8a4b163d620a01b78a78ea3a7f263d1b074c7eabae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004128727Z-30423b49/inputs/word-windows-pct-table-fixed-table100-grid30-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004131757Z-1e64a581.zip",
+      "archive_sha256": "fea0f1b674f4ef89accf7e78ea1810a7262cb9e7958c386976f2cbfec2c7ce48",
+      "capture_id": "20261118T004131757Z-1e64a581",
+      "capture_sha256": "1c1bae6d401c77a90ff1ca557fd4619a4e307f488ad4bd19dad79a1c056fe66b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells30-compat14",
+          "source_sha256": "ebcbdd8cd1c919fc9af9a9b870abb6a978bbbf2c473356b15154b2d91e630aa3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004131757Z-1e64a581/inputs/word-windows-pct-table-fixed-table100-grid30-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004134493Z-cdf5a985.zip",
+      "archive_sha256": "431a039fe0657d92e47d26721b0ff5746bf535c7ce1cafdf3d4fbd0b51bee841",
+      "capture_id": "20261118T004134493Z-cdf5a985",
+      "capture_sha256": "25bb3c85d349dc41f0d4a1d4dadddda4d6e61ef4ef9209418a2146c640fc77e5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells30-compat15",
+          "source_sha256": "54fd4a3e6a28ddbcd22969391a117c3c1169ac4c076f67d776344495fc018dc4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004134493Z-cdf5a985/inputs/word-windows-pct-table-fixed-table100-grid30-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004137233Z-a09fe07a.zip",
+      "archive_sha256": "244462b91a5fd735d89a10bcdb2b438c8cc532cd84ed7bf55632f5630e847229",
+      "capture_id": "20261118T004137233Z-a09fe07a",
+      "capture_sha256": "fe718c1977eafd695e15bfe77b0ebdfbdc5b64c9da460578131608cba96351c2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells30-compatdefault",
+          "source_sha256": "02bd128a5e4a191edcf4e768de2e74a74d2604877e10b93b384a1af87de18e16",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004137233Z-a09fe07a/inputs/word-windows-pct-table-fixed-table100-grid30-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004138570Z-9b78c058.zip",
+      "archive_sha256": "d80628df3b1f768244477dc1ee1490f8ea53ab037adcb2d7300c3bf7c57f10df",
+      "capture_id": "20261118T004138570Z-9b78c058",
+      "capture_sha256": "db09ae378f764af2b6d839c5122664a852ae95a71d5abc4a1fdcba1e455c105d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells60-compat14",
+          "source_sha256": "0c3cde05064a25476ad74278e3e6e776257e5d3800819c170de1be06bb9be687",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004138570Z-9b78c058/inputs/word-windows-pct-table-fixed-table100-grid30-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004141338Z-caaeb6e7.zip",
+      "archive_sha256": "b68f245519d4772075bc8d6649a552c79f7c1a5043d90b72e372129855b8701a",
+      "capture_id": "20261118T004141338Z-caaeb6e7",
+      "capture_sha256": "77e684b08c3a4c9ac7b5fdbcf5ecb4b144a1185fb2f4790810bc4dbcd6066c69",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells60-compat15",
+          "source_sha256": "70d9b78b33b26f0b2a583d27b8a58d7493efb1713c42e357262ebc6c08a66b96",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004141338Z-caaeb6e7/inputs/word-windows-pct-table-fixed-table100-grid30-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004146436Z-af2b9cec.zip",
+      "archive_sha256": "8479d96e85c82061e1a1c2e3bb4aebfbd9067e5b95d4b252e36cb476a091cc09",
+      "capture_id": "20261118T004146436Z-af2b9cec",
+      "capture_sha256": "f4d92a50319c75d1453fbde83ae4b9eed929fcfd9e0f1d7220012fff6e2fadb9",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid30-cells60-compatdefault",
+          "source_sha256": "5b5263cda90f94fc6ec1d62811a8c6ce985539d828b71115b79c9932add4e0e8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004146436Z-af2b9cec/inputs/word-windows-pct-table-fixed-table100-grid30-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid30-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid30-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004149286Z-6ddafa8b.zip",
+      "archive_sha256": "1b5f2a8caae3b43f1290aa8288c11e5e3179e6b8a159675b7f9f1a9a280284a6",
+      "capture_id": "20261118T004149286Z-6ddafa8b",
+      "capture_sha256": "a4aebfef9e74b023dcedc3a969f7b6390abdab857bb2dac04cebe9a5a7bcc61b",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells10-compat14",
+          "source_sha256": "0c9edb47970455ec7599f8b94cb2b9ba3652c4a6172f7cf9469a7115b06b6975",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004149286Z-6ddafa8b/inputs/word-windows-pct-table-fixed-table100-grid60-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004152028Z-414599c1.zip",
+      "archive_sha256": "c9c1b24e47a29eb261a9cc516780fb838d194bb238f6a7f196dfbe677772df1d",
+      "capture_id": "20261118T004152028Z-414599c1",
+      "capture_sha256": "8f3f009cbae29c362db5899ba4171fb8065c55e0dbf59996c2cf65d7ecbb314f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells10-compat15",
+          "source_sha256": "4b2c6d670f7d56d7b0eb6e1531466639783e2414cc3bfe996875fa18173bcd5e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004152028Z-414599c1/inputs/word-windows-pct-table-fixed-table100-grid60-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004154754Z-bb2ec7d8.zip",
+      "archive_sha256": "272592dd006be1b71dcdfaa139c7dcb65360e860df4b51c9813401e9be9fa3ea",
+      "capture_id": "20261118T004154754Z-bb2ec7d8",
+      "capture_sha256": "3afc8ffedd36496bb6e10a76fa1e229911e40de6323c32519c6e69d7f35282d4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells10-compatdefault",
+          "source_sha256": "39e22b373d3a3bc4dd9eec71f70a8b0d40f3a98b00eef4b0ee666673c5dbf4d1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004154754Z-bb2ec7d8/inputs/word-windows-pct-table-fixed-table100-grid60-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004157522Z-2f470692.zip",
+      "archive_sha256": "2cc6268933ad3454cbc9cceeeade65b2270b20684d67f6b033ec242f93ced1c3",
+      "capture_id": "20261118T004157522Z-2f470692",
+      "capture_sha256": "4046bdd1c9291de6777b5f77f287fd505d213612df1e672932ce1fd0f18093d8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells30-compat14",
+          "source_sha256": "8e4d1e2015a21c3c1308886f4a7f72d13f90fea9eef5185bcb4b8c59033d8108",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004157522Z-2f470692/inputs/word-windows-pct-table-fixed-table100-grid60-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004158853Z-7b2f48b1.zip",
+      "archive_sha256": "18d5e3dfcfe20f41e814b07a7a3f051ab2a107a4990a958dd9e3ddec358ac4f3",
+      "capture_id": "20261118T004158853Z-7b2f48b1",
+      "capture_sha256": "892d75577962dd20c3dd90b9cd451671fade3e4fb72fe8b78b3659ebd5634d36",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells30-compat15",
+          "source_sha256": "77bc51a57138f1dee2211a080737fa940c76a0777ebe53856924f8a477984815",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004158853Z-7b2f48b1/inputs/word-windows-pct-table-fixed-table100-grid60-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004203972Z-9429ebf1.zip",
+      "archive_sha256": "914bd523b5c4034c67ba51c5de6ccaaf2b1658e80e3fcb8ffac1445cf38c4ad1",
+      "capture_id": "20261118T004203972Z-9429ebf1",
+      "capture_sha256": "1677a144d6062a772763f7e0da2063269e06a7d329f4ada7715a8a44a0f677b4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells30-compatdefault",
+          "source_sha256": "ca0d6130c09cc12b35889bea6db47de5043b2a5ee34c933c005fbfc41ebc587c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004203972Z-9429ebf1/inputs/word-windows-pct-table-fixed-table100-grid60-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004206773Z-edef0885.zip",
+      "archive_sha256": "004dac7b9bc1839a1f722cb913f66e22143262316485222ed9f8846948bc31e2",
+      "capture_id": "20261118T004206773Z-edef0885",
+      "capture_sha256": "ea0c2a07e4c798654224969cd575fc951ddfba928ac6353e1ed49e35489162ee",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells60-compat14",
+          "source_sha256": "96efd691d6217f25674258d2e05b334d3631906db5b65d10b1c4d2cb7ac7b139",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004206773Z-edef0885/inputs/word-windows-pct-table-fixed-table100-grid60-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004209492Z-36426ac9.zip",
+      "archive_sha256": "c97f9b95296bcb143ae8a21f7eaa91a2d865ec4fbd5ae252f6424f7b9dfb02dc",
+      "capture_id": "20261118T004209492Z-36426ac9",
+      "capture_sha256": "bbd1ea92babe6d40bd6c61a5bd781673c521ef5cfc8e5b435080e946ac556bbd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells60-compat15",
+          "source_sha256": "7275821b67892d2db8fbe957d3a9d8185b2c7148d0e43aec6fadf82b68226836",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004209492Z-36426ac9/inputs/word-windows-pct-table-fixed-table100-grid60-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004212306Z-6aa48266.zip",
+      "archive_sha256": "b325f66a3efbb410ee8d19fef6c6c40476f46c9636d558f0f7d71f080fa3c362",
+      "capture_id": "20261118T004212306Z-6aa48266",
+      "capture_sha256": "09b219ac9839e2b8b85759516473dfb582946b760cef2b537e858967438fd055",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table100-grid60-cells60-compatdefault",
+          "source_sha256": "7a1020721ba2bf2b6991c2aaed537ae28b12abcb54ef71b412f20f416bd4b764",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004212306Z-6aa48266/inputs/word-windows-pct-table-fixed-table100-grid60-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table100-grid60-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table100-grid60-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004215078Z-d80aee09.zip",
+      "archive_sha256": "c286ca3b7fe842d75c335f304dd35579f5e0a1bc9ce8f99b020ee75ff9b9e73b",
+      "capture_id": "20261118T004215078Z-d80aee09",
+      "capture_sha256": "355c223b280cab83e19187b6e7c8fe875536d69c3c96a0fc9cdd507d9a8b1f4e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells10-compat14",
+          "source_sha256": "c49e1a9f0e714ff56682ea0fd79fe3150cbe303c1723dcfd203e2681a8f7ec68",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004215078Z-d80aee09/inputs/word-windows-pct-table-fixed-table50-grid10-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004217835Z-1efb87fd.zip",
+      "archive_sha256": "e1cd90c5dcbfdf6a8e396713e73c76e8918111ecb111276e7a8477e00f86bbea",
+      "capture_id": "20261118T004217835Z-1efb87fd",
+      "capture_sha256": "2257a53dc2921962c3754384f2796035ab8abda1e45ba7e0772b7d1803224c92",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells10-compat15",
+          "source_sha256": "e84224482e5d4087a9a52b38a36ff9acd84a68681f78c4a20ba7e1d947240401",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004217835Z-1efb87fd/inputs/word-windows-pct-table-fixed-table50-grid10-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004219530Z-ed024811.zip",
+      "archive_sha256": "4fa1498b84c1150d05cc23f835095fc3573e3a1c158ce526cb6b0f45f1155b96",
+      "capture_id": "20261118T004219530Z-ed024811",
+      "capture_sha256": "9294c9c1bff75e71ee44b96a71b04fcbc44906e7ee84897f7f615709e33859fc",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells10-compatdefault",
+          "source_sha256": "34368cf4b49a20112f9c8e2f101fda1fb340d04c61f081a375600371c5f13ece",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004219530Z-ed024811/inputs/word-windows-pct-table-fixed-table50-grid10-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004222326Z-276d480b.zip",
+      "archive_sha256": "eec72a012308d2b3b5f6a2408e0b3449803404467f2f2c8362279aaab794f0df",
+      "capture_id": "20261118T004222326Z-276d480b",
+      "capture_sha256": "2e0d1113c0751fa158ca721964dc0692eb6c8f98e07c6c1637f582900c6a1af2",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells30-compat14",
+          "source_sha256": "bad046ff985557dd9448f862fce2d69b4c09f6bd061e6dc4b0ef3d960c8ba0f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004222326Z-276d480b/inputs/word-windows-pct-table-fixed-table50-grid10-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004225065Z-4c7e73ca.zip",
+      "archive_sha256": "0bb91ed6ac99ec27e103e29c5eb6e2853b0414462664a56fd5021a8c773ecf82",
+      "capture_id": "20261118T004225065Z-4c7e73ca",
+      "capture_sha256": "a0efdaf668ba529b151d4c323a9ce6eeac102adf6410334b1a0fd95f824b9ca7",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells30-compat15",
+          "source_sha256": "b1fea20dc91e1b45f23e83fd7dc0f80ddd6acf3196ea73014bd2ba63f5b7f837",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004225065Z-4c7e73ca/inputs/word-windows-pct-table-fixed-table50-grid10-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004227773Z-c6a8d507.zip",
+      "archive_sha256": "14072863c43cc0ab571007c3b29b9a62b6717aa499a241b32207224e8c82abae",
+      "capture_id": "20261118T004227773Z-c6a8d507",
+      "capture_sha256": "a7dd9eda1458869eefb8327c977cbbe190d48be5fd210a1efa556c99efe77449",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells30-compatdefault",
+          "source_sha256": "d4e20d27abc3b5ac1df5554296c33352d6842bfaa6e5a9335181db3079cafbf1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004227773Z-c6a8d507/inputs/word-windows-pct-table-fixed-table50-grid10-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004230515Z-31f065a4.zip",
+      "archive_sha256": "7046d98a2c216b81445229ec8cf6f6f34a27cbaa275f7eb147cfca3114a0012a",
+      "capture_id": "20261118T004230515Z-31f065a4",
+      "capture_sha256": "b645c808763ce5e0ec6dadf069f86ab862e69903f6cf5fd6634c998efe8f6a7a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells60-compat14",
+          "source_sha256": "e278bd85a125bbf6096bdbe0a1d031e888fac6632a54265320524a5df906b0da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004230515Z-31f065a4/inputs/word-windows-pct-table-fixed-table50-grid10-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004234113Z-ecfd9702.zip",
+      "archive_sha256": "a7395e3e366abf3378b7dcef3fba3316a2c145994cce76d90d81cb0bed72dcd4",
+      "capture_id": "20261118T004234113Z-ecfd9702",
+      "capture_sha256": "99230a445b86ba3c0a672a0e7975116322fe6fa212b092075cdcf7674f4504bb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells60-compat15",
+          "source_sha256": "108b798f9cdf155b801a751acd40c872216422d828a1a8b46a93becd79f946fe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004234113Z-ecfd9702/inputs/word-windows-pct-table-fixed-table50-grid10-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004236892Z-d3a7e25b.zip",
+      "archive_sha256": "be4eb5e571ac539afe258eb90d047f3d2d06ec6abc4de4ed9df0d253a07b8bc0",
+      "capture_id": "20261118T004236892Z-d3a7e25b",
+      "capture_sha256": "7dfa7935d0f9edb15216615f58f74cd386dea43d2c207320dac9934ce676edcf",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid10-cells60-compatdefault",
+          "source_sha256": "df71ba90add5c4e840195557f9abab8e6f3ab2a321cb82b69b27c642cb98cf10",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004236892Z-d3a7e25b/inputs/word-windows-pct-table-fixed-table50-grid10-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid10-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid10-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004239595Z-4db70a90.zip",
+      "archive_sha256": "ec9d3797b06c33727a6abaf6cb4b0eba9b8dfc896ab5c82adecee5700d668b14",
+      "capture_id": "20261118T004239595Z-4db70a90",
+      "capture_sha256": "bb4e2306eb595f2410e92f52272eb2e23308ae6be4280b1a6186961c37e716ae",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells10-compat14",
+          "source_sha256": "76d6d0533fc958409dc23820002bd32f56f27bcd1ff2ec9672ea72b9b267e246",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004239595Z-4db70a90/inputs/word-windows-pct-table-fixed-table50-grid30-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004242363Z-59488b45.zip",
+      "archive_sha256": "57e3859d3ba579935646f3c8537334341593991d86784527265ccbd07e1be3b6",
+      "capture_id": "20261118T004242363Z-59488b45",
+      "capture_sha256": "c0e40071bc709e89a075af475fca75adca5665e193ce28ff172013df0e4e3dd4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells10-compat15",
+          "source_sha256": "c7948d9adae2c5c3c701c8ed953ebacb54c139ae51572d7e922400e2b80d1a61",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004242363Z-59488b45/inputs/word-windows-pct-table-fixed-table50-grid30-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004245118Z-4f7d3574.zip",
+      "archive_sha256": "42f31ec694c182fd0f14adf46fdd8c6fc134bea0ca9ffcfce3e3cedea1e24102",
+      "capture_id": "20261118T004245118Z-4f7d3574",
+      "capture_sha256": "a7975a1ab35e410de1e0286789e2586af3094d16056f049f244fcf94d8c59385",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells10-compatdefault",
+          "source_sha256": "4cb689687d6f8af354f645442ed7ac73441dc81b2c93579f66c8678c93899479",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004245118Z-4f7d3574/inputs/word-windows-pct-table-fixed-table50-grid30-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004246493Z-70023338.zip",
+      "archive_sha256": "9a41211f3eb2153d211703d727d287e362009fa83ecdf0b548d55e4136be54aa",
+      "capture_id": "20261118T004246493Z-70023338",
+      "capture_sha256": "09f1983427eb3b4c996087d6a9dc440ddd928c672bb835482bf6cc7c8f327040",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells30-compat14",
+          "source_sha256": "633a6285784cfd3acfa19ad9a22d1843a9dc0b151dfc0e35cf84278c8fcf235b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004246493Z-70023338/inputs/word-windows-pct-table-fixed-table50-grid30-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004250657Z-ebd961e3.zip",
+      "archive_sha256": "7cd0aab365f550a507d6bb4a43e00f2d1560306a02ccb431137f594c2c05b117",
+      "capture_id": "20261118T004250657Z-ebd961e3",
+      "capture_sha256": "b18c9509cd7047d9325bb25808a4ab33a88eda2c9b91877342508cfbf54b877c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells30-compat15",
+          "source_sha256": "d51c834e001534a20b5e9bcc5bd140223bc8b88f57d8e4d96ba2a76d5d209a44",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004250657Z-ebd961e3/inputs/word-windows-pct-table-fixed-table50-grid30-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004253411Z-4581c7f1.zip",
+      "archive_sha256": "5e6cfbc4b27db2daffa4acfc2c340e53ac39f9e7a0ecbae6636df069e15f83de",
+      "capture_id": "20261118T004253411Z-4581c7f1",
+      "capture_sha256": "a87ed4948ac759f3f9b11ce0a76dd434e220a295efe0f524db1df06d405147f0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells30-compatdefault",
+          "source_sha256": "9ea587ced32cc79421b80a9b8d011e504f66dbb3a9ed9f030f0daad7507eda3f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004253411Z-4581c7f1/inputs/word-windows-pct-table-fixed-table50-grid30-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004256166Z-10944e13.zip",
+      "archive_sha256": "dee51cc247f08b11bbea20c2b2b5c9520ff2a758cfe604e6ae3f9e67a18f1d23",
+      "capture_id": "20261118T004256166Z-10944e13",
+      "capture_sha256": "6355bd1f6302c7ad22c14090db9d0e8399d22c72fb852a493f7c8f750c396859",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells60-compat14",
+          "source_sha256": "60dbe9d5882709e0aaa98d735c08da9b5c0f9ee3179f290e23f6090fda2598c7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004256166Z-10944e13/inputs/word-windows-pct-table-fixed-table50-grid30-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004258906Z-2c0a8ed4.zip",
+      "archive_sha256": "cc992e3e13602e9743b0c151feba8332134e80a6e30d24dff5650b1e44c7a276",
+      "capture_id": "20261118T004258906Z-2c0a8ed4",
+      "capture_sha256": "3f5d108f57a02e833d4bd4aaca1503874d9790744cc6e958d40fb25135daba81",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells60-compat15",
+          "source_sha256": "103064fd09697c84bae00c200a7541f1cea9e5aa52f86a791c81be5b0366a902",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004258906Z-2c0a8ed4/inputs/word-windows-pct-table-fixed-table50-grid30-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004301655Z-88dbf7c0.zip",
+      "archive_sha256": "4a2ff02aa59b11314fc62ebfe75b339b1bd46adba4097f206430d514b8bea6fc",
+      "capture_id": "20261118T004301655Z-88dbf7c0",
+      "capture_sha256": "95b06d6782c546e268bdff9651c74c76ccc4532936d4db23d18c6416a904e662",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid30-cells60-compatdefault",
+          "source_sha256": "df77f0041029d7b12b8869adbba7f7998b03a597f063835889d5709ca9434840",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004301655Z-88dbf7c0/inputs/word-windows-pct-table-fixed-table50-grid30-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid30-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid30-cells60-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004306762Z-2db4746e.zip",
+      "archive_sha256": "abf308f988fcd6523dece6a37fa2a605dbb666c8453553a17dfcbd25ba9ed187",
+      "capture_id": "20261118T004306762Z-2db4746e",
+      "capture_sha256": "9b95f3a27d2048daeac9fd9b5b75cc7e5588de318d9975d61e7cd168b4c4384f",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells10-compat14",
+          "source_sha256": "85110a02fadd4de02c5d9f0123f420566baf777368def46ed45bb98305d0825b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004306762Z-2db4746e/inputs/word-windows-pct-table-fixed-table50-grid60-cells10-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells10-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells10-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004309500Z-abdc332d.zip",
+      "archive_sha256": "3429425affe5b2a1624f0aeb62ecf5567ac47b123f153398f9469fd0f4b5616e",
+      "capture_id": "20261118T004309500Z-abdc332d",
+      "capture_sha256": "514e20e0408d98b08066724bf33b114a720941c6946bb37448c91b8e811300c5",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells10-compat15",
+          "source_sha256": "49ed5904806dc0a7bc8bc3fdd80861cc668ce0f0c0dc763aa46ce5f5805dc25c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004309500Z-abdc332d/inputs/word-windows-pct-table-fixed-table50-grid60-cells10-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells10-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells10-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004312221Z-67ad2db3.zip",
+      "archive_sha256": "88d27fcc4a1b917cc941d4880534b4adeda0dfc50d0f0bd9abfa355b1172a32d",
+      "capture_id": "20261118T004312221Z-67ad2db3",
+      "capture_sha256": "bac1bf7ceb42e639658bdd94c8bddea63f04d9e14e4369186670d6f516be990c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells10-compatdefault",
+          "source_sha256": "c431d51fdf1797b6bc92f04a720168b48283a5f3c8a29dc18b810373e5eb54fe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004312221Z-67ad2db3/inputs/word-windows-pct-table-fixed-table50-grid60-cells10-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells10-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells10-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004315002Z-103f200d.zip",
+      "archive_sha256": "8c86fea4b5872cf17fb96d4d360daa3eb51de9c6e1fc46fb77a58d22e06b9367",
+      "capture_id": "20261118T004315002Z-103f200d",
+      "capture_sha256": "1f5ae3f00ce31aee5bfc95fa1c9515868feefeed01e6c900f5e233c8d927c8f4",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells30-compat14",
+          "source_sha256": "9e2b4d044007ec41ac228c73b2afe58e933c609b0dfb7d8bb45337ed354e325f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004315002Z-103f200d/inputs/word-windows-pct-table-fixed-table50-grid60-cells30-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells30-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells30-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004317743Z-decb6b82.zip",
+      "archive_sha256": "c3a7a32b69e80ba339d7e7f7c76a8174b39a9e86f562189e3274c27c4ab14a39",
+      "capture_id": "20261118T004317743Z-decb6b82",
+      "capture_sha256": "7983554028714a1f97e8647ffd8b3c2aa3bca1af8041d10bbdf19eb61a21b5b8",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells30-compat15",
+          "source_sha256": "36eafdc307115ec78a53bfb6ed641d00e12c3541a968cda5a409a1862dc43558",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004317743Z-decb6b82/inputs/word-windows-pct-table-fixed-table50-grid60-cells30-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells30-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells30-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004320488Z-04b4a446.zip",
+      "archive_sha256": "af74e7da42b6059360537e1ea392370c2947f4d4c3260ef61a6bcb7937ee4d32",
+      "capture_id": "20261118T004320488Z-04b4a446",
+      "capture_sha256": "b2053711aca5319cfd8a781920ddabc033869b19c4d28b933ffcd6125799d923",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells30-compatdefault",
+          "source_sha256": "0172e5376b0627a06535f07bf3aaa238370cc48867a56b840fa5e471df165286",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004320488Z-04b4a446/inputs/word-windows-pct-table-fixed-table50-grid60-cells30-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells30-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells30-compatdefault.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004323259Z-fe5869ea.zip",
+      "archive_sha256": "d9da20bb5ae756bfef335801495a6da436653506298baeb3a52d60b55fc76b32",
+      "capture_id": "20261118T004323259Z-fe5869ea",
+      "capture_sha256": "4ba2714a2a9effcbeb565a20aee40c3f18e33b628d0d8a47bd439705bc1983c3",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells60-compat14",
+          "source_sha256": "c288575f68501f9146a75635b38308adb84efc7e3ce1d234477a04dc16a6931d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004323259Z-fe5869ea/inputs/word-windows-pct-table-fixed-table50-grid60-cells60-compat14.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells60-compat14.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells60-compat14.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004326009Z-ce6b8df2.zip",
+      "archive_sha256": "7bbfd1fec2674aeece58abe5ef34dca799e490b241dbc1858fb3c3ec01187b83",
+      "capture_id": "20261118T004326009Z-ce6b8df2",
+      "capture_sha256": "addfc672e361992684ba2a685a5178ce9917bccc1f2e6724f0ce300524823dd1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells60-compat15",
+          "source_sha256": "6a2ab7f8dfc96d1344ffeeb5c72466d0b02b5d7f1121242f74570355932c7701",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004326009Z-ce6b8df2/inputs/word-windows-pct-table-fixed-table50-grid60-cells60-compat15.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells60-compat15.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells60-compat15.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261118T004328734Z-25260cd0.zip",
+      "archive_sha256": "e73bd32f7ff3a925d94dd6df71e8417230eb26aad024ecf01a020c05dcc6f3db",
+      "capture_id": "20261118T004328734Z-25260cd0",
+      "capture_sha256": "9998a8f026e442b48f1a6520edfd931eca295d0f541f58633077649c6dc33d22",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-pct-table-fixed-table50-grid60-cells60-compatdefault",
+          "source_sha256": "33bed8dbe517796cae136aff10de901a1de9024f3639aaf49739281f6a7f062b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261118T004328734Z-25260cd0/inputs/word-windows-pct-table-fixed-table50-grid60-cells60-compatdefault.docx",
+            "public/fixtures/word-windows-pct-table-fixed-table50-grid60-cells60-compatdefault.docx"
+          ],
+          "opened_filename": "word-windows-pct-table-fixed-table50-grid60-cells60-compatdefault.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -43289,6 +45881,10 @@
     {
       "file": "tests/word-oracle/windows/minimum-line-observations.json",
       "sha256": "821adb698c787e829a9131436379cbe513e78014aa73ccad6ef67c716f952415"
+    },
+    {
+      "file": "tests/word-oracle/windows/percentage-table-observations.json",
+      "sha256": "649749562209cf6b102cc47b49f8b5545d9ec0596c337d165531513c60309435"
     }
   ]
 }

@@ -10552,7 +10552,88 @@ impl WindowsPositiveSpacingGrid {
     }
 }
 
+/// Windows Word resolves complete, consistent cell percentages against the
+/// preferred percentage table width before fitting contents. The saved grid
+/// can be stale. Keep omitted/merged grids and separated rows on their paths.
+fn word_windows_percentage_cell_grid(
+    table: &Table,
+    column_count: usize,
+    available_width: f64,
+) -> Option<Vec<f64>> {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        || column_count < 2
+        || table.bidi_visual
+        || !available_width.is_finite()
+        || available_width <= 0.0
+        || table.columns.len() != column_count
+        || table.columns.iter().any(|column| {
+            !column
+                .width
+                .is_some_and(|width| width.is_finite() && width > 0.0)
+        })
+    {
+        return None;
+    }
+    let table_preference = table.style.get("width")?.trim();
+    table_preference.strip_suffix('%')?;
+    let fraction = preferred_width_px(table_preference, 1.0)
+        .filter(|fraction| *fraction > 0.0 && *fraction <= 1.0)?;
+    let percentages = |row: &TableRow| -> Option<Vec<f64>> {
+        if table_row_is_hidden(row)
+            || row.cells.len() != column_count
+            || row.grid_before.unwrap_or_default() != 0
+            || row.grid_after.unwrap_or_default() != 0
+            || resolve_cell_spacing_px(row, table) != 0.0
+        {
+            return None;
+        }
+        row.cells
+            .iter()
+            .map(|cell| {
+                if cell.span.unwrap_or(1) != 1
+                    || cell.vertical_merge.is_some()
+                    || cell.text_direction.is_some()
+                    || !cell.blocks.iter().all(|block| match block {
+                        BodyElement::Paragraph(paragraph) => paragraph.runs.iter().all(|run| {
+                            run.image.is_none() && run.text_box.is_none() && run.math.is_none()
+                        }),
+                        _ => false,
+                    })
+                {
+                    return None;
+                }
+                let value = cell.style.get("width")?.trim();
+                value.strip_suffix('%')?;
+                preferred_width_px(value, 1.0).filter(|value| *value > 0.0 && *value <= 1.0)
+            })
+            .collect()
+    };
+    let first = percentages(table.rows.first()?)?;
+    if (first.iter().sum::<f64>() - 1.0).abs() > 1e-8 {
+        return None;
+    }
+    for row in &table.rows {
+        if percentages(row)?
+            .iter()
+            .zip(&first)
+            .any(|(current, expected)| (current - expected).abs() > 1e-8)
+        {
+            return None;
+        }
+    }
+    Some(
+        first
+            .iter()
+            .map(|value| available_width * fraction * value)
+            .collect(),
+    )
+}
+
 fn compute_column_widths(table: &Table, column_count: usize, available_width: f64) -> Vec<f64> {
+    if let Some(widths) = word_windows_percentage_cell_grid(table, column_count, available_width) {
+        return widths;
+    }
     if let Some(widths) = word_constrained_fixed_grid(table, column_count, available_width) {
         return widths;
     }
@@ -11666,6 +11747,8 @@ fn autofit_content_widths<C: TableAutofitContext>(
             .style
             .get("width")
             .is_some_and(|width| width.trim().ends_with('%'));
+    let has_windows_percentage_grid =
+        word_windows_percentage_cell_grid(table, column_widths.len(), 1.0).is_some();
     // Widest piece of content that cannot wrap, per column.
     let mut unbreakable_widths = vec![0.0_f64; column_widths.len()];
     let mut natural_paragraph_layouts = Vec::new();
@@ -11698,7 +11781,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
                 .get("no-wrap")
                 .is_some_and(|value| value.eq_ignore_ascii_case("true"));
             if cell_has_absolute_preferred_width(cell)
-                || (has_mac_percentage_grid
+                || ((has_mac_percentage_grid || has_windows_percentage_grid)
                     && cell
                         .style
                         .get("width")
@@ -11830,8 +11913,9 @@ fn autofit_content_widths<C: TableAutofitContext>(
     // natural content width. Only content that cannot wrap widens such a
     // column (a 40-letter word takes a 4500-dxa column to 291pt, from its
     // neighbour), so its preferred width is its widest unbreakable piece.
-    // Word for Mac also wraps percentage-width cells at the declared grid
-    // in percentage-width tables instead of borrowing space for wrapped text.
+    // Word for Mac also wraps percentage-width cells at the declared grid.
+    // Complete Windows cell percentages use their authored table-relative
+    // widths; only unbreakable content can request space from another column.
     for (index, explicit) in explicit_width_columns.iter().enumerate() {
         if *explicit {
             preferred[index] = unbreakable_widths[index];
@@ -19177,6 +19261,54 @@ mod tests {
         let widths = compute_column_widths(&table, 2, 600.0);
         assert!((widths[0] - 300.0).abs() < 0.1);
         assert!((widths[1] - 150.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn windows_complete_cell_percentages_override_stale_saved_grid() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut table = Table {
+            style: [("width".to_string(), "50%".to_string())]
+                .into_iter()
+                .collect(),
+            columns: vec![
+                TableColumn { width: Some(25.0) },
+                TableColumn { width: Some(75.0) },
+            ],
+            rows: vec![TableRow {
+                cells: ["30%", "70%"]
+                    .into_iter()
+                    .map(|width| TableCell {
+                        style: [("width".to_string(), width.to_string())]
+                            .into_iter()
+                            .collect(),
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            }],
+            ..Default::default()
+        };
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        assert_eq!(
+            word_windows_percentage_cell_grid(&table, 2, 600.0),
+            Some(vec![90.0, 210.0])
+        );
+        assert_eq!(compute_column_widths(&table, 2, 600.0), vec![90.0, 210.0]);
+        table.rows.push(table.rows[0].clone());
+        table.rows[1].cells[0]
+            .style
+            .insert("width".to_string(), "40%".to_string());
+        assert!(word_windows_percentage_cell_grid(&table, 2, 600.0).is_none());
+        table.rows.pop();
+        table.rows[0].cells[0].span = Some(2);
+        assert!(word_windows_percentage_cell_grid(&table, 2, 600.0).is_none());
+        table.rows[0].cells[0].span = None;
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(word_windows_percentage_cell_grid(&table, 2, 600.0).is_none());
+        set_word_layout_platform(previous);
     }
 
     #[test]
