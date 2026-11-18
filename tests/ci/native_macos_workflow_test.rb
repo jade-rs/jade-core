@@ -250,6 +250,29 @@ class NativeMacosWorkflowTest < Minitest::Test
     end
   end
 
+  def test_mac_original_pdf_assertions_install_pinned_word_dependencies
+    %w[word-mac-browser-coordinates word-mac-coordinates].each do |name|
+      steps = @workflow.fetch("jobs").fetch(name).fetch("steps")
+      setup = steps.index do |step|
+        step.fetch("uses", "") == "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065"
+      end
+      refute_nil setup, name
+      assert_equal "3.12", steps.fetch(setup).fetch("with").fetch("python-version"), name
+      install = steps.index { |step| step["name"] == "Install Word reference verification dependencies" }
+      refute_nil install, name
+      step = steps.fetch(install)
+      refute step.key?("if"), name
+      refute step.fetch("continue-on-error", false), name
+      assert_equal "python -m pip install -r scripts/word-oracle/requirements-borders.txt", step.fetch("run"), name
+      comparison = steps.index { |item| item.fetch("run", "").include?("test_platform_coordinates.py") }
+      refute_nil comparison, name
+      assert_operator setup, :<, install, name
+      assert_operator install, :<, comparison, name
+    end
+    requirements = File.read(File.join(REPOSITORY_ROOT, "scripts/word-oracle/requirements-borders.txt"))
+    assert_includes requirements.lines.map(&:strip), "PyMuPDF==2.0"
+  end
+
   def test_numeric_spacing_sources_and_platform_shaping_are_required
     jobs = @workflow.fetch("jobs")
     %w[windows-word-baselines native-macos].each do |name|
