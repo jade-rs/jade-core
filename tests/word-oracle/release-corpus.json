@@ -8014,6 +8014,202 @@
     {
       "fixture": "word-windows-pct-table-fixed-table50-grid60-cells60-compatdefault",
       "docx_sha256": "33bed8dbe517796cae136aff10de901a1de9024f3639aaf49739281f6a7f062b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size13-compat14",
+      "docx_sha256": "551563adcab5a529cedb7ad4ffb53fab2f8223d4a469918dceb7374ffe191b6e"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size13-compat15",
+      "docx_sha256": "fa39fde11425d275a2e705bedc43d5861cb259b3d358343c0b05a5c32c69c3f1"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size13p5-compat14",
+      "docx_sha256": "195a2cb14feea2b7bbb0c81fae66b83f3a7b3fc24cf11adc951be591bb7241cd"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size13p5-compat15",
+      "docx_sha256": "a14133a777520bad0bb5e52743d96fbfc46d46006de9bf981ceff01d17d9693f"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size14p5-compat14",
+      "docx_sha256": "8e4fa808ea12a9731f96ebbab62cf4bed9b4c1407327bee7bcfc76ec66f0f87c"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size14p5-compat15",
+      "docx_sha256": "5ad70cbc6bd30474bbea1fe5f924ccc89c2bb846d458d83494673965b57135df"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size15-compat14",
+      "docx_sha256": "d160a8c721ee348cd7b251ac6c1c9bc21d8649e304bd940b5b5b898b4acca1c1"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size15-compat15",
+      "docx_sha256": "ae233871a8bb91cb49e745e3e5f0142fcb743e9f59529a2062443488a3077d76"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size15p5-compat14",
+      "docx_sha256": "11d9140e5179b232fd209cae164bdad175ed3c3284b28711ebd4f0d3205c7519"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size15p5-compat15",
+      "docx_sha256": "8dff9297569f341b71c2c8253a8b779981195ad54198fc00bad1df29e1ce7f56"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size16-compat14",
+      "docx_sha256": "08162b4923f1e8cb3393313ee33946c068085040069b365cd5e9fbde3ae034b1"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size16-compat15",
+      "docx_sha256": "921868100c9391c5f8cddef05d08e5ec55b6ef7a69d4c7f019999ee075e6eed1"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size20-compat14",
+      "docx_sha256": "c96b7e885d488d820bc368a7e1fca17c730d15c7531c764d15a4cd5e0f90873b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bold-size20-compat15",
+      "docx_sha256": "fd259a92b03447d97cd2bf15aab026d639b2ba4732052f44f74b66491e2d6c04"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size13-compat14",
+      "docx_sha256": "bcf5befdc962a19f9c3e73924c447b291fa4e5b9e3bc748546a158cb1b3e30b5"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size13-compat15",
+      "docx_sha256": "d708b9c38ba3fe39b838b16c7ce271fb641b1e8530054dc6d97b9da73a2fc5b9"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size14-compat14",
+      "docx_sha256": "c6e8d3b9f9bc03c93d73ef0a1cf0356f1854f650e7a763b09ca99f0bd699d83c"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size15p5-compat14",
+      "docx_sha256": "8082eea0b83a7208624a43e3e785ebad27579c74de50ee6327314c8519ed3646"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size15p5-compat15",
+      "docx_sha256": "22eaa905443c9446de5aae41f495ca0f4d523e9af225b2c01b3bd5f0b71fa268"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size16-compat14",
+      "docx_sha256": "4c29074f24dc980644f2e8435ebd343cd681160a88916ef78cc2eb2b76c8eeb9"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size16-compat15",
+      "docx_sha256": "c22c3cc946ab9b3349fe50125d9f74b16810033247b42a86cc485596f72cc990"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size20-compat14",
+      "docx_sha256": "fce4d8257cd67476269eee42b03fa7a12c7c9eaae54710a459c4b806a5c69450"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-bolditalic-size20-compat15",
+      "docx_sha256": "a2be3b525e6a92609ee45a881a127bc15d387a0457da030c5ba0e8d060f933b2"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size13-compat14",
+      "docx_sha256": "c19f4bf155b4e95547a1c9098828f8df3ebc35473ab0fbeb78cc20d4687f248b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size13-compat15",
+      "docx_sha256": "d2621e27cc1151ffb09e6d442438492347cdf9b0c500d7eb557e5fd0fbbc8d2b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size13p5-compat14",
+      "docx_sha256": "71a9a0e16f89d1ff3165b39a4649b17941cefd457362e998ffe8a83004ca0ee5"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size13p5-compat15",
+      "docx_sha256": "0452af123ebbd76d6517fbe74c7b27a467af4820de55cf58aa8c94b4731dbb1b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size14-compat14",
+      "docx_sha256": "9327680d4184f99953f54842f8b34e812924d2e0935bc7c5726f31662b167459"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size14-compat15",
+      "docx_sha256": "dc817720bf68e61c0ef73581739ec7d009e2ab178db2873244059868140527f6"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size14p5-compat14",
+      "docx_sha256": "e3ec50ddcf309bd81105f28335c234c3e216bb467fd2bd917e3d09c5d0d92208"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size14p5-compat15",
+      "docx_sha256": "2b3caf8732b9783ea96fd019210d891be74623b781156fa3ab7e0bad4dcc5b0f"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size15-compat14",
+      "docx_sha256": "eec870efa54bb675e9243001e26b826508bb87208421021c1170b52f00bba378"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size15-compat15",
+      "docx_sha256": "fb7b7933a7591edebea7c8160c2c996b3e0871ba2788906666cf529f9bc5a18b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size15p5-compat14",
+      "docx_sha256": "e9ff76cc32ae6efa2b35a56ca9cffd206393f7499cdd653452c2930ce05f241e"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size15p5-compat15",
+      "docx_sha256": "b0a730fe0c16c1d3d31ff6130c2963137a8bf004f68d46abe406158a19d1c2f3"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size16-compat14",
+      "docx_sha256": "8b5c6efe3b17c19a4f72e19a3cc9293b755db24857c620204e3752b82da76919"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size16-compat15",
+      "docx_sha256": "cedf3e28fcbecd19f730559f75562b287c754900bf435860e4aa81c9f0294cca"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size20-compat14",
+      "docx_sha256": "b2305595f758824481b530496e40f8681221fcbb2faa71dc63c50e9e726b16a2"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-italic-size20-compat15",
+      "docx_sha256": "b2f9f67753e2d06b3cd5daf6d978c2cf94b7210e875a0978e0e7290032cfc613"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size13-compat14",
+      "docx_sha256": "0834b8bcd35c509440a46fc5f45406524228b44460bd4eb8024db59ea7db03c5"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size13-compat15",
+      "docx_sha256": "2f2a621f7d52053df70d43eaa680d7a5ce3fefbfa580ede33e5037cb2a051fb2"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size13p5-compat15",
+      "docx_sha256": "31037e1b6e364c16e695c16955815542c379f2d2866d31bdb21355c7f11dbad8"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size14p5-compat14",
+      "docx_sha256": "ce8335ac17ef7f2d18fbf32301a17c5e9c5a1ba3bfa08190ac2cf48aa8bade8b"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size14p5-compat15",
+      "docx_sha256": "5143a9e5deb8b9b6b65aa2dbd52437440c53dc8e019d07535b6ab30e35311ad0"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size15-compat15",
+      "docx_sha256": "5cf47c37b7816a9a7545383cfbbf94dc962c467daef376b0962c5d712f1417b0"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size15p5-compat14",
+      "docx_sha256": "a80a5300f92e276b33c3d53b8f62afdb2a12f24e7b9ba51e0a9be4616ca75ac7"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size15p5-compat15",
+      "docx_sha256": "fb77da10c7698bd3d19f9b810d2f456533161dd0fb14a1fa55abe467a0f04e61"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size20-compat14",
+      "docx_sha256": "073702fdfac5e3a2176236df0a146de45bcf7278021b25b9ef7204cb45dc0445"
+    },
+    {
+      "fixture": "word-windows-aptos-size-control-display-regular-size20-compat15",
+      "docx_sha256": "3ca3fa5a7103eed578729d0b747b06df696595c6f62dee6214cb45da21286643"
     }
   ]
 }

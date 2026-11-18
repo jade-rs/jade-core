@@ -187,6 +187,31 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert_includes gate.fetch("run"), "check_windows_percentage_tables.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
   end
 
+  def test_aptos_size_control_sources_and_versioned_originals_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    source = job.fetch("steps").find { |item| item["name"] == "Verify unpromoted original Windows Word observations" }
+    refute_nil source
+    refute source.key?("if")
+    refute source.fetch("continue-on-error", false)
+    assert_includes source.fetch("run"), "test_windows_aptos_size_probes.py"
+    gate = job.fetch("steps").find { |item| item["name"] == "Assert Windows Aptos screen origins and validated PDF origins" }
+    refute_nil gate
+    refute gate.key?("if")
+    refute gate.fetch("continue-on-error", false)
+    assert_includes gate.fetch("run"), "test_windows_aptos_size_gate.py"
+    assert_includes gate.fetch("run"), "check_windows_aptos_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+  end
+
+  def test_edit_export_and_reopen_audit_is_a_required_current_head_step
+    job = @workflow.fetch("jobs").fetch("test")
+    refute job.key?("if")
+    audit = job.fetch("steps").find { |item| item["name"] == "Audit edited DOCX fixture corpus" }
+    refute_nil audit
+    refute audit.key?("if")
+    refute audit.fetch("continue-on-error", false)
+    assert_includes audit.fetch("run"), "python3 scripts/audit-mac-release-corpus.py"
+  end
+
   def test_shared_originals_use_independent_required_platform_comparisons
     {
       "word-mac-browser-coordinates" => [

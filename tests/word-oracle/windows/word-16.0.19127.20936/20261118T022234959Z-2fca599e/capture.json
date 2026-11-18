@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T022234959Z-2fca599e",
+  "captured_at_utc": "2026-11-18T02:22:34.9635305Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-size-control-display-bolditalic-size13-compat14",
+      "source": "w18-v-aptos-font-size-controls-input-snapshots\\word-windows-aptos-size-control-display-bolditalic-size13-compat14.docx",
+      "sha256": "bcf5befdc962a19f9c3e73924c447b291fa4e5b9e3bc748546a158cb1b3e30b5",
+      "pdf": "word-windows-aptos-size-control-display-bolditalic-size13-compat14.pdf",
+      "pdf_sha256": "bcb9399b995e077b6a157d5f8c91d1cb17b468fe96088f667114773f50e97922",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-size-control-display-bolditalic-size13-compat14.page-001.emf",
+          "sha256": "89ef0af0c3d399e7ca1f63a6e6bfd62635c74def7e03574a3b0d06c23deaf620",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

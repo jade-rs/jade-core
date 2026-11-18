@@ -1,0 +1,45 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T022459509Z-8d842443",
+  "captured_at_utc": "2026-11-18T02:24:59.5130336Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-size-control-display-regular-size15p5-compat15",
+      "source": "w18-v-aptos-font-size-controls-input-snapshots\\word-windows-aptos-size-control-display-regular-size15p5-compat15.docx",
+      "sha256": "fb77da10c7698bd3d19f9b810d2f456533161dd0fb14a1fa55abe467a0f04e61",
+      "pdf": "word-windows-aptos-size-control-display-regular-size15p5-compat15.pdf",
+      "pdf_sha256": "d5537a4c775c24d6626794dfba709cccd12ca19db3a3dd65c93bb39f24809724",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-size-control-display-regular-size15p5-compat15.page-001.emf",
+          "sha256": "bbf051b89fd3ef82665a8c072475ad308b04dcd1416e9f9629fbe6c58c0f465d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
