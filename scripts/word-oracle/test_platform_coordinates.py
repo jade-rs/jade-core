@@ -2,8 +2,11 @@
 import copy
 import gzip
 import json
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
+from zipfile import ZipFile
 
 import check_platform_coordinates as check
 
@@ -11,8 +14,99 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 95)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 75)
+        self.assertGreaterEqual(len(cases), 98)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 78)
+
+    def test_existing_four_plane_assertions_cannot_be_changed_to_independent_outputs(self):
+        self.reject_index_edit(lambda c: c['windows'][0].update(
+            output_context='independent-screen-print'), 'coordinate assertions changed')
+
+    def test_original_independent_output_cases_cannot_lose_their_context(self):
+        original = check.read_json
+        for name in check.INDEPENDENT_OUTPUT_CASES:
+            for value in (None, 'shared-screen-pdf', 'unknown'):
+                index = copy.deepcopy(original(check.ROOT / check.INDEX))
+                windows, = next(c for c in index['fixtures'] if c['mac_case'] == name)['windows']
+                if value is None:
+                    windows.pop('output_context')
+                else:
+                    windows['output_context'] = value
+                with self.subTest(case=name, context=value), patch.object(
+                        check, 'read_json', side_effect=lambda path:
+                        index if path == check.ROOT / check.INDEX else original(path)):
+                    with self.assertRaisesRegex(ValueError, 'coordinate assertions changed'):
+                        check.verify()
+
+    def assert_output_models(self, *, screen=None, snapshot=None, physical=None,
+                             unclipped=None, changed_pixels=False, self_comparison=False):
+        drawing = dict(page_count=1, glyphs=[[1, 'A', 72., 80.]])
+        word_pdf = dict(page_count=1, glyphs=[[1, 'A', 72.8, 80.]])
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            before, after, word, painted = [directory / name for name in
+                                           ('screen.png', 'snapshot.png', 'word.pdf', 'native.pdf')]
+            before.write_bytes(b'screen-pixels')
+            after.write_bytes(b'changed' if changed_pixels else b'screen-pixels')
+            word.write_bytes(b'original-word-pdf')
+            painted.write_bytes(b'original-word-pdf' if self_comparison else b'independent-native-pdf')
+            def origins(path, all_glyphs=False):
+                if path == word:
+                    return word_pdf
+                return unclipped if all_glyphs and unclipped is not None else (
+                    physical if physical is not None else word_pdf)
+            with patch.object(check, 'pdf_origins', side_effect=origins):
+                check.assert_independent_outputs(
+                    drawing, screen if screen is not None else drawing,
+                    snapshot if snapshot is not None else drawing, before, after, word, painted, 'outputs')
+
+    def test_genuine_screen_print_differences_pass_their_own_output_assertions(self):
+        self.assert_output_models()
+        with self.assertRaisesRegex(ValueError, 'axis mismatch'):
+            check.compare(dict(page_count=1, glyphs=[[1, 'A', 72.8, 80.]]),
+                          dict(page_count=1, glyphs=[[1, 'A', 72., 80.]]), 'wrong output golden')
+
+    def test_independent_contexts_are_supported_by_the_original_word_outputs(self):
+        index = check.read_json(check.ROOT / check.INDEX)
+        for case in index['fixtures']:
+            if case['mac_case'] not in check.INDEPENDENT_OUTPUT_CASES:
+                continue
+            windows, = case['windows']
+            archive, _, document, drawing = check.archive_reference(check.ROOT, case, windows)
+            with self.subTest(case=case['mac_case']), tempfile.TemporaryDirectory() as temporary:
+                path = Path(temporary) / 'word.pdf'
+                with ZipFile(archive) as bundle:
+                    path.write_bytes(bundle.read(document['pdf']))
+                original_pdf = check.pdf_origins(path)
+                # Word itself produces distinct origins for these outputs.
+                # No native renderer is used to manufacture either expectation.
+                for expected, actual in ((drawing, original_pdf), (original_pdf, drawing)):
+                    with self.assertRaisesRegex(ValueError, 'axis mismatch'):
+                        check.compare(expected, actual, 'original Word screen/print difference')
+
+    def test_screen_and_exported_snapshot_must_both_match_word_emf(self):
+        shifted = dict(page_count=1, glyphs=[[1, 'A', 73., 80.]])
+        for models in ({'screen': shifted}, {'snapshot': shifted}):
+            with self.subTest(models=models), self.assertRaisesRegex(ValueError, 'axis mismatch'):
+                self.assert_output_models(**models)
+        # Export must retain exact live origins even within the Word tolerance.
+        with self.assertRaisesRegex(ValueError, 'changed live logical origins'):
+            self.assert_output_models(snapshot=dict(page_count=1, glyphs=[[1, 'A', 72.1, 80.]]))
+
+    def test_vector_pdf_checks_each_axis_missing_glyphs_pages_and_unclipped_origins(self):
+        bad = [dict(page_count=1, glyphs=[[1, 'A', 73.176, 80.]]),
+               dict(page_count=1, glyphs=[[1, 'A', 72.8, 80.376]]),
+               dict(page_count=1, glyphs=[]),
+               dict(page_count=2, glyphs=[[1, 'A', 72.8, 80.]])]
+        for model in bad:
+            for plane in ('physical', 'unclipped'):
+                with self.subTest(plane=plane, model=model), self.assertRaises(ValueError):
+                    self.assert_output_models(**{plane: model})
+
+    def test_independent_outputs_reject_changed_live_pixels_and_word_self_comparison(self):
+        with self.assertRaisesRegex(ValueError, 'changed live screen pixels'):
+            self.assert_output_models(changed_pixels=True)
+        with self.assertRaisesRegex(ValueError, 'Word PDF self-comparison'):
+            self.assert_output_models(self_comparison=True)
 
     def reject_archive_edit(self, edit, message):
         original = check.read_json
