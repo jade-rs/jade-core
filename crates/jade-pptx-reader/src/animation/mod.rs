@@ -89,15 +89,15 @@ pub fn read_deck_animations(bytes: &[u8]) -> Result<Vec<SlideAnimation>> {
     let presentation = crate::read_pptx(bytes)?;
     let mut slides = Vec::with_capacity(presentation.slides.len());
     for entry in &presentation.slides {
-        let xml = package.required_part_str(&entry.part_name)?;
-        let mut animation = read_slide_animation(&xml)?;
+        let xml = package.required_part_text(&entry.part_name)?;
+        let mut animation = read_slide_animation(xml)?;
         if let Some(sound) = animation
             .transition
             .as_mut()
             .and_then(|transition| transition.sound.as_mut())
         {
-            if let Some(rels) = package.part_str(&jade_opc::rels_part_name(&entry.part_name))? {
-                let relationships = jade_opc::parse_relationships(&rels)?;
+            if let Some(rels) = package.part_text(&jade_opc::rels_part_name(&entry.part_name))? {
+                let relationships = jade_opc::parse_relationships(rels)?;
                 sound.part = relationships
                     .target(&sound.rel_id)
                     .map(|target| jade_opc::resolve_target(&entry.part_name, target));

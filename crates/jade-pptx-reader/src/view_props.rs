@@ -100,17 +100,17 @@ impl Default for ViewProps {
 pub fn read_view_props(bytes: &[u8]) -> Result<ViewProps> {
     let package = OpcPackage::open(bytes)?;
     let presentation = crate::presentation_part_name(&package)?;
-    let Some(rels) = package.part_str(&jade_opc::rels_part_name(&presentation))? else {
+    let Some(rels) = package.part_text(&jade_opc::rels_part_name(&presentation))? else {
         return Ok(ViewProps::default());
     };
-    let Some(part) = jade_opc::parse_relationships(&rels)?
+    let Some(part) = jade_opc::parse_relationships(rels)?
         .target_by_type_suffix("/viewProps")
         .map(|target| jade_opc::resolve_target(&presentation, target))
     else {
         return Ok(ViewProps::default());
     };
-    match package.part_str(&part)? {
-        Some(xml) => Ok(parse_view_props(&parse_tree(&xml)?)),
+    match package.part_text(&part)? {
+        Some(xml) => Ok(parse_view_props(&parse_tree(xml)?)),
         None => Ok(ViewProps::default()),
     }
 }

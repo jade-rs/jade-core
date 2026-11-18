@@ -437,8 +437,8 @@ impl<'a> PartRelationships<'a> {
         if self.package.part(&part).is_none() {
             return Ok(Vec::new());
         }
-        let xml = self.package.required_part_str(&part)?;
-        let root = document(&xml, "Relationships", PKG)?;
+        let xml = self.package.required_part_text(&part)?;
+        let root = document(xml, "Relationships", PKG)?;
         let mut ids = Vec::new();
         for node in root.children("Relationship") {
             if RELS
@@ -458,8 +458,8 @@ impl<'a> PartRelationships<'a> {
             let read = || -> Result<BTreeMap<String, Option<BTreeMap<String, String>>>> {
                 let xml = self
                     .package
-                    .required_part_str(&jade_opc::rels_part_name(owner))?;
-                let root = document(&xml, "Relationships", PKG)?;
+                    .required_part_text(&jade_opc::rels_part_name(owner))?;
+                let root = document(xml, "Relationships", PKG)?;
                 let mut map = BTreeMap::new();
                 for node in root.children("Relationship") {
                     if let Some(id) = node.attr("Id") {
@@ -568,7 +568,7 @@ pub fn read_catalog(
                 .get("@relationship")
                 .ok_or_else(|| bad("cache missing relationship id"))?;
             let part = resolver.related(workbook_part, rid, "pivotCacheDefinition")?;
-            parse_cache_definition(id, &part, &package.required_part_str(&part)?)
+            parse_cache_definition(id, &part, package.required_part_text(&part)?)
         };
         match read() {
             Ok(mut cache) => {
@@ -597,7 +597,7 @@ pub fn read_catalog(
                             Ok((
                                 part.clone(),
                                 parse_cache_records(
-                                    &package.required_part_str(&part)?,
+                                    package.required_part_text(&part)?,
                                     cache.fields.len(),
                                 )?,
                             ))
@@ -663,7 +663,7 @@ pub fn read_catalog(
         for declaration in declarations {
             let mut read = || -> Result<PivotTable> {
                 let part = resolver.related(&sheet.part_name, &declaration, "pivotTable")?;
-                parse_pivot_table(&sheet.part_name, &part, &package.required_part_str(&part)?)
+                parse_pivot_table(&sheet.part_name, &part, package.required_part_text(&part)?)
             };
             match read() {
                 Ok(table) => {

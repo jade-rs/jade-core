@@ -119,22 +119,28 @@ pub struct Presentation {
 /// Reads a presentation's package-level structure from `.pptx` bytes.
 pub fn read_pptx(bytes: &[u8]) -> Result<Presentation> {
     let package = OpcPackage::open(bytes)?;
+    read_presentation(&package)
+}
 
-    let presentation_part = match package.part_str("_rels/.rels")? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?
+/// [`read_pptx`] over an already opened package, so a caller that needs the
+/// package anyway does not inflate the archive twice. Parses only
+/// `presentation.xml` and its relationships, never a slide body.
+pub fn read_presentation(package: &OpcPackage) -> Result<Presentation> {
+    let presentation_part = match package.part_text("_rels/.rels")? {
+        Some(xml) => jade_opc::parse_relationships(xml)?
             .target_by_type_suffix(OFFICE_DOCUMENT)
             .map(|target| jade_opc::resolve_target("", target))
             .unwrap_or_else(|| "ppt/presentation.xml".to_string()),
         None => "ppt/presentation.xml".to_string(),
     };
 
-    let presentation_xml = package.required_part_str(&presentation_part)?;
-    let relationships = match package.part_str(&jade_opc::rels_part_name(&presentation_part))? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?,
+    let presentation_xml = package.required_part_text(&presentation_part)?;
+    let relationships = match package.part_text(&jade_opc::rels_part_name(&presentation_part))? {
+        Some(xml) => jade_opc::parse_relationships(xml)?,
         None => Default::default(),
     };
 
-    let (slide_size, slide_ids) = parse_presentation(&presentation_xml)?;
+    let (slide_size, slide_ids) = parse_presentation(presentation_xml)?;
 
     let mut slides = Vec::new();
     for entry in slide_ids {
@@ -233,7 +239,7 @@ pub struct DeckSlide {
 /// come back empty rather than failing the whole file.
 pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
     let package = OpcPackage::open(bytes)?;
-    let presentation = read_pptx(bytes)?;
+    let presentation = read_presentation(&package)?;
 
     let (
         theme_colors,
@@ -258,12 +264,12 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
     let mut parsed_parts: std::collections::HashMap<String, Option<SlideContent>> =
         std::collections::HashMap::new();
     for entry in &presentation.slides {
-        let xml = package.required_part_str(&entry.part_name)?;
-        let mut content = parse_slide_xml(&xml)?;
+        let xml = package.required_part_text(&entry.part_name)?;
+        let mut content = parse_slide_xml(xml)?;
         let mut layout_part = None;
         let mut notes = None;
-        if let Some(rels_xml) = package.part_str(&jade_opc::rels_part_name(&entry.part_name))? {
-            let relationships = jade_opc::parse_relationships(&rels_xml)?;
+        if let Some(rels_xml) = package.part_text(&jade_opc::rels_part_name(&entry.part_name))? {
+            let relationships = jade_opc::parse_relationships(rels_xml)?;
             resolve_content_images(&mut content, &relationships, &entry.part_name);
             resolve_hyperlinks(&mut content.shapes, &relationships);
             resolve_charts(
@@ -292,8 +298,8 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
                 .map(|r| jade_opc::resolve_target(&entry.part_name, &r.target));
             if let Some(target) = relationships.target_by_type_suffix("/notesSlide") {
                 let part = jade_opc::resolve_target(&entry.part_name, target);
-                if let Some(notes_xml) = package.part_str(&part)? {
-                    notes = notes_text(&parse_slide_xml(&notes_xml)?);
+                if let Some(notes_xml) = package.part_text(&part)? {
+                    notes = notes_text(&parse_slide_xml(notes_xml)?);
                 }
             }
         }
@@ -303,8 +309,8 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
             None => None,
         };
         let master_part = match &layout_part {
-            Some(part) => match package.part_str(&jade_opc::rels_part_name(part))? {
-                Some(rels_xml) => jade_opc::parse_relationships(&rels_xml)?
+            Some(part) => match package.part_text(&jade_opc::rels_part_name(part))? {
+                Some(rels_xml) => jade_opc::parse_relationships(rels_xml)?
                     .by_type_suffix("/slideMaster")
                     .into_iter()
                     .find(|r| !r.external)
@@ -335,17 +341,17 @@ pub fn read_deck(bytes: &[u8]) -> Result<Deck> {
     }
 
     let presentation_part = presentation_part_name(&package)?;
-    let default_text_style = match package.part_str(&presentation_part)? {
-        Some(xml) => parse_default_text_style(&xml)?,
+    let default_text_style = match package.part_text(&presentation_part)? {
+        Some(xml) => parse_default_text_style(xml)?,
         None => ListStyle::default(),
     };
-    let table_styles = match package.part_str(&jade_opc::rels_part_name(&presentation_part))? {
-        Some(rels_xml) => match jade_opc::parse_relationships(&rels_xml)?
+    let table_styles = match package.part_text(&jade_opc::rels_part_name(&presentation_part))? {
+        Some(rels_xml) => match jade_opc::parse_relationships(rels_xml)?
             .target_by_type_suffix("/tableStyles")
             .map(|target| jade_opc::resolve_target(&presentation_part, target))
-            .and_then(|part| package.part_str(&part).ok().flatten())
+            .and_then(|part| package.part_text(&part).ok().flatten())
         {
-            Some(xml) => parse_table_styles(&xml)?,
+            Some(xml) => parse_table_styles(xml)?,
             None => Vec::new(),
         },
         None => Vec::new(),
@@ -475,13 +481,13 @@ fn parsed_shape_tree(
     if let Some(cached) = cache.get(part) {
         return Ok(cached.clone());
     }
-    let parsed = match package.part_str(part)? {
+    let parsed = match package.part_text(part)? {
         Some(xml) => {
-            let mut content = parse_slide_xml(&xml)?;
+            let mut content = parse_slide_xml(xml)?;
             // Layout and master pictures (logos, backgrounds) resolve
             // against their own part's relationships.
-            if let Some(rels_xml) = package.part_str(&jade_opc::rels_part_name(part))? {
-                let relationships = jade_opc::parse_relationships(&rels_xml)?;
+            if let Some(rels_xml) = package.part_text(&jade_opc::rels_part_name(part))? {
+                let relationships = jade_opc::parse_relationships(rels_xml)?;
                 resolve_content_images(&mut content, &relationships, part);
                 resolve_hyperlinks(&mut content.shapes, &relationships);
             }
@@ -643,8 +649,8 @@ fn resolve_ink_and_media(
                 else {
                     continue;
                 };
-                if let Some(xml) = package.part_str(&part)? {
-                    let traces = jade_ink::inkml::parse_inkml(&xml);
+                if let Some(xml) = package.part_text(&part)? {
+                    let traces = jade_ink::inkml::parse_inkml(xml);
                     let (width, height) = ink
                         .transform
                         .map(|t| (emu_to_px(t.extent_emu.0), emu_to_px(t.extent_emu.1)))
@@ -700,8 +706,8 @@ fn resolve_ink_and_media(
                         continue;
                     }
                     let part = jade_opc::resolve_target(slide_part, &relationship.target);
-                    if let Some(text) = package.part_str(&part)? {
-                        track.cues = media::parse_webvtt(&text);
+                    if let Some(text) = package.part_text(&part)? {
+                        track.cues = media::parse_webvtt(text);
                     }
                     track.part = Some(part);
                 }
@@ -733,8 +739,8 @@ fn resolve_charts(
                 else {
                     continue;
                 };
-                if let Some(xml) = package.part_str(&part)? {
-                    let content = chart::parse_chart_part(&xml, package, &part)?;
+                if let Some(xml) = package.part_text(&part)? {
+                    let content = chart::parse_chart_part(xml, package, &part)?;
                     chart.kind = content.kind;
                     chart.title = content.title;
                     chart.horizontal = content.horizontal;
@@ -784,7 +790,7 @@ fn resolve_diagrams(
             .target(data_rel)
             .map(|target| jade_opc::resolve_target(slide_part, target));
         let data_xml = match &data_part {
-            Some(part) => package.part_str(part)?,
+            Some(part) => package.part_text(part)?,
             None => None,
         };
         let drawing_rel = match &data_xml {
@@ -852,8 +858,8 @@ fn resolve_diagrams(
             let mut children = parse_diagram_drawing_xml(&xml)?;
             let owner_rels = match &image_owner {
                 Some(owner) => package
-                    .part_str(&jade_opc::rels_part_name(owner))?
-                    .map(|rels| jade_opc::parse_relationships(&rels))
+                    .part_text(&jade_opc::rels_part_name(owner))?
+                    .map(jade_opc::parse_relationships)
                     .transpose()?,
                 None => None,
             };
@@ -887,8 +893,8 @@ pub fn theme_palette(theme: &ThemeColors) -> jade_smartart::colors::ThemePalette
 }
 
 fn presentation_part_name(package: &OpcPackage) -> Result<String> {
-    Ok(match package.part_str("_rels/.rels")? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?
+    Ok(match package.part_text("_rels/.rels")? {
+        Some(xml) => jade_opc::parse_relationships(xml)?
             .target_by_type_suffix(OFFICE_DOCUMENT)
             .map(|target| jade_opc::resolve_target("", target))
             .unwrap_or_else(|| "ppt/presentation.xml".to_string()),
@@ -907,8 +913,8 @@ fn read_theme(package: &OpcPackage) -> Result<ThemeParts> {
 
     let presentation_part = presentation_part_name(package)?;
 
-    let master_part = match package.part_str(&jade_opc::rels_part_name(&presentation_part))? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?
+    let master_part = match package.part_text(&jade_opc::rels_part_name(&presentation_part))? {
+        Some(xml) => jade_opc::parse_relationships(xml)?
             .target_by_type_suffix(SLIDE_MASTER)
             .map(|target| jade_opc::resolve_target(&presentation_part, target)),
         None => None,
@@ -924,18 +930,18 @@ pub(crate) fn read_master_effect_styles(
     let Some(master) = master_part else {
         return Ok((Vec::new(), Vec::new()));
     };
-    let theme_part = match package.part_str(&jade_opc::rels_part_name(master))? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?
+    let theme_part = match package.part_text(&jade_opc::rels_part_name(master))? {
+        Some(xml) => jade_opc::parse_relationships(xml)?
             .by_type_suffix("/theme")
             .into_iter()
             .find(|r| !r.external)
             .map(|r| jade_opc::resolve_target(master, &r.target)),
         None => None,
     };
-    match theme_part.and_then(|part| package.part_str(&part).ok().flatten()) {
+    match theme_part.and_then(|part| package.part_text(&part).ok().flatten()) {
         Some(xml) => Ok((
-            parse_theme_effect_styles(&xml)?,
-            theme::parse_theme_effect_style_effects(&xml)?,
+            parse_theme_effect_styles(xml)?,
+            theme::parse_theme_effect_style_effects(xml)?,
         )),
         None => Ok((Vec::new(), Vec::new())),
     }
@@ -943,16 +949,16 @@ pub(crate) fn read_master_effect_styles(
 
 fn read_master_theme(package: &OpcPackage, master_part: Option<&str>) -> Result<ThemeParts> {
     let color_map = match master_part {
-        Some(master) => match package.part_str(master)? {
-            Some(xml) => parse_color_map(&xml)?,
+        Some(master) => match package.part_text(master)? {
+            Some(xml) => parse_color_map(xml)?,
             None => Default::default(),
         },
         None => Default::default(),
     };
 
     let theme_part = match master_part {
-        Some(master) => match package.part_str(&jade_opc::rels_part_name(master))? {
-            Some(xml) => jade_opc::parse_relationships(&xml)?
+        Some(master) => match package.part_text(&jade_opc::rels_part_name(master))? {
+            Some(xml) => jade_opc::parse_relationships(xml)?
                 .by_type_suffix("/theme")
                 .into_iter()
                 .find(|r| !r.external)
@@ -963,15 +969,15 @@ fn read_master_theme(package: &OpcPackage, master_part: Option<&str>) -> Result<
     };
 
     let (mut colors, fonts, fill_styles, background_fill_styles, line_styles) =
-        match theme_part.and_then(|part| package.part_str(&part).ok().flatten()) {
+        match theme_part.and_then(|part| package.part_text(&part).ok().flatten()) {
             Some(xml) => {
-                let (fills, background_fills) = parse_theme_fill_styles(&xml)?;
+                let (fills, background_fills) = parse_theme_fill_styles(xml)?;
                 (
-                    parse_theme_colors(&xml)?,
-                    parse_theme_fonts(&xml)?,
+                    parse_theme_colors(xml)?,
+                    parse_theme_fonts(xml)?,
                     fills,
                     background_fills,
-                    parse_theme_line_styles(&xml)?,
+                    parse_theme_line_styles(xml)?,
                 )
             }
             None => (

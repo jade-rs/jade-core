@@ -150,17 +150,17 @@ pub fn read_package(package: &OpcPackage) -> Result<Workbook> {
 }
 
 fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<String>)> {
-    let workbook_part = match package.part_str("_rels/.rels")? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?
+    let workbook_part = match package.part_text("_rels/.rels")? {
+        Some(xml) => jade_opc::parse_relationships(xml)?
             .target_by_type_suffix(OFFICE_DOCUMENT)
             .map(|target| jade_opc::resolve_target("", target))
             .unwrap_or_else(|| "xl/workbook.xml".to_string()),
         None => "xl/workbook.xml".to_string(),
     };
 
-    let workbook_xml = package.required_part_str(&workbook_part)?;
-    let workbook_rels = match package.part_str(&jade_opc::rels_part_name(&workbook_part))? {
-        Some(xml) => jade_opc::parse_relationships(&xml)?,
+    let workbook_xml = package.required_part_text(&workbook_part)?;
+    let workbook_rels = match package.part_text(&jade_opc::rels_part_name(&workbook_part))? {
+        Some(xml) => jade_opc::parse_relationships(xml)?,
         None => Default::default(),
     };
 
@@ -169,8 +169,8 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
     // unsupported links leave array identity unknown rather than guessing CSE.
     let array_flags = match workbook_rels.target_by_type_suffix("/sheetMetadata") {
         Some(target) => {
-            match package.part_str(&jade_opc::resolve_target(&workbook_part, target))? {
-                Some(xml) => array_metadata::cell_dynamic_array_flags(&xml).unwrap_or_default(),
+            match package.part_text(&jade_opc::resolve_target(&workbook_part, target))? {
+                Some(xml) => array_metadata::cell_dynamic_array_flags(xml).unwrap_or_default(),
                 None => Vec::new(),
             }
         }
@@ -180,13 +180,13 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
     let shared_strings = match workbook_rels.target_by_type_suffix(SHARED_STRINGS) {
         Some(target) => {
             let part = jade_opc::resolve_target(&workbook_part, target);
-            match package.part_str(&part)? {
+            match package.part_text(&part)? {
                 Some(xml) => {
                     shared_furigana = xml.contains("rPh");
                     if xml.contains("<r>") || xml.contains(":r>") {
-                        shared_runs = rich_text::parse_shared_runs(&xml)?;
+                        shared_runs = rich_text::parse_shared_runs(xml)?;
                     }
-                    shared_strings::parse_shared_strings(&xml)?
+                    shared_strings::parse_shared_strings(xml)?
                 }
                 None => Vec::new(),
             }
@@ -197,8 +197,8 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
     let theme = match workbook_rels.target_by_type_suffix(THEME) {
         Some(target) => {
             let part = jade_opc::resolve_target(&workbook_part, target);
-            match package.part_str(&part)? {
-                Some(xml) => Some(theme::parse_theme(&xml)?),
+            match package.part_text(&part)? {
+                Some(xml) => Some(theme::parse_theme(xml)?),
                 None => None,
             }
         }
@@ -208,8 +208,8 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
     let mut styles = match workbook_rels.target_by_type_suffix(STYLES) {
         Some(target) => {
             let part = jade_opc::resolve_target(&workbook_part, target);
-            match package.part_str(&part)? {
-                Some(xml) => styles::parse_styles(&xml)?,
+            match package.part_text(&part)? {
+                Some(xml) => styles::parse_styles(xml)?,
                 None => StyleTable::default(),
             }
         }
@@ -219,7 +219,7 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
         styles::apply_theme_colors(&mut styles, theme);
     }
 
-    let part = workbook_part::parse_workbook(&workbook_xml)?;
+    let part = workbook_part::parse_workbook(workbook_xml)?;
 
     let mut sheets = Vec::new();
     let mut in_order = Vec::new();
@@ -233,17 +233,17 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
             // and Excel's own numbering is 1-based and positional.
             .map(|target| jade_opc::resolve_target(&workbook_part, target))
             .unwrap_or_else(|| format!("xl/worksheets/sheet{}.xml", position + 1));
-        let Some(xml) = package.part_str(&target)? else {
+        let Some(xml) = package.part_text(&target)? else {
             continue;
         };
-        let relationships = match package.part_str(&jade_opc::rels_part_name(&target))? {
-            Some(xml) => jade_opc::parse_relationships(&xml)?,
+        let relationships = match package.part_text(&jade_opc::rels_part_name(&target))? {
+            Some(xml) => jade_opc::parse_relationships(xml)?,
             None => Default::default(),
         };
         let (mut sheet, ordered) = sheet::parse_sheet_noting_order(
             &entry.name,
             &target,
-            &xml,
+            xml,
             &shared_strings,
             &relationships,
             Some(&array_flags),
@@ -254,16 +254,16 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
         read_sheet_parts(
             package,
             &target,
-            &xml,
+            xml,
             &relationships,
             &mut sheet,
             &mut media_cache,
         )?;
-        sheet.filter_row_state = filter_state::read(&xml, &sheet)?;
+        sheet.filter_row_state = filter_state::read(xml, &sheet)?;
         if shared_furigana || xml.contains("rPh") {
             sheet.phonetic_readings = furigana(package, &target, &sheet);
         }
-        sheet.rich_text = rich_text::sheet_runs(&xml, &shared_runs)?;
+        sheet.rich_text = rich_text::sheet_runs(xml, &shared_runs)?;
         sheet.visibility = entry.visibility;
         read_print_titles(&part.defined_names, position, &mut sheet.page_setup);
         sheets.push(sheet);
@@ -275,15 +275,15 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
     if sheets.is_empty() {
         if let Some(target) = workbook_rels.target_by_type_suffix(WORKSHEET) {
             let part = jade_opc::resolve_target(&workbook_part, target);
-            if let Some(xml) = package.part_str(&part)? {
-                let relationships = match package.part_str(&jade_opc::rels_part_name(&part))? {
-                    Some(xml) => jade_opc::parse_relationships(&xml)?,
+            if let Some(xml) = package.part_text(&part)? {
+                let relationships = match package.part_text(&jade_opc::rels_part_name(&part))? {
+                    Some(xml) => jade_opc::parse_relationships(xml)?,
                     None => Default::default(),
                 };
                 let (mut sheet, ordered) = sheet::parse_sheet_noting_order(
                     "Sheet1",
                     &part,
-                    &xml,
+                    xml,
                     &shared_strings,
                     &relationships,
                     Some(&array_flags),
@@ -294,12 +294,12 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
                 read_sheet_parts(
                     package,
                     &part,
-                    &xml,
+                    xml,
                     &relationships,
                     &mut sheet,
                     &mut media_cache,
                 )?;
-                sheet.filter_row_state = filter_state::read(&xml, &sheet)?;
+                sheet.filter_row_state = filter_state::read(xml, &sheet)?;
                 sheets.push(sheet);
             }
         }
@@ -339,7 +339,7 @@ fn read_package_noting_order(package: &OpcPackage) -> Result<(Workbook, Vec<Stri
             }
         }
     }
-    let pivots = pivot::read_catalog(package, &workbook_part, &workbook_xml, &sheets);
+    let pivots = pivot::read_catalog(package, &workbook_part, workbook_xml, &sheets);
     let workbook = Workbook {
         pivots,
         sheets,
@@ -407,8 +407,8 @@ fn read_sheet_parts(
     media_cache: &mut std::collections::HashMap<String, model::MediaPart>,
 ) -> Result<()> {
     let owned_relationships = package
-        .part_str(&jade_opc::rels_part_name(sheet_part))?
-        .map(|xml| object_protection::owned_relationships(&xml))
+        .part_text(&jade_opc::rels_part_name(sheet_part))?
+        .map(object_protection::owned_relationships)
         .transpose()?;
     let relationships = owned_relationships.as_ref().unwrap_or(relationships);
     sheet.data_validations = data_validations::parse_data_validations(sheet_xml)?;
@@ -424,8 +424,8 @@ fn read_sheet_parts(
     }
     if let Some(comments_target) = comment_relations.first().map(|r| r.target.as_str()) {
         let comments_part = jade_opc::resolve_target(sheet_part, comments_target);
-        if let Some(xml) = package.part_str(&comments_part)? {
-            sheet.comments = comments::parse_comments(&xml)?;
+        if let Some(xml) = package.part_text(&comments_part)? {
+            sheet.comments = comments::parse_comments(xml)?;
         }
     }
     // Current Excel's threaded comments, read in place of the notes it
@@ -441,23 +441,23 @@ fn read_sheet_parts(
         .map(|r| r.target.clone());
     if let Some(target) = threads {
         let part = jade_opc::resolve_target(sheet_part, &target);
-        if let Some(xml) = package.part_str(&part)? {
+        if let Some(xml) = package.part_text(&part)? {
             let mut people = std::collections::HashMap::new();
             for name in package
                 .part_names()
                 .iter()
                 .filter(|name| name.starts_with("xl/persons/") && name.ends_with(".xml"))
             {
-                if let Some(persons) = package.part_str(name)? {
-                    people.extend(comments::parse_persons(&persons)?);
+                if let Some(persons) = package.part_text(name)? {
+                    people.extend(comments::parse_persons(persons)?);
                 }
             }
-            comments::apply_threads(&mut sheet.comments, &xml, &people)?;
+            comments::apply_threads(&mut sheet.comments, xml, &people)?;
         }
     }
     for table_part in table::referenced_table_parts(sheet_xml, relationships, sheet_part)? {
-        if let Some(xml) = package.part_str(&table_part)? {
-            if let Some(table) = table::parse_table(&table_part, &xml)? {
+        if let Some(xml) = package.part_text(&table_part)? {
+            if let Some(table) = table::parse_table(&table_part, xml)? {
                 sheet.tables.push(table);
             }
         }
@@ -477,10 +477,10 @@ fn read_sheet_parts(
         .map(|r| r.target.as_str())
     {
         let drawing_part = jade_opc::resolve_target(sheet_part, drawing_target);
-        if let Some(xml) = package.part_str(&drawing_part)? {
-            sheet.shapes = drawing::parse_drawing(&xml)?;
-            let drawing_rels = match package.part_str(&jade_opc::rels_part_name(&drawing_part))? {
-                Some(xml) => object_protection::owned_relationships(&xml)?,
+        if let Some(xml) = package.part_text(&drawing_part)? {
+            sheet.shapes = drawing::parse_drawing(xml)?;
+            let drawing_rels = match package.part_text(&jade_opc::rels_part_name(&drawing_part))? {
+                Some(xml) => object_protection::owned_relationships(xml)?,
                 None => Default::default(),
             };
             for picture in sheet
@@ -557,8 +557,8 @@ fn read_sheet_parts(
                     }
                     let part_name = jade_opc::resolve_target(&drawing_part, &relationship.target);
                     if relationship.relationship_type.ends_with("/chart") {
-                        if let Some(xml) = package.part_str(&part_name)? {
-                            let mut parsed = chart::parse_chart(&xml)?;
+                        if let Some(xml) = package.part_text(&part_name)? {
+                            let mut parsed = chart::parse_chart(xml)?;
                             parsed.relationship_id = chart.relationship_id.clone();
                             parsed.part_name = Some(part_name);
                             *chart = parsed;
@@ -577,11 +577,11 @@ fn read_sheet_parts(
 
 fn media_content_type(package: &OpcPackage, part: &str) -> Result<Option<String>> {
     use quick_xml::{events::Event, Reader};
-    let Some(xml) = package.part_str("[Content_Types].xml")? else {
+    let Some(xml) = package.part_text("[Content_Types].xml")? else {
         return Ok(None);
     };
     let extension = part.rsplit('.').next().unwrap_or("");
-    let mut reader = Reader::from_str(&xml);
+    let mut reader = Reader::from_str(xml);
     let mut default = None;
     loop {
         match reader.read_event()? {
