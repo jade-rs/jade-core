@@ -9552,7 +9552,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
         )?;
         drop_windows_line_end_auto_space(&mut lines);
     }
-    if text.contains('\u{ad}') {
+    if text.as_bytes().contains(&0xc2) && text.contains('\u{ad}') {
         hyphenate::show_discretionary_hyphens(ctx, &mut lines, paragraph_style, base_available)?;
     }
     hyphenate::hyphenate_lines(ctx, &mut lines, paragraph_style, base_available)?;

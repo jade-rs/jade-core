@@ -49,7 +49,16 @@ impl CommandText {
 
     #[inline]
     pub(crate) fn has_soft_hyphen(&self) -> bool {
-        self.encoded.as_bytes().last() == Some(&1)
+        // SAFETY: from_plan always appends one ASCII flag byte, including for
+        // empty text. The private allocation is immutable; cloning and string
+        // deserialization preserve that nonempty representation.
+        unsafe {
+            *self
+                .encoded
+                .as_bytes()
+                .get_unchecked(self.encoded.len() - 1)
+                == 1
+        }
     }
 
     pub(crate) fn from_plan(text: &str, has_soft_hyphen: bool) -> Self {
@@ -102,8 +111,16 @@ impl std::ops::Deref for CommandText {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str {
-        // The constructor always appends exactly one ASCII suffix byte.
-        &self.encoded[..self.encoded.len() - 1]
+        // SAFETY: from_plan copies valid UTF-8 and appends one ASCII flag.
+        // Removing that byte leaves the original valid UTF-8, even for empty
+        // text. The private immutable field cannot lose or alter its suffix.
+        unsafe {
+            std::str::from_utf8_unchecked(
+                self.encoded
+                    .as_bytes()
+                    .get_unchecked(..self.encoded.len() - 1),
+            )
+        }
     }
 }
 

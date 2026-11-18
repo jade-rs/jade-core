@@ -1704,6 +1704,8 @@ fn is_single_bmp_glyph_range(text: &str, start: usize, end: usize) -> bool {
     )
 }
 
+// Keep the batch's stack buffers out of the cached-command dispatch frame.
+#[inline(never)]
 fn try_execute_bmp_glyph_run_batch<P: Painter>(
     context: &P,
     run_text: &str,
