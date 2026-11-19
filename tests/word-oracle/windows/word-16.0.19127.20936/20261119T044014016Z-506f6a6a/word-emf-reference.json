@@ -1,0 +1,1395 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261119T044014016Z-506f6a6a",
+  "captured_at_utc": "2026-11-19T04:40:14.0292822Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa",
+      "docx_sha256": "9989be63bcecafd6e306a0ec4dba04351a016bd106a34589290b8dff34759898",
+      "pdf_sha256": "ed05e5bac2958a448c77a248afcab30093894835c07d5cbdc0701fea9b3e7c87",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa.page-001.emf",
+          "sha256": "26317914ed93792a914f879e4b07f57afe72e204a68a91ecc67624db84b22690",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          112.55621850433378,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb",
+      "docx_sha256": "5f969b65b0d918d45cddfbceae1aa3eb12a6812c6c9f46196962209421091110",
+      "pdf_sha256": "41cd7902be92fb7991c54b91a264d1e9f2a3dc7259f3d58b6d1dfc77feb1e385",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb.page-001.emf",
+          "sha256": "6c053cff0e137004343bb92ff41d36ceac7b1db1130550d0f24cae2311a0c91e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          112.55621850433378,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-va",
+      "docx_sha256": "e07a6ca6968e90c24fe13188fdcc0bff499c6e5df2c33288906465de92a44ac5",
+      "pdf_sha256": "3890425af91e0cdb540775443006c04c17ff7d6163b52516462c5f32da8faed7",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern0-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-va.page-001.emf",
+          "sha256": "402aa1ffc77d9cd11efdfb2c8aac07c4b6c43a1643bcd7f4d0d0e4891dd79533",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "V",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          112.55621850433378,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta",
+      "docx_sha256": "4449bdae3f391429d3ae6d9bc0b7921c182099b913d8937ceabdf1787609b9d9",
+      "pdf_sha256": "24b2dc832a445106a8c7d013dbfb11b883de321cf216630ed3e966bd96734913",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta.page-001.emf",
+          "sha256": "0c3a03d525800ca5e149072a4e677678550d56221c5d3515b44ba37c44987049",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "T",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa",
+      "docx_sha256": "a6ab043f3dc71f57a3542825da98690d1e689886a3d6f025c3310de4bcd54468",
+      "pdf_sha256": "048b7c6d610847731628b7ea7451b2861b7ca16a43c7e5457c0c8b6d090b712d",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa.page-001.emf",
+          "sha256": "218257a2dce937d95a051be46d989f01ad6e427e336dabdd0640c90e2117ae5d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          103.07653698851037,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          111.11626688167706,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb",
+      "docx_sha256": "ef2705d8471a50f37822ee751a35d85c3105c78fcd2545df9472af16a0820769",
+      "pdf_sha256": "0074d0445d0379e3e66e66dafcee1948d1ec9aad2f36bbed2f6b1b9f4e9448bb",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-va",
+      "docx_sha256": "d0acac747cd3a659723f2007677cc5610322b71bda671f243bcfcbdd9bb3f300",
+      "pdf_sha256": "9270db1d331842a46a68ac15f688899215641e1b5a40f9d8b0bc760b37d1342b",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern2-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-va.page-001.emf",
+          "sha256": "21a76e2fe26a5fdbd3d27ccdbebbea2bb1332149dcef9e570401b88a6e340ef9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "V",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          110.87627494456761,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta",
+      "docx_sha256": "6e20d87c88233cd0c9e16eb04b0a060fa2991554f0116ed5671001397f802ce5",
+      "pdf_sha256": "e44e993af59672205be524f10b04f65551beacdb69cbfd1e9c23165ecffdef17",
+      "pdf_file": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta.page-001.emf",
+          "sha256": "347ba2a70f1f3aebb3c83d4651af00f12292585f69d5f43a376dbe00c5964414",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "T",
+          103.55652086272927,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          110.03630316468453,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa",
+      "docx_sha256": "9496f841f8637e62e66847e6297094b60742a502305dcc266780a073263abc93",
+      "pdf_sha256": "f868a8c0ffc068d93c7d7ee34cc3d81871279c2d0d0a139216d916b08ac90213",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa.page-001.emf",
+          "sha256": "e6a453408d30ce8597fa56ca32c8a9c19e0fe7f3583e8bdd86c829434d3cd6e3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          112.55621850433378,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb",
+      "docx_sha256": "f5b5a0eb6a04c53f63afb898c5317ee6ff7c5a1722c9ee27b133908d69f638db",
+      "pdf_sha256": "939a9a9f26d42aa8189ac7a775a7d07c3bb2e7adf2c5b47d62dd344897d03ea9",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb.page-001.emf",
+          "sha256": "6c053cff0e137004343bb92ff41d36ceac7b1db1130550d0f24cae2311a0c91e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          112.55621850433378,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-va",
+      "docx_sha256": "ad24a5e77a90f7aa6e745778434678f44a24c5e5018e9fab8203b9f61854f911",
+      "pdf_sha256": "f480aaff69eb3f2e8c5b6d589f29291655bcafed2371c12e2399928bb6536ec2",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern0-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-va.page-001.emf",
+          "sha256": "35dbd92c526c081f96a7c0b98adb2c3a2d77886a63abcedd876c663b6a96c5ff",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "V",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          112.55621850433378,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta",
+      "docx_sha256": "43b187f25b612a3fad38f71c0c40c6ee7335b1d013c4bdc2cab7ed8bf99f5118",
+      "pdf_sha256": "c8e0a0af24d67335df5db6ae1ead02760125d3eba056e7ede131961979c79a9b",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta.page-001.emf",
+          "sha256": "c0e0fff1093cdd7d5c94db01338a45dd91a636a3fdb5d630d2d89ba4a611007f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "T",
+          104.51648861116709,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa",
+      "docx_sha256": "7de10f446f060a903090cc980b2a89ec158bc3704d28b9a59d8e2b60bc4da97d",
+      "pdf_sha256": "57d1df5da0b3a237af603b40e7072df47e2107de2dc54fa04dff326c352cbc10",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa.page-001.emf",
+          "sha256": "218257a2dce937d95a051be46d989f01ad6e427e336dabdd0640c90e2117ae5d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          103.07653698851037,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          111.11626688167706,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb",
+      "docx_sha256": "671be902cbaed16f6bbeab264f37603c279f369c7246a14b7088e2016ab16cfc",
+      "pdf_sha256": "ccff7aeef7a0f673eac92d2adab63945bc9e94923ee6f63d004d0c671ecbc221",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-va",
+      "docx_sha256": "c68e96bf72f60580bdef8c49e709bd8c2b7b8259a16caa83172842f3b09f372c",
+      "pdf_sha256": "3239fbb2bb35055c64bfc115fd9cf0602d8e49638b6198ca3e3abd429b755362",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern2-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-va.page-001.emf",
+          "sha256": "21a76e2fe26a5fdbd3d27ccdbebbea2bb1332149dcef9e570401b88a6e340ef9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "V",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          110.87627494456761,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta",
+      "docx_sha256": "7bdb131f4c7b125186f969fb2d5d2b787e4fe654a7df9eb5a0899ef008d8e838",
+      "pdf_sha256": "820f30d739b838bffe6150586e9094f5143924c025352de0106ee7c48e9670b5",
+      "pdf_file": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta.page-001.emf",
+          "sha256": "347ba2a70f1f3aebb3c83d4651af00f12292585f69d5f43a376dbe00c5964414",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "T",
+          103.55652086272927,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          110.03630316468453,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-aa",
+      "docx_sha256": "c39cccb6a9f72f3821e794c0f35bc3d3a0e404fdf7f89d68ed1a04d0fed45e9e",
+      "pdf_sha256": "d9ba200275947f7e735902675462aadff57bc49846e85892e265f585641aa1ac",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern0-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-aa.page-001.emf",
+          "sha256": "ddf7271f7c66308aeaf12e19fa8e1e6d859ccf2b379d4bf0f076d21c756262b9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          113.9961701269905,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-bb",
+      "docx_sha256": "1e04628cecf6ce4b94b422615c0888db4b0459be5e879679a4a5c9206c7551de",
+      "pdf_sha256": "99828fada1ddca1d7c9a6f884b58f5afdfca616072231815e979decbbb1dd907",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern0-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-bb.page-001.emf",
+          "sha256": "71c9359f091cad0c933dbe22fcf6e08c88558d3cb24d87ad02f126778759f466",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          113.39619028421689,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-va",
+      "docx_sha256": "0dc72074442d871ab42afce5b1c648e34d0c0705081a71d6d79635b9eaec8fa6",
+      "pdf_sha256": "cc21fae68997390c41f82bc19aff614a0129d3ec96e60ec2aeb256ce51c0b661",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern0-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-va.page-001.emf",
+          "sha256": "33c62e131f67436d4d3d8c1b4163a7011a4d2b6eb6da83dcf6e282f25df2bb1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "V",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          113.9961701269905,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-ta",
+      "docx_sha256": "8201c9ac8eb191572c155145554779739cb114327e0726cb525880e957e59970",
+      "pdf_sha256": "d1de6ee757f94e14ce48a7622c2e6a0fd2dd845c051f1afd26f57431477bbff0",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern0-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-ta.page-001.emf",
+          "sha256": "a3d8417ec8fb8c381a9847ab404f0bc85ed59c72defbd04bcd2e61bd7234b878",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "T",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          112.67621447288852,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-aa",
+      "docx_sha256": "95968cbfd34de30e15d6a2fc3599c59777be4d1bf4bcdb46cab3e0691402393f",
+      "pdf_sha256": "ba071e3fe0436c5fbd5e9353ee9aa89f98a3db9efa07cdcfdbb15c67b51bd8d1",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern2-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-aa.page-001.emf",
+          "sha256": "371a9c7879e76943fc315491b8e80dfe9be980e51471d88eb893bd8eab86664b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          104.03650473694819,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          112.67621447288852,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-bb",
+      "docx_sha256": "8c353739d2dd2f5556897e41a5bb3d7cb2953e813b89d812af0aba402d20dbfe",
+      "pdf_sha256": "d1a65af98ff1193b1e1696adf33fbeb1547757f1bfe62abdeea11880ad264d4d",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern2-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-bb.page-001.emf",
+          "sha256": "bcf98d5b232885c70350f8c8ff25fe6d9b3813c4e87e3e19d7d66509008045d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          104.75648054827654,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          112.79621044144325,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-va",
+      "docx_sha256": "d0e389f7c7ae153da8f9f66fa9d4953899681a78aff813876700d04f7ee18269",
+      "pdf_sha256": "b53b5c528c5372c3886e6ac586e6e351c2e9de35c18fe40f22c1239f17d4cd4f",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern2-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-va.page-001.emf",
+          "sha256": "c752485501911a93a76eff9ca88df9371c50465d277ecabb91da56d21429a48d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "V",
+          104.51648861116709,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          111.59625075589598,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-ta",
+      "docx_sha256": "a90266fbce69715965d505bbf916a7fdf0b3c87a4ab26fc5b3043359ca13ee11",
+      "pdf_sha256": "c34b16eb645dae383d4ef5b4619aa3eeec8c008fc166807be3f777b643d23ddc",
+      "pdf_file": "word-windows-space-pair-times-s12-m14-kern2-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-ta.page-001.emf",
+          "sha256": "2395cc9bedce40be2604b87280a28284a29f170cdec759f61e6e72fe464a09fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "T",
+          104.51648861116709,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          110.87627494456761,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-aa",
+      "docx_sha256": "330400ce543567b3c77bb03f2a4e7108ce8b7783c44e1dd2ba9a97ab5c5e93d3",
+      "pdf_sha256": "124086634b174edd0d56296ddddedffbde564a42b827bf1ed71ddfe33e0d89ad",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern0-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-aa.page-001.emf",
+          "sha256": "ddf7271f7c66308aeaf12e19fa8e1e6d859ccf2b379d4bf0f076d21c756262b9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          113.9961701269905,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-bb",
+      "docx_sha256": "e2b41cc9ba06dc047c4c39f5a7b272b9718f1644f505a7aabc88b97a73c5cf49",
+      "pdf_sha256": "583dbc912557e1ddd1d6a3cbcc1d42f43efd531fe920d6e26d248df2b91831c6",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern0-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-bb.page-001.emf",
+          "sha256": "cf98feda3639e8e6a131cb9b584b1ebf2b546c1ed08ddfbdbd7553514fdbf573",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          113.39619028421689,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-va",
+      "docx_sha256": "4c6eb17d4087605e4323fbf12ee0195c41a7a03664e076978a4f3febecb6d921",
+      "pdf_sha256": "46544687c5bddeee56aa89afba6837e1ef2d2321f233e3dc4a56acc7b6d76cb0",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern0-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-va.page-001.emf",
+          "sha256": "33c62e131f67436d4d3d8c1b4163a7011a4d2b6eb6da83dcf6e282f25df2bb1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "V",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          113.9961701269905,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-ta",
+      "docx_sha256": "84b799f7e321ae70c64a26b67b2309e93c05a52ba394dfefb31e90c8a0279c4a",
+      "pdf_sha256": "4d26dde9d3154dd4794abbfddc53c4996f19b755cb0f94490d7493a81702b5b4",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern0-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-ta.page-001.emf",
+          "sha256": "a3d8417ec8fb8c381a9847ab404f0bc85ed59c72defbd04bcd2e61bd7234b878",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "T",
+          105.35646039105018,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          112.67621447288852,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-aa",
+      "docx_sha256": "6a26eba0c203f52dcc68d9df3c75f9f8de5b504945425dc833cb31a382597133",
+      "pdf_sha256": "d29ea15bb6346df8adf33a4099bca6567b554682cd9bb0edc43f8d3436e59e91",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern2-aa-aa.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-aa.page-001.emf",
+          "sha256": "371a9c7879e76943fc315491b8e80dfe9be980e51471d88eb893bd8eab86664b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          104.03650473694819,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          112.67621447288852,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-bb",
+      "docx_sha256": "26427f35c7af35f2a15600e5215d35ddaef68c4cacc9ee8a2d000118ea4ce44e",
+      "pdf_sha256": "6cef02b2d8ac4f1937639a252cd6d541e0c16c2fc61d2c3d952265b8731e9e2e",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern2-aa-bb.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-bb.page-001.emf",
+          "sha256": "bcf98d5b232885c70350f8c8ff25fe6d9b3813c4e87e3e19d7d66509008045d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          104.75648054827654,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          112.79621044144325,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-va",
+      "docx_sha256": "cdbb977feed548751ff5dee309fc9e4f013e3912c59310d01989a0d9f5867644",
+      "pdf_sha256": "280e8e77a672f5b4a59bb0084c3551fdb5618e42bae19790461f797710b57bad",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern2-aa-va.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-va.page-001.emf",
+          "sha256": "c752485501911a93a76eff9ca88df9371c50465d277ecabb91da56d21429a48d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "V",
+          104.51648861116709,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          111.59625075589598,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-ta",
+      "docx_sha256": "9678fec65a5ff0059d23b04c8f22249f81248ae4846b33ae310d819d221f5fd8",
+      "pdf_sha256": "45874ca50e2eedadf8eb088bb29516966cd7f9284f39d0e69deb2526a398ef1b",
+      "pdf_file": "word-windows-space-pair-times-s12-m15-kern2-aa-ta.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-ta.page-001.emf",
+          "sha256": "2395cc9bedce40be2604b87280a28284a29f170cdec759f61e6e72fe464a09fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "T",
+          104.51648861116709,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          110.87627494456761,
+          112.55732611174459
+        ]
+      ]
+    }
+  ]
+}
