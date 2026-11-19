@@ -1,0 +1,718 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T071857464Z-a48e4f90",
+  "captured_at_utc": "2026-11-19T07:18:57.4760995Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000.docx",
+      "sha256": "ea3f3b60e4da367ae9f67ea8a2679129dd9a59a22058b0d6364ee9c9e509e486",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "bc88cb26d6421ef42cd0f4b582072a11d2e8573b24806ba03f008d1f3e4ddf33",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000.xps",
+      "xps_sha256": "14b507e46a1c7e4269d615e615666f502999f5f329df71ced1d28de4110085f8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "56e3a7fb6e8421458e57fc6cf0d54bcf3e4c1660cc0060d1aa127ba88b8d3617",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504.docx",
+      "sha256": "7c8f2b64d098b3d3ef709f2041daade39b3f7d786d4bdfa355207712b430cbc5",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "261aa03208f1c613e81f84e0012761cd76ecdeb005e9d1ffe3cf44d340d9d6f1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504.xps",
+      "xps_sha256": "8262281f68cade7a2107ed1e13f4cafbd676173fd61e89815fb3296a495ee1b8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "2c1789a42a44e735180081d1616a18099a67fb85a8dab9042393e7345e1cb467",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000.docx",
+      "sha256": "5ffc98b0bf4a772dd27d35aa80bb92115539320f0c1b60d1451224e2ba705fa1",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "c0dba10a2cde06bbe7ad4e60c06188b849457212aed93a29a11523c3a18563cf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "f17d25d4ece6b2dc26ac39b52a21bc8f9bc9e394ed90295dfeb1f333c0a56040",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "90e87d2d37826ad2d3f8d5f3ed920d62406ce0d647711815c214713a3403632a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504.docx",
+      "sha256": "2d1c3ee36cf9bf8fce145321e7cfa2d7d9eddff0a40d2814428d91a70f28720b",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "756007a4e3c69c7a56edb2f5a47fa146423c913f504672b500003e2d4fb9beed",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "fca631f5a22fc29b9d86268c271e951208155d9458bb7e561d4ee4bed7b9384a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b155b151f8893269c7775ab253e3569e0adf2884704a8bc3e7ac26a467d812d8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000.docx",
+      "sha256": "8b73576f091bfa8833bf15f62b6220fc627bc51eda3346894a897ac00d204084",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "956173667584383657b9031219ab1f4e343cb987af6b4039587efa38dd5c5dda",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000.xps",
+      "xps_sha256": "6839bdb125c9013afe3bc737e428d21353127d39a05fcf0fd073f89b5a375009",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "e73b2911b7d9c22e266929d751b6524422cc7e473360cafb24df573e3f5ddb93",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504.docx",
+      "sha256": "5c435c412e6503948f55c4e62b57248cec79df56a437040d7c7112be5df05bc3",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "7a7e3d0af0c5aaa634469c0fbc60e2ac1a6908945abe7864d44abd94df6a0bcc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504.xps",
+      "xps_sha256": "804641bde319564af75d8e0379d072c540868c061bacd22c78fce80186508fb7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "22aeb8954d251d8826552cdf2f9f88739070a1b296e8bdc02e15dfd7cbdceae3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000.docx",
+      "sha256": "0e5ccb81be52ecbec807ac5ceacc9054081f8591807766fbd15c085df0953563",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "217d1b75d07a628b08475aba0773395fe48e9c179fb8a40305d4b18f2b8ed10d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "ebc1bfa7c9fb6014e2cedc19e948019738f694cf449637af82899b5dd5c1742c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "90e87d2d37826ad2d3f8d5f3ed920d62406ce0d647711815c214713a3403632a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504.docx",
+      "sha256": "926c30ee40eb05163e7dd73ae43720046caa514b7c1a4b2a806e292b8311199d",
+      "pdf": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "6e68d01382c466d93f9404bcd048402e3506dd3bf7a4fd4517f8f2cf1e2b0237",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "81053dac0897e03eb30aa2164a1db5afc9c7a3a457c2cf1c21ee63080060cd57",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b155b151f8893269c7775ab253e3569e0adf2884704a8bc3e7ac26a467d812d8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m14-manual-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m14-manual-w3000.docx",
+      "sha256": "63406d4bbd143cb214295bd73cba0f7e148cedfad133b8b22865f85f205ee3ef",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "7e68fa1078f3d400288563cb80eb968ae24e80656ac2f3be4b0d8b93529dec13",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m14-manual-w3000.xps",
+      "xps_sha256": "64580f0908c29a0fb32e8a95b78c61525f5129d129f442a0dca7a646a77ff9e9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "00ae6b1244a383ac7724a7494983703c1eabc018643c23239831224e5cf47dca",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m14-manual-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m14-manual-w8504.docx",
+      "sha256": "12963076ab1f474bd42486e6a6a09bd5693340ca5132b8f93bf58865599c3225",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "ffafe92c912c20ef6c66c570552e3ccccfcf06c2c5cc26dc9792d90748f149b8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m14-manual-w8504.xps",
+      "xps_sha256": "db90a61a3092222a6bd5a035fd2eb50454e814be6fbb0d8c581234c1956e5501",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "9c84812df422e1c61e17cd2b9d1f4c09d006c570ea08514c315f8416ab0875d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000.docx",
+      "sha256": "e81c0e1a4ee6b5cd30bc43c02636bd5ad93d643fb20c18ae3968f1afa5eee22e",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "c32e305d10a0ae60c743d9243a4667064a03c3892cb1f2e7147e0e8f10106b7a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "d5f437daa27f8a22eab2e453cce1ec57ab25b03d4ca49ce57797bb74fc372330",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "2af44421d49ba4de775fc37facf893936c831413963c57f8981601b869bbffb2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504.docx",
+      "sha256": "d90cd59094c93337d74330520c3fc7fa085f592b038685f541512e6e1caa2840",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "49ebff37aa583e86efd4721fbfa52b51ee0f29048bc01d07139ebf6cb6a7ce90",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "f69ea0dfcf5209fabbdf10d93cb12c48a8ad0876db2fa57814c080bb3cb79cbf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "5e75deeda17f2a71ddc5ec73c74d696e161be8f0f281b76efbdf168dc1daf968",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m15-manual-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m15-manual-w3000.docx",
+      "sha256": "67f4f50c293802bb1174b5ad838b6e2cf8e36b2bc91ca44efc4834823857ba84",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "d26673f21642d24adcf8576db897e8e4d87e17211b1352d13378a1f83c804797",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m15-manual-w3000.xps",
+      "xps_sha256": "8cc1aedc99ffa5c4c962d8d6ef693aaaeef7c6e7df3ad7264f1fa0b1c051ec69",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "94583abb9232b30c6de069d2e7d6dd6eaebc495f5452123161ffaea7fc5be2e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m15-manual-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m15-manual-w8504.docx",
+      "sha256": "d808bcb27ec53a8160fe96b487542d7519ff88ad9a3c79216802ea94f16570e7",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "25a7cd24d4df1c466f208c71bea623a4bafab638d0fb7ea0b9c872a0e6e73e19",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m15-manual-w8504.xps",
+      "xps_sha256": "73bc7249242a7e219be3f212c514395b179baaa78ac3e45e9947127b02b36aa7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "263c2e20eb626152b2022f00d0e401a7c2c103a2df8bacb44ea9514d9c9110f9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000.docx",
+      "sha256": "8e08b86364664090f11678b0e4eed82705ad4d02d4d9327ad133916141b2050d",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "538536e258f17e305839ed67db863122815afb24ed39fea1971c76f364d1fa49",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "9bac6a7340a49979637ba3f6c36173f7f65b94295e90cb215d25dad5ec399323",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "2af44421d49ba4de775fc37facf893936c831413963c57f8981601b869bbffb2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504.docx",
+      "sha256": "366b4dc37d8072203fa5142f055123e98c736f4064e0c53bf81711c52f08db85",
+      "pdf": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "659b33f1cafbd517b9e12753b4635b72c9be2b5191e0605262d0c059fc584a2e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "2f7578ff0476e4cc5329425e60d7b618d0da85450c080a31257335c26dca6714",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "5e75deeda17f2a71ddc5ec73c74d696e161be8f0f281b76efbdf168dc1daf968",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m14-manual-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m14-manual-w3000.docx",
+      "sha256": "ff64979d6de7d8c257967b9b832cd960878f93912563135abec504211875c6e3",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "6e5ae5d04d8ba8f67feaad2f830b60aa4ddca5c18a32308454a90722d8c8e31f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m14-manual-w3000.xps",
+      "xps_sha256": "f025e0f686f4cc1d15cb8131d2c1035c9deb1d155ef1ae4011f1483929d1f6c2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "2358a318e0598a1fadd0c389b631bbe1f0165d1137acdba7726e27c6eaf89413",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m14-manual-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m14-manual-w8504.docx",
+      "sha256": "9e5ea2ca55666530d6287eee5aeb1cde933686dfe082d4b90e70d31db04adaf3",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "73e6aa6b8d33734faa682fbee8fb312b589dfec07bdf5673ac63c7e3b897333c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m14-manual-w8504.xps",
+      "xps_sha256": "36bcf5759e14f99ee76013e1a8d0b33ec4aed8c4f516f21c4260842f3cb26686",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "05b7f82e99b7b5b2a9b7004bff5133a71d16a3c269c5766b3f33f8dc633af140",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000.docx",
+      "sha256": "d962bc3a97e6c3607960839aa667be9e2a8f65b26ed9aeb52b145c0ea2415ad0",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "c773bdecaa547e1cad18d6a1778d856530b675aa103c6658b2beaa1d01226903",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "c4454753d244acb3315e509ff52956993bcc89f504f44ab569de6d32fca3212f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "d91494a500b9258117ab61bb28179cec0fd77a741c31c5c8e202a83b35a781d7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504.docx",
+      "sha256": "1c49f96f2f28f4181c7e948f037ae63609658885065d3072b61da5b77b68bd2b",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "c37464f9f9b8ca56a3a2bb20394855b4b06930292b215d3b3015554900521a63",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "895df150f25154256fc12908b9a0b2fc388fb85df110c8fb568780ddde6899d5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "96ab14903347bee2fb1ccfbabf1b9fb7cdd6066c1eb28ecfb6dc6d63d766cb7f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m15-manual-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m15-manual-w3000.docx",
+      "sha256": "2bb4cfe59a8b0ec49fbf71b0af64154a2579429d5df7e1344c06696ea5aa1b89",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "aea5169c64b46f6690793e258a13f7079a08496c82188fcd7990415e7582bb61",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m15-manual-w3000.xps",
+      "xps_sha256": "4f7fc36b33cdb14c1a250f2f035fee499d7057d0243de518ebc71bd583ff6e52",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "644dcc81aa0757c905117d46067667350e5392d3cb479dea8851c3f513749727",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m15-manual-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m15-manual-w8504.docx",
+      "sha256": "6ca758f2e477f7a12ac5e19ddd5b96ca8d1a3be5953720f9027b489f0dccca28",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "2953b25d3aa6f52f0e8bd19309799c3f2af816670415e638f9b9621ce4dec196",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m15-manual-w8504.xps",
+      "xps_sha256": "f4aafe0e97a4a79d0a08f159ed89cfe7e5ee5a3fed5ac875d14918be3110a5df",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "5ef7c45255a4b304408eb3fcfd0724b4bd5e942200cb52270669d1879d7885ef",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000.docx",
+      "sha256": "17447b19be9304fe2b0df4042c60ea79585e5858673e36552f27834c3a662776",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "e0c97cb75668c7fe1f4d8a106fa7fd2451b80f2fc2cdf4231f97d1ac900be6b4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "1bfc638e3a351593d88a51dc75c315460554cb426d05a264914a91f9b96b83d8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "d91494a500b9258117ab61bb28179cec0fd77a741c31c5c8e202a83b35a781d7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-mixed-face-inputs\\word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504.docx",
+      "sha256": "79a62c2f4760124e54f0c0b6096ccaa1be4b5be20ff12d713bfcd0bb30fb4eb5",
+      "pdf": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "be4b7016ae05ad273781a83777224a7119c2fd0f87df9c943692b91f30419cb3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "885fe04663342f6eeca69f305ebf1fe09bbaa253e0b497d2db2c0f1a9820e0eb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "96ab14903347bee2fb1ccfbabf1b9fb7cdd6066c1eb28ecfb6dc6d63d766cb7f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
