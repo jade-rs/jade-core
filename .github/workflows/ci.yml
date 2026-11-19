@@ -318,6 +318,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_space_pair_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
@@ -394,6 +395,8 @@ jobs:
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
       - name: Assert versioned Windows Word manual-break XPS origins
         run: python scripts/word-oracle/check_windows_hard_break_spaces.py --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert versioned Windows Word space-pair kerning XPS origins
+        run: python scripts/word-oracle/check_windows_space_pair.py --compare-rendered-fonts target/windows-font-coordinates
       - name: Assert versioned Windows Word legacy justification and pending text
         run: python scripts/word-oracle/check_windows_legacy_justification.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --compare-rendered-fonts target/windows-font-coordinates
       - name: Assert source-form Windows hyphen paint against original Word fonts
@@ -517,6 +520,7 @@ jobs:
             target/windows-font-coordinates/20261119T025736984Z-43e11204
             target/windows-font-coordinates/20261119T042208471Z-cb751983
             target/windows-font-coordinates/20261119T042735438Z-344a3c0c
+            target/windows-font-coordinates/20261119T044014016Z-506f6a6a
             !target/windows-font-coordinates/**/fonts/*.ttf
             !target/windows-font-coordinates/**/fonts/*.otf
             !target/windows-font-coordinates/**/fonts/*.ttc

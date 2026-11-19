@@ -26809,6 +26809,774 @@
         "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w8504.xps",
         "sha256": "ddc40ef144ea0986931f9e1e61f4b5edfbe260e7482679bb3bda9791c2b31ca4"
       }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern0-aa-aa.docx",
+        "sha256": "9989be63bcecafd6e306a0ec4dba04351a016bd106a34589290b8dff34759898"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern0-aa-aa.xps",
+        "sha256": "617dcf207429b67eec8a5d3662fdfb117daa24d38071e19c60293d563beb667e"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern0-aa-bb.docx",
+        "sha256": "5f969b65b0d918d45cddfbceae1aa3eb12a6812c6c9f46196962209421091110"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern0-aa-bb.xps",
+        "sha256": "2fd706919010ad1a829b9f05764a0b6776d7fe00600fcab8303759d282a0b50f"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern0-aa-va.docx",
+        "sha256": "e07a6ca6968e90c24fe13188fdcc0bff499c6e5df2c33288906465de92a44ac5"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern0-aa-va.xps",
+        "sha256": "d19fbe914767003a35e9c11ecfbff477d34f611e07d2774b52c1f4d14215827e"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern0-aa-ta.docx",
+        "sha256": "4449bdae3f391429d3ae6d9bc0b7921c182099b913d8937ceabdf1787609b9d9"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern0-aa-ta.xps",
+        "sha256": "7e6dd91bea8e1f4cba4d3045d4b6a8cf3b659897052e1800175b4c8d9483c08f"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern2-aa-aa.docx",
+        "sha256": "a6ab043f3dc71f57a3542825da98690d1e689886a3d6f025c3310de4bcd54468"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern2-aa-aa.xps",
+        "sha256": "79c8b8d8a3ad30933a9b6634ace4c2a72b3ed5378d4082f6bbbcc5f81c83054f"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern2-aa-bb.docx",
+        "sha256": "ef2705d8471a50f37822ee751a35d85c3105c78fcd2545df9472af16a0820769"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern2-aa-bb.xps",
+        "sha256": "d9309b11aa44b2862005f3d5ea7be02dccfe31797ed45d225622d2dee67066cf"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern2-aa-va.docx",
+        "sha256": "d0acac747cd3a659723f2007677cc5610322b71bda671f243bcfcbdd9bb3f300"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern2-aa-va.xps",
+        "sha256": "210709810cc7f9eb74e35c5d8d1684d396195cc3ecd0cf223945c231b0ae6c3b"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m14-kern2-aa-ta.docx",
+        "sha256": "6e20d87c88233cd0c9e16eb04b0a060fa2991554f0116ed5671001397f802ce5"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m14-kern2-aa-ta.xps",
+        "sha256": "51e071dd277c8f4b2f7ff23d9076f75ab2ba9ca8f4046d2fc2700ba169c75bf6"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern0-aa-aa.docx",
+        "sha256": "9496f841f8637e62e66847e6297094b60742a502305dcc266780a073263abc93"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern0-aa-aa.xps",
+        "sha256": "56831be88cacff32a15765455ccf85e12cf786dd3727a1f59e114195cfd104cf"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern0-aa-bb.docx",
+        "sha256": "f5b5a0eb6a04c53f63afb898c5317ee6ff7c5a1722c9ee27b133908d69f638db"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern0-aa-bb.xps",
+        "sha256": "e2ef50761d0a9dc7d1b654741779b3e198c6d042f60c8b17687858216830cf0d"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern0-aa-va.docx",
+        "sha256": "ad24a5e77a90f7aa6e745778434678f44a24c5e5018e9fab8203b9f61854f911"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern0-aa-va.xps",
+        "sha256": "c9d8771d6d92cd790f25ec776d07e3fbc4de01a017341277b0f2bc3f7cd74172"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern0-aa-ta.docx",
+        "sha256": "43b187f25b612a3fad38f71c0c40c6ee7335b1d013c4bdc2cab7ed8bf99f5118"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern0-aa-ta.xps",
+        "sha256": "3995f437e0971a6db467d86640aefe57a2d7adf5a59db8dd4af0d02d38469c01"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern2-aa-aa.docx",
+        "sha256": "7de10f446f060a903090cc980b2a89ec158bc3704d28b9a59d8e2b60bc4da97d"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern2-aa-aa.xps",
+        "sha256": "0c1e08efc74d29dfca7aee74129db01baca305abab1a53a303221dc2f5be50d5"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern2-aa-bb.docx",
+        "sha256": "671be902cbaed16f6bbeab264f37603c279f369c7246a14b7088e2016ab16cfc"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern2-aa-bb.xps",
+        "sha256": "bd5aaf519bbf3a54f2a9b90a5cef527c74daa817cc82c7392060615407ecb3a0"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern2-aa-va.docx",
+        "sha256": "c68e96bf72f60580bdef8c49e709bd8c2b7b8259a16caa83172842f3b09f372c"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern2-aa-va.xps",
+        "sha256": "05b4895c5abeb62681da83bd9f9c97f9786436e7d580fb511618e0b775b98e37"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-arial-s12-m15-kern2-aa-ta.docx",
+        "sha256": "7bdb131f4c7b125186f969fb2d5d2b787e4fe654a7df9eb5a0899ef008d8e838"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-arial-s12-m15-kern2-aa-ta.xps",
+        "sha256": "e2e7fa2e5a23acff8c805bea890118cc03ce4e3b82f2df3473ff15d554684cb8"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern0-aa-aa.docx",
+        "sha256": "c39cccb6a9f72f3821e794c0f35bc3d3a0e404fdf7f89d68ed1a04d0fed45e9e"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern0-aa-aa.xps",
+        "sha256": "a94be1ca72b05de94c2b990b3fc0e56e705abae54ce03b045efecf6613bc003f"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern0-aa-bb.docx",
+        "sha256": "1e04628cecf6ce4b94b422615c0888db4b0459be5e879679a4a5c9206c7551de"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern0-aa-bb.xps",
+        "sha256": "cd775fc15e6ffcc29d5da2d5dd8b7bb727be86cb514a641c16fc2cce6cb3d8c6"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern0-aa-va.docx",
+        "sha256": "0dc72074442d871ab42afce5b1c648e34d0c0705081a71d6d79635b9eaec8fa6"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern0-aa-va.xps",
+        "sha256": "81e6f4fe5c67507f4708e5b2be29ea0a98f85fd8426a1747e020242d44d584ee"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern0-aa-ta.docx",
+        "sha256": "8201c9ac8eb191572c155145554779739cb114327e0726cb525880e957e59970"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern0-aa-ta.xps",
+        "sha256": "2a24c6252904d5bcf23e6ebadf9f5b9e69c3272c7204ce1b688ee993f2a3f777"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern2-aa-aa.docx",
+        "sha256": "95968cbfd34de30e15d6a2fc3599c59777be4d1bf4bcdb46cab3e0691402393f"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern2-aa-aa.xps",
+        "sha256": "f90590fb9721b2f783795878e06df5e2ba94d4844c80eb3ffcdb6f29438c31cd"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern2-aa-bb.docx",
+        "sha256": "8c353739d2dd2f5556897e41a5bb3d7cb2953e813b89d812af0aba402d20dbfe"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern2-aa-bb.xps",
+        "sha256": "cd4f20b140148c29c626a2aa2754e1a5940b75028ff39225feb5dd3cf16c915b"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern2-aa-va.docx",
+        "sha256": "d0e389f7c7ae153da8f9f66fa9d4953899681a78aff813876700d04f7ee18269"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern2-aa-va.xps",
+        "sha256": "2199a172e2f5722549290dbc4b5866c030d5e184f476bfbb772635b36398e0fc"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m14-kern2-aa-ta.docx",
+        "sha256": "a90266fbce69715965d505bbf916a7fdf0b3c87a4ab26fc5b3043359ca13ee11"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m14-kern2-aa-ta.xps",
+        "sha256": "14046a51d2d9aabe4f091983af99d4e1f2ff60214d5f6b60c3956f3f8d262d83"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern0-aa-aa.docx",
+        "sha256": "330400ce543567b3c77bb03f2a4e7108ce8b7783c44e1dd2ba9a97ab5c5e93d3"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern0-aa-aa.xps",
+        "sha256": "139cbcf230e583e88d495ff188ded951e748f0ff9e162045a4e5fbf18d81e4b4"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern0-aa-bb.docx",
+        "sha256": "e2b41cc9ba06dc047c4c39f5a7b272b9718f1644f505a7aabc88b97a73c5cf49"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern0-aa-bb.xps",
+        "sha256": "6a1b850a7a3561696d8377df17eab0f2958b9defc5111ebfce2e9dac27b657c8"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern0-aa-va.docx",
+        "sha256": "4c6eb17d4087605e4323fbf12ee0195c41a7a03664e076978a4f3febecb6d921"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern0-aa-va.xps",
+        "sha256": "cf70719b5665405e59574d25165b82b30e6b0160d8281684b68194635d51f396"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern0-aa-ta.docx",
+        "sha256": "84b799f7e321ae70c64a26b67b2309e93c05a52ba394dfefb31e90c8a0279c4a"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern0-aa-ta.xps",
+        "sha256": "42e227154638db921a86166545807537f7055926e488a341e4a1d6cacbc72e32"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-aa",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern2-aa-aa.docx",
+        "sha256": "6a26eba0c203f52dcc68d9df3c75f9f8de5b504945425dc833cb31a382597133"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern2-aa-aa.xps",
+        "sha256": "a50a22118fd33dc237b0b259c6190c4cebea6186bc01cc61612990c7a38164b4"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-bb",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern2-aa-bb.docx",
+        "sha256": "26427f35c7af35f2a15600e5215d35ddaef68c4cacc9ee8a2d000118ea4ce44e"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern2-aa-bb.xps",
+        "sha256": "5631af154660f991068b309c9aa7ec71d51af58e1d79b3bf6c6f564fa47b2adf"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-va",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern2-aa-va.docx",
+        "sha256": "cdbb977feed548751ff5dee309fc9e4f013e3912c59310d01989a0d9f5867644"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern2-aa-va.xps",
+        "sha256": "9471ce28ff72177cb28457969d8c660205dd2b4e967179e8f447ae6d4c30ada7"
+      }
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-ta",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/capture.json",
+        "sha256": "1e4075015a90ace60b284300b4afb7a4a52b41fdba9daacbfbac7dd6e065f81a"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-emf-reference.json",
+        "sha256": "edd335c905e57d0c4db3f5cd1bda23e868f27de2f80ad15df0da3277840e3d6b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/inputs/word-windows-space-pair-times-s12-m15-kern2-aa-ta.docx",
+        "sha256": "9678fec65a5ff0059d23b04c8f22249f81248ae4846b33ae310d819d221f5fd8"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 4,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-windows-space-pair-times-s12-m15-kern2-aa-ta.xps",
+        "sha256": "f4ab4e645037dbf9028f612f83cf84e715bef5f851dd6aaa1e4251af8a7b7d72"
+      }
     }
   ]
 }

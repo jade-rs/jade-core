@@ -1,0 +1,950 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T044014016Z-506f6a6a",
+  "captured_at_utc": "2026-11-19T04:40:14.0292822Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern0-aa-aa.docx",
+      "sha256": "9989be63bcecafd6e306a0ec4dba04351a016bd106a34589290b8dff34759898",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa.pdf",
+      "pdf_sha256": "ed05e5bac2958a448c77a248afcab30093894835c07d5cbdc0701fea9b3e7c87",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa.xps",
+      "xps_sha256": "617dcf207429b67eec8a5d3662fdfb117daa24d38071e19c60293d563beb667e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-aa.page-001.emf",
+          "sha256": "26317914ed93792a914f879e4b07f57afe72e204a68a91ecc67624db84b22690",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern0-aa-bb.docx",
+      "sha256": "5f969b65b0d918d45cddfbceae1aa3eb12a6812c6c9f46196962209421091110",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb.pdf",
+      "pdf_sha256": "41cd7902be92fb7991c54b91a264d1e9f2a3dc7259f3d58b6d1dfc77feb1e385",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb.xps",
+      "xps_sha256": "2fd706919010ad1a829b9f05764a0b6776d7fe00600fcab8303759d282a0b50f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-bb.page-001.emf",
+          "sha256": "6c053cff0e137004343bb92ff41d36ceac7b1db1130550d0f24cae2311a0c91e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern0-aa-va.docx",
+      "sha256": "e07a6ca6968e90c24fe13188fdcc0bff499c6e5df2c33288906465de92a44ac5",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern0-aa-va.pdf",
+      "pdf_sha256": "3890425af91e0cdb540775443006c04c17ff7d6163b52516462c5f32da8faed7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern0-aa-va.xps",
+      "xps_sha256": "d19fbe914767003a35e9c11ecfbff477d34f611e07d2774b52c1f4d14215827e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-va.page-001.emf",
+          "sha256": "402aa1ffc77d9cd11efdfb2c8aac07c4b6c43a1643bcd7f4d0d0e4891dd79533",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern0-aa-ta.docx",
+      "sha256": "4449bdae3f391429d3ae6d9bc0b7921c182099b913d8937ceabdf1787609b9d9",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta.pdf",
+      "pdf_sha256": "24b2dc832a445106a8c7d013dbfb11b883de321cf216630ed3e966bd96734913",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta.xps",
+      "xps_sha256": "7e6dd91bea8e1f4cba4d3045d4b6a8cf3b659897052e1800175b4c8d9483c08f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern0-aa-ta.page-001.emf",
+          "sha256": "0c3a03d525800ca5e149072a4e677678550d56221c5d3515b44ba37c44987049",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern2-aa-aa.docx",
+      "sha256": "a6ab043f3dc71f57a3542825da98690d1e689886a3d6f025c3310de4bcd54468",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa.pdf",
+      "pdf_sha256": "048b7c6d610847731628b7ea7451b2861b7ca16a43c7e5457c0c8b6d090b712d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa.xps",
+      "xps_sha256": "79c8b8d8a3ad30933a9b6634ace4c2a72b3ed5378d4082f6bbbcc5f81c83054f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-aa.page-001.emf",
+          "sha256": "218257a2dce937d95a051be46d989f01ad6e427e336dabdd0640c90e2117ae5d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern2-aa-bb.docx",
+      "sha256": "ef2705d8471a50f37822ee751a35d85c3105c78fcd2545df9472af16a0820769",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb.pdf",
+      "pdf_sha256": "0074d0445d0379e3e66e66dafcee1948d1ec9aad2f36bbed2f6b1b9f4e9448bb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb.xps",
+      "xps_sha256": "d9309b11aa44b2862005f3d5ea7be02dccfe31797ed45d225622d2dee67066cf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-bb.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern2-aa-va.docx",
+      "sha256": "d0acac747cd3a659723f2007677cc5610322b71bda671f243bcfcbdd9bb3f300",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern2-aa-va.pdf",
+      "pdf_sha256": "9270db1d331842a46a68ac15f688899215641e1b5a40f9d8b0bc760b37d1342b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern2-aa-va.xps",
+      "xps_sha256": "210709810cc7f9eb74e35c5d8d1684d396195cc3ecd0cf223945c231b0ae6c3b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-va.page-001.emf",
+          "sha256": "21a76e2fe26a5fdbd3d27ccdbebbea2bb1332149dcef9e570401b88a6e340ef9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m14-kern2-aa-ta.docx",
+      "sha256": "6e20d87c88233cd0c9e16eb04b0a060fa2991554f0116ed5671001397f802ce5",
+      "pdf": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta.pdf",
+      "pdf_sha256": "e44e993af59672205be524f10b04f65551beacdb69cbfd1e9c23165ecffdef17",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta.xps",
+      "xps_sha256": "51e071dd277c8f4b2f7ff23d9076f75ab2ba9ca8f4046d2fc2700ba169c75bf6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m14-kern2-aa-ta.page-001.emf",
+          "sha256": "347ba2a70f1f3aebb3c83d4651af00f12292585f69d5f43a376dbe00c5964414",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern0-aa-aa.docx",
+      "sha256": "9496f841f8637e62e66847e6297094b60742a502305dcc266780a073263abc93",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa.pdf",
+      "pdf_sha256": "f868a8c0ffc068d93c7d7ee34cc3d81871279c2d0d0a139216d916b08ac90213",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa.xps",
+      "xps_sha256": "56831be88cacff32a15765455ccf85e12cf786dd3727a1f59e114195cfd104cf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-aa.page-001.emf",
+          "sha256": "e6a453408d30ce8597fa56ca32c8a9c19e0fe7f3583e8bdd86c829434d3cd6e3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern0-aa-bb.docx",
+      "sha256": "f5b5a0eb6a04c53f63afb898c5317ee6ff7c5a1722c9ee27b133908d69f638db",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb.pdf",
+      "pdf_sha256": "939a9a9f26d42aa8189ac7a775a7d07c3bb2e7adf2c5b47d62dd344897d03ea9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb.xps",
+      "xps_sha256": "e2ef50761d0a9dc7d1b654741779b3e198c6d042f60c8b17687858216830cf0d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-bb.page-001.emf",
+          "sha256": "6c053cff0e137004343bb92ff41d36ceac7b1db1130550d0f24cae2311a0c91e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern0-aa-va.docx",
+      "sha256": "ad24a5e77a90f7aa6e745778434678f44a24c5e5018e9fab8203b9f61854f911",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern0-aa-va.pdf",
+      "pdf_sha256": "f480aaff69eb3f2e8c5b6d589f29291655bcafed2371c12e2399928bb6536ec2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern0-aa-va.xps",
+      "xps_sha256": "c9d8771d6d92cd790f25ec776d07e3fbc4de01a017341277b0f2bc3f7cd74172",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-va.page-001.emf",
+          "sha256": "35dbd92c526c081f96a7c0b98adb2c3a2d77886a63abcedd876c663b6a96c5ff",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern0-aa-ta.docx",
+      "sha256": "43b187f25b612a3fad38f71c0c40c6ee7335b1d013c4bdc2cab7ed8bf99f5118",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta.pdf",
+      "pdf_sha256": "c8e0a0af24d67335df5db6ae1ead02760125d3eba056e7ede131961979c79a9b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta.xps",
+      "xps_sha256": "3995f437e0971a6db467d86640aefe57a2d7adf5a59db8dd4af0d02d38469c01",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern0-aa-ta.page-001.emf",
+          "sha256": "c0e0fff1093cdd7d5c94db01338a45dd91a636a3fdb5d630d2d89ba4a611007f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern2-aa-aa.docx",
+      "sha256": "7de10f446f060a903090cc980b2a89ec158bc3704d28b9a59d8e2b60bc4da97d",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa.pdf",
+      "pdf_sha256": "57d1df5da0b3a237af603b40e7072df47e2107de2dc54fa04dff326c352cbc10",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa.xps",
+      "xps_sha256": "0c1e08efc74d29dfca7aee74129db01baca305abab1a53a303221dc2f5be50d5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-aa.page-001.emf",
+          "sha256": "218257a2dce937d95a051be46d989f01ad6e427e336dabdd0640c90e2117ae5d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern2-aa-bb.docx",
+      "sha256": "671be902cbaed16f6bbeab264f37603c279f369c7246a14b7088e2016ab16cfc",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb.pdf",
+      "pdf_sha256": "ccff7aeef7a0f673eac92d2adab63945bc9e94923ee6f63d004d0c671ecbc221",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb.xps",
+      "xps_sha256": "bd5aaf519bbf3a54f2a9b90a5cef527c74daa817cc82c7392060615407ecb3a0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-bb.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern2-aa-va.docx",
+      "sha256": "c68e96bf72f60580bdef8c49e709bd8c2b7b8259a16caa83172842f3b09f372c",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern2-aa-va.pdf",
+      "pdf_sha256": "3239fbb2bb35055c64bfc115fd9cf0602d8e49638b6198ca3e3abd429b755362",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern2-aa-va.xps",
+      "xps_sha256": "05b4895c5abeb62681da83bd9f9c97f9786436e7d580fb511618e0b775b98e37",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-va.page-001.emf",
+          "sha256": "21a76e2fe26a5fdbd3d27ccdbebbea2bb1332149dcef9e570401b88a6e340ef9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-arial-s12-m15-kern2-aa-ta.docx",
+      "sha256": "7bdb131f4c7b125186f969fb2d5d2b787e4fe654a7df9eb5a0899ef008d8e838",
+      "pdf": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta.pdf",
+      "pdf_sha256": "820f30d739b838bffe6150586e9094f5143924c025352de0106ee7c48e9670b5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta.xps",
+      "xps_sha256": "e2e7fa2e5a23acff8c805bea890118cc03ce4e3b82f2df3473ff15d554684cb8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-arial-s12-m15-kern2-aa-ta.page-001.emf",
+          "sha256": "347ba2a70f1f3aebb3c83d4651af00f12292585f69d5f43a376dbe00c5964414",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern0-aa-aa.docx",
+      "sha256": "c39cccb6a9f72f3821e794c0f35bc3d3a0e404fdf7f89d68ed1a04d0fed45e9e",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern0-aa-aa.pdf",
+      "pdf_sha256": "d9ba200275947f7e735902675462aadff57bc49846e85892e265f585641aa1ac",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern0-aa-aa.xps",
+      "xps_sha256": "a94be1ca72b05de94c2b990b3fc0e56e705abae54ce03b045efecf6613bc003f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-aa.page-001.emf",
+          "sha256": "ddf7271f7c66308aeaf12e19fa8e1e6d859ccf2b379d4bf0f076d21c756262b9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern0-aa-bb.docx",
+      "sha256": "1e04628cecf6ce4b94b422615c0888db4b0459be5e879679a4a5c9206c7551de",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern0-aa-bb.pdf",
+      "pdf_sha256": "99828fada1ddca1d7c9a6f884b58f5afdfca616072231815e979decbbb1dd907",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern0-aa-bb.xps",
+      "xps_sha256": "cd775fc15e6ffcc29d5da2d5dd8b7bb727be86cb514a641c16fc2cce6cb3d8c6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-bb.page-001.emf",
+          "sha256": "71c9359f091cad0c933dbe22fcf6e08c88558d3cb24d87ad02f126778759f466",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern0-aa-va.docx",
+      "sha256": "0dc72074442d871ab42afce5b1c648e34d0c0705081a71d6d79635b9eaec8fa6",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern0-aa-va.pdf",
+      "pdf_sha256": "cc21fae68997390c41f82bc19aff614a0129d3ec96e60ec2aeb256ce51c0b661",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern0-aa-va.xps",
+      "xps_sha256": "81e6f4fe5c67507f4708e5b2be29ea0a98f85fd8426a1747e020242d44d584ee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-va.page-001.emf",
+          "sha256": "33c62e131f67436d4d3d8c1b4163a7011a4d2b6eb6da83dcf6e282f25df2bb1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern0-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern0-aa-ta.docx",
+      "sha256": "8201c9ac8eb191572c155145554779739cb114327e0726cb525880e957e59970",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern0-aa-ta.pdf",
+      "pdf_sha256": "d1de6ee757f94e14ce48a7622c2e6a0fd2dd845c051f1afd26f57431477bbff0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern0-aa-ta.xps",
+      "xps_sha256": "2a24c6252904d5bcf23e6ebadf9f5b9e69c3272c7204ce1b688ee993f2a3f777",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern0-aa-ta.page-001.emf",
+          "sha256": "a3d8417ec8fb8c381a9847ab404f0bc85ed59c72defbd04bcd2e61bd7234b878",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern2-aa-aa.docx",
+      "sha256": "95968cbfd34de30e15d6a2fc3599c59777be4d1bf4bcdb46cab3e0691402393f",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern2-aa-aa.pdf",
+      "pdf_sha256": "ba071e3fe0436c5fbd5e9353ee9aa89f98a3db9efa07cdcfdbb15c67b51bd8d1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern2-aa-aa.xps",
+      "xps_sha256": "f90590fb9721b2f783795878e06df5e2ba94d4844c80eb3ffcdb6f29438c31cd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-aa.page-001.emf",
+          "sha256": "371a9c7879e76943fc315491b8e80dfe9be980e51471d88eb893bd8eab86664b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern2-aa-bb.docx",
+      "sha256": "8c353739d2dd2f5556897e41a5bb3d7cb2953e813b89d812af0aba402d20dbfe",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern2-aa-bb.pdf",
+      "pdf_sha256": "d1a65af98ff1193b1e1696adf33fbeb1547757f1bfe62abdeea11880ad264d4d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern2-aa-bb.xps",
+      "xps_sha256": "cd4f20b140148c29c626a2aa2754e1a5940b75028ff39225feb5dd3cf16c915b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-bb.page-001.emf",
+          "sha256": "bcf98d5b232885c70350f8c8ff25fe6d9b3813c4e87e3e19d7d66509008045d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern2-aa-va.docx",
+      "sha256": "d0e389f7c7ae153da8f9f66fa9d4953899681a78aff813876700d04f7ee18269",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern2-aa-va.pdf",
+      "pdf_sha256": "b53b5c528c5372c3886e6ac586e6e351c2e9de35c18fe40f22c1239f17d4cd4f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern2-aa-va.xps",
+      "xps_sha256": "2199a172e2f5722549290dbc4b5866c030d5e184f476bfbb772635b36398e0fc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-va.page-001.emf",
+          "sha256": "c752485501911a93a76eff9ca88df9371c50465d277ecabb91da56d21429a48d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m14-kern2-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m14-kern2-aa-ta.docx",
+      "sha256": "a90266fbce69715965d505bbf916a7fdf0b3c87a4ab26fc5b3043359ca13ee11",
+      "pdf": "word-windows-space-pair-times-s12-m14-kern2-aa-ta.pdf",
+      "pdf_sha256": "c34b16eb645dae383d4ef5b4619aa3eeec8c008fc166807be3f777b643d23ddc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m14-kern2-aa-ta.xps",
+      "xps_sha256": "14046a51d2d9aabe4f091983af99d4e1f2ff60214d5f6b60c3956f3f8d262d83",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m14-kern2-aa-ta.page-001.emf",
+          "sha256": "2395cc9bedce40be2604b87280a28284a29f170cdec759f61e6e72fe464a09fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern0-aa-aa.docx",
+      "sha256": "330400ce543567b3c77bb03f2a4e7108ce8b7783c44e1dd2ba9a97ab5c5e93d3",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern0-aa-aa.pdf",
+      "pdf_sha256": "124086634b174edd0d56296ddddedffbde564a42b827bf1ed71ddfe33e0d89ad",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern0-aa-aa.xps",
+      "xps_sha256": "139cbcf230e583e88d495ff188ded951e748f0ff9e162045a4e5fbf18d81e4b4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-aa.page-001.emf",
+          "sha256": "ddf7271f7c66308aeaf12e19fa8e1e6d859ccf2b379d4bf0f076d21c756262b9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern0-aa-bb.docx",
+      "sha256": "e2b41cc9ba06dc047c4c39f5a7b272b9718f1644f505a7aabc88b97a73c5cf49",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern0-aa-bb.pdf",
+      "pdf_sha256": "583dbc912557e1ddd1d6a3cbcc1d42f43efd531fe920d6e26d248df2b91831c6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern0-aa-bb.xps",
+      "xps_sha256": "6a1b850a7a3561696d8377df17eab0f2958b9defc5111ebfce2e9dac27b657c8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-bb.page-001.emf",
+          "sha256": "cf98feda3639e8e6a131cb9b584b1ebf2b546c1ed08ddfbdbd7553514fdbf573",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern0-aa-va.docx",
+      "sha256": "4c6eb17d4087605e4323fbf12ee0195c41a7a03664e076978a4f3febecb6d921",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern0-aa-va.pdf",
+      "pdf_sha256": "46544687c5bddeee56aa89afba6837e1ef2d2321f233e3dc4a56acc7b6d76cb0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern0-aa-va.xps",
+      "xps_sha256": "cf70719b5665405e59574d25165b82b30e6b0160d8281684b68194635d51f396",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-va.page-001.emf",
+          "sha256": "33c62e131f67436d4d3d8c1b4163a7011a4d2b6eb6da83dcf6e282f25df2bb1b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern0-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern0-aa-ta.docx",
+      "sha256": "84b799f7e321ae70c64a26b67b2309e93c05a52ba394dfefb31e90c8a0279c4a",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern0-aa-ta.pdf",
+      "pdf_sha256": "4d26dde9d3154dd4794abbfddc53c4996f19b755cb0f94490d7493a81702b5b4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern0-aa-ta.xps",
+      "xps_sha256": "42e227154638db921a86166545807537f7055926e488a341e4a1d6cacbc72e32",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern0-aa-ta.page-001.emf",
+          "sha256": "a3d8417ec8fb8c381a9847ab404f0bc85ed59c72defbd04bcd2e61bd7234b878",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-aa",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern2-aa-aa.docx",
+      "sha256": "6a26eba0c203f52dcc68d9df3c75f9f8de5b504945425dc833cb31a382597133",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern2-aa-aa.pdf",
+      "pdf_sha256": "d29ea15bb6346df8adf33a4099bca6567b554682cd9bb0edc43f8d3436e59e91",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern2-aa-aa.xps",
+      "xps_sha256": "a50a22118fd33dc237b0b259c6190c4cebea6186bc01cc61612990c7a38164b4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-aa.page-001.emf",
+          "sha256": "371a9c7879e76943fc315491b8e80dfe9be980e51471d88eb893bd8eab86664b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-bb",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern2-aa-bb.docx",
+      "sha256": "26427f35c7af35f2a15600e5215d35ddaef68c4cacc9ee8a2d000118ea4ce44e",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern2-aa-bb.pdf",
+      "pdf_sha256": "6cef02b2d8ac4f1937639a252cd6d541e0c16c2fc61d2c3d952265b8731e9e2e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern2-aa-bb.xps",
+      "xps_sha256": "5631af154660f991068b309c9aa7ec71d51af58e1d79b3bf6c6f564fa47b2adf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-bb.page-001.emf",
+          "sha256": "bcf98d5b232885c70350f8c8ff25fe6d9b3813c4e87e3e19d7d66509008045d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-va",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern2-aa-va.docx",
+      "sha256": "cdbb977feed548751ff5dee309fc9e4f013e3912c59310d01989a0d9f5867644",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern2-aa-va.pdf",
+      "pdf_sha256": "280e8e77a672f5b4a59bb0084c3551fdb5618e42bae19790461f797710b57bad",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern2-aa-va.xps",
+      "xps_sha256": "9471ce28ff72177cb28457969d8c660205dd2b4e967179e8f447ae6d4c30ada7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-va.page-001.emf",
+          "sha256": "c752485501911a93a76eff9ca88df9371c50465d277ecabb91da56d21429a48d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-space-pair-times-s12-m15-kern2-aa-ta",
+      "source": "..\\w19-space-pair-inputs\\word-windows-space-pair-times-s12-m15-kern2-aa-ta.docx",
+      "sha256": "9678fec65a5ff0059d23b04c8f22249f81248ae4846b33ae310d819d221f5fd8",
+      "pdf": "word-windows-space-pair-times-s12-m15-kern2-aa-ta.pdf",
+      "pdf_sha256": "45874ca50e2eedadf8eb088bb29516966cd7f9284f39d0e69deb2526a398ef1b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-space-pair-times-s12-m15-kern2-aa-ta.xps",
+      "xps_sha256": "f4ab4e645037dbf9028f612f83cf84e715bef5f851dd6aaa1e4251af8a7b7d72",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-space-pair-times-s12-m15-kern2-aa-ta.page-001.emf",
+          "sha256": "2395cc9bedce40be2604b87280a28284a29f170cdec759f61e6e72fe464a09fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
