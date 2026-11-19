@@ -2483,12 +2483,109 @@ pub fn distribute_windows_mixed_justification(
     shares
 }
 
+/// Compatibility-mode-14 word spaces reach a common width before script
+/// boundaries expand. Their capacities must share the same target font
+/// average width, so the largest capacity belongs to the narrowest space.
+/// Mode 15 and Mac continue to use their independent allocation policies.
+pub fn distribute_windows_legacy_mixed_justification(
+    opportunities: &[WindowsMixedJustificationOpportunity],
+    extra: f64,
+) -> Vec<f64> {
+    if opportunities.is_empty() || !extra.is_finite() || extra <= 0.0 {
+        return vec![0.0; opportunities.len()];
+    }
+    let capacity = |op: &WindowsMixedJustificationOpportunity| {
+        if op.space_capacity_px.is_finite() {
+            op.space_capacity_px.max(0.0)
+        } else {
+            0.0
+        }
+    };
+    let total: f64 = opportunities.iter().map(capacity).sum();
+    let amount = extra.min(total);
+    let mut low = 0.0;
+    let mut high = opportunities.iter().map(capacity).fold(0.0, f64::max);
+    for _ in 0..64 {
+        let threshold = (low + high) * 0.5;
+        let placed: f64 = opportunities
+            .iter()
+            .map(|op| (capacity(op) - threshold).max(0.0))
+            .sum();
+        if placed > amount {
+            low = threshold;
+        } else {
+            high = threshold;
+        }
+    }
+    let spaces: Vec<f64> = opportunities
+        .iter()
+        .map(|op| (capacity(op) - high).max(0.0))
+        .collect();
+    let remaining = (extra - spaces.iter().sum::<f64>()).max(0.0);
+    let later: Vec<_> = opportunities
+        .iter()
+        .map(|op| WindowsMixedJustificationOpportunity {
+            space_capacity_px: 0.0,
+            ..*op
+        })
+        .collect();
+    distribute_windows_mixed_justification(&later, remaining)
+        .into_iter()
+        .zip(spaces)
+        .map(|(later, space)| later + space)
+        .collect()
+}
+
 #[cfg(test)]
 mod windows_mixed_justification_tests {
     use super::{
+        distribute_windows_legacy_mixed_justification as legacy,
         distribute_windows_mixed_justification as distribute,
         WindowsMixedJustificationOpportunity as Opportunity,
     };
+
+    #[test]
+    fn legacy_spaces_reach_equal_widths_before_auto_spacing_and_uniform_residual() {
+        let opportunities = [
+            Opportunity {
+                space_capacity_px: 3.0,
+                auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 2.0,
+                auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 2.5,
+                inter_character_capacity_px: 0.0,
+            },
+            Opportunity {
+                space_capacity_px: 0.0,
+                auto_space_capacity_px: 0.0,
+                inter_character_capacity_px: 0.0,
+            },
+        ];
+        for (extra, expected) in [
+            (3.0, [2.0, 1.0, 0.0, 0.0]),
+            (6.0, [3.0, 2.0, 1.0, 0.0]),
+            (9.5, [3.5, 2.5, 3.0, 0.5]),
+        ] {
+            for (actual, expected) in legacy(&opportunities, extra).iter().zip(expected) {
+                assert!((actual - expected).abs() < 1e-10);
+            }
+        }
+        for extra in [0.0, 0.1, 0.9, 1.0, 2.0, 5.0, 7.5, 100.0] {
+            let shares = legacy(&opportunities, extra);
+            assert!((shares.iter().sum::<f64>() - extra).abs() < 1e-10);
+            assert!(shares.iter().all(|share| *share >= 0.0));
+            if (1.0..=5.0).contains(&extra) {
+                assert!((2.0 + shares[0] - 3.0 - shares[1]).abs() < 1e-10);
+            }
+        }
+    }
 
     #[test]
     fn word_spaces_expand_before_script_boundaries_and_residual_reaches_both() {
