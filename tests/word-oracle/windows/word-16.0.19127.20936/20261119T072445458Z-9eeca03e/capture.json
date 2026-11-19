@@ -1,0 +1,718 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T072445458Z-9eeca03e",
+  "captured_at_utc": "2026-11-19T07:24:45.4717599Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000.docx",
+      "sha256": "1d5194ca0b39670029c299d2fe906bba4220004fa14cb27430bae5f1291b4e8a",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "40a93d808aa38beff6f9b2766e2118c6a3c66c4aed5f7b7d4d6dd615db7a0cfd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000.xps",
+      "xps_sha256": "d4932120e4575bf43de7df70574cf86d73534d2ac207f7822cbbb5f54c249a97",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "98f60fb27519a9df2f437cb7123c7254baa8c207885b5cc5b3a16b6136aaaa41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504.docx",
+      "sha256": "04c278234a22033343326634accf78a23020d87ee226c4bb0ac945a60226a322",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "37658e4bc4969021a8c8854e3feb36986ee565c38cd80cfdfa54d7382850757e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504.xps",
+      "xps_sha256": "7dfaa3d0b29a2faff610683b915f8b462a9dd87cd20b5a0cf09cd1cc1182c40b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "f25e436c36a7fa6e8ca32f2d165a7d8d47169bde35f6d9dabe18acf36c9e367a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000.docx",
+      "sha256": "c905ebc5d05540e99761c899aacda562749dd406d249cf6430801ad20b56ee74",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "d679dd901bda54f1f9d52bfeea36b663498deaa63ccdc08cdf443cc21eb08014",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "c564d999e2cf14531f8c32b5fa690fb56875f8280f04698df492b2ace0bf7f83",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "48f946a8bf66b0ded2a6556c52349fe721b1a8712a581231a2923921307f7770",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504.docx",
+      "sha256": "e02986917fa1fa7ad9931bfed996b5867c9ba5d268f18c47c8f1a02b859c8cac",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "ca9f3a8b4f8aee9963f021107f658b7fe8f85ec0dc52331763adcfc70cc701ea",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "762ded88b532386f440e354a2d878737b3c2fb96ab9faf07785f5840b44326af",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "ca404e43c576b06013017f6d813cebb295d140b68f2e7df5e3013a3540e34396",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000.docx",
+      "sha256": "70f90410afc8c8d54c099ba293254d861a2d83f0388da8e371798367f2a18088",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "a1a969f1ea9db92097d701b0536c25c6a94da4ddb699f349a2cf21f75dcd8808",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000.xps",
+      "xps_sha256": "1ab3c5e4063cc7929c829699d6be095b2f3726445e07782bc5d8524a4044feb0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "df3753036dd0ef4f6922462a75817596b1442251f2511fff1d8981cfb661c3e1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504.docx",
+      "sha256": "5467ee88b2fc1c4a82736351c9faf8bae1e00446ccf236f08a151e60a34b4af6",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "b3abee9bfcb74d34a4c5d82a8df1953ea7954106e157d86f34e0f939ee1b4425",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504.xps",
+      "xps_sha256": "475b3fac566bd2a278d04d89936656a9a08b8654a2152bacf177aef22e670a9d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "f976d546998ed99e13c1cb3ad50240b0c82beeee6ad681793d0cdcbcd2170958",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000.docx",
+      "sha256": "d83bba79c9f00a749fd94751a1be356dded06b3d9661a47bca15e903e86b7298",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "d9bd91a29b007d2a0b94517d0995ea12e5847edcd38e5c16a19d6dfaf0ca7535",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "3c59692788262639cbc065eec713f1f980157ca4fc9a0f367f1a334f07704a06",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "48f946a8bf66b0ded2a6556c52349fe721b1a8712a581231a2923921307f7770",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504.docx",
+      "sha256": "39b22e730ba5611bd8f2a5f226111d992408dfde5a8630e1a70003b8220ac807",
+      "pdf": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "2d684c004c0a2400db0ee14486914ea49fc81fbbf3192a2373839cb321d4985e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "42ccc2f15e391905210ba0035f37534e1d642b222714d930db0ffa189b38327c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "ca404e43c576b06013017f6d813cebb295d140b68f2e7df5e3013a3540e34396",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m14-manual-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m14-manual-w3000.docx",
+      "sha256": "0c862f8cf34df3d598ba364e226688e44f41087b2175c3a4b554e75bf448fb85",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "6f97c07ed4da6d5c58f3036ab22857c0e6624efc11461eab4c25439333607712",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m14-manual-w3000.xps",
+      "xps_sha256": "506e4053ee87aa1f5b24d5f9657c49208e22752e73a041098d486831365b868b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "aed476d5aca93931289e14211c48b6a8340953dd1dfa48d6abf5447a38f36955",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m14-manual-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m14-manual-w8504.docx",
+      "sha256": "c465b4251903e2ac9619c33ffbc6077fe17800a2d05ab6d49cbbf7958a36dc32",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "66f6b67cc8cb65853612c0d93b816e025732e0d3ff216efcb481cdb8f750deca",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m14-manual-w8504.xps",
+      "xps_sha256": "e4d6945f8fc46ae34e8a1e7a17ef343898e2a237ecc9abe7c3e83b9f31c9892d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "86771e32f2d94e2e1b0bced1a7929f30350c2b094a1ddba8e0b3bbb9f19565f9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000.docx",
+      "sha256": "b89454bf0715936647721178c14efbe9f86ab8d4e97d13b91d86a37489a38e16",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "86cff6e81ec349846e0065ec079bad1700f7652e126068ee33b9d85015f86323",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "fe0a341627386502c3152eb588879bc18ef9c08f8318281d031e4d08b08aea08",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "cc99f3c2a07845081ed961ac2e4c22ec55f386579b66663fdfa94d0b11046ad8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504.docx",
+      "sha256": "7eb95ef3fafcefe90864a357a18649b21b9ddf01cb327dc4195e9e531131e028",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "3a8ccee6696cdc0b310572c9440382ce6188a2f15dae8e2bdde35dd09173cd34",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "aa9c59ad3807b4e1423771581b85d3a9085404490f4e5751ea2faef63cbce4c4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "b06a6fbcdaeb880a96a5e8592296d019b44e12bb161284ec56fb776eba2ed26a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m15-manual-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m15-manual-w3000.docx",
+      "sha256": "26e9962f22fc93b97cf42314ca53fe5620563869b7d6e5f2a1064411bdf7f7ab",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "5a8d0fbc513f89cb85374783a6d448923c337e86afb4ce2a637c7578edfefc2b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m15-manual-w3000.xps",
+      "xps_sha256": "497ae5e634995fcd28fdc28d5be032a9c5ff677ef69c39b4bf2e77c6802198f6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "25b209facf36a8dc20abda9971421a1d71686490c850b3c41d3eeba142044e94",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m15-manual-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m15-manual-w8504.docx",
+      "sha256": "098b841d8186d604bcbc5b7a5c408f889872e6ecc37e2f5340f17a70277173e6",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "65f377f9540ccd07ce9bd31c766175d5409a9000eb38cf2d0e85f658564c6133",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m15-manual-w8504.xps",
+      "xps_sha256": "bb2f8c37e159bbb51a43be9d868cb887d4294ea3700c03ab4984da1c56f1b076",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "c7419aadff690ebfa4bad912398bcf24de7b2828ffe8996fbf94d42c8c7c7ffc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000.docx",
+      "sha256": "67322ca21c14c4e2e26de11dc62b33eff82f0286b9e89b6e2cb71d5ebc5ec925",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "af67a53fccbcd09e6076e881f2f09d56b55628bc2e1ffbd71d4caa23d822ec06",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "a01f977cd5a2d27f0d9bd8c278a13663ea20434dfa9038d9479a5838fd6bd9a0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "cc99f3c2a07845081ed961ac2e4c22ec55f386579b66663fdfa94d0b11046ad8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504.docx",
+      "sha256": "65491e0146e0e2f0ea68818e1e383add2038978c91a248f9a034813e0aaf8223",
+      "pdf": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "36072f55d1b49f846fb393a064614b50c277c6066a0ad4a5b9914f66f30e0fa8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "c865a1869688214e9028ab95dee3b12c8e95165731bc4168d87daf794307048d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "b06a6fbcdaeb880a96a5e8592296d019b44e12bb161284ec56fb776eba2ed26a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m14-manual-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m14-manual-w3000.docx",
+      "sha256": "d5f247dfeb44207f201d2b71e3b67f5326c4465bd3a811357b0c9cc3358b47da",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "3b3e9845170f9638d86709022238de9b587ec07d723eb432c5ab591ada2a597f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m14-manual-w3000.xps",
+      "xps_sha256": "ee49fe5880304b3b945ddab1ef978d53440f2343311157b5a1ccbf2940a5618f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "7b07e5c90fe82265f7e5e01467724755863c11597d624f875606b341bd651758",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m14-manual-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m14-manual-w8504.docx",
+      "sha256": "736f00c79ddc2f70a71f10c227eba4c6a7677e78b87e0d139b59a2ec895ae583",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "1cec664c76c6b6198090c46f7097df657219607c482bb0d0ff33ae3be9b93a07",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m14-manual-w8504.xps",
+      "xps_sha256": "6cc22efbe001f67479abca62741e7ce4fd3838b7c163afc2720cb8be937e473e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "6b328f0876d83f89631421ede78e796782959a1b7278ad53c1051fcd0b997aba",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000.docx",
+      "sha256": "35cf68b2f8f4891b59b0dfcddd55872fe18d0b8d675a8c9b9b85a7c21406933f",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "6d9a991700c48eb1f7cc1b81a85b805a3833108c4ef32159872d9caac9bdd9b1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "9c2851330918740c3d31b7d10c7878f77155b16fdc585cf5a8bc41cd64b220a7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "28e99e65c43595d3ede494bbaaee0dd611374a80dc2883cd55e7e82ee030e933",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504.docx",
+      "sha256": "fdf2fb2deb0a1987121c939e0d26128bbfb17dae457be09abc3a7a642faa489f",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "c3fc4a8c45e78db367ea4c8d6f46e3542e71bd31c2b28693234c20c63540100b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "cbe099448a2d28328370b362f00752291f5bf40313f03b56ceff6a1808ba8e10",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "5a7db0b95bbd2052948d3cb56de79cab1145bff773376b3f1d996231c783f1ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m15-manual-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m15-manual-w3000.docx",
+      "sha256": "90b88fde2273d0a0c6def6a167014ec9fe258c05b367a0cd4a54ec742bf7bd70",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "f513fc5bced42f56d8badc7417b9b3c1daa60fc8537ddf23bf60769ce0d6aaf3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m15-manual-w3000.xps",
+      "xps_sha256": "2a4037eb5f8a522f81d54f3894d390e3fd0dd57527f058b13c98e22fbf76707b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "2a0d77eb9f1276a0304674bce7734e11b1b83de1e25fe5ae267817071b2fd5d8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m15-manual-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m15-manual-w8504.docx",
+      "sha256": "54f1d514041f7199ce5feeeac75fe59021357b2cb1dc2916bbb436ab9df5e6ec",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "cf3e7ed8ee1275d5afd9760d94fdb177ed2cff40dc4e3ae5e37f542bffdc184e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m15-manual-w8504.xps",
+      "xps_sha256": "08ebbdf273e36b2f289a90b26ca796cdeba969aa7cad7b8d33b735ab81326e7c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "563d28c2a586e6f2c4b3b4b5b77002aaf9ee726cf2fe738f2fa623a547ff9959",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000.docx",
+      "sha256": "28d559dcc2435a73f0f251fcc7456e0afb63232582eb30b8755e4acdd2add907",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "be2628269b800b1e28afaccb63c494072693f9d2e98ef8c9b4719039d6457d59",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "c9af7c1736f5965b23129eb15520202b086eb5effdf22bb90569d1ec1131aec6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "28e99e65c43595d3ede494bbaaee0dd611374a80dc2883cd55e7e82ee030e933",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-split-space-face-inputs\\word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504.docx",
+      "sha256": "2200e5ba87ab22a31be340fb4fc967ba69ceb996271d739593e672f8940c9e92",
+      "pdf": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "3441ba03122a9d4f8141eff63ec982d9f9bfd0cf79efa4a1199d257e83d81fb9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "c6a7daf98e82ae5aa2379853cbfe35b894613c93776d564cb25b54447ed1b881",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "5a7db0b95bbd2052948d3cb56de79cab1145bff773376b3f1d996231c783f1ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

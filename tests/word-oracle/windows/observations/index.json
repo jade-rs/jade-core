@@ -52966,6 +52966,627 @@
           "opened_filename": "word-windows-space-pair-times-s12-m15-kern2-aa-ta.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T071857464Z-a48e4f90.zip",
+      "archive_sha256": "21411d4265ae6b59e0298ed583b8d9e3f407233863ac1e7ea8bcd650f8b1716a",
+      "capture_id": "20261119T071857464Z-a48e4f90",
+      "capture_sha256": "9b42610d99e6f04728701793fdc88b67a54af460f52cc2cbb66a57a4e054b353",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000",
+          "source_sha256": "ea3f3b60e4da367ae9f67ea8a2679129dd9a59a22058b0d6364ee9c9e509e486",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504",
+          "source_sha256": "7c8f2b64d098b3d3ef709f2041daade39b3f7d786d4bdfa355207712b430cbc5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m14-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000",
+          "source_sha256": "5ffc98b0bf4a772dd27d35aa80bb92115539320f0c1b60d1451224e2ba705fa1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504",
+          "source_sha256": "2d1c3ee36cf9bf8fce145321e7cfa2d7d9eddff0a40d2814428d91a70f28720b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m14-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000",
+          "source_sha256": "8b73576f091bfa8833bf15f62b6220fc627bc51eda3346894a897ac00d204084",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504",
+          "source_sha256": "5c435c412e6503948f55c4e62b57248cec79df56a437040d7c7112be5df05bc3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m15-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000",
+          "source_sha256": "0e5ccb81be52ecbec807ac5ceacc9054081f8591807766fbd15c085df0953563",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504",
+          "source_sha256": "926c30ee40eb05163e7dd73ae43720046caa514b7c1a4b2a806e292b8311199d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-calibri-s12-m15-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m14-manual-w3000",
+          "source_sha256": "63406d4bbd143cb214295bd73cba0f7e148cedfad133b8b22865f85f205ee3ef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m14-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m14-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m14-manual-w8504",
+          "source_sha256": "12963076ab1f474bd42486e6a6a09bd5693340ca5132b8f93bf58865599c3225",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m14-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m14-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000",
+          "source_sha256": "e81c0e1a4ee6b5cd30bc43c02636bd5ad93d643fb20c18ae3968f1afa5eee22e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504",
+          "source_sha256": "d90cd59094c93337d74330520c3fc7fa085f592b038685f541512e6e1caa2840",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m14-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m15-manual-w3000",
+          "source_sha256": "67f4f50c293802bb1174b5ad838b6e2cf8e36b2bc91ca44efc4834823857ba84",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m15-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m15-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m15-manual-w8504",
+          "source_sha256": "d808bcb27ec53a8160fe96b487542d7519ff88ad9a3c79216802ea94f16570e7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m15-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m15-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000",
+          "source_sha256": "8e08b86364664090f11678b0e4eed82705ad4d02d4d9327ad133916141b2050d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504",
+          "source_sha256": "366b4dc37d8072203fa5142f055123e98c736f4064e0c53bf81711c52f08db85",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-arial-times-s12-m15-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m14-manual-w3000",
+          "source_sha256": "ff64979d6de7d8c257967b9b832cd960878f93912563135abec504211875c6e3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m14-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m14-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m14-manual-w8504",
+          "source_sha256": "9e5ea2ca55666530d6287eee5aeb1cde933686dfe082d4b90e70d31db04adaf3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m14-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m14-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000",
+          "source_sha256": "d962bc3a97e6c3607960839aa667be9e2a8f65b26ed9aeb52b145c0ea2415ad0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504",
+          "source_sha256": "1c49f96f2f28f4181c7e948f037ae63609658885065d3072b61da5b77b68bd2b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m14-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m15-manual-w3000",
+          "source_sha256": "2bb4cfe59a8b0ec49fbf71b0af64154a2579429d5df7e1344c06696ea5aa1b89",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m15-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m15-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m15-manual-w8504",
+          "source_sha256": "6ca758f2e477f7a12ac5e19ddd5b96ca8d1a3be5953720f9027b489f0dccca28",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m15-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m15-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000",
+          "source_sha256": "17447b19be9304fe2b0df4042c60ea79585e5858673e36552f27834c3a662776",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504",
+          "source_sha256": "79a62c2f4760124e54f0c0b6096ccaa1be4b5be20ff12d713bfcd0bb30fb4eb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/inputs/word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-mixed-face-calibri-times-s12-m15-paragraph-w8504.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T072445458Z-9eeca03e.zip",
+      "archive_sha256": "3d13bb6e4bcedabdbcf68ffa038f805e3d5a6c72989468acda225e77702a10e7",
+      "capture_id": "20261119T072445458Z-9eeca03e",
+      "capture_sha256": "8402ef16e835299cf0c607066d9dfebcbd5c43c400c7dfc6c6ad7e0b14114242",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000",
+          "source_sha256": "1d5194ca0b39670029c299d2fe906bba4220004fa14cb27430bae5f1291b4e8a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504",
+          "source_sha256": "04c278234a22033343326634accf78a23020d87ee226c4bb0ac945a60226a322",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m14-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000",
+          "source_sha256": "c905ebc5d05540e99761c899aacda562749dd406d249cf6430801ad20b56ee74",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504",
+          "source_sha256": "e02986917fa1fa7ad9931bfed996b5867c9ba5d268f18c47c8f1a02b859c8cac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m14-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000",
+          "source_sha256": "70f90410afc8c8d54c099ba293254d861a2d83f0388da8e371798367f2a18088",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504",
+          "source_sha256": "5467ee88b2fc1c4a82736351c9faf8bae1e00446ccf236f08a151e60a34b4af6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m15-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000",
+          "source_sha256": "d83bba79c9f00a749fd94751a1be356dded06b3d9661a47bca15e903e86b7298",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504",
+          "source_sha256": "39b22e730ba5611bd8f2a5f226111d992408dfde5a8630e1a70003b8220ac807",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-calibri-s12-m15-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m14-manual-w3000",
+          "source_sha256": "0c862f8cf34df3d598ba364e226688e44f41087b2175c3a4b554e75bf448fb85",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m14-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m14-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m14-manual-w8504",
+          "source_sha256": "c465b4251903e2ac9619c33ffbc6077fe17800a2d05ab6d49cbbf7958a36dc32",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m14-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m14-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000",
+          "source_sha256": "b89454bf0715936647721178c14efbe9f86ab8d4e97d13b91d86a37489a38e16",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504",
+          "source_sha256": "7eb95ef3fafcefe90864a357a18649b21b9ddf01cb327dc4195e9e531131e028",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m14-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m15-manual-w3000",
+          "source_sha256": "26e9962f22fc93b97cf42314ca53fe5620563869b7d6e5f2a1064411bdf7f7ab",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m15-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m15-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m15-manual-w8504",
+          "source_sha256": "098b841d8186d604bcbc5b7a5c408f889872e6ecc37e2f5340f17a70277173e6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m15-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m15-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000",
+          "source_sha256": "67322ca21c14c4e2e26de11dc62b33eff82f0286b9e89b6e2cb71d5ebc5ec925",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504",
+          "source_sha256": "65491e0146e0e2f0ea68818e1e383add2038978c91a248f9a034813e0aaf8223",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-arial-times-s12-m15-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m14-manual-w3000",
+          "source_sha256": "d5f247dfeb44207f201d2b71e3b67f5326c4465bd3a811357b0c9cc3358b47da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m14-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m14-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m14-manual-w8504",
+          "source_sha256": "736f00c79ddc2f70a71f10c227eba4c6a7677e78b87e0d139b59a2ec895ae583",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m14-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m14-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000",
+          "source_sha256": "35cf68b2f8f4891b59b0dfcddd55872fe18d0b8d675a8c9b9b85a7c21406933f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504",
+          "source_sha256": "fdf2fb2deb0a1987121c939e0d26128bbfb17dae457be09abc3a7a642faa489f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m14-paragraph-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m15-manual-w3000",
+          "source_sha256": "90b88fde2273d0a0c6def6a167014ec9fe258c05b367a0cd4a54ec742bf7bd70",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m15-manual-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m15-manual-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m15-manual-w8504",
+          "source_sha256": "54f1d514041f7199ce5feeeac75fe59021357b2cb1dc2916bbb436ab9df5e6ec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m15-manual-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m15-manual-w8504.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000",
+          "source_sha256": "28d559dcc2435a73f0f251fcc7456e0afb63232582eb30b8755e4acdd2add907",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w3000.docx"
+        },
+        {
+          "name": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504",
+          "source_sha256": "2200e5ba87ab22a31be340fb4fc967ba69ceb996271d739593e672f8940c9e92",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/inputs/word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504.docx"
+          ],
+          "opened_filename": "word-windows-split-space-face-calibri-times-s12-m15-paragraph-w8504.docx"
+        }
+      ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T072846967Z-c342657f.zip",
+      "archive_sha256": "7de603ce8d313f443cce1c4a3811ef772d0a2f6f55c6fd3a118520633a2ad7ae",
+      "capture_id": "20261119T072846967Z-c342657f",
+      "capture_sha256": "6e5cb2d66727e9c68645912add334af97ab93130adc240b86220b8f80a36f1a1",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744",
+          "source_sha256": "ece7d075b43bc794aa7e5711142f55a03900d69207258191560e361f0e5536f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-manual-w2744.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744",
+          "source_sha256": "a09217f82e6146644239ee12dfec264b534eb37d3cc6fff69b9d7c23b10e9097",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-calibri-s12-m14-paragraph-w2744.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649",
+          "source_sha256": "544bda393bc874c50397f3d1c07edf8a54731e1ebe39864768d95549ade986e9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-manual-w2649.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649",
+          "source_sha256": "7e104d0078ac95d84efcf35d87cdf0b200972f47dddf0b6fc906ed9140b3219c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-calibri-s12-m14-paragraph-w2649.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744",
+          "source_sha256": "d304d6488d359befa2027ad5a96b878bf1c126ed175373294780c112469ab132",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-manual-w2744.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744",
+          "source_sha256": "ebc75ce2d74e5947cdd38a6ad42cc0b494c3fae4a3e71b8da3ac172f8e166848",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-calibri-s12-m15-paragraph-w2744.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649",
+          "source_sha256": "bf28c9d2a83a43699297e0c496c597570bcce59aa827a3855b56a26516d20419",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-manual-w2649.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649",
+          "source_sha256": "c709a17e7a851c13a36b26bddf5370f3db12f0aee5bdf033fbd052fc672224d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-calibri-s12-m15-paragraph-w2649.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772",
+          "source_sha256": "762ed18dec665f5bece618ff0f1ea47791b632b5a1ff2117938f350dc2a3b1b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-times-s12-m14-manual-w2772.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772",
+          "source_sha256": "57f496443e8d769ad26ef1ab79b7b8e8ae903102c6e503d80a69bd38078da037",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-times-s12-m14-paragraph-w2772.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765",
+          "source_sha256": "096d91fc5e51d6b007fd1fef2dc86d7a35896a02ea89f64f2bf1ff399a85b052",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-times-s12-m14-manual-w2765.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765",
+          "source_sha256": "fb8af12323553df18cac5c83710b53d7354e7fda4901ed1b7bf34ce78b6a9c16",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-times-s12-m14-paragraph-w2765.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772",
+          "source_sha256": "8c26c59d42dd63d5b1470c92f37ca58ea41515b8c3bc3a9463ee21bd2ecd0af8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-times-s12-m15-manual-w2772.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772",
+          "source_sha256": "3c6a771cb5748af7660b28e386e9390b9fcab8a9f2f1ed74ce12b225d3ed651b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-arial-times-s12-m15-paragraph-w2772.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765",
+          "source_sha256": "61dcce0ffa46ca5b84fe6474ae439ac487036a1ca40bfee96c8bd19004daccda",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-times-s12-m15-manual-w2765.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765",
+          "source_sha256": "c6c47594547aaa41b26ed85c40db4470a405c7db349e19cba1b1632f4ac1a1d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-arial-times-s12-m15-paragraph-w2765.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632",
+          "source_sha256": "d6b0c08257c029d6f65dbfac330fd89d16c48371b60942485fd45c2bfedf0488",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-calibri-times-s12-m14-manual-w2632.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632",
+          "source_sha256": "4e9309fa5b08e3abda08f6d6e021f76b4b18a6f89ced20a37955493d215af280",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-calibri-times-s12-m14-paragraph-w2632.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720",
+          "source_sha256": "20ca29448e94435ca588ad16696fec4419c32d89f8642b3328719c35566b5539",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-manual-w2720.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720",
+          "source_sha256": "672208d195f52d75126cbfab46fd01bccd8b80020e32c3d31f6d383da4e3b264",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-calibri-times-s12-m14-paragraph-w2720.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632",
+          "source_sha256": "a92c1f8b5424b9436e313982f46c336dfb2aa41c6875ba53af12182f2f799e07",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-calibri-times-s12-m15-manual-w2632.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632",
+          "source_sha256": "4c7668720f3047ac960aca4ca7418b53fa8789ba7e9d039119d89816a523ee2a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-abc-calibri-times-s12-m15-paragraph-w2632.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720",
+          "source_sha256": "a247ff90f808e1a34650cba2ea8e8621242f4f934ba6f082d1a5924e5aa53964",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-manual-w2720.docx"
+        },
+        {
+          "name": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720",
+          "source_sha256": "a078cdda1a667a1cfc7cc28c74b301fe1bcef4861d16e0f4dfae055ee3a0db4b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/inputs/word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720.docx"
+          ],
+          "opened_filename": "word-windows-tight-face-after-cjk-calibri-times-s12-m15-paragraph-w2720.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -53107,6 +53728,18 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T044014016Z-506f6a6a/word-output-font-facts.json",
       "sha256": "576cd75656800b266c04cac335cf464b16936479db232441bc26f5571d84d3d7"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T071857464Z-a48e4f90/word-output-font-facts.json",
+      "sha256": "a85a16b4b7cda97cebe37588a27e557712a506133b106630653610ec6162027e"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072445458Z-9eeca03e/word-output-font-facts.json",
+      "sha256": "c1702fc87095be96ac18755e2c67efc5cce75527b8fe70d24aa909f895f1c7a8"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T072846967Z-c342657f/word-output-font-facts.json",
+      "sha256": "8c479180f8bc2074a02f6ff5864c3b626ce1de91df3f20eddc77d1dacaf3f941"
     }
   ]
 }

@@ -2483,9 +2483,9 @@ pub fn distribute_windows_mixed_justification(
     shares
 }
 
-/// Compatibility-mode-14 word spaces reach a common width before script
-/// boundaries expand. Their capacities must share the same target font
-/// average width, so the largest capacity belongs to the narrowest space.
+/// Compatibility-mode-14 word spaces approach their own font-average widths
+/// before script boundaries expand. Equalize the remaining capacity below
+/// those targets, expanding spaces with the largest shortfall first.
 /// Mode 15 and Mac continue to use their independent allocation policies.
 pub fn distribute_windows_legacy_mixed_justification(
     opportunities: &[WindowsMixedJustificationOpportunity],

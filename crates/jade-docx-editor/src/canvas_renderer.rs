@@ -23876,47 +23876,36 @@ where
             {
                 return None;
             }
-            let mut common_average = None;
-            if matches!(
+            let average_metrics_enabled = matches!(
                 paragraph_style.east_asian_rules.compatibility_mode,
                 Some(14 | 15)
             ) && !paragraph_style
                 .east_asian_rules
-                .balance_single_byte_double_byte_width
-            {
-                for prepared in prepared_segments.iter() {
-                    let descriptor = prepared.style.resolved.descriptor_for_grapheme(
-                        " ",
-                        jade_docx_layout::line_wrap::ScriptCategory::Latin,
-                    );
-                    let Some(average) = jade_docx_layout::line_metrics::word_windows_legacy_justification_average_width_px(descriptor)
-                        .map(|width| width * prepared.style.resolved.text_scale_x.max(0.01))
-                    else {
-                        common_average = None;
-                        break;
-                    };
-                    if common_average.is_some_and(|previous: f64| (previous - average).abs() > 1e-9)
-                    {
-                        common_average = None;
-                        break;
-                    }
-                    common_average = Some(average);
-                }
-            }
-            let legacy_average = common_average
-                .filter(|_| paragraph_style.east_asian_rules.compatibility_mode == Some(14));
+                .balance_single_byte_double_byte_width;
             let is_east_asian = |text: &str| {
                 !text.chars().all(char::is_whitespace)
                     && classify_script(text)
                         == jade_docx_layout::line_wrap::ScriptCategory::EastAsia
             };
-            let (owners, opportunities) = {
+            let (owners, opportunities, legacy) = {
                 let mut nodes = Vec::new();
+                let mut use_average_metrics = average_metrics_enabled;
                 let mut pen = 0.0;
                 for (segment, prepared) in prepared_segments.iter().enumerate() {
                     pen += prepared.segment.leading_width;
                     let em = points_to_px(prepared.style.font_size_pt)
                         * prepared.style.resolved.text_scale_x.max(0.01);
+                    let average = if average_metrics_enabled {
+                        let descriptor = prepared.style.resolved.descriptor_for_grapheme(
+                            " ",
+                            jade_docx_layout::line_wrap::ScriptCategory::Latin,
+                        );
+                        jade_docx_layout::line_metrics::word_windows_legacy_justification_average_width_px(descriptor)
+                            .map(|width| width * prepared.style.resolved.text_scale_x.max(0.01))
+                    } else {
+                        None
+                    };
+                    use_average_metrics &= average.is_some();
                     for (glyph, step) in prepared.glyph_steps.iter().enumerate() {
                         let text = step.text(&prepared.segment.text);
                         if text.is_empty() || text.chars().all(char::is_control) {
@@ -23927,10 +23916,12 @@ where
                         {
                             return None;
                         }
-                        nodes.push((segment, glyph, text, pen + step.x_offset, em));
+                        nodes.push((segment, glyph, text, pen + step.x_offset, em, average));
                     }
                     pen += prepared.width;
                 }
+                let legacy = use_average_metrics
+                    && paragraph_style.east_asian_rules.compatibility_mode == Some(14);
                 if !nodes.iter().any(|n| is_east_asian(n.2))
                     || !nodes
                         .iter()
@@ -23961,10 +23952,11 @@ where
                             && (index > 0 && is_east_asian(nodes[index - 1].2)
                                 || is_east_asian(right.2));
                         if !balanced {
-                            opportunity.space_capacity_px = legacy_average.map_or_else(
-                                || ((right.3 - left.3) * 0.5).max(0.0),
-                                |average| (average - (right.3 - left.3)).max(0.0),
-                            );
+                            opportunity.space_capacity_px = if legacy {
+                                (left.5? - (right.3 - left.3)).max(0.0)
+                            } else {
+                                ((right.3 - left.3) * 0.5).max(0.0)
+                            };
                         }
                     } else if matches!(
                         east_asian_justification_gap(left.2, right.2),
@@ -23972,8 +23964,16 @@ where
                             jade_docx_layout::line_wrap::EastAsianJustificationGap::AutoSpace { .. }
                         )
                     ) {
-                        opportunity.auto_space_capacity_px = common_average
-                            .map_or_else(|| left.4.max(right.4) * 0.25, |average| average * 0.5);
+                        opportunity.auto_space_capacity_px = if use_average_metrics {
+                            let average = if is_east_asian(left.2) {
+                                right.5?
+                            } else {
+                                left.5?
+                            };
+                            average * 0.5
+                        } else {
+                            left.4.max(right.4) * 0.25
+                        };
                     } else if east_asian_justification_gap(left.2, right.2).is_none()
                         && !(is_east_asian(left.2)
                             && right.2 == " "
@@ -23995,7 +23995,7 @@ where
                     // Balanced spaces have zero initial capacity too; they must
                     // not inherit the priority of an ideographic boundary.
                     if left.2 != " "
-                        && legacy_average.is_none()
+                        && !legacy
                         && opportunity.space_capacity_px == 0.0
                         && opportunity.auto_space_capacity_px == 0.0
                     {
@@ -24004,13 +24004,13 @@ where
                     owners.push((left.0, left.1));
                     opportunities.push(opportunity);
                 }
-                (owners, opportunities)
+                (owners, opportunities, legacy)
             };
             if opportunities.is_empty() {
                 return None;
             }
             // Capture the requested slack before mutating any glyph boxes.
-            let shares = if legacy_average.is_some() {
+            let shares = if legacy {
                 distribute_windows_legacy_mixed_justification(&opportunities, extra_total)
             } else {
                 distribute_windows_mixed_justification(&opportunities, extra_total)
