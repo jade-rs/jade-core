@@ -84,6 +84,25 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert job.fetch("steps").any? { |s| s.fetch("run", "").include?("-p test_windows_y_length_probes.py") }
   end
 
+  def test_windows_manual_break_assertions_are_required_after_font_rendering
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs")
+    refute job.fetch("continue-on-error", false)
+    steps = job.fetch("steps")
+    index = steps.index { |s| s["name"] == "Assert versioned Windows Word manual-break XPS origins" }
+    refute_nil index
+    step = steps.fetch(index)
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_equal "python scripts/word-oracle/check_windows_hard_break_spaces.py --compare-rendered-fonts target/windows-font-coordinates", step.fetch("run")
+    producer = steps.index { |s| s["name"] == "Assert Windows font coordinates with original Word embedded fonts" }
+    refute_nil producer
+    assert_operator producer, :<, index
+    assert steps.any? { |s| s.fetch("run", "").include?("-p test_windows_hard_break_space_probes.py") }
+  end
+
   def test_native_crates_are_checked_and_linted_on_macos
     assert_equal "macos-latest", @job.fetch("runs-on")
 

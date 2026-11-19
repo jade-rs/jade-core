@@ -315,6 +315,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_color_span_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
@@ -389,6 +390,8 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_dot_leaders.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_probes.py
           python scripts/word-oracle/check_windows_font_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert versioned Windows Word manual-break XPS origins
+        run: python scripts/word-oracle/check_windows_hard_break_spaces.py --compare-rendered-fonts target/windows-font-coordinates
       - name: Assert source-form Windows hyphen paint against original Word fonts
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_hyphen_probes.py

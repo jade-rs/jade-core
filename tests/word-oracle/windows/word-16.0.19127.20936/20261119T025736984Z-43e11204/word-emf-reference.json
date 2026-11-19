@@ -1,0 +1,387 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261119T025736984Z-43e11204",
+  "captured_at_utc": "2026-11-19T02:57:36.9976519Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-manual-spaces0",
+      "docx_sha256": "d6e99dbfc458600956c0cc7d2fb8c2760e29ea864fc50c569d231525b1d1df4d",
+      "pdf_sha256": "9769e278828e281abae9fd575d98f6ab7934194fb6c964d517cdc7652b19a0d7",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m14-manual-spaces0.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-manual-spaces0.page-001.emf",
+          "sha256": "e8359d4b450e3219d039f986ba2812465677f0a0508b78ede057065e621e9ff9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          494.2633944769199,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          502.3031243700866,
+          112.67732326111745
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.67689566704675
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-manual-spaces3",
+      "docx_sha256": "3f41382c7207f250b3bab0d96aaac57a2335f04ccf5aede057409d1d6dee9f8c",
+      "pdf_sha256": "b2151321be2d047157b0b7a92713ae49b3009c31df28a2e1869a9d416907ad59",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m14-manual-spaces3.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-manual-spaces3.page-001.emf",
+          "sha256": "bc98b09ec13234d4eaac4c7222d02e1f5c3450e71064d734edba09d1de267eb0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          494.2633944769199,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          502.3031243700866,
+          112.67732326111745
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.67689566704675
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0",
+      "docx_sha256": "396abea0d2a68b49bc697564f560d6604affab3433b59685ccbfd94c8f5192c4",
+      "pdf_sha256": "a5f7a9907c374c611e93c0deb59ea7b480b1bf3e3009121f50aa4304cba1f71b",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3",
+      "docx_sha256": "245f452772ff127b0706b2c318c841e55e082f8ad11a31045c0cef7174f70ddd",
+      "pdf_sha256": "8958cd7a4cd3b8fd063c545c6a11925df473aa000fb80e51a7dcda8f7837e8c6",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.page-001.emf",
+          "sha256": "8f8a220b0d43a2c2ec81374ce583f9e34bb05e39611c68f4455a6b2ba60655a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-manual-spaces0",
+      "docx_sha256": "c767bd1034f97debda02875eb317c37dee3dfa675dc6e8e17428fdef19c9a20f",
+      "pdf_sha256": "ad199f3d7bf36d4c1aa42d7e953829df842a981ce5f2a82e9869b9c75c21e758",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m15-manual-spaces0.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-manual-spaces0.page-001.emf",
+          "sha256": "e8359d4b450e3219d039f986ba2812465677f0a0508b78ede057065e621e9ff9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          494.2633944769199,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          502.3031243700866,
+          112.67732326111745
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.67689566704675
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-manual-spaces3",
+      "docx_sha256": "356d101ed8ef697bec9dcb2f96c608db7812283617fe8576bfba2db6a398d643",
+      "pdf_sha256": "64f0231356e68959135d287508a720c1d39aec3b5db93cc8e5f7b8079abf11d4",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m15-manual-spaces3.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-manual-spaces3.page-001.emf",
+          "sha256": "bc98b09ec13234d4eaac4c7222d02e1f5c3450e71064d734edba09d1de267eb0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          494.2633944769199,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          502.3031243700866,
+          112.67732326111745
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.67689566704675
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0",
+      "docx_sha256": "c457408b26de773900441e300237abeafee6a794eea1dba5608cbbc41389e41a",
+      "pdf_sha256": "01c79f3f0d91b54f6bb3fa9a6d0ff9e0bd21658bc1489e4aa464dec51bb1934a",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3",
+      "docx_sha256": "b97c5b59d2bc9644089226442d694e0c26b8a3346cea077099d27f979b17edd7",
+      "pdf_sha256": "6eeabb0c2a26e6a1ad6991c6c5bf83ef2bb9eab6204954b1ed8840c285f8c10d",
+      "pdf_file": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.page-001.emf",
+          "sha256": "8f8a220b0d43a2c2ec81374ce583f9e34bb05e39611c68f4455a6b2ba60655a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.67732326111745
+        ],
+        [
+          1,
+          "A",
+          93.11687159846804,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          103.79651279983874,
+          112.67732326111745
+        ],
+        [
+          1,
+          "B",
+          111.83624269300543,
+          112.67732326111745
+        ]
+      ]
+    }
+  ]
+}

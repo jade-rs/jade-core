@@ -1,0 +1,254 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T025736984Z-43e11204",
+  "captured_at_utc": "2026-11-19T02:57:36.9976519Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-manual-spaces0",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m14-manual-spaces0.docx",
+      "sha256": "d6e99dbfc458600956c0cc7d2fb8c2760e29ea864fc50c569d231525b1d1df4d",
+      "pdf": "word-windows-hard-break-ascii-s12-m14-manual-spaces0.pdf",
+      "pdf_sha256": "9769e278828e281abae9fd575d98f6ab7934194fb6c964d517cdc7652b19a0d7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m14-manual-spaces0.xps",
+      "xps_sha256": "2630b247df9d5be3763b1ea61b9304a330cd3a9c0a152a9b36a235ffe1cfe240",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-manual-spaces0.page-001.emf",
+          "sha256": "e8359d4b450e3219d039f986ba2812465677f0a0508b78ede057065e621e9ff9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-manual-spaces3",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m14-manual-spaces3.docx",
+      "sha256": "3f41382c7207f250b3bab0d96aaac57a2335f04ccf5aede057409d1d6dee9f8c",
+      "pdf": "word-windows-hard-break-ascii-s12-m14-manual-spaces3.pdf",
+      "pdf_sha256": "b2151321be2d047157b0b7a92713ae49b3009c31df28a2e1869a9d416907ad59",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m14-manual-spaces3.xps",
+      "xps_sha256": "e2340c8d870954172d95b2d5dd53ec10cf097026887c75bd5c6ad1bc3dd4880e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-manual-spaces3.page-001.emf",
+          "sha256": "bc98b09ec13234d4eaac4c7222d02e1f5c3450e71064d734edba09d1de267eb0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.docx",
+      "sha256": "396abea0d2a68b49bc697564f560d6604affab3433b59685ccbfd94c8f5192c4",
+      "pdf": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.pdf",
+      "pdf_sha256": "a5f7a9907c374c611e93c0deb59ea7b480b1bf3e3009121f50aa4304cba1f71b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.xps",
+      "xps_sha256": "b6865c635426fb81e4690de61616c5cd9fc2067d8f7d508fd2a73ed9e064d73e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.docx",
+      "sha256": "245f452772ff127b0706b2c318c841e55e082f8ad11a31045c0cef7174f70ddd",
+      "pdf": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.pdf",
+      "pdf_sha256": "8958cd7a4cd3b8fd063c545c6a11925df473aa000fb80e51a7dcda8f7837e8c6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.xps",
+      "xps_sha256": "d1b396f93edbc1a8c04efd78b0d61e347bb1204f21963a44c2d56019bcaf011f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.page-001.emf",
+          "sha256": "8f8a220b0d43a2c2ec81374ce583f9e34bb05e39611c68f4455a6b2ba60655a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-manual-spaces0",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m15-manual-spaces0.docx",
+      "sha256": "c767bd1034f97debda02875eb317c37dee3dfa675dc6e8e17428fdef19c9a20f",
+      "pdf": "word-windows-hard-break-ascii-s12-m15-manual-spaces0.pdf",
+      "pdf_sha256": "ad199f3d7bf36d4c1aa42d7e953829df842a981ce5f2a82e9869b9c75c21e758",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m15-manual-spaces0.xps",
+      "xps_sha256": "732ae66731bc8d64c18ef60a22aa45e1f0e4be5d32c499efc118f2a4433557eb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-manual-spaces0.page-001.emf",
+          "sha256": "e8359d4b450e3219d039f986ba2812465677f0a0508b78ede057065e621e9ff9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-manual-spaces3",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m15-manual-spaces3.docx",
+      "sha256": "356d101ed8ef697bec9dcb2f96c608db7812283617fe8576bfba2db6a398d643",
+      "pdf": "word-windows-hard-break-ascii-s12-m15-manual-spaces3.pdf",
+      "pdf_sha256": "64f0231356e68959135d287508a720c1d39aec3b5db93cc8e5f7b8079abf11d4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m15-manual-spaces3.xps",
+      "xps_sha256": "f2f47702e34a170bfd2f469f5bc442bdec0afb8ba260dbcdd2835110fc569c3f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-manual-spaces3.page-001.emf",
+          "sha256": "bc98b09ec13234d4eaac4c7222d02e1f5c3450e71064d734edba09d1de267eb0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.docx",
+      "sha256": "c457408b26de773900441e300237abeafee6a794eea1dba5608cbbc41389e41a",
+      "pdf": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.pdf",
+      "pdf_sha256": "01c79f3f0d91b54f6bb3fa9a6d0ff9e0bd21658bc1489e4aa464dec51bb1934a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.xps",
+      "xps_sha256": "0a2589f0ecfb2996bd32485e35262e61c7c116fca2e4f785268e684367486119",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.page-001.emf",
+          "sha256": "ee5802982a3cb5a8b13e9b40f79d59ef2437821d9cf8aaf80cb65cc917066dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3",
+      "source": "w19-hard-break-ascii-inputs\\word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.docx",
+      "sha256": "b97c5b59d2bc9644089226442d694e0c26b8a3346cea077099d27f979b17edd7",
+      "pdf": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.pdf",
+      "pdf_sha256": "6eeabb0c2a26e6a1ad6991c6c5bf83ef2bb9eab6204954b1ed8840c285f8c10d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.xps",
+      "xps_sha256": "291dfa2ab9c68bc5bad87872a93bdb254716f015a3e29257ad190bd30d641e7f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.page-001.emf",
+          "sha256": "8f8a220b0d43a2c2ec81374ce583f9e34bb05e39611c68f4455a6b2ba60655a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
