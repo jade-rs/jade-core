@@ -314,6 +314,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_xps.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_color_span_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
@@ -468,6 +469,15 @@ jobs:
         with:
           name: windows-word-boundary-differences
           path: target/windows-word-boundaries
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word repeated-y screen and print origins
+        run: python scripts/word-oracle/check_windows_y_lengths.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows repeated-y coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-y-length-differences
+          path: target/windows-y-lengths
           if-no-files-found: ignore
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
