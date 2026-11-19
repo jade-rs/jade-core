@@ -5,7 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 from zipfile import ZipFile
-from check_platform_coordinates import ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require
+from check_platform_coordinates import ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require, assert_pending_pdf_text
 from check_windows_font_coordinates import require_original_font_programs_registered, has_visible_vector_ink
 from check_windows_aptos_sizes import assert_screen_outputs, assert_outputs
 from extract_windows_emf import extract
@@ -102,9 +102,12 @@ def render_cases(executable, output, cases, pending_pdf):
                 'PDF export changed nominal live origins/pixels')
         require(painted.read_bytes() != original.read_bytes(), 'Word PDF self-comparison')
         require(not has_visible_vector_ink(painted), 'Unexpected nominal vector paint')
+        painted_visible, painted_full = pdf_origins(painted), pdf_origins(painted, True)
+        assert_pending_pdf_text(visible, painted_visible, case['name'] + '/PDF-visible')
+        assert_pending_pdf_text(full, painted_full, case['name'] + '/PDF-unclipped')
         if case['name'] not in pending_pdf:
             assert_outputs(drawing, visible, full, native, live,
-                           pdf_origins(painted), pdf_origins(painted, True), case['name'])
+                           painted_visible, painted_full, case['name'])
         print(case['name'], 'screen: PASS;' if case['name'] in pending_pdf else 'screen + PDF: PASS;',
               'PDF pending' if case['name'] in pending_pdf else '', flush=True)
     return len(cases)

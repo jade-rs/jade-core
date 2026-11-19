@@ -1,7 +1,13 @@
 """Keep original Word identity, isolated inputs and boundary assertions intact."""
 import copy
+import hashlib
 import itertools
+import json
+from pathlib import Path
+import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 from zipfile import ZipFile
 
 from lxml import etree as E
@@ -95,6 +101,55 @@ class WordBoundaries(unittest.TestCase):
                 with self.subTest(axis=axis, value=value), self.assertRaisesRegex(
                         ValueError, 'nonfinite glyph origin'):
                     check.assert_pending_pdf_text(expected, actual, 'pending')
+
+    def render_pending_model(self, actual, broken_plane=None):
+        import check_windows_aptos_nominal as nominal
+        expected = dict(page_count=1, glyphs=[[1, 'A', 72., 85.], [1, 'B', 80., 85.]])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, original = root / 'source.docx', root / 'word.pdf'
+            source.write_bytes(b'known synthetic input')
+            original.write_bytes(b'original PDF bytes')
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            row = dict(name='pending-example', source=dict(sha256=digest))
+            cases = [(row, source, original, expected, expected, expected)]
+            def fonts(pdf, directory):
+                directory.mkdir()
+            def renderer(args, **kwargs):
+                destination = Path(args[2])
+                destination.write_text(json.dumps(dict(expected, input_sha256=digest)), encoding='utf-8')
+                destination.with_suffix('.png').write_bytes(b'identical live pixels')
+                if len(args) > 4 and not str(args[4]).startswith('--'):
+                    Path(args[4]).write_bytes(b'independent generated PDF')
+                return subprocess.CompletedProcess(args, 0)
+            def painted(path, unclipped=False):
+                return actual if broken_plane is None or unclipped == broken_plane else expected
+            with patch.object(nominal, 'extract_fonts', side_effect=fonts), \
+                    patch.object(nominal.subprocess, 'run', side_effect=renderer), \
+                    patch.object(nominal, 'require_original_font_programs_registered'), \
+                    patch.object(nominal, 'has_visible_vector_ink', return_value=False), \
+                    patch.object(nominal, 'pdf_origins', side_effect=painted):
+                return nominal.render_cases(Path('probe.exe'), root / 'rendered', cases, {'pending-example'})
+
+    def test_pending_render_path_keeps_coordinate_discrepancies_but_checks_text(self):
+        shifted = dict(page_count=1, glyphs=[[1, 'A', 73., 85.], [1, 'B', 81., 85.]])
+        self.assertEqual(self.render_pending_model(shifted), 1)
+
+    def test_pending_render_path_rejects_corrupted_physical_pdf_on_both_planes(self):
+        glyphs = [[1, 'A', 72., 85.], [1, 'B', 80., 85.]]
+        corrupt = [dict(page_count=1, glyphs=[]),
+                   dict(page_count=1, glyphs=glyphs[:1]),
+                   dict(page_count=1, glyphs=glyphs[::-1]),
+                   dict(page_count=2, glyphs=glyphs)]
+        for axis in (2, 3):
+            for value in (float('nan'), float('inf'), -float('inf')):
+                changed = copy.deepcopy(glyphs)
+                changed[0][axis] = value
+                corrupt.append(dict(page_count=1, glyphs=changed))
+        for actual in corrupt:
+            for plane in (False, True):
+                with self.subTest(actual=actual, unclipped=plane), self.assertRaises(ValueError):
+                    self.render_pending_model(actual, plane)
 
     def test_original_word_pdf_and_xps_are_distinct_output_contexts(self):
         cases, _, xps = check.verify()

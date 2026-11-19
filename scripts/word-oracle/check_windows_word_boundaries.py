@@ -2,11 +2,10 @@
 import argparse
 import hashlib
 import json
-import math
 from pathlib import Path
 from zipfile import ZipFile
 
-from check_platform_coordinates import ROOT, checked_file, pdf_origins, read_json, require
+from check_platform_coordinates import ROOT, checked_file, pdf_origins, read_json, require, assert_pending_pdf_text
 from check_windows_aptos_nominal import render_cases
 from check_windows_xps import assert_model
 from extract_windows_emf import extract
@@ -32,15 +31,6 @@ def locked_promotions(index):
                 and r['xps_gate_promotion'] == 'word-boundary-xps' for r in rows),
             'Required word-boundary screen/XPS assertion removed')
     return frozenset(r['name'] for r in rows if r['coordinate_gate_promotion'] == 'pending')
-
-
-def assert_pending_pdf_text(expected, actual, label):
-    require(expected['page_count'] == actual['page_count'], label + ': page count changed')
-    require(all(math.isfinite(g[axis]) for g in actual['glyphs'] for axis in (2, 3)),
-            label + ': nonfinite glyph origin')
-    words = [g[:2] for g in expected['glyphs'] if not g[1].isspace()]
-    painted = [g[:2] for g in actual['glyphs'] if not g[1].isspace()]
-    require(words == painted and bool(words), label + ': text/page/order changed')
 
 
 def verify(root=ROOT):

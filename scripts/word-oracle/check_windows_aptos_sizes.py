@@ -7,7 +7,7 @@ import sys
 from zipfile import ZipFile
 
 from check_platform_coordinates import (
-    ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require,
+    ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require, assert_pending_pdf_text,
 )
 from check_windows_font_coordinates import (
     has_visible_vector_ink, require_original_font_programs_registered,
@@ -156,9 +156,12 @@ def check(executable,output,root=ROOT):
             require(model['input_sha256']==case['source']['sha256'],'Wrong rendered Aptos-size input')
             require_original_font_programs_registered(fonts,model)
         assert_screen_outputs(drawing,native,without_export,case['name'])
+        painted_visible,painted_full=pdf_origins(painted),pdf_origins(painted,True)
+        assert_pending_pdf_text(visible,painted_visible,case['name']+'/PDF-visible')
+        assert_pending_pdf_text(full,painted_full,case['name']+'/PDF-unclipped')
         if case['name'] in REQUIRED_CASE_NAMES:
             assert_outputs(drawing,visible,full,native,without_export,
-                           pdf_origins(painted),pdf_origins(painted,True),case['name'])
+                           painted_visible,painted_full,case['name'])
         require(actual.with_suffix('.png').read_bytes()==screen.with_suffix('.png').read_bytes(),
                 case['name']+': PDF export changed screen pixels')
         require(painted.read_bytes()!=original.read_bytes(),'Word self-comparison')

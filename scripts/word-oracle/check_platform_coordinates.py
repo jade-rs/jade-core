@@ -244,6 +244,17 @@ def pdf_origins(path, unclipped=False):
         return dict(page_count=len(document), glyphs=glyphs)
 
 
+def assert_pending_pdf_text(expected, actual, label):
+    """Keep text and pages valid while coordinate mismatches remain pending."""
+    require(expected['page_count'] == actual['page_count'], label + ': page count changed')
+    require(all(math.isfinite(g[axis]) for g in actual['glyphs'] for axis in (2, 3)),
+            label + ': nonfinite glyph origin')
+    words = [g[:2] for g in expected['glyphs'] if not g[1].isspace()]
+    painted = [g[:2] for g in actual['glyphs'] if not g[1].isspace()]
+    require(words == painted and bool(words), label + ': text/page/order changed')
+
+
+
 def extract_fonts(pdf, directory):
     """Expose original font programs, never Word's expected text positions."""
     import pymupdf
