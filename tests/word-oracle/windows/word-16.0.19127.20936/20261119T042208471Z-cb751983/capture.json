@@ -1,0 +1,950 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T042208471Z-cb751983",
+  "captured_at_utc": "2026-11-19T04:22:08.4843308Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w6900",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w6900.docx",
+      "sha256": "defc83e634ffc386e6a0accfa7a9bf5a8798cf8779e713169b6af681f4ac934f",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w6900.pdf",
+      "pdf_sha256": "2b16b766a2047e3ffac29031a3eccd672c8e0df5438e16e6906b9bb2099d47d2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w6900.xps",
+      "xps_sha256": "112d1ecd8b0ee727ab0531b3f441277a6af92a6922531f4c0a5bf76fd0fae0e6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w6900.page-001.emf",
+          "sha256": "5a9b145313a40798006b94fd9e85a1934786636c8a77c81553bdaa28b69b2bd4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w7000",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w7000.docx",
+      "sha256": "e92366b975706e73febe234c3e542b8ce774d08ad08094cc2f643576c5f593b8",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w7000.pdf",
+      "pdf_sha256": "f6e1200e0b8ec97f84ff3233df5da2131b8fda14ffcdd5f920b84306ceea0d6f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w7000.xps",
+      "xps_sha256": "41642f76785d61a794cddeb32e7122e4dcf36700eb0f84edbc2dada1bd975ec7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w7000.page-001.emf",
+          "sha256": "0e81970b96276027eedf4d676f3804b1f52b642e4faf37abdedbad5dcbdec48c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w7100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w7100.docx",
+      "sha256": "872275e64e462520d8c3e5abe184964395f3724989df85dc060a740a922735ed",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w7100.pdf",
+      "pdf_sha256": "5f267bceef9089ad262d854c3e6c76a7747e4a249a69b23c59f344e2c67f73b4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w7100.xps",
+      "xps_sha256": "b85225c80e5908e0d85cc8edc1c6022f495e0d82ce81b5817751458e293e507d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w7100.page-001.emf",
+          "sha256": "1a9922a4a0ade0010076505b6d15085e62cd952b91ee05e8df517513c932698f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w7200",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w7200.docx",
+      "sha256": "b82adf2a932a4b0fd640d1f19fa4540e0cd154318386040c413a309835478edc",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w7200.pdf",
+      "pdf_sha256": "5f93a12b8c0859db1c9cab4b0fdafe63d0ab1a77fed863392971a9b7a6308ce1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w7200.xps",
+      "xps_sha256": "c621095456fe530cb945a7daa7c41c4195b8b10012ca073ce85f37865fc8bc6f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w7200.page-001.emf",
+          "sha256": "295a6f3195d71c19f7b5a80df156b79fe65c402e7f72722e02afec8a4f709346",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w7300",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w7300.docx",
+      "sha256": "e43d7f54b292d296b83222d02375bca8d390faf89668c8b463f5146a562cf232",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w7300.pdf",
+      "pdf_sha256": "f66b9cdfac37bf9116e5b961a07f875b4cbd542204d557160c26633b17127432",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w7300.xps",
+      "xps_sha256": "6484a1562a3450987725a98fefecb32ec0821a5673e53564e21c09e0f792af12",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w7300.page-001.emf",
+          "sha256": "a2fbd35315c199f4f85d45d51b15706fdeb6bdd1a78a50bd52a6be5976acba58",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w7700",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w7700.docx",
+      "sha256": "bc95a2f9ee5d8afe29ba785afd98fe46eb2d782c4427a85f7a02ee6253a20ad9",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w7700.pdf",
+      "pdf_sha256": "a6101c1c5b84c563323e943321a12230e2dd82ae68bcd5b921034d54c47f8360",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w7700.xps",
+      "xps_sha256": "da7b34903ae152d6e5685ee45d00b76fef8a3bb85f3c144b0c6ab23cf748c344",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w7700.page-001.emf",
+          "sha256": "0f688abe099da47abb0ce9fb3e5463473accab0e8725ed4b12a4ac58f5a22ddc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w8100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w8100.docx",
+      "sha256": "3dd597022bda405fd158392edf12ce7995e7681a3d8acfcf8faa72aa72154502",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w8100.pdf",
+      "pdf_sha256": "1f22368804f1e14afcf54ea4d7b5a7dcaff3c621338a0fe63288ca8f211c66f0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w8100.xps",
+      "xps_sha256": "c84f43a1289935907e53fda9d6da51af939220920b98eb27aea40ca2f831791c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w8100.page-001.emf",
+          "sha256": "f94aa305ce379735b960dcf941ab036cecf918509faf312944f36d817e2aedeb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-manual-w8504",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-manual-w8504.docx",
+      "sha256": "1a932654e1a1e6cd34d5bd2f292f7e572c588ef685d011aa57992e212a10f2e5",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "3ac58653b6865d3509d894b922d83c944b0615db25c059a79eb4eba4d442a282",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-manual-w8504.xps",
+      "xps_sha256": "27292303d44de94385e0f8cdb8ecfa58e04ca473bf00dd508612a5968ae6a33c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "727508910ca857089bf5db355ecbbd56f7865a3a600f1b5aa071f430c57290c2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w6900",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w6900.docx",
+      "sha256": "165a134362732e84c83a4c0cad5633189d9af311594d65ca1f56efd4509d53eb",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w6900.pdf",
+      "pdf_sha256": "d1b01ddcf83170b1fca573eaaf04a6351a68ddcc57afeaa5e0bd3d436ed1d8da",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w6900.xps",
+      "xps_sha256": "ced4a5285efdf00295578e101ca9ecbaa5cce678e4741829d14673d9ac2679aa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w6900.page-001.emf",
+          "sha256": "9fc53127f33e470160932bbb34baed689ed2fc0bb4b73eed3c5b3817b285a310",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w7000",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w7000.docx",
+      "sha256": "5a743ccf9ae29a2f06bdc60323b8669c5219d7077e4e0839588672bf2ee8f391",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w7000.pdf",
+      "pdf_sha256": "394c410cc1f60306783c34dd5af28370f0deb5f94758df006588322494f5e92a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w7000.xps",
+      "xps_sha256": "f904f5b629750e727efbebe66f4ed42bc5da8491552804b1c76074c558d563cd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w7000.page-001.emf",
+          "sha256": "5d39b86f8f08b4340bcabd0be9e6bc302b549fe3d94c837aa3917aea7780fccd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w7100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w7100.docx",
+      "sha256": "3bc89b9c922a6fa19f188024db15317e38afbbae65cc280a699d73a7274b326f",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w7100.pdf",
+      "pdf_sha256": "415c1c4ca1dc9311dba8c14675f8e30b71c33dd3acd016734d154f6191c246ab",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w7100.xps",
+      "xps_sha256": "8afed7fb3a051da7f98615ae879a44a80a8545ba5a179a3fff722f3f6eb8448b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w7100.page-001.emf",
+          "sha256": "c329ff81bd8d10396b1a37ee4d09780dbb6f25809a2c0d4e72ca9aa7d9e6fea8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w7200",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w7200.docx",
+      "sha256": "0eb54efcc78c2fc681c03df2da21a4dedad2bd7d3c2ca110de16c4f160e61f86",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w7200.pdf",
+      "pdf_sha256": "ace6bf7229d401535b22bcd0ba87859f9d842738df1513e8ed2756d1a775f781",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w7200.xps",
+      "xps_sha256": "78525555a85c774f481e2cd4b3cf2e702a453d704b56d20d5f5b4e1808e572ea",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w7200.page-001.emf",
+          "sha256": "2c6ee7fcc2436f0be2420d2de009e48771523b736a6f8878e39fc95828d0129a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w7300",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w7300.docx",
+      "sha256": "cb095d6199786c9ab2f9a68d97236648ecac851e3f66f72f40acb639b4a39104",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w7300.pdf",
+      "pdf_sha256": "7b306594325977b29bfa2ded980862c18d7008ba5691d2b7851a518dfed22e60",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w7300.xps",
+      "xps_sha256": "c6bd5827b79ab2515c20a2bec784bb1540db312c0c452fbcf122105d5a144c9f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w7300.page-001.emf",
+          "sha256": "300ee89db582372a028b258f8b960693340994c1430d0b006133be1a7a8bb835",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w7700",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w7700.docx",
+      "sha256": "3d501ca90d0f4e21e88fd3b4ef047eefc0c0aaaea01059495247b10d50c3f9a8",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w7700.pdf",
+      "pdf_sha256": "78df4ed7696af8931259d3e5972b4edd0b06167a1d1ebfd7eafdacf3ac20821e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w7700.xps",
+      "xps_sha256": "ea565c4b183f1cb61dcc9123565fb2b3fa51348cfc0f373c8b537d0a8c42aeb8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w7700.page-001.emf",
+          "sha256": "238d64f7175e4236ac43bddf99d951ef975abcc9edd382563b2d70dfb3e9d7f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w8100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w8100.docx",
+      "sha256": "e337fd4e0ee48a10acf3c08dc44c24d839608450e094b6d7802428bcff2f68ce",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w8100.pdf",
+      "pdf_sha256": "35214fdbb93881e828aa8aba95858fa878adadd18e3512474688972a322d11d2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w8100.xps",
+      "xps_sha256": "e5e1a5535aa70659aa44354e52deb3e1bb19d5625b214b32b9bd56795919e188",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w8100.page-001.emf",
+          "sha256": "9cd4cd1a0764a337c5b58cf4abd131d91390c71e849622d5e34500edec36abe5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m14-paragraph-w8504",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m14-paragraph-w8504.docx",
+      "sha256": "c93811baa38e60e661bcd012ec5b4ea951e66083b20cf59922b5e6b0b9552652",
+      "pdf": "word-windows-legacy-width-arial-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "df625b08c1ba162e36b4f0a3f3cb8c9ef9d2f3fc15df64737d2f17dba7bde62e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "18b0e14931fde7acbffdaca9b48ef501e63d9d209f4dda2c82cbf65bc1143644",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "38b7d376c8e53e55691f57c151213a1e023c999e626a9616261eae25c461c791",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w6900",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w6900.docx",
+      "sha256": "bb3fd6ca13cb38562b8331a97906fe846ff2b0d0ad68aa5688d78e6636a2a0dd",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w6900.pdf",
+      "pdf_sha256": "f446e4e465e31343b823f5a1049c5cbb1e9922b40ab05471cd74708a91de5c97",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w6900.xps",
+      "xps_sha256": "b7cfcb8b87746c19116aedee5f5f608533bc75bb41fe321528745ec94fe9ad4c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w6900.page-001.emf",
+          "sha256": "c8ba2073f4c1775c2efd59bb15b5e10e23b43dc533c8dc85e6aa544ba28c7748",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w7000",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w7000.docx",
+      "sha256": "a7b66396dee9b8f1111f31489650a1aa898880fa287fac6542a8380f61816a03",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w7000.pdf",
+      "pdf_sha256": "b0a794650b9825f00a9b1d78ec574430e4f3f472fda5ca754c7200f71cf62e55",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w7000.xps",
+      "xps_sha256": "45c5e02545ea65f0d987e944408f3d51a2fb4215c51bad52e7a677ebc2888115",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w7000.page-001.emf",
+          "sha256": "4ba1076a9bbea74b1d687dd2380689ed003b4f5ec498b7814f087eadfbdaa563",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w7100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w7100.docx",
+      "sha256": "f0f83c873263f6cf2f87ae71e3b1a457862b468685f8b7e3f03638369d0f96cd",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w7100.pdf",
+      "pdf_sha256": "ed67de6cd80df489f7478c2f42070184dfd6a1018e02c0f92573de0ddffbe2be",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w7100.xps",
+      "xps_sha256": "6d4f0d11b347b1fe2c6b0f350d3dd844bfcc85e2978a197b5493f23ad4148dc5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w7100.page-001.emf",
+          "sha256": "a8b08c6d7f0220cb82f20fcee3c2b58a9946001f9c632033e1fc3b4149c8e75b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w7200",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w7200.docx",
+      "sha256": "24dbbb5d97eac27995756a2009937c9721a2931f415704d76c3cd857e03c6860",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w7200.pdf",
+      "pdf_sha256": "1a237a72c4b5ffc22e7bd07f4c3eb16ccaecd3170e03e8914dcd37c84a4868ba",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w7200.xps",
+      "xps_sha256": "1d85f7d8dfd8b7e283100d1f8b814d1fabe32956b639d2f0ad441d378ab23bd5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w7200.page-001.emf",
+          "sha256": "4dd141c5d63dc6a8b3506e8d4e1c3fbd6245084531d70997246d3ffed082599d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w7300",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w7300.docx",
+      "sha256": "627787daf1d7a1f1032e19f3e9663034561e3c24c44e2404a8c08fcd2b416d9d",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w7300.pdf",
+      "pdf_sha256": "fcdeae60a02d96e7f314fad9d204162acbdc88d761f4cad1247167b07d2dbc2d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w7300.xps",
+      "xps_sha256": "91b4914c9cd674ed3452d4337e98bb32b65fbdaea585d28bfb94b8c2d2e5c535",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w7300.page-001.emf",
+          "sha256": "951b8841ee7a80a102b12b86d5d79570143f5abfab7a6ec7c60cde4283bd35a8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w7700",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w7700.docx",
+      "sha256": "f989b8c8712b68f6859a313f274652c5a6b2affdc03bcfa3f226b3d232b1a018",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w7700.pdf",
+      "pdf_sha256": "b6743fdd841564e153f483d955be767344d7c3fb5eaecbdda696917778994cc8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w7700.xps",
+      "xps_sha256": "fc4385a931a4e7578b4e3630f5bf87bbdf56d2b3da279eb09fd4d074236445b0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w7700.page-001.emf",
+          "sha256": "6587aac693a3982c8fde459a0d0d92e93cf0ce9fe1708af76f74296851844afc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w8100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w8100.docx",
+      "sha256": "525e2d668482fc70d04c74b822eff4072664b77b1b51d9f4c6f6e1b57e7dedbb",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w8100.pdf",
+      "pdf_sha256": "0714527d2d26ca8b37ce7aca30f245509ca2d33bf4b195e6c4faf706e1289040",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w8100.xps",
+      "xps_sha256": "07e7499d93b0762094a5428737be7434067dd96c78e9bba6da60f61296790c64",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w8100.page-001.emf",
+          "sha256": "8bd68495127492e4d1463c909fabbd1698437c832231baa0e1a0b7db15f0514a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-manual-w8504",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-manual-w8504.docx",
+      "sha256": "b7a69861bc9b6bb8a5143adfae1152c9a552fe5afcf8821b0a2d063cc0dfdb84",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "87a8a33a77d9c5ef8ccbdd030ecf915af448dd2f44bdeb3a216c7a81d05b2130",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-manual-w8504.xps",
+      "xps_sha256": "a2827d34717efe6bbbec08d2a3f0948946a685baee5cba290f28686a92bd450f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "7162a2124953dd07dbaf582061343bdaaf55636fa296df3e29b191b027a772d7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w6900",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w6900.docx",
+      "sha256": "ddbc6ec8dd2f3dd68a47511eeb92b799e3fa9bc8599804856919bd4f73594c20",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w6900.pdf",
+      "pdf_sha256": "73d887f1001b6c7e9557d6f921705d6ce5e014190d285c93ca871b82cd5eac63",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w6900.xps",
+      "xps_sha256": "9324bf706218450c195fdd1f3ed5922deb807e1ec6f7c8e4ad1b958e7e7af45a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w6900.page-001.emf",
+          "sha256": "9fc53127f33e470160932bbb34baed689ed2fc0bb4b73eed3c5b3817b285a310",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w7000",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w7000.docx",
+      "sha256": "3621fff635ad604983add49253fbfef29a41cfb95e03c44cc89f9747f5837f2b",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w7000.pdf",
+      "pdf_sha256": "597c732f6fe51ec58f5154f8f4762d888384ead48b20e48a4e35b050768b9e34",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w7000.xps",
+      "xps_sha256": "364e91dc95e144c110f2894fc8bb63b30fabda6b758d567ca775d8cca294111c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w7000.page-001.emf",
+          "sha256": "5d39b86f8f08b4340bcabd0be9e6bc302b549fe3d94c837aa3917aea7780fccd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w7100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w7100.docx",
+      "sha256": "a51b66cc7350bf57efd0734828e8d18a0ee14178e05858bdae53a5c5e42bd6d6",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w7100.pdf",
+      "pdf_sha256": "8aabdb5a94a5864d25a3af4e5d3d493d4060d6f2d72a598a31434a112795fbb3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w7100.xps",
+      "xps_sha256": "1ec778fcba17e400130f34c77909691cbb3a1a0946a51f9e39ec50b0c1952673",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w7100.page-001.emf",
+          "sha256": "c329ff81bd8d10396b1a37ee4d09780dbb6f25809a2c0d4e72ca9aa7d9e6fea8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w7200",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w7200.docx",
+      "sha256": "134d366cff647a6607f9d4e8dec316b9432bad4122fc88679e5272fb4106b242",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w7200.pdf",
+      "pdf_sha256": "89d1b252bf707c86446f1013148aaaa38779677dfc54d46d54107358296b4211",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w7200.xps",
+      "xps_sha256": "f653d31f51efb6ae3c0d1692d60bcceb52662a869e7c75edebf46c978dba1fae",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w7200.page-001.emf",
+          "sha256": "2c6ee7fcc2436f0be2420d2de009e48771523b736a6f8878e39fc95828d0129a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w7300",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w7300.docx",
+      "sha256": "096aa6957222eed176cb1913540a89b392fda6ba5e3eefa915e314cc95832591",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w7300.pdf",
+      "pdf_sha256": "49bd822fb645b56bb0be6482e60a59eaa161862cf1926a82a3a0f1212a5aa2ff",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w7300.xps",
+      "xps_sha256": "2f2ea70c958ca3436f11fe29a1a3bc1cd3e24962f3c4a98379f51e59d5c723bd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w7300.page-001.emf",
+          "sha256": "300ee89db582372a028b258f8b960693340994c1430d0b006133be1a7a8bb835",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w7700",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w7700.docx",
+      "sha256": "0e3da85fc6ae72a5fd70ecbc788544651e08e858aec88f59ec00196ea65c6830",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w7700.pdf",
+      "pdf_sha256": "941702b299d71a0c01038a4953e0a6ce2bf11497d4449d04833ea30816888651",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w7700.xps",
+      "xps_sha256": "fd2cd6bd38023e2cf29ea31d09ce5be36d1f10d183ba20c1e1865f0cee2e97e5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w7700.page-001.emf",
+          "sha256": "238d64f7175e4236ac43bddf99d951ef975abcc9edd382563b2d70dfb3e9d7f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w8100",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w8100.docx",
+      "sha256": "3fc3ed77e3ea9ca827310cd9a68ccf9a3c7b2253a33984052b84d654050f3096",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w8100.pdf",
+      "pdf_sha256": "657347287ccdfcc1cd059b64063d7a7734a75fb737b14289713e72ba535910d0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w8100.xps",
+      "xps_sha256": "85e6eb39711af28fe485530f0819421b024f849bc7510d7ecf11095b80d1fd64",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w8100.page-001.emf",
+          "sha256": "9cd4cd1a0764a337c5b58cf4abd131d91390c71e849622d5e34500edec36abe5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w8504",
+      "source": "..\\w19-legacy-width-inputs\\word-windows-legacy-width-arial-s12-m15-paragraph-w8504.docx",
+      "sha256": "f4a8a9ac424af5dfaea77e2d4046df64d44c118a1f003f3de20eea7d2d9e20b6",
+      "pdf": "word-windows-legacy-width-arial-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "e0c04d78b25c7aadeb3c4ace939f4877ae216d546695b61a54c460b8a8a98e24",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-width-arial-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "4fc8ef622f0fcb849428933677b05cbdb904b06cff31f15d5ca08aa9c0d890d3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-width-arial-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "38b7d376c8e53e55691f57c151213a1e023c999e626a9616261eae25c461c791",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

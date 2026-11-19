@@ -106,8 +106,8 @@
         ],
         "unchanged_parent_bytes": false
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -158,8 +158,8 @@
         ],
         "unchanged_parent_bytes": false
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -210,8 +210,8 @@
         ],
         "unchanged_parent_bytes": false
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -722,8 +722,8 @@
         ],
         "unchanged_parent_bytes": false
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -774,8 +774,8 @@
         ],
         "unchanged_parent_bytes": false
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -826,8 +826,8 @@
         ],
         "unchanged_parent_bytes": false
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {

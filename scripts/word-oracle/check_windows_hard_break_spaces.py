@@ -15,9 +15,9 @@ from extract_windows_emf import extract
 import generate_windows_hard_break_space_probes as producer
 
 INDEX = Path('tests/word-oracle/windows/hard-break-space-observations.json')
-INDEX_SHA256 = '9a1a8b93fe5acc0bd0be4f7bdcb07d93b86614ecdc8926618c6ff0655cb328e8'
-FONT_NAMES_SHA256 = 'bfba0dbfa193c4b1d25050128400c429e167f0c1fe6d072818b0893086f2e173'
-XPS_NAMES_SHA256 = 'e9e4644f3315e036fb229d8c14f16f64842d4c145cf5135ff95399258bf8240c'
+INDEX_SHA256 = '2b3e8486b3de57fbb1432c60912c96c2d12e12d3c4af9172ca28784ed0b2bbc9'
+FONT_NAMES_SHA256 = '223a419c17f23c6ddc2980a32333efea12ed6f72115bf8ca24934a503c2e8e3a'
+XPS_NAMES_SHA256 = 'bdf364ceeb0a6a26ae9a0e37a318aac3ebe3f2431bc4980eaf3ae84c210e4056'
 
 
 def locked_promotions(index):
@@ -26,8 +26,8 @@ def locked_promotions(index):
             'Manual-break source coverage changed')
     names = []
     for field, promotion, count, digest in (
-            ('font_gate_promotion', 'hard-break-font', 26, FONT_NAMES_SHA256),
-            ('xps_gate_promotion', 'hard-break-xps', 20, XPS_NAMES_SHA256)):
+            ('font_gate_promotion', 'hard-break-font', 32, FONT_NAMES_SHA256),
+            ('xps_gate_promotion', 'hard-break-xps', 26, XPS_NAMES_SHA256)):
         selected = sorted(r['name'] for r in rows if r[field] == promotion)
         require(len(selected) == count and hashlib.sha256(
             json.dumps(selected, separators=(',', ':')).encode()).hexdigest() == digest,
@@ -161,9 +161,9 @@ def check_rendered_fonts(directory, root=ROOT):
             require(actual['input_sha256'] == case['source']['sha256'], 'Wrong rendered manual-break input')
             planes[plane] = assert_model(models[name], actual, name + '/XPS/' + plane, True)
         results.append(dict(name=name, planes=planes))
-    require(len(results) == 20, 'Required manual-break XPS assertion removed')
-    print('Asserted 20 manual-break XPS sources on both native and live paths; '
-          '26 font sources require all four Word coordinate planes and paragraph backgrounds')
+    require(len(results) == 26, 'Required manual-break XPS assertion removed')
+    print('Asserted 26 manual-break XPS sources on both native and live paths; '
+          '32 font sources require all four Word coordinate planes and paragraph backgrounds')
     return results
 
 
@@ -175,4 +175,4 @@ if __name__ == '__main__':
         check_rendered_fonts(args.compare_rendered_fonts.resolve())
     else:
         print('Verified', len(verify()[0]), 'versioned original Word manual-break controls; '
-              '6 legacy mixed-script coordinate cases remain unpromoted')
+              '6 modern mixed-script XPS cases remain unpromoted')

@@ -8,7 +8,7 @@ import zipfile
 from check_platform_coordinates import ROOT, checked_file, read_json, require, repo_file
 
 INDEX = Path('tests/word-oracle/windows/observations/index.json')
-INDEX_SHA256 = '2f3ba8982d4fb672d10b4ddd06f1a6857cdaf85f9dfcfa386e1ec8453b140d94'
+INDEX_SHA256 = 'b8da80c66efd35d6be9174d1ea3779ba5437c3638f6f1fcaab1fb48f454428e3'
 
 
 def verify_rejected_attempt(root, rejection, attempt):
@@ -129,7 +129,7 @@ def verify(root=ROOT):
                 count += 1
             require(len(bundle.namelist()) == len(members) and set(bundle.namelist()) == members,
                     'Unexpected/duplicate/missing archive files')
-    require(len(identities) == 1785 and count == 3076, 'Original observation coverage removed')
+    require(len(identities) == 1787 and count == 3156, 'Original observation coverage removed')
     for rejection in index['rejected_sources']:
         checked_file(root, dict(file=rejection['source'], sha256=rejection['source_sha256']))
         require(bool(rejection['word_product_version']) and bool(rejection['reason']),

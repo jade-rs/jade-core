@@ -23864,8 +23864,8 @@ where
             extra_total: f64,
         ) -> Option<f64> {
             use jade_docx_layout::line_wrap::{
-                classify_script, distribute_windows_mixed_justification,
-                WindowsMixedJustificationOpportunity,
+                classify_script, distribute_windows_legacy_mixed_justification,
+                distribute_windows_mixed_justification, WindowsMixedJustificationOpportunity,
             };
             if !paragraph_style.enable_line_break_rules
                 || paragraph_style.bidi
@@ -23875,6 +23875,31 @@ where
                     .any(|p| p.segment.leading_width.abs() > 1e-9)
             {
                 return None;
+            }
+            let mut legacy_average = None;
+            if paragraph_style.east_asian_rules.compatibility_mode == Some(14)
+                && !paragraph_style
+                    .east_asian_rules
+                    .balance_single_byte_double_byte_width
+            {
+                for prepared in prepared_segments.iter() {
+                    let descriptor = prepared.style.resolved.descriptor_for_grapheme(
+                        " ",
+                        jade_docx_layout::line_wrap::ScriptCategory::Latin,
+                    );
+                    let Some(average) = jade_docx_layout::line_metrics::word_windows_legacy_justification_average_width_px(descriptor)
+                        .map(|width| width * prepared.style.resolved.text_scale_x.max(0.01))
+                    else {
+                        legacy_average = None;
+                        break;
+                    };
+                    if legacy_average.is_some_and(|previous: f64| (previous - average).abs() > 1e-9)
+                    {
+                        legacy_average = None;
+                        break;
+                    }
+                    legacy_average = Some(average);
+                }
             }
             let is_east_asian = |text: &str| {
                 !text.chars().all(char::is_whitespace)
@@ -23932,7 +23957,10 @@ where
                             && (index > 0 && is_east_asian(nodes[index - 1].2)
                                 || is_east_asian(right.2));
                         if !balanced {
-                            opportunity.space_capacity_px = ((right.3 - left.3) * 0.5).max(0.0);
+                            opportunity.space_capacity_px = legacy_average.map_or_else(
+                                || ((right.3 - left.3) * 0.5).max(0.0),
+                                |average| (average - (right.3 - left.3)).max(0.0),
+                            );
                         }
                     } else if matches!(
                         east_asian_justification_gap(left.2, right.2),
@@ -23940,7 +23968,8 @@ where
                             jade_docx_layout::line_wrap::EastAsianJustificationGap::AutoSpace { .. }
                         )
                     ) {
-                        opportunity.auto_space_capacity_px = left.4.max(right.4) * 0.25;
+                        opportunity.auto_space_capacity_px = legacy_average
+                            .map_or_else(|| left.4.max(right.4) * 0.25, |average| average * 0.5);
                     } else if east_asian_justification_gap(left.2, right.2).is_none()
                         && !(is_east_asian(left.2)
                             && right.2 == " "
@@ -23962,6 +23991,7 @@ where
                     // Balanced spaces have zero initial capacity too; they must
                     // not inherit the priority of an ideographic boundary.
                     if left.2 != " "
+                        && legacy_average.is_none()
                         && opportunity.space_capacity_px == 0.0
                         && opportunity.auto_space_capacity_px == 0.0
                     {
@@ -23976,7 +24006,11 @@ where
                 return None;
             }
             // Capture the requested slack before mutating any glyph boxes.
-            let shares = distribute_windows_mixed_justification(&opportunities, extra_total);
+            let shares = if legacy_average.is_some() {
+                distribute_windows_legacy_mixed_justification(&opportunities, extra_total)
+            } else {
+                distribute_windows_mixed_justification(&opportunities, extra_total)
+            };
             let mut cursor = 0;
             let mut distributed = 0.0;
             for (segment, prepared) in prepared_segments.iter_mut().enumerate() {

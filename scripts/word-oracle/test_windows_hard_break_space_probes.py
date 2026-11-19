@@ -25,16 +25,16 @@ class HardBreakSpaces(unittest.TestCase):
     def test_all_originals_reproduce_with_separate_pending_cases(self):
         cases, fonts, xps, models = self.verified
         self.assertEqual(len(cases), 32)
-        self.assertEqual(len(fonts), 26)
-        self.assertEqual(len(xps), 20)
+        self.assertEqual(len(fonts), 32)
+        self.assertEqual(len(xps), 26)
         self.assertEqual(set(models), set(self.generated))
         self.assertEqual(sum(s['unchanged_parent_bytes'] for _, s in self.generated.values()), 2)
         for row in cases:
             data, spec = self.generated[row['name']]
             self.assertEqual((ROOT / row['source']['file']).read_bytes(), data)
             self.assertEqual(row['input_specification'], spec)
-            expected_font = spec['character_set'] == 'ascii' or spec['line_ending'] == 'paragraph' or spec['compatibility_mode'] == 15
-            expected_xps = spec['character_set'] == 'ascii' or spec['line_ending'] == 'paragraph'
+            expected_font = True
+            expected_xps = spec['character_set'] == 'ascii' or spec['line_ending'] == 'paragraph' or spec['compatibility_mode'] == 14
             self.assertEqual(row['name'] in fonts, expected_font)
             self.assertEqual(row['name'] in xps, expected_xps)
 
@@ -69,18 +69,25 @@ class HardBreakSpaces(unittest.TestCase):
                             node.set(q('val'), '15')
                 self.assertEqual(E.tostring(before), E.tostring(after))
 
-    def test_required_promotions_cannot_be_removed_swapped_or_added(self):
+    def test_required_promotions_cannot_be_removed_renamed_or_masked(self):
         for field, promotion in [('font_gate_promotion', 'hard-break-font'), ('xps_gate_promotion', 'hard-break-xps')]:
-            for operation in ('remove', 'swap', 'add'):
+            for operation in ('remove', 'rename', 'unknown'):
                 index = deepcopy(self.index)
                 required = next(r for r in index['fixtures'] if r[field] == promotion)
-                pending = next(r for r in index['fixtures'] if r[field] == 'pending')
-                if operation in ('remove', 'swap'):
+                if operation == 'remove':
                     required[field] = 'pending'
-                if operation in ('swap', 'add'):
-                    pending[field] = promotion
+                elif operation == 'rename':
+                    required['name'] += '-unexpected'
+                else:
+                    required[field] = 'unknown'
                 with self.subTest(field=field, operation=operation), self.assertRaises(ValueError):
                     check.locked_promotions(index)
+        index = deepcopy(self.index)
+        required = next(r for r in index['fixtures'] if r['xps_gate_promotion'] == 'hard-break-xps')
+        pending = next(r for r in index['fixtures'] if r['xps_gate_promotion'] == 'pending')
+        required['xps_gate_promotion'], pending['xps_gate_promotion'] = pending['xps_gate_promotion'], required['xps_gate_promotion']
+        with self.assertRaises(ValueError):
+            check.locked_promotions(index)
 
     def test_wrong_word_identity_or_source_is_rejected(self):
         original = check.read_json
@@ -111,7 +118,7 @@ class HardBreakSpaces(unittest.TestCase):
             directory = Path(temporary)
             self.rendered(directory)
             results = check.check_rendered_fonts(directory)
-            self.assertEqual(len(results), 20)
+            self.assertEqual(len(results), 26)
             self.assertTrue(all(set(r['planes']) == {'native', 'visible'} for r in results))
 
     def test_each_case_rejects_x_y_drift_and_wrong_input_on_both_paths(self):

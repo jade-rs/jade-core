@@ -1104,6 +1104,22 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
     })
 }
 
+/// The average width used by Windows Word's compatibility-mode-14 mixed
+/// justification. Reuse the original font-program metrics for known Latin
+/// faces; other faces and Mac retain their established allocation.
+pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+    let (_, family) = split_font_descriptor(descriptor)?;
+    let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
+    if !matches!(family, "Arial" | "Calibri" | "Times New Roman") {
+        return None;
+    }
+    word_windows_latin_auto_space_metrics(descriptor, false)
+        .map(|metrics| 2.0 * metrics.trailing_gap_px(false))
+}
+
 /// Numeric boundaries independently observed beside a fixed Japanese face.
 /// These metrics do not change Windows letter spacing or Mac policy.
 pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Option<WordAutoSpace> {
@@ -4982,6 +4998,34 @@ mod tests {
         ] {
             assert!(word_windows_latin_auto_space_metrics(descriptor, false).is_none());
         }
+    }
+
+    #[test]
+    fn windows_legacy_justification_uses_original_font_averages_and_preserves_mac() {
+        use super::*;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for (descriptor, units) in [
+            ("12.00pt Arial", 904.0),
+            ("bold 12.00pt Arial", 980.0),
+            ("12.00pt Calibri", 1067.0),
+            ("12.00pt 'Times New Roman'", 821.0),
+        ] {
+            let actual = word_windows_legacy_justification_average_width_px(descriptor).unwrap();
+            assert!((actual - 16.0 * units / 2048.0).abs() < 1e-10);
+        }
+        for descriptor in ["12.00pt Yu Mincho", "12.00pt Unknown Face", "invalid"] {
+            assert_eq!(
+                word_windows_legacy_justification_average_width_px(descriptor),
+                None
+            );
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(
+            word_windows_legacy_justification_average_width_px("12.00pt Arial"),
+            None
+        );
+        set_word_layout_platform(previous);
     }
 
     #[test]
