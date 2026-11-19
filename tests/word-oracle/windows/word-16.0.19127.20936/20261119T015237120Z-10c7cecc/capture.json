@@ -1,0 +1,138 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T015237120Z-10c7cecc",
+  "captured_at_utc": "2026-11-19T01:52:37.1319076Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-y-lengths-regular-s15-m14",
+      "source": "w19-y-length-inputs\\word-windows-aptos-y-lengths-regular-s15-m14.docx",
+      "sha256": "570eb94d22abae5ab321dcf3ef7e443810f565d447ba91dd2eee5187f911dce9",
+      "pdf": "word-windows-aptos-y-lengths-regular-s15-m14.pdf",
+      "pdf_sha256": "958cf8538fe8ac17d9ce663611ba1b67b7a153414a3dc661dcabb94d69618fc2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-y-lengths-regular-s15-m14.xps",
+      "xps_sha256": "ac66500ad0677b6e0e6176e7a79148696d07fd06018f133f96f0f3100be99005",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-y-lengths-regular-s15-m14.page-001.emf",
+          "sha256": "06329d2b834e4b95df062bd475b38516ebf8ddba25c4f66dca545cd619d8fd49",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+      "source": "w19-y-length-inputs\\word-windows-aptos-y-isolated48-regular-s15-m14.docx",
+      "sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933",
+      "pdf": "word-windows-aptos-y-isolated48-regular-s15-m14.pdf",
+      "pdf_sha256": "b9d0a3214d774050d4c66fa68ab307f2ddbb90795c71448b157e76040b83c48b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-y-isolated48-regular-s15-m14.xps",
+      "xps_sha256": "4a3da40480e509623276c9aabf852bb5b0f711caf5021dd1c3b7c291689f8f37",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-y-isolated48-regular-s15-m14.page-001.emf",
+          "sha256": "1983ed2bbf66e456908ba5d3288e64e7e9c7d5615325cba1c5d8de90cb088667",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-y-lengths-bold-s15-m14",
+      "source": "w19-y-length-inputs\\word-windows-aptos-y-lengths-bold-s15-m14.docx",
+      "sha256": "fe4482ecfd2708ae5fc3551905f2c0b061fc119af7d8fb1507a9694cd4ecf2da",
+      "pdf": "word-windows-aptos-y-lengths-bold-s15-m14.pdf",
+      "pdf_sha256": "db07cf1d248793a4e5e5c7a26b362591ca34ad5e16e8e055fbd480338ede36cd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-y-lengths-bold-s15-m14.xps",
+      "xps_sha256": "29d216b86d91317c18a125a1ea114c7a7f4ea5fc1ce9c0ea7c31b8e9d23788c2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-y-lengths-bold-s15-m14.page-001.emf",
+          "sha256": "e422a7faa2fc52b9db9dae9ba466002ce28de990e0f9e686d4397a702fe3243b",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-y-isolated48-bold-s15-m14",
+      "source": "w19-y-length-inputs\\word-windows-aptos-y-isolated48-bold-s15-m14.docx",
+      "sha256": "99e5318c29c088142a9195d37dad6c72a1c9265e1da7b2a58a5456a64b4a4100",
+      "pdf": "word-windows-aptos-y-isolated48-bold-s15-m14.pdf",
+      "pdf_sha256": "753bd98a138668de1dc194f3c49cf8a3fbbb557396898bbef694f20d6f30d4ea",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-y-isolated48-bold-s15-m14.xps",
+      "xps_sha256": "e07b6e9d5f15c9d8a97edc70ed864393ecab21c5a5b2abe83c7652d9d3c03c28",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-y-isolated48-bold-s15-m14.page-001.emf",
+          "sha256": "afec14d8b404ec8d619b26a4d34162380c4a58a8cdeb735ce68c4231f1c8b4b0",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

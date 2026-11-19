@@ -51692,6 +51692,53 @@
           "opened_filename": "word-windows-word-boundary-regular-s15-m15.docx"
         }
       ]
+    },
+    {
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T015237120Z-10c7cecc.zip",
+      "archive_sha256": "88564b666a1679fcf851df608c96df06c0002e6cfb0a94c4d15611d26ae48bd2",
+      "capture_id": "20261119T015237120Z-10c7cecc",
+      "capture_sha256": "15408a906c0401561e879fc1ca8a5879d30341fe89d09c4688f8c8f8eb707e7e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "documents": [
+        {
+          "name": "word-windows-aptos-y-lengths-regular-s15-m14",
+          "source_sha256": "570eb94d22abae5ab321dcf3ef7e443810f565d447ba91dd2eee5187f911dce9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-lengths-regular-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-y-lengths-regular-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-y-isolated48-regular-s15-m14",
+          "source_sha256": "fd76f02fcd03bdeaa7c95c32f949f81dfda576eeb77f2d5bf03ab9641374a933",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-regular-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-y-isolated48-regular-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-y-lengths-bold-s15-m14",
+          "source_sha256": "fe4482ecfd2708ae5fc3551905f2c0b061fc119af7d8fb1507a9694cd4ecf2da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-lengths-bold-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-y-lengths-bold-s15-m14.docx"
+        },
+        {
+          "name": "word-windows-aptos-y-isolated48-bold-s15-m14",
+          "source_sha256": "99e5318c29c088142a9195d37dad6c72a1c9265e1da7b2a58a5456a64b4a4100",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/inputs/word-windows-aptos-y-isolated48-bold-s15-m14.docx"
+          ],
+          "opened_filename": "word-windows-aptos-y-isolated48-bold-s15-m14.docx"
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -51809,6 +51856,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T210016694Z-b59e679c/font-facts.json",
       "sha256": "25361876948cd57b8fb41eddb4cebc83eac6726d0b6ea34ed02a3a39687c55c9"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T015237120Z-10c7cecc/word-output-font-facts.json",
+      "sha256": "297f547b812927ae882ffef5979e90d9915a9df430c3e211eecee4cf731cd76a"
     }
   ]
 }
