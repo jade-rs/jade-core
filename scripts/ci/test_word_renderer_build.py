@@ -72,6 +72,45 @@ class RendererBuildProvenance(unittest.TestCase):
                 self.record(expected_head=head)
             self.assertFalse(self.output.exists())
 
+    def synthetic_merge(self):
+        self.git("switch", "--quiet", "-c", "pr-head")
+        (self.root / "Cargo.lock").write_bytes(b"PR dependency inputs\n")
+        self.git("add", "Cargo.lock")
+        self.git("-c", "user.name=CI test", "-c", "user.email=ci@example.invalid",
+                 "commit", "--quiet", "-m", "PR change")
+        expected_head = self.git("rev-parse", "HEAD")
+        self.git("switch", "--quiet", "--detach", self.head)
+        (self.root / "base.txt").write_bytes(b"main branch change\n")
+        self.git("add", "base.txt")
+        self.git("-c", "user.name=CI test", "-c", "user.email=ci@example.invalid",
+                 "commit", "--quiet", "-m", "main change")
+        self.git("-c", "user.name=CI test", "-c", "user.email=ci@example.invalid",
+                 "merge", "--quiet", "--no-ff", "pr-head", "-m", "synthetic PR merge")
+        return expected_head
+
+    def shallow_checkout(self, depth):
+        checkout = self.root / ("checkout-depth-" + str(depth))
+        self.git("-c", "advice.detachedHead=false", "clone", "--quiet", "--depth", str(depth),
+                 self.root.as_uri(), str(checkout))
+        executable = checkout / "target" / "probe.exe"
+        executable.parent.mkdir()
+        executable.write_bytes(self.exe.read_bytes())
+        return dict(root=checkout, executable=executable, output=checkout / "target" / "build.json")
+
+    def test_depth_two_binds_actual_merge_tree_and_pr_parent(self):
+        expected_head = self.synthetic_merge()
+        record = self.record(expected_head=expected_head, **self.shallow_checkout(2))
+        self.assertEqual(record["expected_head"], expected_head)
+        self.assertEqual(record["head_commit"], self.git("rev-parse", "HEAD"))
+        self.assertEqual(record["source_tree"], self.git("rev-parse", "HEAD^{tree}"))
+
+    def test_depth_one_cannot_claim_an_unavailable_pr_parent(self):
+        expected_head = self.synthetic_merge()
+        arguments = self.shallow_checkout(1)
+        with self.assertRaises(subprocess.CalledProcessError):
+            self.record(expected_head=expected_head, **arguments)
+        self.assertFalse(arguments["output"].exists())
+
     def test_paths_cannot_escape_checkout(self):
         for changes in ({"executable": self.root.parent / "outside.exe"},
                         {"output": self.root.parent / "outside.json"}):

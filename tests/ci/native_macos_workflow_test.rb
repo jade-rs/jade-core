@@ -211,6 +211,8 @@ class NativeMacosWorkflowTest < Minitest::Test
 
   def test_windows_renderer_artifact_is_bound_before_comparisons
     steps = @workflow.fetch("jobs").fetch("windows-word-baselines").fetch("steps")
+    checkout = steps.find { |step| step["name"] == "Checkout repository" }
+    assert_operator checkout.fetch("with").fetch("fetch-depth"), :>=, 2
     build = steps.find { |step| step["id"] == "windows-coordinate-renderer" }
     provenance = steps.find { |step| step["id"] == "windows-coordinate-renderer-provenance" }
     upload = steps.find { |step| step["name"] == "Upload verified Windows coordinate renderer" }
