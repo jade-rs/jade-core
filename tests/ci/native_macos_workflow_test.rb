@@ -120,6 +120,19 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute_nil producer
     assert_operator producer, :<, index
     assert steps.any? { |s| s.fetch("run", "").include?("-p test_windows_legacy_justification_probes.py") }
+    assert steps.any? { |s| s.fetch("run", "").include?("-p test_windows_xps_fonts.py") }
+  end
+
+  def test_versioned_render_artifacts_exclude_decoded_original_font_programs
+    step = @workflow.fetch("jobs").fetch("windows-word-baselines").fetch("steps").find do |item|
+      item["name"] == "Upload versioned Windows manual-break and legacy observations"
+    end
+    refute_nil step
+    assert_equal "always()", step.fetch("if")
+    %w[ttf otf ttc].each do |extension|
+      assert_includes step.fetch("with").fetch("path"), "!target/windows-font-coordinates/**/fonts/*.#{extension}"
+    end
+    assert_includes step.fetch("with").fetch("name"), "16.0.19127.20936"
   end
 
   def test_native_crates_are_checked_and_linted_on_macos

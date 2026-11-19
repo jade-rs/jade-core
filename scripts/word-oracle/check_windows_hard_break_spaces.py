@@ -15,9 +15,9 @@ from extract_windows_emf import extract
 import generate_windows_hard_break_space_probes as producer
 
 INDEX = Path('tests/word-oracle/windows/hard-break-space-observations.json')
-INDEX_SHA256 = '2b3e8486b3de57fbb1432c60912c96c2d12e12d3c4af9172ca28784ed0b2bbc9'
+INDEX_SHA256 = 'eed12b70997dc4f8964b6ed4ce18d318bee8c93625a283bc460ad2fba1c51d33'
 FONT_NAMES_SHA256 = '223a419c17f23c6ddc2980a32333efea12ed6f72115bf8ca24934a503c2e8e3a'
-XPS_NAMES_SHA256 = 'bdf364ceeb0a6a26ae9a0e37a318aac3ebe3f2431bc4980eaf3ae84c210e4056'
+XPS_NAMES_SHA256 = '223a419c17f23c6ddc2980a32333efea12ed6f72115bf8ca24934a503c2e8e3a'
 
 
 def locked_promotions(index):
@@ -27,7 +27,7 @@ def locked_promotions(index):
     names = []
     for field, promotion, count, digest in (
             ('font_gate_promotion', 'hard-break-font', 32, FONT_NAMES_SHA256),
-            ('xps_gate_promotion', 'hard-break-xps', 26, XPS_NAMES_SHA256)):
+            ('xps_gate_promotion', 'hard-break-xps', 32, XPS_NAMES_SHA256)):
         selected = sorted(r['name'] for r in rows if r[field] == promotion)
         require(len(selected) == count and hashlib.sha256(
             json.dumps(selected, separators=(',', ':')).encode()).hexdigest() == digest,
@@ -161,8 +161,8 @@ def check_rendered_fonts(directory, root=ROOT):
             require(actual['input_sha256'] == case['source']['sha256'], 'Wrong rendered manual-break input')
             planes[plane] = assert_model(models[name], actual, name + '/XPS/' + plane, True)
         results.append(dict(name=name, planes=planes))
-    require(len(results) == 26, 'Required manual-break XPS assertion removed')
-    print('Asserted 26 manual-break XPS sources on both native and live paths; '
+    require(len(results) == 32, 'Required manual-break XPS assertion removed')
+    print('Asserted 32 manual-break XPS sources on both native and live paths; '
           '32 font sources require all four Word coordinate planes and paragraph backgrounds')
     return results
 
@@ -175,4 +175,4 @@ if __name__ == '__main__':
         check_rendered_fonts(args.compare_rendered_fonts.resolve())
     else:
         print('Verified', len(verify()[0]), 'versioned original Word manual-break controls; '
-              '6 modern mixed-script XPS cases remain unpromoted')
+              'all 32 are required on both XPS paths')

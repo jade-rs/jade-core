@@ -97,7 +97,7 @@
         "compatibility_mode": 14,
         "line_ending": "manual",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -149,7 +149,7 @@
         "compatibility_mode": 14,
         "line_ending": "manual",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -201,7 +201,7 @@
         "compatibility_mode": 14,
         "line_ending": "manual",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -253,7 +253,7 @@
         "compatibility_mode": 14,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -305,7 +305,7 @@
         "compatibility_mode": 14,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -357,7 +357,7 @@
         "compatibility_mode": 14,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -409,7 +409,7 @@
         "compatibility_mode": 15,
         "line_ending": "manual",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -418,7 +418,7 @@
         "unchanged_parent_bytes": false
       },
       "font_gate_promotion": "hard-break-font",
-      "xps_gate_promotion": "pending",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -460,14 +460,14 @@
         "compatibility_mode": 15,
         "line_ending": "manual",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [],
         "unchanged_parent_bytes": true
       },
       "font_gate_promotion": "hard-break-font",
-      "xps_gate_promotion": "pending",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -509,7 +509,7 @@
         "compatibility_mode": 15,
         "line_ending": "manual",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -518,7 +518,7 @@
         "unchanged_parent_bytes": false
       },
       "font_gate_promotion": "hard-break-font",
-      "xps_gate_promotion": "pending",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -560,7 +560,7 @@
         "compatibility_mode": 15,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -611,7 +611,7 @@
         "compatibility_mode": 15,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -662,7 +662,7 @@
         "compatibility_mode": 15,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -713,7 +713,7 @@
         "compatibility_mode": 14,
         "line_ending": "manual",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -765,7 +765,7 @@
         "compatibility_mode": 14,
         "line_ending": "manual",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -817,7 +817,7 @@
         "compatibility_mode": 14,
         "line_ending": "manual",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -869,7 +869,7 @@
         "compatibility_mode": 14,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -921,7 +921,7 @@
         "compatibility_mode": 14,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -973,7 +973,7 @@
         "compatibility_mode": 14,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1025,7 +1025,7 @@
         "compatibility_mode": 15,
         "line_ending": "manual",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -1034,7 +1034,7 @@
         "unchanged_parent_bytes": false
       },
       "font_gate_promotion": "hard-break-font",
-      "xps_gate_promotion": "pending",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -1076,14 +1076,14 @@
         "compatibility_mode": 15,
         "line_ending": "manual",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [],
         "unchanged_parent_bytes": true
       },
       "font_gate_promotion": "hard-break-font",
-      "xps_gate_promotion": "pending",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -1125,7 +1125,7 @@
         "compatibility_mode": 15,
         "line_ending": "manual",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -1134,7 +1134,7 @@
         "unchanged_parent_bytes": false
       },
       "font_gate_promotion": "hard-break-font",
-      "xps_gate_promotion": "pending",
+      "xps_gate_promotion": "hard-break-xps",
       "glyph_count": 46
     },
     {
@@ -1176,7 +1176,7 @@
         "compatibility_mode": 15,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1227,7 +1227,7 @@
         "compatibility_mode": 15,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 1,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語 ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1278,7 +1278,7 @@
         "compatibility_mode": 15,
         "line_ending": "paragraph",
         "trailing_ascii_spaces": 3,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語   ",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [

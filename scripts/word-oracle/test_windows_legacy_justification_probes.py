@@ -33,14 +33,14 @@ class LegacyJustification(unittest.TestCase):
 
     def test_all_eighty_originals_reproduce_with_locked_promotions(self):
         cases,required,xps,models,_=self.verified
-        self.assertEqual((len(cases),len(required),len(xps),len(models)),(80,68,66,80))
+        self.assertEqual((len(cases),len(required),len(xps),len(models)),(80,80,80,80))
         self.assertEqual(sum(c['input_specification'].get('font_family') is None for c in cases),32)
         for case in cases:
             data,spec=self.generated[case['name']]
             self.assertEqual((ROOT/case['source']['file']).read_bytes(),data)
             self.assertEqual(case['input_specification'],spec)
-        self.assertEqual(sum(c.get('pending_font_reason')=='word-pdf-subset-missing-kerning' for c in cases),8)
-        self.assertEqual(sum(c.get('pending_font_reason')=='windows-modern-mixed-justification' for c in cases),4)
+        self.assertEqual(sum('font_program_source' in c for c in cases),12)
+        self.assertEqual(sum('pending_font_reason' in c for c in cases),0)
 
     def test_only_indentation_and_selected_font_text_properties_change(self):
         q=producer.q
@@ -66,24 +66,22 @@ class LegacyJustification(unittest.TestCase):
 
     def test_required_promotions_cannot_be_removed_or_swapped(self):
         for field,promotion in [('font_gate_promotion','legacy-justify-font'),('xps_gate_promotion','legacy-justify-xps')]:
-            for operation in ('remove','swap','unknown'):
+            for operation in ('remove','unknown'):
                 index=deepcopy(self.index)
                 required=next(c for c in index['fixtures'] if c[field]==promotion)
-                pending=next(c for c in index['fixtures'] if c[field]=='pending')
                 required[field]='pending' if operation!='unknown' else 'unknown'
-                if operation=='swap':pending[field]=promotion
                 with self.subTest(field=field,operation=operation),self.assertRaises(ValueError):check.locked_promotions(index)
 
-    def test_wrong_word_identity_source_or_pending_classification_is_rejected(self):
+    def test_wrong_word_identity_source_or_original_font_program_is_rejected(self):
         original=check.read_json
         for edit in (lambda i:i['word'].update(product_version='16.0.0.0'),
                      lambda i:i['word'].update(executable_sha256='0'*64),
                      lambda i:i['fixtures'][0]['source'].update(sha256='0'*64),
-                     lambda i:next(c for c in i['fixtures'] if c.get('pending_font_reason')=='word-pdf-subset-missing-kerning').update(pending_font_reason='windows-modern-mixed-justification')):
+                     lambda i:next(c for c in i['fixtures'] if 'font_program_source' in c)['font_program_source'].update(sha256='0'*64)):
             index=deepcopy(self.index);edit(index)
             with patch.object(check,'read_json',side_effect=lambda p:index if p==ROOT/check.INDEX else original(p)),self.assertRaises(ValueError):check.verify()
 
-    def test_pending_renderer_reaches_all_twelve_sources_and_both_paths(self):
+    def test_no_sources_escape_the_required_font_renderer(self):
         cases,required,_,_,documents=self.verified
         calls=[]
         def run(args,**options):
@@ -99,7 +97,7 @@ class LegacyJustification(unittest.TestCase):
             check.render_pending(Path('renderer'),Path(temporary),ROOT,cases,required,documents)
         expected={(c['name'],plane) for c in cases if c['name'] not in required for plane in ('native','visible')}
         self.assertEqual(set(calls),expected)
-        self.assertEqual((len(calls),registered.call_count),(24,24))
+        self.assertEqual((len(calls),registered.call_count),(0,0))
 
     def pipeline(self,mutation=None):
         cases,_,_,expected,documents=self.verified
@@ -121,8 +119,8 @@ class LegacyJustification(unittest.TestCase):
     def test_all_eighty_reach_text_and_background_checks_and_required_xps_paths(self):
         rows=self.pipeline()
         self.assertEqual(len(rows),80)
-        self.assertEqual(sum(r['required_font'] for r in rows),68)
-        self.assertEqual(sum(r['required_xps'] for r in rows),66)
+        self.assertEqual(sum(r['required_font'] for r in rows),80)
+        self.assertEqual(sum(r['required_xps'] for r in rows),80)
         self.assertTrue(all(set(r['planes'])=={'native','visible'} for r in rows if r['required_xps']))
 
     def test_each_required_xps_case_rejects_both_axis_displacements_on_both_paths(self):
@@ -132,8 +130,8 @@ class LegacyJustification(unittest.TestCase):
                     def mutation(models,physical):models[(name,plane)]['glyphs'][0][axis]+=.5
                     with self.subTest(name=name,plane=plane,axis=axis),self.assertRaises(ValueError):self.pipeline(mutation)
 
-    def test_each_pending_case_rejects_missing_glyphs_wrong_input_pages_and_nonfinite_axes(self):
-        pending=[c['name'] for c in self.verified[0] if c['name'] not in self.verified[1]]
+    def test_each_case_rejects_missing_glyphs_wrong_input_pages_and_nonfinite_axes(self):
+        pending=[c['name'] for c in self.verified[0]]
         for name in pending:
             for plane in ('native','visible'):
                 for kind in ('missing','input','page','x','y'):

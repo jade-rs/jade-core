@@ -26521,6 +26521,294 @@
       "glyph_count": 46,
       "public_test_password": null,
       "solid_paragraph_background": true
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m14-paragraph-w3000",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m14-paragraph-w3000.docx",
+        "sha256": "e19753fe078e7cd46490b3f1897b628f0481b6d51f9eaf7f531c01046945453a"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w3000.xps",
+        "sha256": "919383d568294eed275dd94302e63aeff6c2ca057c8f6119d5c95c805d13904c"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m14-paragraph-w3400",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m14-paragraph-w3400.docx",
+        "sha256": "c603a653cb33372ee3c2a2cce8c9cd28199367c4671c31de8d29d56c6ebcbeb7"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w3400.xps",
+        "sha256": "5b697ffb1a8ae23985312cf33ce88b153b15ad589bf482e5c98bbf93ad71127a"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m14-paragraph-w4000",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m14-paragraph-w4000.docx",
+        "sha256": "c7d0106e372ee6a0e24445eac0a8d95fa8b475bfb61d414885079e3d7d3ecc33"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w4000.xps",
+        "sha256": "c3d44883dc100de3adb58ba3049a3f10fb2fd2336dd02400d41137cff9055348"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m14-paragraph-w8504",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m14-paragraph-w8504.docx",
+        "sha256": "0ffccb63e745cbfb357cf241f9f6cb06accb31b2445f95309e7ccac95dd159b1"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w8504.xps",
+        "sha256": "e2d85ef429dbd42b69bda841db0d50107d79c578e9e2ca99fc9360ddfbbfd662"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-manual-w3000",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-manual-w3000.docx",
+        "sha256": "57440e142dd95dd683f58f250bf0c2f878ceb0f6cf31fcb3e265972e55ed7df3"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w3000.xps",
+        "sha256": "f198aa50de6b03ea74a50a8ec7a7f54363815d8c0f1efcd2279121a403ca6d1b"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-manual-w3400",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-manual-w3400.docx",
+        "sha256": "b87257de93063168ccaede035cd62a2ec1293cc1c89a6f03b9b2440c1e2cf646"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w3400.xps",
+        "sha256": "00b89c1b123783c3e760a29107025c3ed8353b5afb5fcbfe99e25a3b16460205"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-manual-w4000",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-manual-w4000.docx",
+        "sha256": "bdc2815fb0f423c281f53940a36f8ff23cc31d905c01e2a07f49ea961857139a"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w4000.xps",
+        "sha256": "18ba8ea47ed5ad37708439b871a5d2102af5ae4792669ae7a1fa50aedd91329a"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-manual-w8504",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-manual-w8504.docx",
+        "sha256": "918f871e64abc56f2794199cacdf24a776609154e4f0b6ef94970517ef45be7b"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 14,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w8504.xps",
+        "sha256": "74c0fe9e8da89230406f003b65b0aabf17e91cd040287b6545b2224958f6e55b"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-paragraph-w3000",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-paragraph-w3000.docx",
+        "sha256": "0e9e31305cd37a12c8aff82e2e0f3f619f78cae7b5fcdda7d93c7d707c010044"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w3000.xps",
+        "sha256": "5f05fe5bd35c3afbf401e2b5170dc1ff4dcc6fc6b96ee80d7bc9182a4bd512ce"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-paragraph-w3400",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-paragraph-w3400.docx",
+        "sha256": "d0fa129574d5bfcee074bbfdcc6f69ffc40f4b3e01ee2ae43f61c33b30032bab"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w3400.xps",
+        "sha256": "c30c076fa6480e635d2cbd4a1994e39790fb9023bab4124e4c2cd7004535b29f"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-paragraph-w4000",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-paragraph-w4000.docx",
+        "sha256": "47c9f7f6da20023f5230800638b53ad8567e0b0d868f7b0c5104f849c0471070"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w4000.xps",
+        "sha256": "3816b7b72831b1d18eeee83edda666a12a47dae6616fa51c0b7f32e990cac18b"
+      }
+    },
+    {
+      "name": "word-windows-legacy-font-times-s12-m15-paragraph-w8504",
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/capture.json",
+        "sha256": "aaf6318cd02bd9dc230840a9eceeee58c7c06c79a9a66cb53afcaf6e798d0166"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-emf-reference.json",
+        "sha256": "9fd5ef8abc6e14626c1758959023c4b44bd62af05f9c3998d09520d70918f17b"
+      },
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/inputs/word-windows-legacy-font-times-s12-m15-paragraph-w8504.docx",
+        "sha256": "5ade1f8479e4e401698e971be309225d9c7853e27cbc6af7ff2da2ead06062ae"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "glyph_count": 13,
+      "public_test_password": null,
+      "solid_paragraph_background": true,
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w8504.xps",
+        "sha256": "ddc40ef144ea0986931f9e1e61f4b5edfbe260e7482679bb3bda9791c2b31ca4"
+      }
     }
   ]
 }

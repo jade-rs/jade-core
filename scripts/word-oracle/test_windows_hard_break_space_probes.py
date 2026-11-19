@@ -22,11 +22,11 @@ class HardBreakSpaces(unittest.TestCase):
         cls.verified = check.verify()
         cls.generated = {n: (data, spec) for n, data, spec in producer.generate()}
 
-    def test_all_originals_reproduce_with_separate_pending_cases(self):
+    def test_all_originals_reproduce_with_required_coordinates(self):
         cases, fonts, xps, models = self.verified
         self.assertEqual(len(cases), 32)
         self.assertEqual(len(fonts), 32)
-        self.assertEqual(len(xps), 26)
+        self.assertEqual(len(xps), 32)
         self.assertEqual(set(models), set(self.generated))
         self.assertEqual(sum(s['unchanged_parent_bytes'] for _, s in self.generated.values()), 2)
         for row in cases:
@@ -34,7 +34,7 @@ class HardBreakSpaces(unittest.TestCase):
             self.assertEqual((ROOT / row['source']['file']).read_bytes(), data)
             self.assertEqual(row['input_specification'], spec)
             expected_font = True
-            expected_xps = spec['character_set'] == 'ascii' or spec['line_ending'] == 'paragraph' or spec['compatibility_mode'] == 14
+            expected_xps = True
             self.assertEqual(row['name'] in fonts, expected_font)
             self.assertEqual(row['name'] in xps, expected_xps)
 
@@ -83,9 +83,7 @@ class HardBreakSpaces(unittest.TestCase):
                 with self.subTest(field=field, operation=operation), self.assertRaises(ValueError):
                     check.locked_promotions(index)
         index = deepcopy(self.index)
-        required = next(r for r in index['fixtures'] if r['xps_gate_promotion'] == 'hard-break-xps')
-        pending = next(r for r in index['fixtures'] if r['xps_gate_promotion'] == 'pending')
-        required['xps_gate_promotion'], pending['xps_gate_promotion'] = pending['xps_gate_promotion'], required['xps_gate_promotion']
+        index['fixtures'].append(deepcopy(index['fixtures'][0]))
         with self.assertRaises(ValueError):
             check.locked_promotions(index)
 
@@ -118,7 +116,7 @@ class HardBreakSpaces(unittest.TestCase):
             directory = Path(temporary)
             self.rendered(directory)
             results = check.check_rendered_fonts(directory)
-            self.assertEqual(len(results), 26)
+            self.assertEqual(len(results), 32)
             self.assertTrue(all(set(r['planes']) == {'native', 'visible'} for r in results))
 
     def test_each_case_rejects_x_y_drift_and_wrong_input_on_both_paths(self):
