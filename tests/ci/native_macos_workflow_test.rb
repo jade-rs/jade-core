@@ -24,6 +24,52 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute @job.key?("if"), "native-macos must not be gated by a label or condition"
   end
 
+  def test_windows_xps_assertions_run_after_all_required_native_outputs
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.fetch("continue-on-error", false)
+    steps = job.fetch("steps")
+    index = steps.index { |step| step["name"] == "Assert independent versioned Windows Word XPS print origins" }
+    refute_nil index
+    step = steps.fetch(index)
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_equal "python scripts/word-oracle/check_windows_xps.py --compare-rendered", step.fetch("run")
+    %w[check_windows_aptos_sizes.py check_windows_aptos_nominal.py check_windows_positive_kerning.py].each do |script|
+      producer = steps.index { |item| item.fetch("run", "").include?(script + " --native-executable") }
+      refute_nil producer, script
+      assert_operator producer, :<, index, script
+    end
+    assert steps.any? { |item| item.fetch("run", "").include?("-p test_windows_xps.py") }
+  end
+
+  def test_windows_color_span_assertions_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find { |s| s["name"] == "Assert versioned Windows Word color-span screen and print origins" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_equal "python scripts/word-oracle/check_windows_color_spans.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe", step.fetch("run")
+    assert job.fetch("steps").any? { |s| s.fetch("run", "").include?("-p test_windows_color_span_probes.py") }
+  end
+
+  def test_windows_word_boundary_assertions_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find { |s| s["name"] == "Assert versioned Windows Word word-boundary screen and print origins" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_equal "python scripts/word-oracle/check_windows_word_boundaries.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe", step.fetch("run")
+    assert job.fetch("steps").any? { |s| s.fetch("run", "").include?("-p test_windows_word_boundary_probes.py") }
+  end
+
   def test_native_crates_are_checked_and_linted_on_macos
     assert_equal "macos-latest", @job.fetch("runs-on")
 
@@ -163,6 +209,30 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute_includes editing.fetch("run"), "--ignored"
   end
 
+  def test_windows_renderer_artifact_is_bound_before_comparisons
+    steps = @workflow.fetch("jobs").fetch("windows-word-baselines").fetch("steps")
+    checkout = steps.find { |step| step["name"] == "Checkout repository" }
+    assert_operator checkout.fetch("with").fetch("fetch-depth"), :>=, 2
+    build = steps.find { |step| step["id"] == "windows-coordinate-renderer" }
+    provenance = steps.find { |step| step["id"] == "windows-coordinate-renderer-provenance" }
+    upload = steps.find { |step| step["name"] == "Upload verified Windows coordinate renderer" }
+    [build, provenance, upload].each { |step| refute_nil step }
+    refute provenance.key?("if")
+    refute provenance.fetch("continue-on-error", false)
+    assert_includes provenance.fetch("run"), "-p test_word_renderer_build.py"
+    assert_includes provenance.fetch("run"), "python scripts/ci/record_word_renderer_build.py"
+    assert_equal "${{ github.event.pull_request.head.sha || github.sha }}",
+                 provenance.fetch("env").fetch("WORD_RENDERER_EXPECTED_HEAD")
+    assert_equal "${{ always() && steps.windows-coordinate-renderer-provenance.outcome == 'success' }}", upload.fetch("if")
+    assert_equal "error", upload.fetch("with").fetch("if-no-files-found")
+    assert_includes upload.fetch("with").fetch("path"), "word_coordinates.exe"
+    assert_includes upload.fetch("with").fetch("path"), "word-renderer-build.json"
+    assert_operator steps.index(build), :<, steps.index(provenance)
+    assert_operator steps.index(provenance), :<, steps.index(upload)
+    assert_operator steps.index(upload), :<,
+                    steps.index { |step| step["name"] == "Assert native shaping platform boundaries" }
+  end
+
   def test_windows_native_assertions_stop_at_the_first_failed_command
     %w[windows-word-baselines windows-native-editing].each do |name|
       job = @workflow.fetch("jobs").fetch(name)
@@ -234,6 +304,51 @@ class NativeMacosWorkflowTest < Minitest::Test
     refute gate.fetch("continue-on-error", false)
     assert_includes gate.fetch("run"), "test_windows_aptos_size_gate.py"
     assert_includes gate.fetch("run"), "check_windows_aptos_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe"
+  end
+
+  def test_windows_positive_kerning_coordinate_assertion_is_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    source = job.fetch("steps").find { |step| step["name"] == "Verify unpromoted original Windows Word observations" }
+    refute_nil source
+    assert_includes source.fetch("run"), "test_windows_positive_kerning_probes.py"
+    gate = job.fetch("steps").find { |step| step["name"] == "Assert Windows positive kerning screen and validated PDF origins" }
+    refute_nil gate
+    refute gate.key?("if")
+    refute gate.fetch("continue-on-error", false)
+    assert_includes gate.fetch("run"), "check_windows_positive_kerning.py --native-executable"
+  end
+
+  def test_windows_nominal_coordinate_assertion_is_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    gate = job.fetch("steps").find { |step| step["name"] == "Assert Windows Aptos nominal screen origins and validated PDF origins" }
+    refute_nil gate
+    refute gate.key?("if")
+    refute gate.fetch("continue-on-error", false)
+    assert_includes gate.fetch("run"), "check_windows_aptos_nominal.py --native-executable"
+  end
+
+  def test_top_bottom_control_sources_and_versioned_originals_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    source = job.fetch("steps").find { |item| item["name"] == "Verify unpromoted original Windows Word observations" }
+    refute_nil source
+    refute source.key?("if")
+    refute source.fetch("continue-on-error", false)
+    assert_includes source.fetch("run"), "test_windows_top_bottom_probes.py"
+    assert_includes source.fetch("run"), "test_windows_pdf_segment_probes.py"
+    assert_includes source.fetch("run"), "test_windows_aptos_nominal_probes.py"
+    assert_includes source.fetch("run"), "test_windows_printer_toggle_probes.py"
+    refute_includes source.fetch("run"), "|| true"
+  end
+
+  def test_windows_arial_and_top_bottom_screen_print_coordinates_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    step = job.fetch("steps").find { |item| item["name"] == "Assert Windows Arial and top-bottom geometry against original Word screen and PDF" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_includes step.fetch("run"), "test_windows_top_bottom_clearance.py"
+    assert_includes step.fetch("run"), "check_windows_top_bottom_clearance.py --native-executable"
+    refute_includes step.fetch("run"), "|| true"
   end
 
   def test_workspace_and_release_audit_have_bounded_individual_time_budgets

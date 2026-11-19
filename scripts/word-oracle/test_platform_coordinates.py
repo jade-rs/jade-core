@@ -14,7 +14,7 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 98)
+        self.assertGreaterEqual(len(cases), 99)
         self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 78)
 
     def test_existing_four_plane_assertions_cannot_be_changed_to_independent_outputs(self):

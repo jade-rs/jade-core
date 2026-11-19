@@ -118,6 +118,7 @@ REQUIRED_CAPTURES = {
     'floating-simple-position-mac': '20261114T004143028Z-b4cb9887',
     'floating-through-concave-mac': '20261114T004143028Z-b4cb9887',
     'floating-z-order-mac': '20261114T004143028Z-b4cb9887',
+    'floating-top-bottom-offset-mac': '20261114T004143028Z-b4cb9887',
 }
 
 # These original inputs have distinct screen and print origins in Windows
@@ -127,6 +128,7 @@ INDEPENDENT_OUTPUT_CASES = frozenset({
     'floating-simple-position-mac',
     'floating-through-concave-mac',
     'floating-z-order-mac',
+    'floating-top-bottom-offset-mac',
 })
 
 

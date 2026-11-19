@@ -447,10 +447,11 @@ impl ShapingMeasurer {
         if crate::line_metrics::word_layout_platform()
             == crate::line_metrics::WordLayoutPlatform::Windows
             && (face.family.eq_ignore_ascii_case("Aptos")
-                || face.family.eq_ignore_ascii_case("Aptos Display"))
+                || face.family.eq_ignore_ascii_case("Aptos Display")
+                || face.family.eq_ignore_ascii_case("Arial"))
         {
             // The original Windows Word compatibility/style/number-spacing
-            // controls use the requested size for these actual faces. The
+            // controls and long Arial text use the requested size for these actual faces. The
             // 18.66px truncation at 14pt accumulates false narrowing. Base
             // this on the selected face, not a missing requested family.
             points_to_px(size_pt)
@@ -878,7 +879,7 @@ mod tests {
     }
 
     #[test]
-    fn windows_aptos_advances_use_requested_size_only_for_the_selected_face() {
+    fn windows_captured_faces_use_requested_size_only_for_the_selected_face() {
         use crate::line_metrics::{
             set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
         };
@@ -888,7 +889,7 @@ mod tests {
         let normal12 = measurer.measure_text("AV", "12pt 'Noto Sans JP'").unwrap();
         let fallback14 = measurer.measure_text("AV", "14pt Aptos").unwrap();
         assert!((fallback14 / normal12 - 18.66 / 16.0).abs() < 1e-12);
-        for family in ["Aptos", "Aptos Display"] {
+        for family in ["Aptos", "Aptos Display", "Arial"] {
             measurer
                 .register_font_path(
                     family,
@@ -901,10 +902,14 @@ mod tests {
                 .measure_text("AV", &format!("14pt '{family}'"))
                 .unwrap();
             assert!((exact14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
+            let exact11 = measurer
+                .measure_text("AV", &format!("11pt '{family}'"))
+                .unwrap();
+            assert!((exact11 / normal12 - 11.0 / 12.0).abs() < 1e-12);
         }
         let normal14 = measurer.measure_text("AV", "14pt 'Noto Sans JP'").unwrap();
         assert!((normal14 - fallback14).abs() < 1e-12);
-        for family in ["aptos", "APTOS DISPLAY"] {
+        for family in ["aptos", "APTOS DISPLAY", "ARIAL"] {
             let mut registered =
                 ShapingMeasurer::with_options(12.0, ShapingOptions::CHROMIUM_PARITY);
             registered
@@ -921,7 +926,7 @@ mod tests {
             assert!((exact14 / normal12 - 14.0 / 12.0).abs() < 1e-12);
         }
         set_word_layout_platform(WordLayoutPlatform::Mac);
-        for family in ["Aptos", "Aptos Display", "Noto Sans JP"] {
+        for family in ["Aptos", "Aptos Display", "Arial", "Noto Sans JP"] {
             let mac14 = measurer
                 .measure_text("AV", &format!("14pt '{family}'"))
                 .unwrap();

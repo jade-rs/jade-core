@@ -37,6 +37,42 @@ The original DOCX and reference hashes are verified, and the existing Mac
 tolerances are preserved. Windows captures retain Word version/build and
 capture identity rather than overwriting the Mac goldens.
 
+## Independent Windows Word XPS output
+
+`windows/xps-print-observations.json` retains 296 original XPS exports from
+Windows Word **16.0.19127.20936**, including the Word executable hash, capture
+identity, original DOCX bytes, four Office font program hashes and versions, and the
+unchanged Word for Mac **16.114.3** parent reference. The original XPS and
+capture metadata remain inside their versioned archive; existing Word PDF and
+EMF references remain unchanged.
+
+The Windows baseline job compares the previously rendered live and
+export-snapshot coordinates with each XPS original. **283 cases** must match
+within **0.375 pt on each axis**. The other **13 cases** remain recorded
+coordinate differences; text, character order, glyph counts and page counts
+are still required for all 296. The required case list is locked, so replacing
+a required case with a pending case fails validation. XPS and PDF are
+independent output contexts: passing the XPS comparison does not mark a
+pending PDF comparison as correct. The earlier PDF and EMF assertions still
+run. A workflow contract requires the XPS gate to run unconditionally after
+the three native fixture producers.
+
+## Windows foreground-color span controls
+
+`windows/color-span-observations.json` retains 52 original Word
+**16.0.19127.20936** DOCX/PDF/EMF/XPS captures. Four unchanged parent controls
+and six run-splitting intervals vary only foreground color and run boundaries;
+text, font settings, paragraphs and other DOCX package parts reproduce exactly.
+Word's EMF origins are identical across these controls, while its PDF origins
+can change with the span boundaries. Each original output is kept separately.
+
+The Windows job requires **52 screen comparisons**, **13 physical PDF
+comparisons**, and **13 XPS comparisons** on both live and export snapshots.
+The other 39 PDF/XPS coordinate differences remain pending. Original XPS files
+and hashes are also verified by the complete capture-integrity gate. Swapping
+required and pending cases fails the source tests. Mac sources and reference
+coordinates remain unchanged.
+
 ## Native Mac regression coverage
 
 `CI / native-macos` runs `word_mac_coordinates` for every pull request, without

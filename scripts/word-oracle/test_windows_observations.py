@@ -11,6 +11,19 @@ import check_windows_observations as check
 
 
 class WindowsObservationsTests(unittest.TestCase):
+    def test_optional_xps_requires_both_original_file_and_hash(self):
+        document = dict(pdf='source.pdf', pdf_sha256='1' * 64,
+                        metafiles=[dict(file='source.page-001.emf', sha256='2' * 64)])
+        original = check.original_evidence_files(document)
+        self.assertEqual(original, [('source.pdf', '1' * 64), ('source.page-001.emf', '2' * 64)])
+        for extra in (dict(xps='source.xps'), dict(xps_sha256='3' * 64),
+                      dict(xps='source.pdf', xps_sha256='3' * 64),
+                      dict(xps='source.xps', xps_sha256='invalid')):
+            with self.subTest(extra=extra), self.assertRaisesRegex(ValueError, 'Incomplete original Word XPS'):
+                check.original_evidence_files(dict(document, **extra))
+        self.assertEqual(check.original_evidence_files(dict(document, xps='source.xps', xps_sha256='3' * 64)),
+                         original + [('source.xps', '3' * 64)])
+
     def test_rejected_word_attempt_cannot_be_relabelled_as_success(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

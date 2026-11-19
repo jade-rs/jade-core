@@ -409,3 +409,22 @@ Registered coverage is now 134 distinct documents / 440 pages / 86,124 complete
 origins, plus two historical duplicate registrations. Required Arial coverage
 is 117 documents / 307 pages / at least 68,025 origins. Raw EMFs reconstruct
 79,893 origins, and the required vector gate covers 105 documents / 278 pages.
+
+
+### Word-boundary controls
+
+`word-boundary-observations.json` retains 16 original Word 16.0.19127.20936 captures
+(384 paragraphs), derived reproducibly from the Mac Aptos parent through captured
+size controls. The matrix covers four styles, 14/15 pt and compatibility 14/15.
+Each input compares five isolated repeated glyphs and seven space/word/hyphen
+patterns with kerning off and on. Parent paragraph/run formatting and other ZIP
+parts are retained. Original DOCX, PDF, XPS and page EMF bytes are archived with
+Word executable/version, printer and original font version/hash facts.
+
+CI requires all 16 EMF and dual-plane XPS comparisons, plus the four validated
+physical PDF comparisons, at the original 0.375 pt tolerance on each axis. The
+remaining 12 PDF coordinate differences remain pending; all outputs still have
+strict text, page and order assertions. In these originals Word's PDF and XPS
+origins themselves differ beyond tolerance, so the output contexts are separate.
+Repeated `y` with kerning on reproduces PDF advance accumulation without spaces
+or hyphens; retain that evidence when investigating serializer rounding.

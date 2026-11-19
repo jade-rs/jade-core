@@ -8,7 +8,7 @@ import zipfile
 from check_platform_coordinates import ROOT, checked_file, read_json, require, repo_file
 
 INDEX = Path('tests/word-oracle/windows/observations/index.json')
-INDEX_SHA256 = '3dc0d7fd8f24897f1123c79fb74a2a619f246019fb1acee61ebd6178b5dc9ddd'
+INDEX_SHA256 = 'bb01ba5ff04213a50d123857453caede48f3e7dfdce2bfae2d72d373ca1c29d6'
 
 
 def verify_rejected_attempt(root, rejection, attempt):
@@ -61,6 +61,18 @@ def verify_mac_input_coverage(index, root=ROOT):
     return tuple(counts)
 
 
+def original_evidence_files(document):
+    files = [(document['pdf'], document['pdf_sha256'])]
+    files += [(page['file'], page['sha256']) for page in document['metafiles']]
+    if 'xps' in document or 'xps_sha256' in document:
+        require(isinstance(document.get('xps'), str) and document['xps'].endswith('.xps')
+                and isinstance(document.get('xps_sha256'), str)
+                and re.fullmatch(r'[a-f0-9]{64}', document['xps_sha256']),
+                'Incomplete original Word XPS evidence')
+        files.append((document['xps'], document['xps_sha256']))
+    return files
+
+
 def verify(root=ROOT):
     require(hashlib.sha256((root / INDEX).read_bytes()).hexdigest() == INDEX_SHA256,
             'Original Word observation coverage changed')
@@ -105,11 +117,10 @@ def verify(root=ROOT):
                     require(repo_file(root, alias).read_bytes() == data, 'Repository source differs')
                 source_hashes.add(document['sha256'])
                 members.add(relative)
-                expected_files = [(document['pdf'], document['pdf_sha256'])]
                 pages = document['metafiles']
                 require([p['page'] for p in pages] == list(range(1, document['pages'] + 1)),
                         'Original page coverage changed')
-                expected_files += [(p['file'], p['sha256']) for p in pages]
+                expected_files = original_evidence_files(document)
                 for filename, expected_hash in expected_files:
                     require('/' not in filename and '\\' not in filename, 'Invalid raw evidence path')
                     require(hashlib.sha256(bundle.read(filename)).hexdigest() == expected_hash,
@@ -118,7 +129,7 @@ def verify(root=ROOT):
                 count += 1
             require(len(bundle.namelist()) == len(members) and set(bundle.namelist()) == members,
                     'Unexpected/duplicate/missing archive files')
-    require(len(identities) == 1775 and count == 2712, 'Original observation coverage removed')
+    require(len(identities) == 1782 and count == 3040, 'Original observation coverage removed')
     for rejection in index['rejected_sources']:
         checked_file(root, dict(file=rejection['source'], sha256=rejection['source_sha256']))
         require(bool(rejection['word_product_version']) and bool(rejection['reason']),

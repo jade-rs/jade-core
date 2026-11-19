@@ -2461,6 +2461,32 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "floating-top-bottom-offset-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/source.docx",
+        "sha256": "326f3eb97211babfc79d60f8902bfc1ca75f4fef6fdd95f53001341a3c18b2ca"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-top-bottom-offset-mac/manifest.json",
+        "sha256": "44a338789155b19cdba9562029724c009df41a807faee4475603fa0259f7d4cc"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004143028Z-b4cb9887.zip",
+            "sha256": "d1cc6d692fca913877eca1615ee8dfedb9c2f51d83b3268a4c0e6f10c19e9913"
+          },
+          "capture_sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6",
+          "capture_id": "20261114T004143028Z-b4cb9887",
+          "fixture": "ww14-floating-top-bottom-offset-326f3eb9",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
     }
   ]
 }

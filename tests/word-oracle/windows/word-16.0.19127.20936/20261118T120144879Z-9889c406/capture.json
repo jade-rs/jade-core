@@ -1,0 +1,666 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261118T120144879Z-9889c406",
+  "captured_at_utc": "2026-11-18T12:01:44.8909571Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b0-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o26p25-b0-m14.docx",
+      "sha256": "74097542c13140604891e03ad8b7c8cb64ef82bd1b95a43d1822cbb56b260ee0",
+      "pdf": "word-windows-top-bottom-s11-o26p25-b0-m14.pdf",
+      "pdf_sha256": "4a83f6e204dd22c2c87c629d3a10aa3354f366cea697a946b315b5d714419c26",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o26p25-b0-m14.page-001.emf",
+          "sha256": "ef45720fb9ae49934d0ef7d071a8759da51e88348e57d6b3940e39686573bdd6",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b0-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o26p25-b0-m15.docx",
+      "sha256": "4c6fe523a323e282dbf020d52d1c099be66058bc5d209fc565dc723e4d2d016f",
+      "pdf": "word-windows-top-bottom-s11-o26p25-b0-m15.pdf",
+      "pdf_sha256": "cbf0157642b2549e4a3f83a79dd880877923b26fddd3eb15ee5fe41fe559892f",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o26p25-b0-m15.page-001.emf",
+          "sha256": "9658fb18fd9309654dd56e735e263ae9ea0301a4eab4938996ab2e0eb40fc39f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b7p5-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o26p25-b7p5-m14.docx",
+      "sha256": "837e098fba4b886b375a826cd77b1fbd28daea88a7dc55f3595873fbd41e4cc0",
+      "pdf": "word-windows-top-bottom-s11-o26p25-b7p5-m14.pdf",
+      "pdf_sha256": "26a504cecc3be04113003bf6a51564bf9039d4a6a06282c6a29c78ecde011eae",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o26p25-b7p5-m14.page-001.emf",
+          "sha256": "1d673a4619af7a38f1866f494a71ee686372c31a93029575dcccbf1f01a1ec2b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o26p25-b7p5-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o26p25-b7p5-m15.docx",
+      "sha256": "f59901e7fa10b538d7b044f2623f0190060e2d52772036f607da5ec84b7e7905",
+      "pdf": "word-windows-top-bottom-s11-o26p25-b7p5-m15.pdf",
+      "pdf_sha256": "055f5060d99ab3f965e99dc971ee55e5a336d44c93063c87d240ffa6c8f59784",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o26p25-b7p5-m15.page-001.emf",
+          "sha256": "6a9983cfb8a78359e61fd3446dcaf530943499f7585f3cc2e9c2b4567756d688",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b0-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o52p5-b0-m14.docx",
+      "sha256": "bba5f410182ca9f62babb8eff38a8c3e2b6aaea54f4e56e0e07c75ecbaecacf5",
+      "pdf": "word-windows-top-bottom-s11-o52p5-b0-m14.pdf",
+      "pdf_sha256": "483c54e550b5a844ff38b7977eb05d772f09f09a0c58e87ea7e986e47e56d081",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o52p5-b0-m14.page-001.emf",
+          "sha256": "abd079c6e0b484a96e8e7d0b33834823ecc0a131222a4122c0e9b616bb86f1f8",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b0-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o52p5-b0-m15.docx",
+      "sha256": "92833b826daee6d823fa9c0a2a0ff93f3c39f31af93eee088fccc06156b45c8a",
+      "pdf": "word-windows-top-bottom-s11-o52p5-b0-m15.pdf",
+      "pdf_sha256": "a13c961f483cdca3536066fc583c1e5dacf3f093ee0098e152dac14208ce4002",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o52p5-b0-m15.page-001.emf",
+          "sha256": "550022d5852ce20487c9134482c80636cdf0e20a4676f9af3fd06620fa5d69e9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b7p5-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o52p5-b7p5-m14.docx",
+      "sha256": "fdf45279f4e78d162aa92c2bab9a46395c7ac143515f970963c2fe92f43a80c2",
+      "pdf": "word-windows-top-bottom-s11-o52p5-b7p5-m14.pdf",
+      "pdf_sha256": "789a547ad100ad04e6b9fdfce9c70262e764842afca7fda1acfb1b34ea89c24b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o52p5-b7p5-m14.page-001.emf",
+          "sha256": "525f49bfc983e817a3d6dae0f802302050ea5522f1160ff574b369c30614057a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o52p5-b7p5-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o52p5-b7p5-m15.docx",
+      "sha256": "c1cf9b6c399a20ed8a7fc601068c74bdd182da84864683ba0cd71c8de9ae897d",
+      "pdf": "word-windows-top-bottom-s11-o52p5-b7p5-m15.pdf",
+      "pdf_sha256": "7e2c0b5386a3162ea5786a8cf7d42e99021d99df6b030e84660a75ee7c76faf5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o52p5-b7p5-m15.page-001.emf",
+          "sha256": "9789404f1a25a6f898d484f2cf2ba66f83d78057ec25e1271fc322c9b061b775",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b0-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o78p75-b0-m14.docx",
+      "sha256": "c7e47430f32e05b8567099b56db2170c1c8a13bc5ccdb110e6bed2d97b615eab",
+      "pdf": "word-windows-top-bottom-s11-o78p75-b0-m14.pdf",
+      "pdf_sha256": "59b5de4611826e4ca848b75c90f5be4fd439ca0a6df676945d43526119cbf253",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o78p75-b0-m14.page-001.emf",
+          "sha256": "3731a7e47167e11b8c8aace51e0e53881d45221e90eae0b5135fd06ec2173fff",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b0-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o78p75-b0-m15.docx",
+      "sha256": "cf0156e2a0eb70bfc25ed7105efece4d683df38f38a3ec3c4e7d506a6f010188",
+      "pdf": "word-windows-top-bottom-s11-o78p75-b0-m15.pdf",
+      "pdf_sha256": "1eabe59a2363c9644dde93ce35c14a236f287c7d14a792bfd494b0fe9d4a0157",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o78p75-b0-m15.page-001.emf",
+          "sha256": "77c03408d9f21f567f667503076433383a3abb7bc8c3f187f71e126423adda6a",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b7p5-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o78p75-b7p5-m14.docx",
+      "sha256": "66a224359973cb498d48ec1a0ac9675ad76557e8dbc29c59a23ad405077eb04d",
+      "pdf": "word-windows-top-bottom-s11-o78p75-b7p5-m14.pdf",
+      "pdf_sha256": "876422d46660ee9d8472343fd02f590ed095a50a3f327e9790ea21e1cd182c9e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o78p75-b7p5-m14.page-001.emf",
+          "sha256": "b2fbb3db1ab26628d543f0e5252f604a8e1ad9b4bb466f5a1c481446d8198c3b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s11-o78p75-b7p5-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s11-o78p75-b7p5-m15.docx",
+      "sha256": "19c78e4aa523774246779086bdb00eacebedc669ba11b9837529aea67f2635f2",
+      "pdf": "word-windows-top-bottom-s11-o78p75-b7p5-m15.pdf",
+      "pdf_sha256": "514747b0e86dcccf7347a1a3c0c3f146253cf8f9cf9d35d315962ebd1d484162",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s11-o78p75-b7p5-m15.page-001.emf",
+          "sha256": "57f9d50ab00c1ef33901e8e12f11c88b8c133d89b8f571b4975791f882394db9",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b0-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o26p25-b0-m14.docx",
+      "sha256": "9c6c5b9d6d9826635406eb6c0b37972049093bc0fc8bf91bde5c98ff8e27a5ee",
+      "pdf": "word-windows-top-bottom-s14-o26p25-b0-m14.pdf",
+      "pdf_sha256": "ca66227e537283081860160efe98c2e9a29c3cfb6464237503a4069121e2c191",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o26p25-b0-m14.page-001.emf",
+          "sha256": "bbbf9218369360406a3da59e3e46fb423f947c4123a69ca032b91eed31b26ad5",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b0-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o26p25-b0-m15.docx",
+      "sha256": "7586cc9fdd9d242905d43b695bb9b0a44bc61f553192c218c102069fcd381b6a",
+      "pdf": "word-windows-top-bottom-s14-o26p25-b0-m15.pdf",
+      "pdf_sha256": "49b30b531f74ae1007a1ef90b1c68dac13860f74afa1f1ed34e405145173a44b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o26p25-b0-m15.page-001.emf",
+          "sha256": "bf04c8ed4bbc33d1fe2b2cf48beb2e5d0b5c83c4a8fb940f3dfed7a58b08636e",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b7p5-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o26p25-b7p5-m14.docx",
+      "sha256": "1954568da5fd0e24deafb2442f0b23e2277e9f2ad61057488324acc072cabe5b",
+      "pdf": "word-windows-top-bottom-s14-o26p25-b7p5-m14.pdf",
+      "pdf_sha256": "37a221461f70ae8df907c7445b671a8d683c96368301a558667554c479969b43",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o26p25-b7p5-m14.page-001.emf",
+          "sha256": "8624883af5f4e7af0e1df952a86c6f7e7c1bbeda33e3e999f0a897b8b552cc54",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o26p25-b7p5-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o26p25-b7p5-m15.docx",
+      "sha256": "b27c3d375d7a123a7b37c198dfb68fa9fe7e9873156b2b1bc55b9873022814a6",
+      "pdf": "word-windows-top-bottom-s14-o26p25-b7p5-m15.pdf",
+      "pdf_sha256": "3e238e48417459e5bb93fc6f552a4a6adb23f5d94346b7179e52eaf5c2d7da87",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o26p25-b7p5-m15.page-001.emf",
+          "sha256": "f26fd2ba2eac78f544878d7c7d1ebc341e03ca6c70893fcfe43d75c2e0a99e9d",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b0-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o52p5-b0-m14.docx",
+      "sha256": "5715598e38b214f498dc5f2149e28f48a23353174b486ac1657f61f48f47ce60",
+      "pdf": "word-windows-top-bottom-s14-o52p5-b0-m14.pdf",
+      "pdf_sha256": "6aa1b2f79f1aba5dfaeffdded6f2050377b53561324912d2a608f0873c7f930e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o52p5-b0-m14.page-001.emf",
+          "sha256": "042a8d58f319aab29a215612254e96a1498f1e28f8461c9d2b12cf497f52ad8f",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b0-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o52p5-b0-m15.docx",
+      "sha256": "bee14f609cad4a26e36ca7147d4ae1d57c8f2dffa6b45de9c05dde016da9100d",
+      "pdf": "word-windows-top-bottom-s14-o52p5-b0-m15.pdf",
+      "pdf_sha256": "c9d285cd71d58232b04ae0b5c6eefcf790ec48f7110112287517ef63356b5469",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o52p5-b0-m15.page-001.emf",
+          "sha256": "e76b4f0fa9fde5432c3a8687536240eb722172aec7442c5945a46ddcc49cb898",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b7p5-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o52p5-b7p5-m14.docx",
+      "sha256": "f0b989c605ded27ea494d7f1a46e8bb7487da6aaba093a35cedb99f310c621a8",
+      "pdf": "word-windows-top-bottom-s14-o52p5-b7p5-m14.pdf",
+      "pdf_sha256": "db6741f526f6b27b3989f0193411cc672b64d005f533ea0dbeb591e5733958b5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o52p5-b7p5-m14.page-001.emf",
+          "sha256": "5ab1475a0f2ccf668874cc43136cb057c728f1eed05e501c2480a3968c7f13c3",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o52p5-b7p5-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o52p5-b7p5-m15.docx",
+      "sha256": "ceed8ef97528c2edf8347087f1f96fb9502bc07581c50d0de4981b6e494d6135",
+      "pdf": "word-windows-top-bottom-s14-o52p5-b7p5-m15.pdf",
+      "pdf_sha256": "e33d458137f71b5a351fdf4767b941e2e56e6072660d02262fd6ab6a6ddaac4a",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o52p5-b7p5-m15.page-001.emf",
+          "sha256": "01d465b36ecf8e6579a27b4c49bc67ab8739cdd50600de661c262a12e2153603",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b0-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o78p75-b0-m14.docx",
+      "sha256": "b041d353f3884a405d816987fb814fa3004408eb5f0c58e4c68241cd76c4dd05",
+      "pdf": "word-windows-top-bottom-s14-o78p75-b0-m14.pdf",
+      "pdf_sha256": "3cb4bdbba0d017a5a96290cb19039f8f96bcb529f37b70108f90d37944577a3e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o78p75-b0-m14.page-001.emf",
+          "sha256": "e2eb8b6f48b8307d8d056ca45d16e8771b21b631f41a303a324bff7f99743673",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b0-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o78p75-b0-m15.docx",
+      "sha256": "2585a2462d3b187fef002c6a92dec1edd3ae486365c1fe5215fc32842c377e91",
+      "pdf": "word-windows-top-bottom-s14-o78p75-b0-m15.pdf",
+      "pdf_sha256": "73513155eeaf8350ac7cd9569fb195ec49c3df6a791db62586a28a533212c877",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o78p75-b0-m15.page-001.emf",
+          "sha256": "3ea539fbc3433f46e7b008cbb8cf2422dfa5155900791c537eb8a7058bc9542b",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b7p5-m14",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o78p75-b7p5-m14.docx",
+      "sha256": "49f6164e180e7b524d48456f837b27fb44a31471eb61ba885b207a856aa12263",
+      "pdf": "word-windows-top-bottom-s14-o78p75-b7p5-m14.pdf",
+      "pdf_sha256": "3403005908e31a516e9bc98b31c78841226b7fcad724e06bed6d94dab333849a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o78p75-b7p5-m14.page-001.emf",
+          "sha256": "d05d6e7aa1965666a3220fc9de6f143a813fb1bbab191f0c0cb6f94f400dfcf4",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-top-bottom-s14-o78p75-b7p5-m15",
+      "source": "w18xtb-inputs\\word-windows-top-bottom-s14-o78p75-b7p5-m15.docx",
+      "sha256": "2c5aaa8c9b08d1b78be521b1f43b87f91a28e18adb57a967ad145df03fcf20fb",
+      "pdf": "word-windows-top-bottom-s14-o78p75-b7p5-m15.pdf",
+      "pdf_sha256": "64582dba0658210e6d885cf2fc18d2e383651db76a89e01ddf3565019ff7e37d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-top-bottom-s14-o78p75-b7p5-m15.page-001.emf",
+          "sha256": "71c3423c061b184646f7bb8e959e8ae987e3f7cfc0261342f52a9b788e1cf608",
+          "width_pt": 612.0,
+          "height_pt": 792.0,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

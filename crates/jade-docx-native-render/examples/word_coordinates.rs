@@ -58,7 +58,11 @@ fn main() {
         input
     };
     let render_input_sha256 = format!("{:x}", Sha256::digest(&bytes));
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    // A downloaded CI probe can replay the same repository fonts on the
+    // capture machine. Normal CI/local builds retain their existing root.
+    let root = std::env::var_os("JADE_WORD_ORACLE_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
     let fallback: Vec<_> = [(400, "Regular"), (700, "Bold")]
         .into_iter()
         .map(|(weight, style)| FontFace {
