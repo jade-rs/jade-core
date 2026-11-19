@@ -23876,11 +23876,13 @@ where
             {
                 return None;
             }
-            let mut legacy_average = None;
-            if paragraph_style.east_asian_rules.compatibility_mode == Some(14)
-                && !paragraph_style
-                    .east_asian_rules
-                    .balance_single_byte_double_byte_width
+            let mut common_average = None;
+            if matches!(
+                paragraph_style.east_asian_rules.compatibility_mode,
+                Some(14 | 15)
+            ) && !paragraph_style
+                .east_asian_rules
+                .balance_single_byte_double_byte_width
             {
                 for prepared in prepared_segments.iter() {
                     let descriptor = prepared.style.resolved.descriptor_for_grapheme(
@@ -23890,17 +23892,19 @@ where
                     let Some(average) = jade_docx_layout::line_metrics::word_windows_legacy_justification_average_width_px(descriptor)
                         .map(|width| width * prepared.style.resolved.text_scale_x.max(0.01))
                     else {
-                        legacy_average = None;
+                        common_average = None;
                         break;
                     };
-                    if legacy_average.is_some_and(|previous: f64| (previous - average).abs() > 1e-9)
+                    if common_average.is_some_and(|previous: f64| (previous - average).abs() > 1e-9)
                     {
-                        legacy_average = None;
+                        common_average = None;
                         break;
                     }
-                    legacy_average = Some(average);
+                    common_average = Some(average);
                 }
             }
+            let legacy_average = common_average
+                .filter(|_| paragraph_style.east_asian_rules.compatibility_mode == Some(14));
             let is_east_asian = |text: &str| {
                 !text.chars().all(char::is_whitespace)
                     && classify_script(text)
@@ -23968,7 +23972,7 @@ where
                             jade_docx_layout::line_wrap::EastAsianJustificationGap::AutoSpace { .. }
                         )
                     ) {
-                        opportunity.auto_space_capacity_px = legacy_average
+                        opportunity.auto_space_capacity_px = common_average
                             .map_or_else(|| left.4.max(right.4) * 0.25, |average| average * 0.5);
                     } else if east_asian_justification_gap(left.2, right.2).is_none()
                         && !(is_east_asian(left.2)

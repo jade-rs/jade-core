@@ -90,7 +90,7 @@
         "line_ending": "manual",
         "line_width_twips": 6900,
         "right_indent_twips": 1604,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -134,7 +134,7 @@
         "line_ending": "manual",
         "line_width_twips": 7000,
         "right_indent_twips": 1504,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -178,7 +178,7 @@
         "line_ending": "manual",
         "line_width_twips": 7100,
         "right_indent_twips": 1404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -222,7 +222,7 @@
         "line_ending": "manual",
         "line_width_twips": 7200,
         "right_indent_twips": 1304,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -266,7 +266,7 @@
         "line_ending": "manual",
         "line_width_twips": 7300,
         "right_indent_twips": 1204,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -310,7 +310,7 @@
         "line_ending": "manual",
         "line_width_twips": 7700,
         "right_indent_twips": 804,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -354,7 +354,7 @@
         "line_ending": "manual",
         "line_width_twips": 8100,
         "right_indent_twips": 404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -398,7 +398,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -442,7 +442,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 6900,
         "right_indent_twips": 1604,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -486,7 +486,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7000,
         "right_indent_twips": 1504,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -530,7 +530,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7100,
         "right_indent_twips": 1404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -574,7 +574,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7200,
         "right_indent_twips": 1304,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -618,7 +618,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7300,
         "right_indent_twips": 1204,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -662,7 +662,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7700,
         "right_indent_twips": 804,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -706,7 +706,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8100,
         "right_indent_twips": 404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -750,7 +750,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -794,7 +794,7 @@
         "line_ending": "manual",
         "line_width_twips": 6900,
         "right_indent_twips": 1604,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -838,7 +838,7 @@
         "line_ending": "manual",
         "line_width_twips": 7000,
         "right_indent_twips": 1504,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -882,7 +882,7 @@
         "line_ending": "manual",
         "line_width_twips": 7100,
         "right_indent_twips": 1404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -926,7 +926,7 @@
         "line_ending": "manual",
         "line_width_twips": 7200,
         "right_indent_twips": 1304,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -935,9 +935,8 @@
         "scope": "Only right indent changes; source text, fonts, settings and other package parts are byte-preserved"
       },
       "font_gate_promotion": "legacy-justify-font",
-      "xps_gate_promotion": "pending",
-      "glyph_count": 46,
-      "pending_xps_reason": "windows-modern-mixed-justification"
+      "xps_gate_promotion": "legacy-justify-xps",
+      "glyph_count": 46
     },
     {
       "name": "word-windows-legacy-width-arial-s12-m15-manual-w7300",
@@ -971,7 +970,7 @@
         "line_ending": "manual",
         "line_width_twips": 7300,
         "right_indent_twips": 1204,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -1015,7 +1014,7 @@
         "line_ending": "manual",
         "line_width_twips": 7700,
         "right_indent_twips": 804,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -1059,7 +1058,7 @@
         "line_ending": "manual",
         "line_width_twips": 8100,
         "right_indent_twips": 404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -1103,7 +1102,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 46,
         "changed_parts": [
@@ -1112,9 +1111,8 @@
         "scope": "Only right indent changes; source text, fonts, settings and other package parts are byte-preserved"
       },
       "font_gate_promotion": "legacy-justify-font",
-      "xps_gate_promotion": "pending",
-      "glyph_count": 46,
-      "pending_xps_reason": "windows-modern-mixed-justification"
+      "xps_gate_promotion": "legacy-justify-xps",
+      "glyph_count": 46
     },
     {
       "name": "word-windows-legacy-width-arial-s12-m15-paragraph-w6900",
@@ -1148,7 +1146,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 6900,
         "right_indent_twips": 1604,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1192,7 +1190,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7000,
         "right_indent_twips": 1504,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1236,7 +1234,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7100,
         "right_indent_twips": 1404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1280,7 +1278,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7200,
         "right_indent_twips": 1304,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1324,7 +1322,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7300,
         "right_indent_twips": 1204,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1368,7 +1366,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 7700,
         "right_indent_twips": 804,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1412,7 +1410,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8100,
         "right_indent_twips": 404,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1456,7 +1454,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABCxyz0123 paragraph shading geometry. Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 45,
         "changed_parts": [
@@ -1504,7 +1502,7 @@
         "line_ending": "manual",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -1551,7 +1549,7 @@
         "line_ending": "manual",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -1598,7 +1596,7 @@
         "line_ending": "manual",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -1645,7 +1643,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -1692,7 +1690,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -1739,7 +1737,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -1786,7 +1784,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -1833,7 +1831,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -1880,7 +1878,7 @@
         "line_ending": "manual",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -1927,7 +1925,7 @@
         "line_ending": "manual",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -1974,7 +1972,7 @@
         "line_ending": "manual",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2021,7 +2019,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2068,7 +2066,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2115,7 +2113,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2162,7 +2160,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2209,7 +2207,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2256,7 +2254,7 @@
         "line_ending": "manual",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2303,7 +2301,7 @@
         "line_ending": "manual",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2350,7 +2348,7 @@
         "line_ending": "manual",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2397,7 +2395,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2444,7 +2442,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2491,7 +2489,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2538,7 +2536,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2585,7 +2583,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2632,7 +2630,7 @@
         "line_ending": "manual",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2679,7 +2677,7 @@
         "line_ending": "manual",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2726,7 +2724,7 @@
         "line_ending": "manual",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2773,7 +2771,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -2820,7 +2818,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2867,7 +2865,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2914,7 +2912,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -2961,7 +2959,7 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
@@ -3008,7 +3006,7 @@
         "line_ending": "manual",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -3055,7 +3053,7 @@
         "line_ending": "manual",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -3102,7 +3100,7 @@
         "line_ending": "manual",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -3149,7 +3147,7 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
@@ -3196,18 +3194,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w3000.xps",
+        "sha256": "919383d568294eed275dd94302e63aeff6c2ca057c8f6119d5c95c805d13904c"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m14-paragraph-w3400",
@@ -3245,18 +3246,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w3400.xps",
+        "sha256": "5b697ffb1a8ae23985312cf33ce88b153b15ad589bf482e5c98bbf93ad71127a"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m14-paragraph-w4000",
@@ -3294,18 +3298,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w4000.xps",
+        "sha256": "c3d44883dc100de3adb58ba3049a3f10fb2fd2336dd02400d41137cff9055348"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m14-paragraph-w8504",
@@ -3343,18 +3350,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m14-paragraph-w8504.xps",
+        "sha256": "e2d85ef429dbd42b69bda841db0d50107d79c578e9e2ca99fc9360ddfbbfd662"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-manual-w3000",
@@ -3392,18 +3402,21 @@
         "line_ending": "manual",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 14,
-      "pending_font_reason": "windows-modern-mixed-justification",
-      "pending_xps_reason": "windows-modern-mixed-justification"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w3000.xps",
+        "sha256": "f198aa50de6b03ea74a50a8ec7a7f54363815d8c0f1efcd2279121a403ca6d1b"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-manual-w3400",
@@ -3441,18 +3454,21 @@
         "line_ending": "manual",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 14,
-      "pending_font_reason": "windows-modern-mixed-justification",
-      "pending_xps_reason": "windows-modern-mixed-justification"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w3400.xps",
+        "sha256": "00b89c1b123783c3e760a29107025c3ed8353b5afb5fcbfe99e25a3b16460205"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-manual-w4000",
@@ -3490,18 +3506,21 @@
         "line_ending": "manual",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 14,
-      "pending_font_reason": "windows-modern-mixed-justification",
-      "pending_xps_reason": "windows-modern-mixed-justification"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w4000.xps",
+        "sha256": "18ba8ea47ed5ad37708439b871a5d2102af5ae4792669ae7a1fa50aedd91329a"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-manual-w8504",
@@ -3539,18 +3558,21 @@
         "line_ending": "manual",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "X",
         "expected_non_whitespace_glyphs": 14,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 14,
-      "pending_font_reason": "windows-modern-mixed-justification",
-      "pending_xps_reason": "windows-modern-mixed-justification"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-manual-w8504.xps",
+        "sha256": "74c0fe9e8da89230406f003b65b0aabf17e91cd040287b6545b2224958f6e55b"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-paragraph-w3000",
@@ -3588,18 +3610,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 3000,
         "right_indent_twips": 5504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w3000.xps",
+        "sha256": "5f05fe5bd35c3afbf401e2b5170dc1ff4dcc6fc6b96ee80d7bc9182a4bd512ce"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-paragraph-w3400",
@@ -3637,18 +3662,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 3400,
         "right_indent_twips": 5104,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w3400.xps",
+        "sha256": "c30c076fa6480e635d2cbd4a1994e39790fb9023bab4124e4c2cd7004535b29f"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-paragraph-w4000",
@@ -3686,18 +3714,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 4000,
         "right_indent_twips": 4504,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w4000.xps",
+        "sha256": "3816b7b72831b1d18eeee83edda666a12a47dae6616fa51c0b7f32e990cac18b"
+      }
     },
     {
       "name": "word-windows-legacy-font-times-s12-m15-paragraph-w8504",
@@ -3735,18 +3766,21 @@
         "line_ending": "paragraph",
         "line_width_twips": 8504,
         "right_indent_twips": 0,
-        "text": "Ag\u65e5\u672c\u8a9e ABC Ag\u65e5\u672c\u8a9e",
+        "text": "Ag日本語 ABC Ag日本語",
         "following_text": "",
         "expected_non_whitespace_glyphs": 13,
         "changed_parts": [
           "word/document.xml"
         ]
       },
-      "font_gate_promotion": "pending",
-      "xps_gate_promotion": "pending",
+      "font_gate_promotion": "legacy-justify-font",
+      "xps_gate_promotion": "legacy-justify-xps",
       "glyph_count": 13,
-      "pending_font_reason": "word-pdf-subset-missing-kerning",
-      "pending_xps_reason": "word-pdf-subset-missing-kerning"
+      "font_program_source": {
+        "kind": "original-xps",
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T042735438Z-344a3c0c/word-windows-legacy-font-times-s12-m15-paragraph-w8504.xps",
+        "sha256": "ddc40ef144ea0986931f9e1e61f4b5edfbe260e7482679bb3bda9791c2b31ca4"
+      }
     }
   ]
 }

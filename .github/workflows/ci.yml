@@ -317,6 +317,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
@@ -516,6 +517,9 @@ jobs:
             target/windows-font-coordinates/20261119T025736984Z-43e11204
             target/windows-font-coordinates/20261119T042208471Z-cb751983
             target/windows-font-coordinates/20261119T042735438Z-344a3c0c
+            !target/windows-font-coordinates/**/fonts/*.ttf
+            !target/windows-font-coordinates/**/fonts/*.otf
+            !target/windows-font-coordinates/**/fonts/*.ttc
           if-no-files-found: ignore
           retention-days: 14
       - name: Upload source-form hyphen paint differences

@@ -1,4 +1,4 @@
-"""Assert Windows Word font coordinates using fonts embedded in original Word PDFs.
+"""Assert Windows Word font coordinates using font programs from original Word PDFs/XPS.
 
 The renderer receives DOCX bytes and font programs only, never reference positions.
 This makes the regression independent of Office font installation on hosted runners.
@@ -16,7 +16,7 @@ from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = '9a807194b8749ff9a59dab24806b5d644246edfbec8ad7241737cb0bb5b70d61'
+INDEX_SHA256 = '1fad5d6eabc87d6fbd0cda4f8a8bb53e1cfb01bd20dd76ea95b42136f76e37e6'
 
 
 def has_visible_vector_ink(pdf):
@@ -51,7 +51,7 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 1421, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 1433, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         require('no_visible_vector_ink' not in case
@@ -74,6 +74,12 @@ def verify(root=ROOT):
                     'Drawing origins differ from original Word EMFs')
         captured_name = case.get('capture_document_name', name)
         document, = [d for d in capture['documents'] if d['name'] == captured_name]
+        if 'font_program_source' in case:
+            program = case['font_program_source']
+            require(program.get('kind') == 'original-xps', 'Unknown original font program source')
+            xps = checked_file(root, program)
+            require(xps == manifest.parent / document['xps']
+                    and program['sha256'] == document['xps_sha256'], 'Wrong original XPS font source')
         drawing, = [f for f in drawings[manifest]['fixtures'] if f['name'] == captured_name]
         require(document['sha256'] == case['source']['sha256'], 'Wrong Word input')
         require((manifest.parent / 'inputs' / (captured_name + '.docx')).read_bytes()
@@ -82,7 +88,7 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 189425, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 189585, 'Total font coverage changed')
     return cases
 
 
@@ -103,7 +109,11 @@ def check_windows(executable, output, root=ROOT):
         target.mkdir(parents=True, exist_ok=False)
         original_pdf = manifest.parent / document['pdf']
         fonts = target / 'fonts'
-        extract_fonts(original_pdf, fonts)
+        if 'font_program_source' in case:
+            from windows_xps_fonts import extract_xps_fonts
+            extract_xps_fonts(checked_file(root, case['font_program_source']), fonts)
+        else:
+            extract_fonts(original_pdf, fonts)
         options = ['--fonts-directory', str(fonts)]
         password = target / 'public-test-password.txt'
         if case['public_test_password']:
@@ -149,4 +159,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 189425 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 189585 glyph origins')

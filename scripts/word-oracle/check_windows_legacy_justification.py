@@ -18,9 +18,9 @@ from extract_windows_emf import extract
 import generate_windows_legacy_justification_probes as producer
 
 INDEX = Path('tests/word-oracle/windows/legacy-justification-observations.json')
-INDEX_SHA256 = '04be757ec488113a4193908bda44599553428dba134b96ec6724d70b104d5eb9'
-FONT_NAMES_SHA256 = '326568b2eb0545899f09599dd9be310eeccb9065c55dd07236312ab44cafcfc8'
-XPS_NAMES_SHA256 = '99fc9fd4aa274db1f1ef91551620875b4bb8ed7980f9424c40ede55183f3e99b'
+INDEX_SHA256 = '2f0cba4117165e39fac724f4232216072263697861aa958072937c3051aabe31'
+FONT_NAMES_SHA256 = 'd40a9e6a3b63994b30ad587d1b51c45bf3ef3e54bca0d29ab18dc7d5c6d70c5e'
+XPS_NAMES_SHA256 = 'd40a9e6a3b63994b30ad587d1b51c45bf3ef3e54bca0d29ab18dc7d5c6d70c5e'
 
 
 def locked_promotions(index):
@@ -29,8 +29,8 @@ def locked_promotions(index):
             'Legacy justification source coverage changed')
     names = []
     for field, promotion, count, digest in (
-            ('font_gate_promotion', 'legacy-justify-font', 68, FONT_NAMES_SHA256),
-            ('xps_gate_promotion', 'legacy-justify-xps', 66, XPS_NAMES_SHA256)):
+            ('font_gate_promotion', 'legacy-justify-font', 80, FONT_NAMES_SHA256),
+            ('xps_gate_promotion', 'legacy-justify-xps', 80, XPS_NAMES_SHA256)):
         selected = sorted(r['name'] for r in rows if r[field] == promotion)
         require(len(selected) == count and hashlib.sha256(
             json.dumps(selected, separators=(',', ':')).encode()).hexdigest() == digest,
@@ -140,16 +140,21 @@ def verify(root=ROOT):
                 'Legacy justification page/glyph coverage changed')
         xps_models[name] = xps
         if name in required:
+            require(case.get('font_program_source') == fonts.get(name, {}).get('font_program_source'),
+                    'Wrong legacy justification original font source')
             require(name in fonts and fonts[name] == dict(name=name, capture=case['capture'],
                 drawing_reference=record['drawing_reference'], source=case['source'],
                 word_product_version=index['word']['product_version'], glyph_count=case['glyph_count'],
-                public_test_password=None, solid_paragraph_background=True),
+                public_test_password=None, solid_paragraph_background=True,
+                **({'font_program_source': dict(kind='original-xps',
+                    file=(manifest.parent / document['xps']).relative_to(root).as_posix(),
+                    sha256=document['xps_sha256'])} if 'font_program_source' in case else {})),
                 'Required legacy justification font assertions removed/substituted')
         else:
             require(name not in fonts, 'Pending legacy legacy justification coordinates promoted without proof')
-    require(sum(r.get('pending_font_reason') == 'word-pdf-subset-missing-kerning' for r in index['fixtures']) == 8
-            and sum(r.get('pending_font_reason') == 'windows-modern-mixed-justification' for r in index['fixtures']) == 4,
-            'Pending font-input/modern-justification distinction changed')
+    require(sum('font_program_source' in r for r in index['fixtures']) == 12
+            and all('pending_font_reason' not in r and 'pending_xps_reason' not in r
+                    for r in index['fixtures']), 'Resolved font-input coverage changed')
     return index['fixtures'], required, xps_required, xps_models, documents
 
 
@@ -159,7 +164,7 @@ def render_pending(executable, directory, root, cases, required, documents):
     from check_windows_font_coordinates import require_original_font_programs_registered
     require(sys.platform == 'win32', 'Pending Windows controls require Windows')
     pending = [case for case in cases if case['name'] not in required]
-    require(len(pending) == 12, 'Pending legacy source coverage changed')
+    require(len(pending) == 0, 'Pending legacy source coverage changed')
     for case in pending:
         name = case['name']
         _, document, manifest = documents[name]
@@ -207,10 +212,10 @@ def check_rendered_fonts(directory, root=ROOT, executable=None):
                 planes[plane] = assert_model(models[name], actual, name + '/XPS/' + plane, True)
         results.append(dict(name=name, required_font=name in font_required,
                             required_xps=name in xps_required, planes=planes))
-    require(len(results) == 80 and sum(r['required_font'] for r in results) == 68
-            and sum(r['required_xps'] for r in results) == 66, 'Required legacy assertions removed')
-    print('Asserted 66 legacy XPS sources on both paths; 68 required font four-plane controls; '
-          'all 80 text/page/order/finite and paragraph backgrounds, including 12 pending inputs')
+    require(len(results) == 80 and sum(r['required_font'] for r in results) == 80
+            and sum(r['required_xps'] for r in results) == 80, 'Required legacy assertions removed')
+    print('Asserted 80 legacy XPS sources on both paths; 80 required font four-plane controls; '
+          'all 80 text/page/order/finite and paragraph backgrounds, all sources required')
     return results
 
 
@@ -224,4 +229,4 @@ if __name__ == '__main__':
                              executable=args.native_executable.resolve() if args.native_executable else None)
     else:
         print('Verified', len(verify()[0]), 'versioned original Word legacy controls; '
-              '8 incomplete subset-font inputs and 4 modern manual-break differences remain pending')
+              'all 80 require font and dual-path XPS assertions')

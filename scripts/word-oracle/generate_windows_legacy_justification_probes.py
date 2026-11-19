@@ -9,7 +9,7 @@ from lxml import etree as E
 
 ROOT=Path(__file__).resolve().parents[2]
 PARENTS=Path('tests/word-oracle/windows/hard-break-space-observations.json')
-PARENTS_SHA256='2b3e8486b3de57fbb1432c60912c96c2d12e12d3c4af9172ca28784ed0b2bbc9'
+PARENTS_SHA256='eed12b70997dc4f8964b6ed4ce18d318bee8c93625a283bc460ad2fba1c51d33'
 WIDTHS=(6900,7000,7100,7200,7300,7700,8100,8504)
 FONT_WIDTHS=(3000,3400,4000,8504)
 FONTS=(('Arial',True,'arial-bold'),('Calibri',False,'calibri'),('Times New Roman',False,'times'))
