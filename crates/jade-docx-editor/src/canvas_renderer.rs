@@ -23792,6 +23792,24 @@ where
                 }
                 // A line ending in a manual break has no trailing break
                 // space: its last space is dropped only when nothing follows.
+                if !mac && !soft_break {
+                    // Windows keeps every trailing ASCII space outside the
+                    // justified content edge, including before a manual break.
+                    while opportunities.last().is_some_and(|&(segment, glyph)| {
+                        prepared_segments.iter().enumerate().skip(segment).all(
+                            |(index, prepared)| {
+                                let from = if index == segment { glyph } else { 0 };
+                                prepared.glyph_steps.iter().skip(from).all(|step| {
+                                    step.text(&prepared.segment.text)
+                                        .chars()
+                                        .all(|ch| ch == ' ')
+                                })
+                            },
+                        )
+                    }) {
+                        opportunities.pop();
+                    }
+                }
                 if matches!(opportunities.last(), Some(&(last_segment, last_glyph))
                     if !mac && soft_break || only_whitespace_from(last_segment, last_glyph + 1))
                 {
@@ -25323,9 +25341,26 @@ where
                 let justify_line =
                     justify || hanging_punctuation_width > 0.0 || hung_terminal_blank;
                 let extra_total = if justify_line {
+                    // Word excludes ASCII spaces before a justified manual
+                    // break from the content width but retains their carets.
+                    let justification_width = if break_kind == LineBreakKind::Hard
+                        && paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    {
+                        line_width
+                            - wrapped_line
+                                .clusters
+                                .iter()
+                                .rev()
+                                .take_while(|cluster| cluster.text == " ")
+                                .map(|cluster| cluster.width)
+                                .sum::<f64>()
+                    } else {
+                        line_width
+                    };
                     wrapped_line.justification_extra_width_px(
                         available_for_line,
-                        line_width,
+                        justification_width,
                         hanging_punctuation_width,
                     )
                 } else {
@@ -50383,6 +50418,96 @@ mod tests {
             glyphs.len() > 1 && wrong.is_empty(),
             "glyphs drawn outside the run font {run_font:?}: {wrong:?}"
         );
+    }
+
+    #[test]
+    fn windows_manual_break_trailing_spaces_keep_content_positions_and_carets() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let mut observations = Vec::new();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for count in [0, 1, 3] {
+                let text = format!("AA BB{}\nX", " ".repeat(count));
+                let mut document = doc_with_paragraph_texts(&[&text]);
+                let BodyElement::Paragraph(paragraph) =
+                    &mut document.body.as_mut().unwrap().elements[0]
+                else {
+                    unreachable!()
+                };
+                paragraph.properties = Some(ParagraphProperties {
+                    alignment: Some("both".into()),
+                    ..Default::default()
+                });
+                let (mut renderer, _) = recording_renderer();
+                for pass in 0..2 {
+                    renderer.render(&document, &Options::default()).unwrap();
+                    let lines = &renderer.selection.paragraphs()[0].lines;
+                    let line = &lines[0];
+                    let mut glyphs =
+                        line.fragments
+                            .iter()
+                            .flat_map(|fragment| {
+                                fragment.glyphs.iter().map(move |glyph| {
+                                    (glyph.start, fragment.x + glyph.x, glyph.width)
+                                })
+                            })
+                            .collect::<Vec<_>>();
+                    glyphs.sort_by_key(|glyph| glyph.0);
+                    let visible = glyphs
+                        .iter()
+                        .copied()
+                        .filter(|glyph| matches!(glyph.0, 0 | 1 | 3 | 4))
+                        .collect::<Vec<_>>();
+                    let spaces = glyphs
+                        .into_iter()
+                        .filter(|glyph| (5..5 + count).contains(&glyph.0))
+                        .collect::<Vec<_>>();
+                    observations.push((platform, count, pass, lines.len(), visible, spaces));
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+        for (platform, count, pass, lines, visible, spaces) in &observations {
+            assert_eq!(*lines, 2);
+            assert_eq!(visible.len(), 4);
+            assert_eq!(spaces.len(), *count, "trailing carets {platform:?}/{count}");
+            assert!(spaces.iter().all(|glyph| glyph.2 > 0.0));
+            assert!(
+                visible[3].1 - visible[0].1 > 200.0,
+                "manual line must justify"
+            );
+            let baseline = &observations
+                .iter()
+                .find(|row| row.0 == *platform && row.1 == 0 && row.2 == 0)
+                .unwrap()
+                .4;
+            if *platform == WordLayoutPlatform::Windows {
+                for (actual, expected) in visible.iter().zip(baseline) {
+                    assert_eq!(actual.0, expected.0);
+                    assert!(
+                        (actual.1 - expected.1).abs() < 1e-8,
+                        "{count} spaces, pass {pass}"
+                    );
+                    assert!((actual.2 - expected.2).abs() < 1e-8);
+                }
+            } else if *count == 1 {
+                let old_end = baseline[3].1 + baseline[3].2;
+                let actual_end = visible[3].1 + visible[3].2;
+                assert!(
+                    (old_end - actual_end - spaces[0].2).abs() < 1e-8,
+                    "Mac retains its existing manual-break width"
+                );
+            }
+            let fresh = &observations
+                .iter()
+                .find(|row| row.0 == *platform && row.1 == *count && row.2 == 0)
+                .unwrap()
+                .4;
+            assert_eq!(visible, fresh, "cached replay {platform:?}/{count}/{pass}");
+        }
     }
 
     #[test]

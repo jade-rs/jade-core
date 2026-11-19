@@ -1,0 +1,718 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T024743715Z-36d87ffe",
+  "captured_at_utc": "2026-11-19T02:47:43.7273033Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Canon TS7530 series (リダイレクト 2/コピー 1)",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m14-manual-spaces0.docx",
+      "sha256": "6b1afcce81e40ebc3d343fb145afaab39cd1e3e83a766580f6762e36ae44fd7a",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0.pdf",
+      "pdf_sha256": "ec68751d33e650b9add1e1637e128b776c528c616c8b8f1eb9367ef052beaed6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0.xps",
+      "xps_sha256": "c2aa20cce48af24af64fba36ed43bf2883d69f75cb99b2e8976845534529f127",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0.page-001.emf",
+          "sha256": "727508910ca857089bf5db355ecbbd56f7865a3a600f1b5aa071f430c57290c2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m14-manual-spaces1.docx",
+      "sha256": "5758a82c29918a20dafc7844e6d81ca9956cb8ef7126ef64d4fdcfd3244bda2d",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces1.pdf",
+      "pdf_sha256": "6e9be34bd582784b18a8181edacc6ae6b5865250228f09deb095dedcbdef5173",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces1.xps",
+      "xps_sha256": "000bca5afa266832eca709ab4584dcc9c3bd4abe884bef088342d05f14f4083c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces1.page-001.emf",
+          "sha256": "3c4e0531b8290a8f69653b58d08bc8b1d14fbe83fc3c39ec9b96a3383d99c3ff",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m14-manual-spaces3.docx",
+      "sha256": "bdb96929b16903951b78db77b1ee00b786b282b56675ce814a5ce830412268c4",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces3.pdf",
+      "pdf_sha256": "7d768ae1d6ae533aea024ce56172072a6d58735e317bfb365e49bb2379a316c5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces3.xps",
+      "xps_sha256": "0cc31ebb87bb8897baf270a347cf8a9ffc08fae3c3bc19adf7614d52a13772fe",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces3.page-001.emf",
+          "sha256": "2e6d456f488cc02dd2a696fd3b03750c6e4f76166989ca27d0a2ffc5323034f6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0.docx",
+      "sha256": "6e75954921f3b4f53d5b474a5978194d0545249aa2c0f18644e1bd9a1e49ebb4",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0.pdf",
+      "pdf_sha256": "815df9eb35e8ffe76bb4ab000dc934c18b21a4721ee53eb2eeeb469907bd3ab3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0.xps",
+      "xps_sha256": "f921898b700a207ab78368628906258c61fe8aeae1314b9ce2b92b1bd86db1a0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0.page-001.emf",
+          "sha256": "38b7d376c8e53e55691f57c151213a1e023c999e626a9616261eae25c461c791",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1.docx",
+      "sha256": "91933b937b033e42e8cd8f60f91e9792ee332bdb92a1081b01971899cbc77d5a",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1.pdf",
+      "pdf_sha256": "4ff79bd723d3420cd9a7a926fcc40802f2a7ca3f1342bde1904b53fa6742be2c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1.xps",
+      "xps_sha256": "08ebdce5bf7817042ffeed1fb4376b6b01f8b9010f05c1d18da3a30d4642ab23",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1.page-001.emf",
+          "sha256": "72c65a0cd7c2ad41d8848df1dc25ecfcceec1eeaffc944d315056ca8b041c86b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3.docx",
+      "sha256": "63aa4b3fb7df4e01aabebc4f4d33186f1be9a45bbe1eff495908a5cd3808514d",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3.pdf",
+      "pdf_sha256": "00b5edf9deb9fd984f522c5f3d6aa4ee3c576db207bd2605b1f203f1cbb31f39",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3.xps",
+      "xps_sha256": "4f890c310bb1c6df0fea44960c7198bf429f327919205f0ba91f63d5fc20d573",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3.page-001.emf",
+          "sha256": "fc4f0763e72c2c17ce046aed2b8189b820d34eb6a7da72a86954adee2360d295",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m15-manual-spaces0.docx",
+      "sha256": "4669c27824898bacd69737e7840a21c44d5b91c7614b43feb0892f0cb89be804",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0.pdf",
+      "pdf_sha256": "6d647a8fc73dabad8feefbb73f2d8e42d57cfe586cbcf49574d30f0e73a2d0c4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0.xps",
+      "xps_sha256": "489485c7069355a30f68711b40eeac4ce240f077982802ed5f75d1271373be8a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0.page-001.emf",
+          "sha256": "7162a2124953dd07dbaf582061343bdaaf55636fa296df3e29b191b027a772d7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m15-manual-spaces1.docx",
+      "sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces1.pdf",
+      "pdf_sha256": "5b910d4621aa72744cf38181cf325a22e6eba4b10f6c56c4e6443804591aa52b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces1.xps",
+      "xps_sha256": "2c9b861735988b7fa45b02037ea5c430e5eea1efadf7325f0f364e7de56b7331",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces1.page-001.emf",
+          "sha256": "b6c35504e98a7d2cd08de13db3ce3bb04dc8883402ed456518d5850f4debeb85",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m15-manual-spaces3.docx",
+      "sha256": "edb10e73ad2e4044384230e96dba3dcc39373b4fbf10f2b86ce6236acc8203f4",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces3.pdf",
+      "pdf_sha256": "5a5cf12d5aa94910b521f8b42ff373ac0234751bf56b08647ea532cc018f8ddf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces3.xps",
+      "xps_sha256": "3d443f55da59b52131a184c3e4baef1519864033348e7cb5f8b88436d53431d5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces3.page-001.emf",
+          "sha256": "b504585bde8d47d83db8cc74de459974a0563eaa6e02d6fec650fd10fdf931e0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0.docx",
+      "sha256": "83e00be70afc1008e6972e6c689821a4798e0f026d80a624d992b41c3540781a",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0.pdf",
+      "pdf_sha256": "cda9f9b9ef04bd1e117f3597cf41e8e5b2eedd1d492f3f9db7472bbf72a906fe",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0.xps",
+      "xps_sha256": "deb600a52fc127c46069a983a96eedff5d3ddd50c2a2983277b43fb6d93a0622",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0.page-001.emf",
+          "sha256": "38b7d376c8e53e55691f57c151213a1e023c999e626a9616261eae25c461c791",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1.docx",
+      "sha256": "a47a615d6b5cc380a6fd604aa3844a0ff5373a93658370593db875edbf9c1b89",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1.pdf",
+      "pdf_sha256": "0d02ded31d61090b1534fa2f81d14d29be4de841e12ce3413785da103e859866",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1.xps",
+      "xps_sha256": "ca2e3fbd84e1e12c1b8b184eaf5444dc6f44a31512d337a604b73562ba5a1d29",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1.page-001.emf",
+          "sha256": "72c65a0cd7c2ad41d8848df1dc25ecfcceec1eeaffc944d315056ca8b041c86b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3.docx",
+      "sha256": "c91f326a6d53d20f55f9be5859e7e4dc59910748f18abc54eaf8e2ce33cad552",
+      "pdf": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3.pdf",
+      "pdf_sha256": "7fea88b62608c13d7003b0f9c73e80f144a4515130265a8d806050a77262c637",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3.xps",
+      "xps_sha256": "dfcd2776681da9d6a0b7c71c044f12f3f1ba4773bae626d1ff9387d2c7ebb3a9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3.page-001.emf",
+          "sha256": "fc4f0763e72c2c17ce046aed2b8189b820d34eb6a7da72a86954adee2360d295",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m14-manual-spaces0.docx",
+      "sha256": "09c892ec60438d80cfebece0cda1beb1bf1159cdcb80ec209e9f75fe59fd7a68",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces0.pdf",
+      "pdf_sha256": "8fcb3512fda4c08bda2cc7ca7fb5fd1da1beb3fc2791b924cd0bbe6d9a93e766",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces0.xps",
+      "xps_sha256": "3c34daf5f1cb136f6bf0fddd4dcaa7eff28b8aea4fad2a4c64c497c3e14e1bdc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces0.page-001.emf",
+          "sha256": "efec84ea41934f3dcdac1a58c276e2eeb71b703206dddcc72a6f9b514d815fd2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m14-manual-spaces1.docx",
+      "sha256": "dd60a17c0f08cca62be47c06904913e7b7e4a4d593585b6836288a227c0574be",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces1.pdf",
+      "pdf_sha256": "b0fee97d7b203695dec9a5c51ce080c01714d2dbe5988ebbdd5a1ad256ee7cb5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces1.xps",
+      "xps_sha256": "377c5d8303677666316fa64ac5a7ee6cf7b635583cbfc9248a65ddf57f8dac0c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces1.page-001.emf",
+          "sha256": "4d028a3520f23c2a2e8d766ef2f4cfec39cbbcd9f2a95f6f89343552374b5ba7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m14-manual-spaces3.docx",
+      "sha256": "1f0b464e3cf45123c5cbbcb97f9cd3f0ffa8e3a20e1aafb26945c78712c9d606",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces3.pdf",
+      "pdf_sha256": "9050b2cdc496eccfe236b57596d6fff38f56ef6067fd87503f3bc92007cb6941",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces3.xps",
+      "xps_sha256": "3c3a5ae1240928d088a85d7806f90e33c66c28b72989a99c12ff6eaf25ab366a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces3.page-001.emf",
+          "sha256": "dcde98781bd3cc0c91b20789e5bb13e4ce6d0b325744c32669f96e224dd3b988",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0.docx",
+      "sha256": "fb17ba639d00d64aa012fbedf5affbac2f39c5ee2a6e7b38d7800ec9aeeec9f6",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0.pdf",
+      "pdf_sha256": "5a5c5a1879c776961024e475929f7ae4c2dfe253caf394da8972fd8653ae3c40",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0.xps",
+      "xps_sha256": "5920407001007d75500e53bb3e481241587be351a6eca809fa3c5f83bfab2311",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0.page-001.emf",
+          "sha256": "803142ddd8a8e224f8a3dcb501eea6c027d0095dff80470055c455a495261791",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1.docx",
+      "sha256": "5265b468cc98dad637e8cd18bd273e9eb440fe307e291fe5288177e60f9f7150",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1.pdf",
+      "pdf_sha256": "b85f7112e80209ebb40507a43696251e53ad0bc956cf4084a97232730feb2cdb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1.xps",
+      "xps_sha256": "e48f79e960c30ca5070d9142f0a50100a0f283152036fd7966f4b804b0112537",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1.page-001.emf",
+          "sha256": "ae21e5e0749f3051d702a15229e96ce67ed0504c38fc639a4a01dbe5ca4b72e1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3.docx",
+      "sha256": "dfa439daf1ae8bdd572c060a71f5d5c8ae5ff1984f3e3a35e3b8e1c837cc5324",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3.pdf",
+      "pdf_sha256": "43664bc53bc313ab4c5acc4cba49776ab4f365dfa91e9dae32b320d96f009b32",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3.xps",
+      "xps_sha256": "97ae4641e800266538f02350524e1f43c3b86518c9e17b6f61e32638ec4c0e67",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3.page-001.emf",
+          "sha256": "377bf2d5cb5f06527833ab5bc85362e07d64bcf41fbd1fb96a19df9cae21de17",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m15-manual-spaces0.docx",
+      "sha256": "b9c698fff79ecfee01324f53e47614aeb18b7b5bd95ec97b58b5f9e948bfa136",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces0.pdf",
+      "pdf_sha256": "89daf761857b8b362adac9c0a3ef18b4eacdc0127055d4581901aefb83bd69b6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces0.xps",
+      "xps_sha256": "da56f6e21998bfc5ed64f6655dd48a0f6a953d5a87219e7966e67fcf8d5f1098",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces0.page-001.emf",
+          "sha256": "41a1197257b064887ea7cdb26e3defc8033ada98a900c920f4d608e49bbb6f4e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m15-manual-spaces1.docx",
+      "sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces1.pdf",
+      "pdf_sha256": "6e31890c3be06a81395d78bc852dce2c13d8ffb6d524b36587ddee70e2a95daf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces1.xps",
+      "xps_sha256": "a1ad8113476699c2504412dde4502a556c9e94890c843c190101480d4c03b4c0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces1.page-001.emf",
+          "sha256": "a3c1e6a8983c9af537fc695049b381137dc95f73deabc38531dde5c682d6cf4d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m15-manual-spaces3.docx",
+      "sha256": "ceff1e970cb9ba5624ee725ba530b4e1f03165cd3bba97ceb3dc50a4216dca84",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces3.pdf",
+      "pdf_sha256": "795eb30ac9a278e1873f43eb295e94b330278f8e5bdbe47915f1b77e2f185acc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces3.xps",
+      "xps_sha256": "9a561857d1e896ab4419c343b5d79e3f7ff64250062d84d7e610f268d9184267",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces3.page-001.emf",
+          "sha256": "75d54526c565b2529c21ba621f2e8e320384c5530c1f5de778db04558966e9a6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0.docx",
+      "sha256": "6eeabbaa729a0c571e2e081bfcbe420a4013ea7dad5abe5d7d81fc44311314c9",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0.pdf",
+      "pdf_sha256": "7f7fc891ac0ce44a20eb2e5f2f221b6413d4ec8e869e1b730b7d8ed743bcc619",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0.xps",
+      "xps_sha256": "63c7ed2593b28dd5d8f200f3fc857506b5c159d50400632a5e388172baadc9cd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0.page-001.emf",
+          "sha256": "803142ddd8a8e224f8a3dcb501eea6c027d0095dff80470055c455a495261791",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1.docx",
+      "sha256": "f61e40efb80c402dd068d700a40dc456bbe6a8eab4bc3e3021396292a149dd9c",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1.pdf",
+      "pdf_sha256": "66d52fc75162c9424c06b0d279de95f2d560a2b45bdef664d155a8312b1fbb77",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1.xps",
+      "xps_sha256": "92f7edf8deb76320e7a750363819216a9b327d0e8e69f82b40346b40534741bc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1.page-001.emf",
+          "sha256": "ae21e5e0749f3051d702a15229e96ce67ed0504c38fc639a4a01dbe5ca4b72e1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3",
+      "source": "w19-hard-break-inputs\\word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3.docx",
+      "sha256": "393b1bc7f31e638b95bddd41537788679313fc0a12b46d5da9bd570957f666cd",
+      "pdf": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3.pdf",
+      "pdf_sha256": "dbf1dd9a92207d75ad3c5157e7bdecc4ae418ba46d948df59f2fdd7cb5ccd3b5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3.xps",
+      "xps_sha256": "f16b2040ebdec588f17ef21f4ee04a72b483de92b86de70a91f1ffbf30b31984",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3.page-001.emf",
+          "sha256": "377bf2d5cb5f06527833ab5bc85362e07d64bcf41fbd1fb96a19df9cae21de17",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

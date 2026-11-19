@@ -1,0 +1,1662 @@
+{
+  "schema": 1,
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "captures": [
+    {
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "original_capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/original-capture.zip",
+        "sha256": "529e79d6ff84c5c1c8882519139ff93647ad928141672f4db85c383ab9f0bd96"
+      },
+      "font_facts": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/word-output-font-facts.json",
+        "sha256": "0dd6e5178b5692435cc7109eb95ceac9a0a7033408b19a2c28c88228720926db"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/word-emf-reference.json",
+        "sha256": "00d6f7c278bdad304d6a6c68a38260fdbdb30d03a88b2767de91a67167447e33"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "documents": 24
+    },
+    {
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "original_capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/original-capture.zip",
+        "sha256": "b1c9f7dbd7fc9e9cf27d75c681f46b0dd38fd79c37a94dd36a37e7412f8888d5"
+      },
+      "font_facts": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/word-output-font-facts.json",
+        "sha256": "57d721b9b91bbe642b61b90655c2eaa192a632ef6c54cad2adb9eb590581a44d"
+      },
+      "drawing_reference": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/word-emf-reference.json",
+        "sha256": "499cf593c48994b4b8727c8bd4e084a384c4bce550f314e9bc21d95660264a68"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "documents": 8
+    }
+  ],
+  "fixtures": [
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m14-manual-spaces0.docx",
+        "sha256": "6b1afcce81e40ebc3d343fb145afaab39cd1e3e83a766580f6762e36ae44fd7a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m14-manual-spaces1.docx",
+        "sha256": "5758a82c29918a20dafc7844e6d81ca9956cb8ef7126ef64d4fdcfd3244bda2d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m14-manual-spaces3.docx",
+        "sha256": "bdb96929b16903951b78db77b1ee00b786b282b56675ce814a5ce830412268c4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0.docx",
+        "sha256": "6e75954921f3b4f53d5b474a5978194d0545249aa2c0f18644e1bd9a1e49ebb4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces1.docx",
+        "sha256": "91933b937b033e42e8cd8f60f91e9792ee332bdb92a1081b01971899cbc77d5a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces3.docx",
+        "sha256": "63aa4b3fb7df4e01aabebc4f4d33186f1be9a45bbe1eff495908a5cd3808514d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m15-manual-spaces0.docx",
+        "sha256": "4669c27824898bacd69737e7840a21c44d5b91c7614b43feb0892f0cb89be804"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m15-manual-spaces1.docx",
+        "sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [],
+        "unchanged_parent_bytes": true
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m15-manual-spaces3.docx",
+        "sha256": "edb10e73ad2e4044384230e96dba3dcc39373b4fbf10f2b86ce6236acc8203f4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0.docx",
+        "sha256": "83e00be70afc1008e6972e6c689821a4798e0f026d80a624d992b41c3540781a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces1.docx",
+        "sha256": "a47a615d6b5cc380a6fd604aa3844a0ff5373a93658370593db875edbf9c1b89"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces3.docx",
+        "sha256": "c91f326a6d53d20f55f9be5859e7e4dc59910748f18abc54eaf8e2ce33cad552"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-arial-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "c840f9ff889e25bc96852a29f5b5f80e1e206bdafe46bfb7782050a3d284f55e",
+          "capture_id": "20261115T131012751Z-8f0a8c24",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131012751Z-8f0a8c24.zip",
+            "sha256": "1366aa5a48b325e3d35cd289acbda131673b14bd6e972418e9a1897023a4b7b8"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m14-manual-spaces0.docx",
+        "sha256": "09c892ec60438d80cfebece0cda1beb1bf1159cdcb80ec209e9f75fe59fd7a68"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m14-manual-spaces1.docx",
+        "sha256": "dd60a17c0f08cca62be47c06904913e7b7e4a4d593585b6836288a227c0574be"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-manual-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m14-manual-spaces3.docx",
+        "sha256": "1f0b464e3cf45123c5cbbcb97f9cd3f0ffa8e3a20e1aafb26945c78712c9d606"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "pending",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces0.docx",
+        "sha256": "fb17ba639d00d64aa012fbedf5affbac2f39c5ee2a6e7b38d7800ec9aeeec9f6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces1.docx",
+        "sha256": "5265b468cc98dad637e8cd18bd273e9eb440fe307e291fe5288177e60f9f7150"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m14-paragraph-spaces3.docx",
+        "sha256": "dfa439daf1ae8bdd572c060a71f5d5c8ae5ff1984f3e3a35e3b8e1c837cc5324"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml",
+          "word/settings.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m15-manual-spaces0.docx",
+        "sha256": "b9c698fff79ecfee01324f53e47614aeb18b7b5bd95ec97b58b5f9e948bfa136"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m15-manual-spaces1.docx",
+        "sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [],
+        "unchanged_parent_bytes": true
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-manual-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m15-manual-spaces3.docx",
+        "sha256": "ceff1e970cb9ba5624ee725ba530b4e1f03165cd3bba97ceb3dc50a4216dca84"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 46,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "pending",
+      "glyph_count": 46
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces0.docx",
+        "sha256": "6eeabbaa729a0c571e2e081bfcbe420a4013ea7dad5abe5d7d81fc44311314c9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 0,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces1.docx",
+        "sha256": "f61e40efb80c402dd068d700a40dc456bbe6a8eab4bc3e3021396292a149dd9c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 1,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/inputs/word-windows-hard-break-ea-yu-s12-m15-paragraph-spaces3.docx",
+        "sha256": "393b1bc7f31e638b95bddd41537788679313fc0a12b46d5da9bd570957f666cd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T024743715Z-36d87ffe/capture.json",
+        "sha256": "ac4c8cdb9498d37e9b274cb0366f2cd88b74591bbb8738b90b202789179709fa"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T024743715Z-36d87ffe.zip",
+        "sha256": "67ab99fefc09dc395ad2b791a96c51d16772a486ad7870deae4b5a8bed199275"
+      },
+      "capture_id": "20261119T024743715Z-36d87ffe",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-edge-terminal-script-arial-yu-size12-ea-space-both-balance0-compat15",
+          "source_sha256": "79fc9c50c63200f902a5e569e61a9694ea2b8b0f2c9d7695cde0d20fb6da0587",
+          "capture_id": "20261115T131030534Z-92fd3521",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261115T131030534Z-92fd3521.zip",
+            "sha256": "2ab8e232fa3dc8f6f780fe5568638d160b96a70bc923d604b5abba40872a32bd"
+          }
+        },
+        "character_set": "mixed",
+        "east_asia_font": "Yu Mincho",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 3,
+        "text": "Ag\u65e5\u672c\u8a9e ABCxyz0123 paragraph shading geometry. Ag\u65e5\u672c\u8a9e   ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 45,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 45
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-manual-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m14-manual-spaces0.docx",
+        "sha256": "d6e99dbfc458600956c0cc7d2fb8c2760e29ea864fc50c569d231525b1d1df4d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0",
+          "source_sha256": "6b1afcce81e40ebc3d343fb145afaab39cd1e3e83a766580f6762e36ae44fd7a"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 0,
+        "text": "AA BB",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 5,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 5
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-manual-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m14-manual-spaces3.docx",
+        "sha256": "3f41382c7207f250b3bab0d96aaac57a2335f04ccf5aede057409d1d6dee9f8c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m14-manual-spaces0",
+          "source_sha256": "6b1afcce81e40ebc3d343fb145afaab39cd1e3e83a766580f6762e36ae44fd7a"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 3,
+        "text": "AA BB   ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 5,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 5
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m14-paragraph-spaces0.docx",
+        "sha256": "396abea0d2a68b49bc697564f560d6604affab3433b59685ccbfd94c8f5192c4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0",
+          "source_sha256": "6e75954921f3b4f53d5b474a5978194d0545249aa2c0f18644e1bd9a1e49ebb4"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 0,
+        "text": "AA BB",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 4,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 4
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m14-paragraph-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m14-paragraph-spaces3.docx",
+        "sha256": "245f452772ff127b0706b2c318c841e55e082f8ad11a31045c0cef7174f70ddd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m14-paragraph-spaces0",
+          "source_sha256": "6e75954921f3b4f53d5b474a5978194d0545249aa2c0f18644e1bd9a1e49ebb4"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 14,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 3,
+        "text": "AA BB   ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 4,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 4
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-manual-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m15-manual-spaces0.docx",
+        "sha256": "c767bd1034f97debda02875eb317c37dee3dfa675dc6e8e17428fdef19c9a20f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0",
+          "source_sha256": "4669c27824898bacd69737e7840a21c44d5b91c7614b43feb0892f0cb89be804"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 0,
+        "text": "AA BB",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 5,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 5
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-manual-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m15-manual-spaces3.docx",
+        "sha256": "356d101ed8ef697bec9dcb2f96c608db7812283617fe8576bfba2db6a398d643"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m15-manual-spaces0",
+          "source_sha256": "4669c27824898bacd69737e7840a21c44d5b91c7614b43feb0892f0cb89be804"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "manual",
+        "trailing_ascii_spaces": 3,
+        "text": "AA BB   ",
+        "following_text": "X",
+        "expected_non_whitespace_glyphs": 5,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 5
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces0",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m15-paragraph-spaces0.docx",
+        "sha256": "c457408b26de773900441e300237abeafee6a794eea1dba5608cbbc41389e41a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0",
+          "source_sha256": "83e00be70afc1008e6972e6c689821a4798e0f026d80a624d992b41c3540781a"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 0,
+        "text": "AA BB",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 4,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 4
+    },
+    {
+      "name": "word-windows-hard-break-ascii-s12-m15-paragraph-spaces3",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/inputs/word-windows-hard-break-ascii-s12-m15-paragraph-spaces3.docx",
+        "sha256": "b97c5b59d2bc9644089226442d694e0c26b8a3346cea077099d27f979b17edd7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T025736984Z-43e11204/capture.json",
+        "sha256": "cba24bce59459e5492296cf2b8e9bcd3cda6419a8bb200d46dec9f1274aa55c5"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261119T025736984Z-43e11204.zip",
+        "sha256": "ee4c5dd30706007ca4096ecbb0b11353f6cbe2d9069926de51ea150edb416283"
+      },
+      "capture_id": "20261119T025736984Z-43e11204",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "input_specification": {
+        "derived_parent": {
+          "name": "word-windows-hard-break-ea-arial-s12-m15-paragraph-spaces0",
+          "source_sha256": "83e00be70afc1008e6972e6c689821a4798e0f026d80a624d992b41c3540781a"
+        },
+        "character_set": "ascii",
+        "east_asia_font": "Arial",
+        "font_family": "Arial",
+        "font_size_pt": 12,
+        "compatibility_mode": 15,
+        "line_ending": "paragraph",
+        "trailing_ascii_spaces": 3,
+        "text": "AA BB   ",
+        "following_text": "",
+        "expected_non_whitespace_glyphs": 4,
+        "changed_parts": [
+          "word/document.xml"
+        ],
+        "unchanged_parent_bytes": false
+      },
+      "font_gate_promotion": "hard-break-font",
+      "xps_gate_promotion": "hard-break-xps",
+      "glyph_count": 4
+    }
+  ]
+}
