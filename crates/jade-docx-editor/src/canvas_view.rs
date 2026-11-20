@@ -230,6 +230,9 @@ struct CanvasDocumentState {
     /// Body caret/selection to restore when the header/footer session closes.
     /// Switching between header/footer stories must keep the original range.
     hf_body_selection: Option<SelectionRange>,
+    /// A single click in the body ends header/footer editing (and places the
+    /// body caret there). Off by default: Word needs a body double-click.
+    hf_exit_on_body_click: bool,
     /// Other end of a header/footer selection (Shift+arrows, drag). A
     /// selection exists when this and the cursor sit on the same segment.
     hf_selection_anchor: Option<HfEditCursor>,
@@ -6626,7 +6629,18 @@ impl OffscreenDocumentView {
                 if zone == EditingMode::Body {
                     // Word keeps header/footer editing active on a single click
                     // into the document body; a body double-click exits the mode.
-                    return Ok(());
+                    if !self.state.borrow().hf_exit_on_body_click {
+                        return Ok(());
+                    }
+                    // Hosts that opted out of Word's double-click leave the
+                    // story here and let the click place the body caret below.
+                    let selection = self.state.borrow_mut().exit_hf_editing_mode();
+                    {
+                        let mut renderer_mut = self.renderer.borrow_mut();
+                        renderer_mut.set_selection_range(selection);
+                        renderer_mut.set_editing_mode(EditingMode::Body);
+                    }
+                    self.rerender_document()?;
                 } else if zone == current_mode {
                     // Clicking within the same hf zone -> update cursor position.
                     // Variant may change if the user clicked a different page
@@ -10521,6 +10535,7 @@ impl OffscreenDocumentView {
             hf_variant: HfVariant::default(),
             hf_edit_cursor: None,
             hf_body_selection: None,
+            hf_exit_on_body_click: false,
             hf_selection_anchor: None,
             hf_undo_stack: Vec::new(),
             hf_redo_stack: Vec::new(),
@@ -21185,6 +21200,14 @@ impl OffscreenDocumentView {
     /// `w:del`, and review flows are unusable when every change claims the same
     /// author. Hosts call this once the signed-in user is known; passing `None`
     /// (or a blank string) clears it and falls back to the generic name.
+    /// Whether a single click in the body ends header/footer editing. Word
+    /// keeps the header open until the body is double-clicked; embedding
+    /// hosts whose users expect a click to leave it can turn this on.
+    #[wasm_bindgen(js_name = "setHeaderFooterExitOnBodyClick")]
+    pub fn set_header_footer_exit_on_body_click(&self, enabled: bool) {
+        self.state.borrow_mut().hf_exit_on_body_click = enabled;
+    }
+
     #[wasm_bindgen(js_name = "setAuthorName")]
     pub fn set_author_name(&self, name: Option<String>) {
         let mut state_mut = self.state.borrow_mut();
