@@ -33845,33 +33845,168 @@ impl WordDocument {
         TextPosition::new(position.paragraph, offset)
     }
 
-    /// The inline equations of a body paragraph (math runs, and EQ fields
-    /// the renderer draws as equations) as (model offset, model length):
-    /// each renders as one object character.
+    /// The objects in a paragraph that render as one object character each,
+    /// as (model offset, model length): the inline pictures and text boxes
+    /// in the line, and in a body paragraph the inline equations (math runs,
+    /// and EQ fields the renderer draws as equations). A picture holds no
+    /// model text, so the caret Word puts before it and the one after it
+    /// differ only in rendered offsets.
     fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
-        if !matches!(
+        let body = matches!(
             self.paragraph_surfaces.get(index),
             Some(ParagraphSurface::Body { .. })
-        ) {
-            return Vec::new();
-        }
+        );
         let Some(paragraph) = self.paragraph(index) else {
             return Vec::new();
         };
         let mut spans = Vec::new();
         let mut model_offset = 0usize;
         for run in &paragraph.runs {
-            let equation = run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
-                || run
-                    .field
-                    .as_ref()
-                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind));
-            if equation {
+            let equation = body
+                && (run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
+                    || run
+                        .field
+                        .as_ref()
+                        .is_some_and(|f| Self::is_eq_equation_field(&f.kind)));
+            if equation || Self::is_inline_object_run(run) {
                 spans.push((model_offset, run.text.len()));
             }
             model_offset += run.text.len();
         }
         spans
+    }
+
+    /// Whether `run` is an inline picture or text box: an object in the line
+    /// that the renderer lays out as one object character.
+    pub(crate) fn is_inline_object_run(run: &Run) -> bool {
+        if run.math.as_ref().is_some_and(|m| !m.elements.is_empty()) {
+            return false;
+        }
+        if let Some(text_box) = run.text_box.as_ref() {
+            return !matches!(text_box.layout.kind, RunImageKind::Floating);
+        }
+        run.image
+            .as_ref()
+            .is_some_and(|image| !matches!(image.layout.kind, RunImageKind::Floating))
+    }
+
+    /// How many inline pictures and text boxes at rendered `position`'s
+    /// model offset the caret is after ("AB🖼|CD"): the model offset alone
+    /// would put the caret, and text typed there, in front of them.
+    pub fn rendered_objects_before_caret(&self, position: TextPosition) -> usize {
+        let model = self.rendered_to_model_text_position(position).offset;
+        self.inline_object_rendered_starts(position.paragraph)
+            .iter()
+            .filter(|(_, model_offset, start)| {
+                *model_offset == model && start + OBJECT_CHAR_LEN <= position.offset
+            })
+            .count()
+    }
+
+    /// Each inline picture and text box of paragraph `index` with its model
+    /// offset and the rendered offset of its object character: past every
+    /// object, reference mark and field result before it, the marks at its
+    /// own model offset included when their runs come first.
+    pub fn inline_object_rendered_starts(
+        &self,
+        index: usize,
+    ) -> Vec<(FloatingObjectTarget, usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let body = matches!(
+            self.paragraph_surfaces.get(index),
+            Some(ParagraphSurface::Body { .. })
+        );
+        let mut starts = Vec::new();
+        let mut model_offset = 0usize;
+        // What renders at `model_offset` ahead of the next object: marks
+        // and objects whose runs come first.
+        let mut ahead = 0usize;
+        for (run_index, run) in paragraph.runs.iter().enumerate() {
+            if !run.text.is_empty() {
+                model_offset += run.text.len();
+                ahead = 0;
+                continue;
+            }
+            if body {
+                for id in &run.footnote_reference_ids {
+                    if let Some(marker) = self.note_reference_marker(NoteKind::Footnote, id) {
+                        ahead += marker.len();
+                    }
+                }
+                for id in &run.endnote_reference_ids {
+                    if let Some(marker) = self.note_reference_marker(NoteKind::Endnote, id) {
+                        ahead += marker.len();
+                    }
+                }
+            }
+            if Self::is_inline_object_run(run) {
+                let base = self
+                    .model_to_rendered_text_position(TextPosition::new(index, model_offset))
+                    .offset;
+                starts.push((
+                    FloatingObjectTarget {
+                        paragraph_index: index,
+                        run_index,
+                        kind: if run.text_box.is_some() {
+                            FloatingObjectKind::TextBox
+                        } else {
+                            FloatingObjectKind::Image
+                        },
+                    },
+                    model_offset,
+                    base + ahead,
+                ));
+                ahead += OBJECT_CHAR_LEN;
+            }
+        }
+        starts
+    }
+
+    /// The paragraph's text with an object character where each object
+    /// [`Self::rendered_object_spans`] lists is: its text in rendered
+    /// offsets, but for note reference marks and fields' shown values.
+    pub fn paragraph_text_with_objects(&self, index: usize) -> String {
+        let Some(paragraph) = self.paragraph(index) else {
+            return String::new();
+        };
+        let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
+        let mut out = String::with_capacity(text.len());
+        let mut cursor = 0usize;
+        for (model_offset, model_len) in self.rendered_object_spans(index) {
+            let start = model_offset.clamp(cursor, text.len());
+            out.push_str(text.get(cursor..start).unwrap_or_default());
+            out.push('\u{fffc}');
+            cursor = (model_offset + model_len).clamp(start, text.len());
+        }
+        out.push_str(text.get(cursor..).unwrap_or_default());
+        out
+    }
+
+    /// The inline pictures and text boxes wholly inside rendered `range`, in
+    /// document order.
+    pub fn inline_objects_in_rendered_range(
+        &self,
+        range: SelectionRange,
+    ) -> Vec<FloatingObjectTarget> {
+        let (start, end) = range.normalized();
+        let mut objects = Vec::new();
+        if start == end {
+            return objects;
+        }
+        for paragraph_index in start.paragraph..=end.paragraph {
+            for (object, _, rendered_start) in self.inline_object_rendered_starts(paragraph_index) {
+                let after_start =
+                    paragraph_index > start.paragraph || rendered_start >= start.offset;
+                let before_end = paragraph_index < end.paragraph
+                    || rendered_start + OBJECT_CHAR_LEN <= end.offset;
+                if after_start && before_end {
+                    objects.push(object);
+                }
+            }
+        }
+        objects
     }
 
     /// Whether an EQ instruction uses a structure switch (`\f`, `\r`, `\s`,
@@ -34023,11 +34158,20 @@ impl WordDocument {
             .filter(|span| span.model_offset >= len)
             .map(|span| span.rendered_len)
             .sum();
+        // Objects at the very end ("AB🖼"), which the model offset keeps in
+        // front of the caret as it does a mark.
+        let trailing_objects = self
+            .rendered_object_spans(index)
+            .iter()
+            .filter(|(model_offset, model_len)| *model_offset >= len && *model_len == 0)
+            .count()
+            * OBJECT_CHAR_LEN;
         let extra = self.field_display_extra(index, len, true);
         (self
             .model_to_rendered_base(TextPosition::new(index, len))
             .offset as isize
             + trailing as isize
+            + trailing_objects as isize
             + extra)
             .max(0) as usize
     }

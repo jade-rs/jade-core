@@ -657,6 +657,60 @@ pub(crate) fn insert_after_note_references(
     true
 }
 
+/// Types `insert` at model offset `position` behind the first `objects`
+/// inline pictures and text boxes that sit there: the caret Word shows after
+/// a picture ("AB🖼|CD") is at the same model offset as the one in front of
+/// it, and text typed there belongs after it. The new run is formatted like
+/// the text before the caret. Returns whether that many objects were found.
+pub(crate) fn insert_after_inline_objects(
+    runs: &mut Vec<Run>,
+    position: usize,
+    objects: usize,
+    insert: &str,
+    zero_width: &ZeroWidthRuns,
+) -> bool {
+    if insert.is_empty() || objects == 0 {
+        return false;
+    }
+    let original = runs.clone();
+    let template = runs
+        .iter()
+        .rev()
+        .find(|run| !run.text.is_empty() && !run_holds_object(run))
+        .cloned();
+    let mut tail = split_runs_at_preserving_source(runs, position, zero_width);
+    let mut seen = 0;
+    let mut behind = None;
+    for (index, run) in tail.iter().enumerate() {
+        if !run.text.is_empty() {
+            break;
+        }
+        if crate::word_document::WordDocument::is_inline_object_run(run) {
+            seen += 1;
+            if seen == objects {
+                behind = Some(index + 1);
+                break;
+            }
+        }
+    }
+    let Some(behind) = behind else {
+        *runs = original;
+        return false;
+    };
+    let template = template.or_else(|| {
+        tail.iter()
+            .find(|run| !run.text.is_empty() && !run_holds_object(run))
+            .cloned()
+    });
+    runs.extend(tail.drain(..behind));
+    let mut run = create_run_from_template(template.as_ref(), insert);
+    run.revision = None;
+    runs.push(run);
+    runs.extend(tail);
+    normalize_break_runs(runs);
+    true
+}
+
 /// Whether `run` holds an object that is not text: a text box, an image,
 /// an equation, a comment/note reference or a note's own number.
 fn run_holds_object(run: &Run) -> bool {

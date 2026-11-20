@@ -33,6 +33,7 @@ mod edit_offset;
 pub mod format_image;
 pub mod format_text_box;
 pub mod hyperlink;
+pub mod inline_objects;
 pub mod insert_blank_page;
 pub mod insert_caption;
 pub mod insert_chart;
