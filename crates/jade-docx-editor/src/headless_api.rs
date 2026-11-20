@@ -1977,10 +1977,10 @@ fn try_apply_headless_text_command(
             );
             let range =
                 range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
-            // The inline pictures the range holds go with its text, as in
+            // The inline pictures and equations the range holds go with its text, as in
             // Word; the text edit then covers the range without them.
             let objects = if word_doc.revision_session().is_none() {
-                word_doc.inline_objects_in_rendered_range(range)
+                crate::commands::inline_objects::inline_objects_in_range(word_doc, range)
             } else {
                 Vec::new()
             };
@@ -2282,15 +2282,32 @@ fn apply_headless_commands(
                     .flatten();
                 // One command, one history step, however many characters and
                 // paragraph boundaries the run covers.
-                let command: Box<dyn Command> = match beside {
-                    Some((object, caret)) => Box::new(
+                // An inline equation likewise goes whole.
+                let equation = (repeat == 1 && beside.is_none())
+                    .then(|| {
+                        crate::commands::inline_objects::inline_equation_beside_caret(
+                            word_doc,
+                            range.focus,
+                            matches!(direction, DeleteDirection::Backward),
+                        )
+                    })
+                    .flatten();
+                let command: Box<dyn Command> = match (beside, equation) {
+                    (Some((object, caret)), _) => Box::new(
                         crate::commands::inline_objects::DeleteInlineObjectsCommand::new(
-                            vec![object],
+                            vec![crate::commands::inline_objects::InlineObject::Drawing(
+                                object,
+                            )],
                             None,
                             caret,
                         ),
                     ),
-                    None => Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
+                    (None, Some((run_index, caret))) => Box::new(
+                        crate::commands::inline_objects::DeleteInlineEquationCommand::new(
+                            run_index, caret,
+                        ),
+                    ),
+                    (None, None) => Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
                 };
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
