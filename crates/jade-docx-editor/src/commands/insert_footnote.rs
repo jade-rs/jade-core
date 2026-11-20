@@ -1208,7 +1208,7 @@ mod tests {
             .iter()
             .map(|run| run.text.as_str())
             .collect();
-        assert_eq!(footnote_text, "\tA");
+        assert_eq!(footnote_text, " A");
         assert_eq!(
             selection,
             Some(SelectionRange::collapsed(TextPosition::new(
@@ -1364,7 +1364,7 @@ mod tests {
         );
         assert_eq!(
             word_doc.paragraph(footnote_index).map(paragraph_text),
-            Some("\tnote".to_string())
+            Some(" note".to_string())
         );
         assert_eq!(
             selection,

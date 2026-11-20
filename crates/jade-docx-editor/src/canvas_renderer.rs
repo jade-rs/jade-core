@@ -3711,6 +3711,7 @@ pub struct ParagraphFrameDebugInfo {
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct PhysicalPageOrigin {
     top: f64,
+    width: f64,
     height: f64,
 }
 
@@ -4061,6 +4062,9 @@ where
     /// Section transitions can change height, so the current height cannot
     /// reconstruct origins belonging to earlier sections.
     page_origins: Vec<PhysicalPageOrigin>,
+    /// Where layout records the bytes each field run shows, for the
+    /// document's caret offsets (`WordDocument::rendered_field_lengths`).
+    rendered_field_lengths: Option<crate::word_document::RenderedFieldLengths>,
     /// Footnote numeral format (`w:footnotePr/w:numFmt`, §17.11.12) from the
     /// default section. `None` = decimal. MVP: document-wide.
     footnote_number_format: Option<String>,
@@ -5300,7 +5304,34 @@ where
     ///
     /// NOTE: This includes the page gap so it matches the coordinate space used by
     /// selection layouts and `ParagraphLayoutCache` (absolute Y).
-    pub(crate) fn page_top_y(&self, page_0idx: usize) -> f64 {
+    /// Shares `lengths` with the document being laid out: layout records
+    /// there the bytes each field run shows, which the document's caret
+    /// offsets count (`WordDocument::rendered_field_lengths`).
+    pub fn set_rendered_field_lengths(
+        &mut self,
+        lengths: crate::word_document::RenderedFieldLengths,
+    ) {
+        self.rendered_field_lengths = Some(lengths);
+    }
+
+    /// The page box of page `page_0idx` (from 0), in CSS px, as it was laid
+    /// out: a section of its own size or orientation (a landscape table among
+    /// portrait pages) has its own box. Pages the host has not seen yet take
+    /// the size being laid out.
+    pub fn page_box(&self, page_0idx: usize) -> (f64, f64) {
+        if self.pageless_mode {
+            return (self.page_width, self.page_height);
+        }
+        self.page_origins
+            .get(page_0idx)
+            .map(|origin| (origin.width, origin.height))
+            .filter(|(width, height)| *width > 0.0 && *height > 0.0)
+            .unwrap_or((self.page_width, self.page_height))
+    }
+
+    /// The document y of the top of page `page_0idx`, including the gaps
+    /// between pages; pages laid out so far keep their own heights.
+    pub fn page_top_y(&self, page_0idx: usize) -> f64 {
         if self.pageless_mode {
             0.0
         } else {
@@ -9372,6 +9403,7 @@ where
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
             page_origins: Vec::new(),
+            rendered_field_lengths: None,
             footnote_number_format: None,
             footnote_number_restart: NoteRestart::Continuous,
             section_footnote_numbering: Vec::new(),
@@ -14243,7 +14275,7 @@ where
     }
 
     /// Determines which page a Y coordinate falls on.
-    pub(crate) fn page_for_y(&self, y: f64) -> usize {
+    pub fn page_for_y(&self, y: f64) -> usize {
         if self.pageless_mode {
             return 0;
         }
@@ -20374,6 +20406,13 @@ where
                 if let Some(value) = self.resolve_run_field(field) {
                     if !continues_field(&paragraph.runs, previous_visible_run, run_index) {
                         segment.push_str(&value);
+                        if let (Some(lengths), Some(id)) =
+                            (self.rendered_field_lengths.as_ref(), run.node_id)
+                        {
+                            if let Ok(mut lengths) = lengths.lock() {
+                                lengths.insert(id, value.len());
+                            }
+                        }
                     }
                 } else if !run.text.is_empty() {
                     segment.push_str(&run.text);
@@ -37868,7 +37907,6 @@ where
         }
 
         let mut regions = Vec::new();
-        let page_with_gap = self.page_height + PAGE_GAP_PX;
         for (paragraph_index, paragraph_layout) in self.selection.paragraphs().iter().enumerate() {
             let Some(links) = paragraph_links.get(paragraph_index) else {
                 continue;
@@ -37877,16 +37915,7 @@ where
                 continue;
             }
             for line in &paragraph_layout.lines {
-                let page = if self.pageless_mode || page_with_gap <= 0.0 {
-                    0
-                } else {
-                    let value = (line.absolute_content_top / page_with_gap).floor();
-                    if value.is_finite() && value >= 0.0 {
-                        value as usize
-                    } else {
-                        0
-                    }
-                };
+                let page = self.page_for_y(line.absolute_content_top);
                 for (link_start, link_end, link) in links {
                     for fragment in line.fragments.iter() {
                         let start = (*link_start).max(fragment.start);
@@ -37998,8 +38027,7 @@ where
             .iter()
             .rev()
             .find(|region| {
-                let page_offset_y =
-                    region.page.saturating_sub(1) as f64 * (self.page_height + PAGE_GAP_PX);
+                let page_offset_y = self.page_top_y(region.page.saturating_sub(1));
                 let global_y = region.y + page_offset_y;
                 let center_x = region.x + region.width / 2.0;
                 let center_y = global_y + region.height / 2.0;
@@ -39129,6 +39157,7 @@ where
     /// only what it changed.
     pub fn sync_word_document(&mut self, document: &WordDocument) {
         crate::canvas_view::install_document_font_substitutes(document);
+        self.rendered_field_lengths = Some(document.rendered_field_lengths());
         self.set_style_context(
             document.styles_part.clone().map(Rc::new),
             document.loaded_theme_part().map(Rc::new),
@@ -40691,11 +40720,13 @@ where
         while self.page_origins.len() < physical_page {
             self.page_origins.push(PhysicalPageOrigin {
                 top: self.page_top_y(self.page_origins.len()),
+                width: self.page_width,
                 height: self.page_height,
             });
         }
         self.page_origins[physical_page - 1] = PhysicalPageOrigin {
             top: self.page_offset_y,
+            width: self.page_width,
             height: self.page_height,
         };
         // Reflow owns this prefix; future origins from the previous pagination
@@ -42154,6 +42185,9 @@ fn select_header_footer_variant_for_page<'a, T: ?Sized>(
     first_lines: Option<&'a T>,
     even_lines: Option<&'a T>,
 ) -> Option<&'a T> {
+    // The variants arrive resolved through "link to previous": a title page
+    // or an even page whose section chain has no story of that kind is
+    // blank in Word, not given the default story (ECMA-376 17.10.5).
     if title_page && first_page_of_section {
         return first_lines;
     }
