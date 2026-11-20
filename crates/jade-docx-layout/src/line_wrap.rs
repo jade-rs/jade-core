@@ -1473,6 +1473,72 @@ fn windows_times_east_asia_space_advance(
     .flatten()
 }
 
+// Normalize only actual pair adjustments. Ordinary zero-kerning glyphs do
+// not enter either producer, so their common advance path pays no Times test.
+#[inline]
+fn windows_times_space_kerning_adjustment(
+    adjustment: f64,
+    paragraph: Option<&ParagraphStyle>,
+    style: &ResolvedRunStyle,
+    state: &TextAdvanceState,
+    current: &str,
+    next: Option<&str>,
+) -> f64 {
+    if adjustment != 0.0
+        && style.has_same_requested_times_east_asia()
+        && windows_times_east_asia_space_pair(
+            paragraph,
+            style,
+            state.prev_prev_grapheme.as_deref(),
+            state.prev_grapheme.as_deref(),
+            current,
+            next,
+        )
+    {
+        0.0
+    } else {
+        adjustment
+    }
+}
+
+// Both policies affect U+0020 only. Classify it once before resolving the
+// ordinary Times exception and the existing balanced-space fallback.
+#[inline]
+fn requested_space_width_px(
+    grapheme: &str,
+    paragraph: Option<&ParagraphStyle>,
+    style: &ResolvedRunStyle,
+    state: &TextAdvanceState,
+    next: Option<&str>,
+    descriptor: &str,
+) -> Option<f64> {
+    if grapheme != " " {
+        return None;
+    }
+    if style.has_same_requested_times_east_asia() {
+        if let Some(width) = windows_times_east_asia_space_advance(
+            paragraph,
+            style,
+            state.prev_grapheme.as_deref(),
+            " ",
+            next,
+        ) {
+            return Some(width);
+        }
+    }
+    balanced_space_width_px(
+        " ",
+        paragraph,
+        state.prev_grapheme.as_deref(),
+        state.follows_inline_object,
+        next,
+        descriptor,
+    )
+    .map(|half_em| {
+        windows_balanced_latin_space_advance(paragraph, descriptor, style).unwrap_or(half_em)
+    })
+}
+
 // A balanced half-em cell is not the face's ordinary U+0020 glyph. Applying
 // that glyph's pair kerning afterwards would shorten the fixed cell again.
 #[inline(never)]
@@ -1825,26 +1891,6 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
         core_advance + snap_trailing + balance_extra + implicit_latin_trailing_gap;
-    // Only explicit Times slots need the space exception. Resolve it after
-    // the other widths so the adjusted value need not survive those calls.
-    let kerning_adjustment = if resolved_style
-        .is_some_and(ResolvedRunStyle::has_same_requested_times_east_asia)
-        && kerning_adjustment != 0.0
-        && !measured_width_is_oracle
-        && resolved_style.is_some_and(|style| {
-            windows_times_east_asia_space_pair(
-                paragraph_style,
-                style,
-                prev_prev_grapheme,
-                prev_grapheme,
-                grapheme,
-                next_grapheme,
-            )
-        }) {
-        0.0
-    } else {
-        kerning_adjustment
-    };
     let total_advance = (implicit_latin_gap
         + implicit_numeric_gap
         + kerning_adjustment
@@ -3641,7 +3687,14 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         )
     };
     let kerning_adjustment = if let Some(adjustment) = punctuation_adjustment {
-        adjustment * style.text_scale_x.max(0.01)
+        windows_times_space_kerning_adjustment(
+            adjustment * style.text_scale_x.max(0.01),
+            paragraph_style,
+            style,
+            state,
+            grapheme,
+            next_grapheme,
+        )
     } else if !measured_width_is_oracle
         && style.measures_letter_pairs()
         && state.prev_grapheme.is_some()
@@ -3751,7 +3804,14 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             pair_width - prev_width - measured_glyph_width + 2.0 * synthetic_bold_extra
         };
         if raw_adjustment.is_finite() {
-            raw_adjustment * style.text_scale_x.max(0.01)
+            windows_times_space_kerning_adjustment(
+                raw_adjustment * style.text_scale_x.max(0.01),
+                paragraph_style,
+                style,
+                state,
+                grapheme,
+                next_grapheme,
+            )
         } else {
             0.0
         }
@@ -3782,31 +3842,14 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         style,
         automatic_note_separator_width_px(grapheme, paragraph_style, text_offset, font_descriptor)
             .or_else(|| {
-                if grapheme == " " && style.has_same_requested_times_east_asia() {
-                    windows_times_east_asia_space_advance(
-                        paragraph_style,
-                        style,
-                        state.prev_grapheme.as_deref(),
-                        grapheme,
-                        next_grapheme,
-                    )
-                } else {
-                    None
-                }
-            })
-            .or_else(|| {
-                balanced_space_width_px(
+                requested_space_width_px(
                     grapheme,
                     paragraph_style,
-                    state.prev_grapheme.as_deref(),
-                    state.follows_inline_object,
+                    style,
+                    state,
                     next_grapheme,
                     font_descriptor,
                 )
-                .map(|half_em| {
-                    windows_balanced_latin_space_advance(paragraph_style, font_descriptor, style)
-                        .unwrap_or(half_em)
-                })
             })
             .or(requested_ascii_measure),
     );
