@@ -735,11 +735,11 @@ fn formatting_ranges_select_exact_characters_across_note_markers() {
     for paragraph in [0, 1, 4] {
         for kind in [8, 9, 10, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 30] {
             let mut word = note_fixture();
-            let model_start = if word.is_note_paragraph_surface(paragraph) {
-                2
-            } else {
-                1
-            };
+            // A note's text follows the space Word puts after its
+            // reference mark, a run of its own: あ is its third character.
+            let note = word.is_note_paragraph_surface(paragraph);
+            let model_start = if note { 2 } else { 1 };
+            let at = if note { 2 } else { 1 };
             let from = word
                 .model_to_rendered_text_position(TextPosition::new(paragraph, model_start))
                 .offset;
@@ -778,11 +778,11 @@ fn formatting_ranges_select_exact_characters_across_note_markers() {
             apply(&mut word, vec![command]);
             let changed = snapshot(&reload(&word));
             assert_ne!(
-                changed[paragraph][1][1], original[paragraph][1][1],
+                changed[paragraph][1][at], original[paragraph][1][at],
                 "paragraph {paragraph}, kind {kind}"
             );
             let mut expected = original.clone();
-            expected[paragraph][1][1] = changed[paragraph][1][1].clone();
+            expected[paragraph][1][at] = changed[paragraph][1][at].clone();
             assert_eq!(
                 changed, expected,
                 "only あ should change: paragraph {paragraph}, kind {kind}"

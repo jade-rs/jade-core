@@ -2446,15 +2446,22 @@ impl NativeDocument {
         self.page_height + jade_docx_editor::render_host::PAGE_GAP_PX
     }
 
-    /// The document coordinate of a point on `page_index`.
+    /// The box of page `page_index` as it was laid out: a section turned
+    /// landscape, or on other paper, has pages of its own size.
+    pub fn page_box(&self, page_index: usize) -> (f64, f64) {
+        self.renderer.page_box(page_index)
+    }
+
+    /// The document coordinate of a point on `page_index`: the pages before
+    /// it count each at its own height.
     pub fn document_y(&self, page_index: usize, y_on_page: f64) -> f64 {
-        y_on_page + page_index as f64 * self.page_pitch()
+        y_on_page + self.renderer.page_top_y(page_index)
     }
 
     /// Which page a document coordinate falls on, and where on it.
     pub fn page_and_offset(&self, document_y: f64) -> (usize, f64) {
-        let page = (document_y / self.page_pitch()).floor().max(0.0) as usize;
-        (page, document_y - page as f64 * self.page_pitch())
+        let page = self.renderer.page_for_y(document_y.max(0.0));
+        (page, document_y - self.renderer.page_top_y(page))
     }
 
     /// The page box the document asks for, found by laying it out once.
@@ -2614,6 +2621,19 @@ impl NativeDocument {
             // The old count would stop before the newly displaced tail.
             usize::MAX,
         )
+    }
+
+    /// Where the paragraph a split of `paragraph` made is: the next one of
+    /// its story, past the paragraphs of the notes it references (they
+    /// follow their reference), as `InsertParagraphBreak` puts the caret.
+    pub fn paragraph_after_split(&self, paragraph: usize) -> usize {
+        let document = &self.word_document;
+        if !document.is_body_paragraph_surface(paragraph) {
+            return paragraph + 1;
+        }
+        (paragraph + 1..document.paragraph_count())
+            .find(|&index| document.is_body_paragraph_surface(index))
+            .unwrap_or(paragraph + 1)
     }
 
     /// The plain text of one paragraph.
