@@ -59046,6 +59046,357 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T143728474Z-088d346a",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T143728474Z-088d346a.zip",
+      "archive_sha256": "b8a62d34b9f5ee91a4799902ce80fa1873bc6b6ba9403296b68ff384dbdc008b",
+      "capture_sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30",
+      "documents": [
+        {
+          "name": "word-windows-font-family-case-lower-regular-s13-at-24to96-m14",
+          "source_sha256": "bf71b86d6a02ecf3e5b9410829a5f51903cfcc3be64a403599484eebb9f262df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-regular-s14p5-at-24to96-m14",
+          "source_sha256": "3ebf9f802eda7f7c69a6c289482a4d92de3bd586847c58f609f2b9e8affb1e7c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-regular-s13-at-24to96-m14",
+          "source_sha256": "7e7ef8db4ce8d1c42bf86b1155f213f34f04da976ba6c3075b3c0b497bb9541d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-regular-s14p5-at-24to96-m14",
+          "source_sha256": "89e9e384ce914563e35ef7812518f3b2b1ef894244aad40594feb4ef137591f6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-regular-s13-at-24to96-m14",
+          "source_sha256": "06e9942d13ef8bd4e7b2436eb1811f3ada0f4f0a479cf9798a178b313aefd5b3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-regular-s14p5-at-24to96-m14",
+          "source_sha256": "7b53fc3a986e7ec4098b130eed3435df02b3d80d94a2824c743e17b4dab65f7c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-regular-s13-m-24to96-m14",
+          "source_sha256": "28ef412d3b8fa385380e39d355f98446a4c0acbe9c93da38d95610d1ae35c259",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-regular-s14p5-m-24to96-m14",
+          "source_sha256": "8a2497d90871dbd6a41d63284421b27fdf0d47582e7834ffc407c1ca35eafcbe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-regular-s13-m-24to96-m14",
+          "source_sha256": "bd85ea63adef313714c9cf7a27cf531337c598932e3ac3eae1280958fad1aee6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-regular-s14p5-m-24to96-m14",
+          "source_sha256": "6006e5d779a32b0dde555f972d918d8aa6b3cec1830c0dd64371fe510debb29c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-regular-s13-m-24to96-m14",
+          "source_sha256": "f12af15d2abb1d5e12a8999c8949618ff62b6e0de623acc3a6810b8542675b30",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-regular-s14p5-m-24to96-m14",
+          "source_sha256": "ded12b037b001c17b599f74c81d0b9182440d4241bd39a67dfd9f29e012452c4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bold-s13-at-24to96-m14",
+          "source_sha256": "77f4369d6f24978866d4f7861dc333ec4b42f48620d6dcbfa12bcae94f5802d2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bold-s14p5-at-24to96-m14",
+          "source_sha256": "8af1d342730a589ccf806ca423736363727a23f03ed8416566d1c77c40607da3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bold-s13-at-24to96-m14",
+          "source_sha256": "32e88890b8d6c25800211a84424c84df30e950841470d933337d125455fa7857",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bold-s14p5-at-24to96-m14",
+          "source_sha256": "efa8215b4f30458d107aea5ff12675e65bb60a0670662c3996aaa544b0755896",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bold-s13-at-24to96-m14",
+          "source_sha256": "76fa80aef4c73cafc54ea3bf15933f43e9e1b155e66b74059aeeb79b637de3a9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bold-s14p5-at-24to96-m14",
+          "source_sha256": "f222b900de7f5f6f8ed2c755f982caa69b770fcab604c986fb202c9b91031c07",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bold-s13-m-24to96-m14",
+          "source_sha256": "728ecddfdfb40c923f9ccc0a9ba7520156517824be81df4f366db4dd5ba1ca7e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bold-s14p5-m-24to96-m14",
+          "source_sha256": "8dee36e7d3225864221b10b0bca6a6284f7c2ef5b03dada59c90642040837e5e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bold-s13-m-24to96-m14",
+          "source_sha256": "c56bd119b7cd5aa4bde4c3485725ff5e2e9aa611f276d8310c2e92fddaa73a38",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bold-s14p5-m-24to96-m14",
+          "source_sha256": "3d045dc50244117f98ebf06b6cd220d2260b5e398eb19df234668b279c2134d1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bold-s13-m-24to96-m14",
+          "source_sha256": "4c428913a890eef9be95efa1e3519cc49f17fd822136d309304e61ca59d03c79",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bold-s14p5-m-24to96-m14",
+          "source_sha256": "85023093e7f023108a8065c0e4064184e637339080230137af6addec85e8d2c8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-italic-s13-at-24to96-m14",
+          "source_sha256": "eae3baba7ae29d93a5919197af16d4bd08db1a8ed92241819e29c1ef57d31e1e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-italic-s14p5-at-24to96-m14",
+          "source_sha256": "d4c00b2dd7aae0f93a468479fbcbb77196a623d82e7c44e509de05e0420aa8ec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-italic-s13-at-24to96-m14",
+          "source_sha256": "a9fe6fae748363326a8aee0b9c117dd8fb31e8ba506e1a0b2fd7f5651f690fb3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-italic-s14p5-at-24to96-m14",
+          "source_sha256": "d51f5751928527446cb1b412cc36fad1a643d58eb50056d9e3951eba86cec1c0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-italic-s13-at-24to96-m14",
+          "source_sha256": "b9cca1b75141c34b16eb1a6266474284760fa74b1b4e20e4c7cd4d4184a7c47f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-italic-s14p5-at-24to96-m14",
+          "source_sha256": "4cd6caab2899e74a3d3431e8eb5372dfa72bc2b8cdff7d9bc3650a1b8dd14a35",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-italic-s13-m-24to96-m14",
+          "source_sha256": "0bc6a689b3c0e4e59ca3c2e5f80644f1b4479d989b0a33f9fca2f8bbbeecdde6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-italic-s14p5-m-24to96-m14",
+          "source_sha256": "af1d9900fb8eee7299cc12b71e3ff4ce2ed630d0a1dc740490fd857c3c5af336",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-italic-s13-m-24to96-m14",
+          "source_sha256": "a425fcd2105f1bef3061ac715e7ff7593065a1c05523e33c4db009454700a940",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-italic-s14p5-m-24to96-m14",
+          "source_sha256": "96ace5ac5418a94d0d969c4cb4e82dfaa025ad35f46b2502db26b35fa0b1c5cc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-italic-s13-m-24to96-m14",
+          "source_sha256": "7058d1a1e0a16e4a091354ea4e90a9fbd7435b5ff837d292cf87c58159a8b860",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-italic-s14p5-m-24to96-m14",
+          "source_sha256": "d789d8b55623a97d6a5dffa63ade8ef5773f0d0c7ca7770a48d72c9ab6371480",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bolditalic-s13-at-24to96-m14",
+          "source_sha256": "6c8c1d27f18ce5536f5158e1c84215f156c338bf39f86a99087db90e5cfd86be",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bolditalic-s14p5-at-24to96-m14",
+          "source_sha256": "4ad8f2b5a74be245edcdcece2f2a6019d6e438a72aee3722d5927a90416f3163",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bolditalic-s13-at-24to96-m14",
+          "source_sha256": "baa90589b6db7c797db11c8c3728d003cf97e8d04350dfa1cc19fc1e1b4f119f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bolditalic-s14p5-at-24to96-m14",
+          "source_sha256": "7271bf1681cbd03398773d6831e4215252e9684329af6bf6838d8749b6c12281",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bolditalic-s13-at-24to96-m14",
+          "source_sha256": "b5a0319bf1415b3976ba3debc522992fb110f23c7fdd37febf575c0d8ae8d835",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bolditalic-s14p5-at-24to96-m14",
+          "source_sha256": "bc29f34fdd74b61ed0f8c582b71a7f306c1a70d9bb6ba9168906087c5c273659",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bolditalic-s13-m-24to96-m14",
+          "source_sha256": "c7f526dac45a0175991f3f8264307081b996dca9f35118c29a8957f877632577",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-lower-bolditalic-s14p5-m-24to96-m14",
+          "source_sha256": "fec38aad109e971e547186d6a9e6c2021e6ce0c3e114f3165d450b0891701720",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bolditalic-s13-m-24to96-m14",
+          "source_sha256": "14686076131dcd4e4fbd56f6e1a5a86c679534081deba19bca04cc93b4ff3077",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-upper-bolditalic-s14p5-m-24to96-m14",
+          "source_sha256": "939134495a0c5ee8ea0654a08a522654d6a455e2f144376b31ac549c37befc3d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bolditalic-s13-m-24to96-m14",
+          "source_sha256": "06d38cac3a55230ebc43694d3b3e713345d787176870bb10c4ac8d5e4b4ddb63",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-font-family-case-mixed-bolditalic-s14p5-m-24to96-m14",
+          "source_sha256": "1ed6433a7169c528e85d4830e3137995073dcb2c426f837ffeccbc24a8beded5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s14p5-m-24to96-m14.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -59307,6 +59658,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T133931873Z-724e3789/word-output-font-facts.json",
       "sha256": "00273858e3336cafd09496435f45accbd0e764fdc214741b51a326c3ac0a393d"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-output-font-facts.json",
+      "sha256": "f709527c9a38a8f2bac8e9002e199a350e8ba14fb3c29d4d7b94456b82eef792"
     }
   ]
 }

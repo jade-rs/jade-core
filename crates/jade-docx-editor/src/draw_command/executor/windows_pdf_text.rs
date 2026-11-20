@@ -59,7 +59,7 @@ fn realized_aptos_parts(descriptor: &str, dpi: f64) -> Option<(&str, &str, f64)>
             .next()?
             .trim()
             .trim_matches(&['\'', '"'][..]);
-        if family != "Aptos Display" {
+        if !family.eq_ignore_ascii_case("Aptos Display") {
             return None;
         }
         let realized = (source_em * dpi / 96.0).round() * 96.0 / dpi;

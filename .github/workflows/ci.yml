@@ -462,6 +462,17 @@ jobs:
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_aptos_size_gate.py
           python scripts/word-oracle/check_windows_aptos_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert Windows Word font-family case invariance
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_case.py
+          python scripts/word-oracle/check_windows_font_family_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows font-family case differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-family-case-differences
+          path: target/windows-font-family-cases
+          if-no-files-found: ignore
       - name: Assert independent versioned Windows Word XPS print origins
         run: python scripts/word-oracle/check_windows_xps.py --compare-rendered
       - name: Upload Windows Word XPS coordinate differences

@@ -3885,6 +3885,26 @@ fn word_latin_font_vertical_units(
         // the generic 1.3em fallback. Keep the existing Mac metrics exact.
         "Courier New" | "'Courier New'" => Some((1705.0, 615.0)),
         "Aptos" | "Aptos Display" => Some((1923.0, 577.0)),
+        _ if word_layout_platform() == WordLayoutPlatform::Windows => {
+            // Word resolves family names without ASCII case sensitivity.
+            // Keep exact names on the existing fast path and leave Mac's
+            // established family policies unchanged.
+            [
+                "Calibri",
+                "Calibri Light",
+                "Cambria",
+                "Arial",
+                "Times New Roman",
+                "Century",
+                "Verdana",
+                "Courier New",
+                "Aptos",
+                "Aptos Display",
+            ]
+            .into_iter()
+            .find(|known| family.eq_ignore_ascii_case(known))
+            .and_then(|known| word_latin_font_vertical_units(known, font_descriptor))
+        }
         _ => None,
     }
 }
@@ -7555,5 +7575,36 @@ mod tests {
             resolve_widow_orphan_decision(4, 3),
             WidowOrphanDecision::BreakBeforeLine(2)
         );
+    }
+    #[test]
+    fn windows_font_family_case_uses_the_word_line_box_without_changing_mac() {
+        let previous = word_layout_platform();
+        let variants = ["aptos display", "APTOS DISPLAY", "aPtOs dIsPlAy"];
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for family in variants {
+            assert!(word_font_vertical_metrics_px(&format!("13pt '{family}'")).is_none());
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let canonical = word_font_vertical_metrics_px("13pt 'Aptos Display'").unwrap();
+        for family in variants {
+            assert_eq!(
+                word_font_vertical_metrics_px(&format!("13pt '{family}'")),
+                Some(canonical)
+            );
+            assert_eq!(
+                word_latin_font_line_height_em(family),
+                Some(2500.0 / 2048.0)
+            );
+        }
+        // Reuse the same parsed descriptors after the Windows lookups.
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        for family in variants {
+            assert!(word_font_vertical_metrics_px(&format!("13pt '{family}'")).is_none());
+        }
+        assert_eq!(
+            word_font_vertical_metrics_px("13pt 'Aptos Display'"),
+            Some(canonical)
+        );
+        set_word_layout_platform(previous);
     }
 }
