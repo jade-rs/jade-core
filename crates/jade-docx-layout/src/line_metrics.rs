@@ -1078,7 +1078,14 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
     }
     if matches!(
         family,
-        "游明朝" | "Yu Mincho" | "YuMincho" | "YuMincho-Regular"
+        "游明朝"
+            | "Yu Mincho"
+            | "YuMincho"
+            | "YuMincho-Regular"
+            | "MS Mincho"
+            | "ＭＳ 明朝"
+            | "MS 明朝"
+            | "ＭＳ明朝"
     ) || (is_word_monospace_family(family)
         && font_descriptor_style(font_descriptor) == (false, false))
     {
@@ -5085,6 +5092,21 @@ mod tests {
     }
 
     #[test]
+    fn windows_styled_mincho_latin_boundaries_keep_the_authored_quarter_em() {
+        use super::*;
+        // Original Word 16.0.19127.20936 styled Mincho controls at 12pt
+        // retain a 3pt alphabetic/CJK gap in non-justified paragraph endings.
+        for face in ["MS Mincho", "ms mincho", "ＭＳ 明朝"] {
+            for prefix in ["bold ", "italic ", "bold italic "] {
+                let descriptor = format!("{prefix}12.00pt '{face}'");
+                let metrics = word_windows_latin_auto_space_metrics(&descriptor, false).unwrap();
+                assert_eq!(metrics.leading_gap_px(), 4.0);
+                assert_eq!(metrics.trailing_gap_px(false), 4.0);
+            }
+        }
+    }
+
+    #[test]
     fn windows_styled_latin_gaps_use_original_font_program_averages() {
         use super::*;
         for (face, prefix, average) in [
@@ -5139,7 +5161,7 @@ mod tests {
         for descriptor in [
             "20pt 'MS PMincho'",
             "20pt 'MS PGothic'",
-            "bold 20pt 'MS Mincho'",
+            "bold 20pt 'MS Gothic'",
         ] {
             assert!(word_windows_latin_auto_space_metrics(descriptor, false).is_none());
         }
