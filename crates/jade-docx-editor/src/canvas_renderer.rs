@@ -23901,6 +23901,7 @@ where
             prepared_segments: &mut [PreparedSegment<'_, '_>],
             paragraph_style: &ParagraphStyle,
             extra_total: f64,
+            origin_x: &mut f64,
         ) -> Option<f64> {
             use jade_docx_layout::line_wrap::{
                 classify_script, distribute_windows_legacy_mixed_justification,
@@ -23915,12 +23916,13 @@ where
             {
                 return None;
             }
+            // Original Word mode-12/14 controls share the legacy allocator.
+            // Balanced cells keep zero space capacity; known Latin faces still
+            // supply their own average-width script-boundary capacity.
             let average_metrics_enabled = matches!(
                 paragraph_style.east_asian_rules.compatibility_mode,
-                Some(14 | 15)
-            ) && !paragraph_style
-                .east_asian_rules
-                .balance_single_byte_double_byte_width;
+                Some(12 | 14 | 15)
+            );
             let is_east_asian = |text: &str| {
                 !text.chars().all(char::is_whitespace)
                     && classify_script(text)
@@ -23960,7 +23962,10 @@ where
                     pen += prepared.width;
                 }
                 let legacy = use_average_metrics
-                    && paragraph_style.east_asian_rules.compatibility_mode == Some(14);
+                    && matches!(
+                        paragraph_style.east_asian_rules.compatibility_mode,
+                        Some(12 | 14)
+                    );
                 if !nodes.iter().any(|n| is_east_asian(n.2))
                     || !nodes
                         .iter()
@@ -23988,29 +23993,47 @@ where
                         let balanced = paragraph_style
                             .east_asian_rules
                             .balance_single_byte_double_byte_width
+                            && !prepared_segments[left.0].style.resolved.has_same_requested_times_east_asia()
                             && (index > 0 && is_east_asian(nodes[index - 1].2)
                                 || is_east_asian(right.2));
                         if !balanced {
                             opportunity.space_capacity_px = if legacy {
-                                (left.5? - (right.3 - left.3)).max(0.0)
+                                let style = &prepared_segments[left.0].style.resolved;
+                                let target = jade_docx_layout::line_metrics::word_windows_legacy_justification_space_target_px(
+                                    style.descriptor_for_grapheme(" ", classify_script(" ")),
+                                    paragraph_style.east_asian_rules.balance_single_byte_double_byte_width
+                                        && style.has_distinct_requested_east_asia_font()
+                                        && !style.uses_requested_latin_east_asia_fallback(),
+                                )?;
+                                (target - (right.3 - left.3)).max(0.0)
                             } else {
                                 ((right.3 - left.3) * 0.5).max(0.0)
                             };
                         }
+                    } else if prepared_segments[left.0].style.resolved.has_same_requested_times_east_asia()
+                        && prepared_segments[right.0].style.resolved.has_same_requested_times_east_asia()
+                    {
+                        // Explicit Times/Times slots allocate to word spaces only.
+                        continue;
                     } else if matches!(
                         east_asian_justification_gap(left.2, right.2),
                         Some(
                             jade_docx_layout::line_wrap::EastAsianJustificationGap::AutoSpace { .. }
                         )
                     ) {
-                        opportunity.auto_space_capacity_px = if use_average_metrics {
-                            let average = if is_east_asian(left.2) {
-                                right.5?
-                            } else {
-                                left.5?
-                            };
-                            average * 0.5
+                        let latin = if is_east_asian(left.2) { right } else { left };
+                        let balanced_fixed_cjk = paragraph_style
+                            .east_asian_rules
+                            .balance_single_byte_double_byte_width
+                            && !prepared_segments[latin.0]
+                                .style
+                                .resolved
+                                .uses_requested_latin_east_asia_fallback();
+                        opportunity.auto_space_capacity_px = if use_average_metrics && !balanced_fixed_cjk {
+                            latin.5? * 0.5
                         } else {
+                            // Explicit Japanese faces keep their balanced quarter-em
+                            // capacity, including the original 20/24pt Arial controls.
                             left.4.max(right.4) * 0.25
                         };
                     } else if east_asian_justification_gap(left.2, right.2).is_none()
@@ -24076,6 +24099,14 @@ where
                 }
                 prepared.fragment.width += accumulated;
                 prepared.width += accumulated;
+            }
+            if legacy && distributed > 0.0 {
+                *origin_x =
+                    jade_docx_layout::line_metrics::word_windows_legacy_justification_origin_px(
+                        paragraph_style.word_platform,
+                        paragraph_style.east_asian_rules.compatibility_mode,
+                        *origin_x,
+                    );
             }
             Some(distributed)
         }
@@ -25459,9 +25490,15 @@ where
                                 prepared_segments.as_mut_slice(),
                                 paragraph_style,
                                 extra_total,
+                                &mut cursor_x,
                             )
                         })
                         .flatten();
+                    if mixed.is_some() {
+                        // Fragments, actual paint positions and selection use
+                        // the same realized legacy origin.
+                        line_layout.start_x = cursor_x;
+                    }
                     mixed.unwrap_or_else(|| {
                         distribute_justification_to_whitespace(
                             prepared_segments.as_mut_slice(),

@@ -1,0 +1,1414 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T092533754Z-02a811e6",
+  "captured_at_utc": "2026-11-19T09:25:33.7666640Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "1591d1d62ba7b69927c8415d95e6b0baa538a579ee08f4ac13c8f6bbd0ff32bf",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "90cd69c87dc66c0efd3989c30be188b64975bea7351cba653a8da7ea0e085c3f",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "bc69e2db84dfc124264f9246eeeec301827ef61af34850e4bae6c057aaa2584e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "33ddd6effb6982e54b0558574bfc87ed1ce628bd7500e4d65b7da9d0cfa99626",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "d8ae16cfc25b7a58ed3f83785cfe3ad52c9f6fa840508ea93950f771b2bed631",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "65f9313c18d30637a06ebfb3df46f7bf6a0376847928d1ddb614840e60f5f2da",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "bda4fa49a2b5551a79f4771ff80682d57c9b4c74d187a3b32a9a923fd918c697",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "33ddd6effb6982e54b0558574bfc87ed1ce628bd7500e4d65b7da9d0cfa99626",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w3000.docx",
+      "sha256": "81abf05efb39e572a4df0f144dca6f05df36bd9ec1564278ee9ea472ef8ab139",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w3000.pdf",
+      "pdf_sha256": "d619b096901d28cc110c6ed8b9a141d5a8315b1c795ddfb953b37d4610755167",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w3000.xps",
+      "xps_sha256": "631848cf7e674680495e340b47a40aff6b9fce85410cfc6f3e1879cfac12b8b3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w3000.page-001.emf",
+          "sha256": "796255ce36b56a16061ef6b2f42cbbad4b3c77cd07de04835be9a2638668c26b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3400",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3400.docx",
+      "sha256": "de0b6f4f04d7064ff42e244195878b4479fdedede3709f885b129c3c04c95221",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3400.pdf",
+      "pdf_sha256": "12e8b4aa11b3063e152481f24b7abe579ed738201beb0fec700e8d0199bfb09d",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3400.xps",
+      "xps_sha256": "7563b0aaaf3924690bab29e65b5dc9a91d4e18f6db92cfc3deaca4c15802518b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w3400.page-001.emf",
+          "sha256": "a4d7f25b96d4d67592198c09abc57552a2c208aad2558d12e6e68ba6d1b01f0e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w4000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w4000.docx",
+      "sha256": "b8bcd5bf944c498de1fae381b85eecb4e2b75278e574150f89105d4faac70a32",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w4000.pdf",
+      "pdf_sha256": "cb38b3afd914ab5c79211546021e9b8887394b2d84c768fbdc38945c3c6646fb",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w4000.xps",
+      "xps_sha256": "609adc1bda8c5e795c21d105b193856d6141b3316f768e0bb9ed75a984158fd8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w4000.page-001.emf",
+          "sha256": "e1d12977b0fc0e3eb52b2e0b94a39f7632f51764fcd0a1da643254d0a63d9595",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "d8d259f45e3716d5d7e12212ae5f875f62f22d7159647e0495756b47cf2d3af2",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "366bc7c232bfe7328641ef320230de2a165d8191dcec8797708d083997bacb3d",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "64aff08cf0631a05455311ef31aff928341f2bdec057eb6167f84ce7618dae96",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "7d05fd71127ad3aed0f9143dd3a045b17b5a048360df0d7ef7bf38851b6ca812",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "72a01a3eb5f47d9358d6b60611a9440adc2122953743a01e971051936514ad6e",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "1c042d0ed397bf9b593edd6f79ab2e65c9225d468929b8e1755c2216bf46b355",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "32c964e64bf2a85ec2072e4c166e8cee85cc6b4e9a1f353d182ade926c382af4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "907d908d23dce8b199ede1c6db00e77af6e6b11a52d6f114135337ea188c4805",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w8504.docx",
+      "sha256": "620b459848a1630fca162c2a0538f4da4e3bbf21ed1df5d2f601eaa655ed16aa",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w8504.pdf",
+      "pdf_sha256": "dd65e8b989e5e1bf9e2d33391de67d726c23b6dc321c23fe4179810ecfc7ddf4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w8504.xps",
+      "xps_sha256": "3f46089118c794d19c20066b14f56b72318b7892a813f4914cfe5c6a4aeadd72",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-manual-w8504.page-001.emf",
+          "sha256": "f221e728c87dcd08c727a3fc975f5ff985690c913ca4bc1dbc0d266a5437c14b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3000.docx",
+      "sha256": "587787b2b44f80a38d962fa438a81c936145c6cf92a0db74454ad3c6902dc991",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3000.pdf",
+      "pdf_sha256": "b75b80d35aebba86b4e257b5cda98a02bf8d77507d1e86acccb760b4ad691b78",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3000.xps",
+      "xps_sha256": "3e5c0a4f7726530e3862d4820cdf2ee049e210ff65387d5e2c440d5228a09bea",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3000.page-001.emf",
+          "sha256": "806bfc0314e8a21c6dac3bb69573d5f95b2d4ab065083908deb1b9925033448f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w3000.docx",
+      "sha256": "3c194e0fab0e28c740d7a789b86c68920fe619e60a053d87fcbf956045c25cae",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w3000.pdf",
+      "pdf_sha256": "92a5c5d122564ff0cc7f16423cfb2904545cc2cfe11a03761bd2bfb239b71ee2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w3000.xps",
+      "xps_sha256": "d5eed7e7c1e3791f64247368f33eb1f8e2c20fe35c5f885e8bb34ade59e872ca",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w3000.page-001.emf",
+          "sha256": "a904730a6b4ddb6dadce3bcca9877a5cfba453865c28c33ded75eb19048b03b7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w3000.docx",
+      "sha256": "331f2e8dde0c3b3c5defba78da15a337ffa61da0b3cb3764d700f2ea37982c35",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w3000.pdf",
+      "pdf_sha256": "c95a910dac84ac2f402a42f0187cde2bc65e0aa9bf9fa1a28dbdc61964eb36a6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w3000.xps",
+      "xps_sha256": "3d8c7e56a5855b94f5fd7bb2d0a1dfe9c415e206be39438dfcc56e1adda39bd2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w3000.page-001.emf",
+          "sha256": "a904730a6b4ddb6dadce3bcca9877a5cfba453865c28c33ded75eb19048b03b7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3400",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3400.docx",
+      "sha256": "9fe14e4ce3cabbbd1a18434b0b9d2a4134e962c0ea3deac2841b672143ee39ab",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3400.pdf",
+      "pdf_sha256": "02146c89ea6e9062dedf4f29907f0cce9b8ab3977b274be7eea926c0b94eb89e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3400.xps",
+      "xps_sha256": "9eb02a254acc3090f81cf0a100cc7e7bf15ecd5d67ed7cfe5bee1fa7bb353134",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w3400.page-001.emf",
+          "sha256": "0b7065e2ecb07ee62c8f3baf348420e877995468766c805f69eb744749986e8b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w4000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w4000.docx",
+      "sha256": "81c4e075fc251be73a7d83636ae9d9e55d5a5b11e62ef43cd2f68ee442cf06c0",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w4000.pdf",
+      "pdf_sha256": "4511eb42e8372eb1038e31694d9f8e174ac9230386ae3a14b3a8ad6c541996b4",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w4000.xps",
+      "xps_sha256": "469eac8a0974fbbdf6f6647a316bae85dedecceccc50a0dc871031eed86d7e8d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w4000.page-001.emf",
+          "sha256": "0497b995e8b19eba344149d14b7e630e5110f15df5dbae38045a70661154d848",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w8504.docx",
+      "sha256": "de0ac1937193c628ed4764aaea1feea08b8116adfdb983586855edff1591766d",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w8504.pdf",
+      "pdf_sha256": "2964e02a630657e779c6729de421f5e6aad2ebd3387ab60f7f613c5fca704456",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w8504.xps",
+      "xps_sha256": "2de3f46a7c433500f5d8be5ff8d770d2feba5d362565eaae906ab0e8a8efbf20",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m12-balance0-paragraph-w8504.page-001.emf",
+          "sha256": "1ea1854f7fae9f81a0cb0ec53b163dba05909e78de5808a667d923bcb89c4e54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w8504.docx",
+      "sha256": "740c62aaf11db0674c65ab6922d1babbedb02ce45354f411f6a3c8183c3ed89b",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w8504.pdf",
+      "pdf_sha256": "a1542bb7ba07c8bf21b7ab5bae519247783518347ea543e88092f29c643dba7d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w8504.xps",
+      "xps_sha256": "ca8f9b7d5105ecef6f5c5b7fdf8dc143d3660e696e02d0001030639b5f06a506",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m14-balance1-paragraph-w8504.page-001.emf",
+          "sha256": "aa3681ee7f8ea11990d783c5dd65bf8435692b7b5328994dd4f07d04bf18efe5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w8504.docx",
+      "sha256": "6a609e1eb50691796b72684f4c2e2c5ebf0a4653fdd632bfdb5a7c0f681306ca",
+      "pdf": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w8504.pdf",
+      "pdf_sha256": "3a735ae61246b15ed2335f95eec49222e55d766daa839a92149137debe455cf2",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w8504.xps",
+      "xps_sha256": "76e79d75cb083dc6ac029133d5a37c4ea84eb124d6cdec0f11e2beb58c7602df",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-arial-bold-s12-m15-balance1-paragraph-w8504.page-001.emf",
+          "sha256": "aa3681ee7f8ea11990d783c5dd65bf8435692b7b5328994dd4f07d04bf18efe5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "f4db6834cb21ab57f7d1af9cd8215569cf6dee82241f66fe5cb54a0ca233747a",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "54b0492a95cdab55e56f8a538b9f6c6cabcd3ed82de1672343eb628951badb6a",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "c0cafaf80e524b28bfeba7e0bf778fb97d806daf8a3f42fc1ea1fe7184fafcc3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "fa9cc39ff38ee8403551efad09573a5bc3131262733c1e3e7cffe7589071db96",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "0b7680cb67821e43712328f3eaca286d507d861f0bc5bcbe9c7f05eda7d1fc1c",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "be865c188f996ca5d3442637b5c5568816d60e59fe68ec974c05770a58614da3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "20be3da4a8ebc31bf717ea9f02b022fb5342df32a147c814019b034eb145d1b2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "740f0a6e6abca54837e5c952ac46ce4c9d0806f5c8c2adc1441575074ab75187",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w3000.docx",
+      "sha256": "6e344cfd9325ea8bf963bb771c31eea48192514d5e9b576c7637d45a50126784",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w3000.pdf",
+      "pdf_sha256": "03160e9007c77bf60c98885d6edb1f85f203dc2dc6bb6aee1874cb20e9c54ca6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w3000.xps",
+      "xps_sha256": "bf70cf51a5dce9634ddfb73091c07165817156adcd79a366b2d8e81d9d7d27ad",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w3000.page-001.emf",
+          "sha256": "ebbe230f56d43857d1ea1745e9bab0157ac894eb52987adec8ca667b7a9208f2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3400",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3400.docx",
+      "sha256": "c2720d35b3c3ddce4ea2de4810cf1edb98ea4c7c2ea3ab3ad599e438ec999d10",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3400.pdf",
+      "pdf_sha256": "4fd4af8132d325cb55bd13bb60dcf2d058998bda5e539e68d7219812427ad135",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3400.xps",
+      "xps_sha256": "97be0f86b02044e950b457d56bc6d4006ee2a0e61916fc40f282803130f3d37f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w3400.page-001.emf",
+          "sha256": "5ea053c7e64d7cb92accddc714c7d1b42a5cacd19fbbcddd63f75735035632ee",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w4000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w4000.docx",
+      "sha256": "e2a50610a9fda9a54aa75ab97b7e210c0852b6af39fbab37502b3e7b4ef4d2c4",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w4000.pdf",
+      "pdf_sha256": "f4b21cf7ceaf04829b9a7f4f83ab0fa03f87d3406530ecd6a9d035030f02ae95",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w4000.xps",
+      "xps_sha256": "c769f2e1e841d5af342bd898d1f5a4f7ee93a92408635cc5c6accef5f0845d65",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w4000.page-001.emf",
+          "sha256": "088dca8f1ee1b515654e306f3cf1e55c7078459f174d25a48eb6955cfee57544",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "34763cb450743adef64a8da984f2d4519a04ca87e662fad2813e1008439b0dd0",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "76977ce02f4ca575e084a96bba46750d195bc5ab8da62b1655d981373a646f1e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "ec7fb084709183f2ae2cbc6f7633d8425dac6b559ae8f8ab67eac2c6375bd570",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "eff28f1236b6b3da0057d3e2593bccaa59fc7984987be000abdd0a226aaa050e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "0a3b74716cbd15a3d55f5b7f7c8dc71caecc4400e95c8cc5bf95497ff8eb01ab",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "ba348897dc8b2530a3db224f52b880e61d2a0abfc3fbfaede9e106a9caf09ac0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "e1760495dc40c1f91e728cd4fcb58913f8d2e0eb54380cab81da73e9f7c88f0c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "7b62eb1cac373d320d91379d6e93b8a01995ba7b91c4d863aa5fb69ce07dd733",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w8504.docx",
+      "sha256": "6ecab524d6a4a1f0e436a96142d8c9b896bce5a75151a9a598b120c6a7fb2cff",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w8504.pdf",
+      "pdf_sha256": "8cb30ec616aea6b0c7fa64a3a0e7dd1254e97d924847fdbe9fd05b4d8176ee61",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w8504.xps",
+      "xps_sha256": "19b3a6f97b59c359ad80dc45fb57a8d0ea3d4b4d9d70488648fa4ffea4660069",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-manual-w8504.page-001.emf",
+          "sha256": "2293415e290e07a1870622d456a419fdab87c81c96156cbc0438b607ed180cd4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3000.docx",
+      "sha256": "d7dbd85d24ad33760a7dfc2dc4a44ca8a1d70464a1690c64ce79401deb1930fe",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3000.pdf",
+      "pdf_sha256": "e5f6fd109c85f8ef9583b60501d57be20c379147a3c8c40d32c6640aaaf0ad65",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3000.xps",
+      "xps_sha256": "615b5a0d55c9b04774742cced500977c29180d331507b6cf9b2794dfbae4e160",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3000.page-001.emf",
+          "sha256": "cea7d6226d58259c4f238cbd244c4992551c62b13f2a81c5d36f45702066e604",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w3000.docx",
+      "sha256": "e14b9b978d531bcfab05e77a0868413f3d79171da48bd3390153c60cb32b6945",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w3000.pdf",
+      "pdf_sha256": "f3021e24a4fafc651e6742a203be306d9e2909374aacce31bf1d02aba1324603",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w3000.xps",
+      "xps_sha256": "3d8388cb16d0653a2060fa833ae2bf3642c1c2b167ebd63d29f746c997fe1de9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w3000.page-001.emf",
+          "sha256": "b5d02dc8a9b300036fd196840827775f7fa0fb2e41fb5908d847990311f5a467",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w3000.docx",
+      "sha256": "df1936bfe602c2d28a2dc5f5efcc1d57b30b4db4b48e5a836d90b483d074cf48",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w3000.pdf",
+      "pdf_sha256": "fec10414fb827b9863060cac90c728d2e502bfcfbeaa3059711cfe281be402ee",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w3000.xps",
+      "xps_sha256": "4f8c6866d07d6c29b55450421f94f355a57e61db785a4eefa689269a94f2bc44",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w3000.page-001.emf",
+          "sha256": "b5d02dc8a9b300036fd196840827775f7fa0fb2e41fb5908d847990311f5a467",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3400",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3400.docx",
+      "sha256": "c3156af693329c163195bd1170786b9588f47f9ad857fd33f622dfd534743cdd",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3400.pdf",
+      "pdf_sha256": "2edcce7988b0afd9a9a25ff300b666d8849f5f0b45debfa3b34f1d3b9bc251b7",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3400.xps",
+      "xps_sha256": "6d616b64805b0ef90db8bd74ea8d7f2808ec3afe1c8320325dc39d600f003a99",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w3400.page-001.emf",
+          "sha256": "4770b6863617e345daf15bd6114c419627074b30a795f37f9a83943b21338a2b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w4000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w4000.docx",
+      "sha256": "98a4b6a9bdda836c555e1975a77ace3f5f3b203e549918c1c978f50894e10966",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w4000.pdf",
+      "pdf_sha256": "8efb90cd3168db53f877afc169ad5790cef1980b60c35de933b9e82202ddc6ff",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w4000.xps",
+      "xps_sha256": "b425ba9c11b717bc3835d19639beeedd616030f3abaeece8d1a4ff507b4da3cc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w4000.page-001.emf",
+          "sha256": "0c56c3a03d6efeff531b07519e13989d7a70e3199ca13f0155fb25bc3e78f3d0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w8504.docx",
+      "sha256": "e7fa0d86e465b3b20a16921e5b46b45292bc9f55f94592746ff57a4f3723a963",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w8504.pdf",
+      "pdf_sha256": "8b6e0637d9de250bd2820d08946c57a130139544154d7321cfaa90fe0d453e37",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w8504.xps",
+      "xps_sha256": "0356915b671cc723c5c03e09e5710ce0b96ed46ed55e646a1b1ba2f676512d74",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m12-balance0-paragraph-w8504.page-001.emf",
+          "sha256": "dec1a41cf3c62fcdd0182d9c5af5180815d3362308ecacb17ee820f55aeaf700",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w8504.docx",
+      "sha256": "1e771c0d28a0d661c36d68f6d232f3a0c831086af5efdcfd3cabfab4295ed6e0",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w8504.pdf",
+      "pdf_sha256": "6bd534ec0ea2b6d24f4ac1534ebd8325dc80dd8864053d5380b0cf5cde22c45b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w8504.xps",
+      "xps_sha256": "f59eddc8ff6b75eb276d5e0eec6cd51d1b5b10d49463e6be7fda3c5952cbce02",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m14-balance1-paragraph-w8504.page-001.emf",
+          "sha256": "fcd398306a95c6b35f812d0a46bd7fdb8a09460be87cc154bd3249355b72fbc0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w8504.docx",
+      "sha256": "acf680d22c220580a4c358dd34cec3b349f26ebe22b27a3adc248f81b1aec5dc",
+      "pdf": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w8504.pdf",
+      "pdf_sha256": "7047ac530ba69f48dfaa4f5bf955f25a2be359c70ef38edf536adf878c2a36de",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w8504.xps",
+      "xps_sha256": "a2d666fa41c3cf0a44867f3215ed6b63a125b990dec86c4c1a16e57aeb4642b3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-calibri-s12-m15-balance1-paragraph-w8504.page-001.emf",
+          "sha256": "fcd398306a95c6b35f812d0a46bd7fdb8a09460be87cc154bd3249355b72fbc0",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3000.docx",
+      "sha256": "2703905766703b82a9ff8a5ea1da9ccc8355a5e20874693d33d2ee7dd42d27d1",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3000.pdf",
+      "pdf_sha256": "2247801000ed0f0fecd79f6293dee6ca012e0da91a895592753278fd8aeaafd4",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3000.xps",
+      "xps_sha256": "5a1f565958432d092fcdff72a9cab26f9bf66b20ea5a7b2c55045590a0b99158",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3000.page-001.emf",
+          "sha256": "8b4e818d4fadc10d18756fd65cc160ccf332ba1ed28a39f7fc9f5be7c5d73b3e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w3000.docx",
+      "sha256": "472b048fe762d57e3c52ca7a573462707a0623874a90ef181acec1718e6eee75",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w3000.pdf",
+      "pdf_sha256": "75dba8c1212a25f46fbc466b9d0ab24f04e0f503ae990b4227a3423a7ac87b6e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w3000.xps",
+      "xps_sha256": "a3765bbaeba34c24f5760ee9dfbc3b9c431741ceb42460b93af93605390d7b89",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w3000.page-001.emf",
+          "sha256": "a9626b62308c976f1d9dd95113cd68869db513167a5e6b01819ff85d1b3e225e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w3000.docx",
+      "sha256": "c3c816e88847e7e3cb46afdf0c07e23053360a568bc5d4feae39813898d42231",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w3000.pdf",
+      "pdf_sha256": "ccd9c445cdb1961fc303bbd1e2d95ec8c06b346a5af5f1e85457ba4e12b83bce",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w3000.xps",
+      "xps_sha256": "ac02c029d73b495b65371776492a5e05b642f5b850ff88d16314a3e62d5a69ee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w3000.page-001.emf",
+          "sha256": "b0f111477eca072c9234b5ca848259e20d924388ce35aecec52e11b9b59d554d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3400",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3400.docx",
+      "sha256": "036efc71312aeed0a218ad17de38005939fcdb65c186ad82ffdac2a5d2377b4e",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3400.pdf",
+      "pdf_sha256": "fd6af8236dbbd268a2683bceb81c353fa61e8f219cce45e8ed788af87e63e5a3",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3400.xps",
+      "xps_sha256": "d3d190f9c3836412142e622d786a9c5d4b058fc6449237d2e631127f180f0b15",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w3400.page-001.emf",
+          "sha256": "ece068ade7fee537f093d8e2c3cddbf724a47b7d1c56f1819fb39fd1fb4f5ec7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w4000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w4000.docx",
+      "sha256": "b86ed5ca099570397477b571540273bd9777f84c445c031eac0354823eeed14c",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w4000.pdf",
+      "pdf_sha256": "1d20260dfc008c9572682837b0df14dc814af656e7020f9577e8fc5f09639298",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w4000.xps",
+      "xps_sha256": "992601e0ebd5b91b6ced665785527a83c19aec7b0a2ac87f642f1306303d91eb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w4000.page-001.emf",
+          "sha256": "f8b865937294de2882f7d4df43ff138ba615ff56a95a0074d00e03b5f980c8e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w8504.docx",
+      "sha256": "84bb97b409a4eebc0519cc684820b0a29a860f4e531e4e1c3426e810be9e0668",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w8504.pdf",
+      "pdf_sha256": "89539e3f3174c60ba76bc90485f48db761e2cb830130717c478f4ca2d807e565",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w8504.xps",
+      "xps_sha256": "5c6139c71d1388f6d4cf6faa0699dfaf2af22292853887338364d993c1274722",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-manual-w8504.page-001.emf",
+          "sha256": "807d3b208218b6a0dfdec3a3dc53ed9b4f0cfdb3e35e1b18f116aee4055e9a97",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w8504.docx",
+      "sha256": "df6807ce9bed6c1354ecae2858510cf780de913065a331a69f4e03be82195d8c",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w8504.pdf",
+      "pdf_sha256": "a10589124bb9f61f2e832a0d60366a8f7d0eca9770b0b24c770f558714728d08",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w8504.xps",
+      "xps_sha256": "00732b6e7aba5c50732ef325bc9c2a2508da5ef90796cc35abc3554478b9c8ee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m14-balance1-manual-w8504.page-001.emf",
+          "sha256": "3e80927516b14ca6838a437bb837a338a2e07928abd1ef2a410f71eacf0dbdca",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w8504.docx",
+      "sha256": "3df9882ec42e9ffe9481a6213c4edad2ee5eba0adbdde0389e7e85b36500b59d",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w8504.pdf",
+      "pdf_sha256": "52572f6117d976e4707c538c921ad467e017b07fbef64d02d38cce34cdaae963",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w8504.xps",
+      "xps_sha256": "6abe518810936ed4e3832fc36f5b4ca17688330fa57152394da8e9f395ed9a4b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m15-balance1-manual-w8504.page-001.emf",
+          "sha256": "113b90e239bf28024d212843bd0944e0589e5ead04d83c4e8fa6e9ba5d4e4724",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3000.docx",
+      "sha256": "b3252c3700e48528619a662af56023493823ec97905aaf83df749b52ecfac69d",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3000.pdf",
+      "pdf_sha256": "0fc09734a93f1330b00f93c4ad274d6f2c184e2be051a68ed53bc6985343039e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3000.xps",
+      "xps_sha256": "ca70ed735e3d5a6ccd1023b14d18fb6b1c61cdb7e7a3559189fc674d584ea02f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3000.page-001.emf",
+          "sha256": "5bb9040181b0c83036f4e8b7f8024a40c833c3ea415ba0f430aa707822e409a5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w3000.docx",
+      "sha256": "1310de21d404ce67a3cfdc365b3a7d37f11be06da79c85264673180a7ff31a62",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w3000.pdf",
+      "pdf_sha256": "aad80960561d56baf18fe7e1c6116d4c34533e79b2d43a115689240fe861d787",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w3000.xps",
+      "xps_sha256": "ff2537e3608c41d450f3e42f9c228330bd1fffca5a780cb5fc2713c40ed9b806",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w3000.page-001.emf",
+          "sha256": "0f4ea6c272946e0f002bf8f801e9735efed5475869fdcdbc3387e35886976c50",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w3000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w3000.docx",
+      "sha256": "2767ca874efc44a81314b6da96bb5657ecc0f589658e01c2d27f7a394278d39f",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w3000.pdf",
+      "pdf_sha256": "b5232760ef69efbdd6df5b041c7c258d3678198b1bb0472ef7beea2cb2699ed9",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w3000.xps",
+      "xps_sha256": "45cefbe9d9ef5ccbb11e16797e5543f96b79becf1684ff1c78a88b749f307713",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w3000.page-001.emf",
+          "sha256": "0f4ea6c272946e0f002bf8f801e9735efed5475869fdcdbc3387e35886976c50",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3400",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3400.docx",
+      "sha256": "c30585ff3065907643f74b2e2eeba027d820d479b8fba34372c33b78cc17c185",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3400.pdf",
+      "pdf_sha256": "48121214b7c7d5df9d67a34bcd508e9a3d7864e9558e0e4670b40c7e05b211a5",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3400.xps",
+      "xps_sha256": "702a373fe7086edd0d6b41d148e43215daf0f2b3e40f796b5d5e928dff447461",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w3400.page-001.emf",
+          "sha256": "12467dd0303f945a9d54602f2922f334dfa3920a86fb48ad2eafef888bb5189f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w4000",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w4000.docx",
+      "sha256": "646f725fdf5c94b6bba711ac4d07e792c25145011d77593adf6ac69d1cb4d2f4",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w4000.pdf",
+      "pdf_sha256": "b2d45234fcea5e10e5ffa2694fb734fd01a38c2f13c2808135fab9328bdc7cf6",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w4000.xps",
+      "xps_sha256": "c2bf7e19e413c04e8320f19d70b73143fa2ac8325a745f65b73e0642161b5c02",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w4000.page-001.emf",
+          "sha256": "1063ec317f3afe4c0fad368c195ae082d0684f2c1b108dedac899939c639784e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w8504.docx",
+      "sha256": "7dacf6675220a404e5053f4b33ce3361921b9ed365b2188905d17fef7ad475ba",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w8504.pdf",
+      "pdf_sha256": "fb59140a6ce14e1ca2db520c448e2882b4bb5ed0205330ea644279022ceb91eb",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w8504.xps",
+      "xps_sha256": "9840ac267b54848e4b5c7ace91258f282f80f0f80a88326ddd3d5fd97efe9dfb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m12-balance0-paragraph-w8504.page-001.emf",
+          "sha256": "5a398ed258b9a7e8b4f85589e157fedbb73a3166d9965392807f5951bde089dd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w8504.docx",
+      "sha256": "bc6a1ca48169c3ec3b59548c5d111034ddf5263a64e7f50a68ac505956fef014",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w8504.pdf",
+      "pdf_sha256": "fd901ecedc4709e5c9d71d73bcfb22d41c4bee6f13eeb8eb0d2bc5fdcd6078bc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w8504.xps",
+      "xps_sha256": "b4531f4633d4c977145b5aa699e47b9bf8ddb9fd46181bbc612744fb49b7860d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m14-balance1-paragraph-w8504.page-001.emf",
+          "sha256": "e7d63203b796d8471af6045f35d0fcb31c1174e28888e2f4cfcc27f70e1111f6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w8504",
+      "source": "tmp\\w19-legacy-mode-balance-inputs\\word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w8504.docx",
+      "sha256": "53869151f003302d9b049707873bda95ff5146bd93c75660645fb2af2bbf2039",
+      "pdf": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w8504.pdf",
+      "pdf_sha256": "4892218d50e7ac10650c99147282a7e4441c2f07b47e48158260bd9effe16c91",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w8504.xps",
+      "xps_sha256": "1c4a9af2ec17849fea0a5b3d228fe847ba4faf33931172db577c155fb91bc7ce",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-legacy-mode-balance-times-s12-m15-balance1-paragraph-w8504.page-001.emf",
+          "sha256": "e7d63203b796d8471af6045f35d0fcb31c1174e28888e2f4cfcc27f70e1111f6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

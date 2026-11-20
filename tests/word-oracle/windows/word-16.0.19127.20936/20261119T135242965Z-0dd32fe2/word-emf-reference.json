@@ -1,0 +1,851 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261119T135242965Z-0dd32fe2",
+  "captured_at_utc": "2026-11-19T13:52:43.0003148Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-regular-s12-m12-balance1-manual",
+      "docx_sha256": "92f315dec82ed8a0a7ee011cbdfdc3ea8a3f2c809d553a3c27a90f0bc48879ac",
+      "pdf_sha256": "8064ce98dd03889e0e78f8098d07626233ca88bee84f1d4bc48f0c2ddcc8b64a",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-regular-s12-m12-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-regular-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "cf1dd6bc7f13e808f22297a25d1d78920aba6e0fcf0be1314bad4220e8ad704f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          171.2342471275952,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.35142108445876,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.46859504132226,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          501.58314855875824,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-regular-s12-m12-balance1-paragraph",
+      "docx_sha256": "bf7ef4d09aec555616226560e5bcf731cf61510054e5b219c9c4c8c79d0cfbee",
+      "pdf_sha256": "cfe917754e71748ebf29ad59e5e31ea7e71df8db7752be7dfbb0f21626e621f0",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-regular-s12-m12-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-regular-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "b86438d59ca985c0ccc111410dba2ed419dbe96663ccc9d6310df069db59dafe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          99.11667002620439,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          111.11626688167706,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          123.11586373714975,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          141.1152590203588,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-regular-s12-m15-balance1-manual",
+      "docx_sha256": "5aa7fe3ba42d2d379b52138c2d74cf3e330bb5d50d643fcb8d91a2a6aae3a95b",
+      "pdf_sha256": "3df803a191df2ede73507f97bb39288f2e728a71a2f03596c4068af7fe3e99a4",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-regular-s12-m15-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-regular-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "f897b7fee37239c9660e7193249beeaf0d6e3797a179758e2dbffc98b5aa2122",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          171.1142511590405,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.35142108445876,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.588591009877,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          501.703144527313,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-regular-s12-m15-balance1-paragraph",
+      "docx_sha256": "ecc06afeca3e8a50ee345fd5b93ea27435ccfa82d88a44dc4cdbb6eb3cf92c70",
+      "pdf_sha256": "185a5a1d8a283e030f0346197be2b472135c7a31481c195e8f3db6efc53b8a6b",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-regular-s12-m15-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-regular-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "b86438d59ca985c0ccc111410dba2ed419dbe96663ccc9d6310df069db59dafe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          99.11667002620439,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          111.11626688167706,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          123.11586373714975,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          141.1152590203588,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-bold-s12-m12-balance1-manual",
+      "docx_sha256": "5dba2108a99126f8c775af771eed063f2624bba49d3069850f936baa91730dd8",
+      "pdf_sha256": "f7ec75ab9af70c2d7bc8e7090317532af1abfa42be7da681ef8234011c2560d4",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-bold-s12-m12-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-bold-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "e5ea20f0e6a2ea72014934c06f4675c5f421a5d0e386603179e1813c250bfd10",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          171.2342471275952,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.35142108445876,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.46859504132226,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          501.58314855875824,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-bold-s12-m12-balance1-paragraph",
+      "docx_sha256": "4dfc8ceb6fb70f6009fafebc9192b2b0207fe4197bf0d586b6f9b1159dd7cf66",
+      "pdf_sha256": "67405fb6679c1acb054319280ebbc41d854dcb442997ec948e315726800db39a",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-bold-s12-m12-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-bold-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "e25e40e2e2f011b0bf50f1c18f97bd75b4d7df02fd41c9506202b7a58596cc65",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          99.11667002620439,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          111.2362628502318,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          123.23585970570448,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          141.35525095746823,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-bold-s12-m15-balance1-manual",
+      "docx_sha256": "62613aa1b67131a45766c758ba2a0bbbc0243433d8adffbb8062e193f9ce2a60",
+      "pdf_sha256": "1ea9e572bebd1b6bdbe6109a63b603a99caf009c7c822a2822fb6f476ecf309e",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-bold-s12-m15-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-bold-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "17bdab4f2f9bf3d8b2a726088760ebcfa9528d730f07c5c0797aae64df101406",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          171.1142511590405,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.35142108445876,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.588591009877,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          501.58314855875824,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-bold-s12-m15-balance1-paragraph",
+      "docx_sha256": "e133a4e1332b83d23b44cc83c67d837a0fe530da8c81092fea38ee0b50adbbca",
+      "pdf_sha256": "a48c4beb750fed75f0ef7d5107239ecc3b61dcc56b55d3590ecf096a5589f08d",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-bold-s12-m15-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-bold-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "e25e40e2e2f011b0bf50f1c18f97bd75b4d7df02fd41c9506202b7a58596cc65",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          99.11667002620439,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          111.2362628502318,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          123.23585970570448,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          141.35525095746823,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-italic-s12-m12-balance1-manual",
+      "docx_sha256": "446e898c688a0d214920b432ebd6a7accb96127f9bb74cf1446a00ed2c48c029",
+      "pdf_sha256": "ee2391cbb9ae1ab255461fceba3c632e1a8d725c32e234ff4cf2607ce801b601",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-italic-s12-m12-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-italic-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "bab25be095b3da5c1462a85f904686c2e5991945fa8ae071c5bef7b3ffb132c5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          170.7542632533763,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.35142108445876,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.9485789155412,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          502.9031042128602,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-italic-s12-m12-balance1-paragraph",
+      "docx_sha256": "cf01991f8f179a5a99adf1a65607896c6863e3d1cfd6184b11564651c7dbae63",
+      "pdf_sha256": "61900541606b20baf960454badcfff42d7a528a3d70f83623c492b3d3f7fb36a",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-italic-s12-m12-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-italic-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "bc46af9991e45e1f8a96bff42ca20871eea1c40aadc8e592694ab424c33c1d55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          98.15670227776657,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          110.15629913323926,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          122.15589598871193,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          140.15529127192096,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-italic-s12-m15-balance1-manual",
+      "docx_sha256": "09017bfa4ab4756f571bd2ecfa5b81f64bd0234cfc792ff89967fd34f81cd1f5",
+      "pdf_sha256": "09c0be744a8add32b290ebee43c6581ec7a95f27fe8d7fb4bdaf8608fd9e4097",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-italic-s12-m15-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-italic-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "f7f4beb5c5c143bc5bc437d0126fe4ae69db23e03dd6b9cef0535a20ee744867",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          170.6342672848216,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.23142511590402,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.82858294698644,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          502.9031042128602,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-italic-s12-m15-balance1-paragraph",
+      "docx_sha256": "c62c7a53d51bbad0237d19af1a67393eb978d51bbab232c4b4024db97c179e92",
+      "pdf_sha256": "65ecd9063e5672dbb53d72a2bedba38511b3ac601a8dbe3e232a3f94e4d9f2ff",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-italic-s12-m15-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-italic-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "bc46af9991e45e1f8a96bff42ca20871eea1c40aadc8e592694ab424c33c1d55",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          98.15670227776657,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          110.15629913323926,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          122.15589598871193,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          140.15529127192096,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-bold-italic-s12-m12-balance1-manual",
+      "docx_sha256": "a2d94bdce8fee92ab11e0e1de1ebd6a28db32d57a38480660e0f00796fae423c",
+      "pdf_sha256": "e1b9f4cfeecd757890f0a8298ec35eef54e8cde7fe5200367ec3f639e1a09617",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-bold-italic-s12-m12-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-bold-italic-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "be0ccde118a2f710be843232fb0dac31fcd276527c1e9245cdd15f8f65be581a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          170.7542632533763,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.1114291473493,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.46859504132226,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          502.1831284015319,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m12-bold-italic-s12-m12-balance1-paragraph",
+      "docx_sha256": "ece497041df814b3fe5631484e9555a56c4745ac90956e582d16ee3a317d50a2",
+      "pdf_sha256": "8522989bc45dc4001617c75f40e7e91d0e7922aeae12ea5426ea509d5d99636a",
+      "pdf_file": "word-windows-times-balanced-space-mode-m12-bold-italic-s12-m12-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m12-bold-italic-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "76ae9e860f7281e486b2317d81ec9bd88003043956bf267b0c184433f13f3951",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          98.39669421487602,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          110.51628703890343,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          122.63587986293085,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          140.6352751461399,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-bold-italic-s12-m15-balance1-manual",
+      "docx_sha256": "2526aba8c74de56b119d179fe0cbb3739cfb764e9a7eada6f9bdee303790d841",
+      "pdf_sha256": "da0d3a1ed2f4591267a864641431e7bc2cb15669dc8c4fbe7cf120662ff491c5",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-bold-italic-s12-m15-balance1-manual.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-bold-italic-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "12999aee4cc92d08e7af6d6c2b8223e642767ef4e274927a380f6e6c760f4de3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          170.6342672848216,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          255.1114291473493,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          339.588591009877,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          502.3031243700866,
+          112.55732611174459
+        ],
+        [
+          1,
+          "X",
+          85.07714170530134,
+          130.5568985176739
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-times-balanced-space-mode-m15-bold-italic-s12-m15-balance1-paragraph",
+      "docx_sha256": "657767becc7e100c8131d9bacad944e76c53f32185a082b293409d329e07e885",
+      "pdf_sha256": "4db5e630e16ca0a33edc15cd30f87d33bac3d17603067d340aa7b6b88b931c7f",
+      "pdf_file": "word-windows-times-balanced-space-mode-m15-bold-italic-s12-m15-balance1-paragraph.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-balanced-space-mode-m15-bold-italic-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "76ae9e860f7281e486b2317d81ec9bd88003043956bf267b0c184433f13f3951",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          98.39669421487602,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          110.51628703890343,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          122.63587986293085,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          140.6352751461399,
+          112.55732611174459
+        ]
+      ]
+    }
+  ]
+}

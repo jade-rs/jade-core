@@ -264,7 +264,7 @@ jobs:
         shell: bash
     # All versioned originals are mandatory; the expanded corpus also runs
     # border, print and editing gates after the four-plane font comparisons.
-    timeout-minutes: 75
+    timeout-minutes: 105
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target/windows-word-baselines
       RUSTUP_TOOLCHAIN: stable
@@ -315,11 +315,13 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_color_span_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_y_pdf_context_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_space_pair_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_face_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_slot_spacing_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_explicit_hyphen_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_top_bottom_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_pdf_segment_probes.py
@@ -398,6 +400,8 @@ jobs:
         run: python scripts/word-oracle/check_windows_hard_break_spaces.py --compare-rendered-fonts target/windows-font-coordinates
       - name: Assert versioned Windows Word mixed-face justification and source font metrics
         run: python scripts/word-oracle/check_windows_mixed_face.py --compare-rendered-fonts target/windows-font-coordinates
+      - name: Assert versioned Windows Word mixed-script font-slot spacing
+        run: python scripts/word-oracle/check_windows_font_slot_spacing.py --compare-rendered-fonts target/windows-font-coordinates
       - name: Assert versioned Windows Word space-pair kerning XPS origins
         run: python scripts/word-oracle/check_windows_space_pair.py --compare-rendered-fonts target/windows-font-coordinates
       - name: Assert versioned Windows Word legacy justification and pending text
@@ -492,6 +496,20 @@ jobs:
           name: windows-y-length-differences
           path: target/windows-y-lengths
           if-no-files-found: ignore
+      - name: Assert versioned Windows Word paragraph-order screen and print origins
+        run: python scripts/word-oracle/check_windows_y_pdf_context.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows paragraph-order coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-y-pdf-context-differences
+          path: |
+            target/windows-y-pdf-context
+            !target/windows-y-pdf-context/**/fonts/*.ttf
+            !target/windows-y-pdf-context/**/fonts/*.otf
+            !target/windows-y-pdf-context/**/fonts/*.ttc
+            !target/windows-y-pdf-context/.font-cache/**
+          if-no-files-found: ignore
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_graphic_text.py
@@ -527,6 +545,24 @@ jobs:
             target/windows-font-coordinates/20261119T071857464Z-a48e4f90
             target/windows-font-coordinates/20261119T072445458Z-9eeca03e
             target/windows-font-coordinates/20261119T072846967Z-c342657f
+            target/windows-font-coordinates/20261119T085721179Z-ad4e1a41
+            target/windows-font-coordinates/20261119T090056485Z-6c01f12e
+            target/windows-font-coordinates/20261119T090823813Z-a9ddf686
+            target/windows-font-coordinates/20261119T092533754Z-02a811e6
+            target/windows-font-coordinates/20261119T102627743Z-e19cdbe7
+            target/windows-font-coordinates/20261119T112518348Z-0dd586f2
+            target/windows-font-coordinates/20261119T114842423Z-5f6babdf
+            target/windows-font-coordinates/20261119T123214849Z-2db788c9
+            target/windows-font-coordinates/20261119T125532465Z-61d0e4bd
+            target/windows-font-coordinates/20261119T130101255Z-42e608fb
+            target/windows-font-coordinates/20261119T132210919Z-158142e9
+            target/windows-font-coordinates/20261119T133344101Z-1b09b6f8
+            target/windows-font-coordinates/20261119T133746583Z-14920783
+            target/windows-font-coordinates/20261119T135242965Z-0dd32fe2
+            target/windows-font-coordinates/20261119T140807475Z-2aee0646
+            target/windows-font-coordinates/20261119T142153366Z-edd25613
+            target/windows-font-coordinates/20261119T143721831Z-2fe0958f
+            target/windows-font-coordinates/20261119T145753302Z-cf8cad83
             !target/windows-font-coordinates/**/fonts/*.ttf
             !target/windows-font-coordinates/**/fonts/*.otf
             !target/windows-font-coordinates/**/fonts/*.ttc

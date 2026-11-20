@@ -1,0 +1,486 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T102627743Z-e19cdbe7",
+  "captured_at_utc": "2026-11-19T10:26:27.7545098Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-times-ea-arial-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-arial-s12-m14-balance0-manual.docx",
+      "sha256": "1df2fc41acc66f41c341df2e1a0be12b70d652ee76994e1a8a6792c5cdf00ba2",
+      "pdf": "word-windows-times-ea-arial-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "b33b5418cd2ad7e70138f46ff8f1ae08a168dcb2561628249ca58c8ba5b2b89f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-arial-s12-m14-balance0-manual.xps",
+      "xps_sha256": "b1fc1c7f67dddbf47997f7a2c3c46c08b7640a63e09956f0ffac600589c26971",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-arial-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "807d3b208218b6a0dfdec3a3dc53ed9b4f0cfdb3e35e1b18f116aee4055e9a97",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-arial-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-arial-s12-m14-balance0-paragraph.docx",
+      "sha256": "0ffccb63e745cbfb357cf241f9f6cb06accb31b2445f95309e7ccac95dd159b1",
+      "pdf": "word-windows-times-ea-arial-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "528e4b4bcfbe566987541cd99b74a24cff8569ef9210ac2566d6ae488e9ff9e0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-arial-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "34764a5485a3bf1289c515073957e9f39274572a541fd0be24e4db1477babc35",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-arial-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "5a398ed258b9a7e8b4f85589e157fedbb73a3166d9965392807f5951bde089dd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-arial-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-arial-s12-m14-balance1-manual.docx",
+      "sha256": "df6807ce9bed6c1354ecae2858510cf780de913065a331a69f4e03be82195d8c",
+      "pdf": "word-windows-times-ea-arial-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "6c5139dea3c42dc11591ff1616427f4f9b08622faa1968b777be778a9c5c5d2e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-arial-s12-m14-balance1-manual.xps",
+      "xps_sha256": "677e8ff51738834f8519a4ae32dd93c6e0c3dba70fd6d6d2df8627e233b244fb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-arial-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "3e80927516b14ca6838a437bb837a338a2e07928abd1ef2a410f71eacf0dbdca",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-arial-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-arial-s12-m14-balance1-paragraph.docx",
+      "sha256": "bc6a1ca48169c3ec3b59548c5d111034ddf5263a64e7f50a68ac505956fef014",
+      "pdf": "word-windows-times-ea-arial-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "c215d8c2859cd8ebb7c06de4e7c7b3f95c405089c59b8f52846c33ce13f178f7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-arial-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "2c8ea9ef4d0d9902d67f2c1d1524da357cf778b6ded87ef151fa78ff25e30872",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-arial-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "e7d63203b796d8471af6045f35d0fcb31c1174e28888e2f4cfcc27f70e1111f6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-calibri-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-calibri-s12-m14-balance0-manual.docx",
+      "sha256": "0a5bf2b0f76f52317597b9bdb1183ce39e68fbcb08239ae7c3bde3e1625dc83e",
+      "pdf": "word-windows-times-ea-calibri-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "3e9805bf27ce403371552857e456c8db4ce8ceac9702aa216bf2f467c7dfb8af",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-calibri-s12-m14-balance0-manual.xps",
+      "xps_sha256": "d2a265e66b7294235c2ed2abcbfa1ed21a1ec1e37981f8c5306da0d94f2125bc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-calibri-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "9a8470f7d800fc900cc37c8b9f9b817d29b1355a1f1a7f121b199e009107cb97",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-calibri-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-calibri-s12-m14-balance0-paragraph.docx",
+      "sha256": "d306404a3b230bdca5802e3df8b09c3136fc6287d405326eb86a3fdf624dbbc1",
+      "pdf": "word-windows-times-ea-calibri-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "41a804805c8a612b2b34e3ac54f2c437f1d66401e372d8978b8dae8669c30431",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-calibri-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "1afda4851ad2e996aab38eac02567e8f2b825df7f715abb2ac504bde520314b8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-calibri-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "177fcbab653f148436eb7c5e4355490cc04a09200e19980841e31f1640275442",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-calibri-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-calibri-s12-m14-balance1-manual.docx",
+      "sha256": "04119c39a56abac66d654d8f0963a529d7e7eb2ed9c5d56621e09cad70ac9df4",
+      "pdf": "word-windows-times-ea-calibri-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "7f026349e0b4eb447a7af5c31ee41d679aa6fecb2e04d1ca395e24d9980c1fe4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-calibri-s12-m14-balance1-manual.xps",
+      "xps_sha256": "0a32c5bb4bb8f3280b05553491067f4115ca533ab00020ce243630017b836232",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-calibri-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "e7025ff7a0b8d5da4f4822a62adf0969a1dc4b674713d8f3291a7bc52f346a3f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-calibri-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-calibri-s12-m14-balance1-paragraph.docx",
+      "sha256": "7430877cf9b6c4f5c38208369f4e53a5f5e8b8ece3535f83b79518190de33c8b",
+      "pdf": "word-windows-times-ea-calibri-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "071df1d44a66034a2e5f73290846d7f346ee7129fb020f3b66f1229f5b1091ce",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-calibri-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "66e1a27f80d0d9bdd6be7894db2935b71aef082f04b98e8844bd695ad0f37104",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-calibri-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "cf1f5a16067efe72ea4beba682bad27ef57549fec7c70ac6ddbe2140affa966d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-times-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-times-s12-m14-balance0-manual.docx",
+      "sha256": "a740b5af7fa2b94e1ac6101dad0c65c72292359708a38ba5b2b3f3c55fcb9d7c",
+      "pdf": "word-windows-times-ea-times-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "4d31c956a9388eca52c48ff7689f43ea29b50010b2368ecd836cdcc4dd124ea8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-times-s12-m14-balance0-manual.xps",
+      "xps_sha256": "bf759813accc2354b29d430fca5da44e9a6327cb4ab9e4687565cf5ada4a06ed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-times-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "ca274ea0f4dfda93f000344d0d3181cb19f178fbd01f8548912aeb99ddc1ab1f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-times-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-times-s12-m14-balance0-paragraph.docx",
+      "sha256": "5e590efa39b231ed4dfd750cf75a575148d9cd2f3870d73b7a6f56e72585d7a6",
+      "pdf": "word-windows-times-ea-times-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "e45011bd59f547cf0bc747f96b8ecace984287ef1c5e0d6864d576a564aa4e9b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-times-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "0fa48707b387077aa66e26a0db5df92df6ffb1c0494ac96cc6a81a94128278a5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-times-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "4b9afec497706e08fa392b6b807996cf973b0d9716eff088c7ec154ebdf9d1cd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-times-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-times-s12-m14-balance1-manual.docx",
+      "sha256": "4b74abfa0d91946ffc64fe30c031bb2f76de14e859e4210ae14c5af6ad964dbd",
+      "pdf": "word-windows-times-ea-times-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "4843c705d190305fccfb1381447a157a11555077d6f17561505955e11237c3d9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-times-s12-m14-balance1-manual.xps",
+      "xps_sha256": "b22366450d39c619b2e6c4b67d1ca4f3bce053a1be745bd573e9bc9abcb68b50",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-times-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "ca274ea0f4dfda93f000344d0d3181cb19f178fbd01f8548912aeb99ddc1ab1f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-times-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-times-s12-m14-balance1-paragraph.docx",
+      "sha256": "35608ce27b81198a0aa940cfd7dd15a09a9df54582f8fce960f7357e7d94c014",
+      "pdf": "word-windows-times-ea-times-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "076b2900a2b2f81db990abb12ff6423a655d9953799bd32ceab71dac5cdb667d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-times-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "00a7c387af3e1e143741350b7fac59068469c2501936ec61194183deccb30db1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-times-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "4b9afec497706e08fa392b6b807996cf973b0d9716eff088c7ec154ebdf9d1cd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-msmincho-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-msmincho-s12-m14-balance0-manual.docx",
+      "sha256": "f7cee3dd664545792bb41234185d77053381afcfe18b9a4b703ab6c6796c9fd7",
+      "pdf": "word-windows-times-ea-msmincho-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "6b4b400ae2d62c868b67628004f9d9ae61e50808c70d1584424cfb7e48c3a672",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-msmincho-s12-m14-balance0-manual.xps",
+      "xps_sha256": "deb8a2ca96610945c8c2709b2461dd3d9c981141b761b322b736fbdc56ffe2cd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-msmincho-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "7068683491ad1c5aede09fdbe8aa584f84d27edb810780fdc206c9f9549b53f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-msmincho-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-msmincho-s12-m14-balance0-paragraph.docx",
+      "sha256": "dd5aa70e7401a79100643c31e5aff5c7f9c6d295410146d0dac895bb8a79801b",
+      "pdf": "word-windows-times-ea-msmincho-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "fc0e31ff714d0e3df91e122a64ae556e89947e3e0811a4ec321b2d01fd15c0bb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-msmincho-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "bc0db6ee13ecc5597d8bfb82e197a6706bed36d0d0b41488f547e4aba73d4308",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-msmincho-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "8da1920b5c63584fd56ce2a9ccfc7d789eeabfe18ed5910ca68bbc4627366a11",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-msmincho-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-msmincho-s12-m14-balance1-manual.docx",
+      "sha256": "e196a41d5cb35fc97485a33edad6524b43baf6bf145a479565dd31005437aca9",
+      "pdf": "word-windows-times-ea-msmincho-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "e10a7eabc41b257536b9cd00ec6f2eccbdec84f3131d461ffb1efb41804704a9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-msmincho-s12-m14-balance1-manual.xps",
+      "xps_sha256": "e687abf432368407f855dd08febcaae5107760e03e882f31c89442a626caa687",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-msmincho-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "005ace66603755d71672e0e13409f7270821275eadbffaf5e982e0740524d53c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-msmincho-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-ea-inputs\\word-windows-times-ea-msmincho-s12-m14-balance1-paragraph.docx",
+      "sha256": "3bb6b8cdabd4436db4fe7b808d7154c0a094fbeeb4c35846ba56fd632e598053",
+      "pdf": "word-windows-times-ea-msmincho-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "6b12869b9a2243243610aba1cf1c06883c0b85a4150b4572ecbcb05f4d4342bf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-msmincho-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "0a948be22fe2a849ce332f245c3283b2ee948bd861f11dd0c6e57f83b957ffb6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-msmincho-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "f9446474d27479a86f84c231e2977963737cf34d14e3c960f4e64cb38db60780",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

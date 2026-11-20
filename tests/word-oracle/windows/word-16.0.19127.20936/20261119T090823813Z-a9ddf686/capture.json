@@ -1,0 +1,2806 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T090823813Z-a9ddf686",
+  "captured_at_utc": "2026-11-19T09:08:23.8255302Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m12-balance0-manual.docx",
+      "sha256": "ef0310b48847621ec2bc3da2184e0e7b4310731195683938f0baf75e68e1b836",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "f5bd39e7502f98b049eba413c93cc430f71a74dd35523a2a6e96e105f3b837ba",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-manual.xps",
+      "xps_sha256": "9664e6b6ff7f4a1851b209c8e0a3dae41c675a06d1f91d84c6fdc56ac77c3e70",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "2405954beba764266489e2643af75f78bd2a460e015be5e29bf143210c837aeb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m12-balance0-paragraph.docx",
+      "sha256": "5fc4c14e5b35c16e6a41d8e761e6c5cd19b41054a296d5f5b439e78a636bbf51",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "1fc1c73ad9b09ef7e4d082f9c552fdc869f008355e38c6ad5d9c7c9a687b6eb6",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "9e465673f4bdf671bc74992e8425af43e6faf286f95fee58bd47ba2b7738b4fc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "2601ce8f9256f998d698cba22d9f2dfaa15ffd7ae2ef5ced8c44c64602237299",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m12-balance0-manual.docx",
+      "sha256": "0c663527874323feb6788f7ed06dfd380515ebccc49b323d63d3eb62b76ee5c3",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "d52443fe8e3349c8a7b16ed2db9c10331b8b5b0ca6114b13a42bb0d8daa787c5",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-manual.xps",
+      "xps_sha256": "b37f09becb36aee1e951752dea98559a6d0b30680ad5512b590bd189dbf41743",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "7f0fa2f441cf445640cb4d9ca27f4a9f366731c15ba830d517695c3fb684b2bf",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m12-balance0-paragraph.docx",
+      "sha256": "42f6acef4e3eb1bec4703a24370e9f6a6ab0381cc9212c0c32516ac027936097",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "926e70f48665d6daa1122c9fd3dd1b867ceb9563069ef478de429cfb98471809",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "7c3146c27b15520e5363e1c943bd65f94f19a896614843eddff35c9f7e031f72",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "c44fb934a8539b949183f5603dd78f12c5683504e481bdbd9464a10907fb1b89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m12-balance0-manual.docx",
+      "sha256": "ff833dda27ce66a281390a1147a9c947fda0275e0fcdc273af93fa6ecddf4c10",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "ea783ca28b8d62908bb33c23d7c2bf79fd2bb5cb242b54fc2700c7734353e28f",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-manual.xps",
+      "xps_sha256": "02946abe539364772bee5cb1344e1f90d4dfa181cb0653f96802061c343b6e0e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "3da87d0ef37d5fff8ec8b46f3727c94b4098d7d3eb739253a03c060404e7c692",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m12-balance0-paragraph.docx",
+      "sha256": "e990f2a56874368e632a82afecc5c78541e452553e821cf492c7cac61bfeb321",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "2c2a664bf320fcc2fd6492df96759e40c3f75ddc88afd050580e7bd572b3ad16",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "01a5f61228051f5d01fc82fba2b5511308fe0a06a2a502b229fdd77cafaa6c01",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "e5f8155455674fb714d84dac91ce5dd2f57e2a15711dfd7395620ab56d9ec5c3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-manual.docx",
+      "sha256": "5633971f81e9180d330e59a250832e61bb6286d8ae5911a5f977d05fd603d0bb",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "dd5eea8bbe6982e7f768668f02da78df45e9f24ea34e3c6404dde300c1e08f60",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-manual.xps",
+      "xps_sha256": "e8be01e2b146f4fc9ac6345756ff2f911dbad8e42ff94cd737474bfbc57cf8b9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "0fe6424f27fb9333c2ceeca636686dc896081f16d0390e7221b5092a5e8dbd19",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-paragraph.docx",
+      "sha256": "5ff8581ad808bd63d310f22f25cde48db33f58ea3b04f351db5fc157a59c5e29",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "f548e9b71d1d39e6775c8f43abb9db0426cfa58ada44ab4f188469b9f66bba9b",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "7f9818afca3ed5b9150fa8907a706aa431a8fb4a517e3acfd2cb5ba978306c8a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "d78fc853aa929fbd2f7cf0d2065b6202aedf6467815083d1f24ae962be58765a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m12-balance1-manual.docx",
+      "sha256": "1bd4b6ddd3cb29b2e7fbaaa80d8b2fcd22db1b4d28aa328f3aae702b2a17096c",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "774dedcc1f90c0d1eb34423af1c7e5615a080fcb6bcb8a3359bffcd97c7261e6",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-manual.xps",
+      "xps_sha256": "3f58c135b1e4747958bd7efdafc396236e6af60d7bcea7a26ff12484a57fc693",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "167c9c12b9352c9e93e9cca19033b1d7d43670e949b684d89018d619dd9c54fe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m12-balance1-paragraph.docx",
+      "sha256": "3179a4f8aefc2d4b48f12f6879897683ff1d083c770c3a64b65b08d7b6315ccf",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "682eebb0c2925d19f3cc76a6b50cfd52e94548ced4069762cb47cfc1a48696a6",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "e1bcd205d73fbb1caa12f3783de36bfc02e7616c15f64c1e5f4cb0f5d6e3f28d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "1880d60a2ed0ab58a2004593e6450520b766a2fe36e67eaad83ca24029e9d33d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m12-balance1-manual.docx",
+      "sha256": "1f79e8381f91e7366cb1e104b34eb5028f17bf4f5c000995d1b3e7db40e21a17",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "ac23c3e4cb83147b16126032a3650d24a2de75eec494f7c0823191d8be85dbb4",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-manual.xps",
+      "xps_sha256": "1dc04336022a5ae3f05bbd1f169bb216de25cd923f7ba4ab96662d9f27486308",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "bdac4c2018081a4b49b5870d8491c7ea83e6e739f722d70644985d33c3b1c303",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m12-balance1-paragraph.docx",
+      "sha256": "c2f21f58bcc2d61aa59f49b110d6ac498abb20c9ab898df0714d9a80eb0e80ab",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "00f05c8914c6e7c179827fad9d1474a76c8584c5b69a3cb6004cde4bca0eecf8",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "9008aec8978ae360565cb13618928a666f5f9af0d90b399f676af7c2feeccc1e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "a50003b225d4f3b846a6fc19fd6223fc36f78ba0b846ccafafd34c88a6e52feb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m12-balance1-manual.docx",
+      "sha256": "4998ce6a018fca48efe02f1e53ba19ce31406af6a45b84ed39c9bb23d7a4a60f",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "21e3014c38a00a9afa0898e00359b552a33767f048fb7ac462f09f4cf30ddc17",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-manual.xps",
+      "xps_sha256": "150ddbca4229c03021581af7d5df3eed5d27f578a35bacb19bd22eac9bb643eb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "7ac1a83d12e11a495ff67ea3158da980a955506da6df1bac6ed46e6b2423f411",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m12-balance1-paragraph.docx",
+      "sha256": "02cc6913716aa69e3a55377174b14d441d3a4bb20357be4acdea90cdffb8b2e8",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "2691d67644b20af15545a7ed1f44735de6618debb6dd7883db2f8ac7ca94baac",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "3667c30e847d185e696a189b897dd738b8c4b89cae2318a90ab9b426a6e6b606",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "d5d5c1935b60be9c6243e5218a1d3946b6c3967f10b85717c0105b901c268180",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-manual.docx",
+      "sha256": "74431383456603007b65208cccb484dadb8143587089af43e3d40f295924f4e4",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "0ecc388621c705c0841f38a16a1a8489c887154a7cb098cd2d370e273e39b2b1",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-manual.xps",
+      "xps_sha256": "24a633602f6a61fd5e6a2e3186d4fae76b064434b1bdb82556d0d233326e665b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "26df2a7447c924dfcda71e7007424a25d518b1f04bd38f7b80653f6c6c4e5a2f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-paragraph.docx",
+      "sha256": "b018cd76986a173dee0385bfdf92b67e8647dbebd64e4590a3d1658ba76d88b2",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "f9bd2de76e789edf74b0375e560efb10cf5f62201565e3f1e11a2eb5d0ead6ac",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "d3ea28e244c99d389a0a49174aa1e3b812a3000f54016dd326bf2753aafffb5e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "2d9084180ea7776a032d6eede307ac690071c196caf72c3db5e444594a7d9672",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m14-balance0-manual.docx",
+      "sha256": "3290c98ae58dd55479419b1fde0258476e0cf9999ded182b328374cd581c91ef",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "ab5198a9f1911403188b5029daa879bd8ec6513af6bf95482c9e95ec8e7303a4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-manual.xps",
+      "xps_sha256": "45c06fea5ad5b0169790be66b1eccec66b90bfedd2497efe3601ad5de91e6b84",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "2405954beba764266489e2643af75f78bd2a460e015be5e29bf143210c837aeb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m14-balance0-paragraph.docx",
+      "sha256": "c9ec697c65b2e9e11a7e538fa815da363c1a33efb901697f514e3d16be49de6f",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "2e2017a7d62aa0a8583db2f0da328c3e06780e9ea3338949dffa78a8fe7c3634",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "37d278da68fd1e67e65a1e418269a2acd46a5321ecac9ef6e24b8cefbabc231d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "2601ce8f9256f998d698cba22d9f2dfaa15ffd7ae2ef5ced8c44c64602237299",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m14-balance0-manual.docx",
+      "sha256": "6804a2534a6ddf55f57ac43282cbfffad53995943cfd925967fa9269775d79b9",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "0057caa683549dd0117dafe97fdccf4dcb383fcde89defaab4f311ee10a26aeb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-manual.xps",
+      "xps_sha256": "4950bc958035cbbc3a431635183e4e44fb1317022682b57ddf7ec2e11b51dc2b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "7f0fa2f441cf445640cb4d9ca27f4a9f366731c15ba830d517695c3fb684b2bf",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m14-balance0-paragraph.docx",
+      "sha256": "cfba1a0172041ed9e98a6cf07d4071657609127d006135dbf500597ed5fab9bd",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "78f83d629251b4ed3e3d439cd01d0aa74053abd04982dbae635344fe09f22fee",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "96b7f3c9e24531d8260b190d72ed20d35021c5a2e1675b977724967eba4524e4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "c44fb934a8539b949183f5603dd78f12c5683504e481bdbd9464a10907fb1b89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m14-balance0-manual.docx",
+      "sha256": "ab5479c12eb6747995637ebc73554a61bc17bd27c4e5bc2a537954305d3a77a9",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "77aa50968ca01a44f8431afcdddd1cfdb6b4c59ee79ed1015b7781fc58fd7b89",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-manual.xps",
+      "xps_sha256": "674ea95e58abbdad2881efea9545da27cd33f55294db946c09717e3c6aab2b46",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "3da87d0ef37d5fff8ec8b46f3727c94b4098d7d3eb739253a03c060404e7c692",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m14-balance0-paragraph.docx",
+      "sha256": "42edec744c6df107eb2517bdd774c229e7fb2f0a0b8bcb64de742be8ce990ff5",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "a9a5bdb54eb1b446170f122b932b6a4a15c766bd3a09e340f454f5729d762385",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "10966dfc2dcaf9aa3ed764216501840c0583c57352cb82ab01b9cf515a570fc1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "e5f8155455674fb714d84dac91ce5dd2f57e2a15711dfd7395620ab56d9ec5c3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-manual.docx",
+      "sha256": "efc9b3e35ced14f663886ee7a4a4d48d48ff6713d6b020125e88a74e425e2ea1",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "a94ec686f000866119204963d6d7a86f69c33a2cc4b19762d1eaa2e7e5c98765",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-manual.xps",
+      "xps_sha256": "ec5021c6ecd7cb25450fc55c7f9342170babcf5f3af867581f7559917e3f8603",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "0fe6424f27fb9333c2ceeca636686dc896081f16d0390e7221b5092a5e8dbd19",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-paragraph.docx",
+      "sha256": "bc9700057876a7f463248420b36b75146107e4af81041571a0e5c81579036c3e",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "1ceae8bb4bbeecb8e2e85d2e3d65479844fe95c0e127031b03ed86be5f04aaa7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "a6ed771309283f3d6b8b2b40ce26793089aeda25a1c03e81d87e60f2ed1304cd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "d78fc853aa929fbd2f7cf0d2065b6202aedf6467815083d1f24ae962be58765a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m14-balance1-manual.docx",
+      "sha256": "8efe4ebaa5fc2dfb20615d3a8a437bd18cca31448408ccc30d0b51520697670a",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "e7efef217f3151398dd2a5ddabdb4bd08c21b501cd9331b5cb66149c04e27afb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "2b24866a7975c3b1bd032f1ff5330685e23373f00fee94d5529216cea0fe9c76",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "167c9c12b9352c9e93e9cca19033b1d7d43670e949b684d89018d619dd9c54fe",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "0b4e0891a2baa6ccdf4c9c5292f998e790a5507df8dfac70ef7f7c8d09f417b9",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "eb8c99b8a5c498e2024e4a033a5fa6a735d2bf64b6549f19f3525fdb96ace96d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "cae8a8535aab7702712ed8324b3281da5109d625c5fc9a8e5e0a00d17abd8b5b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "1880d60a2ed0ab58a2004593e6450520b766a2fe36e67eaad83ca24029e9d33d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m14-balance1-manual.docx",
+      "sha256": "a9a7172caab5ce9cc2b702cee0c827ce4deefe790b8d5d6552a39644b2063b9d",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "d6ac81c74a21a724182812c34870153f50d4e468797fcc7b2fe4463efe5ff0eb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "9ccf60c5dd1bcf9daf324b30ab613b072554b17def6b3292a0511371304db6c3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "bdac4c2018081a4b49b5870d8491c7ea83e6e739f722d70644985d33c3b1c303",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "1162321ca32d9ad87e2eb6b12bb070916c3d1b4bdb441433267f82c35bc930c9",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "047b2cf4fb6a5b56dff1e6eea1169599c1ec68d29c04a96ce0785de7545c6c89",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "477def2bbb50c1f283dc8171e3273162964072c990744fdb929a61dd6ca48d97",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "a50003b225d4f3b846a6fc19fd6223fc36f78ba0b846ccafafd34c88a6e52feb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m14-balance1-manual.docx",
+      "sha256": "05247ba24e625c5c954b20f45e1e4aab58574ce0eb83e67fb58536623a75ff06",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "b38f7cd0ab5811f46252d1e798e3cb76e1c99d991c4438a1d17fc0fcdc986978",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-manual.xps",
+      "xps_sha256": "0e94c9cdc91ab4c1b8fdc3eb3595bcad194306b01a4e33e59b418ae56908f231",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "7ac1a83d12e11a495ff67ea3158da980a955506da6df1bac6ed46e6b2423f411",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m14-balance1-paragraph.docx",
+      "sha256": "b47eaf3a1ee7f4d99d0a66642543423c847dcbebd7daddc7e6cad1af1070b140",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "13d056423fd30c44e063167940f0749da7646b536d97fa82761e7a989a891c94",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "49cc637e0c10be83938e3d6de99760e520a1a1765472a37e1849d17fcba828d7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "d5d5c1935b60be9c6243e5218a1d3946b6c3967f10b85717c0105b901c268180",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-manual.docx",
+      "sha256": "d609cc3e8ee89fd2bd89f6f54c403bf9993647599bd26b8959600b5018c5c078",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "d710162a37b3f9e9950170389962172b7073bb3e279b339eae8b49d45f518a0c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-manual.xps",
+      "xps_sha256": "47c6df8d52b0ad90a8da7806cc67bafaf51d715d12a041568172d70ed8d0723c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "26df2a7447c924dfcda71e7007424a25d518b1f04bd38f7b80653f6c6c4e5a2f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-paragraph.docx",
+      "sha256": "c7dbd61389f061dfd4024809a53f23562983dbb5ac18f6ed821a9a27837ba4b1",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "8d1c4ba2abf2523de48f2078e61a80534a536be0cdd66fa24d6876879b0a8175",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "1e6193765efd479b54f4b87f16eb93cd05021070290d5120d525f4c3a11a373e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "2d9084180ea7776a032d6eede307ac690071c196caf72c3db5e444594a7d9672",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m15-balance0-manual.docx",
+      "sha256": "666f14d99f5c13fd577089daa6d480ccecfb8bad3a05a90126f6add945d74749",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "7f9a7fa9ff43a85f9fb9861fe411c17926034edda2a0ee2eefce299760e21f99",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-manual.xps",
+      "xps_sha256": "6c0543bbde9654d9eefa3c164996394488fd18793d56de2532e6e25f7b032e53",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "cf4ad30f1e1ab7d0bf3dc4cfc35e9594d266da49f47de148dac187c187cf2407",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m15-balance0-paragraph.docx",
+      "sha256": "b04631a44fa3a9c5cd3defc86b5916567f763e414649c5a717e62793aab36796",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "9feb49fba4aea165ea0ec4d4133007d10a1d0ad35d24eac999ad5f615740ffc5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "bb81bb097991fdfb3cf04947c97e0cb083564adf9e6cead1cc5c9e47b7ce18f2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "2601ce8f9256f998d698cba22d9f2dfaa15ffd7ae2ef5ced8c44c64602237299",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m15-balance0-manual.docx",
+      "sha256": "6fc019e9c260bad61ea780449f13d659970b1e679632b8ab3dcb438d49358cec",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "1475d4132ed086143ec319191211f400f37564bf6c7a0e3b88581a34dbedfc4b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-manual.xps",
+      "xps_sha256": "ca424164dda3134afeea52d53f76f2f1aa3d8f04eeb38d50600479593b037c2f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "2d54511e1895cd8e0f4e8a82d89c504d875e3cbc37ad6a26cc3b1ee88a635f07",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m15-balance0-paragraph.docx",
+      "sha256": "3813ea4df8dfdb031a7a9eca64aa8bd0e00bde12cd95d8049c02de8c9ce00d39",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "b90255a28e4463e5bbab514ca7ccac49f586d5d42cafefcac52944fc989c4d80",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "e8c1daa6ce6d9f4084941236e717f0d55ef552f082811eba2c8ada473110164e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "c44fb934a8539b949183f5603dd78f12c5683504e481bdbd9464a10907fb1b89",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m15-balance0-manual.docx",
+      "sha256": "c58b2c69947f78d096776b1746898dd81237e8ee86253d9a6dff625d05b135f8",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "4c5ad2b11326ee7aab42bdaebb9c67498d46c61639edae220d8ebc8cd7ee7cfe",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-manual.xps",
+      "xps_sha256": "fd1b588a50fdce6153540a73b091ab3e78f2dfe3d7c1926c46add02a00b601ff",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "24e46a715daa47ac401d8c67b99a4c09742b6d262692ff637bc2cdae996ec290",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m15-balance0-paragraph.docx",
+      "sha256": "c3f9a9ca8b5455e7bc6d4a90d970815e0ac032b2e992310503b7fe0fee2006b0",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "1f7a7ffe64f2c62f0c7631f52c8ebceaf216958aca77398f56827c0a693c7863",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "e8becd47be2c46c7ef23cd060777184ae45fa1245655f6658d81a052458e48aa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "e5f8155455674fb714d84dac91ce5dd2f57e2a15711dfd7395620ab56d9ec5c3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-manual.docx",
+      "sha256": "82f56be4831158b3ea9b849d4321fa7815dd1a9a690782883009208a893bc2f4",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "7308aaf8e2752dce3b41e226b9638b8f391ff04e6229b5dc3f2a3d861dc96aad",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-manual.xps",
+      "xps_sha256": "f0212310d6946af185a647a4b0167057a4c9df6227ba8a2d13eb9646b6f13468",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "11870e101f43a151850d5cf285953e7df350b6f94df45109c2e77e2426bc0dc6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-paragraph.docx",
+      "sha256": "2eb6860d33dc422b51f3db494543f69ad4a4bd72fc19fdd3b40571ed3005cc73",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "09d38042d7831b21da49f3e4920dd77b9fce3109d70e535dca0fc72757b2e7e8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "6678f62ac8f1c80e56c094a0e501212b8931d9e34954cc08e09ecb25bac50a4f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "d78fc853aa929fbd2f7cf0d2065b6202aedf6467815083d1f24ae962be58765a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m15-balance1-manual.docx",
+      "sha256": "3ec966460993a7d4e934dfd764d369a41621237e339a5426d4478809e5c9365d",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "2caa2235677868fc110dd1042647b5f25e891fe08715dcfd9f621140638929c5",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-manual.xps",
+      "xps_sha256": "2fe451c9c1a4bcefd2000a1a0417a271cae0271c0307ed8159262cbc3ae95f97",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "3477b4dfafa2105978684caa8110db8d406f4899835cca6f8a7536163d6b89a4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-regular-s12-m15-balance1-paragraph.docx",
+      "sha256": "7e11bc8b239cb99ee5d8293c6231f433e665d73d43e61898fc6cbc50d6432bda",
+      "pdf": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "e7c1d6ca66cf73143ffdddad6850bcd5b81feb0f03a3a920552f1bbf6cab3957",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "d893476c770fc3882e387052c70a1f614f404176c7246e142622c9f5b39b4631",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-regular-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "1880d60a2ed0ab58a2004593e6450520b766a2fe36e67eaad83ca24029e9d33d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m15-balance1-manual.docx",
+      "sha256": "0a02da66baac138c40e8b2710620fddbfe28ee47731ee45d46865af3b8750e13",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "48823dd460518d3c01fd4c95e50b5a39eef06c12db5072be4be636f00c133a54",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-manual.xps",
+      "xps_sha256": "867b325e278c4d1e989adfd5fb60e92d25f96be20c80775bcb1f6f0fe5148cb6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "8a5035b8d10ccdc069e8f56a38e7dd30b9a449418b7ad9f7fe51690933ecbeb1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bold-s12-m15-balance1-paragraph.docx",
+      "sha256": "9915c23ef63d33a793d3c5468c70975eed8b69cdf516228e846874f1d99465ae",
+      "pdf": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "6c9abd72326da267e9cc863b0a858f2c172fa51a17374541410e076f128cadc4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "0a7a009cc763aaa6df900a2cadbbc43daa1e986d5fccc680e72e66939c2d0307",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bold-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "a50003b225d4f3b846a6fc19fd6223fc36f78ba0b846ccafafd34c88a6e52feb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m15-balance1-manual.docx",
+      "sha256": "6035740cfa2ebcd8511206ac4f24122e4785aed075389611b575859faecf2e8f",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "2d8d2a525c057060ddde893989a091dd5b6a07ebce219bbcaf9ab611b9ecb5f0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-manual.xps",
+      "xps_sha256": "ce65ad7c6afc8cabe499d614f0e1f45a957f6123dd33f04cd46be00a82b07234",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "d9d16775e30e75a4a7dc45658dfb676f07ea7097e06f488a285daca3498122ef",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-italic-s12-m15-balance1-paragraph.docx",
+      "sha256": "5a66e7f05ef4c25ef5c6447cf35c3ba806849e594ea91c20268c45314b823dc1",
+      "pdf": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "1e107eeea06c9a1d3e7540379967820d7a7ea5aad3d811a8682a125aa629e334",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "854e243aed82302a0aa1734d6c092c584d55ae5ded7475cb1ac51bd9b836d0d5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-italic-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "d5d5c1935b60be9c6243e5218a1d3946b6c3967f10b85717c0105b901c268180",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-manual.docx",
+      "sha256": "dcbe72afc4bacf81369b943c1abafaad674a6dfac361e98303484d0c59dcbe9a",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "ccc50d598a7f57e9f858b1afcccf00bff8216230722096bbc0b5f4769a5e71e0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-manual.xps",
+      "xps_sha256": "f1482d560147f12caf605da151e92b3810d0eee8a9521521b11c8e6f815f4ac3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "c90ff59e9d864e7492f7d2e8c5cfa24d556510e873a1b1d172459d71beb0d4e4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-paragraph.docx",
+      "sha256": "c8a478a35007362bb6dceb6e0fdcc58688407c46576cdaeb60f45bbe1f3ceb21",
+      "pdf": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "96d2bfbe488d9e2f4ffd49a4a2ad19f4d56598779b64102736fca9e6c3ea0e27",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "26561fcc4a2da862ed4a1391fce676aa6dcc9ecde7a3fe8cb67c05b9ae713c43",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-bolditalic-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "2d9084180ea7776a032d6eede307ac690071c196caf72c3db5e444594a7d9672",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-manual.docx",
+      "sha256": "dfd3344315246b2ea9388934e1692ac5da6a8413c46883ef7b36c78b0c4d9bbd",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "e80194280d4b3685c1f7af7addc0c5fa249de6678924f65ca08ff3c187d3d410",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-manual.xps",
+      "xps_sha256": "ce28cc0c1ffb8430fdf50a81b97ff39d09b05cec6737524400c6e6ffc0e42fd0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "1b527d66aa0bbb5935f226724783f66f8455b967ebcfa06746f80a62f3d3e8eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-paragraph.docx",
+      "sha256": "ca5e2dd92d86dd8ce2b9aa92f7a03ba2613c4fdf0344af3705b3f614a1de76e1",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "58959d5b8bac287c174b48f5bd13129c1633d5252f4ad6c71127bd4cf5a72b1c",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "3baa6675faa2d9f176ddd69c43575c1f9b3c3743a0b81faf4fef49fef3414fe1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-manual.docx",
+      "sha256": "5408b3cb96c091488425570f8ed23387ab6b31371ad04b776ea0bb80d09196e7",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "312d19130aaf722a7acbef604c285fb224a75b9e240d3b6e403e0b5cf816796e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-manual.xps",
+      "xps_sha256": "a3ee18b330d1cce8494d320bab8880870503a813ca56a646885464ae7e8b33ed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "dc28c5e821e3f43ddf0859bb9b179744eaf8904f5501172f771edbdc8c925f34",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-paragraph.docx",
+      "sha256": "b692de69003cf20eea93ee6173f3688abb190702cbee98c1a0b3339ef02c5165",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "6dfdefc69a53f725b960cd3fa119eb64f713bf36e854f45ef75430ecf1b3dad4",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "e70dc08d0ca54ef902a0f6e955604a53aed332069d8b597138b44215090aeabf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "92f09418bb43bd33486d7d9e5a8b15878955d77464155da9ac0742a1c6207816",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-manual.docx",
+      "sha256": "96eefb1717b889828d241f9c9999032f552780b18602860e0acc4600d386ea0b",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "2b2e4309da6fa80c1dba597773ccd536062d5ab5e2db70de22b8dd58ef4bb4b7",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-manual.xps",
+      "xps_sha256": "444268f5902d6fcc7a42ff5c206a95cf1790af20b050682e66a87ae5eec3daed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "72ae7bf99dc1faf13e0cebe992e48aafcc411e7c107ddca1b28126dbc28d98d3",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-paragraph.docx",
+      "sha256": "d39fb351fdd7f22424fc40be94eabdcb2ea4a2364783efd8744ce785e37c2078",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "b72a69b4d881a62951332275ee8237cbce27c2df44779ea73e30365816728d28",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "98ca9bf3a4e61202267ce64531de5640c48fdeaa39e211af97f69b31574da48e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "bcfdbe25e2e37f7481a164de15f51767c088dc4cb792f178e2113878986e1768",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-manual.docx",
+      "sha256": "696f0ac5df443dfc12dc285a71d01df80aaaf8de682952d1a4e3cf7493e75e0b",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "01e49e667e7e1e8e4b57bbb2f7a6d6c81cf8fa7e4c0cb01fd47533aae2d3eb6a",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-manual.xps",
+      "xps_sha256": "017d05584f684f01871597ec27729fb140b86b09dd9534c266c115ab2993e413",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "1eb98c37e724c58107891fa4f725b060e0a65311e62336c4f7722f322a5a15f9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-paragraph.docx",
+      "sha256": "3e51263eb4bc13f104406c65bea965f70b1c6569a62a37bdf4e13526e8afd4b8",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "16ffbdbdc52c8a6d3be68c2092531cb27e51ee08d9579a19ece36bd346d19921",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "27a3814992e61fa8fd19bbbc001900fa53ab35a6bdc8d9ebf7e8d7d2b6c34738",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "aaf02e3021c4e461fa46fa017985553330dc7692e76b112262f32fdb868ecab2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-manual.docx",
+      "sha256": "7ca692842b05c81e8895dd44e8701a36aa0d198eb94a35258cc162194ea04ec5",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "86ce32c30e9255bb45674b222bb52908beb2a6a5fe86ce5d8dc4e3e5a9b935a3",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-manual.xps",
+      "xps_sha256": "af351e0c4b36d5cb90b8b060ca546787b9278d401f5dd4c7375775563db864bb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "8ea71dbdbe1a34535627b7b74276f2aaaddd4bcca7813d6cac88c5267397a841",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-paragraph.docx",
+      "sha256": "0cba5a83a7f5ee3f88aae6ce83f1af976a3f5ac7641788b8b92b8b015e57b405",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "90e6ebe36e1206f748f210c28850bb970e46b6f5795d13938ef3d1c709505745",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "95b2a28f1a49af62a008da111897235deff50b3f66795596abe376139279ffd4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "c1d51e887a09f1596f5fb6bdfce84714de3bfa115e3087fd04edb984d8b3b2f2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-manual.docx",
+      "sha256": "9095f92227ae1ad3b220a352fc5b097205b4fd27a9b53311b9b4e291357f9bf2",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "c482152f04e631a0afbd34b186e167b764b9f3024d59bd8148b46bdbb4cbd80f",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-manual.xps",
+      "xps_sha256": "8e1e38e4c53cd9b43c87aac66875092ef5b0e2b0628e65376555777087436c1a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "7b908a671d4c258936d0e77574db7922824c9c306efabd171d031832390dadce",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-paragraph.docx",
+      "sha256": "5094f6dd679936e49f06092215e26d9106fc8aa7ff7406bd0f897fb5e5f075c7",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "0304076b369f6eee038b8124e989efe9696ade08d93b3fe1b3f7b8e04059ab0f",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "25a221778170120b288be19343411afb58fea70fd8838d1da8772768620255f2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "634630468f4ba1dddd4401e5bd1df52e2c58a694c623047fb31c523cab8c0466",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-manual.docx",
+      "sha256": "613b315deda30301d6120822e5d1b67c19a30524c17e9c3bbc407cba919a6f48",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "1ebaa4a35c335328a551c80056e914d300b867a792b490c7b1bec1e05fd2df6d",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-manual.xps",
+      "xps_sha256": "7dab1cde32d4db525a9abb1d6e3bc05640b373c309b68dccda4532f2e1993149",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "d3258405c1c1bf2ad950f3fdd562f138f6b2bc0b3148e547e4b9f72bbb366ed5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-paragraph.docx",
+      "sha256": "990b0e88ae000c003f441acff8f9841a0dcaf8f50b4df73159f8294feeebed93",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "575cdbd495062eb34153f94ced310f08b343fd5b02d0af8bc9c6b93e6914c7ba",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "c9a308c6b8ce8985cb6db7c289347bdae03cf8ff006eacc2ae13e8e8bfaca087",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "8f9cd22add93995cd37d2574056225bbbc9366624299eb9b417aa671148834c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-manual.docx",
+      "sha256": "eb50c064da826d123ad05a712308361ec64e8cee1d29dfde765122674c2b9666",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "c09562dd159595c096c1ce1406ed6373b0ea495ca74eead0caf19588446d884d",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-manual.xps",
+      "xps_sha256": "b641a89e2ec5346b65d0f0598f6044f5857325c3d639aad0292e7543a40b0ed2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "4e94ae002437f946e095563f8f9ca9446959eb19ea853dc5f742add4bae20c25",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-paragraph.docx",
+      "sha256": "3f7ad8b0b6aeca13a7dcbeffb22c530dd71e2c94c88ce2e62b402ae2a64223a3",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "4ea540b99e12cc9a0d87ef5c8cc0cc863dcfdb309d919527191bcb5e8f83154b",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "eac25e696d15cfb4c61c62409dd54aa98f70b34ef784e01772d2adcb0261f237",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "5d7f13aecb95ea66054e6d28a9332b88dc583a50580a3cc5cdad95e7f3b33145",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-manual.docx",
+      "sha256": "f7517c81906ced76271f09fc8c82fc49f05253a1e3a8b082d72c7f1c7aa830ec",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "f0fd4717d1197d0b69064e318f6880639150fbe058efcfbb12d7f7d1af4f0501",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-manual.xps",
+      "xps_sha256": "60902e223408b7c626fcb61517d76baff8d040bf62beec2e6c22459a1f5b9bb9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "1b527d66aa0bbb5935f226724783f66f8455b967ebcfa06746f80a62f3d3e8eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-paragraph.docx",
+      "sha256": "97021ee234bcde208915d7c1cb72fb58124a9c868d0ec0122c825bd5c574a70b",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "28ea657aef49e429140ff4c90299f84610cd259014ef28ced9473880984201a4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "eaab2ec2a0c1e59625cbd44b1a03821461f6a613751568872553d7362fb5418d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-manual.docx",
+      "sha256": "27366e1733d5aa059e2cf91f17fd5c20004a4e361b7fae9701dc2887f29fe549",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "c072f821f05627bf7ed5f14b4618664bd220f6adf9d435844ebc9eb149fea1e6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-manual.xps",
+      "xps_sha256": "01b03564ba97f22e7b93d75975d3189260329c061816757110d1d0ff9df10afd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "dc28c5e821e3f43ddf0859bb9b179744eaf8904f5501172f771edbdc8c925f34",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-paragraph.docx",
+      "sha256": "57ad5f27b64c7d3f0e562ec12543a0b47ea737b5a5b52f2a8840c2dfef64dfb3",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "d45e9a1551140f799bd9a2b393ce863f9127023d0066a3ee11d372e810a9e00e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "b51d2943f6fd38fe9a16bfafe845cd42222800312a3eb2a0a95c93f676ae4f75",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "92f09418bb43bd33486d7d9e5a8b15878955d77464155da9ac0742a1c6207816",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-manual.docx",
+      "sha256": "25e6025d96aca73855b222e770533ab90e605e6c932649afeccd0dbea889a3f2",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "43bcd0763ed80f7c5db94975d2d7c2bf69cea38644702ba3a5efd9ae715f022a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-manual.xps",
+      "xps_sha256": "4eeee12dcfaf608d98afb33f6a1e9f5bdbdfe4f79b58675ebe90248c5d1ab792",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "1eb02a520aa0872ca1cecc1e63143a3f9235c3faa76eaf1014890eed20c72c48",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-paragraph.docx",
+      "sha256": "5ef5b25f16984a2a3138985333569b173de994264ffa7cfb90ad1aa6bf439c11",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "d49f3e46097a64acfd6242d357bf68907a8f06ecfdd669317059a5ad7240305c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "8c7d11471db3492ebeae41ccaaef8a178245256c22e2dd77e7fbc4c1fc57ebac",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "bcfdbe25e2e37f7481a164de15f51767c088dc4cb792f178e2113878986e1768",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-manual.docx",
+      "sha256": "a8f814b9af3fdacd3e3ade5a43d546f8640355158a11e1240d9f814ce3022b6a",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "cc8b0a34bdad44a6d81b730c8f24230be2306b065a060d90745dd4a919d324a5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-manual.xps",
+      "xps_sha256": "575fb0c24ecd4da3e1175a0fd034b5c18bd9752099257e596473b17fac136530",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "1eb98c37e724c58107891fa4f725b060e0a65311e62336c4f7722f322a5a15f9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-paragraph.docx",
+      "sha256": "b78e40cc548ca03dfce1f7c8b3bf7a0f85941a84cf3fbf17b6d6716dff0e4e7c",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "b9bafa219bc9b323663c329636b7cc53fe7589ebd302671142f8990389c3afe1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "fd251adb9df68f97203519ed24cd717a780063c25e3f5797d3382a2a3e4f4c6c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "e5a155f73002c8cfff6370f6970fe7b0a00e547e3b09877d7df389a4da7669d2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-manual.docx",
+      "sha256": "b23eb35c36aabf7984e01241952faf8e59ba3e59f90a25f6eca053a8285131d2",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "932bc4890268329e9a825397cf14608a3a5849e8b00a3959ad89e325704c16ff",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "dd95880fc0e2f619b2f27da7ceea828673662cf8e24d5114b0281b8f1ef1590a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "8ea71dbdbe1a34535627b7b74276f2aaaddd4bcca7813d6cac88c5267397a841",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "53f70976efe9bbeb290410c27018658201f75fbe535398ced32d89d69c63eb76",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "f60009e3ea283c69de6ff24d9d7b1e4464aae9426a6002a56d15eeca49d9a567",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "4466419d2dbb2e0cd1089bf458d32fe0d173d4ad7dd130d713f78f5d647fd989",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "c1d51e887a09f1596f5fb6bdfce84714de3bfa115e3087fd04edb984d8b3b2f2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-manual.docx",
+      "sha256": "cd1455c3ffb123b2cec4f44deb817fef6076455d11feb677d405bbc75a390126",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "608366c9cc2450be9068e66b02007b26cdf281d67e16a8ccccabc5dbe40b9b42",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "52b2f43913ef992c65cc5bc4b1f3ac9781b0a966ce4e5dcf453200eab41ccb54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "7b908a671d4c258936d0e77574db7922824c9c306efabd171d031832390dadce",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "e9f3c0034022ae2de09f71f8ead7f25947bbac6d79cd334e38c5c184246a83ca",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "e0e23e3da3a1e5477049c30fcacbb6f7f4b2ba77e749fca0d86b07a5948b29dd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "040b28d95e57ccb51d921cb653b8149c1263e880770509e83a0fb5065e31bed3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "3ab727c9008aec034ebc3cc6617039b524dda2947b80837c949bfe1d177446bc",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-manual.docx",
+      "sha256": "69d3191ded3aac121fc8d7030c09c05fb510fa118cd79088dcbe90bb9491cf9d",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "f6ad1c84e3fa0b13e6cb72fdf7767a8f229630338d549b680feacd5d61e622c1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-manual.xps",
+      "xps_sha256": "c7507fb666a4bd257acb062bbfbe57df737202678bef204d5fad622cc0291812",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "d3258405c1c1bf2ad950f3fdd562f138f6b2bc0b3148e547e4b9f72bbb366ed5",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-paragraph.docx",
+      "sha256": "34c5e9c30a019884123fe5c3e94d6c54a3b0a040249ca80da894f577c1968f14",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "d9b53d21b57e412f4962f6820425551084f4f29afb775821f8dfb61c53fd242e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "f85c92acf912c5ea0fc773cb1a472984f16e657a7821568f1e06aefe45a839da",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "8f9cd22add93995cd37d2574056225bbbc9366624299eb9b417aa671148834c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-manual.docx",
+      "sha256": "e8cdf7d39b477687046991234110c91c43eda0ebb68f2355f93e815bb371c81e",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "6f3e15542a4963ced22908122f3ae2b01de68fac053342a5984124cc30c0eb3d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-manual.xps",
+      "xps_sha256": "241908f812d2dcc5ef41928c50fbc1d3238c2167138e38ac7bdd28e2c9aa1065",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "5c2a0fb0b853522395aed95b5f066fa36679ed11b7f454d1c3e945e3b7202720",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-paragraph.docx",
+      "sha256": "5ec9993aaee8b417ecd578198aabcf9dc523fa0990ff9e4e768aa5784a51a1e2",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "cb57428cc363b9f14d9abd7e212f67955c29f30a55b3eaf5f97ee49b280e9c86",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "6f3c723380b56b489b87b5c620d25a988098c3ba942f80f652b7bbeec1355ac2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "cb650b5a9005603d477ee4478dc4a2522cc12a0348d5421f9c68a1febda27b8f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-manual.docx",
+      "sha256": "71a94429bf0e98b17b0ce41a56f1ca7e1a5c41c741dbff2b1c7c94aeeb442bf5",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "65b7e1cdeb2481fa8be522db266e81500ac7de0219c84033adfe37b34526d024",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-manual.xps",
+      "xps_sha256": "244640ec743b24c2a834d320c3a1a116719c25bfb4a96f24a11def78874b6d5a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "8e4cd463b8d412272e6465a4ce78da172cb74d275c2947ee34e079c713e673e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-paragraph.docx",
+      "sha256": "eea31996cb2020905fc8b2ba5051c0320d073ee2715d67ee2ad59698c7631435",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "920d39fd8f02eb2a78fda7f339dedc1ad457a729e3a0b419fc5646125730c8db",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "1b49eacf73e6690f7da9df7ecbba8a1560f031548923edfe4c79bf1e8cf83dd9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "d61d2c6ba6b141d32d8b769d864eb3645bc6985967aaf3812f50aafa091e9387",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-manual.docx",
+      "sha256": "53b21a837317b2de8c68914f977f52b7e781605fa1d238ea48d47feadfa8fae6",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "f3182204e9507ba359c768037c0ee49e78fef40f7c53ed33a9700274d13e197b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-manual.xps",
+      "xps_sha256": "31f1e68fac1e4a8f8f83864fd408b55992bf5e570af5539298b683d24446ca80",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "cf58df8ab9fc8f93db5a14ee808fb4975e428dfc2cf723df5ed93b88bafe6622",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-paragraph.docx",
+      "sha256": "3c4b46158f0972871c051d669bb72f25c3b0798d23b4780866291a8ee656758b",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "c06c2b2c65a17b6f19cf80a78893507090bc9db9f0ebd2e7082d034365fd42cc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "07e1d1ab9b030adc2596eb5e3aac830ad5d350fcf46b2526c9b06e07ecce5d72",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "1906233dbc9312c15b6925ba2e5412e8e56296254ae1597cb4402d7b96433227",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-manual.docx",
+      "sha256": "0c878597b3f72851ac1dd316d209903c077be3c3b86eaa9f2e3d552070cb264b",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "87744b3bb331607f7d41f92965b18e5335b84ac7d83a4a92ab6c6535541f30c8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-manual.xps",
+      "xps_sha256": "fc13075011ca912b96bae3df709fee6891d3b28e2a0eb60a273dfe6c550b9f98",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "89053e33689e7856de9108febbdb8ebf836f5530489be421cc8dc9d6cdc3a374",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-paragraph.docx",
+      "sha256": "72b86c6cba4e9ba5f502ee0e774de6a0992f5260025f5b216e99b23cfea6f196",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "046c270eb4161100c27bef87904b130a4e9eda38cb6197af4366024923d71caf",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "f2048f3e3f116476e2c764102cb98f5ae90576fed46bc3cbe35680dc920b99f9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "bcfdbe25e2e37f7481a164de15f51767c088dc4cb792f178e2113878986e1768",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-manual.docx",
+      "sha256": "17c9cdbb16d90211ca09a30aa6520b5c59caa522ba3c9f6a9406e40ada59009f",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "6e7942fb81152f10e41ed5cfc763041ea8f38830a0bd0ca3987950cddf3baafc",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-manual.xps",
+      "xps_sha256": "bd1f7952f45864b6cf7c9872b6db8e39fe574633cfab4b53b1c18ae00f7f9a2a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "492437c37a73cce7c05ff0e8230014e652e1769a4ec96c81d2955dbab8dcfe66",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-paragraph.docx",
+      "sha256": "51f7bdfe0c970c97ca1c60d7db93fcb75d969f2ccece193fd6ffdaac91cc960b",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "c5b9cd807d47b0eedce2f7ed8d5cda8097d7c2649d048d71fce71ed81c2f42f4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "529608790fa775615ee08b20b34ab289632257662f1adf542839b115c31d4b94",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "aaf02e3021c4e461fa46fa017985553330dc7692e76b112262f32fdb868ecab2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-manual.docx",
+      "sha256": "82543221ce57bd87a779c81a3817479139ae1525f55345d67effb40a5fd74632",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "821dc54b6e5a8032daa706c5740afc73cec59582639675e00cf5e261cdd442ec",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-manual.xps",
+      "xps_sha256": "efbbc15f4a49e91c469faa009d30dff5c01cd1bf61e828ce7527824e99c2e124",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "728d712fcc6d02661776fce8e033114a2ec0bebbf23bff8920bd24cf96a72c40",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-paragraph.docx",
+      "sha256": "24f426f3e9ae331897024f0a9fdc82bcc3b94cdcd2e92c7fcabefeb337c1fcfc",
+      "pdf": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "ac5f6f6ee318ada0e8460dd38f2a52a7b175581db1268164d243dace31fb4782",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "0490c298b7eb0bb3fd107607563729610747604dfb5d33c421f5de404736944c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-regular-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "c1d51e887a09f1596f5fb6bdfce84714de3bfa115e3087fd04edb984d8b3b2f2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-manual.docx",
+      "sha256": "2d64bcf9d95ce3d58de14f6593f931ff15e170eb19c2210eeb6c34b0ae0eb202",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "70f5ab70699470e6337abcd4a327957d544b6b9ed6cc90ba09b17114f7d0b7ba",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-manual.xps",
+      "xps_sha256": "9213cb889f7788a5b15e3f02aa2f0b35827a79d4e4f34f1175a55a898ea6014d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "6da7aa532ddedc9fb3ab67abbc03b648408dbec63bb83b920e6840bfad2b8da4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-paragraph.docx",
+      "sha256": "1dbcb612136c6eb34331698f219d0db7598072e88a5cbb732cd84732e89c2f3f",
+      "pdf": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "ef0123be0a0277481938836892ea7fbbd6d111c30b41c8adb39382792003b551",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "0b2b5016761fcc37c32d44cf82a7ff540ef03a576e58d4f8fe26d961d96bc522",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bold-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "634630468f4ba1dddd4401e5bd1df52e2c58a694c623047fb31c523cab8c0466",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-manual.docx",
+      "sha256": "a7bfc8a28131182f92cf379ee857258485acf8079fa6710ae3228899e528feab",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "8446e82a0d242dac2c783fbaf9b8d2653ac886bc0cb58608ea3634cf8cfff042",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-manual.xps",
+      "xps_sha256": "fa8481deee6aed8ad86bdb17783d1393731d32795765d49aecdde341e6d1e675",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "aefbbead761334c95688552de9a91995b5b87b05167f002cbdf966cbfa1f6900",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-paragraph.docx",
+      "sha256": "c6adf7d29691e103fd4de555c2a2377da675dbcba9ba793ef3e4595be32c67f0",
+      "pdf": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "ff1873f5d55767019559b8467cd434c6260926c0d3d7a4460154e516f5377222",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "41c22c26e2a54c234802dc37521f3b8015edcd9caac81ae4abf1fa056b00d206",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-italic-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "8f9cd22add93995cd37d2574056225bbbc9366624299eb9b417aa671148834c8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-manual",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-manual.docx",
+      "sha256": "7d7a021b16c28e46f60cf2cd55f1062d28f73487a8a96b591a3080e52d3c4816",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "8ffa2713c4b5a3690cd16cd4f71db626044065c55944f3f1cdaf45eed1185fc4",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-manual.xps",
+      "xps_sha256": "23f2f1263d3a6c52021290b3d1f58c3e66713f773b3f3cac16448cdcecb3db59",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "a8524116a3d5624ec60b376744eb14832bd24b5929fa2c77d0447790bd9d1182",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-aptos-style-inputs\\word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-paragraph.docx",
+      "sha256": "b8e3c3041837f0b6c187786288da4e2c92c858379eca21c4a218ecc1cdde3566",
+      "pdf": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "480ff027116e270c166a8aabd9f1faff9baab6c9c169bca188ffbcd0c057caf6",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "18f305bf6e3f2a38389034b8171ccf0c85db54bb53278a80302fb791948c8c2f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-style-aptos-display-bolditalic-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "5d7f13aecb95ea66054e6d28a9332b88dc583a50580a3cc5cdad95e7f3b33145",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

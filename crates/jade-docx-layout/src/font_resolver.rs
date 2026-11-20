@@ -971,6 +971,12 @@ fn resolve_font_families_uncached(properties: Option<&RunProperties>) -> Resolve
             && east_candidate.is_some_and(|family| {
                 windows_latin_east_asia_fallback_face(family)
                     || windows_ms_font_alias_for_east_asia(family)
+                    || (family.trim().eq_ignore_ascii_case("Times New Roman")
+                        && fonts_ref
+                            .and_then(|fonts| fonts.preferred_east_asia())
+                            .is_some()
+                        && !language_is("zh")
+                        && !language_is("ko"))
             })) {
         Some("MS Mincho")
     } else {
@@ -1388,6 +1394,7 @@ pub struct ResolvedRunStyle {
     // a Latin East Asian face with MS Mincho.
     requested_east_asia_font_is_distinct: bool,
     requested_east_asia_uses_latin_fallback: bool,
+    requested_same_times_east_asia: bool,
     windows_hangul_font: Option<Rc<ScriptFallbackFont>>,
     /// Whether the descriptors ask for ligatures or contextual alternates
     /// (see [`descriptor_joins_characters`]): letter pairs are then measured
@@ -1435,6 +1442,19 @@ impl ResolvedRunStyle {
                 .or(props.font_family.as_deref())
                 .is_some_and(windows_latin_east_asia_fallback_face)
         });
+        // Preserve the authored script slots before MS Mincho paint fallback.
+        // Word's explicit Times/Times controls use Latin word-space allocation
+        // instead of automatic Japanese script-boundary expansion.
+        self.requested_same_times_east_asia = properties.is_some_and(|props| {
+            props.fonts.as_ref().is_some_and(|fonts| {
+                let is_times = |name: &str| name.trim().eq_ignore_ascii_case("Times New Roman");
+                fonts.preferred_east_asia().is_some_and(is_times)
+                    && fonts
+                        .preferred_latin()
+                        .or(props.font_family.as_deref())
+                        .is_some_and(is_times)
+            })
+        });
         self.windows_hangul_font = None;
         if self.requested_east_asia_uses_latin_fallback
             && crate::line_metrics::word_layout_platform()
@@ -1449,6 +1469,10 @@ impl ResolvedRunStyle {
             }
         }
         self
+    }
+
+    pub fn has_same_requested_times_east_asia(&self) -> bool {
+        self.requested_same_times_east_asia
     }
 
     pub fn uses_requested_latin_east_asia_fallback(&self) -> bool {
@@ -1549,6 +1573,7 @@ impl ResolvedRunStyle {
             font_hint,
             requested_east_asia_font_is_distinct: false,
             requested_east_asia_uses_latin_fallback: false,
+            requested_same_times_east_asia: false,
             windows_hangul_font: None,
             joins_characters,
             has_font_features,
@@ -2560,6 +2585,36 @@ mod tests {
         let tracked = resolve_run_style_for_wrap(Some(&props), Some(3.0));
         assert!(!tracked.snap_to_grid);
         assert_eq!(tracked.letter_spacing_px, 2.0);
+    }
+
+    #[test]
+    fn times_japanese_paint_fallback_keeps_authored_script_spacing_identity() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for language in [None, Some("ja-JP"), Some("en-US")] {
+                let properties = RunProperties {
+                    fonts: Some(RunFonts {
+                        ascii: Some("Times New Roman".into()),
+                        h_ansi: Some("Times New Roman".into()),
+                        east_asia: Some("Times New Roman".into()),
+                        ..Default::default()
+                    }),
+                    east_asia_language: language.map(Into::into),
+                    ..Default::default()
+                };
+                let families = resolve_font_families(Some(&properties));
+                assert!(families.east_asia_stack().starts_with("'MS Mincho'"),"{platform:?}/{language:?}: Japanese must use the original Word MS Mincho paint face");
+                let style = resolve_run_style_for_wrap(Some(&properties), None);
+                assert!(style.has_same_requested_times_east_asia());
+                assert!(!style.has_distinct_requested_east_asia_font());
+                assert!(!style.uses_requested_latin_east_asia_fallback());
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

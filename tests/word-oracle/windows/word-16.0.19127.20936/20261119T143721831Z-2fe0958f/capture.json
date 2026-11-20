@@ -1,0 +1,486 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T143721831Z-2fe0958f",
+  "captured_at_utc": "2026-11-19T14:37:21.8431339Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1700-regular-s12-m14-balance1-manual.docx",
+      "sha256": "88de48a89ff8cc69f157affe78481d73f1bc8645c286c099202c5ec5ff616c90",
+      "pdf": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "50b0a381d44330ec6d877dfddab3e07bcc71c20dc03efa30b9130cdef89ff822",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "7fcd89fedef9a0a284b6d70be821b0ce1f8cb17913395f6dc43f484ae8158104",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "56b9eef190a452b3db5f5e21eef5e71ee4d781b4fbb79e64711d2177f000e436",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1700-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "cebf52a975213f51a89dbcaa6e9b6330f6abef23e5dac0a7ed172738439504f6",
+      "pdf": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "8a0ac9925c8fe5202dff672356468655f3cd980c74866a2f7fa2cd77fce624b5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "7bb283331b91a3d596642538a864ab92f1c559b2af00ea95c08a2b48f0443346",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1700-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "edc17bdf4c9e2e2d11046538fd5b0599a805506825b2a78b5ab49923ed21967d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1701-regular-s12-m14-balance1-manual.docx",
+      "sha256": "af96ea0bba00f114f5ef77ee815c78ce1de6392c635856198003893093f20ddb",
+      "pdf": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "9fd2dfe8a4ea54422a0365c03c33d9617326971df4550aa7a262cf2b88b82454",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "516ee3bb74c857ddf3b698ac7033b99082b4f9e147cfd956a260df88a13b8197",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "b23c091f470996e65c0d13a0b0528c2d7214690ee7a372de6db351c8e4f97a69",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1701-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "19f6be916441dbc5f89b0f9b24536f415ccd87fe08c6f654d2afb6208fea7bff",
+      "pdf": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "3ab5eb2c5619501d5993cc0eb6bfeca4eb99fa2ea47c139df598b7154854334b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "c106c4d25a772dbc69844447012588f3f8315103b56a893521c4fecb538504e8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1701-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "791c5966ddb8bcd07a7f13cb0cb6c6d65c5d577e6e910c91fcf7ba106da3a07d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1702-regular-s12-m14-balance1-manual.docx",
+      "sha256": "6c1166f5627100ba7db1e426322391503edcd6aba33e9661e56e94114c6599cd",
+      "pdf": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "e3879e09a04792d2afae22e4c2722bcf49b3d6fabda5c7a52ff87e396ca365dc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "527e9417a97c8d4719efe2495b8cbdf825acc2a70d8e4429955e9b35cc78f025",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "b23c091f470996e65c0d13a0b0528c2d7214690ee7a372de6db351c8e4f97a69",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1702-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "f37ed60a9028729040340d08cbaba7328aff86d38e31c0d3262d89527f69c60b",
+      "pdf": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "19c3b9e979a2ab3334af74fff9f74e728c7e0a57b04f655a1f3c87bd78a3f56f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "ce10610b20b8ecfc7cf34bffe49c663e6866eeb7bafc473c282c121d76a164b6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1702-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "791c5966ddb8bcd07a7f13cb0cb6c6d65c5d577e6e910c91fcf7ba106da3a07d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1703-regular-s12-m14-balance1-manual.docx",
+      "sha256": "875398526759cbba3048ab00b9af04877f8a357b3c291e72c7897a53f1776076",
+      "pdf": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "d603b17ecadd6108962087db27c5f5fe592dbae84e11057db748e97396083c5d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "e3ab22cdcaee350680c9d2716488fd87fb9cd76a1eae569f41e34f201ff8783e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "14f67279bd38a86852a38b8ad77692d2e91a7654b6c5b4bcbf0f8a3b140f73fb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1703-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "2bc70fb38f74cb291ab10fbbca86f331cbb8c511dd0e409c5b83e04cef51f938",
+      "pdf": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "2b72b1ff4905516c53b4dbb0be43754287306e390afe2c936ab2dc7d27dc3488",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "4a11b838e966af6217c344988033f539b62e93445b01a39e3a43b658e2470954",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1703-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "4c934d405079bfb9b36be6a7fa4fa0d8c654b427f16eb4d133f96205d444df16",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1700-bold-s12-m14-balance1-manual.docx",
+      "sha256": "a12a4ae57124305e1d797c68e303c7e3d6aa18fab65cae536e1b8fa75925c2fd",
+      "pdf": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "b625ad32c318d829c644e65cea4eb896e759af5b33c0422653c88eafe679494c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "75c971ca6605f633876c26c12628dac5411971541b97b307b7d3239be7bd6347",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "addb544cbd378cc9018dc4bbbaed9ec67e0222db02a6f04675558a1b983b06f4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1700-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "9a18548311a178aaaaa5efd31836187c1c906054af3ac1d08495baa9fa8811c7",
+      "pdf": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "6aad9d615431ed5a391a63b1087fa0e98c3788728dbfce5afdef4b0bdaae3918",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "29947dbdbe331e75c2ea66b54823636be73b978d73b91ba3be728759f29205bb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1700-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "a7063c5c72f0f84f979a3b9003612e57fb7603f80a105e12218d27e2f573f4f8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1701-bold-s12-m14-balance1-manual.docx",
+      "sha256": "971abfec1864970a18f4da6dac5ace784c74c5039d1e26c0f661b49c74d780cf",
+      "pdf": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "9e22101b192deb024a50a54856df6b64cd4abb770179de61686256326b30e32c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "2bd28f3e4db8f1a0b3424a8fb354c001f5ad2c32e117ea5e7af8d5be12a377ae",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "4c5bd26fd6b3238bbf41621fbef08b64cfb72a0f355106a3163a680ad108c08b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1701-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "6b10a93ee2d5f8177a996363e2c9795dcea4fb5a3401ebc5f38b6e9605942157",
+      "pdf": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "680bf131e995413f104a13461f19aa9e0d89a328dff75bc6735e9e0d558471a9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "8e78522c9df471c8546705a5778229fb465ee8d3f97de793544542984f0b0063",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1701-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1702-bold-s12-m14-balance1-manual.docx",
+      "sha256": "e992874806b989cbde96231bb04c351c7cbd73745cb1920d2d88696df66ae48a",
+      "pdf": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "a34a867c175f523647f3d0832e2d0874fc9a0814f1ed628367c05bf8d5e9a64d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "dac021469ca9057dc21628222436211ee852acbda4acc0ec2521af224d00b0ec",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "4c5bd26fd6b3238bbf41621fbef08b64cfb72a0f355106a3163a680ad108c08b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1702-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "208273ca5f26828baf11fc74c5bf42bed3bb6bfd56bc460b369919dfab4c9fee",
+      "pdf": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "94febec78e4003faa6053ded8ec379150f2689a34726b1e6921a62f8351bde41",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "39cc08d725bc4a3d975a526b510155fd59e98f4763857991c81bffc2fa4bf2c8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1702-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1703-bold-s12-m14-balance1-manual.docx",
+      "sha256": "e4d02fe7305117b5d46fc37743a57872b8979f94f177aa61bd90d7aae6bf85a4",
+      "pdf": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "f410c26436299dddac55c3d6794c92d9c78a6913159cb963ec7e1d1ab39d5e2d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "7cd1090706ade1cbe38477e03e4cf1d1b5fa301736e3d89c29c9ea6f8c3da9b6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "c8105a52b2a3f47069c6c638f8f43cfbd2f1823a54586d337db5900efe237b91",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-phase-inputs\\word-windows-origin-phase-l1703-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "caf6cee3e1493f6e0ca48646e35953c9e75442567a00b4351c40ab85b3cf1f20",
+      "pdf": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "215fb884a9e1427f71b949cc22c883d03802ef26e88bc8a1a658be04b3fa1493",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "6ce802ca863f0adc47973042b6b0ba4c256f779579e5f8b6c6321d0091bfb358",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-phase-l1703-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "36aee271bc2fe22efb3007cd4fe93f8f8ae289ea57dfc412e450e3de853ccf3a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

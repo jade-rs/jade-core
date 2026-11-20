@@ -133,6 +133,70 @@ pub struct InstalledFace {
     windows_family: String,
 }
 
+// An XPS can embed multiple subsets of the same original face. Selecting
+// its first, narrower program loses glyphs and pair kerning even when another
+// program of that exact face covers the whole run. Inspect only duplicate
+// styles on Windows; Mac retains its original first-face selection.
+fn richer_same_font_program(current: &InstalledFace, candidate: &InstalledFace) -> bool {
+    if current.path == candidate.path && current.index == candidate.index {
+        return false;
+    }
+    let (Ok(current_bytes), Ok(candidate_bytes)) =
+        (std::fs::read(&current.path), std::fs::read(&candidate.path))
+    else {
+        return false;
+    };
+    let (Ok(current_face), Ok(candidate_face)) = (
+        ttf_parser::Face::parse(&current_bytes, current.index),
+        ttf_parser::Face::parse(&candidate_bytes, candidate.index),
+    ) else {
+        return false;
+    };
+    let identity = |face: &ttf_parser::Face<'_>| {
+        let name = |id| {
+            face.names()
+                .into_iter()
+                .filter(|entry| entry.name_id == id)
+                .filter_map(|entry| entry.to_string())
+                .map(|value| value.to_lowercase())
+                .min()
+        };
+        Some((
+            name(ttf_parser::name_id::POST_SCRIPT_NAME)?,
+            name(ttf_parser::name_id::VERSION)?,
+            face.units_per_em(),
+            face.ascender(),
+            face.descender(),
+            face.line_gap(),
+        ))
+    };
+    let current_identity = identity(&current_face);
+    if current_identity.is_none() || current_identity != identity(&candidate_face) {
+        return false;
+    }
+    let current_points = unicode_points(&current_face);
+    let candidate_points = unicode_points(&candidate_face);
+    !current_points.is_empty()
+        && current_points.len() < candidate_points.len()
+        && current_points.is_subset(&candidate_points)
+}
+
+fn unicode_points(face: &ttf_parser::Face<'_>) -> BTreeSet<u32> {
+    let mut points = BTreeSet::new();
+    if let Some(cmap) = face.tables().cmap {
+        for table in cmap.subtables {
+            if table.is_unicode() {
+                table.codepoints(|point| {
+                    if table.glyph_index(point).is_some_and(|glyph| glyph.0 != 0) {
+                        points.insert(point);
+                    }
+                });
+            }
+        }
+    }
+    points
+}
+
 /// Installed faces by every name they answer to.
 #[derive(Default)]
 pub struct FontLibrary {
@@ -274,17 +338,30 @@ impl FontLibrary {
     }
 
     /// The faces `name` finds, each with the weight it answers for: every
-    /// face of a family of that name (the first found of each weight and
-    /// style), else the one face of that full name as the regular, with the
+    /// face of a family of that name (one per weight/style; Windows prefers
+    /// a strictly more complete program of the same version), else the one
+    /// face of that full name as the regular, with the
     /// heavier face of its family nearest bold as the bold.
     pub fn find(&self, name: &str) -> Vec<(&InstalledFace, u16)> {
         let key = name.trim().to_lowercase();
         if let Some(ids) = self.family_ids(&key) {
-            let mut seen = BTreeSet::new();
-            return ids
-                .iter()
-                .map(|&id| &self.faces[id])
-                .filter(|face| seen.insert((face.weight, face.italic)))
+            let windows = jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+            let mut selected: Vec<&InstalledFace> = Vec::new();
+            for &id in ids {
+                let face = &self.faces[id];
+                if let Some(index) = selected.iter().position(|current| {
+                    current.weight == face.weight && current.italic == face.italic
+                }) {
+                    if windows && richer_same_font_program(selected[index], face) {
+                        selected[index] = face;
+                    }
+                } else {
+                    selected.push(face);
+                }
+            }
+            return selected
+                .into_iter()
                 .map(|face| (face, face.weight))
                 .collect();
         }
@@ -630,6 +707,249 @@ mod tests {
         assert!(std::ptr::eq(mac, FontLibrary::system_cache()));
         assert_eq!(office_font_directories(), before);
         set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_disjoint_calibri_subsets_keep_spaces_in_the_requested_family() {
+        use jade_docx_layout::font_measurer::RegisteredFontStyle;
+        use jade_docx_layout::layout_cache::TextMeasurer;
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_docx_layout::shaping_measurer::ShapingMeasurer;
+        use std::io::{Cursor, Read};
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read_json = |path: &std::path::Path| -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+        };
+        let index = read_json(&root.join("tests/word-oracle/windows/mixed-face-observations.json"));
+        let name = "word-windows-mixed-face-arial-calibri-s12-m14-manual-w3000";
+        let fixture = index["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let manifest_path = root.join(fixture["capture"]["file"].as_str().unwrap());
+        let manifest = read_json(&manifest_path);
+        let document = manifest["documents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let xps = manifest_path
+            .parent()
+            .unwrap()
+            .join(document["xps"].as_str().unwrap());
+        let mut archive = zip::ZipArchive::new(Cursor::new(std::fs::read(xps).unwrap())).unwrap();
+        let mut programs = Vec::new();
+        for index in 0..archive.len() {
+            let mut member = archive.by_index(index).unwrap();
+            let member_name = member
+                .name()
+                .expect("valid original XPS resource name")
+                .into_owned();
+            if !member_name.to_lowercase().ends_with(".odttf") {
+                continue;
+            }
+            let stem = std::path::Path::new(&member_name)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('-', "");
+            let mut key = [0_u8; 16];
+            for (index, byte) in key.iter_mut().rev().enumerate() {
+                *byte = u8::from_str_radix(&stem[index * 2..index * 2 + 2], 16).unwrap();
+            }
+            let mut data = Vec::new();
+            member.read_to_end(&mut data).unwrap();
+            for (index, byte) in data.iter_mut().take(32).enumerate() {
+                *byte ^= key[index % 16];
+            }
+            programs.push(data);
+        }
+        let family = |data: &[u8], name: &str| {
+            ttf_parser::Face::parse(data, 0)
+                .unwrap()
+                .names()
+                .into_iter()
+                .any(|entry| {
+                    entry.name_id == ttf_parser::name_id::FAMILY
+                        && entry.to_string().as_deref() == Some(name)
+                })
+        };
+        let covers = |data: &[u8], ch: char| {
+            ttf_parser::Face::parse(data, 0)
+                .unwrap()
+                .glyph_index(ch)
+                .is_some()
+        };
+        let foreign = programs
+            .iter()
+            .find(|data| family(data, "Arial") && covers(data, 'A') && covers(data, ' '))
+            .unwrap();
+        let space = programs
+            .iter()
+            .find(|data| family(data, "Calibri") && covers(data, ' ') && !covers(data, 'A'))
+            .unwrap();
+        let letters = programs
+            .iter()
+            .find(|data| family(data, "Calibri") && covers(data, 'A') && !covers(data, ' '))
+            .unwrap();
+        for order in [[space, letters], [letters, space]] {
+            let mut combined = ShapingMeasurer::new(12.0);
+            combined
+                .register_font_bytes("Foreign", 400, RegisteredFontStyle::Normal, foreign)
+                .unwrap();
+            for data in order {
+                combined
+                    .register_font_bytes("Calibri", 400, RegisteredFontStyle::Normal, data)
+                    .unwrap();
+            }
+            for (text, data) in [(" ", space), ("A", letters), ("g", letters)] {
+                let mut isolated = ShapingMeasurer::new(12.0);
+                isolated
+                    .register_font_bytes("Calibri", 400, RegisteredFontStyle::Normal, data)
+                    .unwrap();
+                let expected = isolated.measure_text(text, "12pt Calibri").unwrap();
+                for descriptor in ["12pt Calibri", "12pt CALIBRI"] {
+                    let actual = combined.measure_text(text, descriptor).unwrap();
+                    assert!((actual-expected).abs()<1e-9, "{text:?}/{descriptor}: disjoint original subsets must precede foreign fallback: {actual} vs {expected}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_original_subsets_select_the_complete_face_and_preserve_mac() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use std::io::{Cursor, Read};
+        let previous = word_layout_platform();
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read_json = |path: &std::path::Path| -> serde_json::Value {
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
+        };
+        let index = read_json(
+            &root.join("tests/word-oracle/windows/legacy-justification-observations.json"),
+        );
+        let name = "word-windows-legacy-font-times-s12-m15-manual-w3000";
+        let fixture = index["fixtures"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let manifest_path = root.join(fixture["capture"]["file"].as_str().unwrap());
+        let manifest = read_json(&manifest_path);
+        let document = manifest["documents"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["name"] == name)
+            .unwrap();
+        let xps = manifest_path
+            .parent()
+            .unwrap()
+            .join(document["xps"].as_str().unwrap());
+        let mut archive = zip::ZipArchive::new(Cursor::new(std::fs::read(xps).unwrap())).unwrap();
+        let mut programs = Vec::new();
+        for index in 0..archive.len() {
+            let mut member = archive.by_index(index).unwrap();
+            let member_name = member
+                .name()
+                .expect("valid original XPS resource name")
+                .into_owned();
+            if !member_name.to_lowercase().ends_with(".odttf") {
+                continue;
+            }
+            let stem = std::path::Path::new(&member_name)
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace('-', "");
+            let mut key = [0_u8; 16];
+            for (index, byte) in key.iter_mut().rev().enumerate() {
+                *byte = u8::from_str_radix(&stem[index * 2..index * 2 + 2], 16).unwrap();
+            }
+            let mut data = Vec::new();
+            member.read_to_end(&mut data).unwrap();
+            for (index, byte) in data.iter_mut().take(32).enumerate() {
+                *byte ^= key[index % 16];
+            }
+            let face = ttf_parser::Face::parse(&data, 0).unwrap();
+            if !face.names().into_iter().any(|entry| {
+                entry.name_id == ttf_parser::name_id::FAMILY
+                    && entry.to_string().as_deref() == Some("Times New Roman")
+            }) {
+                continue;
+            }
+            let points = unicode_points(&face);
+            programs.push((points, data));
+        }
+        programs.sort_by_key(|(points, _)| points.len());
+        let (small, large) = (programs.first().unwrap(), programs.last().unwrap());
+        assert!(small.0.len() < large.0.len() && small.0.is_subset(&large.0));
+        let directory = std::env::temp_dir().join(format!(
+            "jade-original-font-subsets-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&directory).unwrap();
+        let small_path = directory.join("first-narrow.ttf");
+        let large_path = directory.join("second-complete.ttf");
+        std::fs::write(&small_path, &small.1).unwrap();
+        std::fs::write(&large_path, &large.1).unwrap();
+        let mut library = FontLibrary::default();
+        for path in [&small_path, &large_path] {
+            library.faces.push(InstalledFace {
+                path: path.clone(),
+                index: 0,
+                weight: 400,
+                italic: false,
+                family: "times new roman".into(),
+                windows_family: "times new roman".into(),
+            });
+        }
+        library
+            .by_family
+            .insert("times new roman".into(), vec![0, 1]);
+        library
+            .windows_by_family
+            .insert("times new roman".into(), vec![0, 1]);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let before = library.faces_for(["Times New Roman"]).0;
+        assert_eq!(before[0].path, small_path);
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let windows = library.faces_for(["Times New Roman"]).0;
+        assert_eq!(windows.len(), 1);
+        assert_eq!(windows[0].path, large_path);
+        let references = library.reference_faces_for(["Times New Roman"]).0;
+        assert_eq!(references.len(), 2);
+        assert!(references.iter().any(|face| face.path == small_path));
+        assert!(references.iter().any(|face| face.path == large_path));
+        library
+            .windows_by_family
+            .get_mut("times new roman")
+            .unwrap()
+            .reverse();
+        assert_eq!(library.faces_for(["Times New Roman"]).0[0].path, large_path);
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert_eq!(library.faces_for(["Times New Roman"]).0, before);
+        set_word_layout_platform(previous);
+        std::fs::remove_file(small_path).unwrap();
+        std::fs::remove_file(large_path).unwrap();
+        std::fs::remove_dir(directory).unwrap();
     }
 
     #[test]

@@ -16,7 +16,7 @@ from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = '43a478f91c727e077b736608d3859a593eb33435ab25a1dd8cecd4e2c3e217db'
+INDEX_SHA256 = '7b87ee371686dbf9dc19ccf3af22cc8fbe1fdd1213a3c2ddf01db0a9f3426c7f'
 
 
 def has_visible_vector_ink(pdf):
@@ -51,7 +51,7 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 1537, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 1971, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         require('no_visible_vector_ink' not in case
@@ -88,15 +88,17 @@ def verify(root=ROOT):
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 190685, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 196390, 'Total font coverage changed')
     return cases
 
 
 def require_original_font_programs_registered(directory, rendered):
+    from windows_xps_fonts import font_io_path
     supplied = {hashlib.sha256(path.read_bytes()).hexdigest()
-                for path in directory.iterdir()
+                for entry in font_io_path(directory).iterdir()
+                for path in (font_io_path(entry),)
                 if path.is_file() and path.suffix.lower() in ('.ttf', '.otf', '.ttc')}
-    registered = {hashlib.sha256(Path(face['path']).read_bytes()).hexdigest()
+    registered = {hashlib.sha256(font_io_path(Path(face['path'])).read_bytes()).hexdigest()
                   for face in rendered['fonts']}
     require(bool(supplied) and supplied <= registered,
             'Renderer omitted supplied original Word font programs')
@@ -159,4 +161,4 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 190685 glyph origins')
+        print(f'Verified {len(verify())} Windows font cases / 196390 glyph origins')
