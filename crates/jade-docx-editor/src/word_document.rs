@@ -33899,35 +33899,51 @@ impl WordDocument {
         TextPosition::new(position.paragraph, offset)
     }
 
+    /// Whether paragraph `index` lays its inline equations out as one
+    /// object character each, as (math runs, EQ fields): body and note
+    /// paragraphs do both; a text box's paragraphs do math runs, and show an
+    /// EQ field's result text. A display equation's own paragraph does
+    /// neither.
+    pub(crate) fn equations_are_objects(&self, index: usize) -> (bool, bool) {
+        match self.paragraph_surfaces.get(index) {
+            Some(ParagraphSurface::Body { .. } | ParagraphSurface::Note { .. }) => (true, true),
+            Some(ParagraphSurface::TextBox { .. }) => (true, false),
+            _ => (false, false),
+        }
+    }
+
     /// The objects in a paragraph that render as one object character each,
     /// as (model offset, model length): the inline pictures and text boxes
-    /// in the line, and in a body paragraph the inline equations (math runs,
-    /// and EQ fields the renderer draws as equations). A picture holds no
-    /// model text, so the caret Word puts before it and the one after it
-    /// differ only in rendered offsets.
+    /// in the line, and the inline equations (math runs, and EQ fields the
+    /// renderer draws as equations) where
+    /// [`Self::equations_are_objects`] says so. A picture holds no model
+    /// text, so the caret Word puts before it and the one after it differ
+    /// only in rendered offsets.
     fn rendered_object_spans(&self, index: usize) -> Vec<(usize, usize)> {
-        let body = matches!(
-            self.paragraph_surfaces.get(index),
-            Some(ParagraphSurface::Body { .. })
-        );
         let Some(paragraph) = self.paragraph(index) else {
             return Vec::new();
         };
         let mut spans = Vec::new();
         let mut model_offset = 0usize;
         for run in &paragraph.runs {
-            let equation = body
-                && (run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
-                    || run
-                        .field
-                        .as_ref()
-                        .is_some_and(|f| Self::is_eq_equation_field(&f.kind)));
-            if equation || Self::is_inline_object_run(run) {
+            if self.run_is_object_character(index, run) {
                 spans.push((model_offset, run.text.len()));
             }
             model_offset += run.text.len();
         }
         spans
+    }
+
+    /// Whether `run` of paragraph `index` renders as one object character.
+    fn run_is_object_character(&self, index: usize, run: &Run) -> bool {
+        let (math_objects, eq_objects) = self.equations_are_objects(index);
+        Self::is_inline_object_run(run)
+            || (math_objects && run.math.as_ref().is_some_and(|m| !m.elements.is_empty()))
+            || (eq_objects
+                && run
+                    .field
+                    .as_ref()
+                    .is_some_and(|f| Self::is_eq_equation_field(&f.kind)))
     }
 
     /// Whether `run` is an inline picture or text box: an object in the line
@@ -33991,8 +34007,9 @@ impl WordDocument {
             .collect()
     }
 
-    /// Each inline equation (a math run) of body paragraph `index` as (run
-    /// index, rendered offset of its object character).
+    /// Each inline equation (a math run) of paragraph `index` that is one
+    /// object character of its line, as (run index, rendered offset of that
+    /// character).
     pub fn inline_equation_rendered_starts(&self, index: usize) -> Vec<(usize, usize)> {
         let Some(paragraph) = self.paragraph(index) else {
             return Vec::new();
@@ -34016,8 +34033,9 @@ impl WordDocument {
     }
 
     /// Every empty-text run of paragraph `index` that renders as one object
-    /// character (inline pictures and text boxes; in a body paragraph also
-    /// inline equations), as (run index, model offset, rendered start).
+    /// character (inline pictures and text boxes, and inline equations where
+    /// [`Self::equations_are_objects`] says so), as (run index, model offset,
+    /// rendered start).
     fn object_character_starts(&self, index: usize) -> Vec<(usize, usize, usize)> {
         let Some(paragraph) = self.paragraph(index) else {
             return Vec::new();
@@ -34026,6 +34044,7 @@ impl WordDocument {
             self.paragraph_surfaces.get(index),
             Some(ParagraphSurface::Body { .. })
         );
+        let (math_objects, _) = self.equations_are_objects(index);
         let mut starts = Vec::new();
         let mut model_offset = 0usize;
         // What renders at `model_offset` ahead of the next object: marks
@@ -34049,7 +34068,7 @@ impl WordDocument {
                     }
                 }
             }
-            if Self::is_inline_object_run(run) || (body && Self::is_inline_math_run(run)) {
+            if Self::is_inline_object_run(run) || (math_objects && Self::is_inline_math_run(run)) {
                 let base = self
                     .model_to_rendered_text_position(TextPosition::new(index, model_offset))
                     .offset;
@@ -34060,23 +34079,40 @@ impl WordDocument {
         starts
     }
 
-    /// The paragraph's text with an object character where each object
-    /// [`Self::rendered_object_spans`] lists is: its text in rendered
-    /// offsets, but for note reference marks and fields' shown values.
-    pub fn paragraph_text_with_objects(&self, index: usize) -> String {
+    /// The paragraph's text as the caret walks it, in rendered offsets: a
+    /// note's number ahead of its first paragraph, each note reference mark
+    /// where it is drawn, and an object character for each inline picture,
+    /// text box and equation. Fields count at their run text.
+    pub fn rendered_paragraph_text(&self, index: usize) -> String {
         let Some(paragraph) = self.paragraph(index) else {
             return String::new();
         };
-        let text: String = paragraph.runs.iter().map(|run| run.text.as_str()).collect();
-        let mut out = String::with_capacity(text.len());
-        let mut cursor = 0usize;
-        for (model_offset, model_len) in self.rendered_object_spans(index) {
-            let start = model_offset.clamp(cursor, text.len());
-            out.push_str(text.get(cursor..start).unwrap_or_default());
-            out.push('\u{fffc}');
-            cursor = (model_offset + model_len).clamp(start, text.len());
+        let mut marks = self.reference_marker_spans(index).into_iter().peekable();
+        let mut out = self.rendered_note_marker_text(index);
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            let ids = run.footnote_reference_ids.len() + run.endnote_reference_ids.len();
+            for _ in 0..ids {
+                let Some(span) = marks.next_if(|span| span.model_offset == model_offset) else {
+                    break;
+                };
+                let kind = if span.is_footnote {
+                    NoteKind::Footnote
+                } else {
+                    NoteKind::Endnote
+                };
+                match self.note_reference_marker(kind, &span.note_id) {
+                    Some(marker) if marker.len() == span.rendered_len => out.push_str(&marker),
+                    _ => out.extend(std::iter::repeat_n('*', span.rendered_len)),
+                }
+            }
+            if self.run_is_object_character(index, run) {
+                out.push('\u{fffc}');
+            } else {
+                out.push_str(&run.text);
+            }
+            model_offset += run.text.len();
         }
-        out.push_str(text.get(cursor..).unwrap_or_default());
         out
     }
 
@@ -34414,23 +34450,29 @@ impl WordDocument {
     }
 
     fn rendered_note_marker_len(&self, index: usize) -> usize {
+        self.rendered_note_marker_text(index).len()
+    }
+
+    /// The note number a note's first paragraph is drawn with ahead of its
+    /// text (empty for any other paragraph).
+    fn rendered_note_marker_text(&self, index: usize) -> String {
+        self.rendered_note_marker(index).unwrap_or_default()
+    }
+
+    fn rendered_note_marker(&self, index: usize) -> Option<String> {
         let Some(ParagraphSurface::Note {
             kind,
             note_id,
             path,
         }) = self.paragraph_surfaces.get(index)
         else {
-            return 0;
+            return None;
         };
-        let Some(doc) = self.document.as_ref() else {
-            return 0;
-        };
-        let Some(note) = kind.notes(doc).get(note_id) else {
-            return 0;
-        };
+        let doc = self.document.as_ref()?;
+        let note = kind.notes(doc).get(note_id)?;
         if note.note_type.is_some() || Self::paragraph_ordinal_for_path(&note.body, path) != Some(0)
         {
-            return 0;
+            return None;
         }
         // A preceding top-level display already carries the painted note
         // number. Its marker does not consume bytes in this text paragraph.
@@ -34442,11 +34484,11 @@ impl WordDocument {
                 .any(|block| matches!(block, BodyElement::Math(_))),
             PathEntry::TableCell { .. } => false,
         }) {
-            return 0;
+            return None;
         }
 
         if let Some(marker) = self.note_reference_marker(*kind, note_id) {
-            return marker.len();
+            return Some(marker);
         }
         let ordinal = kind
             .notes(doc)
@@ -34454,17 +34496,14 @@ impl WordDocument {
             .filter(|(_, note)| note.note_type.is_none())
             .position(|(id, _)| id == note_id)
             .map(|index| index + 1);
-        let Some(ordinal) = ordinal else {
-            return 0;
-        };
+        let ordinal = ordinal?;
         let properties = doc.resolved_note_numbering(None, *kind == NoteKind::Footnote);
-        format_note_marker(
+        Some(format_note_marker(
             ordinal,
             properties.number_format.as_deref(),
             properties.number_start,
             *kind == NoteKind::Footnote,
-        )
-        .len()
+        ))
     }
 
     /// Resolves the marker text for a referenced note in document order using

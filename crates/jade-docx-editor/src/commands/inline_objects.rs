@@ -401,7 +401,7 @@ mod tests {
         document
             .insert_inline_image_at(0, 2, &png(), "image/png", 10.0, 10.0, None, None)
             .unwrap();
-        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}CD");
+        assert_eq!(document.rendered_paragraph_text(0), "AB\u{fffc}CD");
         assert_eq!(document.rendered_paragraph_len(0), "AB\u{fffc}CD".len());
 
         // Typed right after the picture, the text follows it.
@@ -414,7 +414,7 @@ mod tests {
                 text: "x".into(),
             },
         );
-        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}xCD");
+        assert_eq!(document.rendered_paragraph_text(0), "AB\u{fffc}xCD");
         // Typed in front of it, the text goes before it.
         apply(
             &mut document,
@@ -424,13 +424,13 @@ mod tests {
                 text: "y".into(),
             },
         );
-        assert_eq!(document.paragraph_text_with_objects(0), "ABy\u{fffc}xCD");
+        assert_eq!(document.rendered_paragraph_text(0), "ABy\u{fffc}xCD");
 
         // Backspace after it, Delete before it: the picture goes.
         let start = "ABy".len();
         apply(&mut document, delete(start + PICTURE.len(), true));
         assert_eq!(pictures(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "AByxCD");
+        assert_eq!(document.rendered_paragraph_text(0), "AByxCD");
     }
 
     #[test]
@@ -450,7 +450,7 @@ mod tests {
             },
         );
         assert_eq!(pictures(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "AzD");
+        assert_eq!(document.rendered_paragraph_text(0), "AzD");
 
         // A range of the picture alone.
         let mut document = document_with("ABCD");
@@ -468,7 +468,7 @@ mod tests {
             },
         );
         assert_eq!(pictures(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
+        assert_eq!(document.rendered_paragraph_text(0), "ABCD");
     }
 
     #[test]
@@ -524,7 +524,7 @@ mod tests {
                 placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
             },
         );
-        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}CD");
+        assert_eq!(document.rendered_paragraph_text(0), "AB\u{fffc}CD");
         document
     }
 
@@ -543,18 +543,18 @@ mod tests {
         )
         .unwrap();
         assert_eq!(equations(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
+        assert_eq!(document.rendered_paragraph_text(0), "ABCD");
         let mut selection = None;
         let mut context = crate::commands::CommandContext::new(&mut document, &mut selection);
         assert!(executor.undo(&mut context).unwrap());
         assert_eq!(equations(&document), 1);
-        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}CD");
+        assert_eq!(document.rendered_paragraph_text(0), "AB\u{fffc}CD");
 
         // Delete before it: the equation goes, not the C after it.
         let mut document = with_equation();
         apply(&mut document, delete("AB".len(), false));
         assert_eq!(equations(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
+        assert_eq!(document.rendered_paragraph_text(0), "ABCD");
 
         // Text typed after it follows it; typed in front, precedes it.
         let mut document = with_equation();
@@ -566,7 +566,7 @@ mod tests {
                 text: "x".into(),
             },
         );
-        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}xCD");
+        assert_eq!(document.rendered_paragraph_text(0), "AB\u{fffc}xCD");
         apply(
             &mut document,
             HeadlessCommand::InsertText {
@@ -575,7 +575,7 @@ mod tests {
                 text: "y".into(),
             },
         );
-        assert_eq!(document.paragraph_text_with_objects(0), "ABy\u{fffc}xCD");
+        assert_eq!(document.rendered_paragraph_text(0), "ABy\u{fffc}xCD");
 
         // A range over it takes it with the text.
         let mut document = with_equation();
@@ -590,7 +590,7 @@ mod tests {
             },
         );
         assert_eq!(equations(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "AzD");
+        assert_eq!(document.rendered_paragraph_text(0), "AzD");
         let mut document = with_equation();
         apply(
             &mut document,
@@ -603,11 +603,11 @@ mod tests {
             },
         );
         assert_eq!(equations(&document), 0);
-        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
+        assert_eq!(document.rendered_paragraph_text(0), "ABCD");
 
         // Backspace in front of it still takes the B.
         let mut document = with_equation();
         apply(&mut document, delete("AB".len(), true));
-        assert_eq!(document.paragraph_text_with_objects(0), "A\u{fffc}CD");
+        assert_eq!(document.rendered_paragraph_text(0), "A\u{fffc}CD");
     }
 }
