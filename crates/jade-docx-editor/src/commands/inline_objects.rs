@@ -3,7 +3,8 @@
 //! deleting a range removes those inside it with the text.
 
 use super::delete_object::DeleteObjectCommand;
-use super::{Command, CommandContext, CommandResult};
+use super::paragraph_undo::ParagraphRangeUndo;
+use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::word_document::{FloatingObjectTarget, WordDocument};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
@@ -31,6 +32,93 @@ pub fn inline_object_beside_caret(
             }
         })
         .map(|(object, _, start)| (object, TextPosition::new(caret.paragraph, start)))
+}
+
+/// The inline equation a collapsed caret deletes, as (run index, the
+/// caret where it was): the one just before it for Backspace, just after
+/// it for Delete. Word removes the equation, not the text beside it.
+pub fn inline_equation_beside_caret(
+    document: &WordDocument,
+    caret: TextPosition,
+    backwards: bool,
+) -> Option<(usize, TextPosition)> {
+    if document.revision_session().is_some() {
+        return None;
+    }
+    const OBJECT_CHAR_LEN: usize = '\u{fffc}'.len_utf8();
+    document
+        .inline_equation_rendered_starts(caret.paragraph)
+        .into_iter()
+        .find(|(_, start)| {
+            if backwards {
+                start + OBJECT_CHAR_LEN == caret.offset
+            } else {
+                *start == caret.offset
+            }
+        })
+        .map(|(run_index, start)| (run_index, TextPosition::new(caret.paragraph, start)))
+}
+
+/// Removes an inline equation's run, leaving the caret where it was.
+pub struct DeleteInlineEquationCommand {
+    paragraph: usize,
+    run_index: usize,
+    caret: TextPosition,
+    undo: Option<ParagraphRangeUndo>,
+    previous_selection: Option<SelectionRange>,
+}
+
+impl DeleteInlineEquationCommand {
+    pub fn new(run_index: usize, caret: TextPosition) -> Self {
+        Self {
+            paragraph: caret.paragraph,
+            run_index,
+            caret,
+            undo: None,
+            previous_selection: None,
+        }
+    }
+}
+
+impl Command for DeleteInlineEquationCommand {
+    fn name(&self) -> &'static str {
+        "delete_inline_equation"
+    }
+
+    fn apply(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.previous_selection = *ctx.selection;
+        let present = ctx
+            .document
+            .paragraph(self.paragraph)
+            .and_then(|paragraph| paragraph.runs.get(self.run_index))
+            .is_some_and(|run| run.math.is_some() && run.text.is_empty());
+        if !present {
+            return Err(CommandError::Custom(
+                "the run holds no inline equation".into(),
+            ));
+        }
+        let mut undo = ParagraphRangeUndo::begin(ctx, Some((self.paragraph, self.paragraph)))?;
+        ctx.document
+            .paragraph_mut(self.paragraph)
+            .ok_or(CommandError::ParagraphUnavailable)?
+            .runs
+            .remove(self.run_index);
+        ctx.document.sync_paragraph_text(self.paragraph);
+        ctx.document.rebuild_paragraph_surfaces();
+        *ctx.selection = Some(SelectionRange::collapsed(self.caret));
+        undo.finish(ctx);
+        self.undo = Some(undo);
+        Ok(())
+    }
+
+    fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        self.undo
+            .take()
+            .ok_or_else(|| CommandError::Custom("missing equation backup for undo".into()))?
+            .undo(ctx)?;
+        *ctx.selection = self.previous_selection;
+        Ok(())
+    }
 }
 
 /// Deletes inline objects, then runs `inner` (the text edit of the same
@@ -350,5 +438,85 @@ mod tests {
         apply(&mut document, delete(picture_start + PICTURE.len(), true));
         assert_eq!(pictures(&document), 0);
         assert_eq!(document.reference_marker_spans(0).len(), 1);
+    }
+
+    fn equations(document: &WordDocument) -> usize {
+        document
+            .paragraph(0)
+            .unwrap()
+            .runs
+            .iter()
+            .filter(|run| run.math.is_some())
+            .count()
+    }
+
+    fn with_equation() -> WordDocument {
+        let mut document = document_with("ABCD");
+        apply(
+            &mut document,
+            HeadlessCommand::InsertEquation {
+                paragraph: 0,
+                offset: 2,
+                omml: "<m:oMath><m:r><m:t>x</m:t></m:r></m:oMath>".into(),
+                placement: jade_docx_headless_api::HeadlessEquationPlacement::Inline,
+            },
+        );
+        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}CD");
+        document
+    }
+
+    #[test]
+    fn backspace_and_delete_beside_an_inline_equation_take_the_equation() {
+        // Backspace after it: the equation goes, not the B in front of it.
+        let mut document = with_equation();
+        let mut executor = crate::commands::CommandExecutor::new();
+        crate::headless_api::apply_headless_commands_with_executor_to_document(
+            &mut document,
+            &mut executor,
+            None,
+            &HeadlessEditRequest {
+                commands: vec![delete("AB".len() + PICTURE.len(), true)],
+            },
+        )
+        .unwrap();
+        assert_eq!(equations(&document), 0);
+        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
+        let mut selection = None;
+        let mut context = crate::commands::CommandContext::new(&mut document, &mut selection);
+        assert!(executor.undo(&mut context).unwrap());
+        assert_eq!(equations(&document), 1);
+        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}CD");
+
+        // Delete before it: the equation goes, not the C after it.
+        let mut document = with_equation();
+        apply(&mut document, delete("AB".len(), false));
+        assert_eq!(equations(&document), 0);
+        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
+
+        // Text typed after it follows it; typed in front, precedes it.
+        let mut document = with_equation();
+        apply(
+            &mut document,
+            HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: "AB".len() + PICTURE.len(),
+                text: "x".into(),
+            },
+        );
+        assert_eq!(document.paragraph_text_with_objects(0), "AB\u{fffc}xCD");
+        apply(
+            &mut document,
+            HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: 2,
+                text: "y".into(),
+            },
+        );
+        assert_eq!(document.paragraph_text_with_objects(0), "ABy\u{fffc}xCD");
+
+        // Backspace in front of it still takes the B.
+        let mut document = with_equation();
+        apply(&mut document, delete("AB".len(), true));
+        assert_eq!(document.paragraph_text_with_objects(0), "A\u{fffc}CD");
     }
 }

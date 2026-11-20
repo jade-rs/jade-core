@@ -666,6 +666,7 @@ pub(crate) fn insert_after_inline_objects(
     runs: &mut Vec<Run>,
     position: usize,
     objects: usize,
+    equations_are_objects: bool,
     insert: &str,
     zero_width: &ZeroWidthRuns,
 ) -> bool {
@@ -685,7 +686,10 @@ pub(crate) fn insert_after_inline_objects(
         if !run.text.is_empty() {
             break;
         }
-        if crate::word_document::WordDocument::is_inline_object_run(run) {
+        if crate::word_document::WordDocument::is_inline_object_run(run)
+            || (equations_are_objects
+                && crate::word_document::WordDocument::is_inline_math_run(run))
+        {
             seen += 1;
             if seen == objects {
                 behind = Some(index + 1);

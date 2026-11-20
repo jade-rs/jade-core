@@ -33912,7 +33912,7 @@ impl WordDocument {
     /// would put the caret, and text typed there, in front of them.
     pub fn rendered_objects_before_caret(&self, position: TextPosition) -> usize {
         let model = self.rendered_to_model_text_position(position).offset;
-        self.inline_object_rendered_starts(position.paragraph)
+        self.object_character_starts(position.paragraph)
             .iter()
             .filter(|(_, model_offset, start)| {
                 *model_offset == model && start + OBJECT_CHAR_LEN <= position.offset
@@ -33928,6 +33928,60 @@ impl WordDocument {
         &self,
         index: usize,
     ) -> Vec<(FloatingObjectTarget, usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        self.object_character_starts(index)
+            .into_iter()
+            .filter_map(|(run_index, model_offset, start)| {
+                let run = paragraph.runs.get(run_index)?;
+                Self::is_inline_object_run(run).then(|| {
+                    (
+                        FloatingObjectTarget {
+                            paragraph_index: index,
+                            run_index,
+                            kind: if run.text_box.is_some() {
+                                FloatingObjectKind::TextBox
+                            } else {
+                                FloatingObjectKind::Image
+                            },
+                        },
+                        model_offset,
+                        start,
+                    )
+                })
+            })
+            .collect()
+    }
+
+    /// Each inline equation (a math run) of body paragraph `index` as (run
+    /// index, rendered offset of its object character).
+    pub fn inline_equation_rendered_starts(&self, index: usize) -> Vec<(usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        self.object_character_starts(index)
+            .into_iter()
+            .filter(|(run_index, _, _)| {
+                paragraph
+                    .runs
+                    .get(*run_index)
+                    .is_some_and(Self::is_inline_math_run)
+            })
+            .map(|(run_index, _, start)| (run_index, start))
+            .collect()
+    }
+
+    /// An inline equation with no model text of its own: one object
+    /// character of a body line.
+    pub(crate) fn is_inline_math_run(run: &Run) -> bool {
+        run.text.is_empty() && run.math.as_ref().is_some_and(|m| !m.elements.is_empty())
+    }
+
+    /// Every empty-text run of paragraph `index` that renders as one object
+    /// character (inline pictures and text boxes; in a body paragraph also
+    /// inline equations), as (run index, model offset, rendered start).
+    fn object_character_starts(&self, index: usize) -> Vec<(usize, usize, usize)> {
         let Some(paragraph) = self.paragraph(index) else {
             return Vec::new();
         };
@@ -33958,23 +34012,11 @@ impl WordDocument {
                     }
                 }
             }
-            if Self::is_inline_object_run(run) {
+            if Self::is_inline_object_run(run) || (body && Self::is_inline_math_run(run)) {
                 let base = self
                     .model_to_rendered_text_position(TextPosition::new(index, model_offset))
                     .offset;
-                starts.push((
-                    FloatingObjectTarget {
-                        paragraph_index: index,
-                        run_index,
-                        kind: if run.text_box.is_some() {
-                            FloatingObjectKind::TextBox
-                        } else {
-                            FloatingObjectKind::Image
-                        },
-                    },
-                    model_offset,
-                    base + ahead,
-                ));
+                starts.push((run_index, model_offset, base + ahead));
                 ahead += OBJECT_CHAR_LEN;
             }
         }

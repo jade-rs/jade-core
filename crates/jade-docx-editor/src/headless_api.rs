@@ -2282,15 +2282,30 @@ fn apply_headless_commands(
                     .flatten();
                 // One command, one history step, however many characters and
                 // paragraph boundaries the run covers.
-                let command: Box<dyn Command> = match beside {
-                    Some((object, caret)) => Box::new(
+                // An inline equation likewise goes whole.
+                let equation = (repeat == 1 && beside.is_none())
+                    .then(|| {
+                        crate::commands::inline_objects::inline_equation_beside_caret(
+                            word_doc,
+                            range.focus,
+                            matches!(direction, DeleteDirection::Backward),
+                        )
+                    })
+                    .flatten();
+                let command: Box<dyn Command> = match (beside, equation) {
+                    (Some((object, caret)), _) => Box::new(
                         crate::commands::inline_objects::DeleteInlineObjectsCommand::new(
                             vec![object],
                             None,
                             caret,
                         ),
                     ),
-                    None => Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
+                    (None, Some((run_index, caret))) => Box::new(
+                        crate::commands::inline_objects::DeleteInlineEquationCommand::new(
+                            run_index, caret,
+                        ),
+                    ),
+                    (None, None) => Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
                 };
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor

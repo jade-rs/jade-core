@@ -702,6 +702,7 @@ impl InsertTextCommand {
                 previous_runs
             } else {
                 let zero_width = ctx.document.zero_width_runs(start.paragraph);
+                let equations_are_objects = ctx.document.is_body_paragraph_surface(start.paragraph);
                 let paragraph = ctx
                     .document
                     .paragraph_mut(start.paragraph)
@@ -711,6 +712,7 @@ impl InsertTextCommand {
                     &mut paragraph.runs,
                     start_offset,
                     after_objects,
+                    equations_are_objects,
                     &self.text,
                     &zero_width,
                 );
