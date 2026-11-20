@@ -6,6 +6,8 @@ import subprocess
 import sys
 from zipfile import ZipFile
 
+import fitz
+
 from check_platform_coordinates import (
     ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require, assert_pending_pdf_text,
 )
@@ -70,6 +72,26 @@ REQUIRED_CASE_NAMES=(
     'word-windows-aptos-size-control-display-regular-size20-compat14',
     'word-windows-aptos-size-control-display-regular-size20-compat15',
 )
+
+
+def aptos_pdf_font_sizes(path):
+    sizes = set()
+    with fitz.open(path) as pdf:
+        for page in pdf:
+            for block in page.get_text('dict')['blocks']:
+                for line in block.get('lines', []):
+                    for span in line['spans']:
+                        if span['text'].strip() and 'AptosDisplay' in span['font'].replace(' ', ''):
+                            sizes.add(round(span['size'], 4))
+    require(bool(sizes), f'{path}: missing visible Aptos Display text')
+    return sorted(sizes)
+
+
+def assert_physical_font_sizes(original, painted, label):
+    expected = aptos_pdf_font_sizes(original)
+    actual = aptos_pdf_font_sizes(painted)
+    require(actual == expected,
+            f'{label}: physical Aptos font sizes differ: Word {expected}; native {actual}')
 
 
 def assert_screen_outputs(drawing,native,screen,label):
@@ -156,6 +178,7 @@ def check(executable,output,root=ROOT):
             require(model['input_sha256']==case['source']['sha256'],'Wrong rendered Aptos-size input')
             require_original_font_programs_registered(fonts,model)
         assert_screen_outputs(drawing,native,without_export,case['name'])
+        assert_physical_font_sizes(original,painted,case['name'])
         painted_visible,painted_full=pdf_origins(painted),pdf_origins(painted,True)
         assert_pending_pdf_text(visible,painted_visible,case['name']+'/PDF-visible')
         assert_pending_pdf_text(full,painted_full,case['name']+'/PDF-unclipped')
