@@ -4840,7 +4840,17 @@ where
                         }
                     };
 
-                    self.cell_paragraphs.insert(paragraph_index);
+                    self.cell_picture_offsets.insert(
+                        paragraph_index,
+                        paragraph
+                            .styled_runs
+                            .iter()
+                            .filter(|run| {
+                                matches!(run.inline_object, Some(CellInlineObject::Picture(_)))
+                            })
+                            .map(|run| run.start)
+                            .collect(),
+                    );
                     if !paragraph.is_continuation {
                         self.selection.reset_paragraph_registration(paragraph_index);
                         self.selection

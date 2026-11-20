@@ -4324,9 +4324,11 @@ where
     word_oracle_text_advances: RefCell<FxHashMap<String, f64>>,
     word_oracle_paragraph_advances: RefCell<FxHashMap<usize, Rc<FxHashMap<usize, f64>>>>,
     word_oracle_report_x_offsets: RefCell<FxHashMap<usize, WordOracleLineXOffsets>>,
-    /// Paragraphs laid out in table cells, whose layout debug text keeps the
-    /// object characters of their equations; a body paragraph's never did.
-    cell_paragraphs: rustc_hash::FxHashSet<usize>,
+    /// The offsets of the inline pictures' object characters in each
+    /// paragraph laid out in a table cell. Layout debug output leaves those
+    /// out but keeps the cell's equations; a body paragraph's debug text
+    /// holds object characters for its pictures alone.
+    cell_picture_offsets: FxHashMap<usize, Vec<usize>>,
     /// Body-element indices whose paragraph `w:spacing` before should be
     /// suppressed because of `w:contextualSpacing` against an identically
     /// styled preceding paragraph (ECMA-376 Part 1 §17.3.1.9). Rebuilt on each
@@ -9536,7 +9538,7 @@ where
             word_oracle_text_advances: RefCell::new(FxHashMap::default()),
             word_oracle_paragraph_advances: RefCell::new(FxHashMap::default()),
             word_oracle_report_x_offsets: RefCell::new(FxHashMap::default()),
-            cell_paragraphs: rustc_hash::FxHashSet::default(),
+            cell_picture_offsets: FxHashMap::default(),
             contextual_suppress_before: ElementIndexSet::default(),
             contextual_suppress_after: ElementIndexSet::default(),
             paragraph_border_box_continues: ElementIndexSet::default(),
@@ -37776,12 +37778,22 @@ where
                 let (start, end) = Self::line_text_range(line, paragraph_len);
                 // An inline picture's object character in a body paragraph is
                 // the caret's, not text the line shows.
-                let text = paragraph.text.get(start..end).unwrap_or("");
-                let text = if self.cell_paragraphs.contains(&paragraph_index) {
-                    text.to_string()
-                } else {
-                    text.replace('\u{fffc}', "")
+                let cell_pictures = self.cell_picture_offsets.get(&paragraph_index);
+                let is_picture = |offset: usize| {
+                    paragraph
+                        .text
+                        .get(offset..)
+                        .is_some_and(|rest| rest.starts_with('\u{fffc}'))
+                        && cell_pictures.is_none_or(|pictures| pictures.contains(&offset))
                 };
+                let text: String = paragraph
+                    .text
+                    .get(start..end)
+                    .unwrap_or("")
+                    .char_indices()
+                    .filter(|(offset, _)| !is_picture(start + offset))
+                    .map(|(_, ch)| ch)
+                    .collect();
                 let page = self.page_for_y(line.absolute_content_top);
                 let report_x_offset = if self.rendering_header_footer_story {
                     0.0
@@ -37827,11 +37839,17 @@ where
                                 .map(|glyph| LayoutGlyphDebug {
                                     start: glyph.start,
                                     end: glyph.end,
-                                    text: paragraph
-                                        .text
-                                        .get(glyph.start..glyph.end)
-                                        .unwrap_or("")
-                                        .to_string(),
+                                    // A picture's object character is no
+                                    // glyph of the line's text.
+                                    text: if is_picture(glyph.start) {
+                                        String::new()
+                                    } else {
+                                        paragraph
+                                            .text
+                                            .get(glyph.start..glyph.end)
+                                            .unwrap_or("")
+                                            .to_string()
+                                    },
                                     x: glyph.x + report_x_offset,
                                     width: glyph.width,
                                 })
