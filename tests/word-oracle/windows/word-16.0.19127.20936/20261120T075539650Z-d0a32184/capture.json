@@ -1,0 +1,1066 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T075539650Z-d0a32184",
+  "captured_at_utc": "2026-11-20T07:55:39.6668652Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z1-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z1-m14.docx",
+      "sha256": "86b2a1a54ff5756bf8dc6f04d25a47a6970767728727cd47d17725f26fc92a34",
+      "pdf": "word-windows-device-remainder-italic-s14-Z1-m14.pdf",
+      "pdf_sha256": "f8a6237dfea27003d1a7d5e42bd2db1208aa6f640eeb877c8e9364f9df8e1a7c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z1-m14.xps",
+      "xps_sha256": "8e491973a20f6def80c6a505f1b98acf102351c62a86a9655d3a159696daba12",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z1-m14.page-001.emf",
+          "sha256": "0e83cc30643e5491333fd7951faefaf09e7cfe889896dd931991f4ef5d272bed",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z2-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z2-m14.docx",
+      "sha256": "c2051f63df6a23bfd2b7830f390e0e0f99a64b2dd871e8df8cdfe72dbfd306f4",
+      "pdf": "word-windows-device-remainder-italic-s14-Z2-m14.pdf",
+      "pdf_sha256": "8f54043d0df24ec592b61f8ea1a08282a98c7657dfd0b08a78d180799f10b846",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z2-m14.xps",
+      "xps_sha256": "cc12fc67a43bec4deda7270c1b898bf37e04933e6050f45189438ccdc126e86e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z2-m14.page-001.emf",
+          "sha256": "9f9d2c97fc679b96bb24c7dc3740005f0401cf635f4ad0abfb61ff5cf96fa4f5",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z3-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z3-m14.docx",
+      "sha256": "aac5684e111a840d202aa0b6bfebb4d9aebf7eb16dab1504424a8ff96ab89ef1",
+      "pdf": "word-windows-device-remainder-italic-s14-Z3-m14.pdf",
+      "pdf_sha256": "04661baa252f9ce8cc078ab0ac08cb71317a5a4b478fc92d274ece47f69e88b1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z3-m14.xps",
+      "xps_sha256": "9f4a63e0c66207f6aebe6bf805cbd8b8ac27725fe44d592c868444de10cd0098",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z3-m14.page-001.emf",
+          "sha256": "fa56b86a2b78bbd4183282e87407ad23193d75b996d78127f7c116f6b46e447d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z4-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z4-m14.docx",
+      "sha256": "08b619464d90611eb8eaf9c3559833bbf5347b4579dfcc38b9189cb2a855814a",
+      "pdf": "word-windows-device-remainder-italic-s14-Z4-m14.pdf",
+      "pdf_sha256": "5731593b3e6720ca780c55694b6daacebd2c82392b46d1f6c976e0983a0f1f22",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z4-m14.xps",
+      "xps_sha256": "00ca49bf3241e5e5cf7ec758f7aa9e1f8a32ec1d58692a318375cf6c4a27e7f1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z4-m14.page-001.emf",
+          "sha256": "2d0e26aa5174fa9240ee6388876eaa8adffd6fa7cbabc944672c16e6b7b02013",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z7-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z7-m14.docx",
+      "sha256": "cd8901e8899bbe624df1223d6b1d26ca552e3ad78b1f71100e194f332133df8f",
+      "pdf": "word-windows-device-remainder-italic-s14-Z7-m14.pdf",
+      "pdf_sha256": "70c3e526369d7a5ec8ed0238e9de4d5b9f0a6a69acf820b82133b00f97eaa5a0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z7-m14.xps",
+      "xps_sha256": "99a806ed4ea422bf5cfdd677bfaf718db5fd01febfee2f7c5a351f23d4374b1a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z7-m14.page-001.emf",
+          "sha256": "080890c76c669628bf3beb0ffe839ffee0b9cdd106111542b0608a617b2eb6f4",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z8-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z8-m14.docx",
+      "sha256": "fe538daa63f081760db9705fbb5d26ed8b1f9ef2e627b0cc69edc24dac21be4b",
+      "pdf": "word-windows-device-remainder-italic-s14-Z8-m14.pdf",
+      "pdf_sha256": "fa816de10164b7975be2572eb05fdc4123d77f99fb6506a89096e9949cfbf4f0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z8-m14.xps",
+      "xps_sha256": "b7fe69dac42376e82096b8c759040f8e54218699ddb900ce2304e8496d1e696a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z8-m14.page-001.emf",
+          "sha256": "acc3c734a4ac6e98ada144163fae424f0cdd2eab4eb6b668e7ab892c79fab84c",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z12-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z12-m14.docx",
+      "sha256": "5ec2f731ac44ae515bced197358b743ecc8d6aca661f2bf4b7427251db4d0980",
+      "pdf": "word-windows-device-remainder-italic-s14-Z12-m14.pdf",
+      "pdf_sha256": "b776d3e9343f4382f77a336063161378632b094c9df12db81ea3eeeeb8a0e94c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z12-m14.xps",
+      "xps_sha256": "1a0a433f359f32f59d398660723ea03ed45c58fb20bc8580ec381af6297849a1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z12-m14.page-001.emf",
+          "sha256": "56bb65f36c7af12ab875c0191b10adcb8e412629c05b8291a18317e8a2d2d5d2",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z15-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z15-m14.docx",
+      "sha256": "e77872cf48451e5928a13b45568c89d8a0ab384d948a6ec00177a838d9407552",
+      "pdf": "word-windows-device-remainder-italic-s14-Z15-m14.pdf",
+      "pdf_sha256": "32bb58aeca0833cd9c40ad9c67a25eb7213397c1552c542f1a3bc7eda87e6ea0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z15-m14.xps",
+      "xps_sha256": "093f8d43fd931ba03d87c8c0fd7fdf2eec2b053139a1fd431889a00df6b0e443",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z15-m14.page-001.emf",
+          "sha256": "0dcc9f510dfa2f5ead54ebf67dbfa21d7ad591b25809642043f7f7e7e05e276b",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z16-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z16-m14.docx",
+      "sha256": "660c8fa69c3022dd1cc1c8a49e6269eef15dcffd77cf1064d24617a588bb95d4",
+      "pdf": "word-windows-device-remainder-italic-s14-Z16-m14.pdf",
+      "pdf_sha256": "f3f47f2e0b214618758b3ea97b450a0d02d35817d41b631de20f5dac4aeadc09",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z16-m14.xps",
+      "xps_sha256": "c493aba82312147af87a1fd5b723d6ec082c616bb724a754ffce0ec58b4b4e8c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z16-m14.page-001.emf",
+          "sha256": "f2cdf5d78376e70c5919a5167670ac2b774f6e254f8fd984c65951c26fd12304",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z17-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z17-m14.docx",
+      "sha256": "22bab316c17b1f97000d9e9f8dff473a345305dca4607560a60fba221d6758b2",
+      "pdf": "word-windows-device-remainder-italic-s14-Z17-m14.pdf",
+      "pdf_sha256": "edfbe4593c490e34b81a911ce5a5e8ac583fd60f004e95bfe696600158101861",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z17-m14.xps",
+      "xps_sha256": "f46b87b3a5a95543302e48c69818771b57f32f01eba6737ad1be1aa68ebf1582",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z17-m14.page-001.emf",
+          "sha256": "5d835961471435442f1b8268f3d411414fa3b9bca54c8307d355482ec8780c91",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z31-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z31-m14.docx",
+      "sha256": "5dc7fab738d88367099b025397a04a276065ac62cac4e2d2ca2e684c0675eadb",
+      "pdf": "word-windows-device-remainder-italic-s14-Z31-m14.pdf",
+      "pdf_sha256": "39d0c3ffc3a4580c79b8ff1c4720fde7c8769cc5226160644bad11e19109ddc5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z31-m14.xps",
+      "xps_sha256": "39537c875ed690e4e5e3f0298662914fb9adb8cf7410cb4800a2070f2ea0a1b0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z31-m14.page-001.emf",
+          "sha256": "ae656e77ae7a75b3db2f5b7961528cd69973ec401c06803ce7f8d8baad1cad9d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z32-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z32-m14.docx",
+      "sha256": "0e0c0febb9471c85c587568358cc00b38d204348f0196f534ff07ea00f6eaf53",
+      "pdf": "word-windows-device-remainder-italic-s14-Z32-m14.pdf",
+      "pdf_sha256": "36b57d8e968a04ddee89f055ad93ae75b289263dad52e47e0c07e8d62eea8ecb",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z32-m14.xps",
+      "xps_sha256": "acadc444f5350c4a60a9d1820134fd932b7906b513a140e25175eeb75064db09",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z32-m14.page-001.emf",
+          "sha256": "f4cfae162377f76ebf9a9a493fd2d610fcd37405d472f270be111ef3f797c69f",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z33-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z33-m14.docx",
+      "sha256": "5188f4b7e33990e53756ed349f30b84974ebd87140d6782a7bf84e8e4cf0a761",
+      "pdf": "word-windows-device-remainder-italic-s14-Z33-m14.pdf",
+      "pdf_sha256": "8b8d45f9b48577aaf03afb6c374c5c91c777a58f4b91d0b96d7ac682d92edbdf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z33-m14.xps",
+      "xps_sha256": "ac3754b4688b5da6398299e9568c41b650f5629f045b44737d451dfc3bfd00db",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z33-m14.page-001.emf",
+          "sha256": "5a62fb7e3e3816d7b1da89b6028644ce8f51e11f83a0d3c84eba1c4232e08c6b",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z47-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z47-m14.docx",
+      "sha256": "efffd0c472f8c8bbe033a25185fd66000ba862f9892c41ac780a385fda3ca310",
+      "pdf": "word-windows-device-remainder-italic-s14-Z47-m14.pdf",
+      "pdf_sha256": "c54382571381e47b36a817fc008db33abc9f6673e3c61b1e4cbcf0d2516d6198",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z47-m14.xps",
+      "xps_sha256": "7f122f6a38db5f925ca51a67853ba4fa7485a9d545565aa95b855662d16c279f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z47-m14.page-001.emf",
+          "sha256": "4630112aa11f2c05ae95edadb0626ff0e26bd53b776cb064e441133e867d2083",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z48-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z48-m14.docx",
+      "sha256": "498621e16a727532a64c3144e2cc32da503fd861f384d9c014abc898d6802d57",
+      "pdf": "word-windows-device-remainder-italic-s14-Z48-m14.pdf",
+      "pdf_sha256": "683fd43c006788a8bfd0b1fd03070650c478d80c4315b1f2f4bb1f752f166c98",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z48-m14.xps",
+      "xps_sha256": "fa88289b28b9f2175dbb2084d0ec13845672ec2b07bca24373b75ce34fd363c4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z48-m14.page-001.emf",
+          "sha256": "dd5d00bdb9701955ae325deda40fcc41eb14de1a71ec659bb241910421e9cc86",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z49-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z49-m14.docx",
+      "sha256": "485aa99b7fdcd68cfd9157be289ab4fc1f6b387890ba1f28d077f63271b3d539",
+      "pdf": "word-windows-device-remainder-italic-s14-Z49-m14.pdf",
+      "pdf_sha256": "d898bd668455bf95b268e56e3263568e6dc67753bc76fc5170d876508cb5aacf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z49-m14.xps",
+      "xps_sha256": "e68a12cf69923eb29f7c51de6d7dcf9b934bf47cc4d59c7809fb973b4a3fbb25",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z49-m14.page-001.emf",
+          "sha256": "93508b6633fc6a0d9bbab898ea99db36cf9f631d4f8db6aadb6ad06f77e56f6e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z64-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z64-m14.docx",
+      "sha256": "561ad605d37ff90b9ffc072f9b1d62d3870e7721c76092a478b4da21fd42d63e",
+      "pdf": "word-windows-device-remainder-italic-s14-Z64-m14.pdf",
+      "pdf_sha256": "c2e37942c19cd8fc1cb8753e1ec18de276feb4809a69662386fbf960c014c2e5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z64-m14.xps",
+      "xps_sha256": "c2eefbc3beee61b98558900b93f8d465dec6c33007fbc51aaa1b405ed53a3847",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z64-m14.page-001.emf",
+          "sha256": "2160ac144106a8cc9791f34fff6632c2da520d4fb77baac26b429845ba9616af",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-italic-s14-Z65-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-italic-s14-Z65-m14.docx",
+      "sha256": "5f13a668de5425f9a455038aa428e8a238edded099429b63cbe19b7cbaf40503",
+      "pdf": "word-windows-device-remainder-italic-s14-Z65-m14.pdf",
+      "pdf_sha256": "f536c2e7e387eb4faeff190a16447aebca732696e57913ba69558f4984b3d3de",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-italic-s14-Z65-m14.xps",
+      "xps_sha256": "27456c6f0429bbe1d7fc9b0c4841533739048b302513263d9c89340e804a4de2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-italic-s14-Z65-m14.page-001.emf",
+          "sha256": "e71f6d5504a3cc3173d165755f28b13db2c92d7dbc83e2444e5304c3d3b79c87",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y1-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y1-m14.docx",
+      "sha256": "9f2e352cac64f6c44c782a3159301c8eeae237ffe3f9cf92db90186f5a60722d",
+      "pdf": "word-windows-device-remainder-regular-s15-y1-m14.pdf",
+      "pdf_sha256": "ed32470e5447aa87e1acc6a4d70da4e612149228e36b63006d020ad5c6aca8a3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y1-m14.xps",
+      "xps_sha256": "b6c6e1c78c5aa22cddcbc1f5a75c7a67b1c83eb02988d5397d7dd8410b80063c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y1-m14.page-001.emf",
+          "sha256": "af2b3771d24e1b4a8e923d2298878439a587fde42c537f2e6035a107f94135fa",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y2-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y2-m14.docx",
+      "sha256": "458a8efe7460d91f961c63ef7466467cff87af2ef542d52af380d17d58df78bc",
+      "pdf": "word-windows-device-remainder-regular-s15-y2-m14.pdf",
+      "pdf_sha256": "c4f7a549c59431ae49839b72e6b9287fc33c86be05a0113a032b97536affa239",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y2-m14.xps",
+      "xps_sha256": "ae993721331a95ba8bb15692cadf741fd94308d950c76b092708a566c762236d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y2-m14.page-001.emf",
+          "sha256": "2d9c7970b173f44a3ef993cfa4318a38a4eb475c0dc53a9a4f0ba7b387bb1209",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y3-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y3-m14.docx",
+      "sha256": "585f635157f4a4c262435689c1f81788685d5e8d3353abfecd84ef6718612bd8",
+      "pdf": "word-windows-device-remainder-regular-s15-y3-m14.pdf",
+      "pdf_sha256": "20b351e288574107b0718a926f26b76d135e287102d1b4af5656fd911442e3fc",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y3-m14.xps",
+      "xps_sha256": "cfe4573ee6a7e6863c3672dbd412cee6d401851b0cb5369c4370963bd60f6c9d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y3-m14.page-001.emf",
+          "sha256": "2a2bb7ed789a40e47b7adbeafb623775471b95836e687893aed22d7f0e6e73c5",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y4-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y4-m14.docx",
+      "sha256": "14333665d0384341badaaed08f1ea38bf4606dc264ddd088e544552d83e74262",
+      "pdf": "word-windows-device-remainder-regular-s15-y4-m14.pdf",
+      "pdf_sha256": "6bfaced2b57e18d03a546d4b853ecb04817999ce160459af6be1b32e5cabb1f5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y4-m14.xps",
+      "xps_sha256": "3b912b8a229f78ee00a30376ebf5fcb9bda827ff0223a378ab11185b608d701f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y4-m14.page-001.emf",
+          "sha256": "f1b002ba8f7ebe15155067ece8fa0ed498fd4acd3e243dcf5a6cfbf5306f624e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y7-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y7-m14.docx",
+      "sha256": "cf38b788b935414480baf856eea3715dee24a7b1d6097029d1c88fdf0a356078",
+      "pdf": "word-windows-device-remainder-regular-s15-y7-m14.pdf",
+      "pdf_sha256": "c81f9cd807a799b934520e6e0d0ba6b01459447ffa78dc2d208aeb01406eb874",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y7-m14.xps",
+      "xps_sha256": "4f81e041ebbac9db9d7f63e6accb801515cf050fd6287fc0090a65547d6d0087",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y7-m14.page-001.emf",
+          "sha256": "6e62556ae10acbd3d3945df125bf3117b47263b8ca8f97fce53147086cf8faf7",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y8-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y8-m14.docx",
+      "sha256": "0387abe494d2d16cd5573f66c10461f83f624726c5f6b9705ccdd9ee7ca95235",
+      "pdf": "word-windows-device-remainder-regular-s15-y8-m14.pdf",
+      "pdf_sha256": "115f6b86926ee051c1b8d82ebd5d7157258c79d8c6e8c509d3a68a6f7906cb6b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y8-m14.xps",
+      "xps_sha256": "c74d81eb020398c7579d3ba81f694ec8d17632142a69d62c9fb3273202599a0e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y8-m14.page-001.emf",
+          "sha256": "e6fbb6383036093c3e9cb2878ee1a423f4299e5bc0f34a3100e583de4b0676ca",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y12-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y12-m14.docx",
+      "sha256": "038f37f38ad1757cd916ef315f38c87f09b27555b1a4656e41f43f4daccb8ca8",
+      "pdf": "word-windows-device-remainder-regular-s15-y12-m14.pdf",
+      "pdf_sha256": "9e7673c98112c40e68ebd0b8af7620847a18a7874e50c2eb5bbe5af405d857a7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y12-m14.xps",
+      "xps_sha256": "7b37cfbb25eb4db03a4681281388e03e3eafc6411872132588774ec462fbc3e0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y12-m14.page-001.emf",
+          "sha256": "4c70252f4367dfe05644a2e54b81fea9ecf28467880da7604ec63f7615d99e5d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y15-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y15-m14.docx",
+      "sha256": "4ceeed2d3d1f627049e8f941f33d551b52eaae32e0279d45c4d4211cdd48b963",
+      "pdf": "word-windows-device-remainder-regular-s15-y15-m14.pdf",
+      "pdf_sha256": "9ea093771c37983e9e5437961da88a438f7c7d1a8a20318e6d1d9bba43346a13",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y15-m14.xps",
+      "xps_sha256": "14774401605d64d8f7f06f7c7588f0bf215a2ddf6886f720ea283d4ef15e08f7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y15-m14.page-001.emf",
+          "sha256": "5955dc407cd4702a4653d424d81a484b004e8a304efb489d8f7b7d4ed5752205",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y16-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y16-m14.docx",
+      "sha256": "03441e7ed943e47e22de035faa75ed84faf22c3559d0ba680eef39ddab722cd7",
+      "pdf": "word-windows-device-remainder-regular-s15-y16-m14.pdf",
+      "pdf_sha256": "d383d997f9fafb6201a490f4037bb605c26d61367564ecf139a6f84058fcdc71",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y16-m14.xps",
+      "xps_sha256": "c379714890c2c017867f16c6f753f3504a145e29fb5c5a2afa3b50aaafa4e85f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y16-m14.page-001.emf",
+          "sha256": "4a68c016470cabde3a13331d1e2c5ada00007d1aca29885c247f449207c7fb5e",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y17-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y17-m14.docx",
+      "sha256": "d0be611fb5cae7f5500040caa82cc061f9cf1ecc0d5abfc4973d354e882e5d51",
+      "pdf": "word-windows-device-remainder-regular-s15-y17-m14.pdf",
+      "pdf_sha256": "4b60b6327444355eb39dabe49e09baabee385dd229beacba64852c86920152f5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y17-m14.xps",
+      "xps_sha256": "3bff29bb736e624c4fdb4ffc4bb1a3c8f67676d2c10a6525ed15ed83fd114321",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y17-m14.page-001.emf",
+          "sha256": "560dcbc3e5691d340b8b2462f5a77d1fb1e9d01a71ad61a5d1dff13e658f3101",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y31-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y31-m14.docx",
+      "sha256": "b228511b5d72368fb1c17041097ca60fe0ba169e32798650537fae97ece41da2",
+      "pdf": "word-windows-device-remainder-regular-s15-y31-m14.pdf",
+      "pdf_sha256": "f03feadc266c4568c466337d0cab8eda0c4ce50dd85967fe18b5425fb71342a6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y31-m14.xps",
+      "xps_sha256": "919798086577b07e72d66a8d4f0d86d2a3a2a67a9565188049bfae87b5ebba92",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y31-m14.page-001.emf",
+          "sha256": "594a36b0ca4cba8e7d4e23f7eda118bbc955758913d9b974bb8b9602d45850b7",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y32-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y32-m14.docx",
+      "sha256": "594ddff91132fafb7f45c85d929342c7efcb1e0ded6aed54dfc560fefb196ca0",
+      "pdf": "word-windows-device-remainder-regular-s15-y32-m14.pdf",
+      "pdf_sha256": "96f9e3489081c244a553c77c042c566e0393b64b0d64fbaf2ae35952baf02c1f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y32-m14.xps",
+      "xps_sha256": "204b700935f4587d3c3ffad4010ab0f9b577535242f29d347b6a808c3023c7f4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y32-m14.page-001.emf",
+          "sha256": "94c4972d23039bb9470cad8891bb7e586439868eb643f015e219f0dafb2deab6",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y33-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y33-m14.docx",
+      "sha256": "79f0a089488f4e036cfb32effca314213cdf692a235ff33324e45e30d2274704",
+      "pdf": "word-windows-device-remainder-regular-s15-y33-m14.pdf",
+      "pdf_sha256": "4856aca728560e65bea4329a2ad03b700c243ff388081d952cde44edd096bf49",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y33-m14.xps",
+      "xps_sha256": "4bf2ec5f97eaced409f5cbbe1e60edee9e5aff51d20008f8800ea38594c03d11",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y33-m14.page-001.emf",
+          "sha256": "5dfbfb7efea555b7ce121568d0a7fe384b67ac0cf99c85edabdd23a8facdd296",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y47-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y47-m14.docx",
+      "sha256": "ee85d514dac828a87d726b372216e8daf263eb5c5495e3485c766ba0b3b7aa36",
+      "pdf": "word-windows-device-remainder-regular-s15-y47-m14.pdf",
+      "pdf_sha256": "7778639ef5f9de06efbb377f0f0b3cf36e46252ea3c63cbe7451ca7a9bc36db3",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y47-m14.xps",
+      "xps_sha256": "794f5bd9ac2480271172f7d249078920d8b1a5c082f19cbae93d488fbc45ac59",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y47-m14.page-001.emf",
+          "sha256": "5204a1178959f33322523be82ee23e5460ed6e18d4a4b40dd79ec71ed51a6560",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y48-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y48-m14.docx",
+      "sha256": "a328ae704b85f940c0b1869e92c93e85d5ae3a09865be9bfd1b84482fdc0101b",
+      "pdf": "word-windows-device-remainder-regular-s15-y48-m14.pdf",
+      "pdf_sha256": "f08476ecee1fd63c494756a81e0344591e5d73d3cdd38b461b78f9d2adfbe82e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y48-m14.xps",
+      "xps_sha256": "7223a2396a06a80493d38f03e9d61c13b559cc53094c493699a8b3c254e1dd23",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y48-m14.page-001.emf",
+          "sha256": "1983ed2bbf66e456908ba5d3288e64e7e9c7d5615325cba1c5d8de90cb088667",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y49-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y49-m14.docx",
+      "sha256": "703127d37022ee77638ca75dc2c3dc55040111b5a0bb2471780b354320a4461e",
+      "pdf": "word-windows-device-remainder-regular-s15-y49-m14.pdf",
+      "pdf_sha256": "94855d66fb3b0dbb2a074263bceecb355c6025af3acb3a7c42566b129f70f1e9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y49-m14.xps",
+      "xps_sha256": "b482d03413455850e1e7231cedd8e6ad1119b5bbeea8127d671daffec8b53182",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y49-m14.page-001.emf",
+          "sha256": "5c5b852b3ccd62979f83611bcee481eb728c00edc9b0bf112db266a772c2aa79",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y64-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y64-m14.docx",
+      "sha256": "04e0a21482b8ceb7d79981e96def678d347458219829461f0b2ff275551201ac",
+      "pdf": "word-windows-device-remainder-regular-s15-y64-m14.pdf",
+      "pdf_sha256": "79502cf750180dac493e14a5cb953b55a3b82681f612f9a1c970ab88c6168c48",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y64-m14.xps",
+      "xps_sha256": "7805a813bf4d84de5dd8f5927ab9c74b3fc07042e08587d56bb11c257c0d887d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y64-m14.page-001.emf",
+          "sha256": "d94f03b4e10de95efb40da50e77a7b1bcf8f04ff4b407cdf7e2f07a3f07e7774",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-device-remainder-regular-s15-y65-m14",
+      "source": "tmp\\w20-device-remainder-lengths-inputs\\word-windows-device-remainder-regular-s15-y65-m14.docx",
+      "sha256": "f73887bc946573622ddf427da3459fb442d3287d2fae600c295c5796bf56a49b",
+      "pdf": "word-windows-device-remainder-regular-s15-y65-m14.pdf",
+      "pdf_sha256": "6782692c72511581196b60f1177c33dae749161896614ef59e5bb2eb524e4d86",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-device-remainder-regular-s15-y65-m14.xps",
+      "xps_sha256": "c2290b76690160ddc7cdc84639f3a91124f22a940af00c116ce088f5cca07d08",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-device-remainder-regular-s15-y65-m14.page-001.emf",
+          "sha256": "894cc17bc6ef5bbb6a3b0b026061d71a54273b4a912d1643ef8d4b77da298dfc",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

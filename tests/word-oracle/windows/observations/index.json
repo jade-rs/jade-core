@@ -57512,6 +57512,499 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T075539650Z-d0a32184",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T075539650Z-d0a32184.zip",
+      "archive_sha256": "773a5438d095273d2e28cf136b63c1d5d07a018ae94339d0b347a1f4f072102d",
+      "capture_sha256": "dcc8ba12fcabf2072d817b4371fc11a8d87b9fa3452d8b24d01a9026300c33d9",
+      "documents": [
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z1-m14",
+          "source_sha256": "86b2a1a54ff5756bf8dc6f04d25a47a6970767728727cd47d17725f26fc92a34",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z1-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z2-m14",
+          "source_sha256": "c2051f63df6a23bfd2b7830f390e0e0f99a64b2dd871e8df8cdfe72dbfd306f4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z2-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z3-m14",
+          "source_sha256": "aac5684e111a840d202aa0b6bfebb4d9aebf7eb16dab1504424a8ff96ab89ef1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z3-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z4-m14",
+          "source_sha256": "08b619464d90611eb8eaf9c3559833bbf5347b4579dfcc38b9189cb2a855814a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z4-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z7-m14",
+          "source_sha256": "cd8901e8899bbe624df1223d6b1d26ca552e3ad78b1f71100e194f332133df8f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z7-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z8-m14",
+          "source_sha256": "fe538daa63f081760db9705fbb5d26ed8b1f9ef2e627b0cc69edc24dac21be4b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z8-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z12-m14",
+          "source_sha256": "5ec2f731ac44ae515bced197358b743ecc8d6aca661f2bf4b7427251db4d0980",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z12-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z15-m14",
+          "source_sha256": "e77872cf48451e5928a13b45568c89d8a0ab384d948a6ec00177a838d9407552",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z15-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z16-m14",
+          "source_sha256": "660c8fa69c3022dd1cc1c8a49e6269eef15dcffd77cf1064d24617a588bb95d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z16-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z17-m14",
+          "source_sha256": "22bab316c17b1f97000d9e9f8dff473a345305dca4607560a60fba221d6758b2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z17-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z31-m14",
+          "source_sha256": "5dc7fab738d88367099b025397a04a276065ac62cac4e2d2ca2e684c0675eadb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z31-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z32-m14",
+          "source_sha256": "0e0c0febb9471c85c587568358cc00b38d204348f0196f534ff07ea00f6eaf53",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z32-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z33-m14",
+          "source_sha256": "5188f4b7e33990e53756ed349f30b84974ebd87140d6782a7bf84e8e4cf0a761",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z33-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z47-m14",
+          "source_sha256": "efffd0c472f8c8bbe033a25185fd66000ba862f9892c41ac780a385fda3ca310",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z47-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z48-m14",
+          "source_sha256": "498621e16a727532a64c3144e2cc32da503fd861f384d9c014abc898d6802d57",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z49-m14",
+          "source_sha256": "485aa99b7fdcd68cfd9157be289ab4fc1f6b387890ba1f28d077f63271b3d539",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z49-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z64-m14",
+          "source_sha256": "561ad605d37ff90b9ffc072f9b1d62d3870e7721c76092a478b4da21fd42d63e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z64-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-italic-s14-Z65-m14",
+          "source_sha256": "5f13a668de5425f9a455038aa428e8a238edded099429b63cbe19b7cbaf40503",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-italic-s14-Z65-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y1-m14",
+          "source_sha256": "9f2e352cac64f6c44c782a3159301c8eeae237ffe3f9cf92db90186f5a60722d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y1-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y2-m14",
+          "source_sha256": "458a8efe7460d91f961c63ef7466467cff87af2ef542d52af380d17d58df78bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y2-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y3-m14",
+          "source_sha256": "585f635157f4a4c262435689c1f81788685d5e8d3353abfecd84ef6718612bd8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y3-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y4-m14",
+          "source_sha256": "14333665d0384341badaaed08f1ea38bf4606dc264ddd088e544552d83e74262",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y4-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y7-m14",
+          "source_sha256": "cf38b788b935414480baf856eea3715dee24a7b1d6097029d1c88fdf0a356078",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y7-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y8-m14",
+          "source_sha256": "0387abe494d2d16cd5573f66c10461f83f624726c5f6b9705ccdd9ee7ca95235",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y8-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y12-m14",
+          "source_sha256": "038f37f38ad1757cd916ef315f38c87f09b27555b1a4656e41f43f4daccb8ca8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y12-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y15-m14",
+          "source_sha256": "4ceeed2d3d1f627049e8f941f33d551b52eaae32e0279d45c4d4211cdd48b963",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y15-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y16-m14",
+          "source_sha256": "03441e7ed943e47e22de035faa75ed84faf22c3559d0ba680eef39ddab722cd7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y16-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y17-m14",
+          "source_sha256": "d0be611fb5cae7f5500040caa82cc061f9cf1ecc0d5abfc4973d354e882e5d51",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y17-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y31-m14",
+          "source_sha256": "b228511b5d72368fb1c17041097ca60fe0ba169e32798650537fae97ece41da2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y31-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y32-m14",
+          "source_sha256": "594ddff91132fafb7f45c85d929342c7efcb1e0ded6aed54dfc560fefb196ca0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y32-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y33-m14",
+          "source_sha256": "79f0a089488f4e036cfb32effca314213cdf692a235ff33324e45e30d2274704",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y33-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y47-m14",
+          "source_sha256": "ee85d514dac828a87d726b372216e8daf263eb5c5495e3485c766ba0b3b7aa36",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y47-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y48-m14",
+          "source_sha256": "a328ae704b85f940c0b1869e92c93e85d5ae3a09865be9bfd1b84482fdc0101b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y49-m14",
+          "source_sha256": "703127d37022ee77638ca75dc2c3dc55040111b5a0bb2471780b354320a4461e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y49-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y64-m14",
+          "source_sha256": "04e0a21482b8ceb7d79981e96def678d347458219829461f0b2ff275551201ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y64-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-remainder-regular-s15-y65-m14",
+          "source_sha256": "f73887bc946573622ddf427da3459fb442d3287d2fae600c295c5796bf56a49b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/inputs/word-windows-device-remainder-regular-s15-y65-m14.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T084351576Z-5c3729df",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T084351576Z-5c3729df.zip",
+      "archive_sha256": "15c1b4b2b2a796c0a35dc646b5443c9db73115ca4b1fa7370376d716d2fce96b",
+      "capture_sha256": "1281bfa59677985fada284c1361173c374e2e56ce0bd58a96fb907be0d68544c",
+      "documents": [
+        {
+          "name": "word-windows-device-writer-holdout-regular-s14-A48-m14",
+          "source_sha256": "9da35a514f2af95ddbc980e35cf86c49015c72c2e151fb5df89f34847abd9132",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-regular-s14-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-regular-s14-T48-m14",
+          "source_sha256": "052b88e9190ca9b061faa4fcd9280ccf904a92ba61f5e93ff4e253a36fd25e5a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-regular-s14-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-regular-s14-W48-m14",
+          "source_sha256": "c0249d77dc79d6b9883112f6b9ef67fd2cbb324b163027090e16d871aa0e7040",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-regular-s14-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-regular-s15p5-A48-m14",
+          "source_sha256": "5dfce19de1f0182c65069cda9475909ac25a52c68ece10667a7a35a8ef60d18f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-regular-s15p5-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-regular-s15p5-T48-m14",
+          "source_sha256": "c56eeeddb0a0557fec66529af190a2ac90100f84c35799bee29cfe04769237e1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-regular-s15p5-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-regular-s15p5-W48-m14",
+          "source_sha256": "52020c53d36b0c96a2b6e506c9319491b918bb2cbbce4483d3cd8717d5872c48",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-regular-s15p5-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bold-s14-A48-m14",
+          "source_sha256": "d4769f135b89bb63b3c8baefc667effdd60578652b5e499a7d7ea51b8ad3a651",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bold-s14-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bold-s14-T48-m14",
+          "source_sha256": "f90c379d5e99ee1ed1b0728e72e020c0b8871394c3c5b4a40ae01b2686fe1494",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bold-s14-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bold-s14-W48-m14",
+          "source_sha256": "e1cc31e8ddb9eb085ebfb06e64e5929d11e53e2a5307535ca24408780bb2835c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bold-s14-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bold-s15p5-A48-m14",
+          "source_sha256": "bad771cd74e98fffa5f68f4f75404cdb6e48c59b2cefb98a071c1cd7ff649cf9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bold-s15p5-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bold-s15p5-T48-m14",
+          "source_sha256": "5600aea6c4b30a4671195385497108a0c192a21136118b51767697c5358ade86",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bold-s15p5-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bold-s15p5-W48-m14",
+          "source_sha256": "00e8386fd0f55667ab8caf2103bc01da144d563b28c794a978b7c18f7cb0024a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bold-s15p5-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-italic-s14-A48-m14",
+          "source_sha256": "9fcc432cccd3e652c7ed3f750ece8bf4d3521418feba73295085edc94eda5ec3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-italic-s14-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-italic-s14-T48-m14",
+          "source_sha256": "0c05809da3c56d23995f2b28860ef03f208771f58c8c599709bbbe89898e5a4b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-italic-s14-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-italic-s14-W48-m14",
+          "source_sha256": "5edb93996960bbe2f5803f057ae8009e93da47d73e2f6ba49e12a7de7b6ab6a7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-italic-s14-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-italic-s15p5-A48-m14",
+          "source_sha256": "ac51cda00fb4e1a5b381d34c1fbb6dde37ea3f01519b685a554c6505e9c2894c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-italic-s15p5-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-italic-s15p5-T48-m14",
+          "source_sha256": "328c17fabafbb0b30a03c88386d06d8cab383dd2a68bea716c84e18435b099ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-italic-s15p5-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-italic-s15p5-W48-m14",
+          "source_sha256": "06693365053f214a1c8822c50ff97869f828084e2b7b992d8f0de7d30d3ce079",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-italic-s15p5-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bolditalic-s14-A48-m14",
+          "source_sha256": "5a1241a14b7e09806f2a62f6c570bfe5d1bd565dd218465ec5e7ffadbf9be0ce",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bolditalic-s14-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bolditalic-s14-T48-m14",
+          "source_sha256": "5d7a4ca913c9d36af5899a2e5cebb1f46db8ccbe13fd0edfa1d533e1abc74af3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bolditalic-s14-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bolditalic-s14-W48-m14",
+          "source_sha256": "3ff409ca3441ad24bdc5c492738389d6214e89fc66f81a1a6cb0d27606a2249c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bolditalic-s14-W48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bolditalic-s15p5-A48-m14",
+          "source_sha256": "c0e59bc2b42dff3f8d2b2ae50914829f08c15f19847696ed2d8958c3acea501f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bolditalic-s15p5-A48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bolditalic-s15p5-T48-m14",
+          "source_sha256": "5e281849d592400604e2fd142a43e24b3e971f41b1c90f6de2a3bc8e41ee3575",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bolditalic-s15p5-T48-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-device-writer-holdout-bolditalic-s15p5-W48-m14",
+          "source_sha256": "47a3e7b8c6ead7a79b1a0a9889b7e9d20d38942b20c93dc15379a74415ff3711",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/inputs/word-windows-device-writer-holdout-bolditalic-s15p5-W48-m14.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T085608665Z-1512018e",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T085608665Z-1512018e.zip",
+      "archive_sha256": "9789a4e673db7e9e29bd878a7e9ca67fd46dfb6fa2d117fe36387f2e0f5025f9",
+      "capture_sha256": "0e8138c22eda879d7c36e783cd143e39991e68098f1b6936a94c66a203b1763a",
+      "documents": [
+        {
+          "name": "word-windows-ascii-width-matrix-regular-s14-m14",
+          "source_sha256": "399d16a23ba181e5f17bf777308db3d86d32a8939777138e13a793e1a08bc844",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T085608665Z-1512018e/inputs/word-windows-ascii-width-matrix-regular-s14-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-ascii-width-matrix-bold-s14-m14",
+          "source_sha256": "0c8d8cc425f346d1d99616c384b4197047d2d53108ba61820513fc354ab9d59d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T085608665Z-1512018e/inputs/word-windows-ascii-width-matrix-bold-s14-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-ascii-width-matrix-italic-s14-m14",
+          "source_sha256": "8419030737bd8dd16bcaa5f9a81a90adcfdbf04ca0b8b6f12feb9260694618dc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T085608665Z-1512018e/inputs/word-windows-ascii-width-matrix-italic-s14-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-ascii-width-matrix-bolditalic-s14-m14",
+          "source_sha256": "0a65c0f826d34de3395f4c0335acadd76cdf4bedc9a6e25d93f0799d4569d759",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T085608665Z-1512018e/inputs/word-windows-ascii-width-matrix-bolditalic-s14-m14.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -57741,6 +58234,18 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T050224844Z-1dc893e5/word-output-font-facts.json",
       "sha256": "cf1f25f74eb1cae40798c519a3c03b21fbe783a538fe1d052b7e405f9f6e8f14"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T075539650Z-d0a32184/word-output-font-facts.json",
+      "sha256": "ae9960c76ad9f85ceb48be5761cfa03dce9b151bd99c06f74bca030a23d6823e"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T084351576Z-5c3729df/word-output-font-facts.json",
+      "sha256": "5c91133bd7790d223d3e947a13c1507bc730beab885122de7c89dbc97a36a7af"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T085608665Z-1512018e/word-output-font-facts.json",
+      "sha256": "72e7990478b043fcb4501f8d49e4ddd9aaa64584538ebfe605174d0b914b384f"
     }
   ]
 }
