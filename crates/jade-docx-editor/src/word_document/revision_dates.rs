@@ -2,7 +2,6 @@
 
 use super::review_tools::tests::docx_with_body;
 use super::*;
-use crate::canvas_renderer::FieldDateTime;
 use crate::commands::delete_text::{DeleteDirection, DeleteTextCommand};
 use crate::commands::insert_paragraph_break::InsertParagraphBreakCommand;
 use crate::commands::insert_text::InsertTextCommand;
@@ -10,6 +9,7 @@ use crate::commands::set_bold::SetBoldCommand;
 use crate::commands::set_paragraph_alignment::SetParagraphAlignmentCommand;
 use crate::commands::table_structure::{TableStructureCommand, TableStructureOp};
 use crate::commands::{Command, CommandContext, CommandExecutor};
+use crate::field_datetime::FieldDateTime;
 use crate::revision_clock::set_revision_clock;
 use futures::executor;
 use jade_docx_layout::selection::{SelectionRange, TextPosition};

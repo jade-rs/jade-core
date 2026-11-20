@@ -62,6 +62,9 @@ pub(crate) mod legal_structure;
 pub(crate) mod number_format;
 
 /// Helpers that serialize the in-memory document model.
+#[path = "../../jade-docx-editor/src/revision_clock.rs"]
+pub mod revision_clock;
+
 #[path = "../../jade-docx-editor/src/serializer/mod.rs"]
 pub mod serializer;
 

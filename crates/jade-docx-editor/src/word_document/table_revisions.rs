@@ -376,7 +376,7 @@ impl WordDocument {
 
     /// A new tracked mark of `kind` from the open revision session.
     pub(crate) fn new_row_revision(&mut self, kind: RevisionKind) -> Option<RevisionMark> {
-        let session = self.revision_session()?.clone();
+        let session = self.recording_revision_session()?;
         Some(RevisionMark {
             kind,
             id: Some(self.allocate_revision_id().to_string()),
