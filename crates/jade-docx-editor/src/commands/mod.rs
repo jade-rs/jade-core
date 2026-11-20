@@ -277,7 +277,10 @@ impl Command for TrackedParagraphFormats {
     fn redo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let before = ctx.document.paragraph_formats();
         self.inner.redo(ctx)?;
-        let session = ctx.document.revision_session().cloned().unwrap_or_default();
+        let session = ctx
+            .document
+            .recording_revision_session()
+            .unwrap_or_default();
         self.records = ctx.document.track_paragraph_format_changes(
             before,
             session.author.as_deref(),
@@ -310,14 +313,14 @@ fn tracking_formatting(
     ctx: &mut CommandContext<'_>,
     step: impl FnOnce(&mut CommandContext<'_>) -> CommandResult<()>,
 ) -> CommandResult<()> {
-    let stamp = ctx
-        .document
-        .revision_session()
-        .map(|session| text_edit::FormatRevisionStamp {
-            author: session.author.clone(),
-            date: session.date.clone(),
-            next_id: ctx.document.revision_id_counter(),
-        });
+    let stamp =
+        ctx.document
+            .recording_revision_session()
+            .map(|session| text_edit::FormatRevisionStamp {
+                author: session.author,
+                date: session.date,
+                next_id: ctx.document.revision_id_counter(),
+            });
     let tracking = stamp.is_some();
     let (result, next_id) = text_edit::with_format_revision(stamp, || step(ctx));
     if let Some(next_id) = next_id.filter(|_| tracking) {
@@ -388,7 +391,10 @@ impl CommandExecutor {
             .map(|_| ctx.document.paragraph_formats());
         apply_tracking_formatting(command.as_mut(), ctx)?;
         if let Some(before) = paragraph_formats {
-            let session = ctx.document.revision_session().cloned().unwrap_or_default();
+            let session = ctx
+                .document
+                .recording_revision_session()
+                .unwrap_or_default();
             let records = ctx.document.track_paragraph_format_changes(
                 before,
                 session.author.as_deref(),

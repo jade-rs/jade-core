@@ -20,6 +20,8 @@ base64 = "0.22"
 # Native-only: regex replacement lives here rather than in the shared query
 # API, which is compiled into the WebAssembly editor core.
 regex = "1.11"
+# The local wall clock recorded revisions are dated by (`w:date`).
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 [dev-dependencies]
 # Test-only: crack open exported .docx bytes to assert field-code preservation.

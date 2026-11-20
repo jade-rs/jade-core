@@ -12224,6 +12224,17 @@ impl WordDocument {
         self.revision_session.as_ref()
     }
 
+    /// The open session as a change recorded now is stamped with. Without a
+    /// fixed `date` it takes the host clock's current minute, so each change
+    /// is dated when it is made, as Word does; read-back revisions keep theirs.
+    pub fn recording_revision_session(&self) -> Option<RevisionSession> {
+        let mut session = self.revision_session.clone()?;
+        if session.date.is_none() {
+            session.date = crate::revision_clock::revision_date_now();
+        }
+        Some(session)
+    }
+
     pub fn ensure_revision_decision_supported(
         &self,
         kind_filter: Option<&RevisionKind>,
@@ -12639,8 +12650,7 @@ impl WordDocument {
         paragraph_index: usize,
     ) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -12769,8 +12779,7 @@ impl WordDocument {
 
     fn mark_deleted_paragraph_break_raw(&mut self, paragraph_index: usize) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -32899,7 +32908,7 @@ impl WordDocument {
         if length == 0 {
             return;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return;
         };
         let zero_width = self.zero_width_runs(paragraph_index);
@@ -32968,7 +32977,7 @@ impl WordDocument {
         if length == 0 {
             return false;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return false;
         };
 

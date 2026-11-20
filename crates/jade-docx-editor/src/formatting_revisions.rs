@@ -351,7 +351,7 @@ impl WordDocument {
         before: &[(usize, Paragraph, Option<DocxXmlDocument>)],
         old_raw: &DocxXmlDocument,
     ) -> Result<(), String> {
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return Ok(());
         };
         let mut seen_ids = std::collections::HashSet::new();

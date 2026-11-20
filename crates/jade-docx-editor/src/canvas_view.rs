@@ -10483,6 +10483,8 @@ impl OffscreenDocumentView {
         options: Option<Options>,
         device_pixel_ratio: f64,
     ) -> Result<OffscreenDocumentView, JsValue> {
+        // Recorded revisions are dated by the page's clock (`w:date`).
+        crate::revision_clock::set_revision_clock(Some(|| current_field_datetime().to_reader()));
         let opts = options.unwrap_or_default();
         let host = OffscreenRenderHost::new(canvas, device_pixel_ratio)?;
         let renderer = Rc::new(RefCell::new(CanvasRenderer::with_host(
