@@ -121,11 +121,76 @@ impl Command for DeleteInlineEquationCommand {
     }
 }
 
+/// An object that is one character of its line: an inline picture or text
+/// box, or (in a body paragraph) an inline equation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InlineObject {
+    Drawing(FloatingObjectTarget),
+    Equation { paragraph: usize, run_index: usize },
+}
+
+impl InlineObject {
+    fn key(&self) -> (usize, usize) {
+        match self {
+            Self::Drawing(target) => (target.paragraph_index, target.run_index),
+            Self::Equation {
+                paragraph,
+                run_index,
+            } => (*paragraph, *run_index),
+        }
+    }
+
+    fn command(self) -> Box<dyn Command> {
+        match self {
+            Self::Drawing(target) => Box::new(DeleteObjectCommand::new(target)),
+            Self::Equation {
+                paragraph,
+                run_index,
+            } => Box::new(DeleteInlineEquationCommand::new(
+                run_index,
+                TextPosition::new(paragraph, 0),
+            )),
+        }
+    }
+}
+
+/// The inline objects whole inside `range` (rendered offsets), pictures,
+/// text boxes and equations alike, in document order.
+pub fn inline_objects_in_range(
+    document: &WordDocument,
+    range: SelectionRange,
+) -> Vec<InlineObject> {
+    const OBJECT_CHAR_LEN: usize = '\u{fffc}'.len_utf8();
+    let (start, end) = range.normalized();
+    let mut objects: Vec<InlineObject> = document
+        .inline_objects_in_rendered_range(range)
+        .into_iter()
+        .map(InlineObject::Drawing)
+        .collect();
+    if start != end {
+        for paragraph in start.paragraph..=end.paragraph {
+            for (run_index, rendered_start) in document.inline_equation_rendered_starts(paragraph) {
+                let after_start = paragraph > start.paragraph || rendered_start >= start.offset;
+                let before_end =
+                    paragraph < end.paragraph || rendered_start + OBJECT_CHAR_LEN <= end.offset;
+                if after_start && before_end {
+                    objects.push(InlineObject::Equation {
+                        paragraph,
+                        run_index,
+                    });
+                }
+            }
+        }
+    }
+    objects.sort_by_key(InlineObject::key);
+    objects
+}
+
 /// Deletes inline objects, then runs `inner` (the text edit of the same
 /// range, its end moved back by the object characters it no longer holds),
 /// as one undo step.
 pub struct DeleteInlineObjectsCommand {
-    objects: Vec<DeleteObjectCommand>,
+    objects: Vec<Box<dyn Command>>,
     inner: Option<Box<dyn Command>>,
     inner_range: Option<SelectionRange>,
     caret: TextPosition,
@@ -136,10 +201,11 @@ impl DeleteInlineObjectsCommand {
     /// `objects` in document order; they are deleted last first, so the run
     /// indices of the others stay right.
     pub fn new(
-        objects: Vec<FloatingObjectTarget>,
+        mut objects: Vec<InlineObject>,
         inner: Option<(Box<dyn Command>, SelectionRange)>,
         caret: TextPosition,
     ) -> Self {
+        objects.sort_by_key(InlineObject::key);
         let (inner, inner_range) = match inner {
             Some((command, range)) => (Some(command), Some(range)),
             None => (None, None),
@@ -148,7 +214,7 @@ impl DeleteInlineObjectsCommand {
             objects: objects
                 .into_iter()
                 .rev()
-                .map(DeleteObjectCommand::new)
+                .map(InlineObject::command)
                 .collect(),
             inner,
             inner_range,
@@ -160,15 +226,12 @@ impl DeleteInlineObjectsCommand {
     /// The range `range` becomes once the objects among `objects` are gone:
     /// its end moves back by the object characters before it in its own
     /// paragraph. Its start is in front of every object it holds.
-    pub fn range_without(
-        objects: &[FloatingObjectTarget],
-        range: SelectionRange,
-    ) -> SelectionRange {
+    pub fn range_without(objects: &[InlineObject], range: SelectionRange) -> SelectionRange {
         const OBJECT_CHAR_LEN: usize = '\u{fffc}'.len_utf8();
         let (start, end) = range.normalized();
         let in_end = objects
             .iter()
-            .filter(|object| object.paragraph_index == end.paragraph)
+            .filter(|object| object.key().0 == end.paragraph)
             .count();
         SelectionRange::new(
             start,
@@ -513,6 +576,34 @@ mod tests {
             },
         );
         assert_eq!(document.paragraph_text_with_objects(0), "ABy\u{fffc}xCD");
+
+        // A range over it takes it with the text.
+        let mut document = with_equation();
+        apply(
+            &mut document,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 1,
+                end_paragraph: 0,
+                end_offset: "AB\u{fffc}C".len(),
+                text: "z".into(),
+            },
+        );
+        assert_eq!(equations(&document), 0);
+        assert_eq!(document.paragraph_text_with_objects(0), "AzD");
+        let mut document = with_equation();
+        apply(
+            &mut document,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 2,
+                end_paragraph: 0,
+                end_offset: "AB\u{fffc}".len(),
+                text: String::new(),
+            },
+        );
+        assert_eq!(equations(&document), 0);
+        assert_eq!(document.paragraph_text_with_objects(0), "ABCD");
 
         // Backspace in front of it still takes the B.
         let mut document = with_equation();

@@ -71772,8 +71772,9 @@ mod tests {
                 "delete across it",
                 format!("<w:p><w:r><w:t>AB</w:t></w:r>{eq}<w:r><w:t>CD</w:t></w:r></w:p>"),
                 // Rendered offsets: B, the equation's object character, C.
+                // The equation goes with the range, as in Word.
                 vec![delete_range(1, "AB\u{fffc}C".len())],
-                format!("<w:p><w:r><w:t>A</w:t></w:r>{eq}<w:r><w:t>D</w:t></w:r></w:p>"),
+                "<w:p><w:r><w:t>A</w:t></w:r><w:r><w:t>D</w:t></w:r></w:p>".to_string(),
             ),
             (
                 "inside a hyperlink",

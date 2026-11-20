@@ -1977,10 +1977,10 @@ fn try_apply_headless_text_command(
             );
             let range =
                 range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
-            // The inline pictures the range holds go with its text, as in
+            // The inline pictures and equations the range holds go with its text, as in
             // Word; the text edit then covers the range without them.
             let objects = if word_doc.revision_session().is_none() {
-                word_doc.inline_objects_in_rendered_range(range)
+                crate::commands::inline_objects::inline_objects_in_range(word_doc, range)
             } else {
                 Vec::new()
             };
@@ -2295,7 +2295,9 @@ fn apply_headless_commands(
                 let command: Box<dyn Command> = match (beside, equation) {
                     (Some((object, caret)), _) => Box::new(
                         crate::commands::inline_objects::DeleteInlineObjectsCommand::new(
-                            vec![object],
+                            vec![crate::commands::inline_objects::InlineObject::Drawing(
+                                object,
+                            )],
                             None,
                             caret,
                         ),
