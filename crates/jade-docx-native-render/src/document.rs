@@ -2670,7 +2670,7 @@ impl NativeDocument {
     pub fn caret_text(&self, paragraph: usize) -> Option<String> {
         self.word_document
             .paragraph(paragraph)
-            .map(|_| self.word_document.paragraph_text_with_objects(paragraph))
+            .map(|_| self.word_document.rendered_paragraph_text(paragraph))
     }
 
     // ---- for a shell's own commands ------------------------------------------
