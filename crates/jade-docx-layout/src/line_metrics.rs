@@ -1030,15 +1030,17 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
     }
 }
 
-/// Classify the Latin faces whose Windows spacing is backed by original Word
-/// controls. Keep descriptor parsing and Mac family classification unchanged.
-pub(crate) fn windows_latin_spacing_family(family: &str) -> &str {
-    const FAMILIES: [&str; 5] = [
+/// Classify known Windows faces using original Word family-case controls.
+/// Keep descriptor parsing and Mac family classification unchanged.
+pub(crate) fn windows_metric_family(family: &str) -> &str {
+    const FAMILIES: [&str; 7] = [
         "Arial",
         "Calibri",
         "Times New Roman",
         "Aptos",
         "Aptos Display",
+        "Yu Mincho",
+        "MS Mincho",
     ];
     if FAMILIES.contains(&family) {
         return family;
@@ -1047,6 +1049,14 @@ pub(crate) fn windows_latin_spacing_family(family: &str) -> &str {
         .into_iter()
         .find(|known| family.eq_ignore_ascii_case(known))
         .unwrap_or(family)
+}
+
+fn metric_family_for_platform(family: &str) -> &str {
+    if word_layout_platform() == WordLayoutPlatform::Windows {
+        windows_metric_family(family)
+    } else {
+        family
+    }
 }
 
 /// Windows Word 16.0.19127 EMF origins in contract.docx leave a quarter em
@@ -1062,7 +1072,7 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
 ) -> Option<WordAutoSpace> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    let family = windows_latin_spacing_family(family);
+    let family = windows_metric_family(family);
     if !size_pt.is_finite() || size_pt <= 0.0 {
         return None;
     }
@@ -1177,7 +1187,7 @@ pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> O
     }
     let (_, family) = split_font_descriptor(descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    let family = windows_latin_spacing_family(family);
+    let family = windows_metric_family(family);
     if !matches!(
         family,
         "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
@@ -1194,7 +1204,7 @@ pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> O
 pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Option<WordAutoSpace> {
     let (size_pt, family) = split_font_descriptor(descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    let family = windows_latin_spacing_family(family);
+    let family = windows_metric_family(family);
     if !size_pt.is_finite() || size_pt <= 0.0 {
         return None;
     }
@@ -1224,7 +1234,7 @@ pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Optio
 pub(crate) fn word_windows_balanced_latin_space_advance_px(descriptor: &str) -> Option<f64> {
     let (_, family) = split_font_descriptor(descriptor)?;
     let family = family.trim().trim_matches(['\'', '"']);
-    let family = windows_latin_spacing_family(family);
+    let family = windows_metric_family(family);
     if !matches!(
         family,
         "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
@@ -2921,7 +2931,7 @@ fn parse_word_ascii_metrics(
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
     let family = family.trim_matches(|ch| ch == '\'' || ch == '"');
     let family = if platform == WordLayoutPlatform::Windows {
-        windows_latin_spacing_family(family)
+        windows_metric_family(family)
     } else {
         family
     };
@@ -3015,8 +3025,9 @@ fn parse_word_ascii_metrics(
 /// ＭＳ ゴシック under their Japanese, English and PostScript names. Their
 /// proportional siblings (ＭＳ Ｐ明朝, ＭＳ Ｐゴシック, MS UI Gothic) are not.
 pub fn is_word_monospace_family(family: &str) -> bool {
+    let family = metric_family_for_platform(family.trim().trim_matches(['\'', '"']));
     matches!(
-        family.trim().trim_matches(|ch| ch == '\'' || ch == '"'),
+        family,
         "ＭＳ 明朝"
             | "MS 明朝"
             | "MS Mincho"
@@ -3032,7 +3043,7 @@ pub fn is_word_monospace_family(family: &str) -> bool {
 }
 
 thread_local! {
-    static WORD_MONOSPACE_EM: std::cell::RefCell<Option<(String, Option<f64>)>> =
+    static WORD_MONOSPACE_EM: std::cell::RefCell<Option<(String, WordLayoutPlatform, Option<f64>)>> =
         const { std::cell::RefCell::new(None) };
 }
 
@@ -3040,15 +3051,16 @@ thread_local! {
 /// is a Word fixed-pitch face ([`is_word_monospace_family`]), else `None`.
 /// Cached for the last descriptor: the wrap loop asks once per grapheme.
 pub fn word_monospace_em_px(font_descriptor: &str) -> Option<f64> {
+    let platform = word_layout_platform();
     WORD_MONOSPACE_EM.with(|cell| {
         let mut cached = cell.borrow_mut();
-        if let Some((descriptor, em)) = cached.as_ref() {
-            if descriptor == font_descriptor {
+        if let Some((descriptor, cached_platform, em)) = cached.as_ref() {
+            if descriptor == font_descriptor && *cached_platform == platform {
                 return *em;
             }
         }
         let em = parse_word_monospace_em_px(font_descriptor);
-        *cached = Some((font_descriptor.to_owned(), em));
+        *cached = Some((font_descriptor.to_owned(), platform, em));
         em
     })
 }
@@ -3198,17 +3210,20 @@ thread_local! {
 /// Full-em CJK faces whose default wide glyphs retain fixed advance in Word.
 /// Proportional faces and unknown descriptors keep their host shaping path.
 pub(crate) fn cached_word_fixed_east_asian_em_px(descriptor: &str) -> Option<f64> {
-    thread_local! { static LAST: std::cell::RefCell<Option<(String, Option<f64>)>> = const { std::cell::RefCell::new(None) }; }
-    thread_local! { static FACES: std::cell::RefCell<rustc_hash::FxHashMap<String, Option<f64>>> = Default::default(); }
+    thread_local! { static LAST: std::cell::RefCell<Option<(String, WordLayoutPlatform, Option<f64>)>> = const { std::cell::RefCell::new(None) }; }
+    thread_local! { static FACES: std::cell::RefCell<[rustc_hash::FxHashMap<String, Option<f64>>; 2]> = Default::default(); }
+    let platform = word_layout_platform();
+    let platform_index = usize::from(platform == WordLayoutPlatform::Windows);
     LAST.with(|last| {
         let mut last = last.borrow_mut();
-        if let Some((key, value)) = last.as_ref() {
-            if key == descriptor {
+        if let Some((key, cached_platform, value)) = last.as_ref() {
+            if key == descriptor && *cached_platform == platform {
                 return *value;
             }
         }
         let value = FACES.with(|faces| {
-            let mut faces = faces.borrow_mut();
+            let mut caches = faces.borrow_mut();
+            let faces = &mut caches[platform_index];
             if let Some(value) = faces.get(descriptor) {
                 return *value;
             }
@@ -3223,12 +3238,13 @@ pub(crate) fn cached_word_fixed_east_asian_em_px(descriptor: &str) -> Option<f64
             value
         });
         match last.as_mut() {
-            Some((key, cached)) => {
+            Some((key, cached_platform, cached)) => {
                 key.clear();
                 key.push_str(descriptor);
+                *cached_platform = platform;
                 *cached = value;
             }
-            None => *last = Some((descriptor.to_owned(), value)),
+            None => *last = Some((descriptor.to_owned(), platform, value)),
         }
         value
     })
@@ -3242,6 +3258,7 @@ pub(crate) fn word_fixed_east_asian_em_px(font_descriptor: &str) -> Option<f64> 
         return None;
     }
     let family = family.trim_matches(|ch| ch == '\'' || ch == '"');
+    let family = metric_family_for_platform(family);
     matches!(
         family,
         "ＭＳ 明朝"
@@ -3280,6 +3297,7 @@ pub fn word_observed_unicode_advance_px(font_descriptor: &str, grapheme: &str) -
         return None;
     }
     let family = family.trim_matches(|ch| ch == '\'' || ch == '"');
+    let family = metric_family_for_platform(family);
     if grapheme == "△" {
         return matches!(family, "Cambria Math" | "CambriaMath")
             .then_some(f64::from(size_pt) * 96.0 / 72.0 * 1482.0 / 2048.0);
@@ -3415,6 +3433,7 @@ pub(crate) fn word_windows_cjk_extra_advances_px(font_descriptor: &str) -> [f64;
         .unwrap_or_default()
         .trim()
         .trim_matches(['\'', '"']);
+    let family = windows_metric_family(family);
     if !size_pt.is_finite()
         || size_pt <= 0.0
         || !(is_word_monospace_family(family)
@@ -3478,6 +3497,7 @@ pub(crate) fn word_windows_cjk_synthetic_bold_extra_advance_px(font_descriptor: 
         .unwrap_or_default()
         .trim()
         .trim_matches(['\'', '"']);
+    let family = windows_metric_family(family);
     // Inherited Yu Mincho controls from Windows Word 16.0.19127.20936
     // retain 1/1024 em per bold CJK cell. The 12/14/20/40pt long runs
     // distinguish it from both nominal cells and MS Mincho's heavier bold.
@@ -3587,6 +3607,7 @@ pub fn word_east_asian_font_vertical_units(family: &str) -> Option<(f32, f32, f3
         .trim()
         .trim_matches(|ch| ch == '\'' || ch == '"')
         .trim();
+    let family = metric_family_for_platform(family);
     match family {
         // Captured Windows Word Malgun Gothic: OS/2/hhea 2229/-495,
         // 2048 units per em. Keep Mac's independently measured policy.
@@ -5155,6 +5176,78 @@ mod tests {
                     assert!(
                         word_windows_legacy_justification_average_width_px(&descriptor).is_none()
                     );
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_japanese_family_case_preserves_metrics_and_mac_cache_policy() {
+        use super::*;
+        let previous = word_layout_platform();
+        // The 128 versioned Word 16.0.19127.20936 captures retain identical
+        // PDF coordinates across the requested spellings of both Mincho faces.
+        for (canonical, aliases) in [
+            ("Yu Mincho", ["yu mincho", "YU MINCHO", "yU mInChO"]),
+            ("MS Mincho", ["ms mincho", "MS MINCHO", "mS mInChO"]),
+        ] {
+            for prefix in ["", "bold ", "italic ", "bold italic "] {
+                let control = format!("{prefix}12.00pt '{canonical}'");
+                for alias in aliases {
+                    let descriptor = format!("{prefix}12.00pt '{alias}'");
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(word_east_asian_font_vertical_metrics_px(&descriptor).is_none());
+                    assert!(word_ascii_metrics(&descriptor).is_none());
+                    assert!(word_monospace_em_px(&descriptor).is_none());
+                    assert!(cached_word_fixed_east_asian_em_px(&descriptor).is_none());
+                    set_word_layout_platform(WordLayoutPlatform::Windows);
+                    let expected_box = word_east_asian_font_vertical_metrics_px(&control);
+                    assert!(expected_box.is_some());
+                    assert_eq!(
+                        word_east_asian_font_vertical_metrics_px(&descriptor),
+                        expected_box,
+                        "{descriptor}: Word family case must retain its line box"
+                    );
+                    let expected_ascii = word_ascii_metrics(&control).unwrap();
+                    let actual_ascii = word_ascii_metrics(&descriptor).unwrap();
+                    for byte in b"AgABC@i.T1 " {
+                        assert_eq!(
+                            actual_ascii.advance_px(*byte),
+                            expected_ascii.advance_px(*byte)
+                        );
+                    }
+                    assert_eq!(
+                        word_monospace_em_px(&descriptor),
+                        word_monospace_em_px(&control)
+                    );
+                    assert_eq!(
+                        word_fixed_east_asian_em_px(&descriptor),
+                        word_fixed_east_asian_em_px(&control)
+                    );
+                    assert_eq!(
+                        cached_word_fixed_east_asian_em_px(&descriptor),
+                        cached_word_fixed_east_asian_em_px(&control)
+                    );
+                    assert_eq!(
+                        word_windows_cjk_extra_advances_px(&descriptor),
+                        word_windows_cjk_extra_advances_px(&control)
+                    );
+                    for balanced in [false, true] {
+                        let gaps = |font: &str| {
+                            word_windows_latin_auto_space_metrics(font, balanced).map(|metrics| {
+                                (metrics.leading_gap_px(), metrics.trailing_gap_px(false))
+                            })
+                        };
+                        assert_eq!(gaps(&descriptor), gaps(&control));
+                    }
+                    // Reuse the same descriptor immediately after Windows to
+                    // detect a platform-specific value escaping a metrics cache.
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(word_east_asian_font_vertical_metrics_px(&descriptor).is_none());
+                    assert!(word_ascii_metrics(&descriptor).is_none());
+                    assert!(word_monospace_em_px(&descriptor).is_none());
+                    assert!(cached_word_fixed_east_asian_em_px(&descriptor).is_none());
                 }
             }
         }

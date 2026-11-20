@@ -495,6 +495,22 @@ jobs:
           name: windows-word-font-family-other-case-differences
           path: target/windows-font-family-other-cases
           if-no-files-found: ignore
+      - name: Assert versioned Windows Mincho family-case metrics and original Word coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_extended_case.py
+          python scripts/word-oracle/check_windows_font_family_extended_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned Windows extended family-case coordinate observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-family-extended-case-differences
+          path: |
+            target/windows-font-family-extended-cases
+            !target/windows-font-family-extended-cases/**/fonts/*.ttf
+            !target/windows-font-family-extended-cases/**/fonts/*.otf
+            !target/windows-font-family-extended-cases/**/fonts/*.ttc
+            !target/windows-font-family-extended-cases/font-cache/**
+          if-no-files-found: ignore
       - name: Assert independent versioned Windows Word XPS print origins
         run: python scripts/word-oracle/check_windows_xps.py --compare-rendered
       - name: Upload Windows Word XPS coordinate differences
