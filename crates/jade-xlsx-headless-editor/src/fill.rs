@@ -2,9 +2,10 @@
 //!
 //! Excel reads the source run and continues it. A run of numbers goes on as a
 //! linear series — the difference of two, the least-squares trend of more; a
-//! lone date steps a day at a time; a day, month or quarter name from
-//! Excel's built-in lists goes round its list; text ending in a number counts
-//! on; and anything else — a lone number, formulas, booleans, a run with a gap or a
+//! lone date steps a day at a time and a lone time an hour; a day, month or
+//! quarter name from Excel's built-in lists goes round its list; text ending
+//! in a number counts on, an ordinal (`1st`) with its ending (`2nd`); and
+//! anything else — a lone number, formulas, booleans, a run with a gap or a
 //! mix — repeats as a pattern, with formulas moved along the way a paste
 //! moves them. Each column of a downward fill, and each row of a rightward
 //! one, is its own run.
@@ -150,6 +151,9 @@ enum Series {
         suffix: String,
         /// Digits to pad to, when the source was zero-padded.
         width: usize,
+        /// `1st`, `2nd`, `3rd`: the suffix starts with the number's ordinal
+        /// ending, which follows the number.
+        ordinal: bool,
         intercept: f64,
         slope: f64,
     },
@@ -240,6 +244,12 @@ pub const BUILT_IN_LISTS: &[&[&str]] = &[
     &["Q1", "Q2", "Q3", "Q4"],
     &["Qtr1", "Qtr2", "Qtr3", "Qtr4"],
     &["Quarter1", "Quarter2", "Quarter3", "Quarter4"],
+    &["Qtr 1", "Qtr 2", "Qtr 3", "Qtr 4"],
+    &["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"],
+    &["1st Qtr", "2nd Qtr", "3rd Qtr", "4th Qtr"],
+    &["1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter"],
+    // The quarters typed with full-width digits, as a Japanese IME gives them.
+    &["第１四半期", "第２四半期", "第３四半期", "第４四半期"],
 ];
 
 /// Where `text` sits in `list`, and in what capitals.
@@ -308,14 +318,14 @@ impl Series {
                 [only] => {
                     // A lone date is the start of a calendar; a lone number
                     // is just copied, as in Excel without Ctrl.
+                    // A lone time of day steps an hour.
                     let cell = run[0].expect("a number has a cell");
-                    if shows_a_date(cell, sheet, styles) {
-                        Series::Linear {
+                    match date_format(cell, sheet, styles) {
+                        Some(code) => Series::Linear {
                             intercept: *only,
-                            slope: 1.0,
-                        }
-                    } else {
-                        Series::Repeat
+                            slope: if shows_a_day(code) { 1.0 } else { 1.0 / 24.0 },
+                        },
+                        None => Series::Repeat,
                     }
                 }
                 _ => {
@@ -372,6 +382,9 @@ impl Series {
                 return Series::Counting {
                     prefix: prefix.clone(),
                     suffix: suffix.clone(),
+                    ordinal: counted
+                        .iter()
+                        .all(|(_, digits, suffix)| ordinal_suffix(digits, suffix).is_some()),
                     width: if digits.starts_with('0') && digits.len() > 1 {
                         digits.len()
                     } else {
@@ -401,10 +414,17 @@ impl Series {
                 prefix,
                 suffix,
                 width,
+                ordinal,
                 intercept,
                 slope,
             } => {
-                let number = (intercept + slope * position as f64).round() as i64;
+                // Counting down goes through zero and back up: Excel keeps
+                // the minus sign out of `Item 1`, `Item 0`, `Item 1`.
+                let number = (intercept + slope * position as f64).round().abs() as u64;
+                let suffix = match ordinal_suffix("", suffix).filter(|_| *ordinal) {
+                    Some((ending, rest)) => format!("{}{rest}", ordinal_ending(number, ending)),
+                    None => suffix.clone(),
+                };
                 CellInput::Text(format!("{prefix}{number:0width$}{suffix}", width = *width))
             }
             Series::List {
@@ -445,12 +465,94 @@ impl Series {
     }
 }
 
-/// Whether the cell's number format shows it as a date or a time.
-fn shows_a_date(cell: &Cell, sheet: &Sheet, styles: &StyleTable) -> bool {
+/// The cell's number format, when it shows a date or a time.
+fn date_format<'a>(cell: &Cell, sheet: &Sheet, styles: &'a StyleTable) -> Option<&'a str> {
     styles
         .cell_format(sheet.effective_style_index(cell.reference, cell.style_index))
         .and_then(|format| styles.number_format_code(format))
-        .is_some_and(is_date_format)
+        .filter(|code| is_date_format(code))
+}
+
+/// Whether a date format's first section has a year, day, era or weekday
+/// in it — not just hours, minutes and seconds. Quoted and escaped
+/// literals and bracketed parts (`[$-411]`, `[Red]`, `[h]`) do not count.
+fn shows_a_day(code: &str) -> bool {
+    let mut characters = code.chars();
+    while let Some(character) = characters.next() {
+        match character {
+            ';' => break,
+            '"' => {
+                for inner in characters.by_ref() {
+                    if inner == '"' {
+                        break;
+                    }
+                }
+            }
+            '[' => {
+                for inner in characters.by_ref() {
+                    if inner == ']' {
+                        break;
+                    }
+                }
+            }
+            '\\' | '_' | '*' => {
+                characters.next();
+            }
+            // `m` alone is a month or a minute; with no `h` or `s` beside it
+            // (and no `d`, `y`) the format still reads as a date.
+            'y' | 'Y' | 'd' | 'D' | 'e' | 'g' | 'G' | 'b' | 'B' => return true,
+            'a' | 'A' => {
+                // `aaa` is a Japanese weekday; `AM/PM` and `A/P` are not.
+                let rest: String = characters.clone().take(2).collect();
+                if rest.eq_ignore_ascii_case("aa") {
+                    return true;
+                }
+            }
+            _ => {}
+        }
+    }
+    let lower = code.to_ascii_lowercase();
+    !(lower.contains('h') || lower.contains('s'))
+}
+
+/// The English ordinal ending at the start of `suffix` after `digits`
+/// (`st` after `1`, `TH` after `4`), as typed, and what follows it; `None`
+/// when the suffix does not start with one or a letter runs on after it.
+/// With no digits, any of the four endings is taken.
+fn ordinal_suffix<'a>(digits: &str, suffix: &'a str) -> Option<(&'a str, &'a str)> {
+    let ending = suffix.get(..2)?;
+    let rest = &suffix[2..];
+    if rest.chars().next().is_some_and(char::is_alphabetic) {
+        return None;
+    }
+    let lower = ending.to_ascii_lowercase();
+    if !matches!(lower.as_str(), "st" | "nd" | "rd" | "th") {
+        return None;
+    }
+    if !digits.is_empty() {
+        let number = digits.parse::<u64>().ok()?;
+        if ordinal_ending(number, "") != lower {
+            return None;
+        }
+    }
+    Some((ending, rest))
+}
+
+/// `st`, `nd`, `rd` or `th` for `number`, in the case of `typed`'s first
+/// letter (upper when `typed` is upper case).
+fn ordinal_ending(number: u64, typed: &str) -> String {
+    let ending = match (number % 10, number % 100) {
+        (_, 11..=13) => "th",
+        (1, _) => "st",
+        (2, _) => "nd",
+        (3, _) => "rd",
+        _ => "th",
+    };
+    if !typed.is_empty() && typed.chars().all(|c| c.is_ascii_uppercase()) {
+        ending.to_ascii_uppercase()
+    } else {
+        ending.to_string()
+    }
 }
 
 /// The line through `(0, y₀), (1, y₁), …` that minimises the squared error —
