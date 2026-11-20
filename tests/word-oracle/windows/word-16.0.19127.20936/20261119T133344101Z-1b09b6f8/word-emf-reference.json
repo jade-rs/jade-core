@@ -1,0 +1,465 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261119T133344101Z-1b09b6f8",
+  "captured_at_utc": "2026-11-19T13:33:44.1150670Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-mincho-prefix-a-interior-s12-m14",
+      "docx_sha256": "7cb4cd9d01495d05377366303e1720d67789dd439d2072df0261d4bff28e4edb",
+      "pdf_sha256": "ea7cb093b400e47fbcbac7f758cd9a9e9048fa3a34af8af8ea67b3093a84ba79",
+      "pdf_file": "word-windows-mincho-prefix-a-interior-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-a-interior-s12-m14.page-001.emf",
+          "sha256": "d9c4db6723b000878df9132d5e95ac2b69f5e502e43b643006b4133b70f95180",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          96.71675065510985,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          108.83634347913726,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          120.95593630316468,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          139.07532755492844,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-interior-s12-m14",
+      "docx_sha256": "20c4708db412f589dae2999f3f72f9a2cec992e67fa46fe5bb7c301fdd386590",
+      "pdf_sha256": "8ead676d609c392b4f34ed004bf0e84a8897fcda4ce9fd18ce8bed2652d5d9d9",
+      "pdf_file": "word-windows-mincho-prefix-ag-interior-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-interior-s12-m14.page-001.emf",
+          "sha256": "d790ced96e24d871dc97eaea25af22b47e5018cfea2c10cd4d961efa9b2984f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "g",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          102.71654908284619,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          114.8361419068736,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          126.95573473090101,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          145.07512598266476,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-g-interior-s12-m14",
+      "docx_sha256": "7010f5600abd3d819c44974981300caf8d194899ec336e1d55f65dc79f5e42a0",
+      "pdf_sha256": "90bd8f7c5485f9435cc5ce8b445fe262a63ab19359124fd8c205ea482043a807",
+      "pdf_file": "word-windows-mincho-prefix-g-interior-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-g-interior-s12-m14.page-001.emf",
+          "sha256": "d5c8f0b99c288163baa67d59460b7f7b439e1c64274b18149e87197375c2ca25",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "g",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          94.07683934690586,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          106.19643217093326,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          118.19602902640595,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          136.3154202781697,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-a-space-interior-s12-m14",
+      "docx_sha256": "af8ab4ea8b91cdd50afc22ce8bc62fa7856ad2ffa326e0fa7c26da6b569e9339",
+      "pdf_sha256": "6d304b7f4d407a54588519bc4f2f63aa86e49371f9dde0f0103375428fef5d1e",
+      "pdf_file": "word-windows-mincho-prefix-a-space-interior-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-a-space-interior-s12-m14.page-001.emf",
+          "sha256": "e25e40e2e2f011b0bf50f1c18f97bd75b4d7df02fd41c9506202b7a58596cc65",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          99.11667002620439,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          111.2362628502318,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          123.23585970570448,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          141.35525095746823,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-jp-latin-jp-s12-m14",
+      "docx_sha256": "cd1a9fe9a3a6d4937aaed758b11a2d2f1887ba289f2f17a615ad05c0a872682d",
+      "pdf_sha256": "f1bde170a3d883ce0461e41bf01415c8f0e66a2c5ce7183e228ccc28456f1f50",
+      "pdf_file": "word-windows-mincho-prefix-jp-latin-jp-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-jp-latin-jp-s12-m14.page-001.emf",
+          "sha256": "1ee649b30740515d8fbbd4c189802a00c1a6c23427fddfc82fe10994a7dd128f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          97.19673452932875,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          109.19633138480144,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          127.3157226365652,
+          112.55732611174459
+        ],
+        [
+          1,
+          "B",
+          135.95543237250553,
+          112.55732611174459
+        ],
+        [
+          1,
+          "C",
+          143.99516226567223,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          158.63467042934892,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          170.7542632533763,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          182.753860108849,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-terminal-s12-m14",
+      "docx_sha256": "3feaf24cab1b4dc6babd4eab459ad05b9567724e13550808f41c0b3024a7d811",
+      "pdf_sha256": "a18f0b9b5ad1cde392e4d820291e73617a9c1362abcc9365570d2604ae27a16e",
+      "pdf_file": "word-windows-mincho-prefix-ag-terminal-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-terminal-s12-m14.page-001.emf",
+          "sha256": "65dd78d872c4a71812cf1fe3df7058ba762588ceeb1d23d2426175c460dc4bf2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "g",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          102.71654908284619,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          114.8361419068736,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          126.95573473090101,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-long-interior-s12-m14",
+      "docx_sha256": "ef1efff6a8383d17ba2a2e9285f6f5bc019df86a65e136b55bba4b313800bda3",
+      "pdf_sha256": "36186d6468dfb88071be99b795e131976bcf722f5b7e95e3fb3eb0c9347b5f1f",
+      "pdf_file": "word-windows-mincho-prefix-ag-long-interior-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-long-interior-s12-m14.page-001.emf",
+          "sha256": "a9aa96ff2e94b7fece85a6fb24a8a1360bfe76e2ade5a092e0574a7046718568",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "g",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          102.71654908284619,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          114.8361419068736,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          126.95573473090101,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          138.9553315863737,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          150.9549284418464,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          163.07452126587378,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          181.19391251763756,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-space-terminal-s12-m14",
+      "docx_sha256": "dfdd4354ebdd6babc26b49e6d0864d27d8d9e448c9d53b90b4e764300c621bfa",
+      "pdf_sha256": "6faa4f4df284a76d12ed6538dd7bd5682e9b7825b1c0b5d8afbaf67254ab2be0",
+      "pdf_file": "word-windows-mincho-prefix-ag-space-terminal-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-space-terminal-s12-m14.page-001.emf",
+          "sha256": "01a626ee2ee3cde8a72359b5e7c4433f367d4e93c6343c91333845342cf8620b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "A",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "g",
+          93.71685144124167,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          105.71644829671436,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          117.83604112074177,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          129.95563394476918,
+          112.55732611174459
+        ]
+      ]
+    }
+  ]
+}

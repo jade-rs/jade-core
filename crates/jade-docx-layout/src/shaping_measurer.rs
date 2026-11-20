@@ -229,6 +229,7 @@ impl ShapePlanCache {
 /// in priority order, plus the face to use for characters none of them cover.
 #[derive(Debug)]
 struct ResolvedStack {
+    platform: crate::line_metrics::WordLayoutPlatform,
     /// Face indices for the descriptor's families, in stack order. Family names
     /// with no registered face are skipped, matching Chromium.
     faces: Vec<usize>,
@@ -474,16 +475,44 @@ impl ShapingMeasurer {
         if self.faces.is_empty() {
             return None;
         }
-        if let Some(cached) = self.descriptor_cache.borrow().get(descriptor) {
+        let platform = crate::line_metrics::word_layout_platform();
+        if let Some(cached) = self
+            .descriptor_cache
+            .borrow()
+            .get(descriptor)
+            .filter(|stack| stack.platform == platform)
+        {
             return Some(Rc::clone(cached));
         }
         let spec = parse_font_descriptor(descriptor, self.default_font_size_pt);
-        let faces = spec
-            .families
-            .iter()
-            .filter_map(|family| self.best_face_for_family(family, &spec))
-            .collect();
+        let mut faces = Vec::new();
+        for family in &spec.families {
+            let Some(primary) = self.best_face_for_family(family, &spec) else {
+                continue;
+            };
+            faces.push(primary);
+            if platform == crate::line_metrics::WordLayoutPlatform::Windows {
+                // Word can embed disjoint subsets of the same face: one has
+                // U+0020, another has A/g. Try those siblings before a different
+                // CSS family or global fallback supplies the missing character.
+                let selected = &self.faces[primary];
+                faces.extend(
+                    self.faces
+                        .iter()
+                        .enumerate()
+                        .rev()
+                        .filter_map(|(index, face)| {
+                            (index != primary
+                                && face.family.eq_ignore_ascii_case(family)
+                                && face.weight == selected.weight
+                                && face.style == selected.style)
+                                .then_some(index)
+                        }),
+                );
+            }
+        }
         let stack = Rc::new(ResolvedStack {
+            platform,
             faces,
             fallback: self.pick_index(&spec).unwrap_or(0),
             size_pt: spec.size_pt,
@@ -510,7 +539,14 @@ impl ShapingMeasurer {
             if spec.style == face.style {
                 score += 100;
             }
-            if best.is_none_or(|(_, best_score)| score > best_score) {
+            if best.is_none_or(|(_, best_score)| {
+                score > best_score
+                    || (score == best_score
+                        && crate::line_metrics::word_layout_platform()
+                            == crate::line_metrics::WordLayoutPlatform::Windows)
+            }) {
+                // Windows matches Skia's last-registered real face over a
+                // same-style stand-in/reference subset. Mac keeps its first.
                 best = Some((index, score));
             }
         }
@@ -860,6 +896,89 @@ mod tests {
             )
             .expect("register bundled Noto Sans JP");
         measurer
+    }
+
+    #[test]
+    fn reused_measurer_reselects_fonts_when_switching_windows_and_mac() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let regular = bundled_font_path("NotoSansJP-Regular.ttf");
+        let bold = bundled_font_path("NotoSansJP-Bold.ttf");
+        let create = |paths: &[&std::path::Path]| {
+            let mut measurer = ShapingMeasurer::new(12.0);
+            for path in paths {
+                measurer
+                    .register_font_path("Priority Probe", 400, RegisteredFontStyle::Normal, path)
+                    .unwrap();
+            }
+            measurer
+        };
+        for order in [
+            [regular.as_path(), bold.as_path()],
+            [bold.as_path(), regular.as_path()],
+        ] {
+            let shared = create(&order);
+            for platform in [
+                WordLayoutPlatform::Windows,
+                WordLayoutPlatform::Mac,
+                WordLayoutPlatform::Windows,
+                WordLayoutPlatform::Mac,
+            ] {
+                set_word_layout_platform(platform);
+                let fresh = create(&order);
+                for descriptor in ["12pt 'Priority Probe'", "12pt 'PRIORITY PROBE'"] {
+                    let expected = fresh.measure_text("MiAgBCAV", descriptor).unwrap();
+                    let actual = shared.measure_text("MiAgBCAV", descriptor).unwrap();
+                    assert!((actual-expected).abs()<1e-9,"{platform:?}/{descriptor}: prior-platform stack leaked: {actual} vs {expected}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_primary_registered_face_matches_painter_and_mac_keeps_first() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let regular = bundled_font_path("NotoSansJP-Regular.ttf");
+        let bold = bundled_font_path("NotoSansJP-Bold.ttf");
+        let create = |paths: &[&std::path::Path]| {
+            let mut measurer = ShapingMeasurer::new(12.0);
+            for path in paths {
+                measurer
+                    .register_font_path("Priority Probe", 400, RegisteredFontStyle::Normal, path)
+                    .unwrap();
+            }
+            measurer
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for paths in [
+                [regular.as_path(), bold.as_path()],
+                [bold.as_path(), regular.as_path()],
+            ] {
+                let combined = create(&paths);
+                let first = create(&[paths[0]]);
+                let last = create(&[paths[1]]);
+                for descriptor in ["12pt 'Priority Probe'", "12pt 'PRIORITY PROBE'"] {
+                    let first_width = first.measure_text("MiAgBCAV", descriptor).unwrap();
+                    let last_width = last.measure_text("MiAgBCAV", descriptor).unwrap();
+                    assert!((first_width - last_width).abs() > 1e-6);
+                    let expected = if platform == WordLayoutPlatform::Windows {
+                        last_width
+                    } else {
+                        first_width
+                    };
+                    assert!((combined.measure_text("MiAgBCAV", descriptor).unwrap() - expected).abs() < 1e-9,
+                        "{platform:?}: same-style aliases must preserve the platform's registration priority");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

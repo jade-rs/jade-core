@@ -11,7 +11,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from io import BytesIO
 from zipfile import ZipFile
-import hashlib,json,os,tempfile,uuid
+import errno,hashlib,json,os,tempfile,uuid
 from fontTools.ttLib import TTFont
 
 def signature(face):
@@ -47,12 +47,71 @@ def font_covers(complete,subset):
         return False
     return True
 
+_CACHE_LINK_LIMIT = 900
+
+
+def font_io_path(path):
+    # CreateHardLinkW needs the extended spelling even when Python's other
+    # file APIs can already open the same long, versioned fixture pathname.
+    if os.name != 'nt':
+        return path
+    absolute = str(path.resolve())
+    if len(absolute) < 248 or absolute.startswith('\\\\?\\'):
+        return path
+    if absolute.startswith('\\\\'):
+        return Path('\\\\?\\UNC\\' + absolute[2:])
+    return Path('\\\\?\\' + absolute)
+
+
+def link_cached_font(decoded, digest, cache_directory, destination):
+    """Keep exact original bytes while rotating before NTFS's link limit."""
+    cache_directory=font_io_path(cache_directory)
+    destination=font_io_path(destination)
+    if hashlib.sha256(decoded).hexdigest() != digest:
+        raise ValueError('Original XPS font cache digest changed')
+    for group in range(1024):
+        suffix = '' if group == 0 else '.group-' + str(group)
+        cached = font_io_path(cache_directory / (digest + suffix + '.ttf'))
+        if not cached.exists():
+            with tempfile.NamedTemporaryFile(dir=cache_directory, delete=False) as output:
+                output.write(decoded)
+                temporary = Path(output.name)
+            try:
+                try:
+                    os.link(font_io_path(temporary), font_io_path(cached))
+                except FileExistsError:
+                    pass
+            finally:
+                temporary.unlink()
+        if cached.read_bytes() != decoded:
+            raise ValueError('Original XPS font cache bytes changed')
+        if destination.exists():
+            if destination.read_bytes() != decoded:
+                raise ValueError('Original XPS destination font bytes changed')
+            return
+        if cached.stat().st_nlink >= _CACHE_LINK_LIMIT:
+            continue
+        try:
+            os.link(font_io_path(cached), font_io_path(destination))
+        except FileExistsError:
+            if destination.read_bytes() != decoded:
+                raise ValueError('Original XPS destination font bytes changed')
+        except OSError as error:
+            # Another extractor can fill the group after the count check.
+            if getattr(error, 'winerror', None) == 1142 or error.errno == errno.EMLINK:
+                continue
+            raise
+        return
+    raise OSError('Original XPS font cache link groups exhausted')
+
+
 def extract_xps_fonts(path,directory,cache_directory=None):
+    directory=font_io_path(directory)
     directory.mkdir(parents=True,exist_ok=False)
     if cache_directory is not None:
         cache_directory.mkdir(parents=True,exist_ok=True)
     facts=[];programs=[]
-    with ZipFile(path) as package,ExitStack() as opened:
+    with ZipFile(font_io_path(path)) as package,ExitStack() as opened:
         for member in package.namelist():
             if not member.lower().endswith(('.odttf','.ttf','.otf')):continue
             encoded=package.read(member);decoded=bytearray(encoded)
@@ -80,22 +139,11 @@ def extract_xps_fonts(path,directory,cache_directory=None):
                 continue
             facts[index]['selected']=True
             digest=facts[index]['sha256']
-            destination=directory/(digest+'.ttf')
+            destination=font_io_path(directory/(digest+'.ttf'))
             if cache_directory is None:
                 if not destination.exists():
                     with destination.open('xb') as output:output.write(decoded)
             else:
-                cached=cache_directory/(digest+'.ttf')
-                if not cached.exists():
-                    with tempfile.NamedTemporaryFile(dir=cache_directory,delete=False) as output:
-                        output.write(decoded)
-                        temporary=Path(output.name)
-                    try:
-                        try:os.link(temporary,cached)
-                        except FileExistsError:pass
-                    finally:temporary.unlink()
-                if cached.read_bytes()!=decoded:
-                    raise ValueError('Original XPS font cache bytes changed')
-                if not destination.exists():os.link(cached,destination)
-    (directory/'xps-font-provenance.json').write_bytes((json.dumps(dict(source=str(path),source_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),fonts=facts),indent=2)+chr(10)).encode())
+                link_cached_font(decoded, digest, cache_directory, destination)
+    font_io_path(directory/'xps-font-provenance.json').write_bytes((json.dumps(dict(source=str(path),source_sha256=hashlib.sha256(font_io_path(path).read_bytes()).hexdigest(),fonts=facts),indent=2)+chr(10)).encode())
     return facts

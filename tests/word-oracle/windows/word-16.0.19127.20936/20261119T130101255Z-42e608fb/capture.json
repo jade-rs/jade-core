@@ -1,0 +1,254 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T130101255Z-42e608fb",
+  "captured_at_utc": "2026-11-19T13:01:01.2665441Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-mincho-context-mixed-lang-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-mixed-lang-s12-m14.docx",
+      "sha256": "9dbab65ff3d5b2f06ee38ea5dbd26bc8ddadf8b4240f55a7737a4d1624fa0251",
+      "pdf": "word-windows-mincho-context-mixed-lang-s12-m14.pdf",
+      "pdf_sha256": "c4bdda32867dfda5135516e39fc40c52b11a2c31d004a295be7c13e1645ac042",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-mixed-lang-s12-m14.xps",
+      "xps_sha256": "647543b26acb81af591fa7dad9a46dddcf323ce8bf9ca431de645f6f9efce498",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-mixed-lang-s12-m14.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-mixed-left-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-mixed-left-s12-m14.docx",
+      "sha256": "33ea7e22f70c6246633af81ff56a6a3ff63768251c5d181c865321f0fbb893b6",
+      "pdf": "word-windows-mincho-context-mixed-left-s12-m14.pdf",
+      "pdf_sha256": "0f2f25f4b3e235ddb8e6ff876080754c0add71ad07375eacf9894bd10bd4243a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-mixed-left-s12-m14.xps",
+      "xps_sha256": "0cfc65775813e7525455cca66022d26bb9a165cad489f97260b461c5f566de6e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-mixed-left-s12-m14.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-mixed-lang-left-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-mixed-lang-left-s12-m14.docx",
+      "sha256": "02d3bc6b366da7bffffbe72ad7a3c169dbf4dcb28a506b756f401440d76fdc73",
+      "pdf": "word-windows-mincho-context-mixed-lang-left-s12-m14.pdf",
+      "pdf_sha256": "cca07c538b8c42e38e79353da362622cad72f5715bce6ed6c5e042621efb810f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-mixed-lang-left-s12-m14.xps",
+      "xps_sha256": "d227fb7ae2bbf07d5512752ac4b297a6dc02b3126b966399dab160159c2bcd6b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-mixed-lang-left-s12-m14.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-pure-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-pure-s12-m14.docx",
+      "sha256": "962ca92a7dfa5e6883571f465d3d3bef9e4424721e97f7564983c8f117cdda09",
+      "pdf": "word-windows-mincho-context-pure-s12-m14.pdf",
+      "pdf_sha256": "377e6e97a49ce615e9e0e74d6bafc171f7ee36adca986cf1ce6b6f8cd4b9d717",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-pure-s12-m14.xps",
+      "xps_sha256": "5c6d2eaf911b46691eec754b333a0d91b4e64840d5251bf8ade0844329634ec4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-pure-s12-m14.page-001.emf",
+          "sha256": "f4521d52a0b59522fd62af3952b7d0ab75bb1311aa3feec611cc40821cdecf6b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-pure-lang-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-pure-lang-s12-m14.docx",
+      "sha256": "d0bb7636311d46e700904f4ba8111977d9f292f6ca0e9bd799c09f29a4ac95f5",
+      "pdf": "word-windows-mincho-context-pure-lang-s12-m14.pdf",
+      "pdf_sha256": "0eee443077ed29ca81d3bdc0632e06723c08426837f7d06d1f2964f8624b8c29",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-pure-lang-s12-m14.xps",
+      "xps_sha256": "c02bafaee83f2a35794f3255a9bb92382bfa6492309549b118370f9f8df633e0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-pure-lang-s12-m14.page-001.emf",
+          "sha256": "6805a26e17ffd8afc7120d927bafd3dbbfecdc182ebd506985372fb7aba60227",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-pure-left-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-pure-left-s12-m14.docx",
+      "sha256": "2284eb733a38b16d7a208bd17ef457d7e5c3e6315085f25406ab10bc25139da3",
+      "pdf": "word-windows-mincho-context-pure-left-s12-m14.pdf",
+      "pdf_sha256": "2fee2528b2b31f793197434447cc4b5282112ff169749cf6e4b4568e08c580fa",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-pure-left-s12-m14.xps",
+      "xps_sha256": "1815432575095a7563491e2f166c6014be3f1c748d00d735b3eade30a0efb2c8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-pure-left-s12-m14.page-001.emf",
+          "sha256": "6805a26e17ffd8afc7120d927bafd3dbbfecdc182ebd506985372fb7aba60227",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-pure-lang-left-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-pure-lang-left-s12-m14.docx",
+      "sha256": "9798b00e47681fb204afac7176faff375b6c3e78d68c1a7c97820e6cec1bf642",
+      "pdf": "word-windows-mincho-context-pure-lang-left-s12-m14.pdf",
+      "pdf_sha256": "3fae8272e00394ef357ed019804c1a90d36f918e6e872fcd935cbdaa5f8e8a5f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-pure-lang-left-s12-m14.xps",
+      "xps_sha256": "a6c7bca2358f661eb69de685411834dc203392b6f89107d5fa8691b18bc05463",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-pure-lang-left-s12-m14.page-001.emf",
+          "sha256": "f4521d52a0b59522fd62af3952b7d0ab75bb1311aa3feec611cc40821cdecf6b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-context-mixed-no-fe-s12-m14",
+      "source": "tmp\\w19-mincho-context-inputs\\word-windows-mincho-context-mixed-no-fe-s12-m14.docx",
+      "sha256": "a7da6bd9219ecca84b40850b979f3d00f368280c1c2fe9ea01f40df82e6147d1",
+      "pdf": "word-windows-mincho-context-mixed-no-fe-s12-m14.pdf",
+      "pdf_sha256": "94c41911784a8b2957d99431598ededf9d22e203a0a2bb6a9e959fe46e69b5a6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-context-mixed-no-fe-s12-m14.xps",
+      "xps_sha256": "1f36a6dbfb4c6ca19d2222bc8f3e8ea3826009e72d9cd4e34f6119d2f97b9834",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-context-mixed-no-fe-s12-m14.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

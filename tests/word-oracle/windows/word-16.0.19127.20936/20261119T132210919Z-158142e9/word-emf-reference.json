@@ -1,0 +1,227 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "word_product_version": "16.0.19127.20936",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261119T132210919Z-158142e9",
+  "captured_at_utc": "2026-11-19T13:22:10.9308702Z",
+  "coordinate_source": "Word Page.EnhMetaFileBits / MS-EMF",
+  "extractor": "MS-EMF GM_COMPATIBLE baseline Unicode origins v1",
+  "tolerance_pt": 0.375,
+  "fixtures": [
+    {
+      "name": "word-windows-mincho-font-switch-space3-s12-m14",
+      "docx_sha256": "ad8b3f86c509389600eab71cd14937b0d4285638db8057c802b8a7b75134bb73",
+      "pdf_sha256": "8859b00143ab755c7c1e9f6187227fe021431d0ed5a7f37c1f4c81053e6a16f8",
+      "pdf_file": "word-windows-mincho-font-switch-space3-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-space3-s12-m14.page-001.emf",
+          "sha256": "1a63f83c9280875b8ad017f15f56b9a5c4b40331fd48ec828a8bbe0c4c005c37",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          97.19673452932875,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          109.19633138480144,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          127.3157226365652,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-font-switch-space6-s12-m14",
+      "docx_sha256": "4c78b751d2ebcdc9377d82a0193ac5257a88705e0ac9af8a2f5688f03e6a0ad3",
+      "pdf_sha256": "57e4108b8f3757521548dac2afa3a4b9d5834b9726d744e40bdc74ef042a7c4b",
+      "pdf_file": "word-windows-mincho-font-switch-space6-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-space6-s12-m14.page-001.emf",
+          "sha256": "941b8ffa52cc3fb9151de11354a3af62addf416736a45d85fc82b490ac883933",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          97.19673452932875,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          109.19633138480144,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          121.31592420882885,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          133.31552106430155,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          145.31511791977422,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          163.43450917153797,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-font-switch-adjacent3-s12-m14",
+      "docx_sha256": "8e97af22796e9d49caec70c11bbe0cde2ca69c346e463df737e528d4b018f0c4",
+      "pdf_sha256": "252de5fe6474f5494da13af45f2ac31b5902a69d91a99ef959cbdf2f7d9cf288",
+      "pdf_file": "word-windows-mincho-font-switch-adjacent3-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-adjacent3-s12-m14.page-001.emf",
+          "sha256": "3d7e29c2acc2bb734c681e37096a1386ef58c9f201a4acbebfa5808719d2c3d9",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          97.19673452932875,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          109.19633138480144,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          124.31582342269702,
+          112.55732611174459
+        ]
+      ]
+    },
+    {
+      "name": "word-windows-mincho-font-switch-adjacent6-s12-m14",
+      "docx_sha256": "ea7205f69b4c69c6cf1a779afc249e09d5b2e98dea4ae0761e890700edc11b0c",
+      "pdf_sha256": "0da2d5354d5ba21176246cec4a04914ec62528a84d66a96024d75825d01954b5",
+      "pdf_file": "word-windows-mincho-font-switch-adjacent6-s12-m14.pdf",
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-font-switch-adjacent6-s12-m14.page-001.emf",
+          "sha256": "48d8fe03edf83c74dd9091902d694bea91bf4627d15cbcfd538e749359c92fbd",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ],
+      "page_count": 1,
+      "glyphs": [
+        [
+          1,
+          "日",
+          85.07714170530134,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          97.19673452932875,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          109.19633138480144,
+          112.55732611174459
+        ],
+        [
+          1,
+          "日",
+          121.31592420882885,
+          112.55732611174459
+        ],
+        [
+          1,
+          "本",
+          133.31552106430155,
+          112.55732611174459
+        ],
+        [
+          1,
+          "語",
+          145.31511791977422,
+          112.55732611174459
+        ],
+        [
+          1,
+          "A",
+          160.4346099576698,
+          112.55732611174459
+        ]
+      ]
+    }
+  ]
+}

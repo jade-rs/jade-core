@@ -1,0 +1,602 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T114842423Z-5f6babdf",
+  "captured_at_utc": "2026-11-19T11:48:42.4423485Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-manual.docx",
+      "sha256": "e5386cb888ae4db39e8c5b1a7d8f3877ddc912f4d38a7ad639225f8bada2daee",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-manual.pdf",
+      "pdf_sha256": "62224c140c3dd85d1cd492079b4a6f3c391028fd9750f4a201aa29973ed26582",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-manual.xps",
+      "xps_sha256": "497208d00d891065fd4136cc49fcbb783b7d8b88c6ff50543d6abc534be3ff42",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-manual.page-001.emf",
+          "sha256": "7068683491ad1c5aede09fdbe8aa584f84d27edb810780fdc206c9f9549b53f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-paragraph.docx",
+      "sha256": "76d1d56a4f09cc2a76baaff69190ab4f7aceab8c4932244e23782c8805af1341",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-paragraph.pdf",
+      "pdf_sha256": "4ae45a55a998ec12fb6a5b23b236198725adf72d1ebf7bdfefd58afaf437fa0c",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-paragraph.xps",
+      "xps_sha256": "75af4ac18643cbb65bb19a2df05623cc2d025436e0b1aff1c70a1973fe3f9edb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance0-paragraph.page-001.emf",
+          "sha256": "8da1920b5c63584fd56ce2a9ccfc7d789eeabfe18ed5910ca68bbc4627366a11",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-manual.docx",
+      "sha256": "557bc747542b96d8e0becb9595e53d72bdfceeeb01e06b074697323dce28d79b",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-manual.pdf",
+      "pdf_sha256": "b52be57aef2c6502a199b1b33c1b7fd941aa8dd52c2e6562fc32d6a2666df9a8",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-manual.xps",
+      "xps_sha256": "d8ab78ff529773262e41be09f24d81a1a85af7d44e6095d79c225dd23ee755c0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-manual.page-001.emf",
+          "sha256": "b23c091f470996e65c0d13a0b0528c2d7214690ee7a372de6db351c8e4f97a69",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-paragraph.docx",
+      "sha256": "969ddfb0b4c69bfa12e35f81c5705e887fc0bff1c8d5ff2697449c71e42a3361",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-paragraph.pdf",
+      "pdf_sha256": "4e1251fa2f9560ef5afb23d381c8c7d09c0bc7a851d780fc7413d3114f5b496e",
+      "pages": 1,
+      "compatibility_mode": 12,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-paragraph.xps",
+      "xps_sha256": "7b2a51a03c607f156304ec3c30ab5f3225a605493974410176e970e38d0a6003",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m12-balance1-paragraph.page-001.emf",
+          "sha256": "791c5966ddb8bcd07a7f13cb0cb6c6d65c5d577e6e910c91fcf7ba106da3a07d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-manual.docx",
+      "sha256": "df7c726d429d6c2bfa3e0a587b38bfc6164a5c2ac5661abcc5ac6fabdc29eae9",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-manual.pdf",
+      "pdf_sha256": "ee4882bb99280e662cad7bbce5958ec4ffacb777c4593d06658180faefd3c706",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-manual.xps",
+      "xps_sha256": "344a55556ac35b38cb7e9fe5c17a87c78d8618ca98e8ac1ba0e0ae7d1b5bd9a4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-manual.page-001.emf",
+          "sha256": "01298a0c4ea1af466e8616b35f3ec656839a1ef066e1040c6dc9b3bf2dfa7acb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-paragraph.docx",
+      "sha256": "320160f8cd864943af1702b5c28b1e1c964a415188b70182a056159223ef888d",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-paragraph.pdf",
+      "pdf_sha256": "0dab15523e1a2ff8795703744b5afd728dd8c58715245b7a40d61ecc27e69483",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-paragraph.xps",
+      "xps_sha256": "c80db2d1d869a9037ae921c9425ea50848f69cc99302ad45c45e2dbbf5b0f5d0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance0-paragraph.page-001.emf",
+          "sha256": "8da1920b5c63584fd56ce2a9ccfc7d789eeabfe18ed5910ca68bbc4627366a11",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-manual.docx",
+      "sha256": "cc63d6f5d997cecab5c76f4aa62b3666d3cefb1eb2a690060355b818e5232883",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-manual.pdf",
+      "pdf_sha256": "1d952f877c950e0e6eba4ba6c90ab844613a414794589e53a6788fad72f9fd4c",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-manual.xps",
+      "xps_sha256": "9d27b4ba8d27e43dd7ff679ba64e7abaf66f26826d0974ebab9b9ad0a78ac2bc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-manual.page-001.emf",
+          "sha256": "54a6131883c975406c1d675d359426b3be4e3fea96fc071fc2ec0cc618f3ad4a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-paragraph.docx",
+      "sha256": "7b975ead48785ea193c737353ae0f101399866b59372e203415b3b0ec4c6a6b0",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-paragraph.pdf",
+      "pdf_sha256": "2372155d1dd9ecf4a2d13ac32d7d1a08e2c7dccd9bfe9fad2fc4485f01bd7896",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-paragraph.xps",
+      "xps_sha256": "3ca90d0b18b28a432f1e122596af09627753c67cb94e054d083c854c64928e61",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-regular-s12-m15-balance1-paragraph.page-001.emf",
+          "sha256": "791c5966ddb8bcd07a7f13cb0cb6c6d65c5d577e6e910c91fcf7ba106da3a07d",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-manual.docx",
+      "sha256": "420a1e38315e14a71fa70d6af1a0068af3be09a6b7ea50aae8f9b6ebc1ed64da",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "dea7589f93962240f9e515d940427afe4d96da44b90a555203abf72024619109",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-manual.xps",
+      "xps_sha256": "2972991d88cdb8d8aeda5a43978f8212206be48d071b360c635cc5a96ff4ada8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "5f88398884257a1df46932f9d9a9c27e275bc9770551981d7ca6615f17ec792c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-paragraph.docx",
+      "sha256": "4bd44f34dc197de96d4865ff1d7c5df3e455447140f43d1e57d178a14a592307",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "07655f196a0182f6d18215e07a89e6c9cbe61d68bb9bb09b5e174397fdb5e5c1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "87931d12cc6fc86785c178cb96b47f0d8a5c118000c2d619624b36dc49869b3a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "84755e6c6020e16131cd81d4bfa404d17f3c90dba701637d7eeb3fb92249f18a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-manual.docx",
+      "sha256": "971abfec1864970a18f4da6dac5ace784c74c5039d1e26c0f661b49c74d780cf",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "b3e5970a5aa1054f5e45338cf0aba4de504328b933e1db7b17d1930b065f4f04",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "aca18b238f13b02c722f48972134934d643e3a81aeba15054ea53c961732b61d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "4c5bd26fd6b3238bbf41621fbef08b64cfb72a0f355106a3163a680ad108c08b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "6b10a93ee2d5f8177a996363e2c9795dcea4fb5a3401ebc5f38b6e9605942157",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "253190b488a0fb8e1ba7e801232ada9cb7d35b6ee3f78d9f16eb5ef512abda48",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "00cead43e1fb1dca0256a8299264891cef7813525f0215a0056b8961746c4408",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "c9c602554866ea84d75972f6efbc0b370ab233e947183bc1fadf8d9fa10fb109",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-manual.docx",
+      "sha256": "03bbc9c38860c264d485afb399f728629263a37424ab2f91594fd37f5dd01d29",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "16a49b1e444e92f8249a7a79eb5c9a74dc21c34f35c450a8dcd257855d8ec6ec",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-manual.xps",
+      "xps_sha256": "ec3b90c0dfa5f536df308aee9f755840327af50c55e87b04ab15a75078921257",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "7ace0d6bd188883a5deea7aa8a5a81267e6a2e34d8584f72d878a54be2547fa1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-paragraph.docx",
+      "sha256": "90960cc29ce164bc6803c3196dfd178c19222f9828d7de1144a01050a4a7156d",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "839e9404726236f29836f8ab0061630d4d15d421fb7d3024de3ccdf30968b257",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "77d8b7ce7f5915f470d3ebfeeda0fa53ff78f5c3ebf72beeea2d8075eca48844",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "699f4871ccb0de0a9b248465b56caa632b0e169ea3964b7369176fd3cb24f002",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-manual.docx",
+      "sha256": "b42b57b8a9a567acafe947cb3e1a1ff5902245c5c0732f50673fad8f0aeeca54",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "d8e88063861dbde9fc309c72a04c17e581d8ccc589b466ecc177972b939d72d7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-manual.xps",
+      "xps_sha256": "2db1c73c4a2ffb9ddb812941a1317fa2b118d85e2a04836be61041f7a4a496ee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "f4b6198e50fc412f99bb72ad06f14320eb096f5b52addc0296a0a7ffdf924c78",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-paragraph.docx",
+      "sha256": "af51ae504900b0246d152b210de6f6d783e90de0066c0e9bc0afd4ae4d6ab746",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "f997b7cf0a8a981cf6b2bbb4b3703c2e1d4a1bb5f46e5cf7fad66b811e915ca7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "07c38cffc9f221d69af5cd91ca32fccdae6844c99007890d00e9a0ce0671cda2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-italic-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "c7bd14beb991b057505b317d6827015b8d4b23cb1ff476466a0b930f176a9d22",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-manual.docx",
+      "sha256": "cecb8ede921ce6b7f8b891bf47961e0393552d07ba22e5936e1813f543511fdf",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-manual.pdf",
+      "pdf_sha256": "95053eafe1f84a23371333e800f87ade4dc1ea94b667fb781b23f64ede230fd1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-manual.xps",
+      "xps_sha256": "c5eb1fe6ca44af95ca18b7a8bef05a2b2803355cf60482e15445aa38954836ae",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-manual.page-001.emf",
+          "sha256": "df5011dca31b3e0be7965cc9380ecce93b741bfaed1c950cefe759c09337e045",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-paragraph.docx",
+      "sha256": "4a550ef610789785feb957504aa24f8cba3f9b1abb65c46a20edbb7be7c9dd7d",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-paragraph.pdf",
+      "pdf_sha256": "52a5ff06a5f417e39f200a529e09858317ccba85680aa638b710aa7de10731e0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-paragraph.xps",
+      "xps_sha256": "8a92ad809803d1a6c45dadc6c36da09b689f9fc759a1b5b907c50abead404be3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance0-paragraph.page-001.emf",
+          "sha256": "03aae1bc4f148f2027eb989d9fb351db81bba4250ad0adb0f53c85a273ef892e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-manual.docx",
+      "sha256": "f5489b9c7664a167d259652f1ba5ddbff4e7bd2e2ed3a2cb32ab17b9cb179b99",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "5f691e782f80021a874ae04a5183394c8d078c93ad1763fd5556f297650a4c9e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-manual.xps",
+      "xps_sha256": "81d996fb5ee256c110738ce0f0621d779b6b95b47265483ceeb16b163d6e7ed5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "0ef77652d6c1630702858f51bbeca43bdca9e206d832b47a5caf029c775d3c1f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-japanese-style-mode-inputs\\word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-paragraph.docx",
+      "sha256": "fdc3149977e133c098f510f000b96e35ab8dfb7c6213a7cb94734e18a691701e",
+      "pdf": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "cd56120c47aa0961deda2e83e028d9d5d3dae46e018a0989aa96022ebca8a691",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "0f705dedc46950708e11a820aec9bfab643ed7476c28e8144c010c6a28e17993",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-ea-style-mode-msmincho-bolditalic-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "16d899095f642f6bee4380051ae8463de72a7f036663848c41f013f82be3bd7b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -1057,6 +1057,12 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
             trailing_share: 1.0,
         });
     }
+    if matches!(family, "Aptos" | "Aptos Display") {
+        // Word 16.0.19127.20936, Aptos 2.01: all four styles and modes
+        // 12/14/15 retain the half-average Latin-to-CJK gap with balancing
+        // both off and on. The same original font metrics apply to digits.
+        return word_windows_numeric_auto_space_metrics(font_descriptor);
+    }
     let style = font_descriptor_style(font_descriptor);
     if family == "Arial" {
         // Original Windows Word PDFs embed 980-unit bold/bold-italic and
@@ -1104,16 +1110,57 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
     })
 }
 
+/// Realize the start of a Windows legacy GDI justification run on the
+/// same 600dpi grid as its measured font cells. Keep the line's wrapping
+/// width unchanged; only the custom draw/caret origin is realized.
+pub fn word_windows_legacy_justification_origin_px(
+    platform: WordLayoutPlatform,
+    compatibility_mode: Option<u32>,
+    origin_px: f64,
+) -> f64 {
+    if platform != WordLayoutPlatform::Windows
+        || !matches!(compatibility_mode, Some(12 | 14))
+        || !origin_px.is_finite()
+    {
+        return origin_px;
+    }
+    const DEVICE_PIXELS_PER_CSS_PIXEL: f64 = 600.0 / 96.0;
+    (origin_px * DEVICE_PIXELS_PER_CSS_PIXEL).round() / DEVICE_PIXELS_PER_CSS_PIXEL
+}
+
 /// The average width used by Windows Word's compatibility-mode-14 mixed
 /// justification. Reuse the original font-program metrics for known Latin
 /// faces; other faces and Mac retain their established allocation.
+pub fn word_windows_legacy_justification_space_target_px(
+    descriptor: &str,
+    balanced_distinct_japanese: bool,
+) -> Option<f64> {
+    let average = word_windows_legacy_justification_average_width_px(descriptor)?;
+    if balanced_distinct_japanese
+        && matches!(
+            word_ascii_metrics(descriptor),
+            Some(WordAsciiMetrics::TimesNewRoman(..))
+        )
+    {
+        // Original mode-12/14 Times + explicit Japanese controls reserve a
+        // half-em word-space cell before distributing the remaining width.
+        let (size, _) = split_font_descriptor(descriptor)?;
+        Some(f64::from(size) * 96.0 / 72.0 * 0.5)
+    } else {
+        Some(average)
+    }
+}
+
 pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> Option<f64> {
     if word_layout_platform() != WordLayoutPlatform::Windows {
         return None;
     }
     let (_, family) = split_font_descriptor(descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    if !matches!(family, "Arial" | "Calibri" | "Times New Roman") {
+    if !matches!(
+        family,
+        "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
+    ) {
         return None;
     }
     word_windows_latin_auto_space_metrics(descriptor, false)
@@ -1121,7 +1168,8 @@ pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> O
 }
 
 /// Numeric boundaries independently observed beside a fixed Japanese face.
-/// These metrics do not change Windows letter spacing or Mac policy.
+/// The original Aptos metrics are shared with the independently captured
+/// Latin-letter boundaries. Mac policy remains separate.
 pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Option<WordAutoSpace> {
     let (size_pt, family) = split_font_descriptor(descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
@@ -1133,7 +1181,7 @@ pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Optio
     }
     // Original Word 16.0.19127.20936 controls use the Aptos 2.01
     // OS/2 xAvgCharWidth for the digit-to-Japanese half-average gap.
-    // Keep these Windows numeric metrics separate from Mac and autoSpaceDE.
+    // Windows Latin and numeric boundaries share these original face metrics.
     let (bold, italic) = font_descriptor_style(descriptor);
     let style = usize::from(bold) * 2 + usize::from(italic);
     let average = match family {
@@ -1154,8 +1202,10 @@ pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Optio
 pub(crate) fn word_windows_balanced_latin_space_advance_px(descriptor: &str) -> Option<f64> {
     let (_, family) = split_font_descriptor(descriptor)?;
     let family = family.trim().trim_matches(['\'', '"']);
-    if !matches!(family, "Arial" | "Calibri")
-        || (family == "Arial" && font_descriptor_style(descriptor) == (false, false))
+    if !matches!(
+        family,
+        "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
+    ) || (family == "Arial" && font_descriptor_style(descriptor) == (false, false))
     {
         return None;
     }
@@ -2752,6 +2802,32 @@ fn legacy_space_kerning_units(family: &str, bold: bool, italic: bool, left: u8, 
         .iter()
         .find(|(l, r, _)| *l == left && *r == right)
         .map_or(0, |(_, _, units)| *units)
+}
+
+// Original Windows Word Times/Mincho controls retain the Latin font's
+// legacy kern before a balanced half-em space. The opposite boundary uses
+// the fixed half-em cell, and other requested East Asian faces are separate.
+pub(crate) fn word_windows_balanced_leading_space_kerning_px(
+    font_descriptor: &str,
+    left: u8,
+) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+    let WordAsciiMetrics::TimesNewRoman(unit_px, _, _) = word_ascii_metrics(font_descriptor)?
+    else {
+        return None;
+    };
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    Some(
+        f64::from(legacy_space_kerning_units(
+            "Times New Roman",
+            bold,
+            italic,
+            left,
+            b' ',
+        )) * unit_px,
+    )
 }
 
 /// The kerning of an ASCII pair with a space in a face whose legacy `kern`
@@ -5001,6 +5077,43 @@ mod tests {
     }
 
     #[test]
+    fn windows_aptos_letter_boundaries_and_balanced_spaces_use_original_face_averages() {
+        use super::*;
+        let previous = word_layout_platform();
+        for (family, averages) in [
+            ("Aptos", [1148.0, 1150.0, 1202.0, 1204.0]),
+            ("Aptos Display", [1105.0, 1105.0, 1161.0, 1161.0]),
+        ] {
+            for (prefix, average) in ["", "italic ", "bold ", "bold italic "]
+                .into_iter()
+                .zip(averages)
+            {
+                for size in [10.0, 12.0, 16.0] {
+                    let descriptor = format!("{prefix}{size:.2}pt '{family}'");
+                    let expected = size * 4.0 / 3.0 * average / 2048.0;
+                    for balanced in [false, true] {
+                        let metrics =
+                            word_windows_latin_auto_space_metrics(&descriptor, balanced).unwrap();
+                        assert!((metrics.leading_gap_px() - size / 3.0).abs() < 1e-9);
+                        assert!((metrics.trailing_gap_px(false) - expected / 2.0).abs() < 1e-9);
+                    }
+                    let space = word_windows_balanced_latin_space_advance_px(&descriptor).unwrap();
+                    assert!((space - expected).abs() < 1e-9);
+                    set_word_layout_platform(WordLayoutPlatform::Windows);
+                    let average =
+                        word_windows_legacy_justification_average_width_px(&descriptor).unwrap();
+                    assert!((average - expected).abs() < 1e-9);
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(
+                        word_windows_legacy_justification_average_width_px(&descriptor).is_none()
+                    );
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn windows_legacy_justification_uses_original_font_averages_and_preserves_mac() {
         use super::*;
         let previous = word_layout_platform();
@@ -5188,6 +5301,80 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn legacy_windows_justification_origins_use_original_word_device_grid_only() {
+        use super::*;
+        // Original Word margin-phase controls, with fixed text/line width:
+        // 1700..1703 twips map to EMF origins 708,709,709,710 device pixels.
+        for (twips, device_x) in [(1700., 708.), (1701., 709.), (1702., 709.), (1703., 710.)] {
+            let origin = twips / 15.0;
+            for mode in [12, 14] {
+                let actual = word_windows_legacy_justification_origin_px(
+                    WordLayoutPlatform::Windows,
+                    Some(mode),
+                    origin,
+                );
+                assert!((actual * 600.0 / 96.0 - device_x).abs() < 1e-9);
+            }
+            for mode in [None, Some(12), Some(14), Some(15)] {
+                assert_eq!(
+                    word_windows_legacy_justification_origin_px(
+                        WordLayoutPlatform::Mac,
+                        mode,
+                        origin,
+                    ),
+                    origin
+                );
+            }
+            for mode in [None, Some(15)] {
+                assert_eq!(
+                    word_windows_legacy_justification_origin_px(
+                        WordLayoutPlatform::Windows,
+                        mode,
+                        origin,
+                    ),
+                    origin
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn windows_times_balanced_leading_spaces_use_original_kern_and_preserve_mac() {
+        use super::*;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for (prefix, a, t) in [
+            ("", -113.0, -37.0),
+            ("bold ", -113.0, -37.0),
+            ("italic ", -37.0, -37.0),
+            ("bold italic ", -113.0, 0.0),
+        ] {
+            let descriptor = format!("{prefix}12.00pt 'Times New Roman'");
+            for (left, units) in [(b'A', a), (b'T', t), (b'g', 0.0)] {
+                assert_eq!(
+                    word_windows_balanced_leading_space_kerning_px(&descriptor, left),
+                    Some(units * 16.0 / 2048.0)
+                );
+            }
+            set_word_layout_platform(WordLayoutPlatform::Mac);
+            assert_eq!(
+                word_windows_balanced_leading_space_kerning_px(&descriptor, b'A'),
+                None
+            );
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+        }
+        assert_eq!(
+            word_windows_balanced_leading_space_kerning_px("12.00pt Arial", b'A'),
+            None
+        );
+        assert_eq!(
+            word_windows_balanced_leading_space_kerning_px("12.00pt Calibri", b'A'),
+            None
+        );
+        set_word_layout_platform(previous);
     }
 
     #[test]
