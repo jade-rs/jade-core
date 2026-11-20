@@ -4334,6 +4334,11 @@ where
     word_oracle_text_advances: RefCell<FxHashMap<String, f64>>,
     word_oracle_paragraph_advances: RefCell<FxHashMap<usize, Rc<FxHashMap<usize, f64>>>>,
     word_oracle_report_x_offsets: RefCell<FxHashMap<usize, WordOracleLineXOffsets>>,
+    /// The offsets of the inline pictures' object characters in each
+    /// paragraph laid out in a table cell. Layout debug output leaves those
+    /// out but keeps the cell's equations; a body paragraph's debug text
+    /// holds object characters for its pictures alone.
+    cell_picture_offsets: FxHashMap<usize, Vec<usize>>,
     /// Body-element indices whose paragraph `w:spacing` before should be
     /// suppressed because of `w:contextualSpacing` against an identically
     /// styled preceding paragraph (ECMA-376 Part 1 §17.3.1.9). Rebuilt on each
@@ -9543,6 +9548,7 @@ where
             word_oracle_text_advances: RefCell::new(FxHashMap::default()),
             word_oracle_paragraph_advances: RefCell::new(FxHashMap::default()),
             word_oracle_report_x_offsets: RefCell::new(FxHashMap::default()),
+            cell_picture_offsets: FxHashMap::default(),
             contextual_suppress_before: ElementIndexSet::default(),
             contextual_suppress_after: ElementIndexSet::default(),
             paragraph_border_box_continues: ElementIndexSet::default(),
@@ -20329,9 +20335,11 @@ where
                 }
 
                 let start_pos = current_pos;
-                if debug_text.is_none() {
-                    debug_text = Some(layout_text.clone());
-                }
+                // The selection's text keeps an inline text box's object
+                // character, as its offsets do: the caret goes either side.
+                debug_text
+                    .get_or_insert_with(|| layout_text.clone())
+                    .push('\u{fffc}');
                 layout_text.push('\u{fffc}');
                 current_pos = layout_text.len();
                 let width = text_box.width_px.unwrap_or(200.0).max(1.0);
@@ -20363,9 +20371,10 @@ where
                 }
 
                 let start_pos = current_pos;
-                if debug_text.is_none() {
-                    debug_text = Some(layout_text.clone());
-                }
+                // As an inline text box's (above).
+                debug_text
+                    .get_or_insert_with(|| layout_text.clone())
+                    .push('\u{fffc}');
                 layout_text.push('\u{fffc}');
                 current_pos = layout_text.len();
                 let (width, height) = inline_picture_size(image, line_height);
@@ -25111,16 +25120,17 @@ where
                     })
                     .collect::<Vec<_>>()
                     .into();
-                Self::remap_line_selection_offsets_for_inline_objects(
-                    &mut line_layout,
-                    inline_images,
-                    inline_text_boxes,
-                );
+                // Comment anchors are model offsets, which hold no character
+                // for an inline picture; the line itself keeps its object
+                // characters, so a caret can sit on either side of one.
+                let model_line =
+                    Self::line_in_model_offsets(&line_layout, inline_images, inline_text_boxes);
+                let comment_line = model_line.as_ref().unwrap_or(&line_layout);
                 if !comment_ranges.is_empty() {
-                    self.draw_comment_highlights(&line_layout, comment_ranges)?;
+                    self.draw_comment_highlights(comment_line, comment_ranges)?;
                 }
                 if !comment_markers.is_empty() {
-                    self.draw_comment_markers(paragraph_index, &line_layout, comment_markers)?;
+                    self.draw_comment_markers(paragraph_index, comment_line, comment_markers)?;
                 }
                 self.draw_selection_highlight(paragraph_index, &line_layout)?;
 
@@ -25554,23 +25564,22 @@ where
             // when the line is fully selected (e.g., intermediate paragraphs in a multi-paragraph selection).
             line_layout.cursor_end_x = cursor_x;
             line_layout.fragments = fragments.into();
-            Self::remap_line_selection_offsets_for_inline_objects(
-                &mut line_layout,
-                inline_images,
-                inline_text_boxes,
-            );
 
             let content_top = baseline + min_top_offset;
             line_layout.content_top = content_top;
             line_layout.absolute_content_top = self.page_offset_y + content_top;
             line_layout.content_height = content_height;
 
+            // Comment anchors are model offsets (see above).
+            let model_line =
+                Self::line_in_model_offsets(&line_layout, inline_images, inline_text_boxes);
+            let comment_line = model_line.as_ref().unwrap_or(&line_layout);
             if !comment_ranges.is_empty() {
-                self.draw_comment_highlights(&line_layout, comment_ranges)?;
+                self.draw_comment_highlights(comment_line, comment_ranges)?;
                 self.reset_fill_style_state();
             }
             if !comment_markers.is_empty() {
-                self.draw_comment_markers(paragraph_index, &line_layout, comment_markers)?;
+                self.draw_comment_markers(paragraph_index, comment_line, comment_markers)?;
                 self.reset_fill_style_state();
             }
             self.draw_selection_highlight(paragraph_index, &line_layout)?;
@@ -33075,15 +33084,30 @@ where
         &line_clusters[start..*cursor]
     }
 
+    /// `line` in model offsets, which hold no character for an inline
+    /// picture or text box; `None` when the paragraph has neither.
+    fn line_in_model_offsets(
+        line: &SelectionLineLayout,
+        inline_images: &HashMap<usize, (usize, &RunImage)>,
+        inline_text_boxes: &HashMap<usize, (usize, RunTextBox)>,
+    ) -> Option<SelectionLineLayout> {
+        if inline_images.is_empty() && inline_text_boxes.is_empty() {
+            return None;
+        }
+        let mut line = line.clone();
+        Self::remap_line_selection_offsets_for_inline_objects(
+            &mut line,
+            inline_images,
+            inline_text_boxes,
+        );
+        Some(line)
+    }
+
     fn remap_line_selection_offsets_for_inline_objects(
         line: &mut SelectionLineLayout,
         inline_images: &HashMap<usize, (usize, &RunImage)>,
         inline_text_boxes: &HashMap<usize, (usize, RunTextBox)>,
     ) {
-        if inline_images.is_empty() && inline_text_boxes.is_empty() {
-            return;
-        }
-
         let mut starts: Vec<usize> = inline_images.keys().copied().collect();
         starts.extend(inline_text_boxes.keys().copied());
         starts.sort_unstable();
@@ -37762,7 +37786,24 @@ where
             let paragraph_len = paragraph.text.len();
             for (line_index, line) in paragraph.lines.iter().enumerate() {
                 let (start, end) = Self::line_text_range(line, paragraph_len);
-                let text = paragraph.text.get(start..end).unwrap_or("").to_string();
+                // An inline picture's object character in a body paragraph is
+                // the caret's, not text the line shows.
+                let cell_pictures = self.cell_picture_offsets.get(&paragraph_index);
+                let is_picture = |offset: usize| {
+                    paragraph
+                        .text
+                        .get(offset..)
+                        .is_some_and(|rest| rest.starts_with('\u{fffc}'))
+                        && cell_pictures.is_none_or(|pictures| pictures.contains(&offset))
+                };
+                let text: String = paragraph
+                    .text
+                    .get(start..end)
+                    .unwrap_or("")
+                    .char_indices()
+                    .filter(|(offset, _)| !is_picture(start + offset))
+                    .map(|(_, ch)| ch)
+                    .collect();
                 let page = self.page_for_y(line.absolute_content_top);
                 let report_x_offset = if self.rendering_header_footer_story {
                     0.0
@@ -37808,11 +37849,17 @@ where
                                 .map(|glyph| LayoutGlyphDebug {
                                     start: glyph.start,
                                     end: glyph.end,
-                                    text: paragraph
-                                        .text
-                                        .get(glyph.start..glyph.end)
-                                        .unwrap_or("")
-                                        .to_string(),
+                                    // A picture's object character is no
+                                    // glyph of the line's text.
+                                    text: if is_picture(glyph.start) {
+                                        String::new()
+                                    } else {
+                                        paragraph
+                                            .text
+                                            .get(glyph.start..glyph.end)
+                                            .unwrap_or("")
+                                            .to_string()
+                                    },
                                     x: glyph.x + report_x_offset,
                                     width: glyph.width,
                                 })

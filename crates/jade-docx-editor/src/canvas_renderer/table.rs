@@ -562,58 +562,6 @@ impl CellParagraph {
         lines.iter().map(|line| self.line_advance(line)).sum()
     }
 
-    /// Layout offsets of this paragraph's inline pictures, in order.
-    fn picture_offsets(&self) -> impl Iterator<Item = usize> + '_ {
-        self.styled_runs
-            .iter()
-            .filter(|run| matches!(run.inline_object, Some(CellInlineObject::Picture(_))))
-            .map(|run| run.start)
-    }
-
-    /// The model offset of layout offset `offset`: an inline picture has a
-    /// character in the layout text and none in the model.
-    fn model_offset(&self, offset: usize) -> usize {
-        let pictures = self
-            .picture_offsets()
-            .filter(|start| *start < offset)
-            .count();
-        offset.saturating_sub(pictures * CELL_INLINE_OBJECT_CHAR.len_utf8())
-    }
-
-    /// The paragraph's model text: its layout text without its pictures.
-    fn model_text(&self) -> std::borrow::Cow<'_, str> {
-        let mut pictures = self.picture_offsets().peekable();
-        if pictures.peek().is_none() {
-            return std::borrow::Cow::Borrowed(&self.text);
-        }
-        let mut text = String::with_capacity(self.text.len());
-        let mut cursor = 0;
-        for start in pictures {
-            let start = start.min(self.text.len());
-            text.push_str(&self.text[cursor.min(start)..start]);
-            cursor = start + CELL_INLINE_OBJECT_CHAR.len_utf8();
-        }
-        text.push_str(&self.text[cursor.min(self.text.len())..]);
-        std::borrow::Cow::Owned(text)
-    }
-
-    /// Moves selection fragments from layout to model offsets.
-    fn remap_selection_fragments(&self, fragments: &mut [SelectionFragmentLayout]) {
-        if self.picture_offsets().next().is_none() {
-            return;
-        }
-        for fragment in fragments {
-            fragment.start = self.model_offset(fragment.start);
-            fragment.end = self.model_offset(fragment.end);
-            let mut glyphs = fragment.glyphs.to_vec();
-            for glyph in &mut glyphs {
-                glyph.start = self.model_offset(glyph.start);
-                glyph.end = self.model_offset(glyph.end);
-            }
-            fragment.glyphs = glyphs.into();
-        }
-    }
-
     fn fragment(&self, range: Range<usize>, segment_start: usize) -> Self {
         let lines = self.lines[range].to_vec();
         let height = self.lines_height(&lines);
@@ -4892,15 +4840,26 @@ where
                         }
                     };
 
+                    self.cell_picture_offsets.insert(
+                        paragraph_index,
+                        paragraph
+                            .styled_runs
+                            .iter()
+                            .filter(|run| {
+                                matches!(run.inline_object, Some(CellInlineObject::Picture(_)))
+                            })
+                            .map(|run| run.start)
+                            .collect(),
+                    );
                     if !paragraph.is_continuation {
                         self.selection.reset_paragraph_registration(paragraph_index);
                         self.selection
-                            .append_paragraph_text(paragraph_index, &paragraph.model_text());
+                            .append_paragraph_text(paragraph_index, &paragraph.text);
                     } else {
                         self.selection.continue_paragraph_registration(
                             paragraph_index,
-                            &paragraph.model_text(),
-                            paragraph.model_offset(paragraph.segment_start),
+                            &paragraph.text,
+                            paragraph.segment_start,
                         );
                     }
 
@@ -5176,11 +5135,10 @@ where
                                         text_x + line.visual_width().max(1.0);
                                 }
                             }
-                            paragraph.remap_selection_fragments(&mut fragments);
+                            // Layout offsets: an inline picture keeps its object
+                            // character, so the caret can sit either side of it.
                             selection_line.fragments = fragments.into();
-                            selection_line.break_range = line.break_range.map(|(start, end)| {
-                                (paragraph.model_offset(start), paragraph.model_offset(end))
-                            });
+                            selection_line.break_range = line.break_range;
 
                             if self.auxiliary_story_capture_mode == AuxiliaryStoryCaptureMode::Full
                                 && cell.text_direction == Some(TextDirection::LrTbV)
@@ -7138,7 +7096,7 @@ where
             if let Some(paragraph_index) = paragraph_index {
                 self.record_math_zone(super::math::MathZone {
                     paragraph: paragraph_index,
-                    offset: paragraph.model_offset(glyph.start),
+                    offset: glyph.start,
                     run_index: Some(run_index),
                     display: false,
                     page: self.current_page_number,
@@ -20475,16 +20433,13 @@ mod tests {
     }
 
     #[test]
-    fn a_cell_picture_has_no_model_character() {
+    fn a_cell_picture_is_one_object_character() {
         let mut text = picture_run(0.0, 0.0);
         text.image = None;
         text.text = "AB".to_string();
         let paragraph = cell_paragraph_with_runs(vec![picture_run(40.0, 30.0), text]);
+        // The caret can sit either side of the picture, as in Word.
         assert_eq!(paragraph.text, "\u{fffc}AB");
-        assert_eq!(paragraph.model_text(), "AB");
-        assert_eq!(paragraph.model_offset(0), 0);
-        assert_eq!(paragraph.model_offset(3), 0);
-        assert_eq!(paragraph.model_offset(5), 2);
         // The text's descent hangs below the picture.
         let line = &paragraph.lines[0];
         assert_eq!(
@@ -20492,16 +20447,6 @@ mod tests {
             Some(true)
         );
         assert!(line.min_advance >= 30.0);
-        let mut fragments = vec![SelectionFragmentLayout {
-            baseline_shift_px: 0.0,
-            start: 3,
-            end: 5,
-            x: 0.0,
-            width: 14.0,
-            glyphs: Rc::from([]),
-        }];
-        paragraph.remap_selection_fragments(&mut fragments);
-        assert_eq!((fragments[0].start, fragments[0].end), (0, 2));
     }
 
     #[test]
