@@ -1,0 +1,254 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T101328742Z-8adf74bd",
+  "captured_at_utc": "2026-11-20T10:13:28.7568205Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-long-width-regular-s14-at-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-regular-s14-at-24to96-m14.docx",
+      "sha256": "b98b5356a37e0d969463d007e009c8d21636bb2f8e6502c01bdff1d254ec5998",
+      "pdf": "word-windows-long-width-regular-s14-at-24to96-m14.pdf",
+      "pdf_sha256": "a46216720b0f6813add3678e2b8159c35e0f8a625e65cdc7ac8a45ceeebd1577",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-regular-s14-at-24to96-m14.xps",
+      "xps_sha256": "f6ad90483d08a6e90c6a34a7f23c9accefa76c6777b23aae1f65a8de264b8371",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-regular-s14-at-24to96-m14.page-001.emf",
+          "sha256": "fdab9b6fbf833752c08171b2a5064ef90aecc72d9d8dff2afc5184aaba246c01",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-regular-s14-m-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-regular-s14-m-24to96-m14.docx",
+      "sha256": "39924474acad13928e2b00a3c3dacd40a70d7b86849a116d79e4a47af6ac8b7e",
+      "pdf": "word-windows-long-width-regular-s14-m-24to96-m14.pdf",
+      "pdf_sha256": "6f2edd78aa95ef10e0c5efbbf9bf6c5a5868eec7aefddb7ffcf789bfa785095f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-regular-s14-m-24to96-m14.xps",
+      "xps_sha256": "888eb9d64fc112da4968c6ffa84598be8af1f6d2a9e94e0a70034f6edcab2c2f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-regular-s14-m-24to96-m14.page-001.emf",
+          "sha256": "25e2b5921b5fac0c57cc487798c1fd32e188220b78a1ff74fb6da39022220677",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-bold-s14-at-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-bold-s14-at-24to96-m14.docx",
+      "sha256": "b3a724060d85a4f881884f8fe5dab0351a6eed83a7d13c3dcdb61ddec5a1f52d",
+      "pdf": "word-windows-long-width-bold-s14-at-24to96-m14.pdf",
+      "pdf_sha256": "16c329989cb21ff83d4e4975e9505d1f2a0be16737340aef1f9bc39b3e4a6d3e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-bold-s14-at-24to96-m14.xps",
+      "xps_sha256": "9b401681a666c07d03fa9788a673cb6a64c8ba62e5583ed19a058e4404f9feed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-bold-s14-at-24to96-m14.page-001.emf",
+          "sha256": "0e8d625dd07612b441ddedf82fd8cf90ad4d5e1c958bf8f06080a58705bfdf65",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-bold-s14-m-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-bold-s14-m-24to96-m14.docx",
+      "sha256": "4759dfe3cb34f8c5a752725f43f5f0e130f9e869493e6a598f5ff09a2ee72bef",
+      "pdf": "word-windows-long-width-bold-s14-m-24to96-m14.pdf",
+      "pdf_sha256": "9889527d6f02e162b5781532686727b9104f0f71c7aa307ac6c07249a681fb7c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-bold-s14-m-24to96-m14.xps",
+      "xps_sha256": "c6f2fa96f76cd9a7ecd7dfba3462fed8604c12de854a7bb0cc483a47db48a57a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-bold-s14-m-24to96-m14.page-001.emf",
+          "sha256": "7b4a7b2fcd0477b40e5584f2de01461350756beb0222a6be7ac4ca7d1a65a619",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-italic-s14-at-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-italic-s14-at-24to96-m14.docx",
+      "sha256": "3b6ee653d93a1db531127ecb115f82a300ebe2747ce6b0fc5eb9d065b5ce32d2",
+      "pdf": "word-windows-long-width-italic-s14-at-24to96-m14.pdf",
+      "pdf_sha256": "f6c8dc0265c0288f0e77ed7eb236b5ff04ebce534d09aa90c9a9f086b1000934",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-italic-s14-at-24to96-m14.xps",
+      "xps_sha256": "19869838c8b963823de32f61124780cc3720458cb9f6fd127629628e4b0b5315",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-italic-s14-at-24to96-m14.page-001.emf",
+          "sha256": "af81a1d1e4f7bfe2a16686061086957e2a0aeb44c719b54006f1eee7697b1c95",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-italic-s14-m-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-italic-s14-m-24to96-m14.docx",
+      "sha256": "a5ccfea5b490fa7c4e06d29a965abdb22d4a5213839738b84f871437c4d08483",
+      "pdf": "word-windows-long-width-italic-s14-m-24to96-m14.pdf",
+      "pdf_sha256": "ee5920a56a41413ec5a76d0e21c8c1641ba79dff74bb3b895b7e5dfa38007d7a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-italic-s14-m-24to96-m14.xps",
+      "xps_sha256": "395d541582fd9038a260a43c2698586caa24a0cb3b44e03c042501d0dedf5b60",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-italic-s14-m-24to96-m14.page-001.emf",
+          "sha256": "58ec264f9e6e6d7d185bd87e599b9d81f216dc3ada1083fb61777465b892539d",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-bolditalic-s14-at-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-bolditalic-s14-at-24to96-m14.docx",
+      "sha256": "354dbd71f9e844541aa767e859f55327576a14738b886b386a8b9534946849c5",
+      "pdf": "word-windows-long-width-bolditalic-s14-at-24to96-m14.pdf",
+      "pdf_sha256": "7fde75f233b8627f9388b6022b3bab8e1dc8c66994adc0ac2b163e562258a629",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-bolditalic-s14-at-24to96-m14.xps",
+      "xps_sha256": "7fcb607378f02cc6286278b4495d3b56787bb8f4af90981f3e014cd725003c26",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-bolditalic-s14-at-24to96-m14.page-001.emf",
+          "sha256": "be197c23678e4f15d1e3ec5bea8b1508fd65ef624802e30aa59997661238c0e9",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-width-bolditalic-s14-m-24to96-m14",
+      "source": "tmp\\w20-long-width-inputs\\word-windows-long-width-bolditalic-s14-m-24to96-m14.docx",
+      "sha256": "b72d87cf37a3e9e921b1fffdbd8cf5d79d8a34fcad4e898d6f027368435b92df",
+      "pdf": "word-windows-long-width-bolditalic-s14-m-24to96-m14.pdf",
+      "pdf_sha256": "3cc2a45efb0a6a1a0a4610e4506c32f5b01abe7f8eb4daf632b4d7081661fb2c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-width-bolditalic-s14-m-24to96-m14.xps",
+      "xps_sha256": "c1e16658d477adab01b3a2a43c25ca4c68f50327856ed5e520f90f17d21d1307",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-width-bolditalic-s14-m-24to96-m14.page-001.emf",
+          "sha256": "6f918a699373208a6b91ce8bb02c7cff769742b096da8d09aabf9ac977848ad0",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
