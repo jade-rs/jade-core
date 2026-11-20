@@ -1111,10 +1111,20 @@ impl FieldDateTime {
     /// 前提で時差を戻している。`w:date` を書かないと、取り込みで docx-rs の既定値（1970-01-01）になり、条項コメントに
     /// 「1970/01/01 00:00:00」と出ていた。
     pub fn to_word_comment_date(&self) -> String {
-        format!(
-            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-            self.year, self.month, self.day, self.hour, self.minute, self.second
-        )
+        crate::field_datetime::to_w3cdtf(&self.to_reader())
+    }
+
+    /// The reader's form of the same instant, which the format helpers take.
+    pub fn to_reader(self) -> crate::field_datetime::FieldDateTime {
+        crate::field_datetime::FieldDateTime {
+            year: self.year,
+            month: self.month,
+            day: self.day,
+            hour: self.hour,
+            minute: self.minute,
+            second: self.second,
+            weekday: self.weekday,
+        }
     }
 }
 

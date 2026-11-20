@@ -893,6 +893,9 @@ pub use protection::{
 };
 #[path = "word_document/ole_objects.rs"]
 pub mod ole_objects;
+#[cfg(test)]
+#[path = "word_document/revision_dates.rs"]
+mod revision_dates;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
@@ -12238,6 +12241,22 @@ impl WordDocument {
         self.revision_session.as_ref()
     }
 
+    /// The open session as a change recorded now is stamped with. Without a
+    /// fixed `date` it takes the host clock's current minute (`w:date`, and
+    /// the UTC instant as `w16du:dateUtc` unless that is fixed), so each
+    /// change is dated when it is made, as Word does; read-back revisions
+    /// keep theirs.
+    pub fn recording_revision_session(&self) -> Option<RevisionSession> {
+        let mut session = self.revision_session.clone()?;
+        if session.date.is_none() {
+            if let Some((date, date_utc)) = crate::revision_clock::revision_date_now() {
+                session.date = Some(date);
+                session.date_utc.get_or_insert(date_utc);
+            }
+        }
+        Some(session)
+    }
+
     pub fn ensure_revision_decision_supported(
         &self,
         kind_filter: Option<&RevisionKind>,
@@ -12653,8 +12672,7 @@ impl WordDocument {
         paragraph_index: usize,
     ) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -12783,8 +12801,7 @@ impl WordDocument {
 
     fn mark_deleted_paragraph_break_raw(&mut self, paragraph_index: usize) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -33057,7 +33074,7 @@ impl WordDocument {
         if length == 0 {
             return;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return;
         };
         let zero_width = self.zero_width_runs(paragraph_index);
@@ -33126,7 +33143,7 @@ impl WordDocument {
         if length == 0 {
             return false;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return false;
         };
 

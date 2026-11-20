@@ -576,6 +576,25 @@ fn current_field_datetime() -> FieldDateTime {
     }
 }
 
+/// The page's local wall clock and its offset from UTC, read from one `Date`
+/// so the two agree across a minute or DST boundary.
+fn current_host_time() -> crate::revision_clock::HostTime {
+    let now = js_sys::Date::new_0();
+    crate::revision_clock::HostTime {
+        local: crate::field_datetime::FieldDateTime {
+            year: now.get_full_year() as i32,
+            month: now.get_month() + 1,
+            day: now.get_date(),
+            hour: now.get_hours(),
+            minute: now.get_minutes(),
+            second: now.get_seconds(),
+            weekday: now.get_day(),
+        },
+        // getTimezoneOffset is minutes *west* of UTC.
+        utc_offset_seconds: -(now.get_timezone_offset() as i64) * 60,
+    }
+}
+
 /// Parses revision metadata supplied by the web UI and normalises blank strings.
 fn parse_revision_metadata(metadata: JsValue) -> Result<RevisionMetadata, JsValue> {
     if metadata.is_null() || metadata.is_undefined() {
@@ -10472,6 +10491,8 @@ impl OffscreenDocumentView {
         options: Option<Options>,
         device_pixel_ratio: f64,
     ) -> Result<OffscreenDocumentView, JsValue> {
+        // Recorded revisions are dated by the page's clock (`w:date`).
+        crate::revision_clock::set_revision_clock(Some(current_host_time));
         let opts = options.unwrap_or_default();
         let host = OffscreenRenderHost::new(canvas, device_pixel_ratio)?;
         let renderer = Rc::new(RefCell::new(CanvasRenderer::with_host(
