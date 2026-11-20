@@ -98,6 +98,20 @@ class NativeMacosWorkflowTest < Minitest::Test
     assert job.fetch("steps").any? { |s| s.fetch("run", "").include?("-p test_windows_y_pdf_context_probes.py") }
   end
 
+  def test_windows_device_remainder_assertions_are_required
+    job = @workflow.fetch("jobs").fetch("windows-word-baselines")
+    assert_equal "windows-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find { |s| s["name"] == "Assert versioned Windows Word device-remainder screen and print origins" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    assert_equal "python scripts/word-oracle/check_windows_device_remainders.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe", step.fetch("run")
+    assert job.fetch("steps").any? { |s| s.fetch("run", "").include?("-p test_windows_device_remainder_probes.py") }
+  end
+
   def test_windows_manual_break_assertions_are_required_after_font_rendering
     job = @workflow.fetch("jobs").fetch("windows-word-baselines")
     assert_equal "windows-latest", job.fetch("runs-on")
