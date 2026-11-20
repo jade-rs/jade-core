@@ -7,7 +7,7 @@
     "application_build": "16.0.19127",
     "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
   },
-  "purpose": "All240 originalWord family-case pairs require Word case invariance and native glyph/page/screen/PDF case identity. The90 independently validated positive aliases additionally require all originalWord coordinate planes and backgrounds. Remaining absolute differences remain visible observations, with strict text/page/order/finite assertions; no Jade positions accepted as Word references.",
+  "purpose": "All240 originalWord family-case pairs require Word case invariance and native glyph/page/screen/PDF case identity. The144 independently validated positive aliases additionally require all originalWord coordinate planes and backgrounds. Remaining absolute differences remain visible observations, with strict text/page/order/finite assertions; no Jade positions accepted as Word references.",
   "fixtures": [
     {
       "name": "word-windows-family-extended-century-lower-s12-m14-manual-w3000",
@@ -6539,7 +6539,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m14-paragraph-w3000",
@@ -6585,7 +6585,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-paragraph-w3000",
@@ -6631,7 +6631,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m14-paragraph-w3000",
@@ -6677,7 +6677,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m14-paragraph-w3000",
@@ -6723,7 +6723,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-paragraph-w3000",
@@ -6769,7 +6769,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m14-paragraph-w3000",
@@ -6815,7 +6815,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m14-paragraph-w3000",
@@ -6861,7 +6861,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-paragraph-w3000",
@@ -6907,7 +6907,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m14-paragraph-w8504",
@@ -7367,7 +7367,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m14-paragraph-w8504",
@@ -7413,7 +7413,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-paragraph-w8504",
@@ -7459,7 +7459,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m14-paragraph-w8504",
@@ -7505,7 +7505,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m14-paragraph-w8504",
@@ -7551,7 +7551,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-paragraph-w8504",
@@ -7597,7 +7597,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m14-paragraph-w8504",
@@ -7643,7 +7643,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m14-paragraph-w8504",
@@ -7689,7 +7689,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-paragraph-w8504",
@@ -7735,7 +7735,7 @@
       "compatibility_mode": 14,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-manual-w3000",
@@ -8195,7 +8195,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-manual-w3000",
@@ -8241,7 +8241,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-manual-w3000",
@@ -8287,7 +8287,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-manual-w3000",
@@ -8333,7 +8333,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-manual-w3000",
@@ -8379,7 +8379,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-manual-w3000",
@@ -8425,7 +8425,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-manual-w3000",
@@ -8471,7 +8471,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-manual-w3000",
@@ -8517,7 +8517,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-manual-w3000",
@@ -8563,7 +8563,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-manual-w8504",
@@ -9023,7 +9023,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-manual-w8504",
@@ -9069,7 +9069,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-manual-w8504",
@@ -9115,7 +9115,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-manual-w8504",
@@ -9161,7 +9161,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-manual-w8504",
@@ -9207,7 +9207,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-manual-w8504",
@@ -9253,7 +9253,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-manual-w8504",
@@ -9299,7 +9299,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-manual-w8504",
@@ -9345,7 +9345,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-manual-w8504",
@@ -9391,7 +9391,7 @@
       "compatibility_mode": 15,
       "line_ending": "manual",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-paragraph-w3000",
@@ -9851,7 +9851,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-paragraph-w3000",
@@ -9897,7 +9897,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-paragraph-w3000",
@@ -9943,7 +9943,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-paragraph-w3000",
@@ -9989,7 +9989,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-paragraph-w3000",
@@ -10035,7 +10035,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-paragraph-w3000",
@@ -10081,7 +10081,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-paragraph-w3000",
@@ -10127,7 +10127,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-paragraph-w3000",
@@ -10173,7 +10173,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-paragraph-w3000",
@@ -10219,7 +10219,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 3000,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-paragraph-w8504",
@@ -10679,7 +10679,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-paragraph-w8504",
@@ -10725,7 +10725,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-paragraph-w8504",
@@ -10771,7 +10771,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-paragraph-w8504",
@@ -10817,7 +10817,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-paragraph-w8504",
@@ -10863,7 +10863,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-paragraph-w8504",
@@ -10909,7 +10909,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-paragraph-w8504",
@@ -10955,7 +10955,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-paragraph-w8504",
@@ -11001,7 +11001,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     },
     {
       "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-paragraph-w8504",
@@ -11047,7 +11047,7 @@
       "compatibility_mode": 15,
       "line_ending": "paragraph",
       "line_width_twips": 8504,
-      "required_word_coordinates": false
+      "required_word_coordinates": true
     }
   ]
 }

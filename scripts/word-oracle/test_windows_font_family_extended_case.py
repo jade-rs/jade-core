@@ -16,7 +16,7 @@ class ExtendedFontFamilyCaseTests(unittest.TestCase):
         cases = check.verify()
         self.assertEqual(len(cases), 240)
         self.assertEqual(len({c['canonical']['source']['sha256'] for c, _, _ in cases}), 80)
-        self.assertEqual(sum(c['required_word_coordinates'] for c, _, _ in cases), 90)
+        self.assertEqual(sum(c['required_word_coordinates'] for c, _, _ in cases), 144)
 
     def test_word_assertion_policy_cannot_be_changed_in_the_index(self):
         index = check.read_json(check.ROOT / check.INDEX)

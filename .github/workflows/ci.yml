@@ -511,6 +511,22 @@ jobs:
             !target/windows-font-family-extended-cases/**/fonts/*.ttc
             !target/windows-font-family-extended-cases/font-cache/**
           if-no-files-found: ignore
+      - name: Assert original Windows Word Mincho coordinates at all captured sizes
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mincho_sizes.py
+          python scripts/word-oracle/check_windows_mincho_sizes.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned Windows Mincho size coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-mincho-size-differences
+          path: |
+            target/windows-mincho-sizes
+            !target/windows-mincho-sizes/**/fonts/*.ttf
+            !target/windows-mincho-sizes/**/fonts/*.otf
+            !target/windows-mincho-sizes/**/fonts/*.ttc
+            !target/windows-mincho-sizes/font-cache/**
+          if-no-files-found: ignore
       - name: Assert independent versioned Windows Word XPS print origins
         run: python scripts/word-oracle/check_windows_xps.py --compare-rendered
       - name: Upload Windows Word XPS coordinate differences

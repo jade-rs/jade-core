@@ -14,7 +14,7 @@ from paragraph_backgrounds import compare_paragraph_backgrounds
 from windows_xps_fonts import extract_xps_fonts
 
 INDEX = Path('tests/word-oracle/windows/font-family-extended-cases.json')
-INDEX_SHA256 = '2df4e859e2aafff26f3f9a41994c7f42b2db0d788485566ba1a8eece7a2750e0'
+INDEX_SHA256 = '608d1d8085fef44daa8ebb8b3951080a2cb4a4c6ad7ea470c1b30a7ef099cf64'
 FAMILIES = {'Century': 'cEnTuRy', 'Bookman Old Style': 'bOoKmAn oLd sTyLe',
             'Yu Mincho': 'yU mInChO', 'MS Mincho': 'mS mInChO'}
 STYLES = ('regular', 'bold', 'italic', 'bold-italic')
@@ -22,7 +22,7 @@ STYLES = ('regular', 'bold', 'italic', 'bold-italic')
 
 def required_word_coordinates(case):
     family = case['canonical_family']
-    known = family == 'Yu Mincho' or (family == 'MS Mincho' and case['style'] == 'regular')
+    known = family in ('Yu Mincho', 'MS Mincho')
     return known and (case['compatibility_mode'] == 15 or case['line_ending'] == 'paragraph')
 
 
@@ -74,7 +74,7 @@ def verify(root=ROOT):
                 for v in ('lower', 'upper', 'mixed') for m in (14, 15)
                 for e in ('manual', 'paragraph') for w in (3000, 8504)}
     require(len(controls) == 80 and coverage == expected
-            and sum(c['required_word_coordinates'] for c, _, _ in cases) == 90,
+            and sum(c['required_word_coordinates'] for c, _, _ in cases) == 144,
             'Extended family/style/Word-assertion coverage removed')
     return cases
 
