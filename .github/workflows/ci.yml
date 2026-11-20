@@ -316,6 +316,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_pdf_context_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_device_remainder_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
@@ -509,6 +510,20 @@ jobs:
             !target/windows-y-pdf-context/**/fonts/*.otf
             !target/windows-y-pdf-context/**/fonts/*.ttc
             !target/windows-y-pdf-context/.font-cache/**
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word device-remainder screen and print origins
+        run: python scripts/word-oracle/check_windows_device_remainders.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows device-remainder coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-device-remainder-differences
+          path: |
+            target/windows-device-remainder
+            !target/windows-device-remainder/**/fonts/*.ttf
+            !target/windows-device-remainder/**/fonts/*.otf
+            !target/windows-device-remainder/**/fonts/*.ttc
+            !target/windows-device-remainder/.font-cache/**
           if-no-files-found: ignore
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
