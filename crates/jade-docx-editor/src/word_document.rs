@@ -17059,9 +17059,38 @@ impl WordDocument {
             .bookmarks
             .iter()
             .find(|bookmark| bookmark.name == name)?;
+        self.bookmark_start(bookmark)
+    }
+
+    /// Where `bookmark` starts, as a paragraph surface and an offset into its
+    /// text. A start written between paragraphs begins the paragraph after it.
+    pub(crate) fn bookmark_start(&self, bookmark: &Bookmark) -> Option<TextPosition> {
         let paragraph = self.bookmark_surface_index(bookmark.start_paragraph)?;
-        let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
-        let model = TextPosition::new(paragraph, bookmark.start_offset.min(length));
+        let offset = if marker_between_paragraphs(bookmark.start_run, bookmark.start_offset) {
+            0
+        } else {
+            let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
+            bookmark.start_offset.min(length)
+        };
+        Some(self.model_to_rendered_text_position(TextPosition::new(paragraph, offset)))
+    }
+
+    /// Where `bookmark` ends (exclusive). An end written between paragraphs
+    /// closes the paragraph before it, so the range never reaches into the
+    /// next one.
+    pub(crate) fn bookmark_end(&self, bookmark: &Bookmark) -> Option<TextPosition> {
+        let model = if marker_between_paragraphs(bookmark.end_run, bookmark.end_offset) {
+            let paragraph =
+                self.bookmark_last_surface_index(bookmark.end_paragraph.checked_sub(1)?)?;
+            TextPosition::new(
+                paragraph,
+                self.paragraph_text_len_at(paragraph).unwrap_or(0),
+            )
+        } else {
+            let paragraph = self.bookmark_surface_index(bookmark.end_paragraph)?;
+            let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
+            TextPosition::new(paragraph, bookmark.end_offset.min(length))
+        };
         Some(self.model_to_rendered_text_position(model))
     }
 
@@ -17069,6 +17098,14 @@ impl WordDocument {
     /// flattened paragraph surfaces used by the canvas and public selection API.
     pub(crate) fn bookmark_surface_index(&self, body_element: usize) -> Option<usize> {
         self.paragraph_surfaces.iter().position(|surface| matches!(surface,
+            ParagraphSurface::Body { path } if path.first() == Some(&PathEntry::Element(body_element))
+        ))
+    }
+
+    /// The last paragraph surface of a top-level body element (the last cell
+    /// paragraph of a table).
+    fn bookmark_last_surface_index(&self, body_element: usize) -> Option<usize> {
+        self.paragraph_surfaces.iter().rposition(|surface| matches!(surface,
             ParagraphSurface::Body { path } if path.first() == Some(&PathEntry::Element(body_element))
         ))
     }
@@ -44247,6 +44284,18 @@ fn watermark_style_from_shape(
         }
     }
     style
+}
+
+/// Whether a stored bookmark marker sits between paragraphs.
+///
+/// Hosts that mark whole paragraphs (a contract's clauses, for instance) write
+/// `w:bookmarkStart` / `w:bookmarkEnd` as children of `w:body`. With no
+/// paragraph open, the reader stores such a marker at the next body element
+/// with the text length of the paragraph before it. A marker inside a
+/// paragraph with no run before it is at offset 0, so a non-zero offset
+/// before the first run can only be one between paragraphs.
+fn marker_between_paragraphs(run: usize, offset: usize) -> bool {
+    run == 0 && offset > 0
 }
 
 #[cfg(test)]
