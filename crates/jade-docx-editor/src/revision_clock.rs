@@ -11,28 +11,42 @@
 
 use std::cell::Cell;
 
-use crate::field_datetime::{to_w3cdtf, FieldDateTime};
+use crate::field_datetime::{datetime_from_unix, to_w3cdtf, unix_seconds, FieldDateTime};
+
+/// What the host's clock reads now: the local wall clock and how far it is
+/// ahead of UTC.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HostTime {
+    pub local: FieldDateTime,
+    pub utc_offset_seconds: i64,
+}
 
 thread_local! {
-    static CLOCK: Cell<Option<fn() -> FieldDateTime>> = const { Cell::new(None) };
+    static CLOCK: Cell<Option<fn() -> HostTime>> = const { Cell::new(None) };
 }
 
 /// Registers the host's local wall clock for dating recorded revisions, or
 /// with `None` takes it away. A revision session with a fixed `date` keeps
 /// that date either way.
-pub fn set_revision_clock(clock: Option<fn() -> FieldDateTime>) {
+pub fn set_revision_clock(clock: Option<fn() -> HostTime>) {
     CLOCK.with(|cell| cell.set(clock));
 }
 
-/// The `w:date` for a revision recorded now, or `None` when the host has
-/// registered no clock.
+/// `(w:date, w16du:dateUtc)` for a revision recorded now, or `None` when the
+/// host has registered no clock.
 ///
-/// The form is the comment one (`to_word_comment_date`, the same
+/// `w:date` takes the comment form (`to_word_comment_date`, the same
 /// `to_w3cdtf`): the local wall clock with a `Z` suffix, which lawgue's
-/// importer reads back as local time. Word writes a revision's date to the
-/// minute, seconds as `00`, which also keeps one minute's typing in one
-/// revision.
-pub(crate) fn revision_date_now() -> Option<String> {
+/// importer reads back as local time. `w16du:dateUtc` is the true UTC
+/// instant, which Word 365 writes beside it and readers that localize the
+/// time prefer. Word writes revision dates to the minute, seconds as `00`,
+/// which also keeps one minute's typing in one revision.
+pub(crate) fn revision_date_now() -> Option<(String, String)> {
     let now = CLOCK.with(Cell::get)?();
-    Some(to_w3cdtf(&FieldDateTime { second: 0, ..now }))
+    let local = FieldDateTime {
+        second: 0,
+        ..now.local
+    };
+    let utc = datetime_from_unix(unix_seconds(&local) - now.utc_offset_seconds, 0);
+    Some((to_w3cdtf(&local), to_w3cdtf(&utc)))
 }

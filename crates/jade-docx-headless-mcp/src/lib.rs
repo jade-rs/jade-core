@@ -61,17 +61,20 @@ pub fn use_local_revision_clock() {
     jade_docx_document_core::revision_clock::set_revision_clock(Some(local_now));
 }
 
-fn local_now() -> jade_docx_document_core::field_datetime::FieldDateTime {
-    use chrono::{Datelike, Timelike};
+fn local_now() -> jade_docx_document_core::revision_clock::HostTime {
+    use chrono::{Datelike, Offset, Timelike};
     let now = chrono::Local::now();
-    jade_docx_document_core::field_datetime::FieldDateTime {
-        year: now.year(),
-        month: now.month(),
-        day: now.day(),
-        hour: now.hour(),
-        minute: now.minute(),
-        second: now.second(),
-        weekday: now.weekday().num_days_from_sunday(),
+    jade_docx_document_core::revision_clock::HostTime {
+        local: jade_docx_document_core::field_datetime::FieldDateTime {
+            year: now.year(),
+            month: now.month(),
+            day: now.day(),
+            hour: now.hour(),
+            minute: now.minute(),
+            second: now.second(),
+            weekday: now.weekday().num_days_from_sunday(),
+        },
+        utc_offset_seconds: i64::from(now.offset().fix().local_minus_utc()),
     }
 }
 
