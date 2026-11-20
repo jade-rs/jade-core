@@ -317,6 +317,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_pdf_context_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_device_remainder_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_mixed_ascii.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
@@ -513,6 +514,20 @@ jobs:
           if-no-files-found: ignore
       - name: Assert versioned Windows Word device-remainder screen and print origins
         run: python scripts/word-oracle/check_windows_device_remainders.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert original Windows Word mixed ASCII coordinates
+        run: python scripts/word-oracle/check_windows_mixed_ascii.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows mixed ASCII coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-mixed-ascii-differences
+          path: |
+            target/windows-mixed-ascii
+            !target/windows-mixed-ascii/**/fonts/*.ttf
+            !target/windows-mixed-ascii/**/fonts/*.otf
+            !target/windows-mixed-ascii/**/fonts/*.ttc
+            !target/windows-mixed-ascii/.font-cache/**
+          if-no-files-found: ignore
       - name: Upload Windows device-remainder coordinate differences
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
