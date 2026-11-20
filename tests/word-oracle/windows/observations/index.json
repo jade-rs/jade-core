@@ -62089,6 +62089,1365 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T183117977Z-ccf1f021",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T183117977Z-ccf1f021.zip",
+      "archive_sha256": "3e57bfe6428a1de24b6122c370e652437f500994da9e1a5f63e96ac8e5082041",
+      "capture_sha256": "2dee37a20cc6828d518734a64200820125c2c1ca04c7b444172a2a05fd3ada18",
+      "documents": [
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m14-manual-w3000",
+          "source_sha256": "5ac77ca2540cd1b903881793352ca414af4e72f1b3725c08c676dd5c694331d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m14-manual-w3000",
+          "source_sha256": "4e01e5c753f4300c30b35baccab2bbaf770ad5323218a0309b3ad6f492d0ba0c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "feda6aee6a6d2ab427ba12cd909bbefe00221f6bcce72ddcecb494e04b34566f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m14-manual-w3000",
+          "source_sha256": "5e0c43b005104f6b4ccd1da4fa1a7d99ee030503ac782832bcde8964dac36257",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m14-manual-w3000",
+          "source_sha256": "9698d50665bf4a8cdd800a6faf3a5f18e2fa79096323a3fb34941f2592c82aff",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "df7cd5b24abdc0792d0324e00ea57405f6cc369f61b93d5167651208ce4ff6bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m14-manual-w3000",
+          "source_sha256": "8957530ba4ed44fe0fc66c36ebcf53e4e4eb1f4bc04c1bba3a53dea6bec46932",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m14-manual-w3000",
+          "source_sha256": "77766f2048db8034a21c3f64ea21dc24e9adb9e4dadc78705a477872810bf1e6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "5ceeefe58894edaaa9fe2016c43c6b685aedd808c971b772d6f0d507ff55e6df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m14-manual-w3000",
+          "source_sha256": "a98f9d1508b386acf03d3a632e377e32172c3f26419f2cdd07afe1feb127ebb7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m14-manual-w3000",
+          "source_sha256": "9cf7f79f5a1d7ecf0d23629f91b8f5e5b6f4741f9942beb69c962d207e4306dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "68cb0d109ca04eb734508bbd27b531c3e854a2575e961a4649f49b0baa928edf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m14-manual-w3000",
+          "source_sha256": "ef1dba5d1bf89664692da8012bee2b758f0b19a38a8ab7c5c41a71154ceddc9e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m14-manual-w3000",
+          "source_sha256": "6e6c79217673741f6c2e6b288e21e4bebd591810c91cb53ea6ae31c7ac701a20",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "a010058c298531cb7a2f03df8fff946e148e3091f684a5395b7a39c9eae22cee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m14-manual-w3000",
+          "source_sha256": "42a22de4d19b8a093d0d22f1a43b19d146e61c520cb3ed5e06403bc52605d781",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m14-manual-w3000",
+          "source_sha256": "f3dc67997e8627acebc2834d268ac66d6e70a0f85a4dc41d5700c527e5114e26",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "4a9f313fdca0fc88b727a1e0830718e979fb90f71d35b88ac32ef072940a0ee2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m14-manual-w3000",
+          "source_sha256": "6ef33731bfcc80704d3928a57818f1822353b44765492390d3da09b37ffdb31f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m14-manual-w3000",
+          "source_sha256": "2eecf2b31edd33b6647d3e93cb98d46da6b997bbecda9dc5c39121186dea58f0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "e805901908ef0d7224448248141506566c6d983acf2982d92a3328c555f538db",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m14-manual-w3000",
+          "source_sha256": "9ffc6ab01683fbc833f9bf9dee297f8ddbc83be81a0c7895e8834f43f85a02b7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m14-manual-w3000",
+          "source_sha256": "0028186889f5abf6c8b597c7ce57526b040a1903d15c42cc2b0439b062cdf68e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "e2037c015edcdcbd85c3c107968345c26eb4c9e49ee6de82c78119754437c686",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m14-manual-w8504",
+          "source_sha256": "8c9b2a828f790a83ef47c1889bfd66cf3be1bd25078b5a9b1809a81ba4f66ae9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m14-manual-w8504",
+          "source_sha256": "1f69a9e536ee04907e1f665afb3a17fffe7c923504558cdf8593ce4f6426ca2b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "605972354cd1c2fe3c880a1b9a0e2b5cb4927ee966547069523f3fd200d32c16",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m14-manual-w8504",
+          "source_sha256": "7977325d4e7761d65173f22999be2173eb09d6015fadfadc10aebfe80ebd54db",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m14-manual-w8504",
+          "source_sha256": "e48dac291bd48e22385828fbdadd13dceb34d3cee2a14204bff5671626c20d22",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "47045e1e051e29c72c9769506d90243371d7787440d397d75afc6605de6a5be6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m14-manual-w8504",
+          "source_sha256": "a206597ea0b6c11b6e827e3ea6ab8dcec2b2fa71264fe1dc5fd7addb63012940",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m14-manual-w8504",
+          "source_sha256": "de8b5459622031e575adcacdd4ab97b59a89ceb6161eeb042b881626641384a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "b68909243e49adc07c22518595c83f2b0cb0e4832807127504fe30a5e76e01f4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m14-manual-w8504",
+          "source_sha256": "77c831c642283880b16c8b701e10045860fbddc8f4bc35589a677913fc625076",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m14-manual-w8504",
+          "source_sha256": "949f6a10251e8dfbaafeb4de05ce33eeeff7fb0ab4c2c27e9d681a562f7924b0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "176d76b0774d9dc7b2ad7af61a06b85e3dd59088a7978cd780fc69d03fa46d42",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m14-manual-w8504",
+          "source_sha256": "dac67c34ccdd3a4b7f2a32819a278a6614a61c21fc38a7916dd2485fbff1349b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m14-manual-w8504",
+          "source_sha256": "88b0b9315957214faf748c654569982089322b112e88c50af1e8c8933db7e5d5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "82d3319654822041ac404ff146566cc30862d76ef344bffe4e24c4d043187b39",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m14-manual-w8504",
+          "source_sha256": "ca6a7ddce1ce75730d14f77452c76e950b9665d42dc2eba17e66c93b8f9d57d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m14-manual-w8504",
+          "source_sha256": "4b3c121c627339ac0c9fbe68cea9ab8c793bd1951ea38c279f5300347a23b431",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "43316969b5bc7dbc7220a63f6a603705e7b1d75fb9345db658178c211990192d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m14-manual-w8504",
+          "source_sha256": "9e04b304d8663ba24211d61146034e937cad722f01d7fabc52785d92699b2962",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m14-manual-w8504",
+          "source_sha256": "77c90b869fdf79d3e2f8266836da4380873ca49f704c1b920d7e88e80e555dac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "753229069af3e18453189ba72d51fc5575055cbe07c4c2a4aa1e74763000c730",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m14-manual-w8504",
+          "source_sha256": "19f7bc12be039fbc756b136af996933616134d103e27720dbc75650fe164dd12",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m14-manual-w8504",
+          "source_sha256": "f44d4886454c3e44f73cacfef94ea2a69c73d401c34eddf10b41db9085936f8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "b32390147020c9b3c110823686b7fade52ac35d1ba884146f1f6604cdc048e8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "3439b0e4102a5e389cb4773b45c5e74701ff52a5d271f67305aaba7e96ffae6b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "1c78df78d690af6d2f83f13607608404a5c05e8593e9647b1f908f023387f615",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "fce6af8bfc2247f3c38d2b913f0b50cc7ccd457f29bc789f11436f923b93ca50",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "705912d9e33c8b21f03338d90f5e99810de975a1a4812a4c8f8755580e406052",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "b29a592587922e856d318af1c97f6311f47174fa2b9770275b1d47dcee20f3fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "360fc8a3e38b5be107c8103ba75b8431a366021e2242ca7e92c5df88c4233af8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "0e071bd2d3568ea705cc7e4f3f43a17fa2803009b46e3e5362102f941a0cfc45",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "052849c378e2a239f441fa39f8a44e383a59d04cb7e91dfd9e80e0156584f93a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "4fa99ff160ed053a03f014f6cd41d6f2a67770f18710259f23b16463dfa2fcfe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "6c47ded73f41e589faec4a72254e1ee7982eb85ef7971e2921856a959452ce4b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "03c56eb75db8106dbb5bb8eca745dd9beb8e201793d39f9e35350f9ed716b1f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "22a4008c107b71cf32a6f91f380b2f3e6284d5bbaf6e39558a7001cf0aebdc41",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "d7bdde3cfeddccb5113f1fe9ea5f5312e1db8cfafffcc17cbfff94844cf95881",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "ae8b47fd1d896efa5947171769d109f89d72be7ef7283d5e7aa0722664267aa2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "17e00160bb56cd434408d5e9b1d65b1e77f48be98f30cd4de1c90272c720fba0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "aa36a5b33b2ebd9a4a7389480be987ae3b0e4600e998ec41e376998cf25118ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "66a7adfa0fcbab7ce3455d3c977b3a21fb87765f9731f7caefd659f8c944535a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "cf77231ea4b19acdac647b33e14ee9c6030134316c699b61d553d462ffce1a98",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "b7a8400f3f25b4b3013fcdbe986ee9d96e5e03e8c60d6cb1d88b82b3c80d9365",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "16cfd5886b52aa88c529a626575af6a412ba61e9a2b7643570737bc2d8158113",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "7d7ad91aa0d5ae2e0c065210f4401813f43038288451dabdba72112edc32c13b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "10d4ec4454efa3005561ae9f27e206dfed056e38a5099f762a7d526018a31fcd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "107113b0cabceb4dfb7824a11b8169a5b0102531a386712c8e5f24652e28bd27",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "866d454f870f25e28cfb3601f65bc873a2dd1b31a4d63efb2b3a828865ff3d16",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "eda22c516aa2a9aa24ee2901b5b15ed3eab2dc03249354f8e1483e8d7748a63a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "7e4851cc3d7e5a1c6badb01f6c46831ff15940df225549620be27aee24e8dc5c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "a38ccc0832fee8b46a177abb19fec2ea1e292f1e8cef5e14ac79bd05a3268435",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "edf61fc25f8ed76043771fb3ed22e5b60dd03b6284c9c1a607f4da5f389c4c95",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "eb82b221f65ce3abf1216c95fd044c4d75748f5729bf12152c117edc41de0734",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "8b6afc633637e8657bb506bfca01ab009d82f609589206b84caa6231d40783f0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "9c038f432a3c89f22b2d4c33467d0109ae35a823a335d162215bae669126022d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "aa9345c75e4eb6d01deab6eec2205e50221b39de7ef32093808777e71ff84962",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "8c3e5a2a448342bf81f5fc6ca630056fb3fe010c468305c36c81c2a25c718fdf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "12566c2fe2bb5e15d0dc22df999183747c66216f181f49acf9a00d20921e4285",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "e99885037bba12118ff9a434f7e800f355a8b77a50a3bbf354fae3a72308b9d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "2c58caf41b57088fc4606fbf7a2a98fa7af365f32a6bf0c5677e6cafb7405f6f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "6a60a67a2f87f98adba0efb019149c0c98401122d3f68656cc8cf81f6fb54bd6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "73a7525e0fb71528508c11bf6134e927d0e99ca31d88e9c82711560c471da501",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "fc6f22f2e9afeb23703406ff8302e64536b744ed6ce528d71602c9d15ee4285d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "b2e3092969878e97bdf8bcafc21b6166b0be47839118a2837d0b680e5a02d068",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "85b7b2844a9d98bd7527b85709ed8e2cb729cf2fed5d01969185f80e46fcaa5f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "0e822fde5b05b19ccc1cc72161af582066c9ad88e5e90bbf8558432378398cd0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "b95efd6c86200ebe148dde3fab3493fc085ceedf0537931fc161f8e88b04b88f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "b04e75e2a15d2095522fece214c7fb25d0a38190fd222e35e87ebbcf3efd4a9c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "7a68cde347e2f4dd86e3419ff3dbfe6c69aef1000fd0ecc6030d50fe737309c2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "cbe9bd4f442690446dca737b446af66155fec3e6bcdbdffb9acf01dc51ac7d2b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "04a3ee3a00d97a24ee03adc9facb107c086413f388522f256bb940bb6ad39f43",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "0cb1cc5c7c604f0652982cf0d5c294b5d31d0e0ccd509b74c7c34055affd50b3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m15-manual-w3000",
+          "source_sha256": "007cfe1a3460a32949772852e75c767c64a832a6ddb0e670a795ec30e9810681",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m15-manual-w3000",
+          "source_sha256": "2ce7c3ce3da837e55bb9df99d2a6fdd8dc6cc54b0b7e365a278f74748b01d525",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "8e1e937e2fd8cae58c38a12e0eecb182b4aa1bb58bd972c12b4490f20ac354fb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-manual-w3000",
+          "source_sha256": "2afd6e3778b6a170a020716ffb44dcc0851cb74bdf7e96e824c2e78419f0dec2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m15-manual-w3000",
+          "source_sha256": "f50cf436e4930282976e3c0ecb55c2a325e1ea8109abc43b346a7954da256db9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "e9c7b7757a1fbdd271a462fc8295b087b56ab11bace39c5a0c2baf751692a71f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m15-manual-w3000",
+          "source_sha256": "00d5dbc40b11baa06106611d5a214038e943bec9c65ee696aa057d34bfb3c839",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m15-manual-w3000",
+          "source_sha256": "91580775f4b4a4fb9dd64f998d608c71dbe88e40dc17d780ce94b76eb5da3298",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "0fd330e0929c22f5c3ed4fcec31cde33bb2b2f785723ac0edd227f8cb15a5ba0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m15-manual-w3000",
+          "source_sha256": "94a5cf45ed07f2fc8a924b524aab5ab709d86899fc1851e0d49d06f07a9afa4f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m15-manual-w3000",
+          "source_sha256": "78fcb494fb65af4c5cd1d4ba87b04db3b0fc924829104ef00f74a951dea6d69a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "c9af57ef545169a283f23513a0d9f438c59d8928b442499c7c96222df717f214",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m15-manual-w3000",
+          "source_sha256": "de7705fdab52e2326e10002a6996802aeaba5172619588d422beb31f751470a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m15-manual-w3000",
+          "source_sha256": "234220e98496b6b2e9e467b1ca7d7b30b7a9eb9eda6a675ec7d32e704a0a7dba",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "f6a9457ba05f5ff39cd0f7284bd3b44313268377699e42553df51575fedb749e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m15-manual-w3000",
+          "source_sha256": "0be23def952e5a0db7fe8e82e91cdc1ccd792c8379bb8d8053326560e1e3f234",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-manual-w3000",
+          "source_sha256": "933b8928dc84434a0c07fcf994b19876deb9635837f7cd512107e65277a8aed2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "e8ad5bcbbb6b85d9b2a53d59bd01525be9023864a78cffc05062aa79d380c929",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-manual-w3000",
+          "source_sha256": "0fb1245e2e84cadbd07770d5b7561d1b001a8300f8031df99fabd482808e6e8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-manual-w3000",
+          "source_sha256": "a4f284c466a603f6f5b7ac6bb676aea43c9cca1bb7fb6bc116c1107ae0c66aee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "4d9293748f5cf82aa4bd6ad15fc40118eba00aca93a70ddbfebe4df735df0f87",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-manual-w3000",
+          "source_sha256": "3838c9f605dcd2a486a07b8ef8f502243fa69b4b857f95f3bec0236aef608e27",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-manual-w3000",
+          "source_sha256": "dccaa055dde0a1c12ce89aabb02fe7a87d4585c6671ea75f07b8666900a42e77",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "1d9bf9ca6cd8a45d6d30cfd77130eff6c9c1706afdf20450352b6448d8c2fd7d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m15-manual-w8504",
+          "source_sha256": "bb5f44349fb26b7fc9801960730a4cb62d34558bb5d05d5d0a44eeffb4242bad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m15-manual-w8504",
+          "source_sha256": "9ae05d626c3566535135520210a19f9725f51e1335ba301d8ab182ba7e47c19d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "8ba17ad6698a0a9290b4df2a6c2605a6e602505df950b827f0df58e5ab0c136d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-manual-w8504",
+          "source_sha256": "030713dd09a2d7d22cf5588d929b935372227c4c9f32c3bc8bf2ea990c715182",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m15-manual-w8504",
+          "source_sha256": "8b8368641d517594c019595bdefe2f646995003aff7ee6f20569544ae30fe092",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "4dfd9c0d373c64e4d579c0bbb984f02e712bdb7b754939cf1c8707dd8a6ac6a9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m15-manual-w8504",
+          "source_sha256": "b88224a48543d8d63c67d19a15aedaff36fe66fa69509398b2f4ea0458e22eb7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m15-manual-w8504",
+          "source_sha256": "632bfd8b5ec521b8324a95413e586de29485778c817e9a2932c2df3f58445fcb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "acf40b2faf5ec5dde84e8f0d774e0f0cc6b9ab1c29a181a0fdf42ec38c62b99f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m15-manual-w8504",
+          "source_sha256": "4398974e479af1eae30c943cef78c978275da913ee482e753c049dc1460290de",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m15-manual-w8504",
+          "source_sha256": "1cc07e61a25086e026ca24c2afa4807287b72e7ed0fe8d3043b6d19aa10f76ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "46306a81dff8cbc2eaec079ddf51ac4c12e4cddf2abc1f6097603b05d8c1a6c0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m15-manual-w8504",
+          "source_sha256": "3c38214eb9023979f17daab9ae96586823b26a586e4c8535c54d94bb59405a74",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m15-manual-w8504",
+          "source_sha256": "b7807a8d6ccdcf8f7917f2a1f4927e43d431ac1d8182d303497d71e9305286f6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "43fbb63ac65261d481d38df18bfcf8ce33253e1db5409af9d98d946843082189",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m15-manual-w8504",
+          "source_sha256": "16d8b38d89e3e82f6bbf0f73fc9b1b77c59885d4c084c158367d6d7566b7ba8a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-manual-w8504",
+          "source_sha256": "8e83f1dae42c5a2a82596da215476eacebf358a4ea8846d8f7b0aa0474c8aea7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "4e183d9c9d06ec51d5813f9dff212b4e0f304ed133f76621ae635eb743990c46",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-manual-w8504",
+          "source_sha256": "3d5a8bdfaf5b838a1f0762f9dc66bf6ef6d499d5eea39e5202330daaaee4242a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-manual-w8504",
+          "source_sha256": "95ab5d2e934f3f114b0b36dd73540cd32f11c6ac2349bef0f83ee2cd3301c66b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "ac26134ea95bc2bad9832be21457625eed5e12560f77dadeacf2a3dcad364212",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-manual-w8504",
+          "source_sha256": "81948a5c55f2117b8a5c5b154ba172e7a10b7d658ba3b7906fc7fd699c417722",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-manual-w8504",
+          "source_sha256": "27058fdf119c335bccbabca164f16e4da7420e0b94ec7532c0892d7ceae4928a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "b95a08aaa9e4ac0eede4bd698a5843686e978394a32fa4e84ef309b7d4b363bc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "c63fb78ee5c030e18ef90b90ff8238452672b5e4477fd54253c7e76c2a0aa4b4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "6b3063a6073be3824b2f42f1f64581698dfefca5422c6812ed4554e71c76161d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "a54612be4e4485dd422f558c3dcbfcab219ab79b8ad558719e571a43e23031c1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "a6239826dea2ebc290b3b876a9ea17177be993f395796253d8c06100c139d553",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "aff136d5ca9f960377ea49e5691c1df5671cd202cca340c374b84e93045eda33",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "7e8310506e2e20896d6f9db2beb01b7ae2f9efe8c9c3b8ba9eebb34e26403354",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "51d718743b1d7b533b4cd3fde726277bef87e4bbb4e70c638c9c03d50df24a8e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "a53b8c4a1f0fdbb40cf3656a0743d06cee3a7136194048da7284155e63878674",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "7c8613a44b5cb70a00be844cb2969e8ab0ebd9d704b58b5fc73f85e173da5d19",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "e0b98a0dc251a6f7c6c0b80cd89a475372b8e3d6e7f47d85910063e3a36e3e81",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "91e1a66b41d92904ed9db81be823f0f0fd8693bef5895b017fa07843e98a808f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "86efe02b460bae0e8a7c7df6732c5b5406c6426b7fae36abbf3f2c960f275834",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "35da3a9cd24740917b32b67b0d5af0411694f11761446a6b01f2142008ba0602",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "8eab99afbaf57bee3c1b64beeb98cb5d7e6489e859eeef77460c615e7eb4d984",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "9602ce11976cf2d412b785ff03ec1c6a50f6f8120eeafea30ffaa2a7b155f726",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "00c1ad3e4ae5c30e4ecee4115cc31767a702fe10ca2d04c4ce00e155c259a4a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "8f61f0a7e52e87213ca387f55283bc4cacfa7cc7d11ae402728aa8154cb93c36",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "519a73dfa5225539ad137c360518307d7209004589d75835125717b547ee3adc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "deb26fdb6e70dfdf1d55b8484abb64de316783e1e39ccba073810e86586b8a2e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "c1676d599129efadcba2f04e45796995ab65f29a7d9be5ede376d58f90458038",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "047c375d8ceecddcb4d65c5eac9ac1575d8e64133c283837d098079efed328b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "9670155fc48a0b131b080cecc97b578d5844a157ed56a747099660288ba10fbd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "7667024cb2720a8abcc9114998f5f08d92f35eaa52c01113e3a76160631f12a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "838463e6529118b72b13d62fe1892d1c6b81dde24958632262b7f6b52562d574",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "0df75c11ab446a0de59e42a240c80907c124868f94cc5297d8350cbb06b20711",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "5cb4f80e32fd0e6ee600a1f1e8fc6236fea7fdde6197b4d45cec9ee2da87bf3f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "ef1efd7cb4af23c5a73833497a5fbfac23c87939dabc6b32cc5f63196cdb4976",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-canonical-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "5d30ed9e37834834b8b55c53d6e2e83c4728904594b56915120d789fe8ae0c76",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "91c157a8e5a6205b1c1f4733c34685f33355da942fa7b41bae0938ccdb07ff4c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "1528e5501810ee28490446321399cb202d9cd33dc4b6d75d7b421014bf59abae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-lower-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "66a2d98dd54b331c49104ba795495c97d13f6286564371b2e03c48a35c3329b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "9e194959151abb0ca6f8bef21744767bac53870557b1d98dbbca808b4ab7ad7e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "631c7955c58e085265bf09c13801db4ab2ea46558318c268c43a729eaf8db8d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-upper-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "07cab34042bc66a67e7bd5917fd591516669f807c7cf13bffeb50ac0cccdb381",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "9e41e74f0c2713e46697f5b93e977cd8415d20d0694d5d65b186de516441fedd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "a1a0fa84b5e6e0e602aebb0c5f8ccf30010052f34c89854ff5ab71c91208b74a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-yu-mincho-mixed-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "961e546fd857dc7c7d90642c3a8955e36bcdaf971fd066cb91abcb7c6fd5c39e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "e073e0066d06660ad683aad0ca928c8f9b869f23f5d4a54d493ddbd3520af127",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "5a28cc1440a76cac9862706df0feb95409e1c96a90c415199bda36fe8f410fe7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-canonical-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "dab2d45f2d1f51c720164db0e07001d5205863f5c3274280ec971b9aac3b8ca2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "089fc56261b3983ce9cbf463300c7e47a853c05582f069f8c35bfe36d359d48a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "7a3e4cccea46f96052413e4a50b4c039fdb383ec3061564fc5023336bbd04cde",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-lower-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "7069c71d92df0faf6f9972ae0f1a5048ee891691032fdb8c9992f5bbd184097e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "271fda8eb657d34303777b48309377742f1bd2911c16c50ec818cba38a95c8db",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "77ec1b9269cce894750fd559b8fdb6c489b8e9f71d7a51981edaae40f2c47ac2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-upper-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "814b263c26c6990902663e099f63ee601e29f12613d85c76cc1d3e23b0a54d9d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "6951a2567f4d5cb1c13fe6ccafb02c26519a786205db73a0c966428892a8c2d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "7cbc15f82f3c79fd724cb75bc23a34c5581aa8965081421f6ddf45af2f680347",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/inputs/word-windows-mincho-ms-mincho-mixed-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -62370,6 +63729,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/word-output-font-facts.json",
       "sha256": "24d7cd4c8b92054e9974ccb42a681ea5db12a9e768cc59a083a410d114e620e1"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T183117977Z-ccf1f021/word-output-font-facts.json",
+      "sha256": "cf09e4f86ab8432f1d3edb9ba618f9c4e27b3f90517d2b23d4be4b2ce3461d25"
     }
   ]
 }
