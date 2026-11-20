@@ -23934,7 +23934,8 @@ where
 
         // Keep Windows-only allocation out of the Mac renderer's hot body.
         #[inline(never)]
-        fn distribute_windows_mixed(
+        fn distribute_windows_mixed<Context: LineWrapContext>(
+            context: &Context,
             prepared_segments: &mut [PreparedSegment<'_, '_>],
             paragraph_style: &ParagraphStyle,
             extra_total: f64,
@@ -24044,7 +24045,40 @@ where
                                 )?;
                                 (target - (right.3 - left.3)).max(0.0)
                             } else {
-                                ((right.3 - left.3) * 0.5).max(0.0)
+                                let advance = (right.3 - left.3).max(0.0);
+                                let style = &prepared_segments[left.0].style.resolved;
+                                // Word's Latin word spaces keep half their paired
+                                // advance. Ideographic-classed spaces recover the actual
+                                // pair adjustment before expanding their nominal cell.
+                                let mut unpaired = advance;
+                                let right_style = &prepared_segments[right.0].style.resolved;
+                                let descriptor = style.descriptor_for_grapheme(" ", classify_script(" "));
+                                let space_is_latin = jade_docx_layout::line_metrics::word_windows_justification_space_is_latin(descriptor);
+                                if !space_is_latin && right_style.measures_letter_pairs()
+                                    && descriptor == right_style.descriptor_for_grapheme(right.2, classify_script(right.2))
+                                {
+                                    let text = format!(" {}", right.2);
+                                    let initial = TextAdvanceState {
+                                        prev_grapheme: index.checked_sub(1).map(|i| nodes[i].2.into()),
+                                        ..TextAdvanceState::default()
+                                    };
+                                    let mut cache = FxHashMap::default();
+                                    let mut adjustment = 0.0;
+                                    let result = jade_docx_layout::line_wrap::walk_text_advance_steps(
+                                        context, &text, right_style, Some(paragraph_style), &initial,
+                                        nodes.get(index + 2).map(|node| node.2), &mut cache,
+                                        |step| {
+                                            if step.rel_offset == 1 {
+                                                adjustment = step.advance.kerning_adjustment;
+                                            }
+                                            Ok(())
+                                        },
+                                    );
+                                    if result.is_ok() && adjustment.is_finite() {
+                                        unpaired -= adjustment.min(0.0);
+                                    }
+                                }
+                                jade_docx_layout::line_wrap::windows_mixed_justification_space_capacity_px(advance, unpaired, space_is_latin)
                             };
                         }
                     } else if prepared_segments[left.0].style.resolved.has_same_requested_times_east_asia()
@@ -25525,6 +25559,7 @@ where
                         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
                         .then(|| {
                             distribute_windows_mixed(
+                                self,
                                 prepared_segments.as_mut_slice(),
                                 paragraph_style,
                                 extra_total,

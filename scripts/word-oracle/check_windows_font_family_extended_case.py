@@ -14,7 +14,7 @@ from paragraph_backgrounds import compare_paragraph_backgrounds
 from windows_xps_fonts import extract_xps_fonts
 
 INDEX = Path('tests/word-oracle/windows/font-family-extended-cases.json')
-INDEX_SHA256 = '608d1d8085fef44daa8ebb8b3951080a2cb4a4c6ad7ea470c1b30a7ef099cf64'
+INDEX_SHA256 = '226f6549c5a781124b1ef7328440a6a352c03241d6efa4e746d6370724bbb2ce'
 FAMILIES = {'Century': 'cEnTuRy', 'Bookman Old Style': 'bOoKmAn oLd sTyLe',
             'Yu Mincho': 'yU mInChO', 'MS Mincho': 'mS mInChO'}
 STYLES = ('regular', 'bold', 'italic', 'bold-italic')
@@ -22,14 +22,13 @@ STYLES = ('regular', 'bold', 'italic', 'bold-italic')
 
 def required_word_coordinates(case):
     family = case['canonical_family']
-    known = family in ('Yu Mincho', 'MS Mincho')
-    return known and (case['compatibility_mode'] == 15 or case['line_ending'] == 'paragraph')
+    return family in FAMILIES
 
 
 def verify(root=ROOT):
     require(sha(root / INDEX) == INDEX_SHA256, 'Extended family-case index changed')
     index = read_json(root / INDEX)
-    require(index['schema'] == 1 and len(index['fixtures']) == 240,
+    require(index['schema'] == 1 and len(index['fixtures']) == 384,
             'Extended family-case coverage removed')
     names, controls, coverage, cases = set(), set(), set(), []
     for case in index['fixtures']:
@@ -70,11 +69,11 @@ def verify(root=ROOT):
                       case['line_ending'], case['line_width_twips']))
         cases.append((case, alias, canonical))
     expected = {(f, s, v, m, e, w) for f in FAMILIES
-                for s in (STYLES if f in ('Yu Mincho', 'MS Mincho') else ('regular',))
+                for s in STYLES
                 for v in ('lower', 'upper', 'mixed') for m in (14, 15)
                 for e in ('manual', 'paragraph') for w in (3000, 8504)}
-    require(len(controls) == 80 and coverage == expected
-            and sum(c['required_word_coordinates'] for c, _, _ in cases) == 144,
+    require(len(controls) == 128 and coverage == expected
+            and sum(c['required_word_coordinates'] for c, _, _ in cases) == 384,
             'Extended family/style/Word-assertion coverage removed')
     return cases
 
@@ -169,7 +168,7 @@ def check(executable, output, root=ROOT):
         print(case['name'] + ': case identity PASS; original Word '
               + ('required PASS' if case['required_word_coordinates'] else 'pending observation retained'),
               flush=True)
-    require(len(rows) == 240 and sha(executable) == native_sha, 'Extended case/native coverage changed')
+    require(len(rows) == 384 and sha(executable) == native_sha, 'Extended case/native coverage changed')
     (output / 'results.json').write_bytes((json.dumps(dict(native_sha256=native_sha, cases=rows),
                                                      indent=2) + '\n').encode())
     return rows

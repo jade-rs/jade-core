@@ -495,7 +495,7 @@ jobs:
           name: windows-word-font-family-other-case-differences
           path: target/windows-font-family-other-cases
           if-no-files-found: ignore
-      - name: Assert versioned Windows Mincho family-case metrics and original Word coordinates
+      - name: Assert all versioned Windows family-case metrics and original Word coordinates
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_font_family_extended_case.py
           python scripts/word-oracle/check_windows_font_family_extended_case.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
@@ -526,6 +526,22 @@ jobs:
             !target/windows-mincho-sizes/**/fonts/*.otf
             !target/windows-mincho-sizes/**/fonts/*.ttc
             !target/windows-mincho-sizes/font-cache/**
+          if-no-files-found: ignore
+      - name: Assert all original Windows Word font-spacing contexts
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_font_spacing.py
+          python scripts/word-oracle/check_windows_font_spacing.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned Windows font-spacing coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-font-spacing-differences
+          path: |
+            target/windows-font-spacing
+            !target/windows-font-spacing/**/fonts/*.ttf
+            !target/windows-font-spacing/**/fonts/*.otf
+            !target/windows-font-spacing/**/fonts/*.ttc
+            !target/windows-font-spacing/font-cache/**
           if-no-files-found: ignore
       - name: Assert independent versioned Windows Word XPS print origins
         run: python scripts/word-oracle/check_windows_xps.py --compare-rendered

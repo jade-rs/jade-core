@@ -1033,7 +1033,7 @@ pub fn word_compressed_punctuation_east_asian_advance_scale() -> f64 {
 /// Classify known Windows faces using original Word family-case controls.
 /// Keep descriptor parsing and Mac family classification unchanged.
 pub(crate) fn windows_metric_family(family: &str) -> &str {
-    const FAMILIES: [&str; 7] = [
+    const FAMILIES: [&str; 9] = [
         "Arial",
         "Calibri",
         "Times New Roman",
@@ -1041,6 +1041,8 @@ pub(crate) fn windows_metric_family(family: &str) -> &str {
         "Aptos Display",
         "Yu Mincho",
         "MS Mincho",
+        "Century",
+        "Bookman Old Style",
     ];
     if FAMILIES.contains(&family) {
         return family;
@@ -1127,6 +1129,19 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
             },
         });
     }
+    if matches!(family, "Century" | "Bookman Old Style") {
+        // Word 16.0.19127.20936 original XPS font programs: Century's
+        // synthetic styles retain 951; Bookman has four distinct faces.
+        // Original balanced/unbalanced controls retain the same Latin gap.
+        let average = match family {
+            "Century" => 951.0,
+            _ => [1008.0, 988.0, 1079.0, 1102.0][usize::from(style.0) * 2 + usize::from(style.1)],
+        };
+        return Some(WordAutoSpace {
+            em_px: f64::from(size_pt) * 96.0 / 72.0,
+            trailing_share: 2.0 * average / 2048.0,
+        });
+    }
     if family != "Times New Roman" {
         return None;
     }
@@ -1197,7 +1212,21 @@ pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> O
     let family = windows_metric_family(family);
     if !matches!(
         family,
-        "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
+        "Arial"
+            | "Calibri"
+            | "Times New Roman"
+            | "Aptos"
+            | "Aptos Display"
+            | "Century"
+            | "Bookman Old Style"
+            | "Yu Mincho"
+            | "游明朝"
+            | "YuMincho"
+            | "YuMincho-Regular"
+            | "MS Mincho"
+            | "ＭＳ 明朝"
+            | "MS 明朝"
+            | "ＭＳ明朝"
     ) {
         return None;
     }
@@ -1244,7 +1273,13 @@ pub(crate) fn word_windows_balanced_latin_space_advance_px(descriptor: &str) -> 
     let family = windows_metric_family(family);
     if !matches!(
         family,
-        "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
+        "Arial"
+            | "Calibri"
+            | "Times New Roman"
+            | "Aptos"
+            | "Aptos Display"
+            | "Century"
+            | "Bookman Old Style"
     ) || (family == "Arial" && font_descriptor_style(descriptor) == (false, false))
     {
         return None;
@@ -3849,6 +3884,15 @@ pub fn word_windows_justification_space_is_latin(font_descriptor: &str) -> bool 
     let Some((_, family)) = split_font_descriptor(font_descriptor) else {
         return false;
     };
+    let family = family.trim().trim_matches(['\'', '"']);
+    // Original Century/Bookman mixed lines retain the boundary before a
+    // following space. This policy is independent of their known line boxes.
+    if matches!(
+        windows_metric_family(family),
+        "Century" | "Bookman Old Style"
+    ) {
+        return false;
+    }
     word_latin_font_vertical_units(family, Some(font_descriptor)).is_some()
 }
 
@@ -3907,6 +3951,11 @@ fn word_latin_font_vertical_units(
         }
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
+        // All four original Windows Word Bookman XPS faces retain this hhea
+        // box. Keep Mac's existing host-measured line metrics unchanged.
+        "Bookman Old Style" if word_layout_platform() == WordLayoutPlatform::Windows => {
+            Some((1929.0, 475.0))
+        }
         // Unchanged Word Mac Noto PDF: hhea 2189/-600, no gap, 2048 upem.
         "Noto Sans" if word_layout_platform() == WordLayoutPlatform::Mac => Some((2189.0, 600.0)),
         // Word for Mac uses the Angsana New hhea line box for both
@@ -3952,6 +4001,7 @@ fn word_latin_font_vertical_units(
                 "Arial",
                 "Times New Roman",
                 "Century",
+                "Bookman Old Style",
                 "Verdana",
                 "Courier New",
                 "Aptos",
@@ -5092,6 +5142,68 @@ mod tests {
     }
 
     #[test]
+    fn windows_bookman_line_box_uses_original_hhea_and_preserves_mac() {
+        use super::*;
+        let previous = word_layout_platform();
+        for prefix in ["", "bold ", "italic ", "bold italic "] {
+            for family in [
+                "Bookman Old Style",
+                "bookman old style",
+                "BOOKMAN OLD STYLE",
+            ] {
+                let descriptor = format!("{prefix}12.00pt '{family}'");
+                set_word_layout_platform(WordLayoutPlatform::Windows);
+                assert_eq!(
+                    word_font_vertical_metrics_px(&descriptor),
+                    Some((1929.0 * 16.0 / 2048.0, 475.0 * 16.0 / 2048.0))
+                );
+                set_word_layout_platform(WordLayoutPlatform::Mac);
+                assert!(word_font_vertical_metrics_px(&descriptor).is_none());
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_century_bookman_gaps_use_original_font_averages() {
+        use super::*;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for (family, averages) in [
+            ("Century", [951.0; 4]),
+            ("Bookman Old Style", [1008.0, 988.0, 1079.0, 1102.0]),
+        ] {
+            for (index, prefix) in ["", "italic ", "bold ", "bold italic "].iter().enumerate() {
+                for spelling in [
+                    family.to_owned(),
+                    family.to_lowercase(),
+                    family.to_uppercase(),
+                ] {
+                    let descriptor = format!("{prefix}12.00pt '{spelling}'");
+                    for balance in [false, true] {
+                        let metrics =
+                            word_windows_latin_auto_space_metrics(&descriptor, balance).unwrap();
+                        assert!(
+                            (metrics.trailing_gap_px(false) - 8.0 * averages[index] / 2048.0).abs()
+                                < 1e-10
+                        );
+                    }
+                    assert_eq!(
+                        word_windows_balanced_latin_space_advance_px(&descriptor),
+                        Some(16.0 * averages[index] / 2048.0)
+                    );
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(
+                        word_windows_legacy_justification_average_width_px(&descriptor).is_none()
+                    );
+                    set_word_layout_platform(WordLayoutPlatform::Windows);
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn windows_styled_mincho_latin_boundaries_keep_the_authored_quarter_em() {
         use super::*;
         // Original Word 16.0.19127.20936 styled Mincho controls at 12pt
@@ -5358,11 +5470,14 @@ mod tests {
             ("bold 12.00pt Arial", 980.0),
             ("12.00pt Calibri", 1067.0),
             ("12.00pt 'Times New Roman'", 821.0),
+            ("12.00pt 'Yu Mincho'", 1024.0),
+            ("bold italic 12.00pt 'MS Mincho'", 1024.0),
+            ("12.00pt 'ＭＳ 明朝'", 1024.0),
         ] {
             let actual = word_windows_legacy_justification_average_width_px(descriptor).unwrap();
             assert!((actual - 16.0 * units / 2048.0).abs() < 1e-10);
         }
-        for descriptor in ["12.00pt Yu Mincho", "12.00pt Unknown Face", "invalid"] {
+        for descriptor in ["12.00pt Unknown Face", "invalid"] {
             assert_eq!(
                 word_windows_legacy_justification_average_width_px(descriptor),
                 None
@@ -5385,6 +5500,10 @@ mod tests {
             assert!(word_windows_justification_space_is_latin(descriptor));
         }
         for descriptor in [
+            "12.00pt 'Century'",
+            "bold 12.00pt 'century'",
+            "12.00pt 'Bookman Old Style'",
+            "italic 12.00pt 'BOOKMAN OLD STYLE'",
             "12.00pt Yu Mincho",
             "12.00pt MS Mincho",
             "12.00pt Unregistered Font",

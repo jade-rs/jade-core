@@ -2541,6 +2541,30 @@ pub fn distribute_east_asian_justification(
     shares
 }
 
+/// Ideographic-classed space expansion starts from its unpaired advance. Recover any kerning
+/// reduction before allowing the existing half-space expansion. Both inputs
+/// include the run's authored tracking and horizontal scale.
+/// The Windows caller owns this plan; Mac uses its separate allocator.
+pub fn windows_mixed_justification_space_capacity_px(
+    advance: f64,
+    unpaired: f64,
+    space_is_latin: bool,
+) -> f64 {
+    if !advance.is_finite() || advance <= 0.0 {
+        return 0.0;
+    }
+    if space_is_latin {
+        return 0.5 * advance;
+    }
+    let nominal = if unpaired.is_finite() {
+        unpaired.max(advance)
+    } else {
+        advance
+    };
+    let recovery = nominal - advance;
+    0.5 * nominal + recovery
+}
+
 /// Intrinsic capacities of one Windows mixed-script justification boundary.
 #[derive(Clone, Copy, Debug)]
 pub struct WindowsMixedJustificationOpportunity {
@@ -2658,8 +2682,43 @@ mod windows_mixed_justification_tests {
     use super::{
         distribute_windows_legacy_mixed_justification as legacy,
         distribute_windows_mixed_justification as distribute,
+        windows_mixed_justification_space_capacity_px as space_capacity,
         WindowsMixedJustificationOpportunity as Opportunity,
     };
+
+    #[test]
+    fn original_century_space_recovers_its_kern_before_expanding() {
+        // Original Word Century has a 569-unit space and a -113-unit
+        // space/A kern in its 2048-unit em. Expansion must not shrink its
+        // allowance a second time by measuring the already-kerned gap.
+        let unit = 16.0 / 2048.0;
+        let nominal = 569.0 * unit;
+        let paired = (569.0 - 113.0) * unit;
+        assert!((paired + space_capacity(paired, nominal, false) - 1.5 * nominal).abs() < 1e-12);
+    }
+
+    #[test]
+    fn latin_word_spaces_keep_their_original_paired_capacity() {
+        // Original Word Arial Bold and Times spaces use their paired width,
+        // unlike Century's ideographic-classed space. Recovering these kerns
+        // moved previously matching mode-15 mixed lines in both widths.
+        let unit = 16.0 / 2048.0;
+        for (space, kern) in [(569.0, 76.0), (512.0, 113.0)] {
+            let paired = (space - kern) * unit;
+            assert_eq!(space_capacity(paired, space * unit, true), 0.5 * paired);
+        }
+    }
+
+    #[test]
+    fn unpaired_spaces_keep_authored_tracking_and_invalid_measurements() {
+        for tracking in [-0.5, 0.0, 1.25] {
+            let advance = 4.0 + tracking;
+            assert_eq!(space_capacity(advance, advance, false), 0.5 * advance);
+        }
+        assert_eq!(space_capacity(4.0, f64::NAN, false), 2.0);
+        assert_eq!(space_capacity(0.0, 4.0, false), 0.0);
+        assert_eq!(space_capacity(f64::NAN, 4.0, false), 0.0);
+    }
 
     #[test]
     fn legacy_spaces_reach_equal_widths_before_auto_spacing_and_uniform_residual() {
