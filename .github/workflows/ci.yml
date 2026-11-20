@@ -315,6 +315,7 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_color_span_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_word_boundary_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_y_length_probes.py
+          python -m unittest discover -s scripts/word-oracle -p test_windows_y_pdf_context_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_hard_break_space_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_legacy_justification_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_xps_fonts.py
@@ -494,6 +495,20 @@ jobs:
         with:
           name: windows-y-length-differences
           path: target/windows-y-lengths
+          if-no-files-found: ignore
+      - name: Assert versioned Windows Word paragraph-order screen and print origins
+        run: python scripts/word-oracle/check_windows_y_pdf_context.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload Windows paragraph-order coordinate differences
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-y-pdf-context-differences
+          path: |
+            target/windows-y-pdf-context
+            !target/windows-y-pdf-context/**/fonts/*.ttf
+            !target/windows-y-pdf-context/**/fonts/*.otf
+            !target/windows-y-pdf-context/**/fonts/*.ttc
+            !target/windows-y-pdf-context/.font-cache/**
           if-no-files-found: ignore
       - name: Assert versioned Windows text effects and absolute outline geometry
         run: |
