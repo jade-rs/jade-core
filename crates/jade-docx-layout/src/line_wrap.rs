@@ -1575,26 +1575,6 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
         run_letter_spacing,
     } = context;
 
-    // A zero adjustment is already the requested result. Keep the rare Times
-    // space policy out of ordinary Japanese and non-Times glyph advances.
-    let kerning_adjustment = if kerning_adjustment != 0.0
-        && !measured_width_is_oracle
-        && resolved_style.is_some_and(|style| {
-            style.has_same_requested_times_east_asia()
-                && windows_times_east_asia_space_pair(
-                    paragraph_style,
-                    style,
-                    prev_prev_grapheme,
-                    prev_grapheme,
-                    grapheme,
-                    next_grapheme,
-                )
-        }) {
-        0.0
-    } else {
-        kerning_adjustment
-    };
-
     // Width classification and font-slot classification are independent:
     // these observed HAnsi glyphs keep their requested Latin face.
     // Check the character before parsing a descriptor on this hot path.
@@ -1845,6 +1825,26 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
         .unwrap_or((0.0, 0.0));
     let glyph_box_width =
         core_advance + snap_trailing + balance_extra + implicit_latin_trailing_gap;
+    // Only explicit Times slots need the space exception. Resolve it after
+    // the other widths so the adjusted value need not survive those calls.
+    let kerning_adjustment = if resolved_style
+        .is_some_and(ResolvedRunStyle::has_same_requested_times_east_asia)
+        && kerning_adjustment != 0.0
+        && !measured_width_is_oracle
+        && resolved_style.is_some_and(|style| {
+            windows_times_east_asia_space_pair(
+                paragraph_style,
+                style,
+                prev_prev_grapheme,
+                prev_grapheme,
+                grapheme,
+                next_grapheme,
+            )
+        }) {
+        0.0
+    } else {
+        kerning_adjustment
+    };
     let total_advance = (implicit_latin_gap
         + implicit_numeric_gap
         + kerning_adjustment
