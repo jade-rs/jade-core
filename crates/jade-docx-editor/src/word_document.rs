@@ -893,6 +893,9 @@ pub use protection::{
 };
 #[path = "word_document/ole_objects.rs"]
 pub mod ole_objects;
+#[cfg(test)]
+#[path = "word_document/revision_dates.rs"]
+mod revision_dates;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
