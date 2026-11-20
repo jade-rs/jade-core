@@ -60267,6 +60267,917 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T161051907Z-03bcc4bd",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd.zip",
+      "archive_sha256": "65d941cd79f1511e4708b4a89255866bca26fc996dc8fbbf04bfe98c95a1e3e9",
+      "capture_sha256": "ffbdabe413f3fd0bb5b221556f3fc6d1ea0f51a013deb8f8a1c91147676b0bbf",
+      "documents": [
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m14-manual-w3000",
+          "source_sha256": "51fcaf6f306abc48739862f7476907ed05b54fc23cec2f743e248a935eb96fbc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m14-manual-w3000",
+          "source_sha256": "3f7fd104139d8b18130bb30aa45527dbadd1ae6d806232356519a36ea3439da2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m14-manual-w3000",
+          "source_sha256": "1fa11a94c79ba2a2918300e9169dae5e928c61bf17464fe58811bcda476ab745",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m14-manual-w3000",
+          "source_sha256": "4d6d1079ff3cc0c856fa429a14ffb1703c5ebb0493c70c74b9abb4514d1440d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m14-manual-w3000",
+          "source_sha256": "529cc5e58cb26197641593628f3ce414cd4f220bebdde420d9dd010591601847",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m14-manual-w3000",
+          "source_sha256": "9aaaa16c06b27e705022071968f5ac7005e40d12922e9e51a6ad686272d75f9c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m14-manual-w3000",
+          "source_sha256": "7deab599f26c5336759c14b87deb933efbd44cbe14a43d49d00d385165172e97",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m14-manual-w3000",
+          "source_sha256": "62900d2b942a925500b5d28411d9c19fae498a19feb58d30440189fcba27ee22",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m14-manual-w3000",
+          "source_sha256": "7d012dcd894c709c311a7e6a535cc2947725cce131d26ab1ac9e6fab2eefc758",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m14-manual-w3000",
+          "source_sha256": "b971c2d8192a9ac016cb58d40e169fd732c134d159eb718775ef714b4671158e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m14-manual-w3000",
+          "source_sha256": "a653bdd673d0a7f8d5d4a53a14ed1fc90289ea364a4003c61440debd46ed8387",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m14-manual-w3000",
+          "source_sha256": "8d50bfd2e8a0904446ca9c64ab476228cbecd69a4dcecbed79284532f0910db9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m14-manual-w3000",
+          "source_sha256": "bb4edf3c356df9f53878894d4a51d6e9bab495fc8f66160d8e8d1dc650daa8c0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m14-manual-w3000",
+          "source_sha256": "9c67d5421cc4909be4cf5da5c003b8affe5ea7bd52e3744853f3cacf34847453",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m14-manual-w3000",
+          "source_sha256": "71ab5eb227226d9278fa3839530b42cfb6ec71148a43515626d95905e3af619e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m14-manual-w3000",
+          "source_sha256": "fdf36ba923b9127736ee72f01c12f27366626625b4f99fbec9112514e159e57a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m14-manual-w8504",
+          "source_sha256": "36c83b8aca123785707a66590f5dd386be690704c08e9ce593ee360f14e7c2d6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m14-manual-w8504",
+          "source_sha256": "7af402f415740dc7268f125c5d09a9dba4baf79abac1ab87375e5938623002c1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m14-manual-w8504",
+          "source_sha256": "64b5ce0d789a435317755612e044cdd69555ee6f7cd277b7b06a8547efd65292",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m14-manual-w8504",
+          "source_sha256": "65907fbed9f6efca2a728aaf456b8851b440ddcf136179dcd563ca670242d24d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m14-manual-w8504",
+          "source_sha256": "a5b335d3ab79a93f3fadb4ff38127e43237d9efb84fd20275f2f0026dfd2d6a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m14-manual-w8504",
+          "source_sha256": "66d8371753d3f570a9983d50334fc30c8e4b6bedf8e36c51bf2df70510c2c591",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m14-manual-w8504",
+          "source_sha256": "a744574efd97a8a477855bf89e98e54f13a7e5462dbbd9c65a1df8bb59dfc1ae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m14-manual-w8504",
+          "source_sha256": "478384fe1bae6558c6a91239e97bcf62bc82e076de157ed29dfc74676921ca45",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m14-manual-w8504",
+          "source_sha256": "4a83b93d85d7a31f2e30aa33dc522a6d121b782137e42563504dd6447731d81c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m14-manual-w8504",
+          "source_sha256": "85fba900cdab58db82a53baf11f3004d931ab354d650d55fca1a8e442a607abc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m14-manual-w8504",
+          "source_sha256": "6caa3d5844d0aa14097e524d4ac2c9912d4e4d5e0e9970fbee45e6baaa4eb02f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m14-manual-w8504",
+          "source_sha256": "3f2163edd2d6620c9d4252cb4c3c00d6385fddba9f13db7b9faa6a5b500107c6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m14-manual-w8504",
+          "source_sha256": "3f708c0dd8280a22baaffbec72814174461d1ff3a6e4b747206d61730ba88ec9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m14-manual-w8504",
+          "source_sha256": "9586ae70f71c16685d5d4e37e9d1737c858efa2a0a7a69f3c22a204611fbb3c7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m14-manual-w8504",
+          "source_sha256": "a1f660d8a23aff805563c56a3ff940776f5c729c52a76e242706a888f8b9bbee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m14-manual-w8504",
+          "source_sha256": "52b04b401b3a210d4a8cabb5b00328cc97ec45739b6efc7c5ec6a65df57b5051",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "75613f93285df3a38efbf774bc98b70d94f8fea3040626b741fcb85ddddbc617",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "225898dd3243d16fe39fbd661b89b2b81167ab50bbca19e800d7777db86f59fb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "df432ed0ea81230422ea209d7dd131f984cc38418b11a4f4ccbd3a99517153de",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "249d5b4ea8b734c95d360ac0fa79389f724704bf944b9b04ecc09a822000f1ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "a5d348ab625d8d7db08556cce295f33a15d43b0a39f79a5e93171da4b453be72",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "317bc5a5873a142dc74ccd82984951a2bc586ad0b6905c5678b93e7a624c81d2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "c287596598f29a7501f2385f67764347a4b9d6254a6b8870c5dc9d3469d0b872",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "5429dd179b83e7924475292ea5ba030bdacb62d02e5a10986bc3f4202e603591",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "abf4aef97b178233eb438c25d50fa76a36d5165e89a563deeac277a0f6767d02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "22f27e8df5471a2c1776c3115f6ecfa7ac155085690c48bb52d7755c379bafe2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "1d8dcd5620480300c0e42bf87de0123b2124b3df611623d59472f1490f701025",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "545faafe8ddf22523650ba41ed18d04d3d7cef9cb3cb466d81c975332ea5e1be",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "d8221e7f0a1a6344ae4797328ad485560ebc1f38ad2d483eacc60622ff8850b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "8f58202766b9cda5f96ea847e83b4636fddc9d2abd853508d9af78e03f2b8145",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "eeb8d1bbacf6365da158932538f4b1448c2cc0b57d74ed3987d1e16e8af59d10",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "cb389a732e8e1f8bfa4d61979d8b296149cfab04ebd845359b933775129826f4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "66fdc26ebb1af0c765ca089da7b786d8386a2af92b96380a4c05decf6e62b436",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "a6bb1fb24c17383ae1673e021228e533625c26e4681d54fbf0a713011ea09772",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "4d9a69961c9301a534086814b39e52144c3545fc724dadfcdecf1fc7ff29ce20",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "593aaf8c7992634c279140e4098e262aa78aa362a5f4c7ba0a070f6e60b5aea8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "2b22ae7bf10cf41a8a13842e1f1ddb1bc765aa5618863c94fc32735bccf3f170",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "d9f5cc472c06077363a70d0acfe1f9846b3440a96649e56faaf8e2795c1d7ea0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "088352e646ae3c2b04bb99709f20b04bcd7d5e43036caa4f6c92ae2310da578e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "74f10185f6adba25a34821fb5a9fae3c73ee423d9259af2d5b47a5d2290fdeaf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "b2e63ddf1d40388b93e64fe91654fe0a577d2be6577ab790a8a35db1a0e2e26e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "86cfa7752405969ea67cd43d503a118dabefa21d94d3ff665ac1e03b24ec3dee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "3e912100c018e2866d5f43197f778a441c82e9cb8d79c704441fb54575d1f5a7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "edb6e3c97bd302f92e827394ad780ffd5b5447d82c4a284b0b3b88fd044f8955",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "9d2524c55cb6f970fef26f6c01948b6a4780046331dee709934646df13776020",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "842b719c3249d99f2e51ac66459c7ef2499f236ddc0ae09f21b120b5afb2f22e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "de515c529b3c525cd09d4ea7520fd19c3b9d293d7630d1f8cb7772412becf3ec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "7425872c2042600a1e36c82c9e9b4311cf9fde0534051688b2873506e23958f0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m15-manual-w3000",
+          "source_sha256": "37778e5ae7339cbce2220d4c863a3a88c80ecbd54ba0794c3874d25217c2468d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m15-manual-w3000",
+          "source_sha256": "aa13581ed71447b0bf9a9e5ea059bbbe5854db5f95dd5b844d35c15ce05b136e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m15-manual-w3000",
+          "source_sha256": "9863d777cf99b0116d24b7ad821bab0586508b1485baf7b278cf64a8b8cf951c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m15-manual-w3000",
+          "source_sha256": "8f38e24a9f752b3faa7fd039954dcb1d8029ca953df531995d1a47846f895294",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m15-manual-w3000",
+          "source_sha256": "b4de5bdf1f15aed3244206ccc193c467e4d631a6905ea4a945b392a7f4d5bc10",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m15-manual-w3000",
+          "source_sha256": "251b8cb1a1a2879bf6ad6cf1487b6de6bc087e4218e500b3a3e1b47399d4be7a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m15-manual-w3000",
+          "source_sha256": "8e951b8f650e2137e824bfca197318b26fbe9bb63dc0b7c981d81e10cbfbf1b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m15-manual-w3000",
+          "source_sha256": "87b89cd6b088f42cdb2ab92a26c52d10bd034952edaa680c5a9f9a3cbf708d2c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m15-manual-w3000",
+          "source_sha256": "658f7d920d98de7f2f37516da1c631f75103151210477cc3a473b1cd57f352f5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m15-manual-w3000",
+          "source_sha256": "a3be9481e924f5b94787e100c17c67ee41ec8038bedcf204aae11744f6495e3e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m15-manual-w3000",
+          "source_sha256": "d1e4b668b8a8de93c478675ec8c08b7666413874049d042a81da0f26c512f0ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m15-manual-w3000",
+          "source_sha256": "de490db32e66b45aa904258e9d621dc05104bf3304ff736971c4a3fae18ac6e6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m15-manual-w3000",
+          "source_sha256": "ea4e6720a4db4e064204655fa5dc4555b5c57adbbed865fa27affbff9968e9a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m15-manual-w3000",
+          "source_sha256": "8c370c7de5e7b13bfcd127b3b6cba4416195c07967c45a11999a52d99351f2c8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m15-manual-w3000",
+          "source_sha256": "c719b432c4fab92f490f5a99f6b2c6f4782749007dac14177f9dd4186e26c11a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m15-manual-w3000",
+          "source_sha256": "81e940e6406bb97c3bd650f1e394d0bcd9bea902f960cafa1c2c9af8004b0cfb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m15-manual-w8504",
+          "source_sha256": "97e2b37665eb10d1ac258bbc8ef448d602ce119d1e51a0f66244ee4022499db7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m15-manual-w8504",
+          "source_sha256": "65ee147f2223a940c8e6f9960e75ecdd2a789afe1811e2ce0375016d0d6d21da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m15-manual-w8504",
+          "source_sha256": "468f46f33bf766ba66807d9e4dd464619b57053a751741e96dda5ec3f02059ce",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m15-manual-w8504",
+          "source_sha256": "ffe6a89ad054ce4a86f7dcd5fd1a432806bae404d72656479b374c8273aee4a3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m15-manual-w8504",
+          "source_sha256": "7453e59a3677893caae08931d25761e67f932339ba46c75978f634d8ac1911e7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m15-manual-w8504",
+          "source_sha256": "b6ca82b5636e890858453066a7feedc7391530b22076e953d7d465335a2ac9de",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m15-manual-w8504",
+          "source_sha256": "a89ac1101b32be5e8c36f14c042319a74d277e74c3f1299f5ae2c276f9c11ce2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m15-manual-w8504",
+          "source_sha256": "59dc65786542a519be2df58bced4a37cef327bd55f2a8f5aaa26503737534d8c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m15-manual-w8504",
+          "source_sha256": "788ac9705777e5ab4ef907bdad8a6e1c30aba80acea2ce6b747bf91b90239a9f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m15-manual-w8504",
+          "source_sha256": "bcb275a212819bd458969f53efec005498d0b49d0cd159798aa924d92459c665",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m15-manual-w8504",
+          "source_sha256": "53257954e7ddeda505da8bce50bba09a4111299094bd5e0c8c025b839b08037f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m15-manual-w8504",
+          "source_sha256": "5e0bfe9461cce9101df8d0f710b8fce46294252b48b0937014de77e015e171fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m15-manual-w8504",
+          "source_sha256": "9db84a7cd170099a7f384d12168015b4aab7e84006200dd0be552f19cb0e5085",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m15-manual-w8504",
+          "source_sha256": "3a0ddca751f1bbeefa3c7e33916fc70dcc3d3666bee181aa5801939ed6fea237",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m15-manual-w8504",
+          "source_sha256": "0591fa93355ad710eee1b8c8977d0cdc40a4b0d620cbc452cbe9b66b54d7f7db",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m15-manual-w8504",
+          "source_sha256": "98870ec0b5b30183cb86023178e9718a7f5925eea3d0c91b947565f807bd8f72",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "6c163febf5d4e609c5b6aae859990fdc7712d1b51c883a5b8922280624f4da75",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "6210d31296bac501b1ab80c6e36aa4a86247be68541a62f20d21786958c8582b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "0ad64006692fe77aec9b744c42abb3aaf4d0755728cdaa340633f149debdab6b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "87857a563225f1d4bff74f092fd416b2c800a4e77c4b2f65698a2f6cbe0dae3a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "d7620b218b7daa372a532a22c73687061ac2678592aea23e9efb0dedae07b9e3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "9877d2e3f140147aa13fc966cfb134614460925ef74416ac6d6806a6ed98f488",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "03c5496ce82924d7f2995440e9677852bd425ded8f1fbfab1f54276579719d31",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "515e3394393cbd4399af5dd6395e99f5214d04e50244f6b518d8541ec67b12a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "494b957138f4d5dab3a817e69de0f94d0fb325647b5072cca63eda5cdb7883ef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "3cd3073b6fe9d32b16c4adc97ed14e828553e37b3c74267e85c044b84c3cfed5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "87fd74893746d8a4bef4842b7d7e5fdb7cf2fc05db7bf4a8800d98c3ceb8d4ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "d69e1e4bc68c8a759f1c9d71b45003d75962846ffd17aa098166309895973c95",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "486dd07916919306fc7032756f31cd27b1f4d62f2b148273fcadc069ec0d444e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "fb7aa467fc0404fd96ec848ccc2257a1736b891eaad6426842a23085b7646b67",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "1320603f8a3210afc6dbf6c4aa81ea46f58d98166328c46a5193bb53b95f8f06",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "40f5ba4c3ebbad0f949210d5d00f55aa331cb64990aea5867f4482653d093ef1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "dd8953e71bad415db66380ab2ee266455e7fef7b3345664f510fb55db7d1d5d1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "9c19e3b973c336262538a4b1d7df29d95b9bd796412589ba1f599412638b5d54",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "ac53de484d8f96621f98399750c6686e8c15de05fc31817d7e4d42c72a7b46b0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-arial-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "391e7d7e2605f70192ef4d9cbc71ccb371e286a9a2b3897a5468d11353a775d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-arial-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "b4afc54882b8c74b8d71f7110bb9c35be55c90f226d0177b2a35cde082d5cc9a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "b7eb768468445199798c091687ff1ff8c2bbbdaddc7b36ecbcd6d6ea8b928196",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "673c980841175b7f89734030a87540553151aed044789b0c07a4afc374a887a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-calibri-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "fa39fe08765dda1b6d94c1a0ffc46434dd8a05fac11f5928ced4cb5b82a872c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-calibri-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "910446081d430a47c00fa9d7905ccc9edbafee9535ded6a60d1b805434a6f951",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "cc87f578765005a48d5db28ded2991758bcb79b3883cff3889ac2eb5a6962076",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "8be236c6242d33d73987eb920d78c20e14f2a8de4830fa2b8b5edf1af8606b07",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-times-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "9e98f68c7b92e4940e4556535234bd4e713695879220b4125eac457f82bdca78",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-times-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "9f4576fab8cb9fab17d88eb3a1a40a2bed73b52a9660c7d0096f44556a78bd41",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "6176d593b62a88eb2efbd53383e2feddcdfd9eeef64386e11c16546d82b219a0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "a0a5215215b11c97c2b4da27b8080f62d36371d0d49c76bf2b550b97235884d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-other-aptos-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "135464905a8f770eec2000af1460e6580386658d4e870a249a9ac102f007e6bd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/inputs/word-windows-family-other-aptos-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -60540,6 +61451,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/word-output-font-facts.json",
       "sha256": "588a47a63e862ca48a51d47283998ae83bcc60ea79463745c84112c02b94152a"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/word-output-font-facts.json",
+      "sha256": "a0a98b127687bdaa1e1e2d298d1b413ab82d529c205c50307e7efd087e2e0523"
     }
   ]
 }

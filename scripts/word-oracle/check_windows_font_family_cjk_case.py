@@ -19,7 +19,7 @@ INDEX_SHA256 = 'b9803ef8f03a29d69eb7c706382861a3a6c12e93e1eb1d30a700e38878e097a8
 W = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 
 
-def verify_source_pair(source, canonical, family):
+def verify_source_pair(source, canonical, family, canonical_family='Aptos Display'):
     with ZipFile(source) as alias, ZipFile(canonical) as control:
         require(alias.namelist() == control.namelist(), 'Mixed alias changed package members')
         require(all(alias.read(n) == control.read(n) for n in alias.namelist()
@@ -29,9 +29,9 @@ def verify_source_pair(source, canonical, family):
         require(len(a) == len(b) == 2, 'Mixed alias run coverage changed')
         for first, second in zip(a, b):
             require(second.attrib == {W + k: v for k, v in (
-                ('ascii', 'Aptos Display'), ('hAnsi', 'Aptos Display'),
-                ('eastAsia', 'Arial'), ('cs', 'Aptos Display'))}
-                    and first.attrib == {k: family if v == 'Aptos Display' else v
+                ('ascii', canonical_family), ('hAnsi', canonical_family),
+                ('eastAsia', 'Arial'), ('cs', canonical_family))}
+                    and first.attrib == {k: family if k != W + 'eastAsia' else v
                                          for k, v in second.attrib.items()},
                     'Mixed alias requested font changed')
             first.attrib.update(second.attrib)
@@ -93,7 +93,10 @@ def assert_origins(case, alias, actual, painted, emf):
 
 
 def check(executable, output, root=ROOT):
-    cases = verify(root)
+    return check_cases(executable, output, verify(root), root)
+
+
+def check_cases(executable, output, cases, root=ROOT):
     executable = executable.resolve()
     native_sha = sha(executable)
     output.mkdir(parents=True, exist_ok=False)
@@ -131,7 +134,7 @@ def check(executable, output, root=ROOT):
         rows.append(dict(name=case['name'], source_sha256=case['source']['sha256'],
                          Word_original_EMF_PDF_XPS='PASS', native_case_glyphs_screen_PDF_exact=True))
         print(case['name'] + ': original Word coordinates and case invariance PASS', flush=True)
-    require(len(rows) == 96 and sha(executable) == native_sha, 'Mixed case/native coverage changed')
+    require(len(rows) == len(cases) and sha(executable) == native_sha, 'Mixed case/native coverage changed')
     (output / 'results.json').write_text(json.dumps(dict(native_sha256=native_sha, cases=rows),
                                                    indent=2) + '\n', encoding='utf-8')
     return rows

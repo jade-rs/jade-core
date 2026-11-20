@@ -1407,6 +1407,7 @@ fn windows_balanced_latin_trailing_gap(
         return trailing;
     };
     let family = family.trim().trim_matches(['\'', '"']);
+    let family = crate::line_metrics::windows_latin_spacing_family(family);
     match family {
         "Arial" if windows_balanced_distinct_script_face(style) => {
             if let Some(metrics) =
