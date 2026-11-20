@@ -61178,6 +61178,917 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T174542293Z-6be4f2ea",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea.zip",
+      "archive_sha256": "cde4d52a3223f8371c9d2dc41fdaa5ae6cc75134d8fda16edb7d80cd7fe38628",
+      "capture_sha256": "42d9e23fcdf477f7e9d4f7664ae34ef726892e3645f8627ea394b17087a294e1",
+      "documents": [
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m14-manual-w3000",
+          "source_sha256": "fefd46fa9a164b02c07409cfa2d0ec12fa40ec76f43521e03c7ad0208ebe70c4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m14-manual-w3000",
+          "source_sha256": "878419d36308233a97fae5bbe12aee95217756edcf25b5267e2c48095069689a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m14-manual-w3000",
+          "source_sha256": "074aa24cc40ff302f2d7fcda4ff38bbee805a73892cc40763fb52430929f1753",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m14-manual-w3000",
+          "source_sha256": "78ef119f93f2abacfe9e25df7def04260512fa4fbdebdb43127766152c901e78",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000",
+          "source_sha256": "b566d456735bf690122cb94a6a76311d418a3ddf4ff839f92c06d1281ea51b3c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m14-manual-w3000",
+          "source_sha256": "e53081b460dc0f03f4bcb4e9ba2f79f93a8d592836d0a52753db4f28778caf15",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m14-manual-w3000",
+          "source_sha256": "5c872353bbd8d88386f81d36dedd31b88ec008476bc188c4a109761d917edb91",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000",
+          "source_sha256": "4e734234142883a08410ebbfe0475590cbcd7f74fee1680a5610c03674e963c3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000",
+          "source_sha256": "165a1abef2b9b93ac4d358adae69cb4eafa57aee9b5a8e30663d7bc550cfa616",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000",
+          "source_sha256": "e78f24661edfd40bd5c5bc0f1915a71688f3d3f46f5d404daeb5e0b7b4b6bd98",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000",
+          "source_sha256": "359ff39c14d89562e2c9239d86d6759216ffb0878d7da897a2eeb90c572fdc03",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000",
+          "source_sha256": "91a69b4d70e0270a124c15971ce0115215dec3b352a2f8d097e30442a6230c7b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000",
+          "source_sha256": "cb23477db2ed6e0365c7b7dc5eca567e98e844ff4c1c27451a1697399d096847",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000",
+          "source_sha256": "3d996cd680ec00b62dcbba7d63777e0b8243f6b3ab569126093980048a391558",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000",
+          "source_sha256": "d4b2ff729bf84e4704639a41dabc8687036e92e201fcdb3dadb8df137593ace4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000",
+          "source_sha256": "5019678619506e13d9c7193548748a4445157402b962e860bde459045ae8327c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m14-manual-w8504",
+          "source_sha256": "9a89a4c47c0066aebd25f0f603f923485c26f73854805c950a8378220a6e9167",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m14-manual-w8504",
+          "source_sha256": "b4c6c0edfbb4c04eb5d90651cdd9cede5158659387eb78c7db1d51d9b79533d6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m14-manual-w8504",
+          "source_sha256": "69606ca4561195da07983000dd9e170a37284355c64be1116f1490f776b7d5b8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m14-manual-w8504",
+          "source_sha256": "a50574db74f9bbe59cc646dc893391644fc74e496af1618b052e43a2e98f0f2d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504",
+          "source_sha256": "bb9cfbe13db2da533dbce14239b5b93c79d96915927e8831593af73967505c65",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m14-manual-w8504",
+          "source_sha256": "b6a8f2cac12cfc5a9ae9ea9d16e64774044c1fd0bce9bd75290d530d2a304e3e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m14-manual-w8504",
+          "source_sha256": "39799b4ef43f72e3cec613db32babad6232a7da9d59876c0397e7cafc4eee75b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504",
+          "source_sha256": "55b25d68e85b644b8da8c73b4313decb963996b8fbbb375bb01e1e3c96e5aeb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504",
+          "source_sha256": "763bb9eb6f0a45b68e4b2ac1754fcb6f767339bf9bb777885790afea6297701c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504",
+          "source_sha256": "cc2cf122e6420283cbb11e90fb401b211d99704a8d67e78fbeabb699396c24bb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504",
+          "source_sha256": "a2c4934737d8db29d126ade11b3ced5ffea8f82458eb6e2d6db60a1e25204371",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504",
+          "source_sha256": "98cb0f6be2aa2f2b6b3100253fc23cce13f0983f090e86eb71fa7ffb16d8adda",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504",
+          "source_sha256": "1cb76754f8b1a25a7caf16cd7bc123f77624984e6361d9eaf3d4a2ca7a72bddb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504",
+          "source_sha256": "296026f1fead4d654cc98142364f54d1c62e398583cf44d852c050ff958db14b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504",
+          "source_sha256": "8661a354f2374dcab1a1d9af9f1ed0e141b4ea28f842fe31c6cc5a37f14b5733",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504",
+          "source_sha256": "1c55a0f64410b41477aa2800074a3166fcea952a73937f69d48fec70d974d876",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "811d859ea21f2356bf1527a22652dbd88372547470f887d3c08af9b775c1cb16",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "cae8c872e1a5d838ad735283bbf5e8b364b6e42f68cf9d25aca77b372ce0d3a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "1da0a8d5dfb4a4d404cb4c0877934d0e091f505be109d7ef82fba848c895cd8e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "24c2e219a7cef7059f218edc96f86c4fb2931c2de459bab2b93c24ac36d70ab4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "6e8dcf6eb6d79d7a607558f4e8eacd89aafe0fdbc3ce59be7d205a197706b060",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "0e97ee2e12fd0a98b36e328ea6d40676b6d29e43bf30bea9f25484cee31189dc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "bdb9ae9c041907799a5f14e736277c374b180f0c46d81b9bedd309d78103006d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "02a73ab0d24db2e1de68676403c1ebb3b39ff9d7ae65e41034f9dd145253c0aa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "fffde19e1d98e5222f179fd30359f171e6c59b35bfa0ec1419be8303821b6a3e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "d85f07c0c6b79e831f2f09096112bea6699dfa5d71329b9599bc114ee517a4aa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "3ac36f82b183af0f88e2e9e0ae32c797e292d43dbc8f953be08e61a026b5c41c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "2abbfde5a7a8610c3e4db2c8521b6c192bfc5f6ea147922fac1410897c7a4658",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "29d84736864f2e6c8f5d4ac801ac52729312dc4f42d0c8bb067f38668a9e7465",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "9fc0617b35e9001402eeaf9cd6005512ae1b799e6c12cbe5b22f28152e4ae6bf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "2eb605607a74e53ec4b94e85fe93638bd03b4012d1b41beee5a2e56a6cbc03f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "ba3a1532a5bb3150dd2f5a9a61ba0442a81b72b0009a6ac66b7b3e6d8dfb1bcb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "c07cea8b7904536208f7370be4a01b896cefe669b5061a2c2996448abf551481",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "bd5287a4e060e69f5796d7bd1adad3ce4e10b82bcc73efc0166e8864b4c39816",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "106839e5f7d557f0214148e2c6626f72de0148fdccf00f8f189b99345be0e6f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "3c94a6867242c63848e81f9005bbc23aae4b8f84be585938dd85dedef33302b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "6f5a0a35aa549d108b8467778694dacaabc9d6ef0675ad79e2f9d65ac823d945",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "c5d7521b83bd53bea8e191fc8f2f8922626a82665b3b1e0e308ef00441d3da9e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "e83efc39b29770ca8c3d31bf5b787ae861469bd61bc1aae72829e8d9a11a13dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "729f99865ef795f68687e56fbd35cff456183e484372bae6b8d0941f3062e3dc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "db96492e00525caadddbdd8dcfe11da2cae7d58770a2f5d2ab8f95a0872238ae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "cd976f6c3c05c7b5047f9df6772b8f35fc4434cd83349dac9d6a28335cc37473",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "e7ed4782c2e9deeb13c07d050fe6cff941b8892ba5baa692b251a64e3a56bcfd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "0e3f31f5ef93f6f90bd906670e6b5be879de86d843701ee868d501ae39cf4a19",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "ed55a44e3078c20721b1a7a58160bd84c89e2c5e763849566996e8cddf2ee228",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "2bc4300a9dee9d80c758cd2aac8ce7e2d8dafaa9c3e204b39d6c18ca641ba882",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "4f3681138f936d4d60e7dba133d7239308a5bb37258bdf1f64f524475a966fb7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "26f0425d14c4767f1db20f00c3940daf44083ab7085e9da5a82ce01dc1089398",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m15-manual-w3000",
+          "source_sha256": "e938a7891df5e68fe2c682b4bc55b8d56002bb5dfa98b54a4db9d4118f5eeca0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m15-manual-w3000",
+          "source_sha256": "91651a26bc58545ebdf8cc79b3fac975fccfd33d76e7fac0bfd6746e0d24ef58",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m15-manual-w3000",
+          "source_sha256": "18ebd26e7a75cc82b981531f230dd24619e780b285d914d6d11b891f58356f2f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m15-manual-w3000",
+          "source_sha256": "345abe92597dc1063edca5a041aa24077f8e86f61350c5213db2c2e47557b73d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000",
+          "source_sha256": "53515bc0b487b05e0f9705e526a9204e95ed9173b3bc304888637ee672bc8d1b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m15-manual-w3000",
+          "source_sha256": "9cad805c2a85fa5bc1e3b3ea0544916d9efc0e1af06544483607524d0e330956",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m15-manual-w3000",
+          "source_sha256": "934b2b9518ea5320b3cfb12495feb2994bd3b9346310f2535eb1e1b253ddc998",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000",
+          "source_sha256": "f0f1177df51e405a2b48e135048018497bbc01bcd1b7cbf7addb6db0bbfc974e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000",
+          "source_sha256": "86c3ac9134f08d5b733e8b184202a226205ddaa6aa7ea80344a032bd116bb9b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000",
+          "source_sha256": "54a98bc92a8c0575e25aa137952b48413f4c1566892d522468e4cb3a31b0b43a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000",
+          "source_sha256": "286e84b30fd7c9cfee4c10da465e35c2369effde30fe8a0bf34edc2191ed0f66",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000",
+          "source_sha256": "619ace6578d0ac1b5167d9bbda13c12f2a11dd49e5fcccba9d1cc8333ede4dd8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000",
+          "source_sha256": "691954e81081e4197e8d6ef6afcdd5741745a3bc7ec7501b29c0e39f812be2ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000",
+          "source_sha256": "726034675172863e4450c66e08fe3b8c72f9e5b33dac5b5279187aae3c4e80b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000",
+          "source_sha256": "4002629d36ec51f4219036db393da573f33779e4c252e29ced4d35a80be5ce84",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000",
+          "source_sha256": "55ef42782c998aeffe5192e1bde52a7b5696158a6199fffcc59f508844b14f49",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m15-manual-w8504",
+          "source_sha256": "f626ac25fec9c40bbdc78f791e60e53ec5bd144ea6401ef2258337f3c316bc85",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m15-manual-w8504",
+          "source_sha256": "def011a2b9f7d4162c4c42aedf067cc9940775a77eaf7e89f0ff5ba9e93fa1dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m15-manual-w8504",
+          "source_sha256": "945cd64c9ecf5c6c506a946c228a9268b2da1f8167cfa953f81df1af7057ed01",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m15-manual-w8504",
+          "source_sha256": "569303eb8c053683be854cfd3344c9acbed31365961695d5d6ab7523e3b1e03e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504",
+          "source_sha256": "3bcc859ca5092f28fd1f006d2ddf8c02f981b015ae391fe508ac634da0108fb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m15-manual-w8504",
+          "source_sha256": "c70964413e7129d697a98e8199e21976f658f7f63be91986a600300dc3a452fe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m15-manual-w8504",
+          "source_sha256": "0f52761ef702544afca2566883abfa67639d0f1f1486e4357af63c5cf1b86511",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504",
+          "source_sha256": "530b2f6a2bfb1d46b56d1fdeac8187f954c0a407ee5c737287085cabecfe0d1c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504",
+          "source_sha256": "5ff6ccdd89642f3422ca1bf52f43d950c2e7ee6ad786ed17c3809fd9632d38da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504",
+          "source_sha256": "b609a013d9e4e585c5852d14b2db455fb1bc06dc1517afab5fbbf022bcca6c72",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504",
+          "source_sha256": "a8827a115d40814200c86af29c7a7c209cf3cf7f09c45109936953bb5a08169b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504",
+          "source_sha256": "e0c73433e4399d68ec027209d06eaa7d91891b0891ff977973f0999291c0dcc4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504",
+          "source_sha256": "2df132a277765bd2509a3649edb71a3fa028f97a47dd35a553c7d7ff49211718",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504",
+          "source_sha256": "e1e436e53eaf3b45579eebb3862c045e00939ef18783ea2c0939edb5cd228199",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504",
+          "source_sha256": "bc41988ceb9e71a1a8fac8dfe92cf09ce8a5fef9079812dacf7529a8a8f3760c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504",
+          "source_sha256": "0aaa9ab8881dae76dd62c8c74574440424925f14a58dea1a23e8ffd8d662015a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "06e5d03be43e965b2d2f1a78bcf0457a8a46231c117046ea5df6d5fbf829afb9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "f502586348139b7a251c88476e009a8ef875ed7dbe8545915192b982083c8cf8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "05372412c617cb33ce52c711619f5dbad629a007b8122b4d5d101e6e70ae1045",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "9bedcb26be380f5dd64aa542de4140c36fbfba3c791080b3e835a09ef6c978f0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "899ee0f5633e192687f0965485d4ae2b5d6dace631b56f766877fe8d98010501",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "17937b89680c101fc484132e0ebfa818986c713b3e7598682eada610562a85d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "b0bbe592aa792bb6f3311cd0601c2f5188ad4604534605a1525100e7aa3dc39a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "87361a08240619e163395655d12d7c0aad530050644d088d0cadf0f9e56332f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "da77d2526b4219e3ca3dce888a2a754e5dfd3de81d2a6d2a6876ded7f9adacdc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "7a2f644848c98b1235b32111c1f1436f2a3415b365ab1fd4092cff5b1833da43",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "6fc3e63e37c2c09b458f302f944f0b1aac317dc63a9c3524cdc16d957a31b52c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "093b720796b2a42289eb60bafeee48a4ac385fffc74776c9b4d8f37c17f45e93",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "f565640ad0049b19aae8f18045990c79c58ebe638fb8b495fb05b34c83722f96",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "c6b5b63052906853de91c8d9b5d3213f621341f243565d3998d2af0cf730403f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "0ae7a28839aa81a7d4bf57fada471a4c02df49ffc6960ff6b14eb0585388db04",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "f29caf3345a9062ab2202bb7a7fe04faa365e7d3c6491c65a471a67f8301729e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "f0543634635ee451aef24aa9153b2ff4c9daed466e36635887bbd359b6e5b946",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "1d741df5a2fd5ce4a6b93ca36767c43bc4d8ab80cdbb9980d620edca593a2c53",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "5c745bae476ba28c2383d6c66b08ca715d63a2c4d32004184a71b3b65eeb76e4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "9006687f9363e28901cd39db485d8a5305ba95782b00f9deb8001149ef5e3360",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-century-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "f5ffc071b36a12ae63135def44952e3fb32fc453b1d68ba9f9a1ffd318a03b1b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "56d0a0f6da0a8f0f16bec9a3e9f8fee4287622c7e1e7388982692ddd5586ec5a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "04a4e28ec0e4e05fc6e3e0e75c4b5d82692bca8978558891dbfb47bb96ccbc4e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "88a9ccbc65d80f024b69c5fba6eb13bb6e9f5b49e79ba19b6e37da9eb8ea2a05",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-bookman-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "dde2f5b1d57cb2607ecb4f0fcabbb91310f97778c3868db9104732852123baec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "7d4ee9a171e55763f711f07898ad51535c22b05c46a2c45d2ea210ab8760639a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "5b308da28b074e8545db592c611f8cdab99f61517596f8368f099b7008608085",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "5ed393c54d407ca5bed6f0e1df856374086e084698db580e496674c506646cf0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-yu-mincho-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "38a4e2feb22172d9af4789a8aa7a68291cf4e2d4c772a5fc9af87d9675324449",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "049c8a8bea8f9c38b20a5509b61e39b118183d387cf0c83c0d3dd9e136464ff2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "07c12f0531bd18b258ac6cd630f52874e7709a2cde87962cf237ba52e8316b81",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "8df61b91630414c37ef706cb3aa60f8afe34f8d94885ef4cc5f317075c5b449f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/inputs/word-windows-family-extended-ms-mincho-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -61455,6 +62366,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T161051907Z-03bcc4bd/word-output-font-facts.json",
       "sha256": "a0a98b127687bdaa1e1e2d298d1b413ab82d529c205c50307e7efd087e2e0523"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T174542293Z-6be4f2ea/word-output-font-facts.json",
+      "sha256": "24d7cd4c8b92054e9974ccb42a681ea5db12a9e768cc59a083a410d114e620e1"
     }
   ]
 }
