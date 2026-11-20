@@ -2714,33 +2714,42 @@ fn resolve_page_borders(
 /// `w:offsetFrom="page"`. Word's default page-border space is 24pt.
 const PAGE_BORDER_PAGE_INSET_PT: f32 = 24.0;
 
-/// Computes the `(left, top, right, bottom)` rectangle (in px) for a page
-/// border given its anchor reference and the page geometry. For `Text` the
-/// rectangle hugs the text body box; for `Page` it is inset from the physical
-/// page edge by [`PAGE_BORDER_PAGE_INSET_PT`].
-#[allow(clippy::too_many_arguments)]
+/// Document-order paragraph and table membership, independent of rendered pages.
+struct TopLevelParagraphWindow<'a, const N: usize> {
+    paragraphs: [Option<&'a Paragraph>; N],
+    in_table: [bool; N],
+}
+
 /// Finds the top-level paragraphs in a small document-order window with one
 /// pass over the prefix. Table-cell paragraphs occupy indices but leave their
 /// window slots empty. Math elements do not occupy indices in this walk.
 fn top_level_paragraph_window<const N: usize>(
     elements: &[BodyElement],
     first: usize,
-) -> [Option<&Paragraph>; N] {
-    let mut window = [None; N];
+) -> TopLevelParagraphWindow<'_, N> {
+    let mut window = TopLevelParagraphWindow {
+        paragraphs: [None; N],
+        in_table: [false; N],
+    };
     let mut index = 0usize;
     for element in elements {
         match element {
             BodyElement::Paragraph(paragraph) => {
                 if let Some(slot) = index
                     .checked_sub(first)
-                    .and_then(|offset| window.get_mut(offset))
+                    .and_then(|offset| window.paragraphs.get_mut(offset))
                 {
                     *slot = Some(paragraph.as_ref());
                 }
                 index += 1;
             }
             BodyElement::Table(_) => {
-                index += self::table::count_body_paragraphs(std::slice::from_ref(element));
+                let end = index + self::table::count_body_paragraphs(std::slice::from_ref(element));
+                for (offset, in_table) in window.in_table.iter_mut().enumerate() {
+                    let paragraph = first.saturating_add(offset);
+                    *in_table |= (index..end).contains(&paragraph);
+                }
+                index = end;
             }
             BodyElement::Math(_) => {}
         }
@@ -2958,6 +2967,11 @@ impl AuxiliaryStoryBaseCache {
     }
 }
 
+/// Computes the `(left, top, right, bottom)` rectangle (in px) for a page
+/// border given its anchor reference and the page geometry. For `Text` the
+/// rectangle hugs the text body box; for `Page` it is inset from the physical
+/// page edge by [`PAGE_BORDER_PAGE_INSET_PT`].
+#[allow(clippy::too_many_arguments)]
 fn page_border_rect(
     offset_from: PageBorderOffsetFrom,
     page_width: f64,
@@ -13057,7 +13071,7 @@ where
         let paragraph_at = |index: usize| {
             index
                 .checked_sub(first)
-                .and_then(|offset| window.get(offset).copied().flatten())
+                .and_then(|offset| window.paragraphs.get(offset).copied().flatten())
         };
         let Some(paragraph) = paragraph_at(edited) else {
             self.band_redraw_fallback_not_plain_paragraph
@@ -13066,12 +13080,16 @@ where
         };
         // A neighboring table's borders can extend beyond its cell text. A
         // paragraph band can clear those pixels without replaying the table.
-        if edited
-            .checked_sub(1)
-            .and_then(|previous| self.selection.cell_id_for_paragraph(previous))
-            .is_some()
-            || self.selection.cell_id_for_paragraph(edited + 1).is_some()
-        {
+        // Selection metadata only covers rendered pages. Use document-order
+        // membership so an offscreen table cannot become invisible to this gate.
+        let is_table_paragraph = |index: usize| {
+            index
+                .checked_sub(first)
+                .and_then(|offset| window.in_table.get(offset))
+                .copied()
+                .unwrap_or(false)
+        };
+        if edited.checked_sub(1).is_some_and(is_table_paragraph) || is_table_paragraph(edited + 1) {
             self.band_redraw_fallback_neighbor_ink
                 .set(self.band_redraw_fallback_neighbor_ink.get() + 1);
             return None;
@@ -43648,12 +43666,24 @@ mod tests {
             BodyElement::Paragraph(Box::new(band_test_paragraph(vec![band_plain_run()]))),
         ];
         assert_eq!(
-            top_level_paragraph_window::<5>(&elements, 0).map(|slot| slot.is_some()),
+            top_level_paragraph_window::<5>(&elements, 0)
+                .paragraphs
+                .map(|slot| slot.is_some()),
             [true, false, false, true, false]
         );
         assert_eq!(
-            top_level_paragraph_window::<4>(&elements, 1).map(|slot| slot.is_some()),
+            top_level_paragraph_window::<4>(&elements, 1)
+                .paragraphs
+                .map(|slot| slot.is_some()),
             [false, false, true, false]
+        );
+        assert_eq!(
+            top_level_paragraph_window::<5>(&elements, 0).in_table,
+            [false, true, true, false, false]
+        );
+        assert_eq!(
+            top_level_paragraph_window::<4>(&elements, 1).in_table,
+            [true, true, false, false]
         );
     }
 

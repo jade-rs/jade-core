@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc dd900cccaf284197283c557c7f0444a7c3a4d376dc95b616b11df70ead330a25 # long first-page insertion followed by unavailable Redo
+# Windows CI 44770497777 / job136406737367, captured 2026-11-20.
+cc 61758c6c2447c520fff9e8346d0293a337032b7b03cd9e5131e87a9bf183cdea

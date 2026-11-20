@@ -360,6 +360,16 @@ fn grouped_partial_edits_preserve_redo_after_rejection_and_empty_typing() {
     ]);
 }
 
+// Reduced from the actual Windows CI failure (seed 61758c6c2447c520...).
+#[test]
+fn pending_pages_are_current_when_a_later_edit_expands_the_viewport() {
+    check_sequence(&[
+        Operation::Replace(5, 0, 0, String::new(), 1),
+        Operation::Replace(2, 0, 10, String::new(), 1),
+        Operation::Replace(4, 0, 0, "日".into(), 2),
+    ]);
+}
+
 proptest! {
     #![proptest_config(ProptestConfig {
         cases: 24,
