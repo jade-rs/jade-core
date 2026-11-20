@@ -1,0 +1,2221 @@
+{
+  "schema": 1,
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "purpose": "All96 actual Word Mincho font-size controls require every coordinate plane and paragraph background to match. No pending coordinate exemptions.",
+  "fixtures": [
+    {
+      "name": "word-windows-mincho-size-yu-regular-s8-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s8-m14-paragraph-w8504.docx",
+        "sha256": "b40c522e717ef9f425b9b040ea34693502e9288854719bea81e84feee89e635a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s8-m14-paragraph-w8504.pdf",
+        "sha256": "4eae7b59edd6f18cbf705ec1141375e1ce05cbc4218fcc7bc4f5fd4578bb3b5c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s8-m14-paragraph-w8504.xps",
+        "sha256": "7d2cf33926986f1c0e779f564ca3a058b7cd0f992e4a76fd0a6cfbb0f76130b9"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s10-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s10-m14-paragraph-w8504.docx",
+        "sha256": "696982c5eaeb38945c07ea1b320826386417514782ec50e45e63ae48dd4b7782"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s10-m14-paragraph-w8504.pdf",
+        "sha256": "589a667ba9926e96b476bf65ec1dc0f61de3fe74136b83d601a2e8adbf59689f"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s10-m14-paragraph-w8504.xps",
+        "sha256": "97609fd1c45deee5fb55a89a982e5fc7fc535eb95b79d400a95b9a3006355b5d"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s14-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s14-m14-paragraph-w8504.docx",
+        "sha256": "cb19ebefd2e5db6a10de9da92ba0b567313b808d7b1dd9f5ad6dfacc2de2e7f5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s14-m14-paragraph-w8504.pdf",
+        "sha256": "430a159b67d9ca440ac6a9b3737d37726729f6144215c8b4f407543128e29eb6"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s14-m14-paragraph-w8504.xps",
+        "sha256": "975f33657119e29d13c937fcb5eec11e67a59fefc0f17efc2fa134ea8f830e43"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s16-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s16-m14-paragraph-w8504.docx",
+        "sha256": "f3a17876aecdb690922549f4daf3102a35c12bcbddee59933cd61f4c81935130"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s16-m14-paragraph-w8504.pdf",
+        "sha256": "74e25d16b772c31b41c8d5beea95e18e89c01a73f9680e1c3fa614f7436c9249"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s16-m14-paragraph-w8504.xps",
+        "sha256": "9fe79f69631a2f9faa0e8d8eb72c3b0b6ac3aaa232d28629b997490fb30e0aed"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s19-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s19-m14-paragraph-w8504.docx",
+        "sha256": "c1c801a1c64acb63107b971ca2350ba2c0c92aedf55469d4bbb7fb81cfda5de9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s19-m14-paragraph-w8504.pdf",
+        "sha256": "7ab838af8fc959a245d24193e19325ed4f1607d018a32140d06951d6f23a1051"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s19-m14-paragraph-w8504.xps",
+        "sha256": "17edcc3eed1ecd518b480e6a7c8f711607ededc93e2235cb735283fd5cb80f1c"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s24-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s24-m14-paragraph-w8504.docx",
+        "sha256": "c8e7d49b074701316f3a80150a48d9ba90c9725a4979fa530aa0aaf48578053a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s24-m14-paragraph-w8504.pdf",
+        "sha256": "3fef6b27fda9030df926f5b4ea7f752332cfbc16703f546fa7859eef79cae497"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s24-m14-paragraph-w8504.xps",
+        "sha256": "bffb5d4ae88f8cd77393170310e57cad7a838db4e9535c05797bb1afd28370e1"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s8-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s8-m14-paragraph-w8504.docx",
+        "sha256": "3fc0768bd831308437ef2be0baad981c5e28d8addc01f3a18497811c7447003b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s8-m14-paragraph-w8504.pdf",
+        "sha256": "791903bf268ca7bf17b0b732918e5a1f87838d47a12976f28d3a1e1c1efd44a3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s8-m14-paragraph-w8504.xps",
+        "sha256": "dcd382c7c189fbe5091280e8accec3d9ac52918df425a7a39f65fa38fbb33d2e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s10-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s10-m14-paragraph-w8504.docx",
+        "sha256": "b941346a3e74fb25068a93fec5daf813e03454c7b9662f9e9ef802c947565c19"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s10-m14-paragraph-w8504.pdf",
+        "sha256": "3e2929621ded0c76cd796c7cc6f2e00836b09cce5f27c236c3b675fdecdd4150"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s10-m14-paragraph-w8504.xps",
+        "sha256": "259cdaf6f9932167ebb08c22b73cfb451fa22c57f9d7f87bd91ed83434a8b10d"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s14-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s14-m14-paragraph-w8504.docx",
+        "sha256": "cb7cd1db7a9b857bed081dc0687d81b099f5be43b23777b4cc64cf0bd875d7e9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s14-m14-paragraph-w8504.pdf",
+        "sha256": "e03cd6b1eacc773e5bc258082031d77b6c74c094d8c425b73d7d571dced4972c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s14-m14-paragraph-w8504.xps",
+        "sha256": "ff7a098dd1c5fae162f4972fe3fa3ffdf895df3f41c179bbfc82adb1194bde20"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s16-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s16-m14-paragraph-w8504.docx",
+        "sha256": "38df1c4576859758effeb9828f483b02e88284987ef89b4b955cc2658eb931c0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s16-m14-paragraph-w8504.pdf",
+        "sha256": "d0210ee20a690da6b727043669f4bad068b474195ed236f3e5a186aa59a24a44"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s16-m14-paragraph-w8504.xps",
+        "sha256": "658edf428e4fb6baa9bdd19006403f001fa823fab6eb6ccd7d917e42094246f3"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s19-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s19-m14-paragraph-w8504.docx",
+        "sha256": "a50f96a4505e60569e63bfabe7c7ee5f3b54216de154c79c782216ceef4b2658"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s19-m14-paragraph-w8504.pdf",
+        "sha256": "851ef9e3c794b0893cce4a6abfa9c3012481f0a5badd200e27bb1cdfb4b0d820"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s19-m14-paragraph-w8504.xps",
+        "sha256": "c52ce61390b8ef75ca98f6b928299f206f160a1568b28ecfbd6fc498a45e1a2a"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s24-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s24-m14-paragraph-w8504.docx",
+        "sha256": "56df79abff56af551fffe2509477189cbf9f24c82d3d294b48b051a2f00e799c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s24-m14-paragraph-w8504.pdf",
+        "sha256": "bd3ad0014729d7fae595107232105cc24a02fe9169052dad4e40a8a09fd38f16"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s24-m14-paragraph-w8504.xps",
+        "sha256": "1e4186d5e66a1344b01d130274f5faf58e32762192a8cb7ddfccc0ae9b4ba373"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s8-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s8-m15-paragraph-w8504.docx",
+        "sha256": "baea21d05f23b6e54b8ed66526a0d482831b99eb039159bd3ba2210f53f98be9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s8-m15-paragraph-w8504.pdf",
+        "sha256": "9d36b14b891a5b2094a0f4872602c652e625078f292b2edba45cd90c69889694"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s8-m15-paragraph-w8504.xps",
+        "sha256": "6c7893ba360d1626bc18244301e2e6effad88e5503b6aa62f72c48bead919731"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s10-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s10-m15-paragraph-w8504.docx",
+        "sha256": "dd7a985e7bd88a52c6a42d6d5a3167311d861d89d5fcd928850e3fbedeff68a3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s10-m15-paragraph-w8504.pdf",
+        "sha256": "10a6c89e61e4bf074b1b8e5971d3e0dbae6476375849bcaac7f0b1560c729f29"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s10-m15-paragraph-w8504.xps",
+        "sha256": "f6ba0addf419d0051f40ed1d85286f65db9c2eb1aaee735aae97dee1efe997de"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s14-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s14-m15-paragraph-w8504.docx",
+        "sha256": "c6f78683b9014394cdb5710c0491a85e82d1e5a91d536a2ea9a26c2ed618c0db"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s14-m15-paragraph-w8504.pdf",
+        "sha256": "89aee3ab23caa796e2b1566858e85237e546895a657703575b416114346a4346"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s14-m15-paragraph-w8504.xps",
+        "sha256": "c3527aa33b6da1d5c50d941b126ffd1bdbb1b3b653ad11ac0613dbaee4e70150"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s16-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s16-m15-paragraph-w8504.docx",
+        "sha256": "b52ecea88d99b977702fdd6dfb8b93754b9af1a0103ddda7fdca22521f814b9a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s16-m15-paragraph-w8504.pdf",
+        "sha256": "fd3bb38128746bff8809cb14b6f04cc99e33b5a0c0ded953bc6594ad6823e16a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s16-m15-paragraph-w8504.xps",
+        "sha256": "3fce49907bbd990b5790923ed269d3226eba3bf9b045f7df63d96745e832880d"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s19-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s19-m15-paragraph-w8504.docx",
+        "sha256": "3a80204bab2bc0ba341aee8b10108681785163af808eb3c736c917c1e6845fb8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s19-m15-paragraph-w8504.pdf",
+        "sha256": "c306d1563a457b467e599a2c780b7c7c67937b2823d2cf588b20ee8ee632c55d"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s19-m15-paragraph-w8504.xps",
+        "sha256": "1805b682fa0600e1d3dad265e0e4236cd47a912d014bd01e4b5a311fa3199717"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-regular-s24-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-regular-s24-m15-paragraph-w8504.docx",
+        "sha256": "94c9145de65f977698940f4dbf13bb3d983c0726bfc743ad5984aa679f7b951b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s24-m15-paragraph-w8504.pdf",
+        "sha256": "359881063cacd1e7b9313c659fb6a417465dec43124df7ad4fc86aeed77252fe"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-regular-s24-m15-paragraph-w8504.xps",
+        "sha256": "2fe2bb3e84af32d969f483f648e31b9c5e2d5ca7f572a70b8e0a823b260a7deb"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s8-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s8-m15-paragraph-w8504.docx",
+        "sha256": "566f1c3d99a748c63d45b659ed303c486a63b62b1acff1084f95a21efe95bce7"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s8-m15-paragraph-w8504.pdf",
+        "sha256": "5731ad0efd9b1a7899f7e2f7f9ae756d0f3ae30317b9600bc8062a0260df91a2"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s8-m15-paragraph-w8504.xps",
+        "sha256": "01b1ddce32d7caa9a6d2a5cbbad3cc20efb6155debe2d665b6445255dd4cf6b6"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s10-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s10-m15-paragraph-w8504.docx",
+        "sha256": "db8f5a92f49fb4ac7328cce357638b5a3f1c8ca511e62a34a07e0a20636b0ed9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s10-m15-paragraph-w8504.pdf",
+        "sha256": "747a22d861a5aac78600613376f95423859aefce3998624ec3bac3230b6ce8eb"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s10-m15-paragraph-w8504.xps",
+        "sha256": "aebafd389d47203d61b3799881274c94f9c3134de221c18bd03b0f43feb1c8b9"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s14-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s14-m15-paragraph-w8504.docx",
+        "sha256": "3c68a53c840e37080d6b6f78b8363da12066663bbae666773961b31940ad50cc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s14-m15-paragraph-w8504.pdf",
+        "sha256": "0ac33b0494213c38dfd35246905ecc3952da01f3f64ca6dada46d04579eeddb7"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s14-m15-paragraph-w8504.xps",
+        "sha256": "288a745b12b157717752324854ef21b09781bfc54226343c7a88e9a6faab00dc"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s16-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s16-m15-paragraph-w8504.docx",
+        "sha256": "9c3899a4b9c59e2236eae5e21f48f484003adddb062be3a2922b01d23448f2be"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s16-m15-paragraph-w8504.pdf",
+        "sha256": "3d828188a1fbdec8dd8b4ba5927016175c5d31114b13de87e3f097fd379efc65"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s16-m15-paragraph-w8504.xps",
+        "sha256": "6f2e5135cf73fd30c762ded97b8ff109025784e18548b9f87f927ae1a0426a71"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s19-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s19-m15-paragraph-w8504.docx",
+        "sha256": "7dc5f78174d87eb2fb4f6b199de94a093bf1f7325940b438937a7432d9928bcf"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s19-m15-paragraph-w8504.pdf",
+        "sha256": "1f999013e836b7af041e3460da4a236ff778a4fa25c2717d388f1e2cf3e2a5fe"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s19-m15-paragraph-w8504.xps",
+        "sha256": "a29df5c2f60e8b7dc222a5f5e6ac2487c1fd0136be86984cefd08bf3474520ff"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-regular-s24-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "regular",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-regular-s24-m15-paragraph-w8504.docx",
+        "sha256": "fd95ed50d6f65c12b9aa3594bddd63809f413469fe350acf502e6edb3cef9702"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s24-m15-paragraph-w8504.pdf",
+        "sha256": "c56b6422c9374b83256cf7a87b2cdc515bb026f4e386b9cc3195fff40c933cc2"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-regular-s24-m15-paragraph-w8504.xps",
+        "sha256": "8cc5ba4071218c54f12741d3a51bb697e29559fd911631127236d868adbe67d9"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s8-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s8-m14-paragraph-w8504.docx",
+        "sha256": "618a47c310ae4bd94a6b086e87da77f4cc127a9fa4b26d168c266899a8ae303c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s8-m14-paragraph-w8504.pdf",
+        "sha256": "df0e24fdc91966976d2b29a28c42a54a58ef6bfb4212231ab555347f4fc34270"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s8-m14-paragraph-w8504.xps",
+        "sha256": "2893928d8eec0f831b6f7aab6f4921aaff1c5ddddc9569018f2c417ba490f905"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s10-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s10-m14-paragraph-w8504.docx",
+        "sha256": "dc126f10c05c714306fc54e553277ef6c14c4b5debacb7f87e39721368636df3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s10-m14-paragraph-w8504.pdf",
+        "sha256": "a099c10d91ba6156a95d82a20fcd7c6241503edf0596e2655c9fe6b89dda08fe"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s10-m14-paragraph-w8504.xps",
+        "sha256": "d8150bfcc9ef853df6b7ad21757f482efeb2dee9457e22e2fce733a367e93574"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s14-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s14-m14-paragraph-w8504.docx",
+        "sha256": "b81fef9ab1af1c06f185ec9a0f22cfee57cbd6474de5ae8def6a5ca7e1323503"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s14-m14-paragraph-w8504.pdf",
+        "sha256": "a1d5f2f53229011309bf2c28a0ee139d424cfd16534b5eb2cdc9ac9fd173004a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s14-m14-paragraph-w8504.xps",
+        "sha256": "6632e78dd47d4e9a6d46f4ea18f257ba3208b8c46c79c062ddd0a35fbf693dc8"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s16-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s16-m14-paragraph-w8504.docx",
+        "sha256": "2d87c30135071502cded92c873bbc4303c18b2aa0bd14e4cd00ea654c75132a0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s16-m14-paragraph-w8504.pdf",
+        "sha256": "51d24d8e5553d835d59279bc11ef6d36b7bc5ccc7542570d7429a06c4d0e8396"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s16-m14-paragraph-w8504.xps",
+        "sha256": "147e08461ea44a76a3649b857824a3ca83499f616a6753f7f5499563c8ae4f99"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s19-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s19-m14-paragraph-w8504.docx",
+        "sha256": "72c761ee4b1da25631264954bbf589e1b755e10e9bfec643722600c2f8717fa8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s19-m14-paragraph-w8504.pdf",
+        "sha256": "563648eee794c81b7ac35c5d472f2cde08d9fdf30ad590cce46c60d991076663"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s19-m14-paragraph-w8504.xps",
+        "sha256": "9467184b82ea577e993036a0d8cfb3899111409d3cbd9a6e7468d4f09aa124ea"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s24-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s24-m14-paragraph-w8504.docx",
+        "sha256": "bfd9d84cac73fc61b99abf3ccb0875ce4c6c014688abe0819292c25fa1321b05"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s24-m14-paragraph-w8504.pdf",
+        "sha256": "306081e2868997a33b9c99467a06a6f636900aa55798d37dc5ce69e4af6ccdf3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s24-m14-paragraph-w8504.xps",
+        "sha256": "3115057e142f78c2e1c73bdea1825e4e073439a089c332a73de42d5a9d9a2892"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s8-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s8-m14-paragraph-w8504.docx",
+        "sha256": "b553a6681e82e7f8151e2ddae4ae6e51a1b1e38a4b7fb3ea2936746a33816e58"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s8-m14-paragraph-w8504.pdf",
+        "sha256": "97c3fb33b5a1660fd85829cb25c91106c1fa42681a20c9d291f8a8c5bef60409"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s8-m14-paragraph-w8504.xps",
+        "sha256": "2519ef3e9f0e3679396e8a93ad3b8ff72ad040e33ca55a5d9b37fe7e68e00ac8"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s10-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s10-m14-paragraph-w8504.docx",
+        "sha256": "a7717ce5d55f08900baacfad952cf75eb728fa158f80b2aa05511c4ac6ece131"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s10-m14-paragraph-w8504.pdf",
+        "sha256": "38184d982e7fc06c0cfbeb2aae8cf255b8bff3cbedb38e785186615717520cca"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s10-m14-paragraph-w8504.xps",
+        "sha256": "db86f6114a7f2c89e0ad68cf3c2ac1044ede9b93df32d9d764d9829720ffdac6"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s14-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s14-m14-paragraph-w8504.docx",
+        "sha256": "8a4d30e1f7efb42069b2c7ba1fcd29dbef39dec0af4e912835ab2e3494592026"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s14-m14-paragraph-w8504.pdf",
+        "sha256": "d7f00a350fa59a945519acb6d1e88244ad9b35f3afa9d514bf2492c9397632b6"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s14-m14-paragraph-w8504.xps",
+        "sha256": "b1639cfc00a49ce2115f9c4f5e42dbfd89d1e0dd933a6438a6385e55690ed89e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s16-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s16-m14-paragraph-w8504.docx",
+        "sha256": "147491ce790377a24b8df0033eddb4740762a0c26d4c7c850083c6d53fbbcfcd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s16-m14-paragraph-w8504.pdf",
+        "sha256": "e56e74d6b034975e40fac1d7e5d12f513ec7fd2e98cf73e956984c1214f7075a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s16-m14-paragraph-w8504.xps",
+        "sha256": "4377c40d7366156b7ccb11f69222a6be13f299f8da52cd5d31275df8059a260e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s19-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s19-m14-paragraph-w8504.docx",
+        "sha256": "12c48df23b6594bd9bf62397a293770a1e6169c900297c3326f13fa65ce835ca"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s19-m14-paragraph-w8504.pdf",
+        "sha256": "2be6b1f314a181836f9e1d5bffb818e32f558c3ba5bd1ef5c1d4edf59ccc4b78"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s19-m14-paragraph-w8504.xps",
+        "sha256": "34ee432f83ac75caab1a191df5422cd6e075c1e7b31ac44b4b3aabf42abd97cc"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s24-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s24-m14-paragraph-w8504.docx",
+        "sha256": "82003c33c3904504f25f832aba2019958d6d4669ddc863b6e8248e751ab05e29"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s24-m14-paragraph-w8504.pdf",
+        "sha256": "4b0b334667a4bb2aa5bc8e9822bc17d0b093bde1d377f8cd3337658bd1ee2c0e"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s24-m14-paragraph-w8504.xps",
+        "sha256": "652d4a5d34e1c77de4f2fd97cfaf76ca2240fc694ff3f9fcee5256709660f177"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s8-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s8-m14-paragraph-w8504.docx",
+        "sha256": "2489a0a28e82ebb3af5ec15ec374b24ee344b5f8d11ba0cb36e56c0ef25304a2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s8-m14-paragraph-w8504.pdf",
+        "sha256": "eb0bbbfbe958557c550a3615d92cba35586a7e2588705f915cb687d88adec645"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s8-m14-paragraph-w8504.xps",
+        "sha256": "c452ff26e6b9f44fbb76e4048f85509f3a8f8afd26c319eef5841b24fb5bdf8e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s10-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s10-m14-paragraph-w8504.docx",
+        "sha256": "10d8c933c30a230f4ba8e378926ddc191d81e3e6bb1c26cae87ccd3f96b170e4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s10-m14-paragraph-w8504.pdf",
+        "sha256": "e91c9ca909c2746d1b624c0ea5ca831dc10e77f3f1bb9393886b14a32c712561"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s10-m14-paragraph-w8504.xps",
+        "sha256": "6bea888ed4efbe762f9be64cbed4c5ad2431e41466999af232522bb48c4b4b5a"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s14-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s14-m14-paragraph-w8504.docx",
+        "sha256": "df7209352d1952f7bc5d370e15ad0da5e8e944590b31767dc014fb0ae22dae43"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s14-m14-paragraph-w8504.pdf",
+        "sha256": "cd243d763532cdb2acd31528266df136b132928828afe6171bc82929b456c010"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s14-m14-paragraph-w8504.xps",
+        "sha256": "183f27d2f10601a77b693e3394ca7b35d7795c5991321b5c250ba2a299d6862a"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s16-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s16-m14-paragraph-w8504.docx",
+        "sha256": "49d82879c703f42f23f7665389894ddd7559660b6203aa3c6cc795644c9e704e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s16-m14-paragraph-w8504.pdf",
+        "sha256": "79ba21e2542de421ac84a3acc1122da8d35f426adcec859e39520167e33afee1"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s16-m14-paragraph-w8504.xps",
+        "sha256": "e955469b83377d7e1c302b016ac11b632c371ce7febc0695948b247bedc19d26"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s19-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s19-m14-paragraph-w8504.docx",
+        "sha256": "9ead5672cb188ffe308d3cc3b93ca2f019c92eecb86d9791c7b2906611483b3d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s19-m14-paragraph-w8504.pdf",
+        "sha256": "ae80828264d767867634fa9d879332a5b79d88c50b15a17cc5c6116c1181a004"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s19-m14-paragraph-w8504.xps",
+        "sha256": "98d46db40385b6584a3d4e93074a2160bcc6fb2cd46729fb360b2083effc5a16"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s24-m14-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s24-m14-paragraph-w8504.docx",
+        "sha256": "5efeca5127b78edb5d472c9f06b078e4301539511589c69c49ff1e2ff09cab70"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s24-m14-paragraph-w8504.pdf",
+        "sha256": "0fd87ec54248082d45f179eff496c30af9b1d8b7a6d6a4fb61f298fd893331e4"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s24-m14-paragraph-w8504.xps",
+        "sha256": "507c95987af3eb2beb5f29ffcfaf572c73a42fa89146b1c3dc930a0b2d603bbd"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s8-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s8-m14-paragraph-w8504.docx",
+        "sha256": "1d6c1df9175289b09d4549e555f044a3516b6b41bed36d094b5a8bf2129c0435"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s8-m14-paragraph-w8504.pdf",
+        "sha256": "5d86a5f3b8cf36ea1d64b3207621e409d3a87ec8a255f5706423a28d011ee5a5"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s8-m14-paragraph-w8504.xps",
+        "sha256": "f2137bce806922d6a568b1f3ccd23b55ab7caaae633234cad56d525e32308e9d"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s10-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s10-m14-paragraph-w8504.docx",
+        "sha256": "b0d4d16ae9f9e59c60f8b0d24c72d7dcd2319a7a07f26803163993a60c65978b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s10-m14-paragraph-w8504.pdf",
+        "sha256": "d07dc329970a21f690f7f8786e292c97c8ae956005e71d7a34bf5c628bd1acf3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s10-m14-paragraph-w8504.xps",
+        "sha256": "3f744ad924abf88a7abbb1ae3248480167c06422b8c1969f9c202383709132f3"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s14-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s14-m14-paragraph-w8504.docx",
+        "sha256": "afbaa7e76a8f2e594664f951f002ca84902a0fb0dcd55c8b58f55c4f23d58d13"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s14-m14-paragraph-w8504.pdf",
+        "sha256": "0b2c24f93ef3461bde7d29ae579ac3451a73b503e833de8852b99e2acca86de8"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s14-m14-paragraph-w8504.xps",
+        "sha256": "921f2205ac0f083b787748e4c88dab1246117c897aba9e8cb00ef2fb962e4dd5"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s16-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s16-m14-paragraph-w8504.docx",
+        "sha256": "71418d9750e775cd18761eaa5268ee721307345433e0113a695188c1ea63ed7c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s16-m14-paragraph-w8504.pdf",
+        "sha256": "cc35871933bc063f6623b2728ee54586862cd4eea850f6cc15a09eefe7fb5533"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s16-m14-paragraph-w8504.xps",
+        "sha256": "0ecc6823a70c71f593f33b5881670e1417815ed5b50144fb369a9b64e9013a39"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s19-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s19-m14-paragraph-w8504.docx",
+        "sha256": "cffd8569167941590cfc2253bfd5201456f2ddac4a7c007983805453ee55b16c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s19-m14-paragraph-w8504.pdf",
+        "sha256": "5280a6de426f464f3eba852db4104ab9a9818fe3a297e4a65261d88b619aa99e"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s19-m14-paragraph-w8504.xps",
+        "sha256": "861e6658a93ac795ca811fb6c61c4cdf8adc42a1c4afaa968683c0861b398518"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s24-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s24-m14-paragraph-w8504.docx",
+        "sha256": "8581c3ae778411d8f6fa560db23a7a4d2d71f8cf4aeb2a25bcc4af3065d87d92"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s24-m14-paragraph-w8504.pdf",
+        "sha256": "702b506b8b1a3992d71bbc12e6509196b99a4ac4af6c9ddf45f08d8a959a903a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s24-m14-paragraph-w8504.xps",
+        "sha256": "e40694157b4ddcf04aba0dac508cf30b49319a25c73a04efa92b67ab8d4c0fa6"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s8-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s8-m14-paragraph-w8504.docx",
+        "sha256": "b1e1089ec853aa2bd22dedd85fe0b89af93302a6eef90e924ec2f17da03c63ed"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s8-m14-paragraph-w8504.pdf",
+        "sha256": "362a248f501142d24a1707ed477f626ad3c0eff00b2d722016142a331fa7a830"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s8-m14-paragraph-w8504.xps",
+        "sha256": "220d7eb26f799e988d5300884a36c3847203b59264baed0d744e21fa905c9117"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s10-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s10-m14-paragraph-w8504.docx",
+        "sha256": "2aabf1871daee4aee9c16c0cb7e83b2075725474472c59ebcfc620836a916960"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s10-m14-paragraph-w8504.pdf",
+        "sha256": "91aa2fc6cad754693cd78e431699a8594a1d3ce1bdce085bd2d8027cf38a2a04"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s10-m14-paragraph-w8504.xps",
+        "sha256": "0724e9d865346e107f30d453d53b00408e0013d497952372f75730a056793485"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s14-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s14-m14-paragraph-w8504.docx",
+        "sha256": "c66d5147e3d277aee4d347efad9938dee5ddf1dd018e927234a0eda8b859c96e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s14-m14-paragraph-w8504.pdf",
+        "sha256": "49c6eb897119a7149360d61143c6736e24c36c83ccf62ab69349611937de3e9b"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s14-m14-paragraph-w8504.xps",
+        "sha256": "2dc69862a7224698a17807d918bafcdbcc503fd5ebce0a289910514c4d78f975"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s16-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s16-m14-paragraph-w8504.docx",
+        "sha256": "e4f1b2708d6011e66733e051db546fa6a2c3d310b07f0ce139f4cca2ff4a80d1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s16-m14-paragraph-w8504.pdf",
+        "sha256": "c05b81020640e8f06f93093569a5978ed351639b058309583183f509c291a99f"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s16-m14-paragraph-w8504.xps",
+        "sha256": "66def2a629c2c315808a22b62d0ce98b0393364506acaa0f2948de588889ded2"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s19-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s19-m14-paragraph-w8504.docx",
+        "sha256": "ae66dd4a5265db57def20f8451878c968566d25890b840edb44a4008aa56ace1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s19-m14-paragraph-w8504.pdf",
+        "sha256": "ccb224ce6148af792f6e1a08eb8a2a691ec624d159b7d048d0d62d8fe85fc4d9"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s19-m14-paragraph-w8504.xps",
+        "sha256": "086b9e01dc4512d4c55577a8964cf464d9c0dca6fd71ffe44b839b980331ab7d"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s24-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s24-m14-paragraph-w8504.docx",
+        "sha256": "8e5d33394786a61425e80e2ee39b7aad1b31542d67be61187700071901bf74b2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s24-m14-paragraph-w8504.pdf",
+        "sha256": "5baf8389c6c2a31e23784844865af1b043a47bbf1f280f95f114673e747c9ba4"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s24-m14-paragraph-w8504.xps",
+        "sha256": "b4d9b92421b7a66abea577e56263e5aa00364704ebcf08cb009950ae2178ffb2"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s8-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 8,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s8-m14-paragraph-w8504.docx",
+        "sha256": "b6c9b308d0fadd57d2dbaf8a84406e5fee71b38cf57e8399f52945bf3a0a9ee0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s8-m14-paragraph-w8504.pdf",
+        "sha256": "d36532848332f58c380fd97e2e220a71e15e191009b63c3096b9665fa2ed06d2"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s8-m14-paragraph-w8504.xps",
+        "sha256": "71dff94b9aa31324cc4214858045c3f11dc84282523c8d1e8eb3f53f9be45f61"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s10-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 10,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s10-m14-paragraph-w8504.docx",
+        "sha256": "e12e74fd8edbb1bb2cd5c445a0eb56a981d27bc442244c9b6e7bbe2db75ebcf6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s10-m14-paragraph-w8504.pdf",
+        "sha256": "2f113eb08b4b01c7bfe166feeb680afba3a646998ea35eab8867d2d73d64bd07"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s10-m14-paragraph-w8504.xps",
+        "sha256": "23a67cb41595faf8c187a9d9dcfddbf54d7d6ca82a9e4cb9d01ee8769fb9c6ee"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s14-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 14,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s14-m14-paragraph-w8504.docx",
+        "sha256": "a3aad84fdea0b240bb5e0ee0d5bb15500f068ccfcf9e7630e4665238eefdb26a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s14-m14-paragraph-w8504.pdf",
+        "sha256": "403580090cfa5868c2f1259ba4e8f8fde943174ef7c2d3b86a25d8aeebcb7ce9"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s14-m14-paragraph-w8504.xps",
+        "sha256": "f1024e4c1cbc71b3cf8c3777b1b03e2167facbb74cf1826b692356649a2b7697"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s16-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 16,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s16-m14-paragraph-w8504.docx",
+        "sha256": "41cb8790d6b49d706b721e0a20e3ce86aa126f5bdbe096b8146035559d11486e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s16-m14-paragraph-w8504.pdf",
+        "sha256": "481df17e506109a9490184004ae6a35f79f56a165c78b5920dd30fe41b74e72a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s16-m14-paragraph-w8504.xps",
+        "sha256": "74621ba811368c7d3cdbdd4c66f5e72f51dca589399e0bd872831eb463696400"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s19-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 19,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s19-m14-paragraph-w8504.docx",
+        "sha256": "751dbcdad8e170d84f334355c79041f331551cbe480a60c32961cf7d2f65f85a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s19-m14-paragraph-w8504.pdf",
+        "sha256": "32cef927a7b84ba005d6a1d431d71a15bce5ebfa5667533d937466e828597942"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s19-m14-paragraph-w8504.xps",
+        "sha256": "4e4c9f3de7c0f525e3ab3dc5c8bd2dd86bee3a640e6472b26b0541e85bc78fdc"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s24-m14-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 24,
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s24-m14-paragraph-w8504.docx",
+        "sha256": "28bfcadcc7f7a7914e27f5f1bd2009af8783d1d63adabf81767e48a312546f2e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s24-m14-paragraph-w8504.pdf",
+        "sha256": "339538d61d012fb56c534e21ab47aeea7d4969ef12e6a66b68d8cff0cb87609c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s24-m14-paragraph-w8504.xps",
+        "sha256": "1d93349dfb60ac8392d64bdb7c5fb06ad82c5d66a98161d4d627fbb964f9e8b9"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s8-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s8-m15-paragraph-w8504.docx",
+        "sha256": "66dd4c9ac97ac762bedace53a21ca765b5ffc86863b37269d7df7fef62cdefdd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s8-m15-paragraph-w8504.pdf",
+        "sha256": "481dc806eb67b5f01f44b613d16108af11428e254d36b7718eff67461bfc7eb3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s8-m15-paragraph-w8504.xps",
+        "sha256": "10d6e9784d917cfa80d9ef8e150cb484e21faf7df52cb2df6be444d9ef1937c1"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s10-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s10-m15-paragraph-w8504.docx",
+        "sha256": "25a6d6f92d221bf3a8706b3d048174d240bcc07027f9df9989d542e3912363f1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s10-m15-paragraph-w8504.pdf",
+        "sha256": "f35a9d26f3c130ac195a28cce2e558c129305287b7e14cc465d01b268a8fd6a8"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s10-m15-paragraph-w8504.xps",
+        "sha256": "6a6b1597094478f582511a8bbe215ad5672a8212d2add5ec9b5fb08e25538aa8"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s14-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s14-m15-paragraph-w8504.docx",
+        "sha256": "6b2872badaeffb8743f89018b881734116fb929853499eb78b04632f1b771f7c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s14-m15-paragraph-w8504.pdf",
+        "sha256": "3e4d47d85f9b6f2bba925c9882c66f3d30b9c72131db2d9895b03d71615d5e43"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s14-m15-paragraph-w8504.xps",
+        "sha256": "37e1cd846f818bb0e2459134ca2438db4382542cc3a1a204ff751e986ea642e5"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s16-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s16-m15-paragraph-w8504.docx",
+        "sha256": "12ebd2de6ab12b64a37b0a1e3aa483f8521f67d3c9a1f826adf3d0656352204d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s16-m15-paragraph-w8504.pdf",
+        "sha256": "68b8c42809f1189459ab5944fadc52c6684186c79f0131c702b15773ffb1574c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s16-m15-paragraph-w8504.xps",
+        "sha256": "0e0b14b9b9b1013421a449cd26f986be1b65996645237abf1aa9bd8c4e629b85"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s19-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s19-m15-paragraph-w8504.docx",
+        "sha256": "3965d040f8b0b80a74b084018492d0bb247ce97b9ad149623de9b78eab231782"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s19-m15-paragraph-w8504.pdf",
+        "sha256": "aa839db0577a9271a76932a582b35ef3f0dc68cda336fd3cb9cd3bb36a10afb9"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s19-m15-paragraph-w8504.xps",
+        "sha256": "93c3dcd8d71f38bdfcc16b4182df7c200c990929ad48b9499f85646a14ee11d3"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bold-s24-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bold",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bold-s24-m15-paragraph-w8504.docx",
+        "sha256": "336c90c26a4ca33a93ddf2e7758f93fac6cede0364864e1eda64dcb5a2867bdc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s24-m15-paragraph-w8504.pdf",
+        "sha256": "420c55e4fc8b2d0ab26d9acc735fabf44bd8dd89c9aa2b5aedb5b7e44faabdf9"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bold-s24-m15-paragraph-w8504.xps",
+        "sha256": "4c5ccd87ce5abfc8985b8906fee720b49c40f11d13ce9391e7aa26e08b73f356"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s8-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s8-m15-paragraph-w8504.docx",
+        "sha256": "133625bdef8feaf63e507e913c2d90266f07a39462b1be62ec91b7ec9dc5477c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s8-m15-paragraph-w8504.pdf",
+        "sha256": "1b6f205d545d5941dcbb09ce9a641ffc88e19b490490202f53425934acf9055a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s8-m15-paragraph-w8504.xps",
+        "sha256": "f2756ba8249026c431fa1e0bd95a697082eda2a83f158c48470b4d2b4d015314"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s10-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s10-m15-paragraph-w8504.docx",
+        "sha256": "1d473c69492fe2fe28a86307fa140a941682478aa8597e69132c4c28fb31e38b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s10-m15-paragraph-w8504.pdf",
+        "sha256": "399d082e6da6f7e7d1a7eaed148262ae59dc852e78fe345e8aa39d0087f62bdc"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s10-m15-paragraph-w8504.xps",
+        "sha256": "64b7f81443afa71305a3c283c693121418a5e976d7bab6ab28a017cd48c8852a"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s14-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s14-m15-paragraph-w8504.docx",
+        "sha256": "9081e1217777434f9101fd296fa38badb7664f2e354753374b49a4e16c424dd3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s14-m15-paragraph-w8504.pdf",
+        "sha256": "7ba7a08986347f9b8ee564b6a327f413e0a6277de228c1449518c2dae5870b1d"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s14-m15-paragraph-w8504.xps",
+        "sha256": "52fb6b5ab398da821edadb6fd48b4dbc350dcb38e248ff6d91274c6107c314e3"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s16-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s16-m15-paragraph-w8504.docx",
+        "sha256": "278a47c301b11a71610027969250a39be523ed1537a9caabf4d3d35a31cb7156"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s16-m15-paragraph-w8504.pdf",
+        "sha256": "4eefa91b988d8c00172ec774ac4834d2940c4f8f3e6b9d1d979caf6b8d87e6b3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s16-m15-paragraph-w8504.xps",
+        "sha256": "439c4fe4ed4d7cf1fb35e7fddf7e375376bf6cd36655f4288f7d993bb4e79810"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s19-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s19-m15-paragraph-w8504.docx",
+        "sha256": "f067ee30cdea6e09d9924bb3d48cfc5bbf3291116152dd1a31714c02bece8f72"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s19-m15-paragraph-w8504.pdf",
+        "sha256": "424adbc5fe23dcec71cfcdc0e6606cf2445d5f837229ebbee48c83e3b4144a7a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s19-m15-paragraph-w8504.xps",
+        "sha256": "d53233369d4047a2db8565b59ae6e66e0885cb29e5e48e0477373e01ac019768"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-italic-s24-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "italic",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-italic-s24-m15-paragraph-w8504.docx",
+        "sha256": "21af256703450f76bc580972158898550f34410a54ab148ab3555002496d4007"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s24-m15-paragraph-w8504.pdf",
+        "sha256": "42393abab6f9778126afa1c3cd2128de862eb31a128daf986afd8435d23deec5"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-italic-s24-m15-paragraph-w8504.xps",
+        "sha256": "f9df6fcdb12cf91f529e7b17045c45b892358a26fe7a8a976a145a6be408a27f"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s8-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s8-m15-paragraph-w8504.docx",
+        "sha256": "378bed223971705b2c1524fcd843a45bd3558348729e1d51697ce523a42f6723"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s8-m15-paragraph-w8504.pdf",
+        "sha256": "92a89d233b309604eba0a9f898955aefb01a102cb61c49df1372dd754360c935"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s8-m15-paragraph-w8504.xps",
+        "sha256": "81b0eec87c0a074af01ac0b389d4804e9ce3fb6bcfb655674fd7b677edda6d76"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s10-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s10-m15-paragraph-w8504.docx",
+        "sha256": "53b8f92b86c6fc63515fd041d668016db11a4a0bfff672a2bd90399f680f8b48"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s10-m15-paragraph-w8504.pdf",
+        "sha256": "7c16edc8f64ed11a4038b2cf3e26d89916c29c2163106d624d5142861f1976c7"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s10-m15-paragraph-w8504.xps",
+        "sha256": "4d7fb6852c4a8f6a5d1142b138badbcbb5edf883d6fa7d963c2259cd8aa54238"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s14-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s14-m15-paragraph-w8504.docx",
+        "sha256": "f75263e1f9ade10cf36b57720f428aeed5d9a9937507110f079c75bf2c196a98"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s14-m15-paragraph-w8504.pdf",
+        "sha256": "1ee59c14378583c38771540454bad34c3df976fe9dd000ad40c34afedd098dea"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s14-m15-paragraph-w8504.xps",
+        "sha256": "c83f8518879cb6f16c3edd03a0932107206e7b3522412deca61b7ddbf3be1841"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s16-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s16-m15-paragraph-w8504.docx",
+        "sha256": "8e15eeeee5cb308ea7990e04a1f520e2fbccf4f27d6a085bf336cd52ffa41344"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s16-m15-paragraph-w8504.pdf",
+        "sha256": "8a166baa2610f0667ab28760e667746a2bd10fa01e334bf7a61cfabbf725e678"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s16-m15-paragraph-w8504.xps",
+        "sha256": "d935152ec4e77651ca24715c51e0f6c71988cbbbf7057303281fd0f69ef95e72"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s19-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s19-m15-paragraph-w8504.docx",
+        "sha256": "bff7e1109be69e4fd672ee1bf767f3d7a6f1205fb7e68cf4446c50e5820f1a65"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s19-m15-paragraph-w8504.pdf",
+        "sha256": "2850319902cba766293509f9a581c0c8bfc54ed30341a1ec0069b2abca75ab25"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s19-m15-paragraph-w8504.xps",
+        "sha256": "d373137e0effe92f19ed901b541b4719d56ec4c37db82554e811e9b0dc29544a"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-yu-bolditalic-s24-m15-paragraph-w8504",
+      "family": "Yu Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-yu-bolditalic-s24-m15-paragraph-w8504.docx",
+        "sha256": "0710aaff8a4677321c0d09e46c55ce37b0ddf2d42097f62b4f3514e7ee11deda"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s24-m15-paragraph-w8504.pdf",
+        "sha256": "c30e52494aa3b6f58366828ab7c9053bd96b5f6c80dcb413abf2d50e800cf9b3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-yu-bolditalic-s24-m15-paragraph-w8504.xps",
+        "sha256": "1b2d712028dde1f13ff119f89ae289145fcb218982ab2a0e627d860e4a6962ef"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s8-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s8-m15-paragraph-w8504.docx",
+        "sha256": "bf58b41814449890ff62acb28c5d20ca9f11c546ee6908dd1871c01f777a03fe"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s8-m15-paragraph-w8504.pdf",
+        "sha256": "fd6670c7c7fffa943475d576dd77815aea251f9e9ee042de2e4d63306f39c2b2"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s8-m15-paragraph-w8504.xps",
+        "sha256": "89123b9f105cfd8ffe3f56ed8e1c8aa9a25dfae12095113ef968e0c5173039ef"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s10-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s10-m15-paragraph-w8504.docx",
+        "sha256": "2bfaff4442a6831ec3e2422f3a8b08af5fb3e7d3b78502796c2ee2aa509d00aa"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s10-m15-paragraph-w8504.pdf",
+        "sha256": "955bbf95f29665e6c903d2ac3e00fea96d3f44ce4737a40a5faed481868cfdc1"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s10-m15-paragraph-w8504.xps",
+        "sha256": "d134b52c9f15f3b791342f15907e5779fb58377a4991993834510394ba731107"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s14-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s14-m15-paragraph-w8504.docx",
+        "sha256": "b3f9547991394a78122de0fa949c1bb36347bf3953752b4a908850c84c483a9e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s14-m15-paragraph-w8504.pdf",
+        "sha256": "30f8fc474541c55d121839fce07f4e202103a17350b609c741dd299e07b169b3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s14-m15-paragraph-w8504.xps",
+        "sha256": "e5240a08e623673b6e4db2882cd116ad25a33aba13986be829b794f854faa5ee"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s16-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s16-m15-paragraph-w8504.docx",
+        "sha256": "68ea80f4c94f2cd958548eeeb0cec43bfa27f661da8f04880d6ea22375681419"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s16-m15-paragraph-w8504.pdf",
+        "sha256": "0923585b9975e54138dc97e961a0686fa0bda51839a85b63a156c882b078f962"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s16-m15-paragraph-w8504.xps",
+        "sha256": "6227a0ffc70be67dc98be4021aca00b5884ffa787ff7b78aecaaa7ead938000e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s19-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s19-m15-paragraph-w8504.docx",
+        "sha256": "ee1b93cfce3dad63907843245ffb142b07a4936d11fb44d32534dcaad90a2168"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s19-m15-paragraph-w8504.pdf",
+        "sha256": "d46d54879d3c295a806aa7f3edeef5fa87bd3429f8f85a82bff5dc126034d623"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s19-m15-paragraph-w8504.xps",
+        "sha256": "4892acfc1bc3bf9ad215c48a769ffe25ad2da035bb0c3875cd938de794b30a5e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bold-s24-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bold",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bold-s24-m15-paragraph-w8504.docx",
+        "sha256": "e7296bc994fde2bb52c94bf8df1c5ad4f52130bdc8eaee9313f6235f69571ec3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s24-m15-paragraph-w8504.pdf",
+        "sha256": "33d83e5c15263764d14578122b2cbfb65fdf9d8fac77572bbbace9cc12b25a04"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bold-s24-m15-paragraph-w8504.xps",
+        "sha256": "d558dae753b8da44a1da850081493b8cea1711b5a5ab347ec3f657ad011370e2"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s8-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s8-m15-paragraph-w8504.docx",
+        "sha256": "ff8240c750bdb6aaad599640d7ff80a9e70cb6d6889606a98cea915a6fb630dc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s8-m15-paragraph-w8504.pdf",
+        "sha256": "d1730b787d0d30b536e00ed6ae2665350347c18e6c2cfb9e2cd1662c6f133f32"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s8-m15-paragraph-w8504.xps",
+        "sha256": "92b7f5c7087cbca2b950f9902d5385e5d2ab0cd235a0e93989c1366650593390"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s10-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s10-m15-paragraph-w8504.docx",
+        "sha256": "575c605bbe9f3237e434967a40b95603501e0cfb132d27813d669b75f9debd6b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s10-m15-paragraph-w8504.pdf",
+        "sha256": "2668ae246945e3dda11e332956310795400e16885fdf9560b16350a78dc84ef0"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s10-m15-paragraph-w8504.xps",
+        "sha256": "855abce470f6d5b5ee9dc58c672674e3d66e96589ca019fd5ef26bb2bd815aff"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s14-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s14-m15-paragraph-w8504.docx",
+        "sha256": "81d0632a490c892b6d92e23478b04de589179c4d08c80e97590fc721c94ee1d5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s14-m15-paragraph-w8504.pdf",
+        "sha256": "e4061d0267925b6184a729643fb5adc4beef28decc0a702109bb57175b9f6e7a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s14-m15-paragraph-w8504.xps",
+        "sha256": "dd534211c2971a35baec60c2c8a84ac6ed27563923800b29ee12fe4bf6a60096"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s16-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s16-m15-paragraph-w8504.docx",
+        "sha256": "bf9eeea470142d7e63232b934031fb7b33f97cb0f05d3a1d2db824dc2265aa32"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s16-m15-paragraph-w8504.pdf",
+        "sha256": "2eb84ed38d816b96b0f89175c798b15685c706ff47240a7ddc6cddd356cb7cc0"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s16-m15-paragraph-w8504.xps",
+        "sha256": "c6f22e99ca894874f49b00764eb0b9a9b1a15bece03ea580cbbfad068bc897bc"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s19-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s19-m15-paragraph-w8504.docx",
+        "sha256": "42d95dc0828e8bae361386bc1f70a7ffd218f51e2f2f40e96286fa3afa37e66c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s19-m15-paragraph-w8504.pdf",
+        "sha256": "d0f31e1425470ecfe10dee1b5a0a4bceb74628235eb6ce895c70ec3f98c0dc21"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s19-m15-paragraph-w8504.xps",
+        "sha256": "3c380deb754ce719dceca7e543f9345787e9d780a79a5d15ec7d1cfc841e9996"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-italic-s24-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "italic",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-italic-s24-m15-paragraph-w8504.docx",
+        "sha256": "3126301fe0fe4ccee483a5cb163e0af023cae0477583cf19ce5959b520027843"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s24-m15-paragraph-w8504.pdf",
+        "sha256": "28ea3ee8b8d54b0a56f786fa500305bb2f6912bbd107788caeca65721c21fd0e"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-italic-s24-m15-paragraph-w8504.xps",
+        "sha256": "c8c1fa73f02705cc8541f084d0c5d67fcefffc31cc7acd0f16fae41c93630413"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s8-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 8,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s8-m15-paragraph-w8504.docx",
+        "sha256": "53bc576596625a156d8e453d98e6eeacba9f961279e1460afac4ca366475d81e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s8-m15-paragraph-w8504.pdf",
+        "sha256": "79549da18e32d6ecd227c9a0b6fe1cf7030c80448ed1968b636b328f77e4a9e4"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s8-m15-paragraph-w8504.xps",
+        "sha256": "c0beaec40750bd61b6bbfb3c8c9610ad5c38341df0e9b3009f7cd5a04984acd9"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s10-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 10,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s10-m15-paragraph-w8504.docx",
+        "sha256": "de5c54d67c8ff82e52617581ca69e4b79557e2cc566348d303673bc14bc7746c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s10-m15-paragraph-w8504.pdf",
+        "sha256": "ef01decbd50d26b6fe2d5642555002832a935a4365a4e64ca21300b4be6108de"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s10-m15-paragraph-w8504.xps",
+        "sha256": "99e9ba8ae583fb8277f967bf3de82bcd751d6af6c7c0851b95e4beecb4704f6e"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s14-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 14,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s14-m15-paragraph-w8504.docx",
+        "sha256": "7c5ac79a377ac131806ea5223e65355fc90e67736be28424928b1e6ce4b89279"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s14-m15-paragraph-w8504.pdf",
+        "sha256": "42022a68878436f6eca78b9575e4757a445cf4ce163cb7b319b58c10cd643767"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s14-m15-paragraph-w8504.xps",
+        "sha256": "6d0906815ba9489a09ceb70ca375d1a7a3a9ae15021e4daeb3078f3a7807cdb2"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s16-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 16,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s16-m15-paragraph-w8504.docx",
+        "sha256": "daabcc494f57ad42341e00d176b88fdd232380248ae0380477d1d0fd8df289ba"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s16-m15-paragraph-w8504.pdf",
+        "sha256": "eef97d30451fceecc85e0bdd236debe0ea58d7e289db887018f3cfb6690461d7"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s16-m15-paragraph-w8504.xps",
+        "sha256": "d6334461cd84f838cb6ef9f5ca4125a4036d3c18512fc1ec77e1c686a1679a49"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s19-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 19,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s19-m15-paragraph-w8504.docx",
+        "sha256": "4ee85ec048ebab2df120f07541aa2512d32c7552189e3943ff159a407de159f4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s19-m15-paragraph-w8504.pdf",
+        "sha256": "2caa1b79d9211133a80f5afd6df5ed0905f38cd8d32bebdcb3df9ce8f3db43d0"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s19-m15-paragraph-w8504.xps",
+        "sha256": "f7b857d43cde58fedaf7445a81866373e73e05570e323efd80a389d6ee358139"
+      }
+    },
+    {
+      "name": "word-windows-mincho-size-ms-bolditalic-s24-m15-paragraph-w8504",
+      "family": "MS Mincho",
+      "style": "bolditalic",
+      "font_size_pt": 24,
+      "compatibility_mode": 15,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/inputs/word-windows-mincho-size-ms-bolditalic-s24-m15-paragraph-w8504.docx",
+        "sha256": "edb033995a7916f0fb247d08f9a52b4264979ecffe37197a07d33078169d0d49"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/capture.json",
+        "sha256": "075dc2ca15148e613c6aa09e79b3d1101483307aaa88c0ef3173e98d122ff7fa"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s24-m15-paragraph-w8504.pdf",
+        "sha256": "1d7b074e58c103a917756638b12c97aa6160400ead68b6b86bdbb32183989d81"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-windows-mincho-size-ms-bolditalic-s24-m15-paragraph-w8504.xps",
+        "sha256": "870e494f0b4330d1a33422f87f1199943925a06371b9c7cae14bf4148790bdcd"
+      }
+    }
+  ]
+}

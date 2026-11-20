@@ -1,0 +1,1878 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T133931873Z-724e3789",
+  "captured_at_utc": "2026-11-20T13:39:31.8861081Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-long-size-high-regular-s16p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s16p5-at-24to96-m14.docx",
+      "sha256": "7b8e49564d301b63a8848c89c7253d104c937add71aaa4872958286b9e92b0dc",
+      "pdf": "word-windows-long-size-high-regular-s16p5-at-24to96-m14.pdf",
+      "pdf_sha256": "f543080845587361a6b2783b51b9fb49510bec7cb1a1115c0e40c12ba98f437e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s16p5-at-24to96-m14.xps",
+      "xps_sha256": "ef083811ea85d939a3f4e60a8332e8fceec7c6cf052283202a5e8c01fe4b197a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s16p5-at-24to96-m14.page-001.emf",
+          "sha256": "6bb814a76444b9ba15b5ea269cc6ddda5ea4ea0d94c947aa790bd94e1d55de09",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s17-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s17-at-24to96-m14.docx",
+      "sha256": "97c76f35b975b9e88770babeb9d53d609eb1bb7c8e15af03b3d2da2a0dbd9654",
+      "pdf": "word-windows-long-size-high-regular-s17-at-24to96-m14.pdf",
+      "pdf_sha256": "84c38eed51a58a1772aeeb3d91b7e862d9ea9df53082b3e8424de910bde549b8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s17-at-24to96-m14.xps",
+      "xps_sha256": "4f5cbdb9f9ef2ade7eb2790fec6d352d9752710283022146c55cffd0fd4f6de2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s17-at-24to96-m14.page-001.emf",
+          "sha256": "3769b6d17addd496ac6679cd9d7d12cf84d13a066fc478132e7c21ac3465a50e",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s17p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s17p5-at-24to96-m14.docx",
+      "sha256": "1c0263ee56c9df277a0b2c04a0de022d5e1d95e3fb28bbecb78fdbee72e17922",
+      "pdf": "word-windows-long-size-high-regular-s17p5-at-24to96-m14.pdf",
+      "pdf_sha256": "70ff5294228e80e66de3e2f5295c3a521683fd82d738f601c70197be20fb848b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s17p5-at-24to96-m14.xps",
+      "xps_sha256": "3878d1fcb5b6c01e44ea18f6586f2a6f3d11ccdb9bd5b226ca382eb9d81fa44c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s17p5-at-24to96-m14.page-001.emf",
+          "sha256": "4e80e818a13137a9b9f2e8b63deecc638e17a63ac528b0ae4825dcd7506d7104",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s18-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s18-at-24to96-m14.docx",
+      "sha256": "756c2dfbd566c7502a2d6df8a857a24cd35bda42e0da420aa350e51fa8828e5b",
+      "pdf": "word-windows-long-size-high-regular-s18-at-24to96-m14.pdf",
+      "pdf_sha256": "1380c19d74c404c7c695a9f9ad5d050f699c412f82dca5d2afed20621d1e6fe5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s18-at-24to96-m14.xps",
+      "xps_sha256": "9a871f8daa5c7d7bd4a731d5b55d720d87c29dd69e396820ab9314caee69139e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s18-at-24to96-m14.page-001.emf",
+          "sha256": "405de9bee55e3c2e16289f58c4bc207bc68ab00075681039a9196f0fa83556ed",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s18p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s18p5-at-24to96-m14.docx",
+      "sha256": "7174aabdeed84665b062d41c772d9f4d9d6e91fa0d5220c77c9daf59d9a01882",
+      "pdf": "word-windows-long-size-high-regular-s18p5-at-24to96-m14.pdf",
+      "pdf_sha256": "97f0b7d602cbd6c304a63684cacfe03d967a0e5f64796dae4193fd20fe69cf1d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s18p5-at-24to96-m14.xps",
+      "xps_sha256": "d90f6f13b65188b938c71c47728887274746f1f152d91f2df638aa62100b4f4f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s18p5-at-24to96-m14.page-001.emf",
+          "sha256": "4d9840049358e7c76530fb729598d7aa04c20cef434699035728267f8574a968",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s19-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s19-at-24to96-m14.docx",
+      "sha256": "c69b433f18f355ef4ef4fd393a0d6fef0c764a5265ea307c13101509b8017d53",
+      "pdf": "word-windows-long-size-high-regular-s19-at-24to96-m14.pdf",
+      "pdf_sha256": "549ede59ec52f12b13ccb79cd4bd90c484027288d44045a4b1a0d39afa4f4bea",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s19-at-24to96-m14.xps",
+      "xps_sha256": "bd9046154a2384de21ada87635844e87076777230b9f625174edbb9e5da14ab8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s19-at-24to96-m14.page-001.emf",
+          "sha256": "9d101aa8905acb1e728c2d7be1539403c0d192416718035f15d839603c52dfbd",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s19p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s19p5-at-24to96-m14.docx",
+      "sha256": "d388efc554a0b198321622b6bf40c1441822191d4a0a461a885e3febf53da7d7",
+      "pdf": "word-windows-long-size-high-regular-s19p5-at-24to96-m14.pdf",
+      "pdf_sha256": "755cd6c5de8dbdf19ffa5d6e61e6c1811cbc14eff1d20f13a88b75b4eb4c45fd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s19p5-at-24to96-m14.xps",
+      "xps_sha256": "3a77e3bcd8050d5c6ac3003a41e3feb760090add6638a90896369b9893e52378",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s19p5-at-24to96-m14.page-001.emf",
+          "sha256": "b571f59c58ce402ae9858983e0d248a8d8ef2b031bd3413a37fd40217a4acdf6",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s20-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s20-at-24to96-m14.docx",
+      "sha256": "979f01c21e6da2e3fdbcab348679455bd85866d5e1a1a919b42e98293e1d31be",
+      "pdf": "word-windows-long-size-high-regular-s20-at-24to96-m14.pdf",
+      "pdf_sha256": "68ac35111eafcffbf876e0ea0a47f0fa475bea8d031b25634e69883f4f71c7c1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s20-at-24to96-m14.xps",
+      "xps_sha256": "7686825878087294e3aff0eaee67ddddb79a94c615eb301c4a77709dc7e1f209",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s20-at-24to96-m14.page-001.emf",
+          "sha256": "f3bfe070033017dca6e5d592982f1d50619274114f552dc67d7eedabf3eca252",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s16p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s16p5-m-24to96-m14.docx",
+      "sha256": "63f8919ca747ac82e0853dd735d0d526e18b1096d2823791e7b88b22788fc0e6",
+      "pdf": "word-windows-long-size-high-regular-s16p5-m-24to96-m14.pdf",
+      "pdf_sha256": "0c4af05a1783c5082853bd72b3b0218dba3c52e70bac8535b14bcd73e1e97354",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s16p5-m-24to96-m14.xps",
+      "xps_sha256": "6fc4994cb91597cac1e77196f22ec8aa97280429a112d90d6c3a5f2b9453775f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s16p5-m-24to96-m14.page-001.emf",
+          "sha256": "2ebb2ec1104263518aa2adde61375a061b439d6bcc3c3c12664473d1766586b2",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s17-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s17-m-24to96-m14.docx",
+      "sha256": "f3eb884181257112a85a1579f71269052440abdc27ef788b4263210f22db65e6",
+      "pdf": "word-windows-long-size-high-regular-s17-m-24to96-m14.pdf",
+      "pdf_sha256": "1c0f42607cf0d008038fe6aeac8b85cba7d3a215bf249fbc53c2ef30488eaf8a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s17-m-24to96-m14.xps",
+      "xps_sha256": "e3c55718ee7052a1b582bd0cd88c13ec1f351e33bb7863fe812d9257fb85a420",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s17-m-24to96-m14.page-001.emf",
+          "sha256": "ceab7493c7c1a7c809f16a0df18749df982f6ac2d51ffbc713a73d5de46225df",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s17p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s17p5-m-24to96-m14.docx",
+      "sha256": "236a571d24398c8996360162cc154ae6e91bd7b9e71e7fa43ed9dc1ed1030624",
+      "pdf": "word-windows-long-size-high-regular-s17p5-m-24to96-m14.pdf",
+      "pdf_sha256": "2dd75486bdf62fb0c36fa83d189bcf450dc8e243dca86f20c81bb6788e156cd9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s17p5-m-24to96-m14.xps",
+      "xps_sha256": "7a602a8d1a9ccd43ec16022d2e0d803a1d28fc627f2601216dc2d795198c26d1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s17p5-m-24to96-m14.page-001.emf",
+          "sha256": "a30cd06293ceae2f632f44f0de54e984f27e1b073a81c741e5c96d9c021b4f3f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s18-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s18-m-24to96-m14.docx",
+      "sha256": "af0b1284b2bc3fd56891fda714c9856e96d34a8e3b1e0878fd4c3c87839303f5",
+      "pdf": "word-windows-long-size-high-regular-s18-m-24to96-m14.pdf",
+      "pdf_sha256": "57cee29aa43f5acbf41896e14fb4a95fef4abc9e868dd353a9965fd0bb909b76",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s18-m-24to96-m14.xps",
+      "xps_sha256": "c35b7a28288d3530d16d26c0ef8b2a1267dc89b3d46d5771d2879774c151ccbe",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s18-m-24to96-m14.page-001.emf",
+          "sha256": "a2f7a3b76db1a772b94f1f97d7c2bf040accd03106fa16a40a4bae4841363db9",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s18p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s18p5-m-24to96-m14.docx",
+      "sha256": "c3b3a10b9c8c025768a2c9f84cbd6bbb0b58d7ed2ffa1ab87403819886a5924e",
+      "pdf": "word-windows-long-size-high-regular-s18p5-m-24to96-m14.pdf",
+      "pdf_sha256": "2baaed73bdc7e445c84050968a7275f0577f08d86fec3ecb3690696f9a9a6bd7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s18p5-m-24to96-m14.xps",
+      "xps_sha256": "bce06fce3c69d7730db8fbd39976f3e96836222a7935eb9bbb43c1d7e1201c9e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s18p5-m-24to96-m14.page-001.emf",
+          "sha256": "16947a2199c162a2c7f1a7a7f48c45aa216ec4b8215981e19494b5396f0fd82b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s19-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s19-m-24to96-m14.docx",
+      "sha256": "751122d7d790061edd0c09f54402c560e18d17e49a5be80168727700c0c1f63f",
+      "pdf": "word-windows-long-size-high-regular-s19-m-24to96-m14.pdf",
+      "pdf_sha256": "a3d51d1d8e1f2d6173f522b8c031a04a77aa42fa87bcbb2c991d9bff3fe32fbe",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s19-m-24to96-m14.xps",
+      "xps_sha256": "5b1eee52aab9cb5d3b9cd0e3b4d3cdb29456f2538ad2283533dc35879bab58b3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s19-m-24to96-m14.page-001.emf",
+          "sha256": "1a898f7c567f3d3ae13b76b84b13e983d23275e3378f151ba2f3b01825140647",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s19p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s19p5-m-24to96-m14.docx",
+      "sha256": "d54721ff8a7c15b70023715e0a5c966e846ac309b560983718b6464a1c4a4326",
+      "pdf": "word-windows-long-size-high-regular-s19p5-m-24to96-m14.pdf",
+      "pdf_sha256": "1cd1531be5d0b9580df57de00aabcdbbdf1c4b5f6b93fb445107c1ba7f2e82ba",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s19p5-m-24to96-m14.xps",
+      "xps_sha256": "bd688a755f9df7415b3c50f2c256b874fc2b6e30b8d133febe34940bb93f7045",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s19p5-m-24to96-m14.page-001.emf",
+          "sha256": "c125ca04b51f0eec61c4dab1c2ee098b0492c40e547a2446774919866a0b876b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-regular-s20-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-regular-s20-m-24to96-m14.docx",
+      "sha256": "5cc6156f60096409a0467459bb88fe0884b282bbf52ed5d79a1dcd546d07c958",
+      "pdf": "word-windows-long-size-high-regular-s20-m-24to96-m14.pdf",
+      "pdf_sha256": "3e810dda87fdecd0b0a08c126821abaaa7049e1c8bab297c808dd847a32e7b8d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-regular-s20-m-24to96-m14.xps",
+      "xps_sha256": "092f314b033ba4db03e57e33d89e7630fa10c48c69ece5f82ce60eb0cf70c1c0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-regular-s20-m-24to96-m14.page-001.emf",
+          "sha256": "4b78c70b91b89790fd7c04fe9a365ea5cff390a556fa3fc122bf4e8248e1e13b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s16p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s16p5-at-24to96-m14.docx",
+      "sha256": "a05ac6b87db0b1d6656b6daaa43a3398b86933cf238e94c6a4c7fa3acfe17107",
+      "pdf": "word-windows-long-size-high-bold-s16p5-at-24to96-m14.pdf",
+      "pdf_sha256": "c34b90a7dd672ebc79c472a111fa0a2080e336510766243c8134b38b522bebc2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s16p5-at-24to96-m14.xps",
+      "xps_sha256": "029c772d8863c299149aa3c88a467eaa25863ef11c29df10cba5b0b783231b2c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s16p5-at-24to96-m14.page-001.emf",
+          "sha256": "56d25a2ccd42e7ae5a66896c1d4c81a25d8cf4d0453fb568d3d2fd2dbe2ab6ca",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s17-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s17-at-24to96-m14.docx",
+      "sha256": "399d546492682291f6f8c3940af1003dccea27a81cb0b9b345872b77b49d02b4",
+      "pdf": "word-windows-long-size-high-bold-s17-at-24to96-m14.pdf",
+      "pdf_sha256": "a972b086e41a2245ee46a5f61060cbc2a71a8e13d6398d400f0a90349f6860ac",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s17-at-24to96-m14.xps",
+      "xps_sha256": "982e0f9049bb231c4b72a4b462222de36f212078ba630db191d3c74b65ca638f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s17-at-24to96-m14.page-001.emf",
+          "sha256": "c04b196fb02d3b9fb2ba13820869e9331130d08c76a1cf885cfabdd9ef0d9e1e",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s17p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s17p5-at-24to96-m14.docx",
+      "sha256": "057f5d550ad498477e0458182635b6532d06267058dc87a5ea5db9fbe37e29fe",
+      "pdf": "word-windows-long-size-high-bold-s17p5-at-24to96-m14.pdf",
+      "pdf_sha256": "06dd327e1f2739a752d7422e28db5b35c0d811a5112abfdc4cd429ae775cfdc2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s17p5-at-24to96-m14.xps",
+      "xps_sha256": "78da93be0c0ec20e2e53a5fa04f22d4c3fd2a19a38b0658b4f28226f5f47b5c8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s17p5-at-24to96-m14.page-001.emf",
+          "sha256": "670d03cb58d7a06d9cc771824f8f09cb933099afcd1a868d51df53ba1c564a5c",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s18-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s18-at-24to96-m14.docx",
+      "sha256": "e75eb01c356cb686dc21fe90856d9172a774b35b4777ba6ea5c656d922eeb92d",
+      "pdf": "word-windows-long-size-high-bold-s18-at-24to96-m14.pdf",
+      "pdf_sha256": "3141070718f87f7549c88007168ab04ff2bd8a6157f614a4fdfd8cd48f27289b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s18-at-24to96-m14.xps",
+      "xps_sha256": "5e5ee03ea03da19e3e47c33f5d95b7aa82e728bff158023b130a54a4687156c9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s18-at-24to96-m14.page-001.emf",
+          "sha256": "5843c349c8206b2c4b81aecc41c1077be20c23d3bdcf77bf3972b17ec67bb8b7",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s18p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s18p5-at-24to96-m14.docx",
+      "sha256": "7a17d2c35c617fc26effc68821af7a474d95f6eef173517f7f404340ed7ceefb",
+      "pdf": "word-windows-long-size-high-bold-s18p5-at-24to96-m14.pdf",
+      "pdf_sha256": "64518c006025e5d9b77c082baeda0f36373381b86997bab1519872a09f987ee1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s18p5-at-24to96-m14.xps",
+      "xps_sha256": "16970d8241981b9a8da28a4e3340e131ea53b706970760d803caf68b6917590c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s18p5-at-24to96-m14.page-001.emf",
+          "sha256": "93a9c45c0aecf2f5b963f97b07c91e12a987014753172e154883b80d4f4c60b7",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s19-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s19-at-24to96-m14.docx",
+      "sha256": "2a2b9cffe6f40f05494d703e9c967a993a577b5ea4c1ed486627c30fb32c572d",
+      "pdf": "word-windows-long-size-high-bold-s19-at-24to96-m14.pdf",
+      "pdf_sha256": "42f859b789ff49c9372949a46cab1f5bbab5ba052228d1c570b9244f44ea46f6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s19-at-24to96-m14.xps",
+      "xps_sha256": "dd9c47b4569f58278f34b137bf47105d3134a1a40889f49391d339a7453b6cf5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s19-at-24to96-m14.page-001.emf",
+          "sha256": "d81fc5837762c20381c69034ee1a798a1a3c1d359008e8cc8beae9210ce7a75f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s19p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s19p5-at-24to96-m14.docx",
+      "sha256": "0dad54861fb9ee0a63c32fb554380b9ae0d10dafbd1287ee64dc305b8221ac0f",
+      "pdf": "word-windows-long-size-high-bold-s19p5-at-24to96-m14.pdf",
+      "pdf_sha256": "35b2388d585b43339a4a197dc5c25f16a6d0932dd5bf1372c01c94f3baed35de",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s19p5-at-24to96-m14.xps",
+      "xps_sha256": "b1e4dc4d8d3205141c2598068135f558c2990836979e3200e514e37b788b0709",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s19p5-at-24to96-m14.page-001.emf",
+          "sha256": "06fd0e1dfaea9f8af651c2bb4f6dd1b385449011bc70732f728dcb4c8f865587",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s20-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s20-at-24to96-m14.docx",
+      "sha256": "45314b53a4f67814fb9e1e1bf87976758d33adf10fa97909da6a79e379f2c249",
+      "pdf": "word-windows-long-size-high-bold-s20-at-24to96-m14.pdf",
+      "pdf_sha256": "8dcff6ffb1ae6fb80577539de71273adb03c310baf100258ece15d32e5ffd60a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s20-at-24to96-m14.xps",
+      "xps_sha256": "e7962211f322da9e621099668555ed2415637b3a335643a5c8588293e8632555",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s20-at-24to96-m14.page-001.emf",
+          "sha256": "4c6821d680e4d3f30d52227ffb4416af10e7a8c7a4949f0f1a2a3cb953542a2f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s16p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s16p5-m-24to96-m14.docx",
+      "sha256": "a0a76759d1096b2753fa14a0baf95f687b742c39579e2b272d0b5e6c0bb6e2eb",
+      "pdf": "word-windows-long-size-high-bold-s16p5-m-24to96-m14.pdf",
+      "pdf_sha256": "f75aa665479a71ae62faa3f25a46ced231d13e34e3d459a9546ac37ff7b46a57",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s16p5-m-24to96-m14.xps",
+      "xps_sha256": "98b3a58a2bf8b461f5e5e3dc1f5e35c8f518b391271404b43aa51a0881bf0ca5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s16p5-m-24to96-m14.page-001.emf",
+          "sha256": "d9c1d58c1f1d40815b5450f951457f168506e9d1e70b7ac1105fc885970539f5",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s17-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s17-m-24to96-m14.docx",
+      "sha256": "70e1acd72e74ec16d0ec8fe84409dd340b52e3c7b392d9a38c661224a7e610be",
+      "pdf": "word-windows-long-size-high-bold-s17-m-24to96-m14.pdf",
+      "pdf_sha256": "eb3741a097727af0b9308b6db04bfe7e74750caf3ed8898331626d0336cde2c9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s17-m-24to96-m14.xps",
+      "xps_sha256": "8f29f1a6b928be0b1a20640d81c647db3c94000bd6f5241111039029f6874980",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s17-m-24to96-m14.page-001.emf",
+          "sha256": "53bbb96be8b8623cf62afa8f689f3f8be93fb02d52c6136dae6c97f627ca79ed",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s17p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s17p5-m-24to96-m14.docx",
+      "sha256": "81a20cfa807ed02eaae80c3539d2ea4d1b69aeca4aaefc0fcc950f939eca982b",
+      "pdf": "word-windows-long-size-high-bold-s17p5-m-24to96-m14.pdf",
+      "pdf_sha256": "34424c5ce087be715fa19dbb2a678d26284e2d439782c944e6655b2bdf4ef952",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s17p5-m-24to96-m14.xps",
+      "xps_sha256": "f68a645b9efed89da41124a0d96ab21ae06b838cbf7fb02909b2fbf7cd555f4c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s17p5-m-24to96-m14.page-001.emf",
+          "sha256": "f6d26c9affd7b3e8eeb998418f4ddaa4ce874c77da3991c31f60afa0fac23c68",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s18-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s18-m-24to96-m14.docx",
+      "sha256": "c0b2179188818562473f1b937584fcae85400064df6ea9e9719ef8ff64122768",
+      "pdf": "word-windows-long-size-high-bold-s18-m-24to96-m14.pdf",
+      "pdf_sha256": "4c7dea12637b6426e8cb05e0b030af98b9947ee3b30a8832aa8069aa14f3a240",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s18-m-24to96-m14.xps",
+      "xps_sha256": "866e687034cd5b9dd01138bd05fe5bb5bd746ed1626fc038cf91541d6dd7775b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s18-m-24to96-m14.page-001.emf",
+          "sha256": "0923e93208bf11628dfd9f5bd280b1e36170cc414c0b77356867d054349c4a47",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s18p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s18p5-m-24to96-m14.docx",
+      "sha256": "9bfbaff0b32762b3f71dfcea23f6b0b7cf38c5b07240cf8d3d1b992455d4ad0f",
+      "pdf": "word-windows-long-size-high-bold-s18p5-m-24to96-m14.pdf",
+      "pdf_sha256": "cb112f5af43559e55c9be09445e7617f7e1f92f31c057d82795d118e4380a3a6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s18p5-m-24to96-m14.xps",
+      "xps_sha256": "bcf28bed10b17ff8b837507d113fdf525af80bac8ce0d9ed95eb059772d23060",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s18p5-m-24to96-m14.page-001.emf",
+          "sha256": "3d6d8402ea0b3c4b611eaf7db69e0e76fa5cd7d4919426bad9732a6f33131eb7",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s19-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s19-m-24to96-m14.docx",
+      "sha256": "1091e5d827a76765d0dffd4fa04413c9b3088019d990b248b32e0ddab37f8d92",
+      "pdf": "word-windows-long-size-high-bold-s19-m-24to96-m14.pdf",
+      "pdf_sha256": "595f4e32ec93e7f47ac77b34c3ca759ade38a1f1b34aa75b038ff72f984ea56f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s19-m-24to96-m14.xps",
+      "xps_sha256": "6824d5fc53782a0d0305b1638d1cc4d725dabbad4a7ebb28f43e3100d2d109b0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s19-m-24to96-m14.page-001.emf",
+          "sha256": "f56b2ba9f7314c9d7434bf9b017a9f077201ca96f7539744ce2e52bf5c614dd5",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s19p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s19p5-m-24to96-m14.docx",
+      "sha256": "9c270bba05ac1e0a4107e4efbfff5b4c8efe6aa193f15f88dd35a37399c8ee7e",
+      "pdf": "word-windows-long-size-high-bold-s19p5-m-24to96-m14.pdf",
+      "pdf_sha256": "0def6bf96ad47ac00c40127aa3c8952dc952470702d3aacf89fc3a33f091ce22",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s19p5-m-24to96-m14.xps",
+      "xps_sha256": "ee5d6b2f63b30e50d4b07926ab8df31f2082003891c54ef42932c7ce6cc8d6fa",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s19p5-m-24to96-m14.page-001.emf",
+          "sha256": "6f7440b298ab4b41b398146ddb138daaf2c0a9f518daa671d3bcbf99e67420cb",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bold-s20-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bold-s20-m-24to96-m14.docx",
+      "sha256": "4436437aa30b0cc6e443b2895a6e8962b420925fca1e763c44a98ff063c03fe8",
+      "pdf": "word-windows-long-size-high-bold-s20-m-24to96-m14.pdf",
+      "pdf_sha256": "cdd1f72707cf2ea2e6755b1502dad9caf88dc6a75a93165cd071a362162d530d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bold-s20-m-24to96-m14.xps",
+      "xps_sha256": "aeba16ba28d14c5b6d99a40381d9f32b273727a2d9a395b9d99d2e99c4be4414",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bold-s20-m-24to96-m14.page-001.emf",
+          "sha256": "355373867f42301595cfa3768532cfad9db88cb0b324115332a72cbe5e929baf",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s16p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s16p5-at-24to96-m14.docx",
+      "sha256": "d2e7121e029afa92eac134a726113985170de472d1238a01ba7629e687dff56c",
+      "pdf": "word-windows-long-size-high-italic-s16p5-at-24to96-m14.pdf",
+      "pdf_sha256": "6ab1c13bcc109fb232aa62d944c7d7ef6a35f610f5e81a888398e69cf28abb0b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s16p5-at-24to96-m14.xps",
+      "xps_sha256": "e3ff7e67cbf425373e34304254c70c80a13757674e7c843f55b795e2101e8271",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s16p5-at-24to96-m14.page-001.emf",
+          "sha256": "d2a366750aaaa3c604c5c95fb9e749ce23f7a94aede7f10756b664679daf0da8",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s17-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s17-at-24to96-m14.docx",
+      "sha256": "e3579ff9c3d6fceb04941ad967d7340f02b098dd8dbd1f6805c8c52164ab92cc",
+      "pdf": "word-windows-long-size-high-italic-s17-at-24to96-m14.pdf",
+      "pdf_sha256": "1b991628ec8a28b9a66c1fa9284436b45bab6ebf3b648bae9fdc1485690d4a3e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s17-at-24to96-m14.xps",
+      "xps_sha256": "6c16b69cabd0abdbeae71e954cec6ad08340375ebb65b8100cc844830d1b1482",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s17-at-24to96-m14.page-001.emf",
+          "sha256": "d2bd996be6146172036a8e0c1c8b6360c428d59e53fe51cd5a0585d3826a4727",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s17p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s17p5-at-24to96-m14.docx",
+      "sha256": "49f9267d06758e10ac6483a1a99d0223b265c642f10b163ad82e9fbfc3b97b30",
+      "pdf": "word-windows-long-size-high-italic-s17p5-at-24to96-m14.pdf",
+      "pdf_sha256": "838c1f5066026a6c029c5e3beeb08c4b8475ed7e26c80b01d6fc5dbfb2046621",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s17p5-at-24to96-m14.xps",
+      "xps_sha256": "b0cbfa825615e5e89fd82862b86dc4808e57ccc70935db6ab2a1985bf9edc11a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s17p5-at-24to96-m14.page-001.emf",
+          "sha256": "6cdae80b305206a972284fc827382c6a8c3d646a91ab2a673e59c683f578a1dc",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s18-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s18-at-24to96-m14.docx",
+      "sha256": "f8508c391de00de730dde606e549a4c2019ab997548cec40e26156fd0a157aae",
+      "pdf": "word-windows-long-size-high-italic-s18-at-24to96-m14.pdf",
+      "pdf_sha256": "90bcc91a1fe4b6803d003a30618db5fa9d47042ea64d647d3f552e63ad53705b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s18-at-24to96-m14.xps",
+      "xps_sha256": "c30b2dbb9740e4ca5f9976df4845757951d702f09493fa6f85745fec6407e44e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s18-at-24to96-m14.page-001.emf",
+          "sha256": "38525c5688541b43b88202d02077a9be2b6c7ac98a5ee3432bb546bc5064efee",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s18p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s18p5-at-24to96-m14.docx",
+      "sha256": "e83f17d4856aa7363da6912bc6f0d452536dd6960bbb888235eeff203b9d1d9a",
+      "pdf": "word-windows-long-size-high-italic-s18p5-at-24to96-m14.pdf",
+      "pdf_sha256": "f06bc0d7d86a6fd6c30374a4238e987ad007f6f6243d8ff118dd262e39338754",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s18p5-at-24to96-m14.xps",
+      "xps_sha256": "eda784199822f53724519893670ec88aaa9ba543eda1a56092f9705e4d22b553",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s18p5-at-24to96-m14.page-001.emf",
+          "sha256": "be5c1e87831c1bbc66a142594342d322f9eba96f1652a86e2fc78f6deacad432",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s19-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s19-at-24to96-m14.docx",
+      "sha256": "6d4c6ed972793ee46a7ea7615828c8a481b26f6ac5006a075ef599efa004bd19",
+      "pdf": "word-windows-long-size-high-italic-s19-at-24to96-m14.pdf",
+      "pdf_sha256": "40095bc44e02079d8bb737881a1084cc99db264bb9b52250c6845fef0f81b185",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s19-at-24to96-m14.xps",
+      "xps_sha256": "0d2be3536ed8e9b9529d87b96905e8b1524e1d0498eb29ba95ceb127388d4c9d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s19-at-24to96-m14.page-001.emf",
+          "sha256": "71519704abd1889b63445bd053c3b5e4c4df00470049956de5aaa82e6ad217d4",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s19p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s19p5-at-24to96-m14.docx",
+      "sha256": "4dc1e1c23886ad317c6cce9218e718f3626fb59d7db7e746c6f497147bd00b05",
+      "pdf": "word-windows-long-size-high-italic-s19p5-at-24to96-m14.pdf",
+      "pdf_sha256": "870f8229d82035d02409e9123bac426009e4386ad2468bef82fa6e19a5aa7a49",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s19p5-at-24to96-m14.xps",
+      "xps_sha256": "2bad9236778d44dc12cdaaf32e2d57215371452bd233ae941b2920e5f17ee835",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s19p5-at-24to96-m14.page-001.emf",
+          "sha256": "f63586fb2e2c68d2b7b195d54c053d194ecb6103e56338ea1a4f33a2487e1f09",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s20-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s20-at-24to96-m14.docx",
+      "sha256": "b5f04931fa917d37b8c2ed7270d2f0d4c672e2a3f58f9111c13aca421e3beb88",
+      "pdf": "word-windows-long-size-high-italic-s20-at-24to96-m14.pdf",
+      "pdf_sha256": "10941c7f38dfb6028f97baf9129b74621d5c51fc0ae5cb5856a9de08804da0ef",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s20-at-24to96-m14.xps",
+      "xps_sha256": "0a138b82f4799bdce94a65f6baaa51032130bdc026453b4fbe9583b1dee87b46",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s20-at-24to96-m14.page-001.emf",
+          "sha256": "5753be1e7af8fd5d7274c2612a4e6fb5983011ae48b5a3dfb34107d5378f120d",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s16p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s16p5-m-24to96-m14.docx",
+      "sha256": "fa0dfa842246274d16facea108a8480998676ba9e5b491920d6f1ccd8992fd89",
+      "pdf": "word-windows-long-size-high-italic-s16p5-m-24to96-m14.pdf",
+      "pdf_sha256": "5da05fa282a28d7c7af2694dc6cbe50eda939805cfbc71d42fb26efd001d57b1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s16p5-m-24to96-m14.xps",
+      "xps_sha256": "4e1a1847f0bbe8d6aa89b35411c6cf2a20aaee9f8fff1d33cd02344dceecbd7c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s16p5-m-24to96-m14.page-001.emf",
+          "sha256": "c4c5887c4a015ffacb458a43eaf16dd5648c78a3e63a900d16d19df822e12240",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s17-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s17-m-24to96-m14.docx",
+      "sha256": "7b7bea31e2867202e1a9612b26ecfcba46787ece3206852473ca3483044f46ea",
+      "pdf": "word-windows-long-size-high-italic-s17-m-24to96-m14.pdf",
+      "pdf_sha256": "5ef0a047c7e08b3f8f80632009848d7e4e42be839c32815a4e593e11d4609e15",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s17-m-24to96-m14.xps",
+      "xps_sha256": "318502145a0971ffb2d67e45e31141ee9231af3eced2a19e7ae1b57773214b05",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s17-m-24to96-m14.page-001.emf",
+          "sha256": "934846c1daee762dab898becf83e97c11455272d92e8cb43706c9e1ba244037b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s17p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s17p5-m-24to96-m14.docx",
+      "sha256": "b4fe4e1218011f94a9a2307a50d7526f0cea3eac2d908c7afda9760906a680ba",
+      "pdf": "word-windows-long-size-high-italic-s17p5-m-24to96-m14.pdf",
+      "pdf_sha256": "13aa86db40d1eda009cd6adbc000bb323e70942eb6c5724dc0fca7a0ef7864ef",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s17p5-m-24to96-m14.xps",
+      "xps_sha256": "34126f659d6511b140cbd9c4b0c83a98c7182b9711223aa62cf3fc9476654b6f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s17p5-m-24to96-m14.page-001.emf",
+          "sha256": "510bd7c3f6ac205991e3c97d450c79c5870afb6712ababd174923e7f4908e73e",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s18-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s18-m-24to96-m14.docx",
+      "sha256": "0640ba35059f115950f24d664ef5fca9a9537786b40693c1d706709802643902",
+      "pdf": "word-windows-long-size-high-italic-s18-m-24to96-m14.pdf",
+      "pdf_sha256": "075b1098f05072a50c01e13b4757d25ebb03695b3d50f94b814002b08b78c1b4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s18-m-24to96-m14.xps",
+      "xps_sha256": "c318dd8f268539a249c044be9af74240aa8cfe880ee59eb061a971744e542e30",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s18-m-24to96-m14.page-001.emf",
+          "sha256": "1408e8dc6db372e174d08ce96381c8bea00d3fc933c8e16a865f2a956077e7e2",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s18p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s18p5-m-24to96-m14.docx",
+      "sha256": "92b430764feb12c67dbfe7a7323d6482a9a3b9be53bc8dbc0e526aa94de82334",
+      "pdf": "word-windows-long-size-high-italic-s18p5-m-24to96-m14.pdf",
+      "pdf_sha256": "360f9794b76d234585e86b385598aab762f51c9d445cbce99306d72046eda981",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s18p5-m-24to96-m14.xps",
+      "xps_sha256": "f1f8a60423536c63925aca70fbba010d22ca5ff49486d08e0691d7be43f53129",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s18p5-m-24to96-m14.page-001.emf",
+          "sha256": "4f26cfe15872c82408da426387b1ddd79ff130defee31986af519525904cbd9c",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s19-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s19-m-24to96-m14.docx",
+      "sha256": "0c99483b3e8290f038a99dc088735512f9caa275dc3f0deea3b051616221d8c1",
+      "pdf": "word-windows-long-size-high-italic-s19-m-24to96-m14.pdf",
+      "pdf_sha256": "e3e7ac4b0702860f9b89777e6e1d16e3e0f921fe1cfbcb6631df084b96e57338",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s19-m-24to96-m14.xps",
+      "xps_sha256": "65bc432175730e8a8d10d9cdae2241abedbb50858e88a0f00de721107a960378",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s19-m-24to96-m14.page-001.emf",
+          "sha256": "5128daaefad0da904388b22f77471a99023e919c149aabe9390dedb7a06bb1fc",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s19p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s19p5-m-24to96-m14.docx",
+      "sha256": "2da0147a4a23c5a3ea8deb045e37655456b60a0712d224bc98310ec8e532c8f7",
+      "pdf": "word-windows-long-size-high-italic-s19p5-m-24to96-m14.pdf",
+      "pdf_sha256": "2849d058ce2250056f8575e9bc86cacb78c2806ba23f5ca828a9bc1c38d339b0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s19p5-m-24to96-m14.xps",
+      "xps_sha256": "b904acae07e398bcdb4bcb3f6a7fdd4171d8728518444958b7743e41f844203e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s19p5-m-24to96-m14.page-001.emf",
+          "sha256": "b4349bc8327dd8ffa6eb26eeff977af3ed019524f2230733574c5de136ca3e01",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-italic-s20-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-italic-s20-m-24to96-m14.docx",
+      "sha256": "0b6b0a7018adcccf120aa872db857f77e3add5939cb152db0d4418508320a394",
+      "pdf": "word-windows-long-size-high-italic-s20-m-24to96-m14.pdf",
+      "pdf_sha256": "12fa398e9b11665f06f665366f31464cf58fcaeed77212846b4915e377412500",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-italic-s20-m-24to96-m14.xps",
+      "xps_sha256": "9568a9a8fb654352fdffb12ddf3a6ecba8820463877e41b573a7f84d9c5b074d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-italic-s20-m-24to96-m14.page-001.emf",
+          "sha256": "59662c5024ce66fcc24e877f7baa2c27569aab5feb41f7c5c4296603cea3e21b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s16p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s16p5-at-24to96-m14.docx",
+      "sha256": "655a84484fcdd21c29e6de6eb48a84e949bb458caefde7d9e1a0dcf56db7bb32",
+      "pdf": "word-windows-long-size-high-bolditalic-s16p5-at-24to96-m14.pdf",
+      "pdf_sha256": "53f5dc6547960b46aa4864c40538d35a95b949e63abd2fc8777f542895391566",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s16p5-at-24to96-m14.xps",
+      "xps_sha256": "a801a83f018ad7b32d7b4e6dec24840e3edbcfb9a67e126a1c735251becee3e7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s16p5-at-24to96-m14.page-001.emf",
+          "sha256": "771bdb185292c1b6eac9be54b57c154f914d06162f306e2a4e068354409a1e43",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s17-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s17-at-24to96-m14.docx",
+      "sha256": "e5101c963eed2871a3c0dddf7762960bf1ef1afc6978ceca40c9b7dba7eb7165",
+      "pdf": "word-windows-long-size-high-bolditalic-s17-at-24to96-m14.pdf",
+      "pdf_sha256": "0514d74663707295fa39d5402f95271b10c5044594cbe284fdbbf23f1ebe14de",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s17-at-24to96-m14.xps",
+      "xps_sha256": "52a41dc7a594df5e665dc8082a59e29b865d3bb9a5d0c75875cdda46472f863d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s17-at-24to96-m14.page-001.emf",
+          "sha256": "a68479386b992272921b70b706498760de34237d9ffccf32cee456a1b67b7bc5",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s17p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s17p5-at-24to96-m14.docx",
+      "sha256": "6990f297c6b903d347a00f0e81cc9e1e4e4da6d24ed055763205331fc032738f",
+      "pdf": "word-windows-long-size-high-bolditalic-s17p5-at-24to96-m14.pdf",
+      "pdf_sha256": "e36feecd72c2bc7684b508d3fbb48b751af4de17d693434bdfa078d3dc19f9f2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s17p5-at-24to96-m14.xps",
+      "xps_sha256": "d9036378aab1e82b6b73efd69f9f701c863530cb0cc2e2748d1cfa1b9d3c22c0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s17p5-at-24to96-m14.page-001.emf",
+          "sha256": "2119d5f1740721c30fef9468b31ff3ae748269a6e92bbab30ccacfe4fcad3b00",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s18-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s18-at-24to96-m14.docx",
+      "sha256": "d27b279f1a7941f5b403be5619aee9c415a4933be822c042bf07ff96d22998d1",
+      "pdf": "word-windows-long-size-high-bolditalic-s18-at-24to96-m14.pdf",
+      "pdf_sha256": "6c6314f697c712c607b55adcce3c5fe1843f64227a496e628d02fce87042aa04",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s18-at-24to96-m14.xps",
+      "xps_sha256": "59d47aec24982d57f71e34f70b9afa6e941958ae4433388e0df27a906306d2a0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s18-at-24to96-m14.page-001.emf",
+          "sha256": "72aae79e5f8527121c73099317f08c8ed2d5d2ab4cc4d0eb12e038765c80c84a",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s18p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s18p5-at-24to96-m14.docx",
+      "sha256": "7cd284cb419f063936d0a7886b6e157eb301ecccd3aee4c60815eac274abbf10",
+      "pdf": "word-windows-long-size-high-bolditalic-s18p5-at-24to96-m14.pdf",
+      "pdf_sha256": "3cbebce72325ba164599db8a20d14e085c15f3e2b55333a29b023c11eb13bef5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s18p5-at-24to96-m14.xps",
+      "xps_sha256": "281cce3577f5cf751f7254f983ab6690c4a6585632c968a9326e5658677d7a14",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s18p5-at-24to96-m14.page-001.emf",
+          "sha256": "15e379d4943808f5a3784e1e536c9728cbf76a94fee457c1cbf6c653e15bf598",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s19-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s19-at-24to96-m14.docx",
+      "sha256": "cb791d94798bafc62f3c66e2ccfa00b4cc400590a7e31c707e6c4975eb81d720",
+      "pdf": "word-windows-long-size-high-bolditalic-s19-at-24to96-m14.pdf",
+      "pdf_sha256": "77d8ee18d62e8f4f2f0d3b134f81297d70c5bf7c59a392fb1e4e3a395b73f0c1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s19-at-24to96-m14.xps",
+      "xps_sha256": "7147bf271e5c39c7c3ab53386e1b5b8e8381e660d7d61bb31cd7ffe35cbbf28c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s19-at-24to96-m14.page-001.emf",
+          "sha256": "ce98d4c56f1e425c2f7a424b90c10939daa4ce38c5a8744092881cba9862f967",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s19p5-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s19p5-at-24to96-m14.docx",
+      "sha256": "e90f4e140c6f3cc37a471567c283ab89532a06c7cf30b03367b18bd3406d9ce0",
+      "pdf": "word-windows-long-size-high-bolditalic-s19p5-at-24to96-m14.pdf",
+      "pdf_sha256": "11d85ca7953b9891c77d8b1597b087a15e1727b9fbd64fea8177495e6390e2f6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s19p5-at-24to96-m14.xps",
+      "xps_sha256": "2476147509012970623bfe295e6ced463890352b4fb82b6fb76d998ec864d06a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s19p5-at-24to96-m14.page-001.emf",
+          "sha256": "32a2224cbd7fbe072caf7a0059ecfa92fa744c61e976befb259aedb412484224",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s20-at-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s20-at-24to96-m14.docx",
+      "sha256": "b7a42ce4b95725b36e30f6a78d6f2352c96e1045cf880d2cae3ed70ca1a43ce6",
+      "pdf": "word-windows-long-size-high-bolditalic-s20-at-24to96-m14.pdf",
+      "pdf_sha256": "33bb6ee47ec40c791f9f2492225092d651f9e619c8bfb39a7b9ab79045a61243",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s20-at-24to96-m14.xps",
+      "xps_sha256": "28ebaf278e0af42012590bf7c158903c0ec31a985b16a0fa6db4714e9bd12e88",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s20-at-24to96-m14.page-001.emf",
+          "sha256": "b3190e04bba1bf5f33f0322521607d69c7a2b646bc3526892bf861b61f6e5c88",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s16p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s16p5-m-24to96-m14.docx",
+      "sha256": "6731a6a895ef29e4693886d6afbb6c517951f2626b4403b2e826f6397aa71c62",
+      "pdf": "word-windows-long-size-high-bolditalic-s16p5-m-24to96-m14.pdf",
+      "pdf_sha256": "ce9a70229abbc038f8c7b8b9089eeab9688a7b07b7c4e45cbc53383ea1f12af6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s16p5-m-24to96-m14.xps",
+      "xps_sha256": "b45fab87883457369b630f3b992176e8f8cb48417438c5a97cebe4675c6e3dbf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s16p5-m-24to96-m14.page-001.emf",
+          "sha256": "cde49f2166727c604337f20e959bf1f9966f2eccc1f31284c2ff7f7b96cf490a",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s17-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s17-m-24to96-m14.docx",
+      "sha256": "75c7e482b53c1055f5b149afd1b5a8d1ef6b2c90852ecad399decddc6db6e08d",
+      "pdf": "word-windows-long-size-high-bolditalic-s17-m-24to96-m14.pdf",
+      "pdf_sha256": "3cfcb5e4b71cd741747c6d588c5b6616e794804ce1010a03002ea5a69ae3fed5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s17-m-24to96-m14.xps",
+      "xps_sha256": "bf83218db28e2d1f51679a35e9fa7924f8e81bf7c950c9101b34a6642fc96d65",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s17-m-24to96-m14.page-001.emf",
+          "sha256": "1a1b8b38cd69ee44d8e28d8a532535603586e44891a2724eded249bb1736b618",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s17p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s17p5-m-24to96-m14.docx",
+      "sha256": "8a10566c275dd34fd7dc7284c4689ab4526d33c4e5267c49af98a8e772176d39",
+      "pdf": "word-windows-long-size-high-bolditalic-s17p5-m-24to96-m14.pdf",
+      "pdf_sha256": "f8d24ce3223ada8f09761e0281de161488e50f5117f78598331d21d8da51c0b7",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s17p5-m-24to96-m14.xps",
+      "xps_sha256": "b07643cfd2dde95bd3a6b83493a2f8edde90033805206db6d3314f77b76a5062",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s17p5-m-24to96-m14.page-001.emf",
+          "sha256": "15b1242d71883148555f5d77e544423970192bb474a4c760bd97ede9bfe17f04",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s18-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s18-m-24to96-m14.docx",
+      "sha256": "58a7999aa4373ecc0104c374cd4bfa3df97343182cc688beaf32b6db5aacb6b3",
+      "pdf": "word-windows-long-size-high-bolditalic-s18-m-24to96-m14.pdf",
+      "pdf_sha256": "278ebe851230e29d196c5d7d201770e27bf038ea1a3128a3d72e6b4d69ddfdd5",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s18-m-24to96-m14.xps",
+      "xps_sha256": "4dc7c26dbcd1f662568e4ae1c7ad502df458ac70e546b5768ba18f09ea6f97e8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s18-m-24to96-m14.page-001.emf",
+          "sha256": "79ae4094ee00f87434d822d652ecec6b0ef939f77d209a3b788962dc7022ecdd",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s18p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s18p5-m-24to96-m14.docx",
+      "sha256": "d06315b066509a7960a148f6e8a7d61f5f7db76afbcea671dd62314f6be54a2b",
+      "pdf": "word-windows-long-size-high-bolditalic-s18p5-m-24to96-m14.pdf",
+      "pdf_sha256": "f69cfc8d05a0bf4daa3ccf5068983c497eb9470f6cddded7f24b2c7c7ea8dfc8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s18p5-m-24to96-m14.xps",
+      "xps_sha256": "c4bfc69d11b33fbaefee963881934905a14227d8b9dbfbced827f595a8789d89",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s18p5-m-24to96-m14.page-001.emf",
+          "sha256": "4bca4c0ed3993cfa3beeb166c49dd30d2d87a3ccf4b6a7c036bc09d4fb2b0e76",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s19-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s19-m-24to96-m14.docx",
+      "sha256": "6f33ad5e53eb66959d0a9a05ba7c80729292faae7ce56fd46236f606f9d63470",
+      "pdf": "word-windows-long-size-high-bolditalic-s19-m-24to96-m14.pdf",
+      "pdf_sha256": "d9fc99340982f89c1b3ff1048ddc857bc068e40ff467887524ba4521ae6bb58f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s19-m-24to96-m14.xps",
+      "xps_sha256": "f6e98588304c8b63af3dd0341f696cc80a15fdb9cbfa21f80a5ce8e27e3c0638",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s19-m-24to96-m14.page-001.emf",
+          "sha256": "4195eefa0bd3f22fac5596bb7fbe9911c594ce910d8705d0d8ddf6236ac98faa",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s19p5-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s19p5-m-24to96-m14.docx",
+      "sha256": "0d68a97ad6142afbc5a60e8686a61fb9748b1efaa91524d38bb99060a5c96114",
+      "pdf": "word-windows-long-size-high-bolditalic-s19p5-m-24to96-m14.pdf",
+      "pdf_sha256": "aa886a2b09da6d43c488126c0f20acaaf9ecac743634ed41ef53952acbdc771d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s19p5-m-24to96-m14.xps",
+      "xps_sha256": "9663874458e2be635fc123a17124ce6630cebcd44ba6a2a71f2503a5e159cdf5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s19p5-m-24to96-m14.page-001.emf",
+          "sha256": "5a2f2df240557988a7ce904aa72cab8506856be1b9fa79bfa807ffadc866dad8",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-high-bolditalic-s20-m-24to96-m14",
+      "source": "..\\..\\Codex\\2026-11-01\\jad\\jade-office\\tmp\\w20-long-size-high-inputs\\word-windows-long-size-high-bolditalic-s20-m-24to96-m14.docx",
+      "sha256": "46b65bb24e5f8dbf1b0ae167673094dcba00b13fd5cf15911edd803b8b3fe502",
+      "pdf": "word-windows-long-size-high-bolditalic-s20-m-24to96-m14.pdf",
+      "pdf_sha256": "edc783c30c7e1c75ec0a8a443f205928b574a16f4d59d52a75212ed07577a444",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-high-bolditalic-s20-m-24to96-m14.xps",
+      "xps_sha256": "fdca200322bf18b48a8fee15f7daf57f01e899cc45b9ed8fc93682a4d54ae6ee",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-high-bolditalic-s20-m-24to96-m14.page-001.emf",
+          "sha256": "4fe7959afc0c3fc7ef882714fb17639cf11e3381bd97172ea0c63602139154eb",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

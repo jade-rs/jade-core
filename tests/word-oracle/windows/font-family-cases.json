@@ -1,0 +1,1980 @@
+{
+  "schema": 1,
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-font-family-case-lower-regular-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s13-at-24to96-m14.docx",
+        "sha256": "bf71b86d6a02ecf3e5b9410829a5f51903cfcc3be64a403599484eebb9f262df"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s13-at-24to96-m14.pdf",
+        "sha256": "1c94999359f1619177779235f8834f14b7f9d5f7ecf29b335371e855d527527b"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s13-at-24to96-m14.xps",
+        "sha256": "65280eb516f2ac441aaf0ed147c88ed4d532e1b8573f4b045cfebe7cd3405483"
+      },
+      "family": "aptos display",
+      "style": "regular",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-at-24to96-m14.docx",
+          "sha256": "6f98c7dfacc2188649e032e7349ee6844e132c3576a5b78add4ece7030bd901d"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-at-24to96-m14.pdf",
+          "sha256": "98f62910747d500bd59389cd53a1f8f98df1d843eea50d8c7dc01480179afbf8"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-at-24to96-m14.xps",
+          "sha256": "c22b438399d0ab62c928a2086570a0893258eb6c7298714ca44c1d81245aaaf3"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-regular-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s14p5-at-24to96-m14.docx",
+        "sha256": "3ebf9f802eda7f7c69a6c289482a4d92de3bd586847c58f609f2b9e8affb1e7c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s14p5-at-24to96-m14.pdf",
+        "sha256": "ba855be77b4ed3f6568c8a4a607a31a5df324eec97679aa4c5b9c011d8bfca17"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s14p5-at-24to96-m14.xps",
+        "sha256": "fd667bded9f8371503291dc8b82c5c1f6c280cb2734df20943b69aa898060fdc"
+      },
+      "family": "aptos display",
+      "style": "regular",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-at-24to96-m14.docx",
+          "sha256": "0fe8dc8e9dd255cfb8f25b32f2dff1112d3138a7cc65a77af3887688f0869aea"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-at-24to96-m14.pdf",
+          "sha256": "c4a0e66eda90cc2f03b64e3b20ff086cee925bf023ef2bd35a614d45b66154b1"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-at-24to96-m14.xps",
+          "sha256": "321d50746b6b24d68929395275d2bc4fb0e7f39620eed0bd865fdc96f440c7ca"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-regular-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s13-at-24to96-m14.docx",
+        "sha256": "7e7ef8db4ce8d1c42bf86b1155f213f34f04da976ba6c3075b3c0b497bb9541d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s13-at-24to96-m14.pdf",
+        "sha256": "e4245a4b668453fa0bc2598df422debebda1b80907b69bbfd749dff24a5a29c8"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s13-at-24to96-m14.xps",
+        "sha256": "cf8ddf3a231d74ac0a9625393b3005682bc02ce34752ef62848c202f5c870877"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "regular",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-at-24to96-m14.docx",
+          "sha256": "6f98c7dfacc2188649e032e7349ee6844e132c3576a5b78add4ece7030bd901d"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-at-24to96-m14.pdf",
+          "sha256": "98f62910747d500bd59389cd53a1f8f98df1d843eea50d8c7dc01480179afbf8"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-at-24to96-m14.xps",
+          "sha256": "c22b438399d0ab62c928a2086570a0893258eb6c7298714ca44c1d81245aaaf3"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-regular-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s14p5-at-24to96-m14.docx",
+        "sha256": "89e9e384ce914563e35ef7812518f3b2b1ef894244aad40594feb4ef137591f6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s14p5-at-24to96-m14.pdf",
+        "sha256": "7f579d5498a0d795ddfb996f15515f141ed450e3d6773a901bbb5bc399f33a1c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s14p5-at-24to96-m14.xps",
+        "sha256": "39df26e3c7cf060b2c2a7b77c2f4c5696e5149a8729d2700a93b3d12a50233bf"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "regular",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-at-24to96-m14.docx",
+          "sha256": "0fe8dc8e9dd255cfb8f25b32f2dff1112d3138a7cc65a77af3887688f0869aea"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-at-24to96-m14.pdf",
+          "sha256": "c4a0e66eda90cc2f03b64e3b20ff086cee925bf023ef2bd35a614d45b66154b1"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-at-24to96-m14.xps",
+          "sha256": "321d50746b6b24d68929395275d2bc4fb0e7f39620eed0bd865fdc96f440c7ca"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-regular-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s13-at-24to96-m14.docx",
+        "sha256": "06e9942d13ef8bd4e7b2436eb1811f3ada0f4f0a479cf9798a178b313aefd5b3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s13-at-24to96-m14.pdf",
+        "sha256": "dc2db82b77c749016ccf3dfd3f55390f3b1c86e7d1827f02068110df53314200"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s13-at-24to96-m14.xps",
+        "sha256": "04b8f7a7a78781a820b16414b5c3b91a94090c81342e864bdc8df0023f7f97fb"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "regular",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-at-24to96-m14.docx",
+          "sha256": "6f98c7dfacc2188649e032e7349ee6844e132c3576a5b78add4ece7030bd901d"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-at-24to96-m14.pdf",
+          "sha256": "98f62910747d500bd59389cd53a1f8f98df1d843eea50d8c7dc01480179afbf8"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-at-24to96-m14.xps",
+          "sha256": "c22b438399d0ab62c928a2086570a0893258eb6c7298714ca44c1d81245aaaf3"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-regular-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s14p5-at-24to96-m14.docx",
+        "sha256": "7b53fc3a986e7ec4098b130eed3435df02b3d80d94a2824c743e17b4dab65f7c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s14p5-at-24to96-m14.pdf",
+        "sha256": "d06a2d6cbc4b672a15fd2fc7066c3a47a6f2fa49773f10a2c9a05ba125c484e6"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s14p5-at-24to96-m14.xps",
+        "sha256": "e6317e953d19ad68334b692769b645309a4316f6a96281cf050b4eda59da7573"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "regular",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-at-24to96-m14.docx",
+          "sha256": "0fe8dc8e9dd255cfb8f25b32f2dff1112d3138a7cc65a77af3887688f0869aea"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-at-24to96-m14.pdf",
+          "sha256": "c4a0e66eda90cc2f03b64e3b20ff086cee925bf023ef2bd35a614d45b66154b1"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-at-24to96-m14.xps",
+          "sha256": "321d50746b6b24d68929395275d2bc4fb0e7f39620eed0bd865fdc96f440c7ca"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-regular-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s13-m-24to96-m14.docx",
+        "sha256": "28ef412d3b8fa385380e39d355f98446a4c0acbe9c93da38d95610d1ae35c259"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s13-m-24to96-m14.pdf",
+        "sha256": "65ac357fdd77af5cb33324f6ba99c4a2b449f69ee1a35946118b16919037db21"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s13-m-24to96-m14.xps",
+        "sha256": "47013c9a01e24287698e4a84e6f8b73dde92d73058ec34f459312cc118233835"
+      },
+      "family": "aptos display",
+      "style": "regular",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-m-24to96-m14.docx",
+          "sha256": "0df4f2c7cb53c9a421e8e3fd9990b5cd8b7ba12c441b9e5c91c01de390f1dbb3"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-m-24to96-m14.pdf",
+          "sha256": "b17f94f0606546f4a37b2b96c583ba5d7f9c2967eb1e008548a83c25a3fd1d37"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-m-24to96-m14.xps",
+          "sha256": "3be6c8c2555f2aa71d53b033bfff59cfeffd42a449f00e412116c74c655517de"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-regular-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-regular-s14p5-m-24to96-m14.docx",
+        "sha256": "8a2497d90871dbd6a41d63284421b27fdf0d47582e7834ffc407c1ca35eafcbe"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s14p5-m-24to96-m14.pdf",
+        "sha256": "82b6772045e88237f6c6185bb47a28ac71190243fe7ae29d3edaeb5679997951"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-regular-s14p5-m-24to96-m14.xps",
+        "sha256": "40d1307cd395d73075a13decd0796e35798d33767af749b7bdc69ded9782c654"
+      },
+      "family": "aptos display",
+      "style": "regular",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-m-24to96-m14.docx",
+          "sha256": "bd0073a6f0547d68f8264ace7f131099eed3851b7d81e0107aba2a8f50b8b3f2"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-m-24to96-m14.pdf",
+          "sha256": "d011dc923f9683b44e6f0e310390e5cb1f56e7728df327bc6cc1286b2e9de041"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-m-24to96-m14.xps",
+          "sha256": "24a229f7265982a19644ff145bb128f137b07908c4d3f9ffdb435af24cd80559"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-regular-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s13-m-24to96-m14.docx",
+        "sha256": "bd85ea63adef313714c9cf7a27cf531337c598932e3ac3eae1280958fad1aee6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s13-m-24to96-m14.pdf",
+        "sha256": "31e81a61d917763a8725e2735011011af63925a9fb16a4e48e26c4306cef5ff1"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s13-m-24to96-m14.xps",
+        "sha256": "81052bc838048faf7ed1473aa9fec35fbf7764b54d8785f32485ad7e6d656560"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "regular",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-m-24to96-m14.docx",
+          "sha256": "0df4f2c7cb53c9a421e8e3fd9990b5cd8b7ba12c441b9e5c91c01de390f1dbb3"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-m-24to96-m14.pdf",
+          "sha256": "b17f94f0606546f4a37b2b96c583ba5d7f9c2967eb1e008548a83c25a3fd1d37"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-m-24to96-m14.xps",
+          "sha256": "3be6c8c2555f2aa71d53b033bfff59cfeffd42a449f00e412116c74c655517de"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-regular-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-regular-s14p5-m-24to96-m14.docx",
+        "sha256": "6006e5d779a32b0dde555f972d918d8aa6b3cec1830c0dd64371fe510debb29c"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s14p5-m-24to96-m14.pdf",
+        "sha256": "a884cafa47a4b9600a53d5dffc2510257a04fff35140728e269dbe0535d5db90"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-regular-s14p5-m-24to96-m14.xps",
+        "sha256": "a36c987701c59bb104257d9116ee633385a0cb33c0211716dd8459f5a83f136d"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "regular",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-m-24to96-m14.docx",
+          "sha256": "bd0073a6f0547d68f8264ace7f131099eed3851b7d81e0107aba2a8f50b8b3f2"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-m-24to96-m14.pdf",
+          "sha256": "d011dc923f9683b44e6f0e310390e5cb1f56e7728df327bc6cc1286b2e9de041"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-m-24to96-m14.xps",
+          "sha256": "24a229f7265982a19644ff145bb128f137b07908c4d3f9ffdb435af24cd80559"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-regular-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s13-m-24to96-m14.docx",
+        "sha256": "f12af15d2abb1d5e12a8999c8949618ff62b6e0de623acc3a6810b8542675b30"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s13-m-24to96-m14.pdf",
+        "sha256": "f20988cd1199eadc0d4d5f9649570f8f5c9467cb77449c8b8711c47f35fae6cc"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s13-m-24to96-m14.xps",
+        "sha256": "bccb810bc5c7bf9712746143a097c1c220cf5bfe8d7857b83afc0d98f8e14e8a"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "regular",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-m-24to96-m14.docx",
+          "sha256": "0df4f2c7cb53c9a421e8e3fd9990b5cd8b7ba12c441b9e5c91c01de390f1dbb3"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-m-24to96-m14.pdf",
+          "sha256": "b17f94f0606546f4a37b2b96c583ba5d7f9c2967eb1e008548a83c25a3fd1d37"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s13-m-24to96-m14.xps",
+          "sha256": "3be6c8c2555f2aa71d53b033bfff59cfeffd42a449f00e412116c74c655517de"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-regular-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-regular-s14p5-m-24to96-m14.docx",
+        "sha256": "ded12b037b001c17b599f74c81d0b9182440d4241bd39a67dfd9f29e012452c4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s14p5-m-24to96-m14.pdf",
+        "sha256": "6a11d6f353e70d0e1f9128714a751c205b9d534bc369e60966f657585c8795f7"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-regular-s14p5-m-24to96-m14.xps",
+        "sha256": "776844fe9893fe5ef41f1bf0be4bfbec1201646c1e09baa8514f41f35e2533d4"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "regular",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-regular-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-m-24to96-m14.docx",
+          "sha256": "bd0073a6f0547d68f8264ace7f131099eed3851b7d81e0107aba2a8f50b8b3f2"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-m-24to96-m14.pdf",
+          "sha256": "d011dc923f9683b44e6f0e310390e5cb1f56e7728df327bc6cc1286b2e9de041"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-regular-s14p5-m-24to96-m14.xps",
+          "sha256": "24a229f7265982a19644ff145bb128f137b07908c4d3f9ffdb435af24cd80559"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bold-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s13-at-24to96-m14.docx",
+        "sha256": "77f4369d6f24978866d4f7861dc333ec4b42f48620d6dcbfa12bcae94f5802d2"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s13-at-24to96-m14.pdf",
+        "sha256": "8de3e5b9007b07d63245348e079c12541c578b81fa9b574d1b3068b1b0d551ff"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s13-at-24to96-m14.xps",
+        "sha256": "973444b2a32ba15ff9b97973c6ee5f0c911cd6a49c565d4e1e2109e2204be648"
+      },
+      "family": "aptos display",
+      "style": "bold",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-at-24to96-m14.docx",
+          "sha256": "46017f269dc9fc554eb31b4986ac111c1db58895620ebd86657ad7ebd9edac75"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-at-24to96-m14.pdf",
+          "sha256": "8ff9aa47bee7457a8773611fdf9cb0a2283a9f3d6bf9a249287ad2692d698753"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-at-24to96-m14.xps",
+          "sha256": "3f0913e5be22f3bf5f4990b755ff7faf5691ee38711ea436154e10b9669775df"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bold-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s14p5-at-24to96-m14.docx",
+        "sha256": "8af1d342730a589ccf806ca423736363727a23f03ed8416566d1c77c40607da3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s14p5-at-24to96-m14.pdf",
+        "sha256": "c29d25c5047235c9d2fea0df8bb5fc19dc9ca963b9575a299c0b852bd8a89998"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s14p5-at-24to96-m14.xps",
+        "sha256": "9b7071b413023d224a20ce5a7751ae66a4a26c96cccb3fe039fea2b5dc7af270"
+      },
+      "family": "aptos display",
+      "style": "bold",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-at-24to96-m14.docx",
+          "sha256": "bb30f6c04679e717e0d25ad6881cd843325da0dd0f9c9d5b97b0df2ff2763f10"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-at-24to96-m14.pdf",
+          "sha256": "4e03a33d0cc9938a5c65a597328839d4a81e93c9321d91617c57c43d6adf1a7b"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-at-24to96-m14.xps",
+          "sha256": "cff5b422a367898b2247d318bce4002cb9160ab4d996d6304f953f639b88aaa4"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bold-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s13-at-24to96-m14.docx",
+        "sha256": "32e88890b8d6c25800211a84424c84df30e950841470d933337d125455fa7857"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s13-at-24to96-m14.pdf",
+        "sha256": "b3fc7a6f9f7a766b3d69e19eed0acf3f3182be7b4d14475ab9c46691ffbd0dbb"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s13-at-24to96-m14.xps",
+        "sha256": "0d9a354b497c33d764c69bf65f7f1698142c47176298e223c98e227a9bd2e956"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bold",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-at-24to96-m14.docx",
+          "sha256": "46017f269dc9fc554eb31b4986ac111c1db58895620ebd86657ad7ebd9edac75"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-at-24to96-m14.pdf",
+          "sha256": "8ff9aa47bee7457a8773611fdf9cb0a2283a9f3d6bf9a249287ad2692d698753"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-at-24to96-m14.xps",
+          "sha256": "3f0913e5be22f3bf5f4990b755ff7faf5691ee38711ea436154e10b9669775df"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bold-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s14p5-at-24to96-m14.docx",
+        "sha256": "efa8215b4f30458d107aea5ff12675e65bb60a0670662c3996aaa544b0755896"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s14p5-at-24to96-m14.pdf",
+        "sha256": "b6d4a126d5cadea0478ccabaeda3ae9c1abefc7520e3816305225c14cae1b1dd"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s14p5-at-24to96-m14.xps",
+        "sha256": "406d558e2ce3e7bd6efce89cd0e00c9dbfe985e2de5e82bec3a76dae4c69653a"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bold",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-at-24to96-m14.docx",
+          "sha256": "bb30f6c04679e717e0d25ad6881cd843325da0dd0f9c9d5b97b0df2ff2763f10"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-at-24to96-m14.pdf",
+          "sha256": "4e03a33d0cc9938a5c65a597328839d4a81e93c9321d91617c57c43d6adf1a7b"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-at-24to96-m14.xps",
+          "sha256": "cff5b422a367898b2247d318bce4002cb9160ab4d996d6304f953f639b88aaa4"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bold-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s13-at-24to96-m14.docx",
+        "sha256": "76fa80aef4c73cafc54ea3bf15933f43e9e1b155e66b74059aeeb79b637de3a9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s13-at-24to96-m14.pdf",
+        "sha256": "bb482fa0c7b82f1fd74f94338ace22f652e63ac2fcb88faf8730affd0304cd55"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s13-at-24to96-m14.xps",
+        "sha256": "e0f09ca20223581ce70f1bf767200f253df9be110b92438477086d048af27eea"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bold",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-at-24to96-m14.docx",
+          "sha256": "46017f269dc9fc554eb31b4986ac111c1db58895620ebd86657ad7ebd9edac75"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-at-24to96-m14.pdf",
+          "sha256": "8ff9aa47bee7457a8773611fdf9cb0a2283a9f3d6bf9a249287ad2692d698753"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-at-24to96-m14.xps",
+          "sha256": "3f0913e5be22f3bf5f4990b755ff7faf5691ee38711ea436154e10b9669775df"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bold-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s14p5-at-24to96-m14.docx",
+        "sha256": "f222b900de7f5f6f8ed2c755f982caa69b770fcab604c986fb202c9b91031c07"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s14p5-at-24to96-m14.pdf",
+        "sha256": "878b924fde41b8218cd8cad07a48ae36f84f55aac3ee6ab2d83f9ac0034a6872"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s14p5-at-24to96-m14.xps",
+        "sha256": "8e367c47b8aea2cfe0ac3acb5ea37b391fb6c1cfe5022ab65dcca66373327213"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bold",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-at-24to96-m14.docx",
+          "sha256": "bb30f6c04679e717e0d25ad6881cd843325da0dd0f9c9d5b97b0df2ff2763f10"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-at-24to96-m14.pdf",
+          "sha256": "4e03a33d0cc9938a5c65a597328839d4a81e93c9321d91617c57c43d6adf1a7b"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-at-24to96-m14.xps",
+          "sha256": "cff5b422a367898b2247d318bce4002cb9160ab4d996d6304f953f639b88aaa4"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bold-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s13-m-24to96-m14.docx",
+        "sha256": "728ecddfdfb40c923f9ccc0a9ba7520156517824be81df4f366db4dd5ba1ca7e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s13-m-24to96-m14.pdf",
+        "sha256": "e72e2815cd5111395f3efdd0e10754d08bb9a972f3d3b48b66545e4289fb8dff"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s13-m-24to96-m14.xps",
+        "sha256": "5fae9cc66e4857ae0191b601befa72f51abd152f6ca5c6eb359e2c9b1239f083"
+      },
+      "family": "aptos display",
+      "style": "bold",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-m-24to96-m14.docx",
+          "sha256": "0a8c2800e8240470a30cdb3ed4304bdd30c2b6fc7dbe3df39953c5b729abd801"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-m-24to96-m14.pdf",
+          "sha256": "9c8fd32307d2de27838abdd3f10dccbe8a9c45ffbf68c3feead91f08364e94bd"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-m-24to96-m14.xps",
+          "sha256": "6f976f3c58605c4198a3b8fdd6ab9435a20e78e30f3c6a328ec83378bdc5b6e0"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bold-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bold-s14p5-m-24to96-m14.docx",
+        "sha256": "8dee36e7d3225864221b10b0bca6a6284f7c2ef5b03dada59c90642040837e5e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s14p5-m-24to96-m14.pdf",
+        "sha256": "d5589d172d61b2b741df04fe6001d00494e6b2cb19be32e8819afaed0ae29908"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bold-s14p5-m-24to96-m14.xps",
+        "sha256": "1d27d4718df7e1dfd8421641bfe0fe7c9a8ecb6fca0b56e3a935ecb1151d62db"
+      },
+      "family": "aptos display",
+      "style": "bold",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-m-24to96-m14.docx",
+          "sha256": "1eee7f02dec93f85b65ef7ae8dfe9cace1e35fe557e5eb3d0d32e18cce30b3f8"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-m-24to96-m14.pdf",
+          "sha256": "ef5dd84c0dfb6cbd4cb50e7dc0d19e5c2f7c65a1bcd7ae02b770fb36a2420b04"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-m-24to96-m14.xps",
+          "sha256": "4ce0fdf9a8b836b2e847ecb39af160995dd5ad9a0d3782e802ea5908eb78fc19"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bold-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s13-m-24to96-m14.docx",
+        "sha256": "c56bd119b7cd5aa4bde4c3485725ff5e2e9aa611f276d8310c2e92fddaa73a38"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s13-m-24to96-m14.pdf",
+        "sha256": "a7ac032de89fc0e09595b5b2353fd59c160985c5ddf415270f1decc03cec4e1b"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s13-m-24to96-m14.xps",
+        "sha256": "c48ab2a9012fd12078536faa894f3110a1ee3c42f8f985721dc22b9a79aa7225"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bold",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-m-24to96-m14.docx",
+          "sha256": "0a8c2800e8240470a30cdb3ed4304bdd30c2b6fc7dbe3df39953c5b729abd801"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-m-24to96-m14.pdf",
+          "sha256": "9c8fd32307d2de27838abdd3f10dccbe8a9c45ffbf68c3feead91f08364e94bd"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-m-24to96-m14.xps",
+          "sha256": "6f976f3c58605c4198a3b8fdd6ab9435a20e78e30f3c6a328ec83378bdc5b6e0"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bold-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bold-s14p5-m-24to96-m14.docx",
+        "sha256": "3d045dc50244117f98ebf06b6cd220d2260b5e398eb19df234668b279c2134d1"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s14p5-m-24to96-m14.pdf",
+        "sha256": "5b5fb2cd4f30cdc4440bb0c694e213d151513e63f9678bd36fae3a41dbe496c2"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bold-s14p5-m-24to96-m14.xps",
+        "sha256": "a6960aa9ae6107b5bdcb1e1aa662a04e36d3b8e973b7ea96f46ba693ef58bd6d"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bold",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-m-24to96-m14.docx",
+          "sha256": "1eee7f02dec93f85b65ef7ae8dfe9cace1e35fe557e5eb3d0d32e18cce30b3f8"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-m-24to96-m14.pdf",
+          "sha256": "ef5dd84c0dfb6cbd4cb50e7dc0d19e5c2f7c65a1bcd7ae02b770fb36a2420b04"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-m-24to96-m14.xps",
+          "sha256": "4ce0fdf9a8b836b2e847ecb39af160995dd5ad9a0d3782e802ea5908eb78fc19"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bold-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s13-m-24to96-m14.docx",
+        "sha256": "4c428913a890eef9be95efa1e3519cc49f17fd822136d309304e61ca59d03c79"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s13-m-24to96-m14.pdf",
+        "sha256": "879cfeb95c7e5c87b2e5698a25b50d31c84ffc8d8e156242286758b21ac93c45"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s13-m-24to96-m14.xps",
+        "sha256": "8d5ef436bb6b94b148096d7e52b64a59199941ac841fe295db32a17e7a81bf60"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bold",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-m-24to96-m14.docx",
+          "sha256": "0a8c2800e8240470a30cdb3ed4304bdd30c2b6fc7dbe3df39953c5b729abd801"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-m-24to96-m14.pdf",
+          "sha256": "9c8fd32307d2de27838abdd3f10dccbe8a9c45ffbf68c3feead91f08364e94bd"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s13-m-24to96-m14.xps",
+          "sha256": "6f976f3c58605c4198a3b8fdd6ab9435a20e78e30f3c6a328ec83378bdc5b6e0"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bold-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bold-s14p5-m-24to96-m14.docx",
+        "sha256": "85023093e7f023108a8065c0e4064184e637339080230137af6addec85e8d2c8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s14p5-m-24to96-m14.pdf",
+        "sha256": "18de4962a48111f4addb3136b6c77f95d91c6e04757d7afc6d8d8be045c05d51"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bold-s14p5-m-24to96-m14.xps",
+        "sha256": "c0fbc572cbc5023b77d30f519936a9d67ef870ea20d083a27e83fb77799b1b87"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bold",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bold-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-m-24to96-m14.docx",
+          "sha256": "1eee7f02dec93f85b65ef7ae8dfe9cace1e35fe557e5eb3d0d32e18cce30b3f8"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-m-24to96-m14.pdf",
+          "sha256": "ef5dd84c0dfb6cbd4cb50e7dc0d19e5c2f7c65a1bcd7ae02b770fb36a2420b04"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bold-s14p5-m-24to96-m14.xps",
+          "sha256": "4ce0fdf9a8b836b2e847ecb39af160995dd5ad9a0d3782e802ea5908eb78fc19"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-italic-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s13-at-24to96-m14.docx",
+        "sha256": "eae3baba7ae29d93a5919197af16d4bd08db1a8ed92241819e29c1ef57d31e1e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s13-at-24to96-m14.pdf",
+        "sha256": "5f5e87d3767c11c2f5633e4867c8c3aa85582564bf77ca58ad2bb86deca18267"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s13-at-24to96-m14.xps",
+        "sha256": "658219d1f8362c7d0bff74c4ed57de09027f7fd223d966851585be576ff50fe4"
+      },
+      "family": "aptos display",
+      "style": "italic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-at-24to96-m14.docx",
+          "sha256": "8353288b84f2a2fc1b15674706fe887d95185a58dfa3b8d78901c5703757540c"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-at-24to96-m14.pdf",
+          "sha256": "2b5e8a300b7ab59eac35839016c7614921239120c7bf7fa87dfe20a66378f33e"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-at-24to96-m14.xps",
+          "sha256": "3bc928717b273e5ddcc88cc87e69abf80711816016bb7a86f44ee865f5bd7945"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-italic-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s14p5-at-24to96-m14.docx",
+        "sha256": "d4c00b2dd7aae0f93a468479fbcbb77196a623d82e7c44e509de05e0420aa8ec"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s14p5-at-24to96-m14.pdf",
+        "sha256": "ac5539308075dd9cf5943ca86219e344fe473160424166ead31e1d17f6f3354c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s14p5-at-24to96-m14.xps",
+        "sha256": "2cf75592fe22fb5bece0831da66da445f8e85c73e857387e0baaa86c2a51a9b1"
+      },
+      "family": "aptos display",
+      "style": "italic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-at-24to96-m14.docx",
+          "sha256": "d245ae53d84de2bcc8538f99dadab54ed92c5bf99dac2cb3ee0f1729435aff71"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-at-24to96-m14.pdf",
+          "sha256": "5f32b6c20bdf592f810619f2c45e36e161af13ec1597ab4a1824c755c652bd35"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-at-24to96-m14.xps",
+          "sha256": "55e5ed7d7370e419389665c7a5089dbb1ff8f8bf09f7cd0c4bd7a7d10ea9a328"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-italic-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s13-at-24to96-m14.docx",
+        "sha256": "a9fe6fae748363326a8aee0b9c117dd8fb31e8ba506e1a0b2fd7f5651f690fb3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s13-at-24to96-m14.pdf",
+        "sha256": "a45f194af2c2c61f3832cee07290c0bbde82c05e52626d2a45aaeadd827961a9"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s13-at-24to96-m14.xps",
+        "sha256": "f394b1669969157705c1b3cc23cf0b891679eece9a5f6a650453be185b7d2aac"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "italic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-at-24to96-m14.docx",
+          "sha256": "8353288b84f2a2fc1b15674706fe887d95185a58dfa3b8d78901c5703757540c"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-at-24to96-m14.pdf",
+          "sha256": "2b5e8a300b7ab59eac35839016c7614921239120c7bf7fa87dfe20a66378f33e"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-at-24to96-m14.xps",
+          "sha256": "3bc928717b273e5ddcc88cc87e69abf80711816016bb7a86f44ee865f5bd7945"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-italic-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s14p5-at-24to96-m14.docx",
+        "sha256": "d51f5751928527446cb1b412cc36fad1a643d58eb50056d9e3951eba86cec1c0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s14p5-at-24to96-m14.pdf",
+        "sha256": "7b9a8f5fb8af7fee971ab34fdf490c56eede169a1e459bf54894704b3cd41c2a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s14p5-at-24to96-m14.xps",
+        "sha256": "6d568d31917d19af2ae4b14002c24fa9218b64176eda963674bac146cc32aa5f"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "italic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-at-24to96-m14.docx",
+          "sha256": "d245ae53d84de2bcc8538f99dadab54ed92c5bf99dac2cb3ee0f1729435aff71"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-at-24to96-m14.pdf",
+          "sha256": "5f32b6c20bdf592f810619f2c45e36e161af13ec1597ab4a1824c755c652bd35"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-at-24to96-m14.xps",
+          "sha256": "55e5ed7d7370e419389665c7a5089dbb1ff8f8bf09f7cd0c4bd7a7d10ea9a328"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-italic-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s13-at-24to96-m14.docx",
+        "sha256": "b9cca1b75141c34b16eb1a6266474284760fa74b1b4e20e4c7cd4d4184a7c47f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s13-at-24to96-m14.pdf",
+        "sha256": "467ce1ba763d29d49f0e9a4d58e1f5a99c1a48c55a042393865aa5628b675f75"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s13-at-24to96-m14.xps",
+        "sha256": "bc79a157805fa8a71668e554c79f3c89bfbabe5b606e643a88be5d4b3330d1ba"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "italic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-at-24to96-m14.docx",
+          "sha256": "8353288b84f2a2fc1b15674706fe887d95185a58dfa3b8d78901c5703757540c"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-at-24to96-m14.pdf",
+          "sha256": "2b5e8a300b7ab59eac35839016c7614921239120c7bf7fa87dfe20a66378f33e"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-at-24to96-m14.xps",
+          "sha256": "3bc928717b273e5ddcc88cc87e69abf80711816016bb7a86f44ee865f5bd7945"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-italic-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s14p5-at-24to96-m14.docx",
+        "sha256": "4cd6caab2899e74a3d3431e8eb5372dfa72bc2b8cdff7d9bc3650a1b8dd14a35"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s14p5-at-24to96-m14.pdf",
+        "sha256": "63ea30711c83dec1a4586b5d43190178b548d8ecee07fd7231029fd47705fe96"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s14p5-at-24to96-m14.xps",
+        "sha256": "2931ee98d74fcbf069b6f50308b3cc281cd265276941b04f94a195112ac4d040"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "italic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-at-24to96-m14.docx",
+          "sha256": "d245ae53d84de2bcc8538f99dadab54ed92c5bf99dac2cb3ee0f1729435aff71"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-at-24to96-m14.pdf",
+          "sha256": "5f32b6c20bdf592f810619f2c45e36e161af13ec1597ab4a1824c755c652bd35"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-at-24to96-m14.xps",
+          "sha256": "55e5ed7d7370e419389665c7a5089dbb1ff8f8bf09f7cd0c4bd7a7d10ea9a328"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-italic-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s13-m-24to96-m14.docx",
+        "sha256": "0bc6a689b3c0e4e59ca3c2e5f80644f1b4479d989b0a33f9fca2f8bbbeecdde6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s13-m-24to96-m14.pdf",
+        "sha256": "f9facb7500b9a0e4329b292a60d967daebd5ee27d56d8fda88423d8de10b12e0"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s13-m-24to96-m14.xps",
+        "sha256": "f51c9ba1370142e8f9ea370231da3b5c587dafad12ddf52fce45e3755ef79e11"
+      },
+      "family": "aptos display",
+      "style": "italic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-m-24to96-m14.docx",
+          "sha256": "1a3d1b79677caac2060dfb2a9be75b1adfecbd95fb10a44562c2be3541dbfaaa"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-m-24to96-m14.pdf",
+          "sha256": "984efba844759dc7d49ef6a61fa4a77b148ccb3c6cca7f8ed77aa8b84c45539a"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-m-24to96-m14.xps",
+          "sha256": "2f8835bf0a15d518e725d71682ea8c699f5a7659745624bf75d0c22ae59e8b6c"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-italic-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-italic-s14p5-m-24to96-m14.docx",
+        "sha256": "af1d9900fb8eee7299cc12b71e3ff4ce2ed630d0a1dc740490fd857c3c5af336"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s14p5-m-24to96-m14.pdf",
+        "sha256": "6c520ed07a81bdbae66525bbe2388c5c4d64fbb86fe8b15750bbd8897d6a2ae6"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-italic-s14p5-m-24to96-m14.xps",
+        "sha256": "3270a1beae8db0d9db84dbabda9b18353ddaa7dbeda198565cf927e93803dd7a"
+      },
+      "family": "aptos display",
+      "style": "italic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-m-24to96-m14.docx",
+          "sha256": "760aebd23e93517edf3b549b8fa702152db9ad7043b7eea68826749a5323ac0f"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-m-24to96-m14.pdf",
+          "sha256": "a22faf1ceb0acc9834dc534653c9b5d501b52746fdf0480bcaac3fd761a4603d"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-m-24to96-m14.xps",
+          "sha256": "0ef980581c2694b95cab5106e54d9162edc9a38cb4eaecdcc75e7dfeea8adb53"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-italic-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s13-m-24to96-m14.docx",
+        "sha256": "a425fcd2105f1bef3061ac715e7ff7593065a1c05523e33c4db009454700a940"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s13-m-24to96-m14.pdf",
+        "sha256": "62ca34de0327a1a54e5af0ec40136d518df3f2c112972a64e9b72d05a50c5779"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s13-m-24to96-m14.xps",
+        "sha256": "e2367d3ddc7f16e4ffc9ef42d69ce689de73c5d2b58101817b956433d64696c2"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "italic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-m-24to96-m14.docx",
+          "sha256": "1a3d1b79677caac2060dfb2a9be75b1adfecbd95fb10a44562c2be3541dbfaaa"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-m-24to96-m14.pdf",
+          "sha256": "984efba844759dc7d49ef6a61fa4a77b148ccb3c6cca7f8ed77aa8b84c45539a"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-m-24to96-m14.xps",
+          "sha256": "2f8835bf0a15d518e725d71682ea8c699f5a7659745624bf75d0c22ae59e8b6c"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-italic-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-italic-s14p5-m-24to96-m14.docx",
+        "sha256": "96ace5ac5418a94d0d969c4cb4e82dfaa025ad35f46b2502db26b35fa0b1c5cc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s14p5-m-24to96-m14.pdf",
+        "sha256": "f574b28d61bd278dbdbf5bb4576d3f23b0af32e7e5d0796342a9dd7c0a379792"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-italic-s14p5-m-24to96-m14.xps",
+        "sha256": "d0ad130cfbb27eedbf823a78b4acf0c9f2989a2208b60022e1071cb0f986e1bd"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "italic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-m-24to96-m14.docx",
+          "sha256": "760aebd23e93517edf3b549b8fa702152db9ad7043b7eea68826749a5323ac0f"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-m-24to96-m14.pdf",
+          "sha256": "a22faf1ceb0acc9834dc534653c9b5d501b52746fdf0480bcaac3fd761a4603d"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-m-24to96-m14.xps",
+          "sha256": "0ef980581c2694b95cab5106e54d9162edc9a38cb4eaecdcc75e7dfeea8adb53"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-italic-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s13-m-24to96-m14.docx",
+        "sha256": "7058d1a1e0a16e4a091354ea4e90a9fbd7435b5ff837d292cf87c58159a8b860"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s13-m-24to96-m14.pdf",
+        "sha256": "e743e37cfc8494a0170463b0b94df1cb98ef333b834e260ed07dea38cc0e6077"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s13-m-24to96-m14.xps",
+        "sha256": "ac3f896f5c2d374b45ad358ca2847f93d203c2b85b206f4ae27b0b0500a55899"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "italic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-m-24to96-m14.docx",
+          "sha256": "1a3d1b79677caac2060dfb2a9be75b1adfecbd95fb10a44562c2be3541dbfaaa"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-m-24to96-m14.pdf",
+          "sha256": "984efba844759dc7d49ef6a61fa4a77b148ccb3c6cca7f8ed77aa8b84c45539a"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s13-m-24to96-m14.xps",
+          "sha256": "2f8835bf0a15d518e725d71682ea8c699f5a7659745624bf75d0c22ae59e8b6c"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-italic-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-italic-s14p5-m-24to96-m14.docx",
+        "sha256": "d789d8b55623a97d6a5dffa63ade8ef5773f0d0c7ca7770a48d72c9ab6371480"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s14p5-m-24to96-m14.pdf",
+        "sha256": "dfe77a5d9bef526fbe585df959153994e57f3e5268e7f274d23780dd37611e87"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-italic-s14p5-m-24to96-m14.xps",
+        "sha256": "6069b5d1fa00e2bc81b46d72c82320de9637badb239dafc53f1b0285f9a3a360"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "italic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-italic-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-m-24to96-m14.docx",
+          "sha256": "760aebd23e93517edf3b549b8fa702152db9ad7043b7eea68826749a5323ac0f"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-m-24to96-m14.pdf",
+          "sha256": "a22faf1ceb0acc9834dc534653c9b5d501b52746fdf0480bcaac3fd761a4603d"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-italic-s14p5-m-24to96-m14.xps",
+          "sha256": "0ef980581c2694b95cab5106e54d9162edc9a38cb4eaecdcc75e7dfeea8adb53"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bolditalic-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s13-at-24to96-m14.docx",
+        "sha256": "6c8c1d27f18ce5536f5158e1c84215f156c338bf39f86a99087db90e5cfd86be"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s13-at-24to96-m14.pdf",
+        "sha256": "0e60ae3097fceecaa7c8b969d3e37dbe39d961f761b8871cb1f313b0025bf006"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s13-at-24to96-m14.xps",
+        "sha256": "f3076237f268b911dfd9834b91a6ba44b465b23ff373c65b2c70d7aece81cf26"
+      },
+      "family": "aptos display",
+      "style": "bolditalic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-at-24to96-m14.docx",
+          "sha256": "16281b9c922c251d31492bdf89bd9e3c2e59698fa43c5ff72b2437dd74c24357"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-at-24to96-m14.pdf",
+          "sha256": "57c7bb657130d3dd47305d63430bc832c98d6e709d52f286180581ec7f8b5f42"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-at-24to96-m14.xps",
+          "sha256": "28cb8bf4098bcb3bf5072492f220ab251aaec5f6903e5cb4589e785fee1d4419"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bolditalic-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s14p5-at-24to96-m14.docx",
+        "sha256": "4ad8f2b5a74be245edcdcece2f2a6019d6e438a72aee3722d5927a90416f3163"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s14p5-at-24to96-m14.pdf",
+        "sha256": "528205978709ed881667d3e7599a3c1f43e27f0506801f5979c3bd035c61a388"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s14p5-at-24to96-m14.xps",
+        "sha256": "c18ab524f9ea7c54541bf74dda1d8c7c260a9e0ffae87567b6ca00c7be792c3e"
+      },
+      "family": "aptos display",
+      "style": "bolditalic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.docx",
+          "sha256": "4cdf7e834161da1852073ba37d1ca3e3707747b8335288b2e0042f1b806920fc"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.pdf",
+          "sha256": "77138ba3d47e3ccc6fc4e20f9a745ed7b6b038089ac07cb32bffcc09aaa4cc17"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.xps",
+          "sha256": "64ffa771ae1681f4497c025f43807cca0f5815f185ea9ed4f6292bd35388e8e9"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bolditalic-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s13-at-24to96-m14.docx",
+        "sha256": "baa90589b6db7c797db11c8c3728d003cf97e8d04350dfa1cc19fc1e1b4f119f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s13-at-24to96-m14.pdf",
+        "sha256": "ce6a269cb37f9ea3169200a9607bcffd0b3df2ce4527cba03f7d0618a036d7cf"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s13-at-24to96-m14.xps",
+        "sha256": "1dcda9102709be38c87c8d07826d6fbd6873f5ba5245077f3206bae7cb7a4559"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bolditalic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-at-24to96-m14.docx",
+          "sha256": "16281b9c922c251d31492bdf89bd9e3c2e59698fa43c5ff72b2437dd74c24357"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-at-24to96-m14.pdf",
+          "sha256": "57c7bb657130d3dd47305d63430bc832c98d6e709d52f286180581ec7f8b5f42"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-at-24to96-m14.xps",
+          "sha256": "28cb8bf4098bcb3bf5072492f220ab251aaec5f6903e5cb4589e785fee1d4419"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bolditalic-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s14p5-at-24to96-m14.docx",
+        "sha256": "7271bf1681cbd03398773d6831e4215252e9684329af6bf6838d8749b6c12281"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s14p5-at-24to96-m14.pdf",
+        "sha256": "4cee4e6ca83a1a6acf25c0430c96db3ed0b7973143b494ccf739264fce8592b9"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s14p5-at-24to96-m14.xps",
+        "sha256": "228200f457dfd53f9d055e08d928b181c44a4f6348b4fc24087daba33e7f11df"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bolditalic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.docx",
+          "sha256": "4cdf7e834161da1852073ba37d1ca3e3707747b8335288b2e0042f1b806920fc"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.pdf",
+          "sha256": "77138ba3d47e3ccc6fc4e20f9a745ed7b6b038089ac07cb32bffcc09aaa4cc17"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.xps",
+          "sha256": "64ffa771ae1681f4497c025f43807cca0f5815f185ea9ed4f6292bd35388e8e9"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bolditalic-s13-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s13-at-24to96-m14.docx",
+        "sha256": "b5a0319bf1415b3976ba3debc522992fb110f23c7fdd37febf575c0d8ae8d835"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s13-at-24to96-m14.pdf",
+        "sha256": "fd45e7da1c5c4a30f2e35ce9f05989149e5364e5d122c9f7bf73606f17cef3dc"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s13-at-24to96-m14.xps",
+        "sha256": "566d33e45742a3b36398b8858c66594c9b821d1c7bd089f1b475bcb15479d27f"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bolditalic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s13-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-at-24to96-m14.docx",
+          "sha256": "16281b9c922c251d31492bdf89bd9e3c2e59698fa43c5ff72b2437dd74c24357"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-at-24to96-m14.pdf",
+          "sha256": "57c7bb657130d3dd47305d63430bc832c98d6e709d52f286180581ec7f8b5f42"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-at-24to96-m14.xps",
+          "sha256": "28cb8bf4098bcb3bf5072492f220ab251aaec5f6903e5cb4589e785fee1d4419"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bolditalic-s14p5-at-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s14p5-at-24to96-m14.docx",
+        "sha256": "bc29f34fdd74b61ed0f8c582b71a7f306c1a70d9bb6ba9168906087c5c273659"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s14p5-at-24to96-m14.pdf",
+        "sha256": "0a1432bad89f2e9c1ccb6a0dae07a425ff4fea17ce392a83ba9b63b08306134c"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s14p5-at-24to96-m14.xps",
+        "sha256": "07e19a301aa89aed83970b6f34805ca855314417c1a1f890fdd444003cb25fbd"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bolditalic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.docx",
+          "sha256": "4cdf7e834161da1852073ba37d1ca3e3707747b8335288b2e0042f1b806920fc"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.pdf",
+          "sha256": "77138ba3d47e3ccc6fc4e20f9a745ed7b6b038089ac07cb32bffcc09aaa4cc17"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.xps",
+          "sha256": "64ffa771ae1681f4497c025f43807cca0f5815f185ea9ed4f6292bd35388e8e9"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bolditalic-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s13-m-24to96-m14.docx",
+        "sha256": "c7f526dac45a0175991f3f8264307081b996dca9f35118c29a8957f877632577"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s13-m-24to96-m14.pdf",
+        "sha256": "ea79f95e9dfeb094941ba2b21dc4b6b8353e25f1b2dc0aa3288427591664abf7"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s13-m-24to96-m14.xps",
+        "sha256": "ddd9b0be2f87838229eb4d2f642365266cd3487acae39e96d1d3c148b30bd97f"
+      },
+      "family": "aptos display",
+      "style": "bolditalic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-m-24to96-m14.docx",
+          "sha256": "eda48f551b5576fff2106ba596ad02b39e3a6a545420745953ffd1d66ba0d693"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-m-24to96-m14.pdf",
+          "sha256": "ab66741fe94fe7e8accb7768e88f4421160b57b80923c6e6cc01e1273dbe167c"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-m-24to96-m14.xps",
+          "sha256": "b2b980bd401639d43bcbaaf24039948aa12a96f2a2f6e9d200c9cacefd9e100a"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-lower-bolditalic-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-lower-bolditalic-s14p5-m-24to96-m14.docx",
+        "sha256": "fec38aad109e971e547186d6a9e6c2021e6ce0c3e114f3165d450b0891701720"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s14p5-m-24to96-m14.pdf",
+        "sha256": "e397c68fc7b5d2a4bcd5c4f8dfc704e60b96c746b82af02df981524cc44671fb"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-lower-bolditalic-s14p5-m-24to96-m14.xps",
+        "sha256": "77ef1f406ef0240d9330200a0c1856d58d2977340f81843b7297ee4327c4aafc"
+      },
+      "family": "aptos display",
+      "style": "bolditalic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.docx",
+          "sha256": "b06b05b85303c89aaefa9b3b9eb27b26c4ee825bef6717b96143e515d888efe3"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.pdf",
+          "sha256": "3c43249557b94cf79d760cebc05bc36a569db24a140a0b2bb80cf0b2c927d3e1"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.xps",
+          "sha256": "7cbee52eccf09f2263e51a669a00232e4d1b2b4765c75fac53163926b23d9a68"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bolditalic-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s13-m-24to96-m14.docx",
+        "sha256": "14686076131dcd4e4fbd56f6e1a5a86c679534081deba19bca04cc93b4ff3077"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s13-m-24to96-m14.pdf",
+        "sha256": "26db488c1ccfb7807fbd8a81dd79a1df8f8ed7f61fe1fbcdd9564e727aabba3d"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s13-m-24to96-m14.xps",
+        "sha256": "c18ea84a1e00dcf2c9c6f9cdf3d3645f9c8237d3a1fbed3bb9dab3b80e1abb53"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bolditalic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-m-24to96-m14.docx",
+          "sha256": "eda48f551b5576fff2106ba596ad02b39e3a6a545420745953ffd1d66ba0d693"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-m-24to96-m14.pdf",
+          "sha256": "ab66741fe94fe7e8accb7768e88f4421160b57b80923c6e6cc01e1273dbe167c"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-m-24to96-m14.xps",
+          "sha256": "b2b980bd401639d43bcbaaf24039948aa12a96f2a2f6e9d200c9cacefd9e100a"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-upper-bolditalic-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-upper-bolditalic-s14p5-m-24to96-m14.docx",
+        "sha256": "939134495a0c5ee8ea0654a08a522654d6a455e2f144376b31ac549c37befc3d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s14p5-m-24to96-m14.pdf",
+        "sha256": "ace85e3e2bc140a92a0f377684257552a4db7ba67fefda2c2218b6f67d5d207e"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-upper-bolditalic-s14p5-m-24to96-m14.xps",
+        "sha256": "17c81271f44e1a9b014056a264a239b7b110090b6e2bc547b9d68571527debe5"
+      },
+      "family": "APTOS DISPLAY",
+      "style": "bolditalic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.docx",
+          "sha256": "b06b05b85303c89aaefa9b3b9eb27b26c4ee825bef6717b96143e515d888efe3"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.pdf",
+          "sha256": "3c43249557b94cf79d760cebc05bc36a569db24a140a0b2bb80cf0b2c927d3e1"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.xps",
+          "sha256": "7cbee52eccf09f2263e51a669a00232e4d1b2b4765c75fac53163926b23d9a68"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bolditalic-s13-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s13-m-24to96-m14.docx",
+        "sha256": "06d38cac3a55230ebc43694d3b3e713345d787176870bb10c4ac8d5e4b4ddb63"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s13-m-24to96-m14.pdf",
+        "sha256": "eac13a493783d8150b03ac75a13e3eb529cc1bfd7adea03696a2b97b9dfba438"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s13-m-24to96-m14.xps",
+        "sha256": "4cfd35749f984ab6ed8e87eab7a86c6fbdb3be2cf9ef12beeff85aa272c2fb7d"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bolditalic",
+      "font_size_pt": 13,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s13-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-m-24to96-m14.docx",
+          "sha256": "eda48f551b5576fff2106ba596ad02b39e3a6a545420745953ffd1d66ba0d693"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-m-24to96-m14.pdf",
+          "sha256": "ab66741fe94fe7e8accb7768e88f4421160b57b80923c6e6cc01e1273dbe167c"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s13-m-24to96-m14.xps",
+          "sha256": "b2b980bd401639d43bcbaaf24039948aa12a96f2a2f6e9d200c9cacefd9e100a"
+        }
+      }
+    },
+    {
+      "name": "word-windows-font-family-case-mixed-bolditalic-s14p5-m-24to96-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/inputs/word-windows-font-family-case-mixed-bolditalic-s14p5-m-24to96-m14.docx",
+        "sha256": "1ed6433a7169c528e85d4830e3137995073dcb2c426f837ffeccbc24a8beded5"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/capture.json",
+        "sha256": "33112f5a668abdc1764b6cf0e14c505cd7f7db456c3aaa0b087225f9c8fafa30"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s14p5-m-24to96-m14.pdf",
+        "sha256": "d9f0abc02ad6983027e95152766699768d977c29556393be6af21a72dbd339b7"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-windows-font-family-case-mixed-bolditalic-s14p5-m-24to96-m14.xps",
+        "sha256": "a6b6c3a736b79de6f70b6778b0b0b47ff857abca7c31d0bc2196233dbb66901c"
+      },
+      "family": "aPtOs dIsPlAy",
+      "style": "bolditalic",
+      "font_size_pt": 14.5,
+      "canonical": {
+        "name": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14",
+        "source": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.docx",
+          "sha256": "b06b05b85303c89aaefa9b3b9eb27b26c4ee825bef6717b96143e515d888efe3"
+        },
+        "capture": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/capture.json",
+          "sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3"
+        },
+        "pdf": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.pdf",
+          "sha256": "3c43249557b94cf79d760cebc05bc36a569db24a140a0b2bb80cf0b2c927d3e1"
+        },
+        "xps": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.xps",
+          "sha256": "7cbee52eccf09f2263e51a669a00232e4d1b2b4765c75fac53163926b23d9a68"
+        }
+      }
+    }
+  ]
+}

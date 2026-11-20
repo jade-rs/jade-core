@@ -9,11 +9,11 @@ use jade_painter::Painter;
 use std::rc::Rc;
 
 pub(crate) fn eligible<P: Painter>(context: &P, text: &str, style: &TextStyle) -> bool {
-    context.text_output_dpi().is_some()
-        && jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        && style.letter_spacing_px != 0.0
-        && style.enable_pair_kerning
+    let Some(dpi) = context.text_output_dpi() else {
+        return false;
+    };
+    jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         && (style.text_scale_x - 1.0).abs() < f64::EPSILON
         && !style.outline
         && !style.shadow
@@ -22,7 +22,51 @@ pub(crate) fn eligible<P: Painter>(context: &P, text: &str, style: &TextStyle) -
         && style.effects.is_none()
         && !text.is_empty()
         && text.bytes().all(|value| (b' '..=b'~').contains(&value))
-        && regular_calibri(&style.font_descriptor_latin_ascii).is_some()
+        && ((style.letter_spacing_px != 0.0
+            && style.enable_pair_kerning
+            && regular_calibri(&style.font_descriptor_latin_ascii).is_some())
+            || realized_aptos_parts(&style.font_descriptor_latin_ascii, dpi).is_some())
+}
+
+// Actual Windows Word 16.0.19127.20936 PDFs independently retain this
+// realization on all 56 long-run controls (four styles, seven point sizes).
+// Only the physical font changes: the precomputed logical origins stay intact.
+fn realized_aptos_parts(descriptor: &str, dpi: f64) -> Option<(&str, &str, f64)> {
+    if !dpi.is_finite() || dpi <= 0.0 {
+        return None;
+    }
+    for token in descriptor.split_whitespace() {
+        let Some(number) = token
+            .strip_suffix("px")
+            .or_else(|| token.strip_suffix("pt"))
+        else {
+            continue;
+        };
+        let size = number.parse::<f64>().ok()?;
+        let source_em = if token.ends_with("pt") {
+            size * 96.0 / 72.0
+        } else {
+            size
+        };
+        if !source_em.is_finite() || source_em <= 0.0 {
+            return None;
+        }
+        let position = descriptor.find(token)?;
+        let prefix = &descriptor[..position];
+        let suffix = &descriptor[position + token.len()..];
+        let family = suffix
+            .split(',')
+            .next()?
+            .trim()
+            .trim_matches(&['\'', '"'][..]);
+        if !family.eq_ignore_ascii_case("Aptos Display") {
+            return None;
+        }
+        let realized = (source_em * dpi / 96.0).round() * 96.0 / dpi;
+        return (realized.is_finite() && realized > 0.0 && (realized - source_em).abs() > 1e-9)
+            .then_some((prefix, suffix, realized));
+    }
+    None
 }
 
 fn regular_calibri(descriptor: &str) -> Option<(&str, &str)> {
@@ -67,6 +111,27 @@ pub(super) fn try_draw<P: Painter>(
     font_state: &mut FontStateTracker,
     dpi: f64,
 ) -> Result<bool, P::Error> {
+    if eligible(context, text, style) && fonts.len() == 1 && glyphs.len() == text.len() {
+        if let Some((prefix, suffix, realized)) = realized_aptos_parts(&fonts[0], dpi) {
+            if glyphs.iter().enumerate().all(|(index, glyph)| {
+                glyph.font_index == 0
+                    && glyph.text_start as usize == index
+                    && glyph.text_end as usize == index + 1
+                    && glyph.x_offset.is_finite()
+            }) {
+                let font: Rc<str> = Rc::from(format!("{prefix}{realized:.6}px{suffix}"));
+                font_state.set_font_rc_if_changed(context, &font);
+                for glyph in glyphs {
+                    context.fill_text(
+                        glyph.text(text).unwrap_or_default(),
+                        x + glyph.x_offset,
+                        y,
+                    )?;
+                }
+                return Ok(true);
+            }
+        }
+    }
     if !eligible(context, text, style)
         || fonts.len() != 1
         || glyphs.len() != text.len()
