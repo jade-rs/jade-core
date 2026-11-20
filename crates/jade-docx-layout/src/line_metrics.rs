@@ -1057,7 +1057,7 @@ pub(crate) fn word_windows_latin_auto_space_metrics(
             trailing_share: 1.0,
         });
     }
-    if matches!(family, "Aptos" | "Aptos Display") {
+    if family.eq_ignore_ascii_case("Aptos") || family.eq_ignore_ascii_case("Aptos Display") {
         // Word 16.0.19127.20936, Aptos 2.01: all four styles and modes
         // 12/14/15 retain the half-average Latin-to-CJK gap with balancing
         // both off and on. The same original font metrics apply to digits.
@@ -1157,10 +1157,10 @@ pub fn word_windows_legacy_justification_average_width_px(descriptor: &str) -> O
     }
     let (_, family) = split_font_descriptor(descriptor)?;
     let family = family.split(',').next()?.trim().trim_matches(['\'', '"']);
-    if !matches!(
-        family,
-        "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
-    ) {
+    if !matches!(family, "Arial" | "Calibri" | "Times New Roman")
+        && !family.eq_ignore_ascii_case("Aptos")
+        && !family.eq_ignore_ascii_case("Aptos Display")
+    {
         return None;
     }
     word_windows_latin_auto_space_metrics(descriptor, false)
@@ -1185,8 +1185,10 @@ pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Optio
     let (bold, italic) = font_descriptor_style(descriptor);
     let style = usize::from(bold) * 2 + usize::from(italic);
     let average = match family {
-        "Aptos" => [1148.0, 1150.0, 1202.0, 1204.0][style],
-        "Aptos Display" => [1105.0, 1105.0, 1161.0, 1161.0][style],
+        family if family.eq_ignore_ascii_case("Aptos") => [1148.0, 1150.0, 1202.0, 1204.0][style],
+        family if family.eq_ignore_ascii_case("Aptos Display") => {
+            [1105.0, 1105.0, 1161.0, 1161.0][style]
+        }
         _ => return None,
     };
     Some(WordAutoSpace {
@@ -1202,10 +1204,10 @@ pub(crate) fn word_windows_numeric_auto_space_metrics(descriptor: &str) -> Optio
 pub(crate) fn word_windows_balanced_latin_space_advance_px(descriptor: &str) -> Option<f64> {
     let (_, family) = split_font_descriptor(descriptor)?;
     let family = family.trim().trim_matches(['\'', '"']);
-    if !matches!(
-        family,
-        "Arial" | "Calibri" | "Times New Roman" | "Aptos" | "Aptos Display"
-    ) || (family == "Arial" && font_descriptor_style(descriptor) == (false, false))
+    if (!matches!(family, "Arial" | "Calibri" | "Times New Roman")
+        && !family.eq_ignore_ascii_case("Aptos")
+        && !family.eq_ignore_ascii_case("Aptos Display"))
+        || (family == "Arial" && font_descriptor_style(descriptor) == (false, false))
     {
         return None;
     }
@@ -5124,6 +5126,58 @@ mod tests {
                         word_windows_legacy_justification_average_width_px(&descriptor).unwrap();
                     assert!((average - expected).abs() < 1e-9);
                     set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(
+                        word_windows_legacy_justification_average_width_px(&descriptor).is_none()
+                    );
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn windows_aptos_case_preserves_mixed_script_spacing_and_mac_policy() {
+        use super::*;
+        let previous = word_layout_platform();
+        // Word's original mixed Japanese/Latin controls retain identical origins
+        // for these family-name spellings. Reuse the face's font-program metrics.
+        for (canonical, aliases) in [
+            ("Aptos", ["aptos", "APTOS", "aPtOs"]),
+            (
+                "Aptos Display",
+                ["aptos display", "APTOS DISPLAY", "aPtOs DiSpLaY"],
+            ),
+        ] {
+            for prefix in ["", "italic ", "bold ", "bold italic "] {
+                let control = format!("{prefix}12.00pt '{canonical}'");
+                for alias in aliases {
+                    let descriptor = format!("{prefix}12.00pt '{alias}'");
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(word_auto_space_metrics(&descriptor).is_none());
+                    assert!(word_ascii_metrics(&descriptor).is_none());
+                    set_word_layout_platform(WordLayoutPlatform::Windows);
+                    for balanced in [false, true] {
+                        let expected =
+                            word_windows_latin_auto_space_metrics(&control, balanced).unwrap();
+                        let actual =
+                            word_windows_latin_auto_space_metrics(&descriptor, balanced).unwrap();
+                        assert_eq!(actual.leading_gap_px(), expected.leading_gap_px());
+                        assert_eq!(
+                            actual.trailing_gap_px(false),
+                            expected.trailing_gap_px(false)
+                        );
+                    }
+                    assert_eq!(
+                        word_windows_balanced_latin_space_advance_px(&descriptor),
+                        word_windows_balanced_latin_space_advance_px(&control),
+                    );
+                    assert_eq!(
+                        word_windows_legacy_justification_average_width_px(&descriptor),
+                        word_windows_legacy_justification_average_width_px(&control),
+                    );
+                    set_word_layout_platform(WordLayoutPlatform::Mac);
+                    assert!(word_auto_space_metrics(&descriptor).is_none());
+                    assert!(word_ascii_metrics(&descriptor).is_none());
                     assert!(
                         word_windows_legacy_justification_average_width_px(&descriptor).is_none()
                     );

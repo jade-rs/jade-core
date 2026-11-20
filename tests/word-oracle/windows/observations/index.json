@@ -59397,6 +59397,876 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T152657374Z-70b2d6ba",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba.zip",
+      "archive_sha256": "53908f0d3259e3da6c85d2929d6daf41e1a082c19fda8e54bd54cdabdb97f246",
+      "capture_sha256": "67ffeae5b25f91ec36f049a9ba2cf46d67caba4cfa401ad84dcdc063a5067eec",
+      "documents": [
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m14-manual-w3000",
+          "source_sha256": "2413f20fda7d5f01a147ce781b140d922318d61beca9233e776817b3e362b57f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m14-manual-w3000",
+          "source_sha256": "5b7d32e8a81bdc3a69097397f1f74bad7be85d1f6aad611a35fc7ac26808f23a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m14-manual-w3000",
+          "source_sha256": "6269165f335e1cdddae711edbb654747ba8def61decce533cf9c2dcd47614a6e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m14-manual-w8504",
+          "source_sha256": "3d45d913b448739572d6238a5e1ce29dd8ab5c3bea9eea048fd5d34e198e21c0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m14-manual-w8504",
+          "source_sha256": "bd45a7ec67d31fd2ced00df60e47d684b78525c2ad4d6b12dd9365c5b165c667",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m14-manual-w8504",
+          "source_sha256": "0f1aea07eabc3f58ee379a3bdac0aee90d371b2f3b67756f62d2b43569abd846",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "4fa15519463d61412e9e2d2f142c0adbfff8793fb1a4a6d84324dffd900e36e4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "d079f4d198ae8bd9256fbad5ed7c22e8f5a5b3062a8e11ff03df1026c3eec031",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "108032589b38562ad51fe20198e63103c47e027b67471a413767200be66511c3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "98a79d1dc73955085b5c901c3e799990bff943f16eab2b466884c18363bbd6d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "030cea5fa7225c398ec562a051f3ddfb33acc625637ddda76d5c8637644a6141",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "93a522bfee207c44d746d630708cd077cedc685556e67335f6c701fa66d4915a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m15-manual-w3000",
+          "source_sha256": "28c5d98d88933a2cb03c014f36b4051e4a6d7333aa8fb41ade8f6c62f412b9d2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m15-manual-w3000",
+          "source_sha256": "0b3afa73b09275c0c1789ee8d30c3bde2c06b36832bf9ff4b86602cc226e2cf7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m15-manual-w3000",
+          "source_sha256": "626cd3142bdbcbe1aec7bc05b08ee291417af6c33ae5d728ebaa1bc7b814b664",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m15-manual-w8504",
+          "source_sha256": "776d04d0204b1f1ea1b9e2e8bc60b75d304f143939beaf0dd2d0ae892c86ccf0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m15-manual-w8504",
+          "source_sha256": "092e54944faf470b8e13dce04e8a24615e0541e0ec37569ded57d9c84695b3cf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m15-manual-w8504",
+          "source_sha256": "9942554de93f2c1a76731e3a0d7f24dfc4a7b41cbbc77e7413b8ae0602e24ffd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "52400d06aee929f9b914e757ad984f39e4d04741c87794bea6664b8d3ebb5057",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "c30ccee05ff17d407c9c8bebb48b4f5041df0d25ffe2e56f83d5aea1dbeb70d6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "9fc54cdd08ac8db22dceaab44624aa3e5648b1674092ec9c4d1f085556154799",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "150344b1007cf05525e13261d6cac531fd934824f1b5a3d77e888afd8253aa74",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "09d1e02ec37e39814497633f6fab53e219098945ba2bfd639cffe97462da0c68",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "91e40dc90caa6c30b15ce0c3022d523ef995f22ee68b0c7e8d12608b214bdda1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/inputs/word-windows-family-cjk-case-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T155153614Z-ab3dc5a0",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0.zip",
+      "archive_sha256": "e867be420f5fb5a54b27756e61bbc7f6b7a271db59f62e24a570a83d742da780",
+      "capture_sha256": "bda6d1a3d2efc62a70bb5b9a113625b332813bac2b21868e0089b25503c1fadc",
+      "documents": [
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m14-manual-w3000",
+          "source_sha256": "03886d992072ff85d5e02b972d95e5e903fcfb5c8bd3280df7fde168017ff369",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m14-manual-w3000",
+          "source_sha256": "78ea5b579ba98c1e990bb1503c550b1efc28e8d81b8862435dcd2160158e71ff",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m14-manual-w3000",
+          "source_sha256": "f42a24514852e9794d92989b722575f78c4e729f4b065e440554c57f29c8e1fb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m14-manual-w3000",
+          "source_sha256": "9fd223a74b1535f7c302c1eda01542fa6062c047670f985306775d93cb0a6100",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m14-manual-w3000",
+          "source_sha256": "1c07439bbc4394b51dddc0e4f03480701922e0678c115456de38c9ec91a1cfec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m14-manual-w3000",
+          "source_sha256": "16e7b5b749c1f29ecf062b5a4f9d3b12f82cdd07370693f4cf32f437f0627a24",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m14-manual-w3000",
+          "source_sha256": "27fcc63c1cca0919498b8c5646088b97e139bcd7361b0673a790c04c6cccbe63",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m14-manual-w3000",
+          "source_sha256": "ee4a2b001c6944f7dd1fbabb6566b4d76414b2a9f7abc6b9ce12c79a23bfea42",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m14-manual-w3000",
+          "source_sha256": "fb72b30af1880b3f6455cb5f41536fb9f309ff9aa23e5f9764e3fe3cd6411fb7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m14-manual-w3000",
+          "source_sha256": "8ef62af93cd913a016bc73bbd0ed6ecc17a9cf1eb410f6085ca9b63cc1d425c1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m14-manual-w3000",
+          "source_sha256": "a8ee9ae97a7959c6897d8c8503b343d5811bff5b51911d4ce77d594497e36bbc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m14-manual-w3000",
+          "source_sha256": "8798ed07a375c59886a2d3b723422c4acc61591bd9fc1a5b73f9a144b885678c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m14-manual-w8504",
+          "source_sha256": "4e3d13c6784cc8b78d82a42cb78767007f995c485f7940e5f556f65cacbfb696",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m14-manual-w8504",
+          "source_sha256": "3327baff6bf3fd53901d94cdd95bfda25a7db7933df615d5b98416ede81577e0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m14-manual-w8504",
+          "source_sha256": "4ca76e1bebfec6f546724e957fa538165efd2f8689ceaa78fe7b8fc4dd3ff866",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m14-manual-w8504",
+          "source_sha256": "f8b0b65231137c7a9b190333e4473e4bde21ef44f38f220082b556ee9fb6bd57",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m14-manual-w8504",
+          "source_sha256": "51b94ae135e8f5e0f723ae2f632fa48186bd7578a5da5fab0b2a4b686761a9f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m14-manual-w8504",
+          "source_sha256": "4dc7ed26a679e66c500bef4f75aeeff8229c55bfa4f7011b6742a924f2cdb901",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m14-manual-w8504",
+          "source_sha256": "3116a5c95131eb038dc72c09c2843f520978f4e8211bb201eb59eb4a98cf243b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m14-manual-w8504",
+          "source_sha256": "f526d9b046f35e8c644bdf97fc46e834a2ddfdff83be56814eee8dcd6921fa55",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m14-manual-w8504",
+          "source_sha256": "266212d4a6e97f36d95be3ef75c99e250fac206b43086e28ee93a79681468bf2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m14-manual-w8504",
+          "source_sha256": "1721c443656a51335020c5267ff16dbb1d83b06db857e668262b441d320249ba",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m14-manual-w8504",
+          "source_sha256": "f2e35df66dcf03d0d72be0008bb1bd09fea2914542acc8c264ecafef5126b5ba",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m14-manual-w8504",
+          "source_sha256": "24621b4d59860029b8ca32fe278268b28bc5962f18cd67b14c686be9bf01c210",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "f0fae73f02ef17b032e29237737ec6d16e05ef7baf907e424c8dd1e49c991275",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "4d4167e73f0e077d95f816edee310f0a487cbd8e5712facffb66003aa32b34fa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "87efc0f0cc464f31762b641f28fdb78785789e2e24db0ba20c2d4b4fee8db4f1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "474a17ffecc4d644c8749462b1f7e2726048f71e9ebcc77dde94642eae6aec0f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "a7efbc58019385efd5c784d496c3466275a398aa1c9987c3dc4eaf00193c00b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "fccb6ae044cf98ad8c80a6f1d451c677315ffb3a52775daa57222819227f8d9d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "66a2c2386fd51d7c887f738123769d2984e50a66bcb3a3bb1ffe5c2b706753c6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "0daa6bd775f396ae7447bd23f87205a29132a5790149362fb30737442345bc9a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m14-paragraph-w3000",
+          "source_sha256": "4a0daf44b1324341912364c80b7240073f855854471c39141bf25f35671481d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m14-paragraph-w3000",
+          "source_sha256": "afb0b52d181cddbd8ae7e521a7e7066ee65b4ff6b0b2a4741ac1f785af447fef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m14-paragraph-w3000",
+          "source_sha256": "8c6451e1442d222c8b70ee8f35702f04bab8d1f564f40238bb3a827d2983fdf5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m14-paragraph-w3000",
+          "source_sha256": "fac47c82d233b142ed4467d3b2c72382968269ba0a790f3233ca87fc76957c57",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "63a5b85612949548f61bac08e55f2a8ffc08b2da173e5c6c4f803489e097b3c6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "1a1588ceecf64bfa0a1332ca5d24ca5886180d4949795ab1118fe53389c49920",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "2e8f59e910ccd8d6e9926e12a86346292b88885ea5817d38d95ce3ab8e94b397",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "e1471144a2ebd18bf156a3925b0a7166375dbd82254472707991e95f9e33eb44",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "ecd81c8ec43f3626cc746740a046b0e5461b1400262d497b1af760f169f9a265",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "ee94550d418e61962d2d9474f6414ef78d69be8932373d047c94b320fcd90b0f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "478ae725744dbae65bd543182f13af145273c7efae995b3edee02f462334fef9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "64468d1e7a1bb1fe88d2a1fb29b16342212768ba2240900c7439dcf0260a6ad0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m14-paragraph-w8504",
+          "source_sha256": "0ce5b47f4acc13572260567713fff6d44eca7f1a00850f6e355e4f5c2e5f06f8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m14-paragraph-w8504",
+          "source_sha256": "481e624dda35807d823a9add4e2e9fe61595575afbbf143f44f77fca1bea7b3f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m14-paragraph-w8504",
+          "source_sha256": "e5b6f4ce6314136ccf9a12ab96c70727d74c16480c5d24e9cc80f0046cb60b3c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m14-paragraph-w8504",
+          "source_sha256": "36ed2b01c3b2363ea50691298da499225596bb957cc6c43d57c05ae6c76c23a9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m15-manual-w3000",
+          "source_sha256": "6d48e2b849140cbffcc464a3f04082cb52e446059f6db9a9f51f7fccd2851757",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m15-manual-w3000",
+          "source_sha256": "38ba169eeca14f169f5818218786b36d5d74da251c83e4f345873ac90d3dfea9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m15-manual-w3000",
+          "source_sha256": "7a90b1ca6136a8808f757c0ec792211a7466d4af2c1b034fd42440b71648ec34",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m15-manual-w3000",
+          "source_sha256": "ac8fb150fd2387dbc8fbc4ef23c00aedf3dde42b3a933c079bfa98859c3cd592",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m15-manual-w3000",
+          "source_sha256": "82bb92415d65554f885841c0c4ecc42fca4bb434217cd422f8d12ecc73bc5e31",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m15-manual-w3000",
+          "source_sha256": "2b111e6cb1556bb1ee99c175be5ff6f2ac475232bb549a16b69038f198a3f568",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m15-manual-w3000",
+          "source_sha256": "620212dad40f4c68d5c4da86512dbdaa5a6d23bfa3b6fe04fd04edc594258cb8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m15-manual-w3000",
+          "source_sha256": "c06faabe0997832a487684f2305e9a90fcdb9be3f0ec99d8e1238e005d7e2589",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m15-manual-w3000",
+          "source_sha256": "24cc5588af9ee9fc3553fe96361ffa2bcec381964a0f2a04f82557b3ee86be03",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m15-manual-w3000",
+          "source_sha256": "0aed3f491761212f7d62b5c43a9f3bfc87ae1275284591e858f71eaaa9d8d475",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m15-manual-w3000",
+          "source_sha256": "db5423a12e89a7d95f16199a452c10a9a3ff85b85196bcb7f83fe88ce246486f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m15-manual-w3000",
+          "source_sha256": "8780f622f115d3756f01cbac8405af4d444e69caae45261bb7f7a140307c3bae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m15-manual-w8504",
+          "source_sha256": "f7c3dc99f7bda7258268019d1a7fc64df16dfcf577f19464302523b3ab9325b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m15-manual-w8504",
+          "source_sha256": "1b83c911f1621278f801236ba97e0c4c97b0e65ea4e060d35586a33f68081a35",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m15-manual-w8504",
+          "source_sha256": "b636259753ef5194957db1decc65f5014526bb5bccba980928f1c7b08f1283c8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m15-manual-w8504",
+          "source_sha256": "d99a2db73275a42286b72b28ad4e26acc95c3544dbfe984243aa4eae45cfa23c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m15-manual-w8504",
+          "source_sha256": "b8bd7cd5681460d2fdda2e2e7fcf5d253b532b0bcabffe4da903242b05005771",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m15-manual-w8504",
+          "source_sha256": "9e4f8222779f3d598edcedf22060a582b42d9d2976a0990eb79bc8fd99a3c950",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m15-manual-w8504",
+          "source_sha256": "10b7258230f89acc6049a0a522300fecdc0a440200c736a210fd536e836d26a9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m15-manual-w8504",
+          "source_sha256": "6e992902a6accdf8a2361198a81e1733d6799de6abe311700a616274eda7076d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m15-manual-w8504",
+          "source_sha256": "821536308a953125357b232ab9d7973fedb2f08d68498e42108eddcfbbe45041",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m15-manual-w8504",
+          "source_sha256": "ca04bb07b1066ee20bc136f46e6ddc3d562d6da51ec55d5ec8ae7e9ef8773037",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m15-manual-w8504",
+          "source_sha256": "323ccafd44b4bae11d05ca47d7c3034ec6fb991ec82d8a5b7eacff66502b98a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m15-manual-w8504",
+          "source_sha256": "fd4fdec3196791acf57a531dc4958d6cbc9098b81689d124b17a1093ce3375ce",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "2f3abc698225959021c459129c61ded24c895b322187d469760e1cac0c1aaea5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "2e9a5f9b0b0dce282ce0cb8d991ae696aeb80732f9fb2fbe33e546d7a04e2198",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "b22d533cc7e369d27bce4176e0f57b73808362e91278f545faaf780a54ae16c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "6078a989bb811f4b9e8fc5731a1098b3d4ba882a40cf673e01be530eab47b2f8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "cf094cba2e18135845520688e9a41a524b427b958d39674fc785436e686cbf97",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "ff275861940eff6aaeb21af260892ce7ef86dc83c9062dff3bdba89df538a920",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "30a52e2be08385cde5bbd4527b24f24e9bacdaf3de01c1c0634245de7c967d00",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "dab886ecddcc2b561a49147981df66ba662f832d4387f4334f3e422356a06d89",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m15-paragraph-w3000",
+          "source_sha256": "035428adbcd87d76e4747a084407aeac716efec8662720ec9f6c9ff91a4cd8ee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m15-paragraph-w3000",
+          "source_sha256": "1114e23e48ea921f1c88ee206bd2e01aa373cf005e6e6d416a8b1b956a98e586",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m15-paragraph-w3000",
+          "source_sha256": "658f3b9bc3a9335bcc631ccc10bfe08a944fe2edeaceb821578b5415d3d42209",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m15-paragraph-w3000",
+          "source_sha256": "0f0e0fd6df5540d195802f1e2dd045638851b126a34c4ec1e3020e4d4014bf76",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "3efc62f66bd60bc38287f2a31b666d2aa6c2844b519a995fb408bb8589fe3471",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "ed8f39958876e6d72fc6d857c0740d63de93d26b531b8f7f15f6f77b2d255680",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "6ab3d4c072f0fcb2c6e3f84e05bb8391ddccb19198dd92c9dc9fc3cd50448640",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "695f7d7d513454ed30c9baed5d7770031cb11e5dc0c70921313dab14be1c6dc9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "918f43fcdee34833c097f6a751b9f0e2e4aa34a29b111f44b724a066ae8dd059",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "de9458364b8dc56b62585a631853f465d34588ca6900cddbbd72768c2088daa0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "f776b1dafd9e4a0ff50a0a5ff19fb7878fe2d5bcfecc607bfaf391e445c17905",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-italic-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "8a585e0380dd1f1724238988f21a7b5fbc70ff6475bd7e1285e76a061c409ace",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-italic-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-canonical-s12-m15-paragraph-w8504",
+          "source_sha256": "7153fbfae1ee9cb8ea466cbc486ad11d4d94c638e285af325319e564cc6a6256",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-canonical-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-lower-s12-m15-paragraph-w8504",
+          "source_sha256": "f078daaeeb6f7b7982cdd459d5e4faf11a16dba9b0680912260b6d3ed736d693",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-lower-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-upper-s12-m15-paragraph-w8504",
+          "source_sha256": "b3049409058c586cb334eac48d503362fbd9d94ebdb5023f8a182eadf04e98a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-upper-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-family-cjk-style-bold-italic-mixed-s12-m15-paragraph-w8504",
+          "source_sha256": "145f7887d611d92fdd6b4ddc963584d1e225fca04a20b8d91509cc252d3e3e58",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/inputs/word-windows-family-cjk-style-bold-italic-mixed-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -59662,6 +60532,14 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T143728474Z-088d346a/word-output-font-facts.json",
       "sha256": "f709527c9a38a8f2bac8e9002e199a350e8ba14fb3c29d4d7b94456b82eef792"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T152657374Z-70b2d6ba/word-output-font-facts.json",
+      "sha256": "bff4d93268fec2fe6fde64059be2a698d469d88ee53f9d1a87b03b4e8301d7f6"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T155153614Z-ab3dc5a0/word-output-font-facts.json",
+      "sha256": "588a47a63e862ca48a51d47283998ae83bcc60ea79463745c84112c02b94152a"
     }
   ]
 }
