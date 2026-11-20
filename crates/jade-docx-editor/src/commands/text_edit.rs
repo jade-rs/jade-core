@@ -552,6 +552,32 @@ fn insert_into_runs(
                 return;
             }
         };
+        // Right after a field whose result is worked out again (PAGE, DATE),
+        // typing goes after the field, as in Word: written into the result,
+        // it was lost the next time the field was updated or saved.
+        let at_computed_end = runs[index]
+            .field
+            .as_ref()
+            .is_some_and(|field| !field.kind.keeps_result_in_run_text())
+            && !runs[index].text.is_empty()
+            && position == run_start + runs[index].text.len();
+        if at_computed_end {
+            let mut after = index + 1;
+            if runs
+                .get(after)
+                .is_some_and(|run| zero_width.closes_field(run))
+            {
+                after += 1;
+            }
+            let template = runs[..=index]
+                .iter()
+                .rev()
+                .find(|run| run.field.is_none() && !run.text.is_empty())
+                .or(template)
+                .cloned();
+            runs.insert(after, create_run_from_template(template.as_ref(), insert));
+            return;
+        }
         let run = &mut runs[index];
         if run.text.is_empty() {
             if let Some(result) = editable_field_result(run).map(str::to_string) {
@@ -584,6 +610,51 @@ fn insert_into_runs(
         let run = create_run_from_template(runs.last(), insert);
         runs.push(run);
     }
+}
+
+/// Types `insert` at model offset `position` behind the note references
+/// and the fields with no text of their own that sit there: the caret Word
+/// shows after a reference mark ("abc¹|def") or a page number ("Page 1|") is
+/// at the same model offset as the one in front of it, and text typed there
+/// belongs after them. After a reference the new run is formatted like it,
+/// as Word continues the mark's formatting; after a field like the text
+/// before it. Returns whether something was found to type behind.
+pub(crate) fn insert_after_note_references(
+    runs: &mut Vec<Run>,
+    position: usize,
+    insert: &str,
+    zero_width: &ZeroWidthRuns,
+) -> bool {
+    if insert.is_empty() {
+        return false;
+    }
+    let head_template = runs.iter().rev().find(|run| !run.text.is_empty()).cloned();
+    let mut tail = split_runs_at_preserving_source(runs, position, zero_width);
+    let leading = tail
+        .iter()
+        .take_while(|run| {
+            run.text.is_empty()
+                && (places_a_story(run) || run.field.is_some() || zero_width.keeps(run))
+        })
+        .count();
+    let reference = tail.iter().take(leading).rev().find(|run| {
+        !run.footnote_reference_ids.is_empty() || !run.endnote_reference_ids.is_empty()
+    });
+    let template = match reference {
+        Some(reference) => Some(reference.clone()),
+        None => head_template.or_else(|| tail.iter().find(|run| !run.text.is_empty()).cloned()),
+    };
+    runs.extend(tail.drain(..leading));
+    if leading == 0 {
+        runs.extend(tail);
+        return false;
+    }
+    let mut run = create_run_from_template(template.as_ref(), insert);
+    run.revision = None;
+    runs.push(run);
+    runs.extend(tail);
+    normalize_break_runs(runs);
+    true
 }
 
 /// Whether `run` holds an object that is not text: a text box, an image,
@@ -919,6 +990,9 @@ fn run_carries_content_besides_field(run: &Run) -> bool {
 pub(crate) struct ZeroWidthRuns {
     field_chars: HashMap<XmlNodeId, FieldChars>,
     field_code: HashSet<XmlNodeId>,
+    /// A split at a note reference keeps the reference before it: the caret
+    /// Word shows after a mark ("Hello¹|") is at the mark's model offset.
+    references_before_split: bool,
 }
 
 /// The complex fields a zero-width run ends and then begins with its
@@ -965,6 +1039,24 @@ impl ZeroWidthRuns {
     fn closes_field(&self, run: &Run) -> bool {
         self.field_chars(run).is_some_and(|chars| chars.closes > 0)
     }
+
+    /// The same runs, a split keeping the note references at its offset on
+    /// the side before it.
+    pub(crate) fn keeping_references_before_split(mut self) -> Self {
+        self.references_before_split = true;
+        self
+    }
+
+    /// Whether `run` is a note reference, or a part of a field with no text
+    /// of its own, that a split at it leaves before it.
+    fn stays_before_split(&self, run: &Run) -> bool {
+        self.references_before_split
+            && run.text.is_empty()
+            && (!run.footnote_reference_ids.is_empty()
+                || !run.endnote_reference_ids.is_empty()
+                || run.field.is_some()
+                || self.keeps(run))
+    }
 }
 
 /// Splits a run sequence at the specified byte offset, returning the tail
@@ -999,10 +1091,9 @@ pub(crate) fn split_runs_at_preserving_source(
             // field's begin does, except the end of a field whose result ends
             // here: it stays with that result, so that a range ending here (a
             // comment, a link) holds the whole field or none of it.
-            while runs
-                .get(index)
-                .is_some_and(|run| zero_width.closes_field(run))
-            {
+            while runs.get(index).is_some_and(|run| {
+                zero_width.closes_field(run) || zero_width.stays_before_split(run)
+            }) {
                 index += 1;
             }
             break;

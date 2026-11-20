@@ -31,19 +31,7 @@ where
         } else {
             (end, start)
         };
-        let page_with_gap = self.page_height + PAGE_GAP_PX;
-        let page_of = |top: f64| {
-            if self.pageless_mode || page_with_gap <= 0.0 {
-                0
-            } else {
-                let value = (top / page_with_gap).floor();
-                if value.is_finite() && value >= 0.0 {
-                    value as usize
-                } else {
-                    0
-                }
-            }
-        };
+        let page_of = |top: f64| self.page_for_y(top);
         let paragraphs = self.selection.paragraphs();
         let mut regions = Vec::new();
         for paragraph_index in start.paragraph..=end.paragraph {

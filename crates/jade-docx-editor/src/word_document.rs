@@ -893,6 +893,9 @@ pub use protection::{
 };
 #[path = "word_document/ole_objects.rs"]
 pub mod ole_objects;
+#[cfg(test)]
+#[path = "word_document/revision_dates.rs"]
+mod revision_dates;
 #[path = "word_document/signature_lines.rs"]
 mod signature_lines;
 #[path = "word_document/table_revisions.rs"]
@@ -1402,6 +1405,10 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
     metrics
 }
 
+/// The bytes the last layout showed for each field run, by the XML node of
+/// the run: shared between a document and the renderer laying it out.
+pub type RenderedFieldLengths = std::sync::Arc<std::sync::Mutex<HashMap<XmlNodeId, usize>>>;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WordDocument {
     #[serde(skip)]
@@ -1440,6 +1447,11 @@ pub struct WordDocument {
     /// body paragraph; structural edits rebuild the cache with the surfaces.
     #[serde(skip)]
     text_metrics_cache: RefCell<DocumentTextMetricsCache>,
+    /// How many bytes the last layout showed for each field run (by its XML
+    /// run), filled by the renderer it is shared with: a PAGE or NUMPAGES
+    /// field keeps no text of its own, yet the caret counts its digits.
+    #[serde(skip)]
+    rendered_field_lengths: RenderedFieldLengths,
     #[serde(skip)]
     revision_session: Option<RevisionSession>,
     /// 保護の中止 with the password: the restriction does not hold until
@@ -2499,6 +2511,7 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             body_surface_indices: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
+            rendered_field_lengths: RenderedFieldLengths::default(),
             revision_session: None,
             protection_lifted: false,
             opened_read_only: false,
@@ -5371,6 +5384,7 @@ impl WordDocument {
             paragraph_surfaces: Vec::new(),
             body_surface_indices: Vec::new(),
             text_metrics_cache: RefCell::new(DocumentTextMetricsCache::default()),
+            rendered_field_lengths: RenderedFieldLengths::default(),
             revision_session: None,
             protection_lifted: false,
             opened_read_only: false,
@@ -12227,6 +12241,22 @@ impl WordDocument {
         self.revision_session.as_ref()
     }
 
+    /// The open session as a change recorded now is stamped with. Without a
+    /// fixed `date` it takes the host clock's current minute (`w:date`, and
+    /// the UTC instant as `w16du:dateUtc` unless that is fixed), so each
+    /// change is dated when it is made, as Word does; read-back revisions
+    /// keep theirs.
+    pub fn recording_revision_session(&self) -> Option<RevisionSession> {
+        let mut session = self.revision_session.clone()?;
+        if session.date.is_none() {
+            if let Some((date, date_utc)) = crate::revision_clock::revision_date_now() {
+                session.date = Some(date);
+                session.date_utc.get_or_insert(date_utc);
+            }
+        }
+        Some(session)
+    }
+
     pub fn ensure_revision_decision_supported(
         &self,
         kind_filter: Option<&RevisionKind>,
@@ -12642,8 +12672,7 @@ impl WordDocument {
         paragraph_index: usize,
     ) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -12772,8 +12801,7 @@ impl WordDocument {
 
     fn mark_deleted_paragraph_break_raw(&mut self, paragraph_index: usize) -> Result<(), String> {
         let session = self
-            .revision_session
-            .clone()
+            .recording_revision_session()
             .ok_or("paragraph break has no revision session")?;
         let paragraph_id = self
             .paragraph(paragraph_index)
@@ -14201,7 +14229,18 @@ impl WordDocument {
         let mut lines = Vec::new();
         collect(elements, &mut lines);
         let mut text = lines.join("\n");
-        if text.starts_with('\t') {
+        // The separator after the note's number: Word saves a space there
+        // as a run of its own, other tools start the text with a tab. A
+        // space the text itself starts with stays.
+        let separator_run = elements
+            .iter()
+            .find_map(|element| match element {
+                BodyElement::Paragraph(paragraph) => Some(paragraph),
+                _ => None,
+            })
+            .and_then(|paragraph| paragraph.runs.iter().find(|run| !run.text.is_empty()))
+            .is_some_and(|run| run.text == " ");
+        if separator_run || text.starts_with('\t') {
             text.remove(0);
         }
         text
@@ -14242,7 +14281,29 @@ impl WordDocument {
                     revision: None,
                 },
                 Run {
-                    text: format!("\t{text}"),
+                    // Word's space after the note's number, a run of its own.
+                    text: " ".to_string(),
+                    properties: None,
+                    image: None,
+                    text_box: None,
+                    math: None,
+                    field: None,
+                    hyperlink: None,
+                    node_id: None,
+                    text_node_id: None,
+                    text_controls: None,
+                    revision_node_id: None,
+                    comment_reference_ids: Vec::new(),
+                    footnote_reference_ids: Vec::new(),
+                    endnote_reference_ids: Vec::new(),
+                    note_separator: None,
+                    has_footnote_ref: false,
+                    has_endnote_ref: false,
+                    revision: None,
+                },
+                Run {
+                    // The note's own text.
+                    text: text.to_string(),
                     properties: None,
                     image: None,
                     text_box: None,
@@ -14396,7 +14457,29 @@ impl WordDocument {
                     revision: None,
                 },
                 Run {
-                    text: format!("\t{text}"),
+                    // Word's space after the note's number, a run of its own.
+                    text: " ".to_string(),
+                    properties: None,
+                    image: None,
+                    text_box: None,
+                    math: None,
+                    field: None,
+                    hyperlink: None,
+                    node_id: None,
+                    text_node_id: None,
+                    text_controls: None,
+                    revision_node_id: None,
+                    comment_reference_ids: Vec::new(),
+                    footnote_reference_ids: Vec::new(),
+                    endnote_reference_ids: Vec::new(),
+                    note_separator: None,
+                    has_footnote_ref: false,
+                    has_endnote_ref: false,
+                    revision: None,
+                },
+                Run {
+                    // The note's own text.
+                    text: text.to_string(),
                     properties: None,
                     image: None,
                     text_box: None,
@@ -31070,7 +31153,17 @@ impl WordDocument {
                 XmlNode::Element(marker),
             ],
         );
-        let tab = notes_doc.create_element("w:tab", Vec::new(), Vec::new());
+        // Word starts a note's text with a space after its number, not a
+        // tab, in a run of its own: what it types into a note it inserts.
+        let space = notes_doc.create_element(
+            "w:t",
+            vec![XmlAttribute {
+                name: "xml:space".to_string(),
+                value: "preserve".to_string(),
+            }],
+            vec![XmlNode::Text(" ".to_string())],
+        );
+        let space_run = notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(space)]);
         let mut text_attrs = Vec::new();
         if Self::needs_preserve(text) {
             text_attrs.push(XmlAttribute {
@@ -31080,11 +31173,8 @@ impl WordDocument {
         }
         let text_node =
             notes_doc.create_element("w:t", text_attrs, vec![XmlNode::Text(text.to_string())]);
-        let text_run = notes_doc.create_element(
-            "w:r",
-            Vec::new(),
-            vec![XmlNode::Element(tab), XmlNode::Element(text_node)],
-        );
+        let text_run =
+            notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text_node)]);
         let mut paragraph_children = Vec::new();
         if let Some(style_id) = paragraph_style_id {
             let p_style = notes_doc.create_element(
@@ -31100,6 +31190,7 @@ impl WordDocument {
             paragraph_children.push(XmlNode::Element(ppr));
         }
         paragraph_children.push(XmlNode::Element(marker_run));
+        paragraph_children.push(XmlNode::Element(space_run));
         paragraph_children.push(XmlNode::Element(text_run));
         let paragraph = notes_doc.create_element("w:p", Vec::new(), paragraph_children);
         let note = notes_doc.create_element(
@@ -31162,7 +31253,17 @@ impl WordDocument {
                 XmlNode::Element(marker),
             ],
         );
-        let tab = notes_doc.create_element("w:tab", Vec::new(), Vec::new());
+        // Word starts a note's text with a space after its number, not a
+        // tab, in a run of its own: what it types into a note it inserts.
+        let space = notes_doc.create_element(
+            "w:t",
+            vec![XmlAttribute {
+                name: "xml:space".to_string(),
+                value: "preserve".to_string(),
+            }],
+            vec![XmlNode::Text(" ".to_string())],
+        );
+        let space_run = notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(space)]);
         let mut text_attributes = Vec::new();
         if Self::needs_preserve(text) {
             text_attributes.push(XmlAttribute {
@@ -31175,15 +31276,16 @@ impl WordDocument {
             text_attributes,
             vec![XmlNode::Text(text.to_string())],
         );
-        let text_run = notes_doc.create_element(
-            "w:r",
-            Vec::new(),
-            vec![XmlNode::Element(tab), XmlNode::Element(text_element)],
-        );
+        let text_run =
+            notes_doc.create_element("w:r", Vec::new(), vec![XmlNode::Element(text_element)]);
         let paragraph = notes_doc.create_element(
             "w:p",
             Vec::new(),
-            vec![XmlNode::Element(marker_run), XmlNode::Element(text_run)],
+            vec![
+                XmlNode::Element(marker_run),
+                XmlNode::Element(space_run),
+                XmlNode::Element(text_run),
+            ],
         );
         let target = notes_doc
             .element_mut(target_id)
@@ -32972,7 +33074,7 @@ impl WordDocument {
         if length == 0 {
             return;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return;
         };
         let zero_width = self.zero_width_runs(paragraph_index);
@@ -33041,7 +33143,7 @@ impl WordDocument {
         if length == 0 {
             return false;
         }
-        let Some(session) = self.revision_session.clone() else {
+        let Some(session) = self.recording_revision_session() else {
             return false;
         };
 
@@ -33721,6 +33823,12 @@ impl WordDocument {
     }
 
     pub fn rendered_to_model_text_position(&self, position: TextPosition) -> TextPosition {
+        self.rendered_to_model_base(self.without_field_display(position).0)
+    }
+
+    /// [`Self::rendered_to_model_text_position`] for a position whose fields
+    /// count at their run text.
+    fn rendered_to_model_base(&self, position: TextPosition) -> TextPosition {
         let mut offset = position
             .offset
             .saturating_sub(self.rendered_note_marker_len(position.paragraph));
@@ -33811,7 +33919,148 @@ impl WordDocument {
         }
     }
 
+    /// The handle the renderer fills with the bytes it shows for each field
+    /// run (`CanvasRenderer::set_rendered_field_lengths`).
+    pub fn rendered_field_lengths(&self) -> RenderedFieldLengths {
+        self.rendered_field_lengths.clone()
+    }
+
+    /// The fields of paragraph `index` the last layout showed at another
+    /// length than their run text: (model offset, model length, shown
+    /// length), in run order.
+    fn rendered_field_spans(&self, index: usize) -> Vec<(usize, usize, usize)> {
+        let Some(paragraph) = self.paragraph(index) else {
+            return Vec::new();
+        };
+        let Ok(lengths) = self.rendered_field_lengths.lock() else {
+            return Vec::new();
+        };
+        if lengths.is_empty() {
+            return Vec::new();
+        }
+        let mut spans = Vec::new();
+        let mut model_offset = 0usize;
+        for run in &paragraph.runs {
+            if run.field.is_some() {
+                if let Some(&shown) = run.node_id.and_then(|id| lengths.get(&id)) {
+                    if shown != run.text.len() {
+                        spans.push((model_offset, run.text.len(), shown));
+                    }
+                }
+            }
+            model_offset += run.text.len();
+        }
+        spans
+    }
+
+    /// A position in the text as laid out (fields shown at their values)
+    /// in the editor's rendered space (fields at their run text), and
+    /// whether it is right after a field that shows more than it holds.
+    fn without_field_display(&self, position: TextPosition) -> (TextPosition, bool) {
+        let spans = self.rendered_field_spans(position.paragraph);
+        if spans.is_empty() {
+            return (position, false);
+        }
+        let mut extra = 0isize;
+        for (model_offset, model_len, shown) in spans {
+            let start = self
+                .model_to_rendered_base(TextPosition::new(position.paragraph, model_offset))
+                .offset as isize
+                + extra;
+            let offset = position.offset as isize;
+            if offset <= start {
+                break;
+            }
+            let end = start + shown as isize;
+            if offset < end {
+                // Inside the shown value: before the field.
+                return (
+                    TextPosition::new(position.paragraph, (start - extra).max(0) as usize),
+                    false,
+                );
+            }
+            extra += shown as isize - model_len as isize;
+            if offset == end {
+                return (
+                    TextPosition::new(position.paragraph, (offset - extra).max(0) as usize),
+                    true,
+                );
+            }
+        }
+        (
+            TextPosition::new(
+                position.paragraph,
+                (position.offset as isize - extra).max(0) as usize,
+            ),
+            false,
+        )
+    }
+
+    /// The bytes fields show beyond their run text before model `offset` of
+    /// paragraph `index` (fields at `offset` itself count only if
+    /// `inclusive`).
+    fn field_display_extra(&self, index: usize, offset: usize, inclusive: bool) -> isize {
+        self.rendered_field_spans(index)
+            .into_iter()
+            .filter(|(model_offset, model_len, _)| {
+                let end = model_offset + model_len;
+                end < offset || (inclusive && end <= offset) || (*model_len > 0 && end <= offset)
+            })
+            .map(|(_, model_len, shown)| shown as isize - model_len as isize)
+            .sum()
+    }
+
+    /// Whether rendered `position` sits right after one or more reference
+    /// marks at its model offset ("abc¹|"), or right after a field showing
+    /// more than its run holds ("Page 1|" over an empty PAGE run), where the
+    /// model offset alone would put the caret in front of them.
+    pub fn rendered_position_follows_reference_mark(&self, position: TextPosition) -> bool {
+        let (position, after_field) = self.without_field_display(position);
+        if after_field {
+            return true;
+        }
+        let model = self.rendered_to_model_base(position);
+        self.reference_marker_spans(position.paragraph)
+            .iter()
+            .any(|span| span.model_offset == model.offset)
+            && position.offset > self.model_to_rendered_base(model).offset
+    }
+
+    /// The rendered length of paragraph `index`: its text, a note's own
+    /// number, inline objects and every reference mark — including marks at
+    /// the very end ("Hello¹"), which `model_to_rendered_text_position` keeps
+    /// in front of the caret, so the caret Word puts after the mark is valid.
+    pub fn rendered_paragraph_len(&self, index: usize) -> usize {
+        let Some(len) = self.paragraph(index).map(paragraph_text_len) else {
+            return 0;
+        };
+        let trailing: usize = self
+            .reference_marker_spans(index)
+            .iter()
+            .filter(|span| span.model_offset >= len)
+            .map(|span| span.rendered_len)
+            .sum();
+        let extra = self.field_display_extra(index, len, true);
+        (self
+            .model_to_rendered_base(TextPosition::new(index, len))
+            .offset as isize
+            + trailing as isize
+            + extra)
+            .max(0) as usize
+    }
+
     pub fn model_to_rendered_text_position(&self, position: TextPosition) -> TextPosition {
+        let base = self.model_to_rendered_base(position);
+        let extra = self.field_display_extra(position.paragraph, position.offset, false);
+        TextPosition::new(
+            position.paragraph,
+            (base.offset as isize + extra).max(0) as usize,
+        )
+    }
+
+    /// [`Self::model_to_rendered_text_position`] with fields at their run
+    /// text.
+    fn model_to_rendered_base(&self, position: TextPosition) -> TextPosition {
         let mut objects = 0isize;
         let mut model = position.offset;
         for (model_offset, model_len) in self.rendered_object_spans(position.paragraph) {
@@ -34504,6 +34753,18 @@ impl WordDocument {
     /// starting at the provided byte `offset`. Returns `false` when the index
     /// is out of range or the document is missing.
     pub fn split_paragraph_at(&mut self, index: usize, offset: usize) -> bool {
+        self.split_paragraph_at_keeping(index, offset, false)
+    }
+
+    /// [`Self::split_paragraph_at`], with the note references at `offset`
+    /// kept before the split when `references_before`: Enter with the caret
+    /// after a reference mark ("Hello¹|") leaves the mark where it is.
+    pub fn split_paragraph_at_keeping(
+        &mut self,
+        index: usize,
+        offset: usize,
+        references_before: bool,
+    ) -> bool {
         let surface = match self.paragraph_surfaces.get(index).cloned() {
             Some(surface) => surface,
             None => return false,
@@ -34526,6 +34787,11 @@ impl WordDocument {
                 // A complex field's code runs are empty in the model; the
                 // split keeps them so the field stays whole on its side.
                 let zero_width = self.zero_width_runs(surface_index);
+                let zero_width = if references_before {
+                    zero_width.keeping_references_before_split()
+                } else {
+                    zero_width
+                };
                 let source_node_id = {
                     let Some(doc) = self.document_mut() else {
                         return false;
@@ -64389,7 +64655,14 @@ mod tests {
                 .contains(r#"<w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteRef/>"#),
             "the note-area marker run should be superscript: {footnotes_xml}"
         );
-        assert!(footnotes_xml.contains("<w:t>Footnote body edited</w:t>"));
+        assert!(
+            footnotes_xml.contains(r#"<w:t xml:space="preserve"> </w:t></w:r>"#),
+            "Word's space after the number, a run of its own: {footnotes_xml}"
+        );
+        assert!(
+            footnotes_xml.contains(">Footnote body edited</w:t>"),
+            "{footnotes_xml}"
+        );
     }
 
     #[test]
@@ -68696,7 +68969,7 @@ mod tests {
                     &mut CommandContext::new(&mut doc, &mut selection),
                 )
                 .unwrap();
-            for (ordinal, expected) in ["\tAlpha", "", "", "Beta"].iter().enumerate() {
+            for (ordinal, expected) in [" Alpha", "", "", "Beta"].iter().enumerate() {
                 let index = doc
                     .surface_index_for_story(kind.story(), ordinal, None, Some(&id))
                     .unwrap();
@@ -68894,7 +69167,7 @@ mod tests {
                             .iter()
                             .map(|run| run.text.as_str())
                             .collect::<String>(),
-                        format!("\tAl{}ega", replacement.unwrap_or_default())
+                        format!(" Al{}ega", replacement.unwrap_or_default())
                     );
                     assert!(doc
                         .surface_index_for_story(kind.story(), 1, None, Some(&id))
@@ -69041,7 +69314,7 @@ mod tests {
             let first = doc
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
-            assert!(doc.split_paragraph_at(first, "\tAlpha".len()));
+            assert!(doc.split_paragraph_at(first, " Alpha".len()));
             let body_xml = doc.raw_document.as_ref().unwrap().to_string().unwrap();
             assert!(doc.remove_paragraph_at(first));
             let check = |doc: &WordDocument| {
@@ -69131,9 +69404,9 @@ mod tests {
                             assert_eq!(
                                 text,
                                 if ordinal == 0 {
-                                    &"\tAlphaBeta"[..offset]
+                                    &" AlphaBeta"[..offset]
                                 } else {
-                                    &"\tAlphaBeta"[offset..]
+                                    &" AlphaBeta"[offset..]
                                 }
                             );
                         }
@@ -69169,7 +69442,7 @@ mod tests {
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
             let range = SelectionRange::collapsed(
-                doc.model_to_rendered_text_position(TextPosition::new(surface, "\tAlpha".len())),
+                doc.model_to_rendered_text_position(TextPosition::new(surface, " Alpha".len())),
             );
             let mut selection = Some(range);
             let mut history = CommandExecutor::new();
@@ -69193,7 +69466,7 @@ mod tests {
                         .iter()
                         .map(|run| run.text.as_str())
                         .collect::<String>(),
-                    "\tAlpha"
+                    " Alpha"
                 );
                 assert_eq!(
                     doc.paragraph(second)
@@ -69243,7 +69516,7 @@ mod tests {
                     .iter()
                     .map(|run| run.text.as_str())
                     .collect::<String>(),
-                "\tAlphaBeta"
+                " AlphaBeta"
             );
             assert!(doc
                 .surface_index_for_story(kind.story(), 1, None, Some(&id))

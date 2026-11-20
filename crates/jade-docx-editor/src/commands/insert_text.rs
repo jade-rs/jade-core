@@ -7,8 +7,9 @@ use super::paragraph_undo::{commented_body_paragraph, ParagraphRangeUndo};
 use super::raw_xml_undo::RawXmlUndo;
 use super::text_edit::{
     append_rebased_tail_comment_anchors, apply_run_properties, apply_text_edit,
-    normalize_break_runs, range_contains_deleted_revision, rebase_comment_anchors_for_edit,
-    split_runs_at_preserving_source, unprotected_spans, CommentAnchors,
+    insert_after_note_references, normalize_break_runs, range_contains_deleted_revision,
+    rebase_comment_anchors_for_edit, split_runs_at_preserving_source, unprotected_spans,
+    CommentAnchors,
 };
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
 use crate::document::{Paragraph, RevisionKind, Run, RunProperties};
@@ -84,6 +85,11 @@ impl InsertTextCommand {
     fn apply_edit(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
         let previous_selection = *ctx.selection;
         let (start, end) = self.range.normalized();
+        // A collapsed caret right after a reference mark: the model offset
+        // is the mark's own, and the text goes behind it.
+        let after_mark = start == end
+            && !self.text.is_empty()
+            && ctx.document.rendered_position_follows_reference_mark(start);
         let start = ctx.document.rendered_to_model_text_position(start);
         let end = ctx.document.rendered_to_model_text_position(end);
 
@@ -695,13 +701,25 @@ impl InsertTextCommand {
                     .paragraph_mut(start.paragraph)
                     .ok_or(CommandError::ParagraphUnavailable)?;
                 let previous_runs = paragraph.runs.clone();
-                apply_text_edit(
-                    &mut paragraph.runs,
-                    start_offset,
-                    end_offset,
-                    &self.text,
-                    &zero_width,
-                );
+                let typed_behind_mark = after_mark
+                    && insert_after_note_references(
+                        &mut paragraph.runs,
+                        start_offset,
+                        &self.text,
+                        &zero_width,
+                    );
+                if !typed_behind_mark {
+                    if after_mark {
+                        paragraph.runs = previous_runs.clone();
+                    }
+                    apply_text_edit(
+                        &mut paragraph.runs,
+                        start_offset,
+                        end_offset,
+                        &self.text,
+                        &zero_width,
+                    );
+                }
                 rebase_comment_anchors_for_edit(
                     paragraph,
                     start_offset,

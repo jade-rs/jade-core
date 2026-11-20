@@ -346,7 +346,7 @@ mod tests {
             let stored_text = note.body.iter().filter_map(|element| element.as_paragraph())
                 .flat_map(|paragraph| paragraph.runs.iter())
                 .map(|run| run.text.as_str()).collect::<String>();
-            prop_assert_eq!(stored_text, format!("\t{note_text}"));
+            prop_assert_eq!(stored_text, format!(" {note_text}"));
             let reference_ids = document.paragraph(0).expect("body paragraph").runs.iter()
                 .flat_map(|run| run.endnote_reference_ids.iter()).cloned().collect::<Vec<_>>();
             prop_assert_eq!(reference_ids, vec!["2".to_string()]);
@@ -549,7 +549,11 @@ mod tests {
         assert!(endnotes.contains("w:uri=\"urn:jade:preserve\""));
         assert!(endnotes.contains("<w:endnote w:id=\"7\""));
         assert!(endnotes.contains("<w:endnote w:id=\"8\""));
-        assert!(endnotes.contains(">second</w:t>"));
+        // Word's space after the number, a run of its own, then the text.
+        assert!(
+            endnotes.contains(r#"<w:t xml:space="preserve"> </w:t></w:r><w:r><w:t>second</w:t>"#),
+            "{endnotes}"
+        );
         assert!(exported_part(&document, "word/endnotes.xml").is_none());
         let relationships = exported_part(&document, "word/_rels/document.xml.rels")
             .expect("document relationships");

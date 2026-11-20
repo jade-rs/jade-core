@@ -6812,13 +6812,7 @@ where
         story: &'static str,
         fragments: Vec<LayoutFragmentDebug>,
     ) {
-        let page_with_gap = self.page_height + PAGE_GAP_PX;
-        let reported_page = (selection_line.absolute_content_top / page_with_gap).floor();
-        let page = if self.pageless_mode || !reported_page.is_finite() || reported_page < 0.0 {
-            0
-        } else {
-            reported_page as usize
-        };
+        let page = self.page_for_y(selection_line.absolute_content_top);
         let line_index = self
             .selection
             .paragraphs()

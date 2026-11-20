@@ -372,10 +372,7 @@ fn validate_text_offset(
                 index,
                 source: CommandError::Custom(format!("paragraph {paragraph} does not exist")),
             })?;
-    let text_len = crate::word_document::paragraph_text_len(model_paragraph);
-    let rendered_len = word_doc
-        .model_to_rendered_text_position(TextPosition::new(paragraph, text_len))
-        .offset;
+    let rendered_len = word_doc.rendered_paragraph_len(paragraph);
     if offset > rendered_len {
         return Err(HeadlessApiApplyError::Command {
             index,
@@ -14134,7 +14131,13 @@ mod tests {
             },
         )
         .expect("formatted the note");
-        assert_eq!(italic(&word_doc), vec![("\tnote".to_string(), Some(true))]);
+        assert_eq!(
+            italic(&word_doc),
+            vec![
+                (" ".to_string(), Some(true)),
+                ("note".to_string(), Some(true))
+            ]
+        );
         let reloaded = executor::block_on(WordDocument::load(
             &word_doc.export_docx().expect("export"),
             &Options::default(),

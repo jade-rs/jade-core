@@ -7468,6 +7468,67 @@ mod tests {
         );
     }
 
+    /// Tracking started without a `date` still dates each change, by the
+    /// machine's local clock the stdio server registers: an undated `w:ins`
+    /// reads as 1970-01-01 in importers such as lawgue's.
+    #[test]
+    fn changes_tracked_without_a_date_are_dated_by_the_local_clock() {
+        crate::use_local_revision_clock();
+        let mut server = test_server();
+        let open = server
+            .handle_message(&call(1, "open_docx", json!({ "path": HELLO_DOCX })))
+            .unwrap();
+        let session = tool_json(&open)["session_id"].as_str().unwrap().to_string();
+        for (id, name, arguments) in [
+            (
+                2,
+                "start_change_tracking",
+                json!({ "session_id": session, "author": "AI" }),
+            ),
+            (
+                3,
+                "apply_commands",
+                json!({
+                    "session_id": session,
+                    "commands": [{ "type": "insert_text", "paragraph": 0, "offset": 0, "text": "NEW " }],
+                }),
+            ),
+        ] {
+            tool_json(&server.handle_message(&call(id, name, arguments)).unwrap());
+        }
+        let export = server
+            .handle_message(&call(4, "export_docx", json!({ "session_id": session })))
+            .unwrap();
+        let bytes = BASE64
+            .decode(tool_json(&export)["bytes_base64"].as_str().unwrap())
+            .unwrap();
+        let xml = document_xml(&bytes);
+        let ins = xml
+            .split("<w:ins ")
+            .nth(1)
+            .and_then(|rest| rest.split('>').next())
+            .unwrap_or_else(|| panic!("no w:ins in {xml}"));
+        for attribute in ["w:date", "w16du:dateUtc"] {
+            let date = ins
+                .split(&format!(" {attribute}=\""))
+                .nth(1)
+                .and_then(|rest| rest.split('"').next())
+                .unwrap_or_else(|| panic!("w:ins has no {attribute}: {ins}"));
+            let bytes = date.as_bytes();
+            assert!(
+                bytes.len() == 20
+                    && bytes.iter().enumerate().all(|(index, byte)| match index {
+                        4 | 7 => *byte == b'-',
+                        10 => *byte == b'T',
+                        13 | 16 => *byte == b':',
+                        19 => *byte == b'Z',
+                        _ => byte.is_ascii_digit(),
+                    }),
+                "{attribute}: {date}"
+            );
+        }
+    }
+
     /// `accept_revisions` applies the existing tracked changes (keep insertions,
     /// drop deletions) and clears the revision list.
     #[test]
