@@ -1,0 +1,202 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T085608665Z-1512018e",
+  "captured_at_utc": "2026-11-20T08:56:08.6786075Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-ascii-width-matrix-regular-s14-m14",
+      "source": "tmp\\w20-ascii-width-matrix-inputs\\word-windows-ascii-width-matrix-regular-s14-m14.docx",
+      "sha256": "399d16a23ba181e5f17bf777308db3d86d32a8939777138e13a793e1a08bc844",
+      "pdf": "word-windows-ascii-width-matrix-regular-s14-m14.pdf",
+      "pdf_sha256": "13a36d780e86299abff2c97e103c4770aaefab1012a5fa29c0ae04a805c7bf44",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-ascii-width-matrix-regular-s14-m14.xps",
+      "xps_sha256": "3bcf42462e416b565ddd6bc698442251cf082a623123021bbc8f44431028a185",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ascii-width-matrix-regular-s14-m14.page-001.emf",
+          "sha256": "4494e48d80931738a47d05e54ef4ba6bfa4f3d3db04cf6894ffc33b16babb2cc",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-ascii-width-matrix-regular-s14-m14.page-002.emf",
+          "sha256": "001a6d88262a1fb538c3b45e13c45669fe4824801408d041cbe499f03beb0f67",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-ascii-width-matrix-regular-s14-m14.page-003.emf",
+          "sha256": "05be56d2a238dd230e39b4329aef3aeeeb56b7ac33ac974a58632270d5cc35de",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-ascii-width-matrix-bold-s14-m14",
+      "source": "tmp\\w20-ascii-width-matrix-inputs\\word-windows-ascii-width-matrix-bold-s14-m14.docx",
+      "sha256": "0c8d8cc425f346d1d99616c384b4197047d2d53108ba61820513fc354ab9d59d",
+      "pdf": "word-windows-ascii-width-matrix-bold-s14-m14.pdf",
+      "pdf_sha256": "a5aa236fae678d5deb41666563482be9217cb963a28a6449f2603c71939efc35",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-ascii-width-matrix-bold-s14-m14.xps",
+      "xps_sha256": "34b6ce9039207604cbbf675a086e36ba0eb2ad0cc72501175fb181b35120e63c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ascii-width-matrix-bold-s14-m14.page-001.emf",
+          "sha256": "30d78a77d82af0b5400bf604fcb41a54838b0901278ec65eaebf2b1e64ff9776",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-ascii-width-matrix-bold-s14-m14.page-002.emf",
+          "sha256": "7dde9509f14e1437bc0858accb4e97761f33bbb8a0cff804c4cf908f2a5d4652",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-ascii-width-matrix-bold-s14-m14.page-003.emf",
+          "sha256": "5ab1f3589a3512319d84965a3e1b8a25fdf9d67fe31e8b856ed54f60fd7e1049",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-ascii-width-matrix-italic-s14-m14",
+      "source": "tmp\\w20-ascii-width-matrix-inputs\\word-windows-ascii-width-matrix-italic-s14-m14.docx",
+      "sha256": "8419030737bd8dd16bcaa5f9a81a90adcfdbf04ca0b8b6f12feb9260694618dc",
+      "pdf": "word-windows-ascii-width-matrix-italic-s14-m14.pdf",
+      "pdf_sha256": "9928e076689cef9c130f38853a83f871af9a05d7c0fa3bfd6f91f7ccc7f9e120",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-ascii-width-matrix-italic-s14-m14.xps",
+      "xps_sha256": "a4a4bb2dbabd166bcfaaf18f83ae82cb36b3601927f29955c2caf08cf578e5f7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ascii-width-matrix-italic-s14-m14.page-001.emf",
+          "sha256": "d0aea35fc0456c1deb9bd2e31f422abb4d00d6ae42f401c24cf593d4f52ea45d",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-ascii-width-matrix-italic-s14-m14.page-002.emf",
+          "sha256": "9cd8fa6fbd26913eaa948dc6dea4314b65ac4c3e821531698425b0a8660ec1a4",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-ascii-width-matrix-italic-s14-m14.page-003.emf",
+          "sha256": "6312a3b8cadb9cf2b43e3ec82c92c9fb0e383efc0c2cc3f8142b55f2ddd82c3b",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-ascii-width-matrix-bolditalic-s14-m14",
+      "source": "tmp\\w20-ascii-width-matrix-inputs\\word-windows-ascii-width-matrix-bolditalic-s14-m14.docx",
+      "sha256": "0a65c0f826d34de3395f4c0335acadd76cdf4bedc9a6e25d93f0799d4569d759",
+      "pdf": "word-windows-ascii-width-matrix-bolditalic-s14-m14.pdf",
+      "pdf_sha256": "9e65cdb52eb4385c7c85089edecc7106fdc0a57b2e2fd574a64992fce34bde09",
+      "pages": 3,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-ascii-width-matrix-bolditalic-s14-m14.xps",
+      "xps_sha256": "a1e6e97c7f69af229dc5a5336b16e09ea5a93374dead75c2e9e7da16e0ee5361",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-ascii-width-matrix-bolditalic-s14-m14.page-001.emf",
+          "sha256": "5c049c8c5b2ef055cf7d6755a6a9f645d67a1a294e3a3ed68222312f596eecaa",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 2,
+          "file": "word-windows-ascii-width-matrix-bolditalic-s14-m14.page-002.emf",
+          "sha256": "e4e96074ef0f8bde7004499ad7d6b74d509a7fc46e8fbcc7045cd242a4f05737",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        },
+        {
+          "page": 3,
+          "file": "word-windows-ascii-width-matrix-bolditalic-s14-m14.page-003.emf",
+          "sha256": "9caf1aa484b1d2888560b28629c9b8db6c990f0bdd99b79813306ce5290f3c91",
+          "width_pt": 864.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}
