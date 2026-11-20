@@ -1,0 +1,950 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T090056485Z-6c01f12e",
+  "captured_at_utc": "2026-11-19T09:00:56.4971879Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m14-manual-w3000.docx",
+      "sha256": "b019ea0a6da8ca49086f6ccccda239b2265d3405d06ba38852f29bee71a0ae01",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "ccb4725a063cb8581bce48f59f88a0dd6a9d507aae8ee10aa17936631e705967",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w3000.xps",
+      "xps_sha256": "b91b8353f840967cec26b727a71a6de0b6558d605beb7c173548481509c8b4c5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "74c0a5a2defd53f5b644d9ad02f1c545266a556bff3f5c3aa23baeb047951b2a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m14-manual-w8504.docx",
+      "sha256": "98172b7c7abd6cb2bfaa4931410c3c00a51fb376194f940e5c608e4506ecb534",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "64f8caf56880108723dee89174cc0be187d3fee94cf01f7b2bd4e375b33b1d7f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w8504.xps",
+      "xps_sha256": "2185e0e9c0e370cf2fd017d5dc736c0b3d475f2fdb5bd75f1fd6ec64cdd48cbb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "2405954beba764266489e2643af75f78bd2a460e015be5e29bf143210c837aeb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w3000.docx",
+      "sha256": "e3d511a3ac2c8d79b43e0354a6425f529db31d60f71650883e9e1bf652f1cd3b",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "0e2b4144f31f9aa3c81e895b376ee2149dfb0b22767964e6d31a87b8ded61f19",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "7a0c857385d588498551a9224b7511fc216d438cb58d00b239113020a86400ae",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "9813444b366a35f0d7797191c57e54d861e83a7025b7f9156e2e99545d1b4d44",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w8504.docx",
+      "sha256": "b128064e69e423960f2d9697b0ee4a4ac200a6be5e5e3580d552f587513dd166",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "a6585b344f05c4f26db964c23d68274e418f66ca9b3e9571989a3dd8ee81c5be",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "49ec808ea4b96b0c3f3aa6d2740b0425eb85dc5028db8c45d3c434a2fefc7a56",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "2601ce8f9256f998d698cba22d9f2dfaa15ffd7ae2ef5ced8c44c64602237299",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m15-manual-w3000.docx",
+      "sha256": "47081e67684430e624557928cb1ab8e5b92ce816441520020cc04338119f8eed",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "ddf0bd5221107ca27b7f779afe52be013744759ad798dca7e2af12d6e55e2a38",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w3000.xps",
+      "xps_sha256": "f60e27707639b6ad9329b96e8631e853c756091673e1f2d2c6efe09f8dd0b58f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "fd1fc94cc1fe9f17c9b218503f0a63f6b450aa2d66388856b5b7ddd3cf4faf5a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m15-manual-w8504.docx",
+      "sha256": "1fda8ec980ac6b36c987593bbfb5eaf862d2fbdf32d7fd3e4cab8499364b9e1e",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "73721c51589bd4108565e2ea2040a452b137b987e9e1bc7381b8636d7184a643",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w8504.xps",
+      "xps_sha256": "c8d00f79c6accfcf37da06c7c6c521572bdac888382fcba724e69547cc1df65c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "cf4ad30f1e1ab7d0bf3dc4cfc35e9594d266da49f47de148dac187c187cf2407",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w3000.docx",
+      "sha256": "06f6cc31d5aa38ea66f3e064ad81d394b85f9da4b2b0b12a6f574868d794cf3e",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "ec19898956f09ed9b43ca48eecd1624fd1ab95a696de5f4bfb44032c3c7d2c4b",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "7bb7867924f743d4e88f06190c569dad8969c184b486347e6e06964eee6d5184",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "9813444b366a35f0d7797191c57e54d861e83a7025b7f9156e2e99545d1b4d44",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w8504.docx",
+      "sha256": "07c817380df219b0bc1ba075f520ec0f5d3543b6c1c19c2c95cc65a60ac7736a",
+      "pdf": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "40c7e1a4376aa3086fbb52411e303f4982f017aff3efc44f89bba829e6c25b82",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "a41c1e24c8c370f5fb6034ac626b88d949edb512ada36f9a723796a5a7de36ca",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "2601ce8f9256f998d698cba22d9f2dfaa15ffd7ae2ef5ced8c44c64602237299",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w3000.docx",
+      "sha256": "f08571dec98d6db02d34cc03c93283a5c7e9d3d9c611439dd0d12cb29d7e3751",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "2f0c4526d21ce93de9bc1792fa3367c7f3c91afb0396500538626932fa1d60f2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w3000.xps",
+      "xps_sha256": "33c4bbb7df332eb5f41ed3ba04a64f494db72dff58ce6ba83ecb8bf0a358e6c2",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "b8da0d160fd862eebd2f84a1d10e35a7eb028be04c7456b3962d9e000eca46b1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w8504.docx",
+      "sha256": "54c534e8cd1ba9ca8524e4f1ae0a5a14c996f7e1206252c77cae56161545db69",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "4f2b59c281c4e990717388ca126cb93e10da506f19b32db419dd49a0bb54f1d2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w8504.xps",
+      "xps_sha256": "cb99a2be0d2b291f9aac152bb3d3571cd9be9bd749c888d8981105f456d28b67",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "1b527d66aa0bbb5935f226724783f66f8455b967ebcfa06746f80a62f3d3e8eb",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w3000.docx",
+      "sha256": "4b3046e813b70885522079e144320d7793a72fe8847661a2c9bb868e0f734e6c",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "b6f9dc5f36c95cfbdf51f8f35f9d1ac3f497ef4a16aa97df71c2ecd11c5193bf",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "745e92a6792dbac6b2cc1860764815b39b42a3d46455bb29507ffdf43b5fb792",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w8504.docx",
+      "sha256": "741102753d59211dab376e5a9546c269ab2e2f71fd18eef922abea3925d10925",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "cd6d9004e563f81b128c9c701454a7bbf61806f5623ef399e32eecfc26e2933b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "2d370dc80f5cfe65a905299eeb13e4b44245e44b32cd793a3b307886ff9a789d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w3000.docx",
+      "sha256": "461898a588cec2e5f00af581ea828ecac097624454d92e0f2b2cefa8af453386",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "d51ea53d98cb7e536781f4c7c12c739ee6b43712e454fb1935f216840a04763d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w3000.xps",
+      "xps_sha256": "ea48e92d1351994e2fa79dca612209549a333ff9c9b2a690bd45517c1c028dfb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "e554e8e93a7e8ce89a5e809f043b289e8867ab2464168401c53bee3bffb66343",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w8504.docx",
+      "sha256": "b537d17a3522a6f2ee0690ea4b73d1e4a7cf950d6fb2fb4925c5dcd42daa077c",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "6fc2e08cfcf1fa90d8eb6a74f412087e2d6c1a0ae9c5d86f197a30de357b9397",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w8504.xps",
+      "xps_sha256": "70ef0e502c1a41b34940ba22403d24ee2714862c39ba479ec2858baa35f8e145",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "8e4cd463b8d412272e6465a4ce78da172cb74d275c2947ee34e079c713e673e2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w3000.docx",
+      "sha256": "9d67b25737da84558cef9d206031d6dab78a422200be3bf6082b0de2cc83361c",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "deef5417246913ad483154f12f3cda12be6195205aff3ecc5ed77c9647d77ae0",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "a09cb04b0c6263b023ad7a6856a17fbaf04099db9d43e19a90eaea0cc3a06d49",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "d3d039247927692da53f94ecb5340a1ac23ee328f59777dd9545e6ff07c4ec54",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w8504.docx",
+      "sha256": "5f9639b6a4d23f30739a3b98a1b4714edde52076f98db4425fdccc66b65ab573",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "4c6d9548676b8fc3a050e74fa41915f4b131351deee58cd1d7cc96064b6a2366",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "714d52e3dfe4ef79e5d29a3504deee761bbbaf6a16fb4bc69a720d21f2149bcf",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "188aeb33eb7fe87b7ad98d445e5d26b746d42b55a30f41c743047310a7430dda",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w3000.docx",
+      "sha256": "c67f05d35902c9d60d75ee74a15d7984b3b86c579f1b2b4ad607be3c84bdaa5f",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "1c8c53a883ea6ab481ccbe72e7060a216b6f5b63de71b400396729ead4a90875",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w3000.xps",
+      "xps_sha256": "2a6032efe8e6c38033447f098d19c4768d63700a9c7c0447d06c6dbf818210c0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "730d4bad1c705e71725a07eac1fd800b3999988e42851dd59e78e4a0a46022a1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w8504.docx",
+      "sha256": "a727b6d32170db72d60063270c818d6411db096174201a420e34133de78f0fea",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "3849cc7401d597462f5daeda80f8149d6c81b2edd23dbb6582eb5ed23252775b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w8504.xps",
+      "xps_sha256": "19e30eba4aad40c2c5955522d0c093ca6382b460f60b3307cea7600f4d09ca7f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "c28d929ec876454815c30dfdd442c910494a4638e67827d1c1c359a4dc2c1568",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w3000.docx",
+      "sha256": "d08ce16a6873ae86232a8251d354e8a43f6e002b0a48b26277f9766af5f13f86",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "2c9b5603b7838c0019dbc780e3ce985a37824853ca6a401226a5aad404a4c5b9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "2a42ce87e304e00e5b3f77866b0206e26c467044d665a977cb4b79d30166c04d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "1c35bb3c4bcfc258fe489098bab256cc4c0c82b4edf1c94d6af1240012d9ca6b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w8504.docx",
+      "sha256": "243c045d878459ba892ddc80aab4c450dc83f97195ff85533dee932e4f2e7e98",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "9b42105a6c0200716342c8e206cf491a68b7787834ead7d550463af8cf4749c4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "e2c5a8518506b950770a411d5466a0a1bc004681ae46dff74c567e03d9d97fd6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "30e318fe65f64b688046dd1f540b2bf12b79cc4239ca97d6843bd2b1a4c84d1e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w3000.docx",
+      "sha256": "feef19d69405cc6fe125d72d79801d5d11eca9244d5b179fe2e600d410621d71",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "86a422e4c2e85697f39530f37eabcb93a66292f2cdcb22544045c4c7360af6e3",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w3000.xps",
+      "xps_sha256": "caeddd63b1c1699b47adc446b3008f5c0da2a99eacc9c3bdfedca6cd7ecff574",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "cea8089f39b1f71b78eba928a6e5e49dc558639f7a89ecbaadcbdf3e44789390",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w8504.docx",
+      "sha256": "56d1657c69c40b8faafc1615424300ec30b77a53400bb5155101ae183bf76276",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "f942272d0df0be3435b9e0ff3e57accdce5b7df78f2b1a860eba2c35e3350e34",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w8504.xps",
+      "xps_sha256": "05a14d32013b661d7361b79f5b7478af8bec17ec58ed60952c600fe2fa762bd6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "692c52354c28dfde78f34fa0451e04fc03f30d86e244536274034af72bab490e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w3000.docx",
+      "sha256": "ab2b041674cfada05300585a86433f1ddc5f1e7efdb7c9b5f3d424311918ad96",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "249af58764d16bc38d271c490db98a1671111381ae764724ad036eec2d3ad571",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "e1bac4cc2ab9ab590869bb8588d9973f5dfb9f3677c091bb3e40505b11f1649b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "1c35bb3c4bcfc258fe489098bab256cc4c0c82b4edf1c94d6af1240012d9ca6b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w8504.docx",
+      "sha256": "00cf27acefd6c69f19ca29c24251cc240d49d787c9422e1f275a02f8e783182d",
+      "pdf": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "34f5d28a373d44c8adc66a08cd7f6bfffe6d30d5debb003773996a30a4c20d3e",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "5a9cedd5237d08fbee1481dad63d023f3a98966207be43cf157cfff26d9152ed",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-arial-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "30e318fe65f64b688046dd1f540b2bf12b79cc4239ca97d6843bd2b1a4c84d1e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w3000.docx",
+      "sha256": "d804ebed0c1587a504ba5c6100ae417fd0af569ec4dfa8a0d5c812a48560f06e",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w3000.pdf",
+      "pdf_sha256": "bd92b0b78daee9cc795b421cc661a87be4782634e037bc18aff49ec26b37425f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w3000.xps",
+      "xps_sha256": "033efb103e51992d537ed84772bf3430c6fc12300f8231a7fd1f0f3b4789c6ec",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w3000.page-001.emf",
+          "sha256": "0889a34ddd8bd51ae1532cfb4dd4129a2f7bfe999102bb2eff4df61241c00932",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w8504.docx",
+      "sha256": "7fa17996466fb0970e8705574ae8ecaec86e28c5b630708a429c5a4dc2d96a11",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w8504.pdf",
+      "pdf_sha256": "c934a05ae41ef0487811b81412db056d0b271255474395f3596db426024c39b6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w8504.xps",
+      "xps_sha256": "b37d0081909e93df7272ed87ff18a1cd1a23e44a93722f53205f34bc9da7bf7d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-manual-w8504.page-001.emf",
+          "sha256": "665df429f6da44498d068c9b76777da9a9745cfbdb5c6c020332064ec5121b6c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w3000.docx",
+      "sha256": "1fd0656263e72662200f89a902e7440f2151a9dd14322275af471aee3f327c67",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w3000.pdf",
+      "pdf_sha256": "da19df0f5ffbd2bae41d65862764a4eedf6951c91b66dedfb61fea03dd4df436",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w3000.xps",
+      "xps_sha256": "a5ae7bb76f8bbd93fca7227427d20eeeb1def4ef9f9d8c08ef47d3cdf17ba497",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w3000.page-001.emf",
+          "sha256": "8f76ba77972722cef12b45ae78915b2df439696478eedb01507ee3976a265d47",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w8504.docx",
+      "sha256": "e5aab3356118629c0112ad46190f9c8260a6f65fb703de60887b57d7b9630314",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w8504.pdf",
+      "pdf_sha256": "a4273dbe6f7a0e4f6407753679984d6dd2ab9b529874b938947d32f57473ee4f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w8504.xps",
+      "xps_sha256": "52f12ad8e59dd2abfa6faa5bd5c2ff4ff369367cfd95cc660575cc337d11a056",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m14-paragraph-w8504.page-001.emf",
+          "sha256": "c863b31e3408ce94d399537a28ad50959f40135bd04edc6eb2258d416591796c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w3000.docx",
+      "sha256": "3c898188532d97c075f4cba674b07eeb0283af9d28208271a5d62bcb4a10c071",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w3000.pdf",
+      "pdf_sha256": "642ce0f9acb821509502c0f9464f446086fcf5bbf530438ee72352866912203d",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w3000.xps",
+      "xps_sha256": "111032f1e09046a753ca6dc817ff1018ad53028e7efbbc936d2707a2b73e3d54",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w3000.page-001.emf",
+          "sha256": "041b4ac73b6664b651bf51e7c8103ecefdea73470eb8f4806f4527034b51d5ae",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w8504.docx",
+      "sha256": "b57f4e3e5b994aac7e09076aa218fa1bf457739c95f525315c3d2bc982bd0ce2",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w8504.pdf",
+      "pdf_sha256": "67a621c9fbd1a589db6c3117f941e3fab6300e6a8b34bf674446520755805efd",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w8504.xps",
+      "xps_sha256": "450c8af859589eb026cb965540330ef81b4f019b7780c7573be74d311624c6cb",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-manual-w8504.page-001.emf",
+          "sha256": "101d75869dfcfcaf1bc8584349e96725aa2e501eae9f943cf279eee33a08b90c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w3000",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w3000.docx",
+      "sha256": "7cf4c23839b76e8397644d705a68a6094df6b0d8c8bec563ad3a23bf15a5a3a0",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w3000.pdf",
+      "pdf_sha256": "edc2c402dbe04cfbc88e6f6604ab65b8beae2124908932a0d757c3c0a91da1d8",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w3000.xps",
+      "xps_sha256": "639ec5a48ad0d4c8fbf7ab6305acd5c0ae3952439666f7f6e28bcabc1d93667d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w3000.page-001.emf",
+          "sha256": "8f76ba77972722cef12b45ae78915b2df439696478eedb01507ee3976a265d47",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w8504",
+      "source": "tmp\\w19-aptos-mixed-face-inputs\\word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w8504.docx",
+      "sha256": "4b7274272806989e0952f3f479eb9bb69706b708c893f4c854a53c333d3fcf51",
+      "pdf": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w8504.pdf",
+      "pdf_sha256": "6edefa5a954354c151a46133c263e84e509b77166d9e15b126c199cff44454af",
+      "pages": 1,
+      "compatibility_mode": 15,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w8504.xps",
+      "xps_sha256": "6cb2eae199dd7e18f4abc8aa68b66596712b7c982f2cc0c0350894c9eaee99be",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-aptos-mixed-face-aptos-display-calibri-s12-m15-paragraph-w8504.page-001.emf",
+          "sha256": "c863b31e3408ce94d399537a28ad50959f40135bd04edc6eb2258d416591796c",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

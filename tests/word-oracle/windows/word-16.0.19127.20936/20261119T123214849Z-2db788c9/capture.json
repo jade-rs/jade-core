@@ -1,0 +1,254 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T123214849Z-2db788c9",
+  "captured_at_utc": "2026-11-19T12:32:14.8659460Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-times-line-end-day-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-day-regular-s12-m14-balance1-manual.docx",
+      "sha256": "1959a74affc6deb9937bb35c7583c269d79a6417ee14ff189c04f4568cfb0f0f",
+      "pdf": "word-windows-times-line-end-day-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "a3b633e92eeb304555e11bb81f24c1f7e7acd357ce1538ca4bf7efc3b8fff5ef",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-day-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "045c4b2af7b91b630c220b3cc53877fa64f5725d0b9ab1fd1c422e48f756cd2f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-day-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "274d3968826cccc00eb31f1706dbd1407c2a16aa45ff07a8610b02fa5ec59b3e",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-day-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-day-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "2ca73041f9c587c0e102d4ec31ae67883cf782a8654a43b3fd093e20de034dbf",
+      "pdf": "word-windows-times-line-end-day-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "fcb64e7d382716662509ae888cce20ae95b356594e234211be0108171cd0c7de",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-day-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "d4e4f86a39a0758ecaebe2046c5dcf153ff1c74506eb077df57058ff11383f04",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-day-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "4601390b0210ef38e64dc874fc45eb6b2f8830f5514dba794331fc1571db87e8",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-book-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-book-regular-s12-m14-balance1-manual.docx",
+      "sha256": "033d8f7f0f48cd1725eecc4b54abcbc35897119b7acebe1733c406cd5c1c3fb5",
+      "pdf": "word-windows-times-line-end-book-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "fb08f10695b5ddebeea46813af783864fcd418854110caef473ef1fd721fadad",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-book-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "95597d7c3e32fb65367b2786da42ce94d47f5aa7ef0c4f8eb496d8d59749a22b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-book-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "c2d8e0077167096a069e6ed640b08c13241d5044990d5a29f5eb3362811d6048",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-book-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-book-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "02b0cd4ac1c08eca11021c20552fc82c25d9e856afda40bf8623dfd7f2a36e4e",
+      "pdf": "word-windows-times-line-end-book-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "e1f6e2130d804f8b13d4e83f25f1e08ca4d96c897b2245e4df8b5a50328e9bb0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-book-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "37c15c561bbce1e548cc44d4f8e85a947fcf54873ff0deb457c4f84c10198e9b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-book-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "6d78cbb3335795d7d30cb1daec959d3476b717bd926392748bd4c854f018b3e7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-day-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-day-bold-s12-m14-balance1-manual.docx",
+      "sha256": "8d7a77c81a34f14c0dee82ba8a76ea891a60c7eded67c05a847eba0ab98a807d",
+      "pdf": "word-windows-times-line-end-day-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "9311b30f8bd462aaa58c3fa1480b6f32fcbd52b0c7030835b36bc4ff4ca0d20e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-day-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "13a6bd589076ab8e555d69007c3ec9e9b792a6613a99b3dc911da7e6fea34e0f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-day-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "0e52c52661c787f81c115b6f086f536b14bdb2b0b2989a10344e492ffeab344a",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-day-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-day-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "488b74e3d3906d4fe4d0a6cfbfa1fe6711dcde876072d6b30c191d5e0e5bec70",
+      "pdf": "word-windows-times-line-end-day-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "afe59e60599dd6f10b0544ae453cbeba10fdbdea9ef43f122c97d8cc7ab3932c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-day-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "268d2f6f62bb7891724b6ab4487d90a3b65e58ac39795ceb9c73c9cb58b56119",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-day-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "a4155652fc0e3c65d53076340deea6078d444f03ac09b09b5b7b0ae6e5e3e18f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-book-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-book-bold-s12-m14-balance1-manual.docx",
+      "sha256": "66b7b11273e808647d911ceb1486ae691c8f01fd298803ecff71a03f7e1397b5",
+      "pdf": "word-windows-times-line-end-book-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "9e47380091b46ab58fed41cdb8d2d1125f8d85a5f5b8bc4ae1222c6a2d539de2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-book-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "c59b81245dd3b4bfc4af6f05c994f9afd7999514298d95c7e6eb5b2b0b9a573b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-book-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "eb4c22a78f45685ef021f26ea2d934c23b01099a702a87c7751055157b85a9f4",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-times-line-end-book-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-times-line-end-inputs\\word-windows-times-line-end-book-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "ebcba4740073cd142aa96bf8d7c57d7317bbe83900ed2a23ded3096fe82ae1c8",
+      "pdf": "word-windows-times-line-end-book-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "473e9386d00cb1bd2e020a590cd684a1eb8395e2b1c7011dc8e2138fbe5bafe6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-times-line-end-book-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "085e12058d2bd28152a47a3b89351d8ce9537ab06b60f4cb10b1083c8ab9130f",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-times-line-end-book-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "99b2f612e262c5fe61653ce3cdeafbddabd09e51d84650f87e83b226f7135238",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

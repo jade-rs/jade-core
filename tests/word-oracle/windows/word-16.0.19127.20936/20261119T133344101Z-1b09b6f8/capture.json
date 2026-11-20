@@ -1,0 +1,254 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T133344101Z-1b09b6f8",
+  "captured_at_utc": "2026-11-19T13:33:44.1150670Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-mincho-prefix-a-interior-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-a-interior-s12-m14.docx",
+      "sha256": "7cb4cd9d01495d05377366303e1720d67789dd439d2072df0261d4bff28e4edb",
+      "pdf": "word-windows-mincho-prefix-a-interior-s12-m14.pdf",
+      "pdf_sha256": "ea7cb093b400e47fbcbac7f758cd9a9e9048fa3a34af8af8ea67b3093a84ba79",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-a-interior-s12-m14.xps",
+      "xps_sha256": "1133d864a387f7cc01b58fb6c5c156e135eaee2c377530b19592871e5af81196",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-a-interior-s12-m14.page-001.emf",
+          "sha256": "d9c4db6723b000878df9132d5e95ac2b69f5e502e43b643006b4133b70f95180",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-interior-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-ag-interior-s12-m14.docx",
+      "sha256": "20c4708db412f589dae2999f3f72f9a2cec992e67fa46fe5bb7c301fdd386590",
+      "pdf": "word-windows-mincho-prefix-ag-interior-s12-m14.pdf",
+      "pdf_sha256": "8ead676d609c392b4f34ed004bf0e84a8897fcda4ce9fd18ce8bed2652d5d9d9",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-ag-interior-s12-m14.xps",
+      "xps_sha256": "5049dbd41fb85e65510a11ed53aa00d966e64f2ec43d293e269a33d61ce903db",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-interior-s12-m14.page-001.emf",
+          "sha256": "d790ced96e24d871dc97eaea25af22b47e5018cfea2c10cd4d961efa9b2984f1",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-g-interior-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-g-interior-s12-m14.docx",
+      "sha256": "7010f5600abd3d819c44974981300caf8d194899ec336e1d55f65dc79f5e42a0",
+      "pdf": "word-windows-mincho-prefix-g-interior-s12-m14.pdf",
+      "pdf_sha256": "90bd8f7c5485f9435cc5ce8b445fe262a63ab19359124fd8c205ea482043a807",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-g-interior-s12-m14.xps",
+      "xps_sha256": "37927a988be175f0db8faab736691d5e609921fcd931e18bde92094d08f7693c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-g-interior-s12-m14.page-001.emf",
+          "sha256": "d5c8f0b99c288163baa67d59460b7f7b439e1c64274b18149e87197375c2ca25",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-a-space-interior-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-a-space-interior-s12-m14.docx",
+      "sha256": "af8ab4ea8b91cdd50afc22ce8bc62fa7856ad2ffa326e0fa7c26da6b569e9339",
+      "pdf": "word-windows-mincho-prefix-a-space-interior-s12-m14.pdf",
+      "pdf_sha256": "6d304b7f4d407a54588519bc4f2f63aa86e49371f9dde0f0103375428fef5d1e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-a-space-interior-s12-m14.xps",
+      "xps_sha256": "aaaade1601ff2af9c945a9505d99180afde6e539b4e0a4ed65028551ca465187",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-a-space-interior-s12-m14.page-001.emf",
+          "sha256": "e25e40e2e2f011b0bf50f1c18f97bd75b4d7df02fd41c9506202b7a58596cc65",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-jp-latin-jp-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-jp-latin-jp-s12-m14.docx",
+      "sha256": "cd1a9fe9a3a6d4937aaed758b11a2d2f1887ba289f2f17a615ad05c0a872682d",
+      "pdf": "word-windows-mincho-prefix-jp-latin-jp-s12-m14.pdf",
+      "pdf_sha256": "f1bde170a3d883ce0461e41bf01415c8f0e66a2c5ce7183e228ccc28456f1f50",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-jp-latin-jp-s12-m14.xps",
+      "xps_sha256": "81dd380bbba4fa14747a8ca192f477fd48e34268528f30c6a9617b76df11e034",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-jp-latin-jp-s12-m14.page-001.emf",
+          "sha256": "1ee649b30740515d8fbbd4c189802a00c1a6c23427fddfc82fe10994a7dd128f",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-terminal-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-ag-terminal-s12-m14.docx",
+      "sha256": "3feaf24cab1b4dc6babd4eab459ad05b9567724e13550808f41c0b3024a7d811",
+      "pdf": "word-windows-mincho-prefix-ag-terminal-s12-m14.pdf",
+      "pdf_sha256": "a18f0b9b5ad1cde392e4d820291e73617a9c1362abcc9365570d2604ae27a16e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-ag-terminal-s12-m14.xps",
+      "xps_sha256": "7d375d5296b9ad1053086d4351f41129338af19270f19fbb84aee3ecb75d30a6",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-terminal-s12-m14.page-001.emf",
+          "sha256": "65dd78d872c4a71812cf1fe3df7058ba762588ceeb1d23d2426175c460dc4bf2",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-long-interior-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-ag-long-interior-s12-m14.docx",
+      "sha256": "ef1efff6a8383d17ba2a2e9285f6f5bc019df86a65e136b55bba4b313800bda3",
+      "pdf": "word-windows-mincho-prefix-ag-long-interior-s12-m14.pdf",
+      "pdf_sha256": "36186d6468dfb88071be99b795e131976bcf722f5b7e95e3fb3eb0c9347b5f1f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-ag-long-interior-s12-m14.xps",
+      "xps_sha256": "1df0f322a51294fec536f73c3db06a2045be03ba64ed5dbc55b87d3214e6adc8",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-long-interior-s12-m14.page-001.emf",
+          "sha256": "a9aa96ff2e94b7fece85a6fb24a8a1360bfe76e2ade5a092e0574a7046718568",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-mincho-prefix-ag-space-terminal-s12-m14",
+      "source": "tmp\\w19-mincho-prefix-inputs\\word-windows-mincho-prefix-ag-space-terminal-s12-m14.docx",
+      "sha256": "dfdd4354ebdd6babc26b49e6d0864d27d8d9e448c9d53b90b4e764300c621bfa",
+      "pdf": "word-windows-mincho-prefix-ag-space-terminal-s12-m14.pdf",
+      "pdf_sha256": "6faa4f4df284a76d12ed6538dd7bd5682e9b7825b1c0b5d8afbaf67254ab2be0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-mincho-prefix-ag-space-terminal-s12-m14.xps",
+      "xps_sha256": "d61467754c4d4f7831fcee95f3ca58dc20752ca7be1f719ed07f117bcfac941e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-mincho-prefix-ag-space-terminal-s12-m14.page-001.emf",
+          "sha256": "01a626ee2ee3cde8a72359b5e7c4433f367d4e93c6343c91333845342cf8620b",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

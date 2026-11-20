@@ -1,0 +1,254 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261119T145753302Z-cf8cad83",
+  "captured_at_utc": "2026-11-19T14:57:53.3144795Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1698-regular-s12-m14-balance1-manual.docx",
+      "sha256": "6ecde5c9e24e038261273e37d47ab990fdcb2b558751576547ed563ccd8afc64",
+      "pdf": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "9af5350ad7e6b6aefec99e00f44937fe4b8321a679c97ea3fb9f55a63fe154c6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "0fd3ccced2a4b49b185cc9fd4e81018d9a2a974c110057ffb5c7aae6165b9a5e",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "3c731a8eb5291bb9a0cfbb54efe0a3b4f8ce7f9eadfbedc4a9eff7fc0eaacd28",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1698-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "effc4aaccc1d777e6df7f97683cf12e4ce84f2f33e3f1ef693398cc96cb4503e",
+      "pdf": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "8a7ec074f8f9ecb60c034a26ab2596159bea90fac599d71cb759a846a6a4fa1c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "e9ab97e69991d2c0254b1e72f839fc4e6eec19c1fa46fc89ce88c51116c05f72",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1698-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "02e651a4991f3b3fdeb67f232054d7fa0728b9343e01a423c19b7c1c1b2fd0c7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1710-regular-s12-m14-balance1-manual.docx",
+      "sha256": "eb0d236489f6bbc927bd06a6edfc0e53dbe16bb16afc16dba5952c06aa611a50",
+      "pdf": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "3e5a22067e620bee933a74e466c1bc10c565572246a5c7ccae1504f35db1c365",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-manual.xps",
+      "xps_sha256": "413905af119a9aea4be10c3844f638f46c4ba695797c8702d69c6603bb515ab0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "bcd6fac3f8387e6123c48d525b7eef2985ba26ed420685de76c9f1bf13f71d31",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1710-regular-s12-m14-balance1-paragraph.docx",
+      "sha256": "ef53bc0089bc88bca941a33a47d6d21aafd660cd62a6134cd9fd627da5afb2bd",
+      "pdf": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "a7c5cb0e1313d767b646e1c9cbd51f1235518f88e67cde7d227ba60ba1152ba2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "de5d798061db9cf393fd5b30bc20c3886d500c1ef59662efc8f46874c66aca12",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1710-regular-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "7c8f85de533d8fac3cd18f929896c3c1b5c71e429f0773fe04cf8dae557456e7",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1698-bold-s12-m14-balance1-manual.docx",
+      "sha256": "ee64ce6add4b62470b84ee2b7b1b10509b8694f90e3fe240c678c5b588b7dc05",
+      "pdf": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "b3c7a405b6640456a00424560ce4fb6544c4f2093e7da427e91c37de519e34b1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "b2dff2ed37e21d978411f41182f13bc6d694047266524f839af7a84372ccf056",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "b898de4e75d811290dae1ba88455baa75b4f9bdfbdc80e301c4a054a4fc84e41",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1698-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "9f1ffec9731d5c46cc0671315ff5426b16f5cc51a96306adfa947ef9746add79",
+      "pdf": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "ea7b9722020d41a076c630fe77b83d6e215edd4415820bd0b1b40da1a4ef331a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "7e14d881a26d80a6fea22887fe9a7f00e228e21cdfa5aab5706b60ad9cd582e5",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1698-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "4b700f46f9270be768036982b9f83feedafc4de05bc596ed904e6f2ee50233d6",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-manual",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1710-bold-s12-m14-balance1-manual.docx",
+      "sha256": "6578f4a9980450290aaedca93fff04514bcb188b158e40ea81d2c860e73be5a1",
+      "pdf": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-manual.pdf",
+      "pdf_sha256": "e0134bf129b37fe5ecb7cc97270a7a7a64b084c9bebd00a770b97684a404c62b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-manual.xps",
+      "xps_sha256": "036eafddce3af69bb20eab2e23fc5a6cc6fc3bf4b95ef928fd6a3eae285e5f22",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-manual.page-001.emf",
+          "sha256": "041a8d35f59124edd357fc5c3dcbd0cdbacc8bf32d672a6c1d02d7d12ff9c338",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-paragraph",
+      "source": "tmp\\w19-origin-tie-inputs\\word-windows-origin-tie-l1710-bold-s12-m14-balance1-paragraph.docx",
+      "sha256": "f3ceb2fee7bb343331b248f3c1d474c202d88186ea61d95bc6b6847463bda9a3",
+      "pdf": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-paragraph.pdf",
+      "pdf_sha256": "1a748092e1b83fcb3a41cc08b26f4ee29c363c5ad5acfc1e7aee6e1b579b79cd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-paragraph.xps",
+      "xps_sha256": "aebf1edfd2c45aae03f346f99fe4b647f8820ff17b286f2e18f46fbb17b12947",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-origin-tie-l1710-bold-s12-m14-balance1-paragraph.page-001.emf",
+          "sha256": "0d284894abce90d0c34a713eb1ce7766181dcfcdb7b4c19bcb459db0fd6e3256",
+          "width_pt": 595.3,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,9 @@ from pathlib import Path
 from io import BytesIO
 import copy,hashlib,json,tempfile,unittest,uuid
 from zipfile import ZipFile
+from unittest.mock import patch
+import os
+import windows_xps_fonts as cache_fonts
 from fontTools.ttLib import TTFont
 from check_platform_coordinates import ROOT,read_json
 from windows_xps_fonts import extract_xps_fonts,font_covers
@@ -89,5 +92,70 @@ class OriginalXpsFonts(unittest.TestCase):
             cached=p/'cache'/(selected['sha256']+'.ttf')
             cached.write_bytes(b'corrupt')
             with self.assertRaises(ValueError):extract_xps_fonts(self.xps,p/'second',p/'cache')
+
+    def test_cache_rotates_groups_before_the_filesystem_link_limit(self):
+        with tempfile.TemporaryDirectory() as temporary, patch.object(cache_fonts, '_CACHE_LINK_LIMIT', 2):
+            root=Path(temporary);cache=root/'cache'
+            first=extract_xps_fonts(self.xps,root/'first',cache)
+            for name in ('second','third'):
+                self.assertEqual(extract_xps_fonts(self.xps,root/name,cache),first)
+                for fact in first:
+                    if fact['selected']:
+                        self.assertEqual((root/name/(fact['sha256']+'.ttf')).read_bytes(),self.decoded[fact['resource']])
+            expected={f['sha256'] for f in first if f['selected']}
+            self.assertEqual(len(list(cache.glob('*.ttf'))),len(expected)*3)
+            self.assertTrue(all(p.stat().st_nlink<=2 for p in cache.glob('*.ttf')))
+
+    def test_ntfs_link_limit_race_uses_another_byte_identical_group(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);cache=root/'cache';cache.mkdir();destination=root/'font.ttf'
+            data=b'Original font program';digest=hashlib.sha256(data).hexdigest();real=os.link;rejected=[]
+            def link(source,target):
+                if Path(target)==destination and Path(source).name==digest+'.ttf':
+                    error=OSError('NTFS link count raced');error.winerror=1142;rejected.append(str(source));raise error
+                return real(source,target)
+            with patch.object(cache_fonts.os,'link',side_effect=link):
+                cache_fonts.link_cached_font(data,digest,cache,destination)
+            self.assertEqual(len(rejected),1)
+            self.assertEqual(destination.read_bytes(),data)
+            self.assertEqual((cache/(digest+'.ttf')).read_bytes(),data)
+            self.assertTrue((cache/(digest+'.group-1.ttf')).exists())
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows CreateHardLinkW long-path regression')
+    def test_long_versioned_fixture_path_keeps_the_original_font_hardlink(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);cache=root/'cache';cache.mkdir()
+            parent=root/('fixture-'+'a'*82)/('version-'+'b'*82)
+            parent.mkdir(parents=True)
+            directory=parent/'fonts'
+            try:
+                facts=extract_xps_fonts(self.xps,directory,cache)
+                registered=[]
+                for fact in facts:
+                    if not fact['selected']:continue
+                    destination=directory/(fact['sha256']+'.ttf')
+                    self.assertGreaterEqual(len(str(destination.resolve())),260)
+                    actual=cache_fonts.font_io_path(destination)
+                    self.assertEqual(actual.read_bytes(),self.decoded[fact['resource']])
+                    cached=cache/(fact['sha256']+'.ttf')
+                    self.assertTrue(os.path.samefile(actual,cached))
+                    self.assertEqual(cached.stat().st_nlink,2)
+                    registered.append(dict(path=str(destination)))
+                from check_windows_font_coordinates import require_original_font_programs_registered
+                require_original_font_programs_registered(directory,dict(fonts=registered))
+            finally:
+                if directory.exists():
+                    for entry in directory.iterdir():cache_fonts.font_io_path(entry).unlink()
+
+    def test_unrelated_link_errors_are_not_hidden_by_cache_rotation(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary);cache=root/'cache';cache.mkdir();destination=root/'font.ttf'
+            data=b'Original font program';digest=hashlib.sha256(data).hexdigest();real=os.link
+            def link(source,target):
+                if Path(target)==destination:raise PermissionError(13,'Denied')
+                return real(source,target)
+            with patch.object(cache_fonts.os,'link',side_effect=link),self.assertRaises(PermissionError):
+                cache_fonts.link_cached_font(data,digest,cache,destination)
+            self.assertFalse(destination.exists())
 
 if __name__=='__main__':unittest.main()
