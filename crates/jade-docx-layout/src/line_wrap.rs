@@ -1575,19 +1575,20 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
         run_letter_spacing,
     } = context;
 
-    let same_times = paragraph_style
-        .is_some_and(|p| p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows)
-        && resolved_style.is_some_and(ResolvedRunStyle::has_same_requested_times_east_asia);
-    let kerning_adjustment = if !measured_width_is_oracle
+    // A zero adjustment is already the requested result. Keep the rare Times
+    // space policy out of ordinary Japanese and non-Times glyph advances.
+    let kerning_adjustment = if kerning_adjustment != 0.0
+        && !measured_width_is_oracle
         && resolved_style.is_some_and(|style| {
-            windows_times_east_asia_space_pair(
-                paragraph_style,
-                style,
-                prev_prev_grapheme,
-                prev_grapheme,
-                grapheme,
-                next_grapheme,
-            )
+            style.has_same_requested_times_east_asia()
+                && windows_times_east_asia_space_pair(
+                    paragraph_style,
+                    style,
+                    prev_prev_grapheme,
+                    prev_grapheme,
+                    grapheme,
+                    next_grapheme,
+                )
         }) {
         0.0
     } else {
@@ -1730,55 +1731,59 @@ fn compute_grapheme_advance_for_grid<const SNAP_TO_GRID: bool>(
             .unwrap_or(0.0)
             .max(0.0)
     };
-    let (implicit_latin_gap, implicit_latin_trailing_gap) =
-        if measured_width_is_oracle || script != ScriptCategory::Latin || same_times {
-            (0.0, 0.0)
-        } else {
-            paragraph_style
-                .map(|style| {
-                    let (mut leading, mut trailing) = implicit_latin_east_asian_gap_width(
+    let (implicit_latin_gap, implicit_latin_trailing_gap) = if measured_width_is_oracle
+        || script != ScriptCategory::Latin
+        || (resolved_style.is_some_and(ResolvedRunStyle::has_same_requested_times_east_asia)
+            && paragraph_style.is_some_and(|p| {
+                p.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+            })) {
+        (0.0, 0.0)
+    } else {
+        paragraph_style
+            .map(|style| {
+                let (mut leading, mut trailing) = implicit_latin_east_asian_gap_width(
+                    style,
+                    grapheme,
+                    script,
+                    adjusted_glyph_width,
+                    prev_grapheme,
+                    next_grapheme,
+                    font_descriptor,
+                );
+                trailing = windows_balanced_latin_trailing_gap(
+                    style,
+                    font_descriptor,
+                    resolved_style,
+                    trailing,
+                );
+                // Windows Word's Yu Mincho mixed-script captures use a
+                // quarter of the tracked cell at both script boundaries.
+                // The 9.5–16pt sweeps include -0.5 through +30pt tracking.
+                if run_letter_spacing != 0.0 && (leading > 0.0 || trailing > 0.0) {
+                    (leading, trailing) = tracked_yu_mincho_gaps(
                         style,
-                        grapheme,
-                        script,
-                        adjusted_glyph_width,
-                        prev_grapheme,
-                        next_grapheme,
                         font_descriptor,
-                    );
-                    trailing = windows_balanced_latin_trailing_gap(
-                        style,
-                        font_descriptor,
-                        resolved_style,
+                        run_letter_spacing,
+                        leading,
                         trailing,
                     );
-                    // Windows Word's Yu Mincho mixed-script captures use a
-                    // quarter of the tracked cell at both script boundaries.
-                    // The 9.5–16pt sweeps include -0.5 through +30pt tracking.
-                    if run_letter_spacing != 0.0 && (leading > 0.0 || trailing > 0.0) {
-                        (leading, trailing) = tracked_yu_mincho_gaps(
-                            style,
-                            font_descriptor,
-                            run_letter_spacing,
-                            leading,
-                            trailing,
-                        );
+                }
+                // Word for Mac leaves a 3.5pt gap after 14pt kanji before
+                // 18pt Arial in table-minimum-line-cjk-mac.
+                if leading > 0.0
+                    && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
+                    && prev_grapheme
+                        .and_then(|text| text.chars().next())
+                        .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
+                {
+                    if let Some(width) = prev_glyph_width.filter(|width| *width > 0.0) {
+                        leading = leading.min(width * 0.25);
                     }
-                    // Word for Mac leaves a 3.5pt gap after 14pt kanji before
-                    // 18pt Arial in table-minimum-line-cjk-mac.
-                    if leading > 0.0
-                        && style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-                        && prev_grapheme
-                            .and_then(|text| text.chars().next())
-                            .is_some_and(|ch| ch.script() == UnicodeScriptKind::Han)
-                    {
-                        if let Some(width) = prev_glyph_width.filter(|width| *width > 0.0) {
-                            leading = leading.min(width * 0.25);
-                        }
-                    }
-                    (leading, trailing)
-                })
-                .unwrap_or((0.0, 0.0))
-        };
+                }
+                (leading, trailing)
+            })
+            .unwrap_or((0.0, 0.0))
+    };
     // The gap only sits at a digit/East Asian boundary, so most graphemes
     // skip the call: this runs for every grapheme measured.
     let implicit_numeric_gap = if measured_width_is_oracle
@@ -3677,26 +3682,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                         )
                     })
             } else if style.enable_pair_kerning {
-                let leading_balanced_space_kern = (right == b' '
-                    && windows_balanced_distinct_script_face(style)
-                    && windows_balanced_space_pair(
-                        paragraph_style,
-                        font_descriptor,
-                        state.prev_prev_grapheme.as_deref(),
-                        state.prev_grapheme.as_deref(),
-                        grapheme,
-                        next_grapheme,
-                    ))
-                .then(|| {
-                    crate::line_metrics::word_windows_balanced_leading_space_kerning_px(
-                        font_descriptor,
-                        left,
-                    )
-                })
-                .flatten();
-                if let Some(kern) = leading_balanced_space_kern {
-                    Some(kern)
-                } else if (left == b' ' || right == b' ')
+                if (left == b' ' || right == b' ')
                     && (windows_balanced_distinct_script_face(style)
                         || windows_balanced_latin_space_advance(
                             paragraph_style,
@@ -3713,7 +3699,17 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                         next_grapheme,
                     )
                 {
-                    Some(0.0)
+                    Some(
+                        if right == b' ' && windows_balanced_distinct_script_face(style) {
+                            crate::line_metrics::word_windows_balanced_leading_space_kerning_px(
+                                font_descriptor,
+                                left,
+                            )
+                            .unwrap_or(0.0)
+                        } else {
+                            0.0
+                        },
+                    )
                 } else {
                     windows_ascii_pair_adjustment(
                         style,
@@ -3786,13 +3782,17 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         style,
         automatic_note_separator_width_px(grapheme, paragraph_style, text_offset, font_descriptor)
             .or_else(|| {
-                windows_times_east_asia_space_advance(
-                    paragraph_style,
-                    style,
-                    state.prev_grapheme.as_deref(),
-                    grapheme,
-                    next_grapheme,
-                )
+                if grapheme == " " && style.has_same_requested_times_east_asia() {
+                    windows_times_east_asia_space_advance(
+                        paragraph_style,
+                        style,
+                        state.prev_grapheme.as_deref(),
+                        grapheme,
+                        next_grapheme,
+                    )
+                } else {
+                    None
+                }
             })
             .or_else(|| {
                 balanced_space_width_px(
