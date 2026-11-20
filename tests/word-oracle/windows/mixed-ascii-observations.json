@@ -1,0 +1,775 @@
+{
+  "schema": 1,
+  "purpose": "Sixteen original mixed ASCII controls: all16 EMF/dualXPS and15 independently validated PDF coordinates required. One known PDF coordinate mismatch remains pending with strict text/page/order/finite assertions. No synthetic expectations.",
+  "parent_index": {
+    "file": "tests/word-oracle/windows/positive-kerning-observations.json",
+    "sha256": "4b71a6e8935246b8f1c19215b2fcda108c80c23481e3dedd6c88be49f7826f46"
+  },
+  "mac_parent_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/aptos-ascii-kerning-mac/manifest.json",
+    "sha256": "5bdf55d8189ea1e0fff9df8a8b3e39765eddf41d0e1eb5a8302b9d74bd680e75"
+  },
+  "mac_parent_reference": {
+    "application": "Microsoft Word",
+    "platform": "mac",
+    "version": "16.114.3",
+    "osVersion": "27.0.1 (26A434)",
+    "export": "Print > PDF > Save as PDF",
+    "pdfSha256": "0cfaa13cafca33030c441fc58558543b6ccd4f2819e499d205202c6ed64fa1b8",
+    "extractor": "PyMuPDF 1.26.5"
+  },
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_id": "20261120T095504778Z-24d96d31",
+  "font_facts": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/word-output-font-facts.json",
+    "sha256": "79e1b54d9a754f32a424213f225ff5c2df10358f65d4f9d82e19e53d5ae28aa5"
+  },
+  "original_capture": {
+    "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/original-capture.zip",
+    "sha256": "5e6cdd53c695a86e22ff5d432a1810f599b49a8868dcd6ebd48b74d74684f126"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-device-writer-holdout-regular-s14-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-regular-s14-pairs48-m14.docx",
+        "sha256": "bdd50e95e8d247f809ee5df6efd5598e4cf93367f818a31bbdc13218d266d445"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-Z48-m14.docx",
+          "sha256": "15b01528bdf03c95c38dae93b42a152941745b3b03899cddd707d199baaced45"
+        },
+        "parent_name": "word-windows-positive-kern-regular-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-regular-s14-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-regular-s14-widths48-m14.docx",
+        "sha256": "24cf3286802eaa0db694275d549c199e2ad23077e19703bc186b7530a1860ff0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s14-Z48-m14.docx",
+          "sha256": "15b01528bdf03c95c38dae93b42a152941745b3b03899cddd707d199baaced45"
+        },
+        "parent_name": "word-windows-positive-kern-regular-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-regular-s15p5-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-regular-s15p5-pairs48-m14.docx",
+        "sha256": "f76d0918db030ab7f01cfdc6f93f77a5667c6dfd4eaad34c7b791a993c758d74"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-Z48-m14.docx",
+          "sha256": "410c8a6d3a3ae95fd892964f8f0f9f3bd5c2850a7277576570c0e6a34c5d5c51"
+        },
+        "parent_name": "word-windows-positive-kern-regular-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-regular-s15p5-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-regular-s15p5-widths48-m14.docx",
+        "sha256": "392197366b0e31d98e2827e8d6f96ea7c4c181ce69acab0681a4f9309ea3a2dc"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-regular-s15p5-Z48-m14.docx",
+          "sha256": "410c8a6d3a3ae95fd892964f8f0f9f3bd5c2850a7277576570c0e6a34c5d5c51"
+        },
+        "parent_name": "word-windows-positive-kern-regular-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "regular",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "pending"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s14-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bold-s14-pairs48-m14.docx",
+        "sha256": "7e8d87402be95c3ce6b3e7cfa83907308691a6b8f50100ec99f2d7002916f376"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-Z48-m14.docx",
+          "sha256": "160060f087171a3b5cb970381c34a3f3992ac135613c84b2c651cc732b10cbbb"
+        },
+        "parent_name": "word-windows-positive-kern-bold-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s14-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bold-s14-widths48-m14.docx",
+        "sha256": "4c1b68d9738ffae6ca711b663f7c72a4a81eda65bf85dc7f529cb276d5761d26"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s14-Z48-m14.docx",
+          "sha256": "160060f087171a3b5cb970381c34a3f3992ac135613c84b2c651cc732b10cbbb"
+        },
+        "parent_name": "word-windows-positive-kern-bold-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bold",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s15p5-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bold-s15p5-pairs48-m14.docx",
+        "sha256": "f20acafb1fc8c415453dd53557361c7ad512b25304317c7967fb93abb7427246"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-Z48-m14.docx",
+          "sha256": "acbdfc248e1f85f027be31b23e4f83dd9c5b9061b2343449091bceb262b46d73"
+        },
+        "parent_name": "word-windows-positive-kern-bold-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bold",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bold-s15p5-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bold-s15p5-widths48-m14.docx",
+        "sha256": "dc3b3c8f9e3208030b54949b130115d69764b79799d99b2039c3a103092544d8"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bold-s15p5-Z48-m14.docx",
+          "sha256": "acbdfc248e1f85f027be31b23e4f83dd9c5b9061b2343449091bceb262b46d73"
+        },
+        "parent_name": "word-windows-positive-kern-bold-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bold",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s14-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-italic-s14-pairs48-m14.docx",
+        "sha256": "3386b78540cbc430ac4c99a9c45c7f3ad2ca2e7eb2a5568d522b21501e787599"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s14-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-italic-s14-widths48-m14.docx",
+        "sha256": "5f2a3e7497d911aceca3b884341943b5ac606bbc4d66bfa68b9faa9b216ec1df"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s14-Z48-m14.docx",
+          "sha256": "75551b6e70db98d4be369d3fee3cf9b1c889bee4068acf8c518d3f9e2b9a1bcc"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s15p5-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-italic-s15p5-pairs48-m14.docx",
+        "sha256": "67dd1306d7c3068ad8170b342370208d38b99cb054701526068ed56e6b75fd67"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-Z48-m14.docx",
+          "sha256": "c79fd75f4bbc4b714d13e7652ebecdfe04a99f68bd9b0dec414700d597732b6f"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-italic-s15p5-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-italic-s15p5-widths48-m14.docx",
+        "sha256": "2850785389ac923dc9b5c124c814df604c5daf81d7ab3740af1934060e26e2d3"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-italic-s15p5-Z48-m14.docx",
+          "sha256": "c79fd75f4bbc4b714d13e7652ebecdfe04a99f68bd9b0dec414700d597732b6f"
+        },
+        "parent_name": "word-windows-positive-kern-italic-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "italic",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bolditalic-s14-pairs48-m14.docx",
+        "sha256": "85870abd1d2d959d0b510ff52760e6fbecceacb886c3bea5d12ae5c1c1565e96"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-Z48-m14.docx",
+          "sha256": "bdf2ab539c0197c2d25b59202738ad4f460d5d84caa7c903ff5cb3b082190b92"
+        },
+        "parent_name": "word-windows-positive-kern-bolditalic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bolditalic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s14-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bolditalic-s14-widths48-m14.docx",
+        "sha256": "eb18f9654e8af7e8ee32e527cffb7480e33f8875973b12834b838f1603419288"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s14-Z48-m14.docx",
+          "sha256": "bdf2ab539c0197c2d25b59202738ad4f460d5d84caa7c903ff5cb3b082190b92"
+        },
+        "parent_name": "word-windows-positive-kern-bolditalic-s14-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bolditalic",
+        "font_size_pt": 14,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bolditalic-s15p5-pairs48-m14.docx",
+        "sha256": "602b27247b710890c0a6c888a5dcaf8637bc483e9e006a87f03f0cab58730b21"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-Z48-m14.docx",
+          "sha256": "e80cb6f9224dc00989909d6b38b32bd0c8bcd7413701ed6abea94943ef5f1eda"
+        },
+        "parent_name": "word-windows-positive-kern-bolditalic-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bolditalic",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "AVATARWAVE",
+        "text": "AVATARWAVEAVATARWAVEAVATARWAVEAVATARWAVEAVATARWA",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    },
+    {
+      "name": "word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14",
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/inputs/word-windows-device-writer-holdout-bolditalic-s15p5-widths48-m14.docx",
+        "sha256": "39e5c2ba09e2d20542daf3a6b0a3366c1fcbdf39fb0cb50e64f9a3c879359f85"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T095504778Z-24d96d31/capture.json",
+        "sha256": "d8af945c9faf6a9911c39af30d66befe9a9c16890c5644dd3863157f6f84d1ef"
+      },
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T095504778Z-24d96d31.zip",
+        "sha256": "c2271dd3ca202d7bcc1381cd11ce51de3978abb4ee41188e12184e94780aff09"
+      },
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "capture_id": "20261120T095504778Z-24d96d31",
+      "input_specification": {
+        "derived_parent": {
+          "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261118T173559360Z-488dd93e/inputs/word-windows-positive-kern-bolditalic-s15p5-Z48-m14.docx",
+          "sha256": "e80cb6f9224dc00989909d6b38b32bd0c8bcd7413701ed6abea94943ef5f1eda"
+        },
+        "parent_name": "word-windows-positive-kern-bolditalic-s15p5-Z48-m14",
+        "font_family": "Aptos Display",
+        "font_style": "bolditalic",
+        "font_size_pt": 15.5,
+        "compatibility_mode": 14,
+        "pattern": "%m@WAT",
+        "text": "%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT%m@WAT",
+        "length": 48,
+        "paragraphs": 4,
+        "expected_non_whitespace_glyphs": 192,
+        "changed_parts": [
+          "word/document.xml"
+        ]
+      },
+      "glyph_count": 192,
+      "screen_gate_promotion": "mixed-ascii-screen",
+      "xps_gate_promotion": "mixed-ascii-xps",
+      "coordinate_gate_promotion": "mixed-ascii-print"
+    }
+  ]
+}
