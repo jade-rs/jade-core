@@ -410,10 +410,7 @@ impl WordDocument {
             .bookmarks
             .iter()
             .find(|bookmark| bookmark.name == name)?;
-        let paragraph = self.bookmark_surface_index(bookmark.end_paragraph)?;
-        let length = self.paragraph_text_len_at(paragraph).unwrap_or(0);
-        let model = TextPosition::new(paragraph, bookmark.end_offset.min(length));
-        Some(self.model_to_rendered_text_position(model))
+        self.bookmark_end(bookmark)
     }
 
     // ---- note separators ----------------------------------------------------

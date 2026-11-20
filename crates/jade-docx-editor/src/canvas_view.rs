@@ -17920,16 +17920,30 @@ impl OffscreenDocumentView {
                     .chars()
                     .take(80)
                     .collect();
+                // Markers between paragraphs are resolved to the paragraphs
+                // they bound, so a range never reaches into the next one.
+                let start = word_doc.bookmark_start(bookmark);
+                let end = word_doc.bookmark_end(bookmark);
                 BookmarkInfo {
                     name: bookmark.name.clone(),
-                    start_paragraph: word_doc
-                        .bookmark_surface_index(bookmark.start_paragraph)
-                        .unwrap_or(bookmark.start_paragraph),
-                    start_offset: bookmark.start_offset,
-                    end_paragraph: word_doc
-                        .bookmark_surface_index(bookmark.end_paragraph)
-                        .unwrap_or(bookmark.end_paragraph),
-                    end_offset: bookmark.end_offset,
+                    start_paragraph: start.map_or_else(
+                        || {
+                            word_doc
+                                .bookmark_surface_index(bookmark.start_paragraph)
+                                .unwrap_or(bookmark.start_paragraph)
+                        },
+                        |position| position.paragraph,
+                    ),
+                    start_offset: start.map_or(bookmark.start_offset, |position| position.offset),
+                    end_paragraph: end.map_or_else(
+                        || {
+                            word_doc
+                                .bookmark_surface_index(bookmark.end_paragraph)
+                                .unwrap_or(bookmark.end_paragraph)
+                        },
+                        |position| position.paragraph,
+                    ),
+                    end_offset: end.map_or(bookmark.end_offset, |position| position.offset),
                     preview,
                 }
             })
