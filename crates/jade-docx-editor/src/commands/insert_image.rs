@@ -69,18 +69,12 @@ impl Command for InsertImageCommand {
                     .paragraph_story_description(rendered_position.paragraph)
             )));
         }
-        let paragraph = ctx
-            .document
+        ctx.document
             .paragraph(rendered_position.paragraph)
             .ok_or(CommandError::ParagraphUnavailable)?;
-        let model_len = paragraph.runs.iter().map(|run| run.text.len()).sum();
         let rendered_len = ctx
             .document
-            .model_to_rendered_text_position(TextPosition::new(
-                rendered_position.paragraph,
-                model_len,
-            ))
-            .offset;
+            .rendered_paragraph_len(rendered_position.paragraph);
         if rendered_position.offset > rendered_len {
             return Err(CommandError::Custom(format!(
                 "offset {} is past the end of paragraph {}, which is {rendered_len} bytes long",
@@ -139,7 +133,12 @@ impl Command for InsertImageCommand {
             run_index,
             kind: FloatingObjectKind::Image,
         });
-        *ctx.selection = Some(SelectionRange::collapsed(rendered_position));
+        // The caret goes after the picture, as Word puts it: the picture is
+        // one character of the line.
+        *ctx.selection = Some(SelectionRange::collapsed(TextPosition::new(
+            rendered_position.paragraph,
+            rendered_position.offset + '\u{fffc}'.len_utf8(),
+        )));
         Ok(())
     }
 

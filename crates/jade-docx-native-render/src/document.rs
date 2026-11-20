@@ -2664,6 +2664,15 @@ impl NativeDocument {
             })
     }
 
+    /// One paragraph's text in the caret's offsets: an inline picture, text
+    /// box or equation is one object character (U+FFFC), as Word counts it,
+    /// so the caret steps over it in one.
+    pub fn caret_text(&self, paragraph: usize) -> Option<String> {
+        self.word_document
+            .paragraph(paragraph)
+            .map(|_| self.word_document.paragraph_text_with_objects(paragraph))
+    }
+
     // ---- for a shell's own commands ------------------------------------------
 
     /// The document model, for reading what a command needs to address —

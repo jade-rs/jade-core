@@ -1977,6 +1977,43 @@ fn try_apply_headless_text_command(
             );
             let range =
                 range_from_bounds(*start_paragraph, start_offset, *end_paragraph, end_offset);
+            // The inline pictures the range holds go with its text, as in
+            // Word; the text edit then covers the range without them.
+            let objects = if word_doc.revision_session().is_none() {
+                word_doc.inline_objects_in_rendered_range(range)
+            } else {
+                Vec::new()
+            };
+            if !objects.is_empty() {
+                use crate::commands::inline_objects::DeleteInlineObjectsCommand;
+                let text_range = DeleteInlineObjectsCommand::range_without(&objects, range);
+                let (text_start, text_end) = text_range.normalized();
+                *selection = Some(range);
+                let inner: Option<(Box<dyn Command>, SelectionRange)> = if text_start == text_end
+                    && text.is_empty()
+                {
+                    None
+                } else {
+                    let command: Box<dyn Command> = Box::new(
+                        InsertTextCommand::new(text_range, text.to_owned(), None)
+                            .deleting_selected_tables(),
+                    );
+                    let command: Box<dyn Command> = if text_start.paragraph != text_end.paragraph {
+                        Box::new(PackageSnapshotCommand::wrapping_exact_undo(command))
+                    } else {
+                        command
+                    };
+                    Some((command, text_range))
+                };
+                let mut ctx = CommandContext::new(word_doc, selection);
+                command_executor
+                    .execute(
+                        Box::new(DeleteInlineObjectsCommand::new(objects, inner, text_start)),
+                        &mut ctx,
+                    )
+                    .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
+                return Ok(true);
+            }
             if start_paragraph == end_paragraph && start_offset == end_offset && text.is_empty() {
                 // Even when the document needs no mutation, typing has
                 // consumed the selection. Leaving it active makes the
@@ -2232,14 +2269,32 @@ fn apply_headless_commands(
                 let range = SelectionRange::collapsed(TextPosition::new(*paragraph, *offset));
                 selection = Some(range);
 
+                // Backspace after an inline picture, or Delete before one,
+                // removes it: it is one character of the line, as in Word.
+                let beside = (repeat == 1)
+                    .then(|| {
+                        crate::commands::inline_objects::inline_object_beside_caret(
+                            word_doc,
+                            range.focus,
+                            matches!(direction, DeleteDirection::Backward),
+                        )
+                    })
+                    .flatten();
                 // One command, one history step, however many characters and
                 // paragraph boundaries the run covers.
+                let command: Box<dyn Command> = match beside {
+                    Some((object, caret)) => Box::new(
+                        crate::commands::inline_objects::DeleteInlineObjectsCommand::new(
+                            vec![object],
+                            None,
+                            caret,
+                        ),
+                    ),
+                    None => Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
+                };
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
-                    .execute(
-                        Box::new(DeleteTextRunCommand::new(range, direction, repeat)),
-                        &mut ctx,
-                    )
+                    .execute(command, &mut ctx)
                     .map_err(|source| HeadlessApiApplyError::Command { index, source })?;
             }
             HeadlessCommand::InsertParagraphBreak {
