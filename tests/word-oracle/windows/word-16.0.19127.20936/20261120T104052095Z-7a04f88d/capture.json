@@ -1,0 +1,1414 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T104052095Z-7a04f88d",
+  "captured_at_utc": "2026-11-20T10:40:52.1066373Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-long-size-regular-s13-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s13-at-24to96-m14.docx",
+      "sha256": "6f98c7dfacc2188649e032e7349ee6844e132c3576a5b78add4ece7030bd901d",
+      "pdf": "word-windows-long-size-regular-s13-at-24to96-m14.pdf",
+      "pdf_sha256": "98f62910747d500bd59389cd53a1f8f98df1d843eea50d8c7dc01480179afbf8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s13-at-24to96-m14.xps",
+      "xps_sha256": "c22b438399d0ab62c928a2086570a0893258eb6c7298714ca44c1d81245aaaf3",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s13-at-24to96-m14.page-001.emf",
+          "sha256": "3a20cccf9993812deb958687d12e4ac25beb600a8ceca23b8c777c389f7f3f75",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s13p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s13p5-at-24to96-m14.docx",
+      "sha256": "6bbd12da8f75f4eb3fae0d0c27b7331ec8d3d60a915c6fb0c8cd02e3fa85e8a2",
+      "pdf": "word-windows-long-size-regular-s13p5-at-24to96-m14.pdf",
+      "pdf_sha256": "3519e4d8b3ff0187588882e350c0c867737cdc65af827164a774377d6260e021",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s13p5-at-24to96-m14.xps",
+      "xps_sha256": "6d96a92353c410692f4ebf84576658398dc87fa65ea40ac38c17740987a4c7e9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s13p5-at-24to96-m14.page-001.emf",
+          "sha256": "a9422ff842eb3a544b647c9e398ff5413438348783c9b351d592be39c27b6c57",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s14p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s14p5-at-24to96-m14.docx",
+      "sha256": "0fe8dc8e9dd255cfb8f25b32f2dff1112d3138a7cc65a77af3887688f0869aea",
+      "pdf": "word-windows-long-size-regular-s14p5-at-24to96-m14.pdf",
+      "pdf_sha256": "c4a0e66eda90cc2f03b64e3b20ff086cee925bf023ef2bd35a614d45b66154b1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s14p5-at-24to96-m14.xps",
+      "xps_sha256": "321d50746b6b24d68929395275d2bc4fb0e7f39620eed0bd865fdc96f440c7ca",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s14p5-at-24to96-m14.page-001.emf",
+          "sha256": "5060f1c0cbd9b4bfa0cfea055a9a924086096793786f30d98313f45cc69441c0",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s15-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s15-at-24to96-m14.docx",
+      "sha256": "42dc4b70ec2c000bb5392afc56a249f983c760c94cfa5a277b186800e5d1a2d3",
+      "pdf": "word-windows-long-size-regular-s15-at-24to96-m14.pdf",
+      "pdf_sha256": "b56a09fb25790c9f8bce7b1c9fd812da809a88c126b12d2173a86c82ba558607",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s15-at-24to96-m14.xps",
+      "xps_sha256": "7803a562f32a173eeb8fbf4e177a7a145debbb981f83545078f072c66c10fc0c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s15-at-24to96-m14.page-001.emf",
+          "sha256": "0dacac805a4d85bc1f28830ac0d8a437abce013b30085440ef0f5c5ab179260c",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s15p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s15p5-at-24to96-m14.docx",
+      "sha256": "4bbd31228d498c5508820ee17464c6a56c0aa0cdaeb61dc091e608356da464b6",
+      "pdf": "word-windows-long-size-regular-s15p5-at-24to96-m14.pdf",
+      "pdf_sha256": "7a615f7a0c7f5b7ace21d21f24cd4de0eaf8878f318e3d310ea3fbbada0b296f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s15p5-at-24to96-m14.xps",
+      "xps_sha256": "110815640c137a6f6f092442d12d6134cf1120f7f166e732b16ad9f2ebbf46f7",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s15p5-at-24to96-m14.page-001.emf",
+          "sha256": "e7ba04c475881697bf83d2988762deb3fe8cc36166c901319fdb8323539aa7b5",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s16-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s16-at-24to96-m14.docx",
+      "sha256": "782ff2994236766ac6d44222eec15e40e362fbe1d82ab1b49e76c6a8e3088a8c",
+      "pdf": "word-windows-long-size-regular-s16-at-24to96-m14.pdf",
+      "pdf_sha256": "b31ca53a5d5ca2bdbb978b8f2bb71e38c62ac4d0f44571212f4722e716b3a51e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s16-at-24to96-m14.xps",
+      "xps_sha256": "6c71f5dc86575d35b1c6613b1dfb52a54cd0f9d38379ece3d0baa70805bae235",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s16-at-24to96-m14.page-001.emf",
+          "sha256": "80d9a542fba5b17818db21332645abf692d732b2f30d8f158695117eeab674fc",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s13-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s13-m-24to96-m14.docx",
+      "sha256": "0df4f2c7cb53c9a421e8e3fd9990b5cd8b7ba12c441b9e5c91c01de390f1dbb3",
+      "pdf": "word-windows-long-size-regular-s13-m-24to96-m14.pdf",
+      "pdf_sha256": "b17f94f0606546f4a37b2b96c583ba5d7f9c2967eb1e008548a83c25a3fd1d37",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s13-m-24to96-m14.xps",
+      "xps_sha256": "3be6c8c2555f2aa71d53b033bfff59cfeffd42a449f00e412116c74c655517de",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s13-m-24to96-m14.page-001.emf",
+          "sha256": "0ae87c97a985a3cf2afe6fad8f7cc495d1166c9e3315585501994102a5c6dbc2",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s13p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s13p5-m-24to96-m14.docx",
+      "sha256": "261d0e5578be9f4621450021872c5211d7826c03bfdb0534acfad0ba920a3206",
+      "pdf": "word-windows-long-size-regular-s13p5-m-24to96-m14.pdf",
+      "pdf_sha256": "92ad117efe2a201cbfafc119fced65f35486a64c031819f4033604059ca4521e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s13p5-m-24to96-m14.xps",
+      "xps_sha256": "d77cfaff84d110db8aacfb033dfc73ba53f49cf3eda77a3c2ef3c782e2fe828b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s13p5-m-24to96-m14.page-001.emf",
+          "sha256": "1f64d10498bcfd9ce37e71f9e16dc43f3efdcb789d3921b3fd5fa41c5153f1b9",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s14p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s14p5-m-24to96-m14.docx",
+      "sha256": "bd0073a6f0547d68f8264ace7f131099eed3851b7d81e0107aba2a8f50b8b3f2",
+      "pdf": "word-windows-long-size-regular-s14p5-m-24to96-m14.pdf",
+      "pdf_sha256": "d011dc923f9683b44e6f0e310390e5cb1f56e7728df327bc6cc1286b2e9de041",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s14p5-m-24to96-m14.xps",
+      "xps_sha256": "24a229f7265982a19644ff145bb128f137b07908c4d3f9ffdb435af24cd80559",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s14p5-m-24to96-m14.page-001.emf",
+          "sha256": "050575e81631c8e8061eff14dfd983cc72d49cabdf4f3650884732c6030fd4c4",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s15-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s15-m-24to96-m14.docx",
+      "sha256": "0da64afb2f22c2c060e0f1051112bfa4be487ab12e682565ef3252a0b8646ae3",
+      "pdf": "word-windows-long-size-regular-s15-m-24to96-m14.pdf",
+      "pdf_sha256": "616d86de9e275008ec558d4ab1e322bcf87afaa61a27e0f39931d80514c5de3e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s15-m-24to96-m14.xps",
+      "xps_sha256": "697d558e0f8285528ac3ee35e51b6fccd7cc7f05210f0d024b8cf99d0fda8115",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s15-m-24to96-m14.page-001.emf",
+          "sha256": "e6ff17b6025bdc204075bcd39f131f53234d464f1d4b559c7374107ce45a26e8",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s15p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s15p5-m-24to96-m14.docx",
+      "sha256": "eaf8b0164cc574c3470c475a605eff48c6ce7753c0c0104fc4a14c15970e48f3",
+      "pdf": "word-windows-long-size-regular-s15p5-m-24to96-m14.pdf",
+      "pdf_sha256": "b6119cf20b66c197b885c585eab1ae30fe0847723980132eb5ba225821b8149b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s15p5-m-24to96-m14.xps",
+      "xps_sha256": "6eba3de29f4bc471daf1871a3984d80fa5b25fac787396fb0c6cafc088983d00",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s15p5-m-24to96-m14.page-001.emf",
+          "sha256": "8206ac57e725aaf539d7357c093406c0efccb528411255e41b4f050a16dfbc4d",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-regular-s16-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-regular-s16-m-24to96-m14.docx",
+      "sha256": "8ce726f62b27f1e0336d51afe65766ebd46e0ceb3337f032b6f9f5ed2d5352b5",
+      "pdf": "word-windows-long-size-regular-s16-m-24to96-m14.pdf",
+      "pdf_sha256": "9aa47271948b11c78c15b52bc286b591646c841f19ce9b7569b7ff9ef8983d45",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-regular-s16-m-24to96-m14.xps",
+      "xps_sha256": "5c0b3a6611663b2aa5a32e1976cd240575f79f6bbe8c2f5d01747b28ddc19fc1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-regular-s16-m-24to96-m14.page-001.emf",
+          "sha256": "6f9d0f4caa162bb40749b8972233f8455c166ec65c76a3674ff138c88029a968",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s13-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s13-at-24to96-m14.docx",
+      "sha256": "46017f269dc9fc554eb31b4986ac111c1db58895620ebd86657ad7ebd9edac75",
+      "pdf": "word-windows-long-size-bold-s13-at-24to96-m14.pdf",
+      "pdf_sha256": "8ff9aa47bee7457a8773611fdf9cb0a2283a9f3d6bf9a249287ad2692d698753",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s13-at-24to96-m14.xps",
+      "xps_sha256": "3f0913e5be22f3bf5f4990b755ff7faf5691ee38711ea436154e10b9669775df",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s13-at-24to96-m14.page-001.emf",
+          "sha256": "51206a601dfee7e966264c288eddd3e3202f689a10df5b4551404901629c2b3d",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s13p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s13p5-at-24to96-m14.docx",
+      "sha256": "c68ccbdae339b62a40aee30e2649ebbcebf0cb12b0b06b560652214a8006b8cc",
+      "pdf": "word-windows-long-size-bold-s13p5-at-24to96-m14.pdf",
+      "pdf_sha256": "a0f06016b00362b8b1387bffdc5a0a90202127f8e0e381ef9094fbe32327f4b1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s13p5-at-24to96-m14.xps",
+      "xps_sha256": "49a09e51fe362774f7c6721224ab3e06be93d2af5bb37ef789ebe4d8d5443c9c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s13p5-at-24to96-m14.page-001.emf",
+          "sha256": "0d00cc2375ce2ec8c970899cf5f6d214c87bbc17bc8cd7ea62e6d9c6f99487df",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s14p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s14p5-at-24to96-m14.docx",
+      "sha256": "bb30f6c04679e717e0d25ad6881cd843325da0dd0f9c9d5b97b0df2ff2763f10",
+      "pdf": "word-windows-long-size-bold-s14p5-at-24to96-m14.pdf",
+      "pdf_sha256": "4e03a33d0cc9938a5c65a597328839d4a81e93c9321d91617c57c43d6adf1a7b",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s14p5-at-24to96-m14.xps",
+      "xps_sha256": "cff5b422a367898b2247d318bce4002cb9160ab4d996d6304f953f639b88aaa4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s14p5-at-24to96-m14.page-001.emf",
+          "sha256": "65fd76d5c5eb9fff77c5a6614a7200228f367eebff403edc698f6cebe7d5de8b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s15-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s15-at-24to96-m14.docx",
+      "sha256": "a6dcc0c591999e6255fd8d5807a3bc7cf03f580d91487440084689c5e030d0a4",
+      "pdf": "word-windows-long-size-bold-s15-at-24to96-m14.pdf",
+      "pdf_sha256": "7bd2389830924c1afb425cf2e440419b4c4f318c9b5a44d8e2697ea865fe879c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s15-at-24to96-m14.xps",
+      "xps_sha256": "c1199706890b26ac735121def504a21cd3a64d4b4341239c1f9255b8805b0d4d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s15-at-24to96-m14.page-001.emf",
+          "sha256": "85c1ec22d2f23d7d2b123b4828d8a4f5512f4828d884f5b30819816dc5407115",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s15p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s15p5-at-24to96-m14.docx",
+      "sha256": "e1f1dc9e576feb7f5cef4d4acc78cc19d59872decdf39870c733faec5340d582",
+      "pdf": "word-windows-long-size-bold-s15p5-at-24to96-m14.pdf",
+      "pdf_sha256": "351d368b02565fd8b2a5f133a0884c5510b0ae0928dc78eac542a302ff3b3353",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s15p5-at-24to96-m14.xps",
+      "xps_sha256": "d975e3f55beebd986b1b1b36539992b3d4921a3953300d5bf4305e6cac07d232",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s15p5-at-24to96-m14.page-001.emf",
+          "sha256": "4efae35ca71f22f652898ee078ac33dd0f9581e9eaa13ea5f8d2a793ca83880f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s16-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s16-at-24to96-m14.docx",
+      "sha256": "029190c3ace2899d4a59f3821daf5d9f0d70490a383eafffdc09787884d86922",
+      "pdf": "word-windows-long-size-bold-s16-at-24to96-m14.pdf",
+      "pdf_sha256": "5ed8d5a883835ad634308f1c00b568751608e2aefc5cc2ead65566b0a81ea731",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s16-at-24to96-m14.xps",
+      "xps_sha256": "80734760ea26c78d22cd2c1adf869f5b964c7c755a7d48f07d9216cc896aa809",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s16-at-24to96-m14.page-001.emf",
+          "sha256": "7e13f4799b307b70e0d6ebc92411b704a53579c5837898e331d74bc95e5780a1",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s13-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s13-m-24to96-m14.docx",
+      "sha256": "0a8c2800e8240470a30cdb3ed4304bdd30c2b6fc7dbe3df39953c5b729abd801",
+      "pdf": "word-windows-long-size-bold-s13-m-24to96-m14.pdf",
+      "pdf_sha256": "9c8fd32307d2de27838abdd3f10dccbe8a9c45ffbf68c3feead91f08364e94bd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s13-m-24to96-m14.xps",
+      "xps_sha256": "6f976f3c58605c4198a3b8fdd6ab9435a20e78e30f3c6a328ec83378bdc5b6e0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s13-m-24to96-m14.page-001.emf",
+          "sha256": "b36ec6957a3d313696fcc375e0e8417d50665150ca477971d468e33a5deb9f93",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s13p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s13p5-m-24to96-m14.docx",
+      "sha256": "6568a687a5ec100658ae62058b7413fff32fe3e3f64b0dcabbc725dec0c48e1e",
+      "pdf": "word-windows-long-size-bold-s13p5-m-24to96-m14.pdf",
+      "pdf_sha256": "d54621eb8b98b5fec5730c2a8cefaeb6574e7642ebd1e26a9a90cd7709220a40",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s13p5-m-24to96-m14.xps",
+      "xps_sha256": "d0c24650e61c2dad96bbacf220b697f0b449737c03c8272591b66c5ba389a69d",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s13p5-m-24to96-m14.page-001.emf",
+          "sha256": "01fcaaa27c8fa958c6e76f35b90060de8129e0484bf4fffdb88543fc0d199baf",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s14p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s14p5-m-24to96-m14.docx",
+      "sha256": "1eee7f02dec93f85b65ef7ae8dfe9cace1e35fe557e5eb3d0d32e18cce30b3f8",
+      "pdf": "word-windows-long-size-bold-s14p5-m-24to96-m14.pdf",
+      "pdf_sha256": "ef5dd84c0dfb6cbd4cb50e7dc0d19e5c2f7c65a1bcd7ae02b770fb36a2420b04",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s14p5-m-24to96-m14.xps",
+      "xps_sha256": "4ce0fdf9a8b836b2e847ecb39af160995dd5ad9a0d3782e802ea5908eb78fc19",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s14p5-m-24to96-m14.page-001.emf",
+          "sha256": "76e4e3a322cd16e0627518dc6458c4db958a5732f01a9fbf2059b55ecc4414a2",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s15-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s15-m-24to96-m14.docx",
+      "sha256": "a2e73a3ec1d5652e3193cc1a595fde887ed47b044e6a04ea6a7838d6c0aa63e2",
+      "pdf": "word-windows-long-size-bold-s15-m-24to96-m14.pdf",
+      "pdf_sha256": "f58cd1ddc2de7e9008b5e7a09f4e02f5673ad4d4a426fe2fc902420133ff4e1a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s15-m-24to96-m14.xps",
+      "xps_sha256": "b63a60283f0408d8ece806da826914f223352da7cc01ad2b2c65f04f7a24a070",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s15-m-24to96-m14.page-001.emf",
+          "sha256": "0f66185a9030fe1dfb7639b938e7d6f424271d5032fc706bffe0bfe2c3c77fc6",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s15p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s15p5-m-24to96-m14.docx",
+      "sha256": "af553e4af7d06164ea641d4a74cb35096256b21e3a4c42ff62804f8f9fcc736f",
+      "pdf": "word-windows-long-size-bold-s15p5-m-24to96-m14.pdf",
+      "pdf_sha256": "0fda9d73b1c2417c3868e7eded99bca2b400bd60712f037cffd7bee80c3eee87",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s15p5-m-24to96-m14.xps",
+      "xps_sha256": "68f6c3900d6d39fb1dcd99368bbaf2818411e01c70e99ef7f9fa41d3b2a4d9fd",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s15p5-m-24to96-m14.page-001.emf",
+          "sha256": "7ac282ff1121f343324e6873fc7142193531b846bff379bff25d656a3f0b9faf",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bold-s16-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bold-s16-m-24to96-m14.docx",
+      "sha256": "30329aff365d628ad031895df8cdd3fdfce778f927b3f8aa9833446e0e2588e0",
+      "pdf": "word-windows-long-size-bold-s16-m-24to96-m14.pdf",
+      "pdf_sha256": "5370e363cf38eac2b633669ca878dbe6bdbd9be5134de591858cb25d52b6118f",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bold-s16-m-24to96-m14.xps",
+      "xps_sha256": "b824c2d49d4c4f473087cdc4f0869c0e3f6bbd3fcf47edb656c0cef98c04b73a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bold-s16-m-24to96-m14.page-001.emf",
+          "sha256": "ca4566e3909725e1603beee3a4a200814e929819096a96ba94c2330790a2675f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s13-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s13-at-24to96-m14.docx",
+      "sha256": "8353288b84f2a2fc1b15674706fe887d95185a58dfa3b8d78901c5703757540c",
+      "pdf": "word-windows-long-size-italic-s13-at-24to96-m14.pdf",
+      "pdf_sha256": "2b5e8a300b7ab59eac35839016c7614921239120c7bf7fa87dfe20a66378f33e",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s13-at-24to96-m14.xps",
+      "xps_sha256": "3bc928717b273e5ddcc88cc87e69abf80711816016bb7a86f44ee865f5bd7945",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s13-at-24to96-m14.page-001.emf",
+          "sha256": "2e8424252ac2b5d6dfc7a1f263ffd47cf3c1153e81e92d8a65e201207c3c551d",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s13p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s13p5-at-24to96-m14.docx",
+      "sha256": "a4e2b17eceead8ec6a4c9696975014a3979d140f844a2e39cc1a5dcdd24e3b1d",
+      "pdf": "word-windows-long-size-italic-s13p5-at-24to96-m14.pdf",
+      "pdf_sha256": "03f096f4fdaf4e4cbc05e63c56781ad5ff2ce68740413c0041d3f9f8d108ba8c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s13p5-at-24to96-m14.xps",
+      "xps_sha256": "98147f35394172906ad399fcdb21f8c4f5aa37a063e2f4965929fa6a1e9b2ec9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s13p5-at-24to96-m14.page-001.emf",
+          "sha256": "0bf2fb37a9ba634159d07f84abf4309beb5efb255b18626c08e308e1fb00f634",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s14p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s14p5-at-24to96-m14.docx",
+      "sha256": "d245ae53d84de2bcc8538f99dadab54ed92c5bf99dac2cb3ee0f1729435aff71",
+      "pdf": "word-windows-long-size-italic-s14p5-at-24to96-m14.pdf",
+      "pdf_sha256": "5f32b6c20bdf592f810619f2c45e36e161af13ec1597ab4a1824c755c652bd35",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s14p5-at-24to96-m14.xps",
+      "xps_sha256": "55e5ed7d7370e419389665c7a5089dbb1ff8f8bf09f7cd0c4bd7a7d10ea9a328",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s14p5-at-24to96-m14.page-001.emf",
+          "sha256": "bfebb69c2e6adb2db6529b98ea401bb99485e53dd0af848b02f8415b62da0d2f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s15-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s15-at-24to96-m14.docx",
+      "sha256": "ebaf48e95dcb53711f65310754b77e2ac7a667c72c10b53bb2252e07c7ea166c",
+      "pdf": "word-windows-long-size-italic-s15-at-24to96-m14.pdf",
+      "pdf_sha256": "d83e9ed46c1fd78e23c13253bd78930a0f41e8ae9b40c29ae920f46826a73d34",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s15-at-24to96-m14.xps",
+      "xps_sha256": "bfea841fa197b9867081b49e54691fdda3c3382ce75e9934d529eca1af6010bc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s15-at-24to96-m14.page-001.emf",
+          "sha256": "b6c50324d96c4753e6a02769310148046bb48864bf96356bbe33edb4a05c4516",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s15p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s15p5-at-24to96-m14.docx",
+      "sha256": "06fe97402eefcc96a7caf8f52bfa4626165631aaf979ba1902383ce06bbb5dac",
+      "pdf": "word-windows-long-size-italic-s15p5-at-24to96-m14.pdf",
+      "pdf_sha256": "6296fc71cffb5852e03324d5f40e4cda321f0b77ac807e65cc00f3fc6ad26a86",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s15p5-at-24to96-m14.xps",
+      "xps_sha256": "e58e2bda5bb05b05da17bb169b0adb518370deaeed90f8f75ba872398f03c8ab",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s15p5-at-24to96-m14.page-001.emf",
+          "sha256": "a87e10273ca438a5e62b581a8bae69daf548ba5189c5013297340805c207a033",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s16-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s16-at-24to96-m14.docx",
+      "sha256": "f01528f71f5800cf07fcdee2c72896f3713a9fe83256202db7fc26c2104b9fca",
+      "pdf": "word-windows-long-size-italic-s16-at-24to96-m14.pdf",
+      "pdf_sha256": "c090ff8ca45b4267c84841657c6b91d31f4d8d89a22b68e11c5894cebfae4ce4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s16-at-24to96-m14.xps",
+      "xps_sha256": "39b6aa5d35030b181983c650df6601068aa189153dcc407f48d82461a83c654b",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s16-at-24to96-m14.page-001.emf",
+          "sha256": "ead6420491c563be69b144cc1f25af416ce294fff616a8bcee432885e69010db",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s13-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s13-m-24to96-m14.docx",
+      "sha256": "1a3d1b79677caac2060dfb2a9be75b1adfecbd95fb10a44562c2be3541dbfaaa",
+      "pdf": "word-windows-long-size-italic-s13-m-24to96-m14.pdf",
+      "pdf_sha256": "984efba844759dc7d49ef6a61fa4a77b148ccb3c6cca7f8ed77aa8b84c45539a",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s13-m-24to96-m14.xps",
+      "xps_sha256": "2f8835bf0a15d518e725d71682ea8c699f5a7659745624bf75d0c22ae59e8b6c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s13-m-24to96-m14.page-001.emf",
+          "sha256": "4a45c89ac7b4a19f16d5b4bab889094e8088d86c56e386ee03c853803592c0fc",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s13p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s13p5-m-24to96-m14.docx",
+      "sha256": "db15db60012ed693a15a9c1b6643f7eaeadb5965f0a922d262fa7bc4d5e58bcf",
+      "pdf": "word-windows-long-size-italic-s13p5-m-24to96-m14.pdf",
+      "pdf_sha256": "9974b82be389132dafd4497c37b5ffba4ee9b0b563debd2a533e4cb4cc9fc9ce",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s13p5-m-24to96-m14.xps",
+      "xps_sha256": "fdc3b51b3e9860ed3f6506028b28039e3353d68a191a67baf810596d2d568705",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s13p5-m-24to96-m14.page-001.emf",
+          "sha256": "20ae36a65e6c6cbb7bc9e156a566401dd6945fbd6b62107ec873706109c71c4f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s14p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s14p5-m-24to96-m14.docx",
+      "sha256": "760aebd23e93517edf3b549b8fa702152db9ad7043b7eea68826749a5323ac0f",
+      "pdf": "word-windows-long-size-italic-s14p5-m-24to96-m14.pdf",
+      "pdf_sha256": "a22faf1ceb0acc9834dc534653c9b5d501b52746fdf0480bcaac3fd761a4603d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s14p5-m-24to96-m14.xps",
+      "xps_sha256": "0ef980581c2694b95cab5106e54d9162edc9a38cb4eaecdcc75e7dfeea8adb53",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s14p5-m-24to96-m14.page-001.emf",
+          "sha256": "95685715b75f2272127e0792ea0244d708bfb64764e14da9e5bf2811ea2ba3fb",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s15-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s15-m-24to96-m14.docx",
+      "sha256": "0ae6de392f010df1d2cbe86e3ccef941b86653ac603d349db20fa485d256f297",
+      "pdf": "word-windows-long-size-italic-s15-m-24to96-m14.pdf",
+      "pdf_sha256": "e3fd6c3f52bdc169294e92d95689dc2ad220cd26cc8fbd9e3a8654c12da6d511",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s15-m-24to96-m14.xps",
+      "xps_sha256": "8ab026a429c221e5fa67b43d1ede7d44a2214b1f121dec4cba4195dd033f1c8a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s15-m-24to96-m14.page-001.emf",
+          "sha256": "e2b9c21efe3a57a7613ae377ceb3c6f81ee033597ccc3996bd307c2bb8240d73",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s15p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s15p5-m-24to96-m14.docx",
+      "sha256": "3ff7401d53365e46eda14687fcb736816d7c67777787760003d3774bf4c22375",
+      "pdf": "word-windows-long-size-italic-s15p5-m-24to96-m14.pdf",
+      "pdf_sha256": "20fbbdfaea1041bb0cd32d5656dfcff7f55dec09f41c3296fd99ab58af3695d4",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s15p5-m-24to96-m14.xps",
+      "xps_sha256": "c773e001f19c14920816bd31871b6106f8e877f1c2ee21d13b0b1d2a8510b927",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s15p5-m-24to96-m14.page-001.emf",
+          "sha256": "4cf34eda2a311c6f37311c65e5b6d4c0a21d131efbf0693c10b24bf4b3074d7a",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-italic-s16-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-italic-s16-m-24to96-m14.docx",
+      "sha256": "39fe29d36a75a53e103865272901070dcd30eb954bcdd6871ffa49502679122d",
+      "pdf": "word-windows-long-size-italic-s16-m-24to96-m14.pdf",
+      "pdf_sha256": "4d2a07f24d55b5109e74675b97dbcaa94da564dd30a757a287af1fcd57a65446",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-italic-s16-m-24to96-m14.xps",
+      "xps_sha256": "bd59b4d08e689096e174a5e4ba5dd5a8da07c5c5a15d3dfa68963eda2620a39c",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-italic-s16-m-24to96-m14.page-001.emf",
+          "sha256": "1ed92177b0def0375d16f740ed6e3784dd64fe122d9bd65fef4c073a908011bf",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s13-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s13-at-24to96-m14.docx",
+      "sha256": "16281b9c922c251d31492bdf89bd9e3c2e59698fa43c5ff72b2437dd74c24357",
+      "pdf": "word-windows-long-size-bolditalic-s13-at-24to96-m14.pdf",
+      "pdf_sha256": "57c7bb657130d3dd47305d63430bc832c98d6e709d52f286180581ec7f8b5f42",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s13-at-24to96-m14.xps",
+      "xps_sha256": "28cb8bf4098bcb3bf5072492f220ab251aaec5f6903e5cb4589e785fee1d4419",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s13-at-24to96-m14.page-001.emf",
+          "sha256": "68b17548f32c80ccd557b5a94b7ad1dd383eaf6829b1392358ad19e936c75c95",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s13p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s13p5-at-24to96-m14.docx",
+      "sha256": "dd79d72939a98a60e644d2ec3030c987b583cfc045af760065846514027ad8fd",
+      "pdf": "word-windows-long-size-bolditalic-s13p5-at-24to96-m14.pdf",
+      "pdf_sha256": "dbd6967a32a2e491e806f0cc433120da1dcacb3736383b789e1683064479bdc6",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s13p5-at-24to96-m14.xps",
+      "xps_sha256": "97f5ac569519010cd800694fa7cccec89c898463f1961d68881de1b436871f48",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s13p5-at-24to96-m14.page-001.emf",
+          "sha256": "f85fadebfbfd29cf7de98636c48c9c96b01534a3e0066f38520d45e91b2c698b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s14p5-at-24to96-m14.docx",
+      "sha256": "4cdf7e834161da1852073ba37d1ca3e3707747b8335288b2e0042f1b806920fc",
+      "pdf": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14.pdf",
+      "pdf_sha256": "77138ba3d47e3ccc6fc4e20f9a745ed7b6b038089ac07cb32bffcc09aaa4cc17",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14.xps",
+      "xps_sha256": "64ffa771ae1681f4497c025f43807cca0f5815f185ea9ed4f6292bd35388e8e9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14.page-001.emf",
+          "sha256": "469a559db99993359fa64573341a3e844807dee738f3bc9140e982593e5d1c94",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s15-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s15-at-24to96-m14.docx",
+      "sha256": "ef55bad2f5b507e7883a334fe49f207912d30d0a6a3653d61cc02c2631cdee9b",
+      "pdf": "word-windows-long-size-bolditalic-s15-at-24to96-m14.pdf",
+      "pdf_sha256": "f87d901ecdbcb09bf3a1a0f3920c2bdff804d1bdc4152366cd5097d06ba0f48d",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s15-at-24to96-m14.xps",
+      "xps_sha256": "827098d308cc5261e1701c3e1fa0768928889ece536bc7bb48357b16abd282cc",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s15-at-24to96-m14.page-001.emf",
+          "sha256": "9adc96ffa173226b0bc57847fc84d9a1ee59bf5d2d9f88cb75e819a34c703394",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s15p5-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s15p5-at-24to96-m14.docx",
+      "sha256": "93e77380ef65495fed0053386cfb83b805d58b6c9a5588b6e1399b00747032d8",
+      "pdf": "word-windows-long-size-bolditalic-s15p5-at-24to96-m14.pdf",
+      "pdf_sha256": "ff0f72c8cbe69e87087d9a6888f92f61b6b354381488a17d6933b8bf64ea6cbd",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s15p5-at-24to96-m14.xps",
+      "xps_sha256": "038320383bcffae620487dd66e9f7c88d414cf9ac13e0813c5c472f29f91e0a4",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s15p5-at-24to96-m14.page-001.emf",
+          "sha256": "a89202cfb204016896beddf42f20ac488a9d0fddafa8a79fe41c3174feefbe5f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s16-at-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s16-at-24to96-m14.docx",
+      "sha256": "0887046a921dc42427606e475446b8d9b04224b36210c0cabe68a37c2eff68ca",
+      "pdf": "word-windows-long-size-bolditalic-s16-at-24to96-m14.pdf",
+      "pdf_sha256": "9dd75a9405d2d1cc36228c19fcada756b5754a89e4fb244465b8eeb87d0f7017",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s16-at-24to96-m14.xps",
+      "xps_sha256": "534687c31edb04fa77eda61c03bd3fadbae26d856d7835d2ed5fde239c4110e1",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s16-at-24to96-m14.page-001.emf",
+          "sha256": "f1b372e344800f0005f6fce1c030f1f1c9f7e2e5472b06a35b55b04929e5e0b5",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s13-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s13-m-24to96-m14.docx",
+      "sha256": "eda48f551b5576fff2106ba596ad02b39e3a6a545420745953ffd1d66ba0d693",
+      "pdf": "word-windows-long-size-bolditalic-s13-m-24to96-m14.pdf",
+      "pdf_sha256": "ab66741fe94fe7e8accb7768e88f4421160b57b80923c6e6cc01e1273dbe167c",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s13-m-24to96-m14.xps",
+      "xps_sha256": "b2b980bd401639d43bcbaaf24039948aa12a96f2a2f6e9d200c9cacefd9e100a",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s13-m-24to96-m14.page-001.emf",
+          "sha256": "df809f71692feddd24e43e8e8a15b993ba801619f09a3ce3de3b93b91746ec9b",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s13p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s13p5-m-24to96-m14.docx",
+      "sha256": "6eab8987c3e27c051613516754c38053db2a0491bd2b8919c41b0e9177402332",
+      "pdf": "word-windows-long-size-bolditalic-s13p5-m-24to96-m14.pdf",
+      "pdf_sha256": "e644d130a19e40f62ec5ab474b132dadc34159a8ed293789878f10a413673ea2",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s13p5-m-24to96-m14.xps",
+      "xps_sha256": "9a435bec2973c7d87e810fcef0f95395df6c1748f24752c0d28a079fcb82e644",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s13p5-m-24to96-m14.page-001.emf",
+          "sha256": "906e66bf2d8b1991fca1f64cc7d64e40164a96cee1563c91d788c4dfcdf1241e",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s14p5-m-24to96-m14.docx",
+      "sha256": "b06b05b85303c89aaefa9b3b9eb27b26c4ee825bef6717b96143e515d888efe3",
+      "pdf": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14.pdf",
+      "pdf_sha256": "3c43249557b94cf79d760cebc05bc36a569db24a140a0b2bb80cf0b2c927d3e1",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14.xps",
+      "xps_sha256": "7cbee52eccf09f2263e51a669a00232e4d1b2b4765c75fac53163926b23d9a68",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14.page-001.emf",
+          "sha256": "60413b97b27ac24e8b7817ad79a99642230e54c3905866dfe292bbbddc88bec1",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s15-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s15-m-24to96-m14.docx",
+      "sha256": "badd16ab966cdd752f86f25c68b6d3d39113f36d04e3fe3d654f00e7c476c9f3",
+      "pdf": "word-windows-long-size-bolditalic-s15-m-24to96-m14.pdf",
+      "pdf_sha256": "f6c07837e8cd02e6141c2a5b1129abb15ec660838bb5f6b3d7e95c17fabd5be0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s15-m-24to96-m14.xps",
+      "xps_sha256": "e0ea6b8c8bb3cf32f420efbbbd4e9cc80ce9ecac17377d06e31d3017f8e15c23",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s15-m-24to96-m14.page-001.emf",
+          "sha256": "66d5eb8642d9f859a5133ce7a19a660a7269b724a532dc0208b80845547fcf85",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s15p5-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s15p5-m-24to96-m14.docx",
+      "sha256": "f8fd6b25905e70c77c5e536e4b7c69764c4353c95596419b4057386623da3df9",
+      "pdf": "word-windows-long-size-bolditalic-s15p5-m-24to96-m14.pdf",
+      "pdf_sha256": "50300b6751ab8dbdf4006658b50ba105fcb1adb7b1db4d14e7bc56b7144422b0",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s15p5-m-24to96-m14.xps",
+      "xps_sha256": "f0655b36d0967e81fc01e8873155535c818d1b976f9f5ce34691a24dafa59fb9",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s15p5-m-24to96-m14.page-001.emf",
+          "sha256": "9668d5e907c15368dadb712e4d6cf2df9de41cd9dca6ca3c3e5e8ea6e8366e60",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-long-size-bolditalic-s16-m-24to96-m14",
+      "source": "tmp\\w20-long-size-inputs\\word-windows-long-size-bolditalic-s16-m-24to96-m14.docx",
+      "sha256": "9432490a1ead7eead3520c241c18f08329d8f602d789d92fc98e7151e73f7639",
+      "pdf": "word-windows-long-size-bolditalic-s16-m-24to96-m14.pdf",
+      "pdf_sha256": "9d50c427894702f45dd916dfe86f7812d721023fbfb703c002eef2ab6d771db8",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-long-size-bolditalic-s16-m-24to96-m14.xps",
+      "xps_sha256": "1d98798febe577ae7197f2462b7dcebb649c95b7b3f2623d5ac0cb29b89136b0",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-long-size-bolditalic-s16-m-24to96-m14.page-001.emf",
+          "sha256": "7c47f26d7f922c42397850a96eadaca866cb6e79f6661cba5c1e28b9d22b569f",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

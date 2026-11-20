@@ -1,0 +1,80 @@
+{
+  "schema": 2,
+  "platform": "windows",
+  "capture_id": "20261120T103121354Z-823e7b57",
+  "captured_at_utc": "2026-11-20T10:31:21.3664952Z",
+  "status": "complete",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "print_environment": {
+    "active_printer": "Microsoft Print to PDF",
+    "print_backgrounds": false
+  },
+  "os": "Microsoft Windows 10.0.26200",
+  "os_architecture": "X64",
+  "documents": [
+    {
+      "name": "word-windows-grid-disabled-italic-s14-at-24to96-m14",
+      "source": "tmp\\w20-grid-disabled-inputs\\word-windows-grid-disabled-italic-s14-at-24to96-m14.docx",
+      "sha256": "9ae1b8749de1be3fdbbd29f4c1c113922ccdae110b661c8337636a1db3964af2",
+      "pdf": "word-windows-grid-disabled-italic-s14-at-24to96-m14.pdf",
+      "pdf_sha256": "bc178d5c306bb9f69471271ce3bab79be90d2a2fb6c81353d48c9d54498dceda",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-grid-disabled-italic-s14-at-24to96-m14.xps",
+      "xps_sha256": "d9479d0d0e84245d308d0aab5817612a3eff69e903ee74a47d5548bbe4c92962",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-grid-disabled-italic-s14-at-24to96-m14.page-001.emf",
+          "sha256": "f4c53cc53e24f488adf95130090676a2cec48ecd0b5b1181be7a549af59d53f1",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    },
+    {
+      "name": "word-windows-grid-disabled-bolditalic-s14-m-24to96-m14",
+      "source": "tmp\\w20-grid-disabled-inputs\\word-windows-grid-disabled-bolditalic-s14-m-24to96-m14.docx",
+      "sha256": "073aeb02ccd9343e16dee4c3d604040dece6cd66e2f540221c68ab8301a4eb33",
+      "pdf": "word-windows-grid-disabled-bolditalic-s14-m-24to96-m14.pdf",
+      "pdf_sha256": "4ba4335f86c187fd3173f9f7a1d6d4fa8fd26f48ec81ff8f31eb7dab2eb79f42",
+      "pages": 1,
+      "compatibility_mode": 14,
+      "password_provided": false,
+      "open_mode": "normal-read-only",
+      "xps": "word-windows-grid-disabled-bolditalic-s14-m-24to96-m14.xps",
+      "xps_sha256": "cfaa8c14aaa651c936f2c4075e95b699462c9ff716a09480fb483b2e30f49228",
+      "word_view": {
+        "hide_comments_requested": false,
+        "show_comments": true,
+        "show_revisions_and_comments": true,
+        "revisions_mode": 2
+      },
+      "metafiles": [
+        {
+          "page": 1,
+          "file": "word-windows-grid-disabled-bolditalic-s14-m-24to96-m14.page-001.emf",
+          "sha256": "4e85fdddc3090d8a5238b18d3dd8614a268de7b31139a83d93d2a2c3f6a9f035",
+          "width_pt": 1584.0,
+          "height_pt": 841.9,
+          "geometry_source": "goto-physical-page"
+        }
+      ]
+    }
+  ]
+}

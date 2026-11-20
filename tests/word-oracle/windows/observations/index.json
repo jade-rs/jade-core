@@ -58203,6 +58203,386 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T104052095Z-7a04f88d",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T104052095Z-7a04f88d.zip",
+      "archive_sha256": "7006147abccc24b24bc4927910f5e657766be8a0f5c68b7b3dcd5b029152b47a",
+      "capture_sha256": "f0c77e4658e885ff74be259ccd78f557c638f066e81eaf084cf888fe5bc4b7f3",
+      "documents": [
+        {
+          "name": "word-windows-long-size-regular-s13-at-24to96-m14",
+          "source_sha256": "6f98c7dfacc2188649e032e7349ee6844e132c3576a5b78add4ece7030bd901d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s13p5-at-24to96-m14",
+          "source_sha256": "6bbd12da8f75f4eb3fae0d0c27b7331ec8d3d60a915c6fb0c8cd02e3fa85e8a2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s14p5-at-24to96-m14",
+          "source_sha256": "0fe8dc8e9dd255cfb8f25b32f2dff1112d3138a7cc65a77af3887688f0869aea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s15-at-24to96-m14",
+          "source_sha256": "42dc4b70ec2c000bb5392afc56a249f983c760c94cfa5a277b186800e5d1a2d3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s15-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s15p5-at-24to96-m14",
+          "source_sha256": "4bbd31228d498c5508820ee17464c6a56c0aa0cdaeb61dc091e608356da464b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s15p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s16-at-24to96-m14",
+          "source_sha256": "782ff2994236766ac6d44222eec15e40e362fbe1d82ab1b49e76c6a8e3088a8c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s16-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s13-m-24to96-m14",
+          "source_sha256": "0df4f2c7cb53c9a421e8e3fd9990b5cd8b7ba12c441b9e5c91c01de390f1dbb3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s13p5-m-24to96-m14",
+          "source_sha256": "261d0e5578be9f4621450021872c5211d7826c03bfdb0534acfad0ba920a3206",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s13p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s14p5-m-24to96-m14",
+          "source_sha256": "bd0073a6f0547d68f8264ace7f131099eed3851b7d81e0107aba2a8f50b8b3f2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s15-m-24to96-m14",
+          "source_sha256": "0da64afb2f22c2c060e0f1051112bfa4be487ab12e682565ef3252a0b8646ae3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s15-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s15p5-m-24to96-m14",
+          "source_sha256": "eaf8b0164cc574c3470c475a605eff48c6ce7753c0c0104fc4a14c15970e48f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s15p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-regular-s16-m-24to96-m14",
+          "source_sha256": "8ce726f62b27f1e0336d51afe65766ebd46e0ceb3337f032b6f9f5ed2d5352b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-regular-s16-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s13-at-24to96-m14",
+          "source_sha256": "46017f269dc9fc554eb31b4986ac111c1db58895620ebd86657ad7ebd9edac75",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s13p5-at-24to96-m14",
+          "source_sha256": "c68ccbdae339b62a40aee30e2649ebbcebf0cb12b0b06b560652214a8006b8cc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s14p5-at-24to96-m14",
+          "source_sha256": "bb30f6c04679e717e0d25ad6881cd843325da0dd0f9c9d5b97b0df2ff2763f10",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s15-at-24to96-m14",
+          "source_sha256": "a6dcc0c591999e6255fd8d5807a3bc7cf03f580d91487440084689c5e030d0a4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s15-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s15p5-at-24to96-m14",
+          "source_sha256": "e1f1dc9e576feb7f5cef4d4acc78cc19d59872decdf39870c733faec5340d582",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s15p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s16-at-24to96-m14",
+          "source_sha256": "029190c3ace2899d4a59f3821daf5d9f0d70490a383eafffdc09787884d86922",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s16-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s13-m-24to96-m14",
+          "source_sha256": "0a8c2800e8240470a30cdb3ed4304bdd30c2b6fc7dbe3df39953c5b729abd801",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s13p5-m-24to96-m14",
+          "source_sha256": "6568a687a5ec100658ae62058b7413fff32fe3e3f64b0dcabbc725dec0c48e1e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s13p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s14p5-m-24to96-m14",
+          "source_sha256": "1eee7f02dec93f85b65ef7ae8dfe9cace1e35fe557e5eb3d0d32e18cce30b3f8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s15-m-24to96-m14",
+          "source_sha256": "a2e73a3ec1d5652e3193cc1a595fde887ed47b044e6a04ea6a7838d6c0aa63e2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s15-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s15p5-m-24to96-m14",
+          "source_sha256": "af553e4af7d06164ea641d4a74cb35096256b21e3a4c42ff62804f8f9fcc736f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s15p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bold-s16-m-24to96-m14",
+          "source_sha256": "30329aff365d628ad031895df8cdd3fdfce778f927b3f8aa9833446e0e2588e0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bold-s16-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s13-at-24to96-m14",
+          "source_sha256": "8353288b84f2a2fc1b15674706fe887d95185a58dfa3b8d78901c5703757540c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s13p5-at-24to96-m14",
+          "source_sha256": "a4e2b17eceead8ec6a4c9696975014a3979d140f844a2e39cc1a5dcdd24e3b1d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s14p5-at-24to96-m14",
+          "source_sha256": "d245ae53d84de2bcc8538f99dadab54ed92c5bf99dac2cb3ee0f1729435aff71",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s15-at-24to96-m14",
+          "source_sha256": "ebaf48e95dcb53711f65310754b77e2ac7a667c72c10b53bb2252e07c7ea166c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s15-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s15p5-at-24to96-m14",
+          "source_sha256": "06fe97402eefcc96a7caf8f52bfa4626165631aaf979ba1902383ce06bbb5dac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s15p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s16-at-24to96-m14",
+          "source_sha256": "f01528f71f5800cf07fcdee2c72896f3713a9fe83256202db7fc26c2104b9fca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s16-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s13-m-24to96-m14",
+          "source_sha256": "1a3d1b79677caac2060dfb2a9be75b1adfecbd95fb10a44562c2be3541dbfaaa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s13p5-m-24to96-m14",
+          "source_sha256": "db15db60012ed693a15a9c1b6643f7eaeadb5965f0a922d262fa7bc4d5e58bcf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s13p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s14p5-m-24to96-m14",
+          "source_sha256": "760aebd23e93517edf3b549b8fa702152db9ad7043b7eea68826749a5323ac0f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s15-m-24to96-m14",
+          "source_sha256": "0ae6de392f010df1d2cbe86e3ccef941b86653ac603d349db20fa485d256f297",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s15-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s15p5-m-24to96-m14",
+          "source_sha256": "3ff7401d53365e46eda14687fcb736816d7c67777787760003d3774bf4c22375",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s15p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-italic-s16-m-24to96-m14",
+          "source_sha256": "39fe29d36a75a53e103865272901070dcd30eb954bcdd6871ffa49502679122d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-italic-s16-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s13-at-24to96-m14",
+          "source_sha256": "16281b9c922c251d31492bdf89bd9e3c2e59698fa43c5ff72b2437dd74c24357",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s13p5-at-24to96-m14",
+          "source_sha256": "dd79d72939a98a60e644d2ec3030c987b583cfc045af760065846514027ad8fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s14p5-at-24to96-m14",
+          "source_sha256": "4cdf7e834161da1852073ba37d1ca3e3707747b8335288b2e0042f1b806920fc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s15-at-24to96-m14",
+          "source_sha256": "ef55bad2f5b507e7883a334fe49f207912d30d0a6a3653d61cc02c2631cdee9b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s15-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s15p5-at-24to96-m14",
+          "source_sha256": "93e77380ef65495fed0053386cfb83b805d58b6c9a5588b6e1399b00747032d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s15p5-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s16-at-24to96-m14",
+          "source_sha256": "0887046a921dc42427606e475446b8d9b04224b36210c0cabe68a37c2eff68ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s16-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s13-m-24to96-m14",
+          "source_sha256": "eda48f551b5576fff2106ba596ad02b39e3a6a545420745953ffd1d66ba0d693",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s13p5-m-24to96-m14",
+          "source_sha256": "6eab8987c3e27c051613516754c38053db2a0491bd2b8919c41b0e9177402332",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s13p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s14p5-m-24to96-m14",
+          "source_sha256": "b06b05b85303c89aaefa9b3b9eb27b26c4ee825bef6717b96143e515d888efe3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s14p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s15-m-24to96-m14",
+          "source_sha256": "badd16ab966cdd752f86f25c68b6d3d39113f36d04e3fe3d654f00e7c476c9f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s15-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s15p5-m-24to96-m14",
+          "source_sha256": "f8fd6b25905e70c77c5e536e4b7c69764c4353c95596419b4057386623da3df9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s15p5-m-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-size-bolditalic-s16-m-24to96-m14",
+          "source_sha256": "9432490a1ead7eead3520c241c18f08329d8f602d789d92fc98e7151e73f7639",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/inputs/word-windows-long-size-bolditalic-s16-m-24to96-m14.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T103121354Z-823e7b57",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T103121354Z-823e7b57.zip",
+      "archive_sha256": "41e6c1a36e0ecb175207c63cc7f67b7c3b8a1369c53fec41a6a720e81eb3b326",
+      "capture_sha256": "c3952f21269cac95b20cb63e8052074d900d4221d0c0f6c3858d8555f8d59e89",
+      "documents": [
+        {
+          "name": "word-windows-grid-disabled-italic-s14-at-24to96-m14",
+          "source_sha256": "9ae1b8749de1be3fdbbd29f4c1c113922ccdae110b661c8337636a1db3964af2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T103121354Z-823e7b57/inputs/word-windows-grid-disabled-italic-s14-at-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-grid-disabled-bolditalic-s14-m-24to96-m14",
+          "source_sha256": "073aeb02ccd9343e16dee4c3d604040dece6cd66e2f540221c68ab8301a4eb33",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T103121354Z-823e7b57/inputs/word-windows-grid-disabled-bolditalic-s14-m-24to96-m14.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -58452,6 +58832,14 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T101328742Z-8adf74bd/word-output-font-facts.json",
       "sha256": "04a50c54ffa35d2607f5edf423dcbdc7ff86313c92d3f2f7512b4ce099b2289f"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T104052095Z-7a04f88d/word-output-font-facts.json",
+      "sha256": "2ce5729c2a2043f73e7984e6539110754aa476da40ddc7bcb4632813e0628697"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T103121354Z-823e7b57/word-output-font-facts.json",
+      "sha256": "f5684758ba4f1be3ae7e3c80fc7cf72b73390856a9b47faa1559e6f6ae4e4f2a"
     }
   ]
 }
