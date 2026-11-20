@@ -12225,12 +12225,17 @@ impl WordDocument {
     }
 
     /// The open session as a change recorded now is stamped with. Without a
-    /// fixed `date` it takes the host clock's current minute, so each change
-    /// is dated when it is made, as Word does; read-back revisions keep theirs.
+    /// fixed `date` it takes the host clock's current minute (`w:date`, and
+    /// the UTC instant as `w16du:dateUtc` unless that is fixed), so each
+    /// change is dated when it is made, as Word does; read-back revisions
+    /// keep theirs.
     pub fn recording_revision_session(&self) -> Option<RevisionSession> {
         let mut session = self.revision_session.clone()?;
         if session.date.is_none() {
-            session.date = crate::revision_clock::revision_date_now();
+            if let Some((date, date_utc)) = crate::revision_clock::revision_date_now() {
+                session.date = Some(date);
+                session.date_utc.get_or_insert(date_utc);
+            }
         }
         Some(session)
     }

@@ -10,21 +10,25 @@ use crate::commands::set_paragraph_alignment::SetParagraphAlignmentCommand;
 use crate::commands::table_structure::{TableStructureCommand, TableStructureOp};
 use crate::commands::{Command, CommandContext, CommandExecutor};
 use crate::field_datetime::FieldDateTime;
-use crate::revision_clock::set_revision_clock;
+use crate::revision_clock::{set_revision_clock, HostTime};
 use futures::executor;
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 
 const EXISTING_DATE: &str = "2001-02-03T04:05:00Z";
 
-fn host_clock() -> FieldDateTime {
-    FieldDateTime {
-        year: 2026,
-        month: 11,
-        day: 20,
-        hour: 21,
-        minute: 7,
-        second: 42,
-        weekday: 5,
+/// 21:07:42 in Tokyo (UTC+9).
+fn host_clock() -> HostTime {
+    HostTime {
+        local: FieldDateTime {
+            year: 2026,
+            month: 11,
+            day: 20,
+            hour: 21,
+            minute: 7,
+            second: 42,
+            weekday: 5,
+        },
+        utc_offset_seconds: 9 * 3600,
     }
 }
 
@@ -117,6 +121,7 @@ struct Revision {
     path: String,
     author: Option<String>,
     date: Option<String>,
+    date_utc: Option<String>,
 }
 
 fn revisions(xml: &str) -> Vec<Revision> {
@@ -152,6 +157,7 @@ fn revisions(xml: &str) -> Vec<Revision> {
                 path: format!("{}/{local}", stack.last().map_or("", String::as_str)),
                 author: attribute("w:author"),
                 date: attribute("w:date"),
+                date_utc: attribute("w16du:dateUtc"),
             });
         }
         if !empty {
@@ -212,6 +218,13 @@ fn every_recorded_revision_is_dated_by_the_host_clock() {
             .as_deref()
             .unwrap_or_else(|| panic!("{} has no w:date:\n{xml}", revision.path));
         assert!(is_word_date(date), "{}: {date}", revision.path);
+        // Word 365 writes the true UTC instant beside the local wall clock;
+        // readers that show a localized time (jade's revisions panel) use it.
+        let date_utc = revision
+            .date_utc
+            .as_deref()
+            .unwrap_or_else(|| panic!("{} has no w16du:dateUtc:\n{xml}", revision.path));
+        assert!(is_word_date(date_utc), "{}: {date_utc}", revision.path);
     }
 }
 
@@ -252,9 +265,16 @@ fn a_session_with_a_fixed_date_keeps_it() {
 #[test]
 fn the_host_clock_is_written_to_the_minute_with_a_z_suffix() {
     set_revision_clock(Some(host_clock));
-    let date = crate::revision_clock::revision_date_now();
+    let stamp = crate::revision_clock::revision_date_now();
     set_revision_clock(None);
-    // Word's local wall clock with `Z` (the comment convention), seconds
-    // dropped as Word does for revisions.
-    assert_eq!(date.as_deref(), Some("2026-11-20T21:07:00Z"));
+    // `w:date` is Word's local wall clock with `Z` (the comment convention),
+    // `w16du:dateUtc` the true UTC instant; seconds dropped as Word does for
+    // revisions.
+    assert_eq!(
+        stamp,
+        Some((
+            "2026-11-20T21:07:00Z".to_string(),
+            "2026-11-20T12:07:00Z".to_string()
+        ))
+    );
 }

@@ -7508,23 +7508,25 @@ mod tests {
             .nth(1)
             .and_then(|rest| rest.split('>').next())
             .unwrap_or_else(|| panic!("no w:ins in {xml}"));
-        let date = ins
-            .split("w:date=\"")
-            .nth(1)
-            .and_then(|rest| rest.split('"').next())
-            .unwrap_or_else(|| panic!("w:ins has no w:date: {ins}"));
-        let bytes = date.as_bytes();
-        assert!(
-            bytes.len() == 20
-                && bytes.iter().enumerate().all(|(index, byte)| match index {
-                    4 | 7 => *byte == b'-',
-                    10 => *byte == b'T',
-                    13 | 16 => *byte == b':',
-                    19 => *byte == b'Z',
-                    _ => byte.is_ascii_digit(),
-                }),
-            "{date}"
-        );
+        for attribute in ["w:date", "w16du:dateUtc"] {
+            let date = ins
+                .split(&format!(" {attribute}=\""))
+                .nth(1)
+                .and_then(|rest| rest.split('"').next())
+                .unwrap_or_else(|| panic!("w:ins has no {attribute}: {ins}"));
+            let bytes = date.as_bytes();
+            assert!(
+                bytes.len() == 20
+                    && bytes.iter().enumerate().all(|(index, byte)| match index {
+                        4 | 7 => *byte == b'-',
+                        10 => *byte == b'T',
+                        13 | 16 => *byte == b':',
+                        19 => *byte == b'Z',
+                        _ => byte.is_ascii_digit(),
+                    }),
+                "{attribute}: {date}"
+            );
+        }
     }
 
     /// `accept_revisions` applies the existing tracked changes (keep insertions,
