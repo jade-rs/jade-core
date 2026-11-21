@@ -14,8 +14,36 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 102)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 81)
+        self.assertGreaterEqual(len(cases), 103)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 82)
+
+    def test_legacy_floating_text_edges_keep_original_platform_exports(self):
+        name = 'word-mac-probe-floating-horizontal-14'
+        self.assertNotIn(name, check.INDEPENDENT_OUTPUT_CASES)
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004202539Z-7cf29738')
+        _, source, archive, document, drawing, fonts = next(
+            case for case in check.verify() if case[0] == name)
+        self.assertEqual(fonts, 'original-word-pdf')
+        original = check.read_json(check.ROOT / (
+            'tests/word-oracle/mac-floating-horizontal-20261030/' + name + '.json'))
+        directory = check.ROOT / 'tests/word-oracle/mac-elsa-synthetic' / name
+        manifest = check.read_json(directory / 'manifest.json')
+        self.assertEqual(document['sha256'], original['docx_sha256'])
+        self.assertEqual(manifest['reference']['version'], original['word_version'])
+        self.assertNotIn('build', manifest['reference'])  # Preserve the existing manifest.
+        self.assertEqual(original['word_build'], '16.114.26102345')
+        self.assertEqual(manifest['reference']['pdfSha256'], original['pdf_sha256'])
+        pages = json.loads(gzip.decompress((directory / 'pages.json.gz').read_bytes()))
+        expected = [dict(size=[page['width_pt'], page['height_pt']], header=[],
+                         body=[[g['text'], g['x_pt'], g['baseline_pt']]
+                               for row in page['rows'] for g in row['characters']], footer=[], images=[])
+                    for page in original['pages']]
+        self.assertEqual(pages, expected)
+        with ZipFile(archive) as bundle, tempfile.TemporaryDirectory() as temporary:
+            pdf = Path(temporary) / 'original-word.pdf'
+            pdf.write_bytes(bundle.read(document['pdf']))
+            check.compare(drawing, check.pdf_origins(pdf), name + '/original-EMF-PDF')
+        self.assertTrue(source.is_file())
 
     def test_grid_line_units_preserve_original_mac_and_windows_exports(self):
         cases = {case[0]: case for case in check.verify()}

@@ -9784,8 +9784,9 @@ fn compute_floating_body_table_x(
         page_number,
     )?;
     if compatibility_mode.is_none_or(|mode| mode >= 15)
-        || jade_docx_layout::line_metrics::word_layout_platform()
-            != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || (jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && compatibility_mode != Some(14))
         || table.bidi_visual
         || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
         || table
@@ -9798,9 +9799,11 @@ fn compute_floating_body_table_x(
     {
         return Some(x);
     }
-    // Word Mac mode 14 aligns the first/last cell's text edge for left/right
+    // Word Mac 16.114.2 and Windows 16.0.19127.20936 mode 14 align
+    // the first/last cell's text edge for left/right
     // placement, while mode 15 aligns the table frame. The paired horizontal
     // probes also establish absolute tblpX and asymmetric trailing padding.
+    // Windows modes without a captured probe retain their frame policy.
     // Center stays frame-centered. Other stories/anchors/bidi/spacing retain
     // their policy until a Word capture establishes their text-edge behavior.
     let alignment = table.style.get("table-position-x-align");
@@ -27052,9 +27055,15 @@ mod tests {
             .style
             .insert("table-position-horizontal-anchor".into(), "margin".into());
         set_word_layout_platform(WordLayoutPlatform::Windows);
+        for mode in [12, 13] {
+            assert_eq!(
+                compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(mode)),
+                Some(260.0)
+            );
+        }
         assert_eq!(
             compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
-            Some(260.0)
+            Some(260.0 + points_to_px(12.0))
         );
         set_word_layout_platform(previous);
     }
