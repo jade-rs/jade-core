@@ -259,10 +259,11 @@ pub fn collapsed_spacing_before(before: f64, preceding_after: f64) -> f64 {
     (before - preceding_after.max(0.0)).max(0.0)
 }
 
-/// Select the preceding paragraph's already-consumed after spacing. Mac
-/// section starts retain before spacing, so their adjacent after/before pair
-/// still collapses across the section's page/column transition. Ordinary flow
-/// breaks and Windows retain their physical-continuity requirement.
+/// Select the preceding paragraph's already-consumed after spacing. Section
+/// starts retain before spacing, so their adjacent after/before pair still
+/// collapses across the section's page/column transition. Mac Word 16.114 and
+/// Windows Word 16.0.19127.20936 confirm the same SECTIONPAGES original.
+/// Ordinary flow breaks still require physical continuity.
 pub fn resolve_preceding_body_spacing_after(
     trailing: Option<(usize, usize, f64, f64)>,
     page: usize,
@@ -273,8 +274,7 @@ pub fn resolve_preceding_body_spacing_after(
     trailing
         .filter(|&(trailing_page, trailing_column, trailing_y, _)| {
             (trailing_page == page && trailing_column == column && (trailing_y - y).abs() <= 0.01)
-                || (word_layout_platform() == WordLayoutPlatform::Mac
-                    && at_later_section_flow_start())
+                || at_later_section_flow_start()
         })
         .map_or(0.0, |(_, _, _, after)| after)
 }
@@ -6155,46 +6155,43 @@ mod tests {
     }
 
     #[test]
-    fn preceding_after_crosses_only_mac_section_starts_and_defers_context_checks() {
-        let calls = std::cell::Cell::new(0);
-        let context = |section_start| {
-            let calls = &calls;
-            move || {
-                calls.set(calls.get() + 1);
-                section_start
-            }
-        };
-        set_word_layout_platform(WordLayoutPlatform::Mac);
-        let trailing = Some((0, 0, 100.0, 13.333333));
-        assert_eq!(
-            resolve_preceding_body_spacing_after(trailing, 0, 0, 100.0, context(false)),
-            13.333333
-        );
-        assert_eq!(
-            resolve_preceding_body_spacing_after(None, 1, 0, 0.0, context(true)),
-            0.0
-        );
-        assert_eq!(
-            calls.get(),
-            0,
-            "ordinary continuity and missing snapshots need no section/flow query"
-        );
-        assert_eq!(
-            resolve_preceding_body_spacing_after(trailing, 1, 0, 0.0, context(false)),
-            0.0
-        );
-        assert_eq!(
-            resolve_preceding_body_spacing_after(trailing, 1, 0, 0.0, context(true)),
-            13.333333
-        );
-        assert_eq!(calls.get(), 2);
-        set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert_eq!(
-            resolve_preceding_body_spacing_after(trailing, 1, 0, 0.0, || panic!(
-                "Windows must not query Mac section context"
-            )),
-            0.0
-        );
+    fn preceding_after_crosses_only_section_starts_and_defers_context_checks() {
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let calls = std::cell::Cell::new(0);
+            let context = |section_start| {
+                let calls = &calls;
+                move || {
+                    calls.set(calls.get() + 1);
+                    section_start
+                }
+            };
+            let trailing = Some((0, 0, 100.0, 13.333333));
+            assert_eq!(
+                resolve_preceding_body_spacing_after(trailing, 0, 0, 100.0, context(false)),
+                13.333333
+            );
+            assert_eq!(
+                resolve_preceding_body_spacing_after(None, 1, 0, 0.0, context(true)),
+                0.0
+            );
+            assert_eq!(
+                calls.get(),
+                0,
+                "continuity and missing snapshots need no query"
+            );
+            assert_eq!(
+                resolve_preceding_body_spacing_after(trailing, 1, 0, 0.0, context(false)),
+                0.0
+            );
+            assert_eq!(
+                resolve_preceding_body_spacing_after(trailing, 1, 0, 0.0, context(true)),
+                13.333333
+            );
+            assert_eq!(calls.get(), 2);
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
