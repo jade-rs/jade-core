@@ -21,11 +21,39 @@ pub(crate) fn eligible<P: Painter>(context: &P, text: &str, style: &TextStyle) -
         && !style.imprint
         && style.effects.is_none()
         && !text.is_empty()
-        && text.bytes().all(|value| (b' '..=b'~').contains(&value))
+        && supported_print_text(text)
         && ((style.letter_spacing_px != 0.0
             && style.enable_pair_kerning
             && regular_calibri(&style.font_descriptor_latin_ascii).is_some())
             || realized_print_parts(&style.font_descriptor_latin_ascii, dpi).is_some())
+}
+
+// Limit this extension to individually positioned, nonjoining CJK scalars.
+// Combining marks, variation selectors, complex scripts and feature shaping
+// retain the established path; no font change enters logical measurements.
+fn supported_print_text(text: &str) -> bool {
+    !text.is_empty()
+        && text.chars().all(|c| {
+            let value = u32::from(c);
+            (' '..='~').contains(&c)
+                || (matches!(value, 0x3000..=0x303f | 0x3040..=0x30ff | 0x31f0..=0x31ff
+                | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff
+                | 0xff01..=0xff60 | 0xffe0..=0xffe6 | 0x20000..=0x2ffff)
+                    && !matches!(value, 0x302a..=0x302f | 0x3099..=0x309a))
+        })
+}
+
+fn single_scalar_steps(text: &str, glyphs: &[GlyphRunStep]) -> bool {
+    glyphs.len() == text.chars().count()
+        && glyphs
+            .iter()
+            .zip(text.char_indices())
+            .all(|(glyph, (start, c))| {
+                glyph.font_index == 0
+                    && glyph.text_start as usize == start
+                    && glyph.text_end as usize == start + c.len_utf8()
+                    && glyph.x_offset.is_finite()
+            })
 }
 
 // Source-only physical em realization on the existing print-device grid.
@@ -111,7 +139,11 @@ pub(super) fn try_draw<P: Painter>(
     font_state: &mut FontStateTracker,
     dpi: f64,
 ) -> Result<bool, P::Error> {
-    if eligible(context, text, style) && fonts.len() == 1 && glyphs.len() == text.len() {
+    if eligible(context, text, style)
+        && fonts.len() == 1
+        && single_scalar_steps(text, glyphs)
+        && (text.is_ascii() || !jade_painter::font_features::has_features(&fonts[0]))
+    {
         // Keep the tracked Calibri advance model ahead of font-size-only drawing.
         let tracked_calibri = style.letter_spacing_px != 0.0
             && style.enable_pair_kerning
@@ -119,12 +151,7 @@ pub(super) fn try_draw<P: Painter>(
         if let Some((prefix, suffix, realized)) =
             realized_print_parts(&fonts[0], dpi).filter(|_| !tracked_calibri)
         {
-            if glyphs.iter().enumerate().all(|(index, glyph)| {
-                glyph.font_index == 0
-                    && glyph.text_start as usize == index
-                    && glyph.text_end as usize == index + 1
-                    && glyph.x_offset.is_finite()
-            }) {
+            {
                 let font: Rc<str> = Rc::from(format!("{prefix}{realized:.6}px{suffix}"));
                 font_state.set_font_rc_if_changed(context, &font);
                 for glyph in glyphs {
@@ -285,6 +312,48 @@ mod tests {
         for (source, physical) in [(0.0, 0.0), (f64::NAN, 32.0), (32.0, f64::NAN)] {
             assert!(!super::print_em_matches_source(source, physical));
         }
+    }
+
+    #[test]
+    fn simple_cjk_printing_rejects_joining_and_combining_sequences() {
+        for text in ["ASCII 123", "日本語カナかな。ＡＢ１２", "𠀀"] {
+            assert!(super::supported_print_text(text), "{text}");
+        }
+        for text in [
+            "",
+            "a\t",
+            "a\n",
+            "か\u{3099}",
+            "中\u{302a}",
+            "葛\u{fe00}",
+            "مرحبا",
+            "officeé",
+            "😀",
+        ] {
+            assert!(!super::supported_print_text(text), "{text}");
+        }
+    }
+
+    #[test]
+    fn physical_scalar_origins_validate_utf8_boundaries_and_complete_coverage() {
+        let text = "A日𠀀。";
+        let mut steps: Vec<GlyphRunStep> = text
+            .char_indices()
+            .enumerate()
+            .map(|(i, (start, c))| GlyphRunStep {
+                text_start: start as u32,
+                text_end: (start + c.len_utf8()) as u32,
+                font_index: 0,
+                x_offset: i as f64 * 10.0,
+            })
+            .collect();
+        assert!(super::single_scalar_steps(text, &steps));
+        steps[1].text_end -= 1;
+        assert!(!super::single_scalar_steps(text, &steps));
+        steps[1].text_end += 1;
+        steps[2].x_offset = f64::NAN;
+        assert!(!super::single_scalar_steps(text, &steps));
+        assert!(!super::single_scalar_steps(text, &steps[..3]));
     }
 
     fn glyphs(offsets: &[f64]) -> Vec<GlyphRunStep> {
