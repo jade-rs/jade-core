@@ -1,0 +1,196 @@
+{
+  "schema": 1,
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-long-mixed-regular-s17-alternate-24to96-m14",
+      "style": "regular",
+      "font_size_pt": 17,
+      "pattern": "@m",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s17-alternate-24to96-m14.docx",
+        "sha256": "b7103e76e557db300103c99e30ab333c6189b8cfcd0bedb94578456c44e53bea"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s17-alternate-24to96-m14.pdf",
+        "sha256": "b7150a6d9c10fda24f8a9dc3e62760aa7d3fd077d02efaf656edd546fbf5e17f"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s17-alternate-24to96-m14.xps",
+        "sha256": "84fa3b6d27f6c9d39c8161caa101e133d0d3dcd972025eca0c6471ba94f25475"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-regular-s17-blocks-24to96-m14",
+      "style": "regular",
+      "font_size_pt": 17,
+      "pattern": "@@@@mmmm",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s17-blocks-24to96-m14.docx",
+        "sha256": "07f8ec3829dafa5a124a5529a9f6fc523cb175a0d18c4b3726c65e7a0b83698b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s17-blocks-24to96-m14.pdf",
+        "sha256": "1d3d6eb557cb2ec4ac5fbe2f7a8aa62f6941ce49807455e254287bb9de09e571"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s17-blocks-24to96-m14.xps",
+        "sha256": "26ae0560a4b1de7e1ea1bc6b9ced740391ff68130cb2127ca99502d49dda258f"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-regular-s19-alternate-24to96-m14",
+      "style": "regular",
+      "font_size_pt": 19,
+      "pattern": "@m",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s19-alternate-24to96-m14.docx",
+        "sha256": "54a964d49045d8ac8298aa854dcf0aa05b8d9d0f8fbc99ba1d7ea85700098b77"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s19-alternate-24to96-m14.pdf",
+        "sha256": "2aad7f9a4f4c6705a3242cfa56b6bb216c06097b6227940c8590207b6f7cb3e4"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s19-alternate-24to96-m14.xps",
+        "sha256": "0723d1444e3b713ea9d49b90860799bc628fc0254e5ea6b5ad6482e24f4c4139"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-regular-s19-blocks-24to96-m14",
+      "style": "regular",
+      "font_size_pt": 19,
+      "pattern": "@@@@mmmm",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s19-blocks-24to96-m14.docx",
+        "sha256": "22ea10754e88d7de1b0c58ef0d7f68336de99c9ec95de5640d06b70bebb940c6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s19-blocks-24to96-m14.pdf",
+        "sha256": "b076e66ae45d584fcdf3e5910317043474f1daa9819e8170f471cf2c2702cb73"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-regular-s19-blocks-24to96-m14.xps",
+        "sha256": "60a67c52d2b08d096867b853da1e1777eb71a2b2e5723a346273fc6869a74a00"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-bold-s17-alternate-24to96-m14",
+      "style": "bold",
+      "font_size_pt": 17,
+      "pattern": "@m",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s17-alternate-24to96-m14.docx",
+        "sha256": "b6e257eb6c2a08788a30713a085c1fd01070823b0390fd98fb29d750e470197d"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s17-alternate-24to96-m14.pdf",
+        "sha256": "6e6e0457364abb71d3292a3c098c3a249c0d629d12a71289da2f4e4e649ab162"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s17-alternate-24to96-m14.xps",
+        "sha256": "e46bddea5d8140299b3eaeac2c93a32a91e3394279d63890fd22c158604a77bf"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-bold-s17-blocks-24to96-m14",
+      "style": "bold",
+      "font_size_pt": 17,
+      "pattern": "@@@@mmmm",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s17-blocks-24to96-m14.docx",
+        "sha256": "9a7b160408c4f01131724fc0730489ecca40b37a239c5f5182621852d24d1410"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s17-blocks-24to96-m14.pdf",
+        "sha256": "8904a37d6cbab5fc308b8ae5cdf561f7cc7e12ba77359debe90643d90e650df5"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s17-blocks-24to96-m14.xps",
+        "sha256": "c1354988095a8e8ee7fe6ee96131fccec09e765eaf48f007384e1df132cc0f93"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-bold-s19-alternate-24to96-m14",
+      "style": "bold",
+      "font_size_pt": 19,
+      "pattern": "@m",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s19-alternate-24to96-m14.docx",
+        "sha256": "66f8a1ff4c4b11199e725d2c7c22bc35af4dfb8c5fec0487ca0e6320ff46d924"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s19-alternate-24to96-m14.pdf",
+        "sha256": "2d67f98c0d3d4b55bab8fddf9089111b37f3625ee9a3eaf0b52d6dcd7ae6e046"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s19-alternate-24to96-m14.xps",
+        "sha256": "5493f6d36c5a2b15d0c16850628f52a3c7117ebe18747a3f1463bd301d34e40b"
+      }
+    },
+    {
+      "name": "word-windows-long-mixed-bold-s19-blocks-24to96-m14",
+      "style": "bold",
+      "font_size_pt": 19,
+      "pattern": "@@@@mmmm",
+      "compatibility_mode": 14,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s19-blocks-24to96-m14.docx",
+        "sha256": "4dabb3ed411a2c49473964eb40f14cc5f10c10db205c6448473f44a98451ace9"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/capture.json",
+        "sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s19-blocks-24to96-m14.pdf",
+        "sha256": "71c4cc9b631a9f0b0689f4dd6a44f278c14905028f9515eb0f5db270ba43c473"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-windows-long-mixed-bold-s19-blocks-24to96-m14.xps",
+        "sha256": "01cdc36010aeb547638abcaa1ab6fc835168ca4423fad963aff4b41f8f060e1f"
+      }
+    }
+  ]
+}
