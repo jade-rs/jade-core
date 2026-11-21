@@ -12,6 +12,54 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_five_output_controls_preserve_versioned_same_input_originals(self):
+        from collections import Counter
+        facts = [{'name': 'floating-inside-outside-mac', 'source_sha256': '7928b10c2849bac71a61b74b282cdc700afb1344e77dbc9f1134fdd6c7a79312', 'Mac_pdf_sha256': 'fb8f0d699f67a0d5bdb63ab5147d1daeafd273d54a7ef5d38cee6dfd4588e52e', 'capture_id': '20261114T004143028Z-b4cb9887', 'archive_sha256': 'd1cc6d692fca913877eca1615ee8dfedb9c2f51d83b3268a4c0e6f10c19e9913'}, {'name': 'header-footer-edge-cases-mac', 'source_sha256': 'd6c325b84a42e5df290543623f000e00eafdbdbe72322b2f56fd391ba7a37d69', 'Mac_pdf_sha256': '69c1531d3c0f13639328725bfeedccac891b0e2b8d92209bdcec1ac3fb1e35ce', 'capture_id': '20261114T004143028Z-b4cb9887', 'archive_sha256': 'd1cc6d692fca913877eca1615ee8dfedb9c2f51d83b3268a4c0e6f10c19e9913'}, {'name': 'textbox-body-properties-mac', 'source_sha256': 'a360a8668dc3d745f0d617be078ca16197ab6d58e7c1aee7687802d74e1182cc', 'Mac_pdf_sha256': '415f3a50685e702ef1efa03cb5811ff10172fe9a7773d6e70ee61ead3031c288', 'capture_id': '20261114T004202539Z-7cf29738', 'archive_sha256': '186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78'}, {'name': 'textbox-tall-header-overlap-mac', 'source_sha256': '544e9bedd0958929959c11e46a520afe98f534d39e8466ac9d4f0c5ec05b3898', 'Mac_pdf_sha256': '5c83c9c02678792f3d19083a5da182fcefa8b2e8767e462415b4ffa6a52abc47', 'capture_id': '20261114T004202539Z-7cf29738', 'archive_sha256': '186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78'}, {'name': 'toc-instrtext-edge-cases-mac', 'source_sha256': '3dbe67594235f371babbe632095e927e2d961a975d4830291dc60db57d1a3fba', 'Mac_pdf_sha256': 'baefbb18951e0d57d8080cd5a91199881e807041b9707a4ad97d333554bae746', 'capture_id': '20261114T004202539Z-7cf29738', 'archive_sha256': '186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78'}]
+        verified = {row[0]: row for row in check.verify()}
+        for fact in facts:
+            with self.subTest(name=fact['name']):
+                name = fact['name']
+                self.assertIn(name, check.INDEPENDENT_OUTPUT_CASES)
+                self.assertEqual(check.REQUIRED_CAPTURES[name], fact['capture_id'])
+                _, source, archive, document, drawing, fonts = verified[name]
+                raw = check.read_json(check.ROOT / (
+                    'tests/word-oracle/mac-glyph-corpus-20261019/'
+                    + name.removesuffix('-mac') + '.json'))
+                manifest = check.read_json(source.parent / 'manifest.json')
+                self.assertEqual(raw['docx_sha256'], fact['source_sha256'])
+                self.assertEqual(document['sha256'], fact['source_sha256'])
+                self.assertEqual(raw['word_version'], '16.114')
+                self.assertEqual(raw['word_build'], '16.114.26101123')
+                self.assertEqual(manifest['reference']['version'], raw['word_version'])
+                self.assertEqual(manifest['reference']['build'], raw['word_build'])
+                self.assertEqual(raw['pdf_sha256'], fact['Mac_pdf_sha256'])
+                self.assertEqual(manifest['reference']['pdfSha256'], raw['pdf_sha256'])
+                pdf = check.checked_file(check.ROOT, dict(file=(
+                    'tests/word-oracle/mac-glyph-corpus-20261019/pdf/'
+                    + name.removesuffix('-mac') + '.pdf'), sha256=raw['pdf_sha256']))
+                pages = json.loads(gzip.decompress((source.parent / 'pages.json.gz').read_bytes()))
+                golden = [(i, *g) for i, page in enumerate(pages, 1)
+                          for story in ('header', 'body', 'footer') for g in page[story]]
+                observed = [(g[0], g[1], round(g[2], 3), round(g[3], 3))
+                            for g in check.pdf_origins(pdf)['glyphs'] if not g[1].isspace()]
+                self.assertEqual(Counter(golden), Counter(observed))
+                self.assertTrue(golden)
+                self.assertEqual(fonts, 'original-word-pdf')
+                check.checked_file(check.ROOT, dict(file=archive.relative_to(check.ROOT).as_posix(),
+                                                   sha256=fact['archive_sha256']))
+
+    def test_each_new_output_control_is_required(self):
+        names = ['floating-inside-outside-mac', 'header-footer-edge-cases-mac', 'textbox-body-properties-mac', 'textbox-tall-header-overlap-mac', 'toc-instrtext-edge-cases-mac']
+        original = check.read_json
+        for name in names:
+            with self.subTest(name=name):
+                index = copy.deepcopy(original(check.ROOT / check.INDEX))
+                index['fixtures'] = [c for c in index['fixtures'] if c['mac_case'] != name]
+                with patch.object(check, 'read_json', side_effect=lambda path:
+                                  index if path == check.ROOT / check.INDEX else original(path)):
+                    with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                        check.verify()
+
     def test_tight_polygon_preserves_same_input_versions_and_original_mac_pdf_baselines(self):
         from collections import Counter
         name = 'floating-tight-polygon-mac'
@@ -95,8 +143,8 @@ class PlatformCoordinates(unittest.TestCase):
 
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 106)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 85)
+        self.assertGreaterEqual(len(cases), 111)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 90)
 
     def test_section_start_spacing_preserves_versioned_original_outputs(self):
         name = 'header-footer-sectionpages-mac'

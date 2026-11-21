@@ -20,6 +20,11 @@ from extract_windows_emf import extract, emf_glyphs
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'floating-inside-outside-mac': '20261114T004143028Z-b4cb9887',
+    'header-footer-edge-cases-mac': '20261114T004143028Z-b4cb9887',
+    'textbox-body-properties-mac': '20261114T004202539Z-7cf29738',
+    'textbox-tall-header-overlap-mac': '20261114T004202539Z-7cf29738',
+    'toc-instrtext-edge-cases-mac': '20261114T004202539Z-7cf29738',
     'floating-tight-polygon-mac': '20261114T004143028Z-b4cb9887',
     'word-mac-probe-float-lookahead': '20261114T004202539Z-7cf29738',
     'header-footer-sectionpages-mac': '20261114T004143028Z-b4cb9887',
@@ -132,6 +137,11 @@ REQUIRED_CAPTURES = {
 # Word. Their live layout must match EMF; their actual vector PDF must match
 # Word's PDF. Existing shared screen/PDF cases retain all four assertions.
 INDEPENDENT_OUTPUT_CASES = frozenset({
+    'floating-inside-outside-mac',
+    'header-footer-edge-cases-mac',
+    'textbox-body-properties-mac',
+    'textbox-tall-header-overlap-mac',
+    'toc-instrtext-edge-cases-mac',
     'floating-tight-polygon-mac',
     'header-footer-sectionpages-mac',
     'floating-simple-position-mac',
