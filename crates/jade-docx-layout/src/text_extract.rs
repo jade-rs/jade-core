@@ -3813,8 +3813,9 @@ mod tests {
             paragraph_spacing_after(spacing),
             Some(ParagraphSpacingAmount::Lines(1.0))
         );
-        assert_eq!(spacing_before_px(paragraph, 15.0), 20.0);
-        assert_eq!(spacing_after_px(paragraph, 15.0), 20.0);
+        // A line unit is nominal 12pt (16px), independent of the 15pt font box.
+        assert_eq!(spacing_before_px(paragraph, 15.0), 16.0);
+        assert_eq!(spacing_after_px(paragraph, 15.0), 16.0);
     }
 
     #[test]
