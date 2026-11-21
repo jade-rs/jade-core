@@ -20825,6 +20825,29 @@ where
                 })) {
             self.measure_paragraph_implicit_line_box_points(paragraph, true)?
                 .map(points_to_px)
+        } else if !mac
+            && paragraph_style
+                .east_asian_rules
+                .compatibility_mode
+                .unwrap_or(15)
+                == 14
+            && paragraph_style.word_grid_line_sizing.is_none()
+            && spacing_ref
+                .and_then(|spacing| spacing.line_rule.as_deref())
+                .is_none_or(|rule| rule == "auto")
+            && (current_float_exclusions.iter().any(|f| f.polygon.is_some())
+                || self.active_float_exclusions.iter().any(|f| {
+                    f.page_number == self.current_page_number
+                        && f.bounds.bottom > self.current_y
+                        && f.bounds.polygon.is_some()
+                }))
+        {
+            // Legacy Windows contour wrapping samples the font's single-line
+            // box. Additional paragraph leading advances the next baseline,
+            // but does not widen this line's tight/through exclusion.
+            self.paragraph_word_font_lines_pt(paragraph)?
+                .1
+                .map(points_to_px)
         } else {
             None
         };

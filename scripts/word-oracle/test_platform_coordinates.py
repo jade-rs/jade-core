@@ -12,6 +12,48 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_tight_polygon_preserves_same_input_versions_and_original_mac_pdf_baselines(self):
+        from collections import Counter
+        name = 'floating-tight-polygon-mac'
+        self.assertIn(name, check.INDEPENDENT_OUTPUT_CASES)
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004143028Z-b4cb9887')
+        _, source, archive, document, drawing, fonts = next(
+            row for row in check.verify() if row[0] == name)
+        original = check.read_json(check.ROOT / (
+            'tests/word-oracle/mac-glyph-corpus-20261019/floating-tight-polygon.json'))
+        manifest = check.read_json(source.parent / 'manifest.json')
+        self.assertEqual(original['docx_sha256'], document['sha256'])
+        self.assertEqual(original['word_version'], '16.114')
+        self.assertEqual(original['word_build'], '16.114.26101123')
+        self.assertEqual(manifest['reference']['version'], original['word_version'])
+        self.assertEqual(manifest['reference']['build'], original['word_build'])
+        self.assertEqual(manifest['reference']['pdfSha256'], original['pdf_sha256'])
+        pdf = check.checked_file(check.ROOT, dict(file=(
+            'tests/word-oracle/mac-glyph-corpus-20261019/pdf/floating-tight-polygon.pdf'),
+            sha256=original['pdf_sha256']))
+        pages = json.loads(gzip.decompress((source.parent / 'pages.json.gz').read_bytes()))
+        golden = [(i, *g) for i, page in enumerate(pages, 1)
+                  for story in ('header', 'body', 'footer') for g in page[story]]
+        # An old JSON row groups two baselines only0.24pt apart. The unchanged
+        # Mac golden preserves the PDF's actual per-character origins.
+        observed = [(g[0], g[1], round(g[2], 3), round(g[3], 3))
+                    for g in check.pdf_origins(pdf)['glyphs'] if not g[1].isspace()]
+        self.assertEqual(Counter(golden), Counter(observed))
+        self.assertEqual(len(golden), 432)
+        self.assertEqual(fonts, 'original-word-pdf')
+        self.assertEqual(document['pages'], 1)
+        self.assertTrue(archive.is_file())
+
+    def test_tight_polygon_version_expectation_cannot_be_removed(self):
+        original = check.read_json
+        index = copy.deepcopy(original(check.ROOT / check.INDEX))
+        index['fixtures'] = [case for case in index['fixtures']
+                             if case['mac_case'] != 'floating-tight-polygon-mac']
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == check.ROOT / check.INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                check.verify()
+
     def test_float_lookahead_keeps_same_input_originals_and_all_four_planes(self):
         name = 'word-mac-probe-float-lookahead'
         self.assertNotIn(name, check.INDEPENDENT_OUTPUT_CASES)
@@ -53,8 +95,8 @@ class PlatformCoordinates(unittest.TestCase):
 
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 105)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 84)
+        self.assertGreaterEqual(len(cases), 106)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 85)
 
     def test_section_start_spacing_preserves_versioned_original_outputs(self):
         name = 'header-footer-sectionpages-mac'

@@ -2638,6 +2638,32 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "floating-tight-polygon-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-tight-polygon-mac/source.docx",
+        "sha256": "881e9c6a971ce1a2a8c53b3bf884bb06a44623ca9be809f874ad19e6eddb13f8"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-tight-polygon-mac/manifest.json",
+        "sha256": "346b46698e4ad9c7741c54be5d7baf925803c0659156787ae297fb3b343f4d25"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004143028Z-b4cb9887",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004143028Z-b4cb9887.zip",
+            "sha256": "d1cc6d692fca913877eca1615ee8dfedb9c2f51d83b3268a4c0e6f10c19e9913"
+          },
+          "capture_sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6",
+          "fixture": "ww14-floating-tight-polygon-881e9c6a",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
     }
   ]
 }
