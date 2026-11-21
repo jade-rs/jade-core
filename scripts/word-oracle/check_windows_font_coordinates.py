@@ -8,15 +8,16 @@ import hashlib
 from pathlib import Path
 import subprocess
 import sys
+from zipfile import ZipFile
 
 from check_platform_coordinates import (
-    ROOT, checked_file, compare, extract_fonts, pdf_origins, read_json, require,
+    ROOT, archive_reference, checked_file, compare, extract_fonts, pdf_origins, read_json, require,
 )
 from extract_windows_emf import extract
 
 INDEX = Path('tests/word-oracle/windows/font-coordinates.json')
 # Changing the established coverage requires an explicit change to this assertion.
-INDEX_SHA256 = '7b87ee371686dbf9dc19ccf3af22cc8fbe1fdd1213a3c2ddf01db0a9f3426c7f'
+INDEX_SHA256 = 'cf965d5581f8edd618b3b676c5f85f9d87dc513974c8a12dc83e72cd92beadcf'
 
 
 def has_visible_vector_ink(pdf):
@@ -51,7 +52,7 @@ def verify(root=ROOT):
             'Windows font coverage/expectations changed')
     index = read_json(root / INDEX)
     require(index['schema'] == 1, 'Unknown font registry schema')
-    require(len(index['fixtures']) == 1971, 'Windows font coverage removed')
+    require(len(index['fixtures']) == 1972, 'Windows font coverage removed')
     cases, names, drawings = [], set(), {}
     for case in index['fixtures']:
         require('no_visible_vector_ink' not in case
@@ -63,32 +64,44 @@ def verify(root=ROOT):
         names.add(name)
         source = checked_file(root, case['source'])
         manifest = checked_file(root, case['capture'])
-        reference = checked_file(root, case['drawing_reference'])
-        require(reference.parent == manifest.parent, 'Wrong drawing capture')
-        capture = read_json(manifest)
-        require(capture['word']['product_version'] == case['word_product_version'],
-                'Wrong Word version')
-        if manifest not in drawings:
-            drawings[manifest] = extract(manifest)
-            require(read_json(reference) == drawings[manifest],
-                    'Drawing origins differ from original Word EMFs')
+        archived = manifest.suffix == '.zip'
+        if archived:
+            require('font_program_source' not in case,
+                    'Archived font fixtures require original PDF font programs')
+            _, capture, document, drawing = archive_reference(
+                root, {'source': case['source']}, dict(case, archive=case['capture']))
+        else:
+            reference = checked_file(root, case['drawing_reference'])
+            require(reference.parent == manifest.parent, 'Wrong drawing capture')
+            capture = read_json(manifest)
+            require(capture['word']['product_version'] == case['word_product_version'],
+                    'Wrong Word version')
+            if manifest not in drawings:
+                drawings[manifest] = extract(manifest)
+                require(read_json(reference) == drawings[manifest],
+                        'Drawing origins differ from original Word EMFs')
         captured_name = case.get('capture_document_name', name)
-        document, = [d for d in capture['documents'] if d['name'] == captured_name]
+        if archived:
+            require(document['name'] == captured_name, 'Archived font document identity changed')
+        else:
+            document, = [d for d in capture['documents'] if d['name'] == captured_name]
         if 'font_program_source' in case:
             program = case['font_program_source']
             require(program.get('kind') == 'original-xps', 'Unknown original font program source')
             xps = checked_file(root, program)
             require(xps == manifest.parent / document['xps']
                     and program['sha256'] == document['xps_sha256'], 'Wrong original XPS font source')
-        drawing, = [f for f in drawings[manifest]['fixtures'] if f['name'] == captured_name]
+        if not archived:
+            drawing, = [f for f in drawings[manifest]['fixtures'] if f['name'] == captured_name]
         require(document['sha256'] == case['source']['sha256'], 'Wrong Word input')
-        require((manifest.parent / 'inputs' / (captured_name + '.docx')).read_bytes()
-                == source.read_bytes(), 'Archived input changed')
+        if not archived:
+            require((manifest.parent / 'inputs' / (captured_name + '.docx')).read_bytes()
+                    == source.read_bytes(), 'Archived input changed')
         require(len(drawing['glyphs']) == case['glyph_count'], 'Font glyph coverage changed')
         encrypted = source.read_bytes().startswith(bytes.fromhex('D0CF11E0A1B11AE1'))
         require(encrypted == bool(case['public_test_password']), 'Wrong password policy')
         cases.append((case, source, manifest, document, drawing))
-    require(sum(c[0]['glyph_count'] for c in cases) == 196390, 'Total font coverage changed')
+    require(sum(c[0]['glyph_count'] for c in cases) == 197460, 'Total font coverage changed')
     return cases
 
 
@@ -109,7 +122,12 @@ def check_windows(executable, output, root=ROOT):
     for case, source, manifest, document, drawing in verify(root):
         target = output / manifest.parent.name / case['name']
         target.mkdir(parents=True, exist_ok=False)
-        original_pdf = manifest.parent / document['pdf']
+        if manifest.suffix == '.zip':
+            original_pdf = target / 'original-word.pdf'
+            with ZipFile(manifest) as bundle:
+                original_pdf.write_bytes(bundle.read(document['pdf']))
+        else:
+            original_pdf = manifest.parent / document['pdf']
         fonts = target / 'fonts'
         if 'font_program_source' in case:
             from windows_xps_fonts import extract_xps_fonts
@@ -161,4 +179,6 @@ if __name__ == '__main__':
     if args.native_executable:
         check_windows(args.native_executable.resolve(), args.output_directory.resolve())
     else:
-        print(f'Verified {len(verify())} Windows font cases / 196390 glyph origins')
+        cases = verify()
+        print(f'Verified {len(cases)} Windows font cases / '
+              f'{sum(case[0]["glyph_count"] for case in cases)} glyph origins')

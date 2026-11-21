@@ -39721,6 +39721,26 @@
         "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261119T145753302Z-cf8cad83/word-windows-origin-tie-l1710-bold-s12-m14-balance1-paragraph.xps",
         "sha256": "aebf1edfd2c45aae03f346f99fe4b647f8820ff17b286f2e18f46fbb17b12947"
       }
+    },
+    {
+      "name": "word-windows-floating-order-compat14-word16.0.19127.20936",
+      "capture": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004214564Z-4ebc9049.zip",
+        "sha256": "c4af57ec9ebdc3bc52b38791f01fc5a941f0177623b05aac670b3baebf51f8c4"
+      },
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-floating-order/source.docx",
+        "sha256": "32e7c583bddf915d4a036bc87222064b835993347fc52b0f9eabc8c912c6db96"
+      },
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "capture_id": "20261114T004214564Z-4ebc9049",
+      "capture_sha256": "1de41eda50c31dd584217c4575b7ffb599b39b0ccc1c5f66aa185523c9bdc2e5",
+      "fixture": "ww14-word-mac-probe-floating-order-32e7c583",
+      "capture_document_name": "ww14-word-mac-probe-floating-order-32e7c583",
+      "font_source": "original-word-pdf",
+      "glyph_count": 1070,
+      "public_test_password": null
     }
   ]
 }
