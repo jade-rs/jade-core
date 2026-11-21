@@ -2794,6 +2794,9 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         let mut notes = parser.parse_notes_xml(&part.content, b"w:footnote")?;
                         Self::capture_note_run_props(&mut notes, &part.content, "w:footnote");
+                        if let Some(package) = document.package.as_ref() {
+                            Self::resolve_note_images(&mut notes, part, package);
+                        }
                         footnotes_map = notes
                             .into_iter()
                             .map(|note| (note.id.clone(), note))
@@ -2808,6 +2811,9 @@ impl WordDocument {
                     if let Some(part) = document.parts.get(&target_path) {
                         let mut notes = parser.parse_notes_xml(&part.content, b"w:endnote")?;
                         Self::capture_note_run_props(&mut notes, &part.content, "w:endnote");
+                        if let Some(package) = document.package.as_ref() {
+                            Self::resolve_note_images(&mut notes, part, package);
+                        }
                         endnotes_map = notes
                             .into_iter()
                             .map(|note| (note.id.clone(), note))
@@ -7631,6 +7637,32 @@ impl WordDocument {
             package,
             &mut Self::try_convert_metafile_to_svg_data_uri,
         );
+    }
+
+    /// A note's pictures are related from its notes part, not the document.
+    fn resolve_note_images(
+        notes: &mut [crate::document::Note],
+        part: &DocumentPart,
+        package: &OpenXmlPackage,
+    ) {
+        let rel_map: HashMap<&str, &Relationship> = part
+            .relationships
+            .iter()
+            .map(|rel| (rel.id.as_str(), rel))
+            .collect();
+        let mut metafile_cache = HashMap::new();
+        for note in notes {
+            for element in &mut note.body {
+                Self::resolve_images_in_element(
+                    element,
+                    part,
+                    package,
+                    &rel_map,
+                    &mut metafile_cache,
+                    &mut Self::try_convert_metafile_to_svg_data_uri,
+                );
+            }
+        }
     }
 
     fn resolve_images_with_converter(
@@ -15163,6 +15195,89 @@ impl WordDocument {
         self.add_image_media_part(bytes, image_mime, "jade-image")
     }
 
+    /// Stores a picture's media part and relates it from `kind`'s notes part.
+    fn add_note_image_media_part(
+        &mut self,
+        kind: NoteKind,
+        bytes: &[u8],
+        image_mime: InlineImageMime,
+    ) -> Result<Relationship, String> {
+        let part_path = self.ensure_notes_part(kind)?;
+        let media_path = self.next_image_part_path("jade-image", image_mime.extension());
+        let rels_path = self.get_relationships_path(&part_path);
+        let existing = self.read_xml_part_content(&rels_path).unwrap_or_else(|| {
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>"#
+                .to_string()
+        });
+        let mut rels_doc = DocxXmlDocument::parse(&existing).map_err(|err| err.to_string())?;
+        let occupied: HashSet<String> = rels_doc
+            .root()
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) => element
+                    .attributes
+                    .iter()
+                    .find(|attr| attr.name == "Id")
+                    .map(|attr| attr.value.clone()),
+                _ => None,
+            })
+            .collect();
+        let id = (1u32..)
+            .map(|next| format!("rId{next}"))
+            .find(|id| !occupied.contains(id))
+            .ok_or("relationship ids are exhausted")?;
+        // Relative to the notes part when it sits beside the media folder's
+        // parent, else from the package root.
+        let target = match part_path.rsplit_once('/') {
+            Some(("word", _)) => media_path
+                .strip_prefix("word/")
+                .unwrap_or(&media_path)
+                .to_string(),
+            _ => format!("/{media_path}"),
+        };
+        let relationship = Relationship {
+            id,
+            r#type: RelationshipTypes::Image.as_str().to_string(),
+            target,
+            target_mode: None,
+        };
+        let element = rels_doc.create_element(
+            "Relationship",
+            vec![
+                XmlAttribute {
+                    name: "Id".to_string(),
+                    value: relationship.id.clone(),
+                },
+                XmlAttribute {
+                    name: "Type".to_string(),
+                    value: relationship.r#type.clone(),
+                },
+                XmlAttribute {
+                    name: "Target".to_string(),
+                    value: relationship.target.clone(),
+                },
+            ],
+            Vec::new(),
+        );
+        let root_id = rels_doc.root().id;
+        let index = rels_doc.root().children.len();
+        rels_doc
+            .insert_node(root_id, index, XmlNode::Element(element))
+            .map_err(|err| err.to_string())?;
+        let serialized = rels_doc.to_string().map_err(|err| err.to_string())?;
+        self.upsert_xml_part_content(&rels_path, serialized);
+        self.ensure_content_types_has_image(
+            &media_path,
+            image_mime.extension(),
+            image_mime.content_type(),
+        )?;
+        self.removed_parts.remove(&media_path);
+        self.binary_parts.insert(media_path, bytes.to_vec());
+        Ok(relationship)
+    }
+
     fn add_image_media_part(
         &mut self,
         bytes: &[u8],
@@ -15535,7 +15650,15 @@ impl WordDocument {
             ));
         }
 
-        let relationship = self.add_inline_image_media_part(bytes, image_mime)?;
+        // A note's picture is related from the note part, as Word saves it:
+        // its `r:embed` resolves against that part's relationships.
+        let relationship = match self.paragraph_surfaces.get(paragraph_index) {
+            Some(ParagraphSurface::Note { kind, .. }) => {
+                let kind = *kind;
+                self.add_note_image_media_part(kind, bytes, image_mime)?
+            }
+            _ => self.add_inline_image_media_part(bytes, image_mime)?,
+        };
         let inserted_run_index = {
             let zero_width = self.zero_width_runs(paragraph_index);
             let paragraph = self
