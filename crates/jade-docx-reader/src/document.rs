@@ -4,7 +4,7 @@ use crate::numbering::{
     to_letter, to_roman,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::rc::Rc;
 
 mod drawing;
@@ -51,6 +51,13 @@ pub struct Document {
     pub footnotes: BTreeMap<String, Note>,
     #[serde(default)]
     pub endnotes: BTreeMap<String, Note>,
+    /// Notes whose reference is a custom mark (`w:customMarkFollows`): the
+    /// text after the reference stands in for the number, and the note takes
+    /// no number of the sequence.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub custom_mark_footnotes: BTreeSet<String>,
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub custom_mark_endnotes: BTreeSet<String>,
     /// Document-wide note numbering defaults from `settings.xml`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub footnote_properties: Option<NoteNumbering>,

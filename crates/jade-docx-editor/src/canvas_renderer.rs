@@ -4163,6 +4163,10 @@ where
     hyperlink_regions_js_cache: RefCell<Option<JsValue>>,
     footnote_counter: usize,
     footnote_display_map: HashMap<String, usize>,
+    /// The document's custom-mark notes (`w:customMarkFollows`), which take
+    /// no number.
+    custom_mark_footnotes: std::collections::BTreeSet<String>,
+    custom_mark_endnotes: std::collections::BTreeSet<String>,
     footnote_section_map: HashMap<String, usize>,
     footnote_order: Vec<String>,
     /// Surface index of each footnote's first paragraph, mirroring
@@ -7021,6 +7025,11 @@ where
         is_footnote: bool,
         section: usize,
     ) -> String {
+        // Ordinals start at 1: a custom-mark note is registered at 0, and its
+        // authored mark stands in for the number.
+        if ordinal == 0 {
+            return String::new();
+        }
         let numbering = self.note_numbering_for_section(is_footnote, section);
         format_note_marker(
             ordinal,
@@ -7058,6 +7067,35 @@ where
     fn register_note_reference(&mut self, is_footnote: bool, id: &str) -> String {
         let section = self.active_section_index;
         let page = self.current_page_number;
+        // A custom mark is the text after the reference: the note is placed
+        // as any other, but draws no number and takes none of the sequence.
+        let custom_mark = if is_footnote {
+            &self.custom_mark_footnotes
+        } else {
+            &self.custom_mark_endnotes
+        }
+        .contains(id);
+        if custom_mark {
+            let (map, order, sections) = if is_footnote {
+                (
+                    &mut self.footnote_display_map,
+                    &mut self.footnote_order,
+                    &mut self.footnote_section_map,
+                )
+            } else {
+                (
+                    &mut self.endnote_display_map,
+                    &mut self.endnote_order,
+                    &mut self.endnote_section_map,
+                )
+            };
+            if !map.contains_key(id) {
+                map.insert(id.to_string(), 0);
+                order.push(id.to_string());
+            }
+            sections.entry(id.to_string()).or_insert(section);
+            return String::new();
+        }
         let restart = self.note_restart_for_section(is_footnote, section);
         let number = if is_footnote {
             Self::assign_note_marker(
@@ -9475,6 +9513,8 @@ where
             hyperlink_regions_js_cache: RefCell::new(None),
             footnote_counter: 0,
             footnote_display_map: HashMap::new(),
+            custom_mark_footnotes: Default::default(),
+            custom_mark_endnotes: Default::default(),
             footnote_section_map: HashMap::new(),
             footnote_order: Vec::new(),
             footnote_surface_bases: HashMap::new(),
@@ -15344,6 +15384,8 @@ where
         self.footnote_numbering_scope = NoteNumberingScope::default();
         self.endnote_numbering_scope = NoteNumberingScope::default();
         self.footnote_display_map.clear();
+        self.custom_mark_footnotes = document_rc.custom_mark_footnotes.clone();
+        self.custom_mark_endnotes = document_rc.custom_mark_endnotes.clone();
         self.footnote_section_map.clear();
         self.footnote_order.clear();
         self.update_footnote_surface_layout(&document_rc);
