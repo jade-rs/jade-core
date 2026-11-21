@@ -67331,6 +67331,140 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T231446604Z-84e9e3aa",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa.zip",
+      "archive_sha256": "232c284b4fe30e66f47b1ead6716fb19900fe4d3fd6530b62932a667701052bd",
+      "capture_sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da",
+      "documents": [
+        {
+          "name": "word-windows-paper-grid-w11902-h16838-m15",
+          "source_sha256": "20222412dda7550eede3fe150b80e940aac25f5366a280c87eb028834a4d017b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11902-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11903-h16838-m15",
+          "source_sha256": "301a07f0f7cfdf0d5c7bf881c50fc46182155ed7d7c709066985cfe9332009fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11903-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11904-h16838-m15",
+          "source_sha256": "01e56c1f03ce0492b02e4a21830fda8210f00be37c0d425eb9f31fa86bb4b044",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11904-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11905-h16838-m15",
+          "source_sha256": "f910640f7b510f558c77a7c80ff00689270bc34718bdb9474558468c1dee80e0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11905-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16834-m15",
+          "source_sha256": "c0b52e9f17fa41105e5b523ef9a736e6d1c24307f56df85f2e0dc03cee8a093f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16834-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16835-m15",
+          "source_sha256": "ab4382d5d92a27cac171f17ec2a1ea689fa2d1e81db4b7a5378743abd65131b6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16835-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16836-m15",
+          "source_sha256": "dbd466935e1cbeb954f7783bad539825dec98a032698db992b389bb1a8f69813",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16836-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16837-m15",
+          "source_sha256": "042149e62c2be6c35dab976298720502373bc0e84d04e46ddf52c0ec06438646",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16837-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16838-m15",
+          "source_sha256": "dde2f5b1d57cb2607ecb4f0fcabbb91310f97778c3868db9104732852123baec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16839-m15",
+          "source_sha256": "6b2697570d4debf03e34f495349dd2062b3f777e6e891f65c3b618ef0c425848",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16839-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16840-m15",
+          "source_sha256": "100d154f4c3fec09a9755ece96f1e9e3886a7cad613d871829e77fceb2e28f20",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16840-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16841-m15",
+          "source_sha256": "7e012de76c783bc68f335262643854f3cec4722a62f90ec5dbcdab11fc703220",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16841-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11906-h16842-m15",
+          "source_sha256": "f96c767e53721cd3f2c3bc6197df071b47df3b68a284f941258d552b1f8bf953",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16842-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11907-h16838-m15",
+          "source_sha256": "565b7bddd47ebcaafa79177192f29a4b938562898286653909e7d1f7cb590b1a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11907-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11908-h16838-m15",
+          "source_sha256": "1ee84fdc43fc440c891dc0cc7404221afa6647b3d57bf09697e7fe1ec9c188f4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11908-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11909-h16838-m15",
+          "source_sha256": "f8803d2aca0d3b3e38422b312ccc3bb6e9714bca904952a753c44a7094ab5a0e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11909-h16838-m15.docx"
+          ]
+        },
+        {
+          "name": "word-windows-paper-grid-w11910-h16838-m15",
+          "source_sha256": "dac46a276fd29da996c55011bbcbc1f77c13a1e8b56d23999fa4a1b808ca0b82",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11910-h16838-m15.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -67636,6 +67770,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/word-output-font-facts.json",
       "sha256": "f8ac0177a7a061c1c52ec472217918c5aa00b74ef4ce0ab7ff64cd6c71c8efbe"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-output-font-facts.json",
+      "sha256": "199f161423f6435ce851ba6e4fa8b164dff01721ea5d3ed2929a0d7d3f6e0af2"
     }
   ]
 }
