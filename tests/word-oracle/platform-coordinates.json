@@ -2512,6 +2512,56 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "word-mac-probe-grid-line-unit-table",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-grid-line-unit-table/source.docx",
+        "sha256": "0874c0863f297399909abbb0ae3185eef735fe2a468e666707e1397f2f540b2f"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-grid-line-unit-table/manifest.json",
+        "sha256": "7f4669aa30dad31cd8856d05b739f4ba7badd7d179877b2134e73ac564ccf78e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004214564Z-4ebc9049",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004214564Z-4ebc9049.zip",
+            "sha256": "c4af57ec9ebdc3bc52b38791f01fc5a941f0177623b05aac670b3baebf51f8c4"
+          },
+          "capture_sha256": "1de41eda50c31dd584217c4575b7ffb599b39b0ccc1c5f66aa185523c9bdc2e5",
+          "fixture": "ww14-word-mac-probe-grid-line-unit-table-0874c086",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "word-mac-probe-grid-line-unit",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-grid-line-unit/source.docx",
+        "sha256": "abf8769d8b96a6576338abacd7c6c76723d46709bfad500454bfcdd4227a2978"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-grid-line-unit/manifest.json",
+        "sha256": "57a6f3f050d883376fa09d5a36b737684e5730c98c2902bcf06cdfc0cb56a3cc"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004214564Z-4ebc9049",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004214564Z-4ebc9049.zip",
+            "sha256": "c4af57ec9ebdc3bc52b38791f01fc5a941f0177623b05aac670b3baebf51f8c4"
+          },
+          "capture_sha256": "1de41eda50c31dd584217c4575b7ffb599b39b0ccc1c5f66aa185523c9bdc2e5",
+          "fixture": "ww14-word-mac-probe-grid-line-unit-abf8769d",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

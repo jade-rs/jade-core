@@ -591,13 +591,10 @@ fn apply_document_settings(document: &mut Document, settings: &DocumentSettings)
 // spaces `w:afterLines="50"` by 9pt on an 18pt grid, 7.5pt on 15pt and 12pt on
 // 24pt, for `lines`, `linesAndChars` and `snapToChars`, in table cells and
 // with `w:snapToGrid w:val="0"` alike; omitted, `default` and no grid give 6pt.
-// Keep the Windows sizing policy until its physical spacing is verified.
-fn paragraph_spacing_line_unit_pt(line_height_points: f32, grid_pitch_pt: Option<f32>) -> f32 {
-    if crate::line_metrics::word_layout_platform() == crate::line_metrics::WordLayoutPlatform::Mac {
-        grid_pitch_pt.unwrap_or(12.0)
-    } else {
-        line_height_points
-    }
+// Windows Word 16.0.19127.20936 originals (grid-line-unit and
+// grid-line-unit-table) use the same nominal unit, including snapToGrid=0.
+fn paragraph_spacing_line_unit_pt(_line_height_points: f32, grid_pitch_pt: Option<f32>) -> f32 {
+    grid_pitch_pt.unwrap_or(12.0)
 }
 
 pub fn spacing_before_px(paragraph: &jade_docx_reader::Paragraph, line_height_points: f32) -> f64 {
@@ -3698,7 +3695,7 @@ mod tests {
             assert_eq!(spacing_before_px(&paragraph, font_box) * 0.75, 6.0);
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        assert!((spacing_after_px(&paragraph, 20.0) * 0.75 - 6.6).abs() < 1e-5);
+        assert!((spacing_after_px(&paragraph, 20.0) * 0.75 - 3.96).abs() < 1e-5);
     }
 
     #[test]
@@ -3731,7 +3728,7 @@ mod tests {
         assert!((before - 7.92).abs() < 1e-5, "{before}");
         set_word_layout_platform(WordLayoutPlatform::Windows);
         let windows = spacing_after_px_on_grid(&paragraph, 20.0, Some(18.0)) * 0.75;
-        assert!((windows - 10.0).abs() < 1e-5, "{windows}");
+        assert!((windows - 9.0).abs() < 1e-5, "{windows}");
     }
 
     #[test]

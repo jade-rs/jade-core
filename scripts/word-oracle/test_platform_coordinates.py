@@ -14,8 +14,51 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 100)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 79)
+        self.assertGreaterEqual(len(cases), 102)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 81)
+
+    def test_grid_line_units_preserve_original_mac_and_windows_exports(self):
+        cases = {case[0]: case for case in check.verify()}
+        for name in ('word-mac-probe-grid-line-unit',
+                     'word-mac-probe-grid-line-unit-table'):
+            with self.subTest(name=name):
+                self.assertNotIn(name, check.INDEPENDENT_OUTPUT_CASES)
+                self.assertEqual(check.REQUIRED_CAPTURES[name],
+                                 '20261114T004214564Z-4ebc9049')
+                _, source, archive, document, drawing, fonts = cases[name]
+                self.assertEqual(fonts, 'original-word-pdf')
+                original = check.read_json(check.ROOT / (
+                    'tests/word-oracle/mac-probes-20261107/' + name + '.json'))
+                directory = check.ROOT / 'tests/word-oracle/mac-elsa-synthetic' / name
+                manifest = check.read_json(directory / 'manifest.json')
+                self.assertEqual(document['sha256'], original['docx_sha256'])
+                self.assertEqual(manifest['reference']['version'], original['word_version'])
+                self.assertEqual(manifest['reference']['build'], original['word_build'])
+                self.assertEqual(manifest['reference']['pdfSha256'], original['pdf_sha256'])
+                pages = json.loads(gzip.decompress((directory / 'pages.json.gz').read_bytes()))
+                expected = [dict(size=[page['width_pt'], page['height_pt']], header=[],
+                                 body=[[glyph['text'], glyph['x_pt'], glyph['baseline_pt']]
+                                       for row in page['rows'] for glyph in row['characters']],
+                                 footer=[]) for page in original['pages']]
+                self.assertEqual(pages, expected)  # No rounded or native-derived golden.
+                self.assertEqual(len(pages), original['page_count'])
+                with ZipFile(archive) as bundle, tempfile.TemporaryDirectory() as temporary:
+                    pdf = Path(temporary) / 'original-word.pdf'
+                    pdf.write_bytes(bundle.read(document['pdf']))
+                    check.compare(drawing, check.pdf_origins(pdf), name + '/original-EMF-PDF')
+                self.assertTrue(source.is_file())
+
+    def test_grid_line_unit_version_expectations_cannot_be_removed(self):
+        original = check.read_json
+        for name in ('word-mac-probe-grid-line-unit',
+                     'word-mac-probe-grid-line-unit-table'):
+            index = copy.deepcopy(original(check.ROOT / check.INDEX))
+            index['fixtures'] = [case for case in index['fixtures'] if case['mac_case'] != name]
+            with self.subTest(name=name), patch.object(
+                    check, 'read_json', side_effect=lambda path:
+                    index if path == check.ROOT / check.INDEX else original(path)):
+                with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                    check.verify()
 
     def test_windows_kerned_punctuation_keeps_shared_four_plane_assertions(self):
         name = 'word-mac-probe-pairs-kerned'
