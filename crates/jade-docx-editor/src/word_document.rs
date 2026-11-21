@@ -31341,6 +31341,10 @@ impl WordDocument {
         initials: Option<String>,
         date: Option<String>,
     ) -> Result<String, String> {
+        // CT_TrackChange (the base of CT_Comment) requires w:author. An
+        // anonymous comment still needs the attribute; an empty value avoids
+        // inventing an identity and keeps the saved/reloaded model consistent.
+        let author = Some(author.unwrap_or_default());
         let existing = self
             .read_xml_part_content(comments_part_path)
             .ok_or_else(|| format!("missing {comments_part_path}"))?;

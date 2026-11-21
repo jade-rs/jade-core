@@ -395,6 +395,17 @@ fn validate_xml_characters(path: &str, data: &[u8]) -> std::io::Result<()> {
     {
         return Ok(());
     }
+    // Reduce bytes without an early exit so LLVM can vectorize this scan.
+    // Decoding every scalar here made large-document exports significantly
+    // slower. ASCII controls cannot occur inside a UTF-8 multibyte sequence.
+    let controls = data.iter().fold(0u8, |invalid, &byte| {
+        invalid | u8::from(byte < 9 || byte.wrapping_sub(11) < 2 || byte.wrapping_sub(14) < 18)
+    });
+    let noncharacters = memchr::memmem::find_iter(data, b"\xef\xbf")
+        .any(|index| data.get(index + 2).is_some_and(|&byte| byte >= 0xbe));
+    if controls == 0 && !noncharacters {
+        return Ok(());
+    }
     let Ok(text) = std::str::from_utf8(data) else {
         return Ok(());
     };
@@ -433,6 +444,32 @@ mod tests {
                 )]);
                 let err = write_docx(&original, &overrides).expect_err("forbidden XML character");
                 assert!(err.to_string().contains(path));
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn character_validation_matches_xml_10_scalars(value in ".*") {
+            let expected = value.chars().all(|ch| matches!(ch,
+                '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}'
+                | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}'));
+            let xml = format!("<root>{value}</root>");
+            proptest::prop_assert_eq!(validate_xml_characters("test.xml", xml.as_bytes()).is_ok(), expected);
+        }
+    }
+
+    #[test]
+    fn character_validation_checks_all_controls_at_vector_boundaries() {
+        for padding in 0..65 {
+            for ch in (0..32).chain([0xfffe, 0xffff]).filter_map(char::from_u32) {
+                let xml = format!("<root>{}{ch}</root>", "x".repeat(padding));
+                assert_eq!(
+                    validate_xml_characters("test.xml", xml.as_bytes()).is_ok(),
+                    matches!(ch, '\t' | '\n' | '\r'),
+                    "padding={padding}, U+{:04X}",
+                    ch as u32,
+                );
             }
         }
     }

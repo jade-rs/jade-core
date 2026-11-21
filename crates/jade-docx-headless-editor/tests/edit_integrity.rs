@@ -60,6 +60,10 @@ fn inspect(bytes: &[u8]) -> Vec<String> {
                                     Some(n.text().unwrap_or(""))
                                 } else if n.has_tag_name((W, "tab")) {
                                     Some("\t")
+                                } else if n.has_tag_name((W, "softHyphen")) {
+                                    Some("\u{ad}")
+                                } else if n.has_tag_name((W, "noBreakHyphen")) {
+                                    Some("\u{2011}")
                                 } else if n.has_tag_name((W, "br")) {
                                     Some(if n.attribute((W, "type")) == Some("page") {
                                         "\u{c}"
@@ -120,6 +124,8 @@ fn text() -> impl Strategy<Value = String> {
             Just('\t'),
             Just('\n'),
             Just('\r'),
+            Just('\u{ad}'),
+            Just('\u{2011}'),
             any::<char>().prop_filter("XML 1.0 text", |ch| matches!(ch, '\u{20}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}')),
         ],
         0..9,
@@ -265,6 +271,49 @@ proptest! {
             prop_assert_eq!(inspect(&doc.export_docx().unwrap()),model.clone(),"history step {}",step);
         }
     }
+
+    #[test]
+    fn arbitrary_coordinates_cannot_panic_or_export_corruption(
+        operations in prop::collection::vec((0u8..7, 0usize..5, 0usize..25, 0usize..5, 0usize..25, text()), 1..33)
+    ) {
+        let mut bytes = apply_headless_commands(&seed(), &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::InsertText { paragraph: 0, offset: 0, text: "日😀e\u{301}".into() }]
+        }).unwrap();
+        for (kind, p, o, q, e, text) in operations {
+            // Deliberately use raw offsets: middle-of-codepoint, reversed and
+            // out-of-range coordinates must be rejected or handled safely.
+            let command = match kind {
+                0 => HeadlessCommand::InsertText { paragraph: p, offset: o, text },
+                1 => HeadlessCommand::InsertParagraphBreak { paragraph: p, offset: o, count: 1 },
+                2 => HeadlessCommand::ReplaceRange { start_paragraph: p, start_offset: o, end_paragraph: q, end_offset: e, text },
+                3 => HeadlessCommand::ApplyBold { start_paragraph: p, start_offset: o, end_paragraph: q, end_offset: e, enabled: true },
+                4 => HeadlessCommand::AddComment { start_paragraph: p, start_offset: Some(o), end_paragraph: q, end_offset: Some(e), text, author: None, initials: None, date: None },
+                5 => HeadlessCommand::InsertFootnote { paragraph: p, offset: o, text },
+                _ => HeadlessCommand::InsertEndnote { paragraph: p, offset: o, text },
+            };
+            if let Ok(output) = apply_headless_commands(&bytes, &HeadlessEditRequest { commands: vec![command] }) {
+                package_integrity::assert_valid_package(&output);
+                block_on(WordDocument::load(&output, &Options::default())).expect("arbitrary coordinate export reload");
+                bytes = output;
+            }
+        }
+    }
+}
+
+#[test]
+fn word_hyphen_elements_preserve_model_text() {
+    let bytes = apply_headless_commands(
+        &seed(),
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: 0,
+                text: "a\u{ad}b\u{2011}c".into(),
+            }],
+        },
+    )
+    .unwrap();
+    assert_eq!(inspect(&bytes), vec!["a\u{ad}b\u{2011}cseed"]);
 }
 
 #[test]
@@ -468,4 +517,306 @@ fn package_oracle_rejects_dangling_relationships() {
         output.write_all(&data).unwrap();
     }
     package_integrity::assert_valid_package(&output.finish().unwrap().into_inner());
+}
+
+#[test]
+fn structural_edits_and_history_produce_valid_packages() {
+    use jade_docx_document_core::commands::{CommandContext, CommandExecutor};
+    use jade_docx_document_core::headless_api::apply_headless_commands_with_executor_to_document;
+    let scenarios = vec![
+        vec![
+            HeadlessCommand::ApplyBold {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 4,
+                enabled: true,
+            },
+            HeadlessCommand::ApplyItalic {
+                start_paragraph: 0,
+                start_offset: 1,
+                end_paragraph: 0,
+                end_offset: 3,
+                enabled: true,
+            },
+            HeadlessCommand::ApplyUnderline {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 4,
+                kind: Some("double".into()),
+                enabled: true,
+            },
+            HeadlessCommand::SetFontSize {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 4,
+                font_size: 14.0,
+            },
+            HeadlessCommand::SetParagraphAlignment {
+                start_paragraph: 0,
+                end_paragraph: 0,
+                alignment: "center".into(),
+            },
+            HeadlessCommand::ClearFormatting {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 4,
+            },
+        ],
+        vec![
+            HeadlessCommand::InsertTable {
+                after_paragraph: 0,
+                rows: 2,
+                columns: 2,
+                column_widths: vec![],
+                caret_offset: None,
+            },
+            HeadlessCommand::InsertTableRow {
+                table_order_index: 0,
+                row_index: 1,
+                template_row: Some(0),
+            },
+            HeadlessCommand::InsertTableColumn {
+                table_order_index: 0,
+                column_index: 1,
+                width: Some(90.0),
+                template_column: Some(0),
+            },
+            HeadlessCommand::DeleteTableRow {
+                table_order_index: 0,
+                row_index: 0,
+            },
+            HeadlessCommand::DeleteTableColumn {
+                table_order_index: 0,
+                column_index: 0,
+            },
+            HeadlessCommand::DeleteTable {
+                table_order_index: 0,
+            },
+        ],
+        vec![
+            HeadlessCommand::AddComment {
+                start_paragraph: 0,
+                start_offset: Some(0),
+                end_paragraph: 0,
+                end_offset: Some(4),
+                text: "comment<&日\nnext".into(),
+                author: Some("A&B".into()),
+                initials: Some("AB".into()),
+                date: Some("2026-11-21T00:00:00Z".into()),
+            },
+            HeadlessCommand::ReplyToComment {
+                comment_id: "0".into(),
+                text: "reply".into(),
+                author: Some("Reviewer".into()),
+                initials: None,
+                date: None,
+            },
+            HeadlessCommand::UpdateComment {
+                comment_id: "0".into(),
+                text: "updated".into(),
+            },
+            HeadlessCommand::ResolveComment {
+                comment_id: "0".into(),
+                resolved: true,
+            },
+            HeadlessCommand::DeleteComment {
+                comment_id: "0".into(),
+            },
+        ],
+        vec![
+            HeadlessCommand::InsertFootnote {
+                paragraph: 0,
+                offset: 0,
+                text: "foot<&日\nnext".into(),
+            },
+            HeadlessCommand::InsertEndnote {
+                paragraph: 0,
+                offset: 1,
+                text: "end<&日\nnext".into(),
+            },
+        ],
+        vec![
+            HeadlessCommand::SetHeaderFooterVariants {
+                different_first_page: true,
+                different_odd_even_pages: true,
+                section: None,
+            },
+            HeadlessCommand::SetHeaderParagraphText {
+                paragraph: 0,
+                text: "Header<&日".into(),
+            },
+            HeadlessCommand::SetFooterParagraphText {
+                paragraph: 0,
+                text: "Footer<&日".into(),
+            },
+        ],
+        vec![
+            HeadlessCommand::StartChangeTracking {
+                author: Some("Reviewer".into()),
+                initials: None,
+                date: Some("2026-11-21T00:00:00Z".into()),
+                date_utc: None,
+            },
+            HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: 2,
+                text: "tracked<&日".into(),
+            },
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 0,
+                end_paragraph: 0,
+                end_offset: 1,
+                text: "R".into(),
+            },
+            HeadlessCommand::StopChangeTracking,
+            HeadlessCommand::AcceptRevisions {
+                kind: None,
+                start_paragraph: None,
+                end_paragraph: None,
+                revision_id: None,
+                revision_ids: None,
+                revision_targets: None,
+            },
+        ],
+    ];
+    for (scenario, commands) in scenarios.into_iter().enumerate() {
+        let mut doc = block_on(WordDocument::load(
+            include_bytes!("../../../public/fixtures/hello.docx"),
+            &Options::default(),
+        ))
+        .unwrap();
+        let mut executor = CommandExecutor::default();
+        let mut selection = None;
+        package_integrity::assert_valid_package(&doc.export_docx().unwrap());
+        for (step, mut command) in commands.into_iter().enumerate() {
+            match &mut command {
+                HeadlessCommand::ReplyToComment { comment_id, .. }
+                | HeadlessCommand::UpdateComment { comment_id, .. }
+                | HeadlessCommand::ResolveComment { comment_id, .. }
+                | HeadlessCommand::DeleteComment { comment_id } => {
+                    let bytes = doc.export_docx().unwrap();
+                    let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+                    let mut xml = String::new();
+                    zip.by_name("word/comments.xml")
+                        .unwrap()
+                        .read_to_string(&mut xml)
+                        .unwrap();
+                    let parsed = roxmltree::Document::parse(&xml).unwrap();
+                    const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+                    *comment_id = parsed
+                        .descendants()
+                        .find(|node| node.has_tag_name((W, "comment")))
+                        .unwrap()
+                        .attribute((W, "id"))
+                        .unwrap()
+                        .to_string();
+                }
+                _ => {}
+            }
+            selection = apply_headless_commands_with_executor_to_document(
+                &mut doc,
+                &mut executor,
+                selection,
+                &HeadlessEditRequest {
+                    commands: vec![command.clone()],
+                },
+            )
+            .unwrap_or_else(|error| panic!("scenario {scenario} step {step} {command:?}: {error}"));
+            let saved = doc.export_docx().unwrap();
+            package_integrity::assert_valid_package(&saved);
+            block_on(WordDocument::load(&saved, &Options::default()))
+                .expect("structural export reopen");
+            if executor
+                .undo(&mut CommandContext::new(&mut doc, &mut selection))
+                .unwrap()
+            {
+                package_integrity::assert_valid_package(&doc.export_docx().unwrap());
+                assert!(executor
+                    .redo(&mut CommandContext::new(&mut doc, &mut selection))
+                    .unwrap());
+                package_integrity::assert_valid_package(&doc.export_docx().unwrap());
+            }
+        }
+    }
+}
+
+#[test]
+fn anonymous_comments_and_replies_have_required_author_attributes() {
+    let mut bytes = apply_headless_commands(
+        &seed(),
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::AddComment {
+                start_paragraph: 0,
+                start_offset: Some(0),
+                end_paragraph: 0,
+                end_offset: Some(4),
+                text: "anonymous".into(),
+                author: None,
+                initials: None,
+                date: None,
+            }],
+        },
+    )
+    .unwrap();
+    let comment_id = {
+        let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).unwrap();
+        let mut xml = String::new();
+        archive
+            .by_name("word/comments.xml")
+            .unwrap()
+            .read_to_string(&mut xml)
+            .unwrap();
+        let parsed = roxmltree::Document::parse(&xml).unwrap();
+        parsed
+            .root_element()
+            .children()
+            .find(|node| node.is_element())
+            .unwrap()
+            .attribute((
+                "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+                "id",
+            ))
+            .unwrap()
+            .to_string()
+    };
+    bytes = apply_headless_commands(
+        &bytes,
+        &HeadlessEditRequest {
+            commands: vec![HeadlessCommand::ReplyToComment {
+                comment_id,
+                text: "anonymous reply".into(),
+                author: None,
+                initials: None,
+                date: None,
+            }],
+        },
+    )
+    .unwrap();
+    package_integrity::assert_valid_package(&bytes);
+    let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).unwrap();
+    let mut xml = String::new();
+    archive
+        .by_name("word/comments.xml")
+        .unwrap()
+        .read_to_string(&mut xml)
+        .unwrap();
+    let parsed = roxmltree::Document::parse(&xml).unwrap();
+    const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    let comments: Vec<_> = parsed
+        .descendants()
+        .filter(|node| node.has_tag_name((W, "comment")))
+        .collect();
+    assert_eq!(comments.len(), 2);
+    for comment in comments {
+        assert_eq!(
+            comment.attribute((W, "author")),
+            Some(""),
+            "anonymous author is required by CT_TrackChange"
+        );
+    }
 }

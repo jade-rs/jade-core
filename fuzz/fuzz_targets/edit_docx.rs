@@ -49,7 +49,7 @@ fuzz_target!(|data: &[u8]| {
         let offset = boundaries[op[2] as usize % boundaries.len()];
         let end = boundaries[op[3] as usize % boundaries.len()];
         let inserted = String::from_utf8_lossy(&op[4..]).into_owned();
-        let command = match op[0] % 4 {
+        let command = match op[0] % 8 {
             0 => HeadlessCommand::InsertText {
                 paragraph: p,
                 offset,
@@ -67,7 +67,7 @@ fuzz_target!(|data: &[u8]| {
                 end_offset: offset.max(end),
                 text: inserted,
             },
-            _ => HeadlessCommand::AddComment {
+            3 => HeadlessCommand::AddComment {
                 start_paragraph: p,
                 start_offset: Some(offset.min(end)),
                 end_paragraph: p,
@@ -76,6 +76,28 @@ fuzz_target!(|data: &[u8]| {
                 author: None,
                 initials: None,
                 date: None,
+            },
+            4 => HeadlessCommand::ApplyBold {
+                start_paragraph: p,
+                start_offset: offset.min(end),
+                end_paragraph: p,
+                end_offset: offset.max(end),
+                enabled: op[3] % 2 == 0,
+            },
+            5 => HeadlessCommand::InsertFootnote {
+                paragraph: p,
+                offset,
+                text: inserted,
+            },
+            6 => HeadlessCommand::InsertEndnote {
+                paragraph: p,
+                offset,
+                text: inserted,
+            },
+            _ => HeadlessCommand::SetParagraphAlignment {
+                start_paragraph: p,
+                end_paragraph: p,
+                alignment: ["left", "center", "right", "both"][op[3] as usize % 4].into(),
             },
         };
         // Unsupported edits and illegal XML characters must fail explicitly.

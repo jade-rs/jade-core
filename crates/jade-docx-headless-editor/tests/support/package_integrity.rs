@@ -7,6 +7,9 @@ const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relations
 const CT: &str = "http://schemas.openxmlformats.org/package/2006/content-types";
 
 fn resolve_target(source: &str, target: &str) -> String {
+    if target.starts_with('#') {
+        return source.to_string();
+    }
     let mut path: Vec<_> = if target.starts_with('/') {
         Vec::new()
     } else {
@@ -111,6 +114,10 @@ pub fn assert_valid_package(bytes: &[u8]) {
             String::new()
         } else if let Some((dir, file)) = name.rsplit_once("/_rels/") {
             format!("{dir}/{}", file.strip_suffix(".rels").unwrap())
+        } else if let Some(file) = name.strip_prefix("_rels/") {
+            file.strip_suffix(".rels")
+                .expect("relationship part suffix")
+                .to_string()
         } else {
             continue;
         };
@@ -152,5 +159,38 @@ pub fn assert_valid_package(bytes: &[u8]) {
                 );
             }
         }
+    }
+    // Opt-in persistence lets an independent OOXML implementation validate
+    // every successful PBT/fuzz save, rather than only the final document.
+    if let Some(directory) = std::env::var_os("DOCX_SCHEMA_CORPUS") {
+        use std::sync::atomic::{AtomicU64, Ordering};
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let directory = std::path::PathBuf::from(directory);
+        std::fs::create_dir_all(&directory).expect("schema corpus directory");
+        let name = format!(
+            "{}-{}.docx",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        );
+        std::fs::write(directory.join(name), bytes).expect("persist schema validation input");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn relationship_fragments_resolve_against_the_source_part() {
+        assert_eq!(
+            super::resolve_target("word/document.xml", "#bookmark"),
+            "word/document.xml"
+        );
+        assert_eq!(
+            super::resolve_target("word/document.xml", "../customXml/item.xml#id"),
+            "customXml/item.xml"
+        );
+        assert_eq!(
+            super::resolve_target("document.xml", "other.xml"),
+            "other.xml"
+        );
     }
 }
