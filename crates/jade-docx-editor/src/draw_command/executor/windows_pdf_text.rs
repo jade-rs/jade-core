@@ -148,7 +148,7 @@ pub(super) fn try_draw<P: Painter>(
     };
     let requested_pt = f64::from(style.font_size_pt);
     let print_em = (requested_pt * dpi / 72.0).round() * 96.0 / dpi;
-    if !print_em.is_finite() || print_em <= 0.0 || (source_em - print_em).abs() < 1e-9 {
+    if !print_em.is_finite() || print_em <= 0.0 {
         return Ok(false);
     }
     if glyphs.iter().enumerate().any(|(index, glyph)| {
@@ -162,6 +162,20 @@ pub(super) fn try_draw<P: Painter>(
     let Some(first) = glyphs.first() else {
         return Ok(false);
     };
+    font_state.set_font_rc_if_changed(context, &fonts[0]);
+    if let Some(widths) = context.measure_windows_pdf_ascii_widths(text)? {
+        if let Some(origins) = normalized_print_origins(glyphs, &widths, print_em, dpi) {
+            let font: Rc<str> = Rc::from(format!("{prefix}{print_em:.6}px{suffix}"));
+            font_state.set_font_rc_if_changed(context, &font);
+            for (glyph, origin) in glyphs.iter().zip(origins) {
+                context.fill_text(glyph.text(text).unwrap_or_default(), x + origin, y)?;
+            }
+            return Ok(true);
+        }
+    }
+    if (source_em - print_em).abs() < 1e-9 {
+        return Ok(false);
+    }
     let ratio = print_em / source_em;
     let font: Rc<str> = Rc::from(format!("{prefix}{print_em:.6}px{suffix}"));
     font_state.set_font_rc_if_changed(context, &font);
@@ -174,9 +188,108 @@ pub(super) fn try_draw<P: Painter>(
     Ok(true)
 }
 
+// Word's physical text stream normalizes integer device advances by the
+// realized font em. Obtain widths from the exact selected source font in GDI.
+// Logical glyph origins, screen pixels, tracking and line breaking are untouched.
+fn normalized_print_origins(
+    glyphs: &[GlyphRunStep],
+    widths: &[f64],
+    em: f64,
+    dpi: f64,
+) -> Option<Vec<f64>> {
+    if glyphs.len() != widths.len()
+        || glyphs.is_empty()
+        || !em.is_finite()
+        || em <= 0.0
+        || !dpi.is_finite()
+        || dpi <= 0.0
+        || widths.iter().any(|w| !w.is_finite() || *w <= 0.0)
+    {
+        return None;
+    }
+    let height = (em * dpi / 96.0).round();
+    if height <= 0.0 || !height.is_finite() {
+        return None;
+    }
+    let first = glyphs[0].x_offset;
+    let phases: Vec<f64> = glyphs
+        .iter()
+        .map(|g| ((g.x_offset - first) * dpi / 96.0).round())
+        .collect();
+    if phases.iter().any(|x| !x.is_finite()) || phases.windows(2).any(|p| p[1] < p[0]) {
+        return None;
+    }
+    let mut x = first;
+    let mut debt = 0.0;
+    let mut origins = Vec::with_capacity(glyphs.len());
+    for (i, width) in widths.iter().enumerate() {
+        origins.push(x);
+        if i + 1 == widths.len() {
+            break;
+        }
+        let dx = phases[i + 1] - phases[i];
+        debt += width - dx * f64::from((1.0 / height) as f32) * 1000.0;
+        let adjustment = debt.trunc();
+        if adjustment != 0.0 {
+            debt = 0.0;
+        }
+        x += (width - adjustment) * em / 1000.0;
+    }
+    origins.iter().all(|x| x.is_finite()).then_some(origins)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::regular_calibri;
+    use super::{normalized_print_origins, regular_calibri, GlyphRunStep};
+
+    fn glyphs(offsets: &[f64]) -> Vec<GlyphRunStep> {
+        offsets
+            .iter()
+            .enumerate()
+            .map(|(i, x)| GlyphRunStep {
+                text_start: i as u32,
+                text_end: i as u32 + 1,
+                font_index: 0,
+                x_offset: *x,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn realized_em_retains_origin_and_integer_device_advance_at_both_sizes() {
+        let glyphs = glyphs(&[3.25, 16.083333, 35.8]);
+        for em in [29.28, 32.0] {
+            let origins =
+                normalized_print_origins(&glyphs, &[579.0, 488.0, 300.0], em, 600.0).unwrap();
+            assert_eq!(origins[0], 3.25);
+            for (actual, source) in origins.iter().zip(&glyphs) {
+                let device = ((source.x_offset - 3.25) * 600.0 / 96.0).round();
+                assert!((actual - 3.25 - device * 96.0 / 600.0).abs() < 0.1);
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_or_reversed_print_metrics_keep_the_existing_path() {
+        let good = glyphs(&[0.0, 10.0]);
+        for widths in [
+            vec![],
+            vec![500.0],
+            vec![500.0, f64::NAN],
+            vec![500.0, -1.0],
+        ] {
+            assert!(normalized_print_origins(&good, &widths, 32.0, 600.0).is_none());
+        }
+        assert!(normalized_print_origins(&good, &[500.0, 500.0], 0.0, 600.0).is_none());
+        assert!(normalized_print_origins(&good, &[500.0, 500.0], 32.0, f64::NAN).is_none());
+        assert!(
+            normalized_print_origins(&glyphs(&[10.0, 0.0]), &[500.0, 500.0], 32.0, 600.0).is_none()
+        );
+        assert!(
+            normalized_print_origins(&glyphs(&[0.0, f64::NAN]), &[500.0, 500.0], 32.0, 600.0)
+                .is_none()
+        );
+    }
 
     #[test]
     fn measured_face_guard_keeps_other_fonts_and_styles_on_their_paths() {

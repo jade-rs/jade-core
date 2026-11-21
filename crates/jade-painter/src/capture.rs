@@ -442,6 +442,13 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         self.inner.measure_text_width(text)
     }
 
+    fn measure_windows_pdf_ascii_widths(
+        &self,
+        text: &str,
+    ) -> Result<Option<Vec<f64>>, Self::Error> {
+        self.inner.measure_windows_pdf_ascii_widths(text)
+    }
+
     fn measure_upright_vertical_advance(&self, text: &str) -> Result<Option<f64>, Self::Error> {
         self.inner.measure_upright_vertical_advance(text)
     }

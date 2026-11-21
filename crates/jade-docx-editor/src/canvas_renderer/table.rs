@@ -10606,7 +10606,7 @@ fn compute_column_widths(table: &Table, column_count: usize, available_width: f6
             grid_defined[idx] = width > 0.0;
         }
     }
-    if let Some(cell_widths) = word_mac_stale_grid_cell_widths(table, column_count) {
+    if let Some(cell_widths) = word_stale_grid_cell_widths(table, column_count) {
         for (idx, width) in cell_widths.into_iter().enumerate() {
             widths[idx] = width;
             grid_defined[idx] = true;
@@ -11290,12 +11290,11 @@ fn word_mac_shrink_autofit_to_words(
 /// widths but for its own fitting (scroll-offset-repro: 3217 and 4469 twips
 /// for cells of 3260 and 4536). A grid that disagrees with every row's cell
 /// widths by more than that was not computed from them, and Word lays the
-/// table out from the cells: word-compat-comprehensive prints a 3312-twip
+/// table out from the cells. Windows Word16.0.19127.20936 confirms the same
+/// word-compat-comprehensive columns, printing a 3312-twip
 /// grid as its cells' 2160, 3744 and 3744 twips. Returns those widths in px.
-fn word_mac_stale_grid_cell_widths(table: &Table, column_count: usize) -> Option<Vec<f64>> {
-    if jade_docx_layout::line_metrics::word_layout_platform()
-        != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        || !matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit)
+fn word_stale_grid_cell_widths(table: &Table, column_count: usize) -> Option<Vec<f64>> {
+    if !matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit)
         || table.columns.len() != column_count
         || column_count == 0
     {
@@ -19771,7 +19770,7 @@ mod tests {
     }
 
     #[test]
-    fn mac_autofit_lays_out_a_stale_grid_from_its_cell_widths() {
+    fn autofit_lays_out_a_stale_grid_from_its_cell_widths() {
         use jade_docx_layout::line_metrics::{
             set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
         };
@@ -19825,7 +19824,11 @@ mod tests {
         set_word_layout_platform(WordLayoutPlatform::Windows);
         assert_eq!(
             pt(compute_column_widths(&stale, 3, 662.4)),
-            vec![165.6, 165.6, 165.6]
+            vec![108.0, 187.2, 187.2]
+        );
+        assert_eq!(
+            pt(compute_column_widths(&fitted, 2, 662.4)),
+            vec![160.9, 223.4]
         );
         set_word_layout_platform(previous);
     }

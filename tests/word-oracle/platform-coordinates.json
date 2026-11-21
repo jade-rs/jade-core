@@ -2794,6 +2794,32 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "word-compat-comprehensive-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-compat-comprehensive-mac/source.docx",
+        "sha256": "8f415f8bb3c647433142b355e3ae4c85e94f1d16e6da99c479c1e464e7f1b256"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-compat-comprehensive-mac/manifest.json",
+        "sha256": "43c7e168a2985e6e089746d4d333330309002e3df3f67e8ea35a04c22a6dbce2"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004202539Z-7cf29738",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004202539Z-7cf29738.zip",
+            "sha256": "186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78"
+          },
+          "capture_sha256": "b5d3d7f10a2bda388ebd78c4b6680b0dd32200970e3230c0b27aeab9daa549cf",
+          "fixture": "ww14-word-compat-comprehensive-8f415f8b",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
     }
   ]
 }

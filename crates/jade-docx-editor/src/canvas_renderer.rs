@@ -20365,7 +20365,7 @@ where
                     .height_px
                     .unwrap_or(line_height * 2.0)
                     .max(line_height)
-                    + mac_inline_text_box_outline_px(text_box);
+                    + self.inline_text_box_outline_space_px(text_box);
                 inline_text_boxes.insert(start_pos, (run_index, text_box.clone()));
                 run_styles.push(RunStyle {
                     start: start_pos,
@@ -20908,9 +20908,21 @@ where
             && !layout_text.is_empty()
             && paragraph_style.word_grid_line_sizing.is_none()
             && jade_docx_layout::line_metrics::word_auto_line_multiple(spacing_ref) == Some(1.0);
-        let (paragraph_mark_font_box, object_line_extra_px) = if paragraph_style.word_platform
+        // Investigate legacy Windows object-only automatic-line mark metrics.
+        // Preserve the entire Mac path and exact/grid/header/note policies.
+        let windows_object_mark = !mac
+            && self.document_east_asian_rules.compatibility_mode == Some(14)
+            && !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && object_only
+            && paragraph_style.word_grid_line_sizing.is_none()
+            && jade_docx_layout::line_metrics::word_auto_line_multiple(spacing_ref)
+                .is_some_and(|multiple| multiple > 1.0);
+        let (paragraph_mark_font_box, object_line_extra_px) = if (paragraph_style.word_platform
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            && (object_only || text_single_line_spacing)
+            && (object_only || text_single_line_spacing))
+            || windows_object_mark
         {
             let mark = paragraph
                 .properties
@@ -25471,7 +25483,7 @@ where
                                     y: baseline + object_shift + object_top,
                                     width: object.width.max(1.0),
                                     height: (object.height
-                                        - mac_inline_text_box_outline_px(text_box))
+                                        - self.inline_text_box_outline_space_px(text_box))
                                     .max(1.0),
                                     rotation_deg: text_box.layout.rotation_deg.unwrap_or(0.0),
                                 },
@@ -39045,6 +39057,26 @@ where
             wrap_text: layout.wrap_text,
             polygon,
         })
+    }
+
+    // Keep Mac outline spacing unchanged. Test legacy Windows body outline
+    // advance separately from the actual shape's painted rectangle.
+    fn inline_text_box_outline_space_px(&self, text_box: &RunTextBox) -> f64 {
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        {
+            return mac_inline_text_box_outline_px(text_box);
+        }
+        if self.document_east_asian_rules.compatibility_mode == Some(14)
+            && !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && text_box.border.style != TextBoxBorderStyle::None
+        {
+            2.0 * text_box.border.width_px.unwrap_or(1.0).max(0.0)
+        } else {
+            0.0
+        }
     }
 
     /// The Mac mode-14 floating-order probe includes the paragraph's space
