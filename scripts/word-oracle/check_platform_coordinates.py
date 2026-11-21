@@ -20,6 +20,8 @@ from extract_windows_emf import extract, emf_glyphs
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'floating-tight-polygon-mac': '20261114T004143028Z-b4cb9887',
+    'word-mac-probe-float-lookahead': '20261114T004202539Z-7cf29738',
     'header-footer-sectionpages-mac': '20261114T004143028Z-b4cb9887',
     'word-mac-probe-floating-horizontal-14': '20261114T004202539Z-7cf29738',
     'word-mac-probe-grid-line-unit': '20261114T004214564Z-4ebc9049',
@@ -130,6 +132,7 @@ REQUIRED_CAPTURES = {
 # Word. Their live layout must match EMF; their actual vector PDF must match
 # Word's PDF. Existing shared screen/PDF cases retain all four assertions.
 INDEPENDENT_OUTPUT_CASES = frozenset({
+    'floating-tight-polygon-mac',
     'header-footer-sectionpages-mac',
     'floating-simple-position-mac',
     'floating-through-concave-mac',
