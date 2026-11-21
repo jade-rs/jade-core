@@ -2437,24 +2437,48 @@ impl DocumentParser {
                         }
                     }
                     b"w:footnoteReference" => {
+                        let mut id = None;
+                        let mut custom_mark = false;
                         for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"w:id" {
-                                if let Some(ref mut run) = current_run {
-                                    run.footnote_reference_ids
-                                        .push(String::from_utf8_lossy(&attr.value).to_string());
+                            match attr.key.as_ref() {
+                                b"w:id" => {
+                                    id = Some(String::from_utf8_lossy(&attr.value).to_string())
                                 }
-                                break;
+                                b"w:customMarkFollows" => {
+                                    custom_mark = crate::document::ooxml_on(&attr.value)
+                                }
+                                _ => {}
+                            }
+                        }
+                        if let Some(id) = id {
+                            if custom_mark {
+                                document.custom_mark_footnotes.insert(id.clone());
+                            }
+                            if let Some(ref mut run) = current_run {
+                                run.footnote_reference_ids.push(id);
                             }
                         }
                     }
                     b"w:endnoteReference" => {
+                        let mut id = None;
+                        let mut custom_mark = false;
                         for attr in e.attributes().flatten() {
-                            if attr.key.as_ref() == b"w:id" {
-                                if let Some(ref mut run) = current_run {
-                                    run.endnote_reference_ids
-                                        .push(String::from_utf8_lossy(&attr.value).to_string());
+                            match attr.key.as_ref() {
+                                b"w:id" => {
+                                    id = Some(String::from_utf8_lossy(&attr.value).to_string())
                                 }
-                                break;
+                                b"w:customMarkFollows" => {
+                                    custom_mark = crate::document::ooxml_on(&attr.value)
+                                }
+                                _ => {}
+                            }
+                        }
+                        if let Some(id) = id {
+                            if custom_mark {
+                                document.custom_mark_endnotes.insert(id.clone());
+                            }
+                            if let Some(ref mut run) = current_run {
+                                run.endnote_reference_ids.push(id);
                             }
                         }
                     }

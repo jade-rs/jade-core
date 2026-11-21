@@ -53,7 +53,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_writer::{self, DocxWriteError};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::Path;
 use std::rc::Rc;
 
@@ -13786,7 +13786,32 @@ impl WordDocument {
         offset: usize,
         text: &str,
     ) -> Result<String, String> {
-        self.insert_note_at(paragraph_index, offset, text, NoteKind::Footnote)
+        self.insert_note_at(paragraph_index, offset, text, NoteKind::Footnote, None)
+    }
+
+    /// A note whose reference is `mark` (Word's 任意の記号) rather than a
+    /// number: `w:customMarkFollows`, with the mark as the reference run's
+    /// text and as the note's first run, in place of `w:footnoteRef`.
+    pub fn insert_note_with_mark_at(
+        &mut self,
+        footnote: bool,
+        paragraph_index: usize,
+        offset: usize,
+        text: &str,
+        mark: &str,
+    ) -> Result<String, String> {
+        if mark.is_empty() {
+            return Err("a custom mark must not be empty".to_string());
+        }
+        if mark.chars().count() > 10 {
+            return Err("a custom mark is at most 10 characters".to_string());
+        }
+        let kind = if footnote {
+            NoteKind::Footnote
+        } else {
+            NoteKind::Endnote
+        };
+        self.insert_note_at(paragraph_index, offset, text, kind, Some(mark))
     }
 
     pub fn insert_endnote_at(
@@ -13795,7 +13820,7 @@ impl WordDocument {
         offset: usize,
         text: &str,
     ) -> Result<String, String> {
-        self.insert_note_at(paragraph_index, offset, text, NoteKind::Endnote)
+        self.insert_note_at(paragraph_index, offset, text, NoteKind::Endnote, None)
     }
 
     /// Moves the rich note body and all references to the endnote part.
@@ -14576,6 +14601,7 @@ impl WordDocument {
         offset: usize,
         text: &str,
         kind: NoteKind,
+        custom_mark: Option<&str>,
     ) -> Result<String, String> {
         if self.raw_document.is_none() {
             return Err("raw document xml is unavailable".to_string());
@@ -14624,6 +14650,17 @@ impl WordDocument {
             note_para_style.as_deref(),
             note_char_style.as_deref(),
         )?;
+        // Recorded before the reference is written, so the sync below marks
+        // it `w:customMarkFollows`.
+        if custom_mark.is_some() {
+            let document = self
+                .document_mut()
+                .ok_or_else(|| "document is unavailable".to_string())?;
+            match kind {
+                NoteKind::Footnote => document.custom_mark_footnotes.insert(note_id.clone()),
+                NoteKind::Endnote => document.custom_mark_endnotes.insert(note_id.clone()),
+            };
+        }
 
         {
             let zero_width = self.zero_width_runs(paragraph_index);
@@ -14632,7 +14669,7 @@ impl WordDocument {
                 .ok_or_else(|| "target paragraph is missing".to_string())?;
             let tail = split_runs_at_preserving_source(&mut paragraph.runs, offset, &zero_width);
             paragraph.runs.push(Run {
-                text: String::new(),
+                text: custom_mark.unwrap_or_default().to_string(),
                 properties: reference_run_properties.clone(),
                 image: None,
                 text_box: None,
@@ -14677,7 +14714,8 @@ impl WordDocument {
         let mut note_body = vec![BodyElement::from_paragraph(Paragraph {
             runs: vec![
                 Run {
-                    text: String::new(),
+                    // The note's number, or the custom mark standing in for it.
+                    text: custom_mark.unwrap_or_default().to_string(),
                     properties: reference_run_properties,
                     image: None,
                     text_box: None,
@@ -14692,8 +14730,8 @@ impl WordDocument {
                     footnote_reference_ids: Vec::new(),
                     endnote_reference_ids: Vec::new(),
                     note_separator: None,
-                    has_footnote_ref: kind == NoteKind::Footnote,
-                    has_endnote_ref: kind == NoteKind::Endnote,
+                    has_footnote_ref: custom_mark.is_none() && kind == NoteKind::Footnote,
+                    has_endnote_ref: custom_mark.is_none() && kind == NoteKind::Endnote,
                     revision: None,
                 },
                 Run {
@@ -34888,8 +34926,20 @@ impl WordDocument {
                     NoteKind::Footnote => &run.footnote_reference_ids,
                     NoteKind::Endnote => &run.endnote_reference_ids,
                 };
+                let custom_marks = match kind {
+                    NoteKind::Footnote => &document.custom_mark_footnotes,
+                    NoteKind::Endnote => &document.custom_mark_endnotes,
+                };
                 for id in ids {
                     if !seen.insert(id.as_str()) {
+                        continue;
+                    }
+                    // A custom mark is the text after the reference: no
+                    // number, and none of the sequence taken.
+                    if custom_marks.contains(id) {
+                        if id == note_id {
+                            return Some(String::new());
+                        }
                         continue;
                     }
                     if ordinal > 0
@@ -37583,6 +37633,62 @@ impl WordDocument {
         }
     }
 
+    /// Rebuilt from the model, a reference loses `w:customMarkFollows`: put
+    /// it back on the custom-mark notes' references in `paragraph_id`.
+    fn mark_custom_note_references(&mut self, paragraph_id: Option<XmlNodeId>) {
+        fn walk(
+            element: &mut XmlElement,
+            footnotes: &BTreeSet<String>,
+            endnotes: &BTreeSet<String>,
+        ) {
+            let custom = match element.name.as_str() {
+                "w:footnoteReference" => Some(footnotes),
+                "w:endnoteReference" => Some(endnotes),
+                _ => None,
+            };
+            if let Some(custom) = custom {
+                let is_custom = element
+                    .attributes
+                    .iter()
+                    .any(|attr| attr.name == "w:id" && custom.contains(&attr.value));
+                if is_custom
+                    && !element
+                        .attributes
+                        .iter()
+                        .any(|attr| attr.name == "w:customMarkFollows")
+                {
+                    element.attributes.push(XmlAttribute {
+                        name: "w:customMarkFollows".to_string(),
+                        value: "1".to_string(),
+                    });
+                }
+            }
+            for child in &mut element.children {
+                if let XmlNode::Element(child) = child {
+                    walk(child, footnotes, endnotes);
+                }
+            }
+        }
+        let Some(paragraph_id) = paragraph_id else {
+            return;
+        };
+        let Some(document) = self.document.as_ref() else {
+            return;
+        };
+        if document.custom_mark_footnotes.is_empty() && document.custom_mark_endnotes.is_empty() {
+            return;
+        }
+        let footnotes = document.custom_mark_footnotes.clone();
+        let endnotes = document.custom_mark_endnotes.clone();
+        if let Some(element) = self
+            .raw_document
+            .as_mut()
+            .and_then(|raw| raw.element_mut(paragraph_id))
+        {
+            walk(element, &footnotes, &endnotes);
+        }
+    }
+
     fn sync_paragraph_xml(&mut self, paragraph_index: usize, preserve_drawings: bool) {
         self.mark_paragraph_text_metrics_dirty(paragraph_index);
         let edited_paragraph_id = self
@@ -37644,6 +37750,7 @@ impl WordDocument {
                             || run.field.is_some()
                     });
                 }
+                self.mark_custom_note_references(edited_paragraph_id);
             }
             ParagraphSurface::TextBox {
                 host_path,
@@ -47167,7 +47274,9 @@ mod tests {
         let data = std::fs::read(fixture_path("hello.docx")).expect("read fixture");
         let mut doc =
             executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
-        let note_id = doc.insert_note_at(0, 1, "", kind).expect("insert note");
+        let note_id = doc
+            .insert_note_at(0, 1, "", kind, None)
+            .expect("insert note");
         let index = doc
             .surface_index_for_story(kind.story(), 0, None, Some(&note_id))
             .expect("note paragraph");
@@ -49013,6 +49122,133 @@ mod tests {
 
     const SMARTART_DRAWING_XML: &str = r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <dsp:drawing xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:dsp="http://schemas.microsoft.com/office/drawing/2008/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><dsp:spTree><dsp:nvGrpSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvGrpSpPr/></dsp:nvGrpSpPr><dsp:grpSpPr/><dsp:sp modelId="{1}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1371600" cy="1371600"/></a:xfrm><a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="4472C4"/></a:solidFill></dsp:spPr><dsp:style><a:lnRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:lnRef><a:fillRef idx="1"><a:scrgbClr r="0" g="0" b="0"/></a:fillRef><a:effectRef idx="0"><a:scrgbClr r="0" g="0" b="0"/></a:effectRef><a:fontRef idx="minor"><a:srgbClr val="FFFFFF"/></a:fontRef></dsp:style><dsp:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="2400"/><a:t>Plan</a:t></a:r></a:p></dsp:txBody><dsp:txXfrm><a:off x="0" y="0"/><a:ext cx="1371600" cy="1371600"/></dsp:txXfrm></dsp:sp><dsp:sp modelId="{2}"><dsp:nvSpPr><dsp:cNvPr id="0" name=""/><dsp:cNvSpPr/></dsp:nvSpPr><dsp:spPr><a:xfrm><a:off x="2743200" y="0"/><a:ext cx="1371600" cy="1371600"/></a:xfrm><a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="ED7D31"/></a:solidFill></dsp:spPr><dsp:txBody><a:bodyPr/><a:p><a:r><a:rPr sz="2400"/><a:t>Do</a:t></a:r></a:p></dsp:txBody></dsp:sp></dsp:spTree></dsp:drawing>"#;
+
+    /// Word's 任意の記号: a reference with `w:customMarkFollows` is drawn as
+    /// the text after it, and takes no number, so the next note is 1.
+    #[test]
+    fn a_custom_note_mark_stands_in_for_the_number() {
+        const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+        let document = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:document xmlns:w="{W}"><w:body><w:p><w:r><w:t>Star</w:t></w:r><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteReference w:customMarkFollows="1" w:id="2"/><w:t>*</w:t></w:r><w:r><w:t xml:space="preserve"> then</w:t></w:r><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteReference w:id="3"/></w:r></w:p><w:sectPr/></w:body></w:document>"#
+        );
+        let footnotes = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?><w:footnotes xmlns:w="{W}"><w:footnote w:type="separator" w:id="0"><w:p><w:r><w:separator/></w:r></w:p></w:footnote><w:footnote w:type="continuationSeparator" w:id="1"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:footnote><w:footnote w:id="2"><w:p><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:t>*</w:t></w:r><w:r><w:t xml:space="preserve"> starred</w:t></w:r></w:p></w:footnote><w:footnote w:id="3"><w:p><w:r><w:rPr><w:vertAlign w:val="superscript"/></w:rPr><w:footnoteRef/></w:r><w:r><w:t xml:space="preserve"> numbered</w:t></w:r></w:p></w:footnote></w:footnotes>"#
+        );
+        let bytes = build_docx_from_parts(&[
+            (
+                "[Content_Types].xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/></Types>"#,
+            ),
+            (
+                "_rels/.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#,
+            ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/></Relationships>"#,
+            ),
+            ("word/document.xml", &document),
+            ("word/footnotes.xml", &footnotes),
+        ]);
+        let check = |doc: &WordDocument| {
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, "2")
+                    .as_deref(),
+                Some("")
+            );
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, "3")
+                    .as_deref(),
+                Some("1")
+            );
+            // The body reads as Word draws it: the mark, then the number 1.
+            assert_eq!(doc.rendered_paragraph_text(0), "Star* then1");
+            let starred = doc.footnote_paragraph_index("2").unwrap();
+            assert_eq!(doc.rendered_paragraph_text(starred), "* starred");
+        };
+        let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        check(&doc);
+        // Typing in the paragraph keeps the mark custom when saved.
+        {
+            use crate::commands::{CommandContext, CommandExecutor};
+            let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+            let mut selection = Some(range);
+            let mut ctx = CommandContext::new(&mut doc, &mut selection);
+            CommandExecutor::new()
+                .execute(
+                    Box::new(crate::commands::insert_text::InsertTextCommand::new(
+                        range,
+                        "A ".to_string(),
+                        None,
+                    )),
+                    &mut ctx,
+                )
+                .unwrap();
+        }
+        let saved = doc.export_docx().unwrap();
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        assert_eq!(
+            reopened
+                .note_reference_marker(NoteKind::Footnote, "3")
+                .as_deref(),
+            Some("1")
+        );
+        assert_eq!(reopened.rendered_paragraph_text(0), "A Star* then1");
+    }
+
+    /// 任意の記号 from the dialog: the reference is the mark, saved as Word
+    /// saves one, and the next numbered note is still 1.
+    #[test]
+    fn a_note_put_in_with_a_custom_mark_saves_as_word_does() {
+        let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
+        let mut doc = executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
+        let dagger = doc
+            .insert_note_with_mark_at(true, 0, 0, "daggered", "†")
+            .unwrap();
+        let end = doc.paragraph(0).map(paragraph_text_len).unwrap();
+        let numbered = doc.insert_footnote_at(0, end, "numbered").unwrap();
+        let check = |doc: &WordDocument| {
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, &dagger)
+                    .as_deref(),
+                Some("")
+            );
+            assert_eq!(
+                doc.note_reference_marker(NoteKind::Footnote, &numbered)
+                    .as_deref(),
+                Some("1")
+            );
+            let text = doc.rendered_paragraph_text(0);
+            assert!(text.starts_with('†') && text.ends_with('1'), "{text}");
+            let note = doc.footnote_paragraph_index(&dagger).unwrap();
+            assert_eq!(doc.rendered_paragraph_text(note), "† daggered");
+        };
+        check(&doc);
+        let saved = doc.export_docx().unwrap();
+        let part = |name: &str| {
+            let mut archive = zip::ZipArchive::new(std::io::Cursor::new(saved.clone())).unwrap();
+            let mut xml = String::new();
+            std::io::Read::read_to_string(&mut archive.by_name(name).unwrap(), &mut xml).unwrap();
+            xml
+        };
+        let document = part("word/document.xml");
+        assert!(
+            document.contains(&format!(r#"w:id="{dagger}" w:customMarkFollows="1""#))
+                || document.contains(&format!(r#"w:customMarkFollows="1" w:id="{dagger}""#)),
+            "{document}"
+        );
+        let notes = part("word/footnotes.xml");
+        let dagger_note = notes
+            .split("<w:footnote ")
+            .find(|note| note.contains(&format!(r#"w:id="{dagger}""#)))
+            .unwrap();
+        assert!(
+            dagger_note.contains("†") && !dagger_note.contains("w:footnoteRef"),
+            "{dagger_note}"
+        );
+        let reopened = executor::block_on(WordDocument::load(&saved, &Options::default())).unwrap();
+        check(&reopened);
+    }
 
     fn build_smartart_docx() -> Vec<u8> {
         build_docx_from_parts(&[
@@ -69421,7 +69657,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let note_id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let note_id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let part = kind.part_path();
             let mut raw =
                 DocxXmlDocument::parse(&doc.read_xml_part_content(part).unwrap()).unwrap();
@@ -69523,7 +69759,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            doc.insert_note_at(0, 1, "Note", kind).unwrap();
+            doc.insert_note_at(0, 1, "Note", kind, None).unwrap();
             let original = doc
                 .paragraph(0)
                 .unwrap()
@@ -69572,7 +69808,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let surface = doc
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
@@ -69626,7 +69862,7 @@ mod tests {
                 let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
                 let mut doc =
                     executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-                let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+                let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
                 let first = doc
                     .surface_index_for_story(kind.story(), 0, None, Some(&id))
                     .unwrap();
@@ -69693,7 +69929,9 @@ mod tests {
                 let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
                 let mut doc =
                     executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-                let id = doc.insert_note_at(0, 0, "AlphaMiddleOmega", kind).unwrap();
+                let id = doc
+                    .insert_note_at(0, 0, "AlphaMiddleOmega", kind, None)
+                    .unwrap();
                 let first = doc
                     .surface_index_for_story(kind.story(), 0, None, Some(&id))
                     .unwrap();
@@ -69929,7 +70167,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let first = doc
                 .surface_index_for_story(kind.story(), 0, None, Some(&id))
                 .unwrap();
@@ -69986,7 +70224,7 @@ mod tests {
                     let mut doc =
                         executor::block_on(WordDocument::load(&bytes, &Options::default()))
                             .unwrap();
-                    let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+                    let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
                     let surface = doc
                         .surface_index_for_story(kind.story(), 0, None, Some(&id))
                         .unwrap();
@@ -70054,7 +70292,7 @@ mod tests {
             let bytes = std::fs::read(fixture_path("hello.docx")).unwrap();
             let mut doc =
                 executor::block_on(WordDocument::load(&bytes, &Options::default())).unwrap();
-            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind).unwrap();
+            let id = doc.insert_note_at(0, 0, "AlphaBeta", kind, None).unwrap();
             let before = doc.export_docx().unwrap();
             let body_xml = doc.raw_document.as_ref().unwrap().to_string().unwrap();
             let surface = doc

@@ -10,6 +10,7 @@ pub struct InsertEndnoteCommand {
     initial_text: String,
     snapshot: Option<WordDocumentSnapshot>,
     previous_selection: Option<SelectionRange>,
+    custom_mark: Option<String>,
 }
 
 impl InsertEndnoteCommand {
@@ -19,7 +20,14 @@ impl InsertEndnoteCommand {
             initial_text,
             snapshot: None,
             previous_selection: None,
+            custom_mark: None,
         }
+    }
+
+    /// The note's reference is `mark` (Word's 任意の記号), not a number.
+    pub fn with_custom_mark(mut self, mark: String) -> Self {
+        self.custom_mark = Some(mark);
+        self
     }
 }
 
@@ -101,11 +109,21 @@ impl Command for InsertEndnoteCommand {
             .document
             .snapshot_including_package()
             .ok_or_else(|| CommandError::Custom("document is unavailable".into()))?;
-        if let Err(error) = ctx.document.insert_endnote_at(
-            model_position.paragraph,
-            model_position.offset,
-            &self.initial_text,
-        ) {
+        let inserted = match self.custom_mark.as_deref() {
+            Some(mark) => ctx.document.insert_note_with_mark_at(
+                false,
+                model_position.paragraph,
+                model_position.offset,
+                &self.initial_text,
+                mark,
+            ),
+            None => ctx.document.insert_endnote_at(
+                model_position.paragraph,
+                model_position.offset,
+                &self.initial_text,
+            ),
+        };
+        if let Err(error) = inserted {
             ctx.document.restore_snapshot(snapshot);
             *ctx.selection = previous_selection;
             return Err(CommandError::Custom(error));
