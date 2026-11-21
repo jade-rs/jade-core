@@ -14,8 +14,28 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 103)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 82)
+        self.assertGreaterEqual(len(cases), 104)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 83)
+
+    def test_section_start_spacing_preserves_versioned_original_outputs(self):
+        name = 'header-footer-sectionpages-mac'
+        self.assertIn(name, check.INDEPENDENT_OUTPUT_CASES)
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004143028Z-b4cb9887')
+        index = check.read_json(check.ROOT / check.INDEX)
+        case = next(case for case in index['fixtures'] if case['mac_case'] == name)
+        windows, = case['windows']
+        self.assertEqual(windows['word_product_version'], '16.0.19127.20936')
+        self.assertEqual(windows['word_executable_sha256'],
+                         '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        self.assertEqual(windows['output_context'], 'independent-screen-print')
+        manifest = check.read_json(check.ROOT / case['mac_manifest']['file'])
+        self.assertEqual(manifest['reference']['version'], '16.114')
+        self.assertEqual(manifest['reference']['build'], '16.114.26101123')
+        self.assertEqual(manifest['coordinatesSha256'],
+                         'af42cc67cd23b5846fcbd791c8dfccdf8c7219e8cb6a8c25703e344311f7993f')
+        self.assertEqual(case['source']['sha256'],
+                         '9904e5c52526c3a8fd897b78747c865a06d17d656f3e7c5a12c891c3d2cbd65f')
+        self.assertEqual(len([case for case in check.verify() if case[0] == name]), 1)
 
     def test_legacy_floating_text_edges_keep_original_platform_exports(self):
         name = 'word-mac-probe-floating-horizontal-14'
