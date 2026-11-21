@@ -3683,6 +3683,14 @@ fn first_family(stack: &str) -> String {
 /// A paragraph's inline equations by their offset in its layout text, with
 /// their run and laid-out plan.
 type InlineMaths = HashMap<usize, (usize, Rc<math::OwnedMathPlan>)>;
+
+/// A text box paragraph's inline equations and in-line pictures, by their
+/// offset in its layout text, with their run.
+#[derive(Default)]
+struct TextBoxInlines<'p> {
+    maths: InlineMaths,
+    pictures: HashMap<usize, (usize, &'p RunImage)>,
+}
 type AppliedRunStyleIdentityKey = (usize, Option<u64>);
 type AppliedRunStyleIdentityCache =
     FxHashMap<AppliedRunStyleIdentityKey, (Rc<RunProperties>, Rc<AppliedRunStyle>)>;
@@ -30180,13 +30188,14 @@ where
     /// values show up. Text-box wrapping used to drop the run properties and
     /// measure everything in the renderer's 12pt fallback, so a line that fits
     /// in Word at the run's own size wrapped early here.
-    fn text_box_paragraph_layout(
+    fn text_box_paragraph_layout<'p>(
         &self,
-        paragraph: &Paragraph,
-    ) -> Result<(String, Vec<RunStyle>, InlineMaths), JsValue> {
+        paragraph: &'p Paragraph,
+    ) -> Result<(String, Vec<RunStyle>, TextBoxInlines<'p>), JsValue> {
         let mut text = String::new();
         let mut run_styles = Vec::with_capacity(paragraph.runs.len());
         let mut inline_maths = InlineMaths::new();
+        let mut pictures = HashMap::new();
         let alone = paragraph
             .runs
             .iter()
@@ -30230,6 +30239,29 @@ where
                 inline_maths.insert(start, (run_index, Rc::new(plan)));
                 continue;
             }
+            // A picture in line with the box's text is one character of it,
+            // as tall as the picture, sitting on the baseline.
+            if let Some(image) = run.image.as_ref().filter(|image| {
+                run.text_box.is_none()
+                    && image.layout.kind == RunImageKind::Inline
+                    && image.data_uri.is_some()
+            }) {
+                text.push('\u{fffc}');
+                run_styles.push(RunStyle {
+                    start,
+                    end: text.len(),
+                    properties,
+                    revision: None,
+                    hyperlink: None,
+                    inline_object: Some(InlineObject {
+                        width: image.width_px.unwrap_or(1.0).max(1.0),
+                        height: image.height_px.unwrap_or(1.0).max(1.0),
+                        descent: 0.0,
+                    }),
+                });
+                pictures.insert(start, (run_index, image));
+                continue;
+            }
             // As in the body: a resolved value replaces the saved result,
             // once per field.
             match run
@@ -30264,7 +30296,14 @@ where
                 );
             }
         }
-        Ok((text, run_styles, inline_maths))
+        Ok((
+            text,
+            run_styles,
+            TextBoxInlines {
+                maths: inline_maths,
+                pictures,
+            },
+        ))
     }
 
     /// Rebases paragraph run styles onto one `\n`-delimited chunk, which is
@@ -30960,7 +30999,7 @@ where
         &mut self,
         text: &str,
         run_styles: &[RunStyle],
-        inline_maths: &InlineMaths,
+        inlines: &TextBoxInlines<'_>,
         format: &TextBoxParagraphFormat<'_>,
         content_left: f64,
         content_right: f64,
@@ -31094,13 +31133,29 @@ where
                     .any(|cluster| cluster.inline_object.is_some());
                 let mut cluster_positions = HashMap::new();
                 let mut inline_math_draws = Vec::new();
+                let mut inline_picture_draws = Vec::new();
                 if has_objects {
                     // Object clusters have no text segment. Position text and
                     // math from the complete sequence, including object widths.
                     let mut object_x = line_origin;
                     for cluster in &wrapped_line.clusters {
                         cluster_positions.insert(cluster.start, object_x);
-                        if let Some((run_index, plan)) = inline_maths.get(&cluster.start) {
+                        if let Some(&(run_index, image)) = inlines.pictures.get(&cluster.start) {
+                            let (top, bottom) = cluster.inline_object_bounds_px().unwrap();
+                            inline_picture_draws.push((
+                                cluster.start,
+                                run_index,
+                                image,
+                                object_x,
+                                top,
+                                bottom,
+                                cluster.width,
+                            ));
+                            min_top_offset = min_top_offset.min(top);
+                            max_bottom_offset = max_bottom_offset.max(bottom);
+                            offsets_initialised = true;
+                        }
+                        if let Some((run_index, plan)) = inlines.maths.get(&cluster.start) {
                             let (top, bottom) = cluster.inline_object_bounds_px().unwrap();
                             inline_math_draws.push((
                                 cluster.start,
@@ -31210,6 +31265,23 @@ where
                         alignment_shift_for(entry.4, entry.5, fragment.baseline_shift_px);
                 }
 
+                for (offset, _, _, x, top, bottom, width) in &inline_picture_draws {
+                    let shift = alignment_shift_for(*top, *bottom, 0.0);
+                    fragments.push(SelectionFragmentLayout {
+                        baseline_shift_px: bottom + shift,
+                        start: *offset,
+                        end: *offset + '\u{fffc}'.len_utf8(),
+                        x: *x,
+                        width: *width,
+                        glyphs: vec![GlyphBox {
+                            start: *offset,
+                            end: *offset + '\u{fffc}'.len_utf8(),
+                            x: 0.0,
+                            width: *width,
+                        }]
+                        .into(),
+                    });
+                }
                 for (offset, _, plan, x, top, bottom) in &inline_math_draws {
                     let shift = alignment_shift_for(*top, *bottom, 0.0);
                     fragments.push(SelectionFragmentLayout {
@@ -31308,6 +31380,24 @@ where
                     }
                 }
 
+                for (_, run_index, image, x, top, bottom, width) in &inline_picture_draws {
+                    let picture_baseline = baseline + alignment_shift_for(*top, *bottom, 0.0);
+                    self.draw_image_element(
+                        image,
+                        ImageDrawSpec {
+                            x: *x + alignment_shift,
+                            y: picture_baseline + top,
+                            width: *width,
+                            height: bottom - top,
+                            rotation_deg: 0.0,
+                            flip_horizontal: image.layout.flip_horizontal,
+                            flip_vertical: image.layout.flip_vertical,
+                            crop: image.crop,
+                            paragraph_index,
+                            run_index: *run_index,
+                        },
+                    )?;
+                }
                 let context = self.host.painter();
                 for (offset, run_index, plan, x, top, bottom) in &inline_math_draws {
                     let math_baseline = baseline + alignment_shift_for(*top, *bottom, 0.0);
@@ -32207,7 +32297,7 @@ where
         self.render_text_box_paragraph(
             &shape.text,
             &run_styles,
-            &InlineMaths::new(),
+            &TextBoxInlines::default(),
             &format,
             content_left,
             content_right,
