@@ -12248,6 +12248,12 @@ impl WordDocument {
     /// keep theirs.
     pub fn recording_revision_session(&self) -> Option<RevisionSession> {
         let mut session = self.revision_session.clone()?;
+        // CT_TrackChange requires an author on every new revision. Match the
+        // default used when loading a document with change tracking enabled;
+        // starting and editing in one batch must be just as valid after save.
+        if session.author.is_none() {
+            session.author = Some("jade".to_string());
+        }
         if session.date.is_none() {
             if let Some((date, date_utc)) = crate::revision_clock::revision_date_now() {
                 session.date = Some(date);

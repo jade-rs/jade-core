@@ -69,6 +69,13 @@ This additional oracle found that anonymous comments omitted the mandatory
 New comments and replies now write an empty author attribute when no author is
 provided; a focused regression checks both paths.
 
+A subsequent same-batch start-tracking/edit regression found the same missing
+attribute on revisions: reloading between commands had masked the failure by
+applying the load-time default. New revision sessions now use that same default
+(`jade`) before recording insertions, deletions, formatting or paragraph marks;
+explicit empty and named authors are preserved. The SDK reproduced the schema
+error before the fix and accepted all 15 anonymous/empty/named batch states after it.
+
 ## Coverage-guided fuzzing
 
 Run coverage-guided fuzzing (requires nightly Rust and cargo-fuzz):
@@ -105,7 +112,8 @@ not a proof covering every OOXML document, every command or every ECMA-376/ISO
 29500 requirement. Rendering parity and Microsoft Word's repair behavior require
 separate application-level compatibility checks.
 
-The XML-character guard uses a vectorizable block minimum and a targeted UTF-8
+The XML-character guard uses a block minimum (runtime-dispatched AVX2 on supported
+x86-64 CPUs, a portable implementation elsewhere) and a targeted UTF-8
 noncharacter search; scalar decoding is reserved for suspicious data. The first
 implementation decoded every character on every export and failed the existing
 Callgrind regression gate. The same gate checks the optimized implementation.
@@ -116,11 +124,11 @@ Validated against `jade-core` main `9c3e2215`:
 
 - Before the fixes, forbidden-control export and CR persistence properties failed.
 - 512 cases per property: 1,536 generated edit/history/coordinate sequences, up to
-  64 operations each, plus eleven focused regression/package tests; all 14 tests passed.
-- Microsoft365 Open XML SDK: 34,173 saved PBT/structural/history states validated,
+  64 operations each, plus twelve focused regression/package tests; all 15 tests passed.
+- Microsoft365 Open XML SDK: 33,884 saved PBT/structural/history states validated,
   zero invalid documents or errors. A preceding run reproduced 32 missing-author
   errors before the anonymous-comment fix. The five source fixtures also passed.
-- Reader, writer, document-core and headless-editor library tests: 2,192 passed,
+- Reader, writer, document-core and headless-editor library tests: 2,194 passed,
   two existing ignored tests, zero failures.
 - `cargo clippy --locked -p jade-docx-writer -p jade-docx-reader -p jade-docx-document-core -p jade-docx-headless-editor --all-targets -- -D warnings` passed.
 - Workspace and standalone fuzz harness formatting checks passed.
@@ -130,6 +138,9 @@ Validated against `jade-core` main `9c3e2215`:
   All 5,484 saved fuzz states passed Microsoft365 SDK validation with zero errors.
   This campaign used the comment fix and expanded harness before the final
   character-guard performance optimization; the optimized guard is covered by
-  the final PBT run, focused boundary tests and the CI fuzz campaign.
+  the PBT run, focused boundary tests and the CI fuzz campaign.
+  A subsequent ASan run completed 24 runs in 61 seconds; all 349 saved states
+  also passed SDK validation. These ASan campaigns predate the revision-author
+  fallback and final x86-64 scan tuning.
   Throughput was limited by concurrent host load; this is a bounded campaign,
   supplemented by the model-based properties and recurring CI campaigns.

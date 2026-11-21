@@ -820,3 +820,92 @@ fn anonymous_comments_and_replies_have_required_author_attributes() {
         );
     }
 }
+
+#[test]
+fn anonymous_tracked_edits_have_required_author_attributes() {
+    const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+    for author in [None, Some(String::new()), Some("Reviewer".to_string())] {
+        let source = include_bytes!("../../../public/fixtures/hello.docx");
+        let commands = [
+            HeadlessCommand::StartChangeTracking {
+                author: author.clone(),
+                initials: None,
+                date: Some("2026-11-21T00:00:00Z".into()),
+                date_utc: None,
+            },
+            HeadlessCommand::InsertText {
+                paragraph: 0,
+                offset: 0,
+                text: "X".into(),
+            },
+            HeadlessCommand::ApplyBold {
+                start_paragraph: 0,
+                start_offset: 1,
+                end_paragraph: 0,
+                end_offset: 3,
+                enabled: true,
+            },
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 0,
+                start_offset: 1,
+                end_paragraph: 0,
+                end_offset: 2,
+                text: "R".into(),
+            },
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 0,
+                offset: 3,
+                count: 1,
+            },
+        ];
+        for step in 0..commands.len() {
+            let bytes = apply_headless_commands(
+                source,
+                &HeadlessEditRequest {
+                    commands: commands[..=step].to_vec(),
+                },
+            )
+            .unwrap();
+            package_integrity::assert_valid_package(&bytes);
+            let mut archive = zip::ZipArchive::new(Cursor::new(&bytes)).unwrap();
+            let mut xml = String::new();
+            archive
+                .by_name("word/document.xml")
+                .unwrap()
+                .read_to_string(&mut xml)
+                .unwrap();
+            let parsed = roxmltree::Document::parse(&xml).unwrap();
+            let marks: Vec<_> = parsed
+                .descendants()
+                .filter(|n| {
+                    n.is_element()
+                        && n.tag_name().namespace() == Some(W)
+                        && matches!(n.tag_name().name(), "ins" | "del" | "rPrChange")
+                })
+                .collect();
+            for (name, first_step) in [("ins", 1), ("rPrChange", 2), ("del", 3)] {
+                if step >= first_step {
+                    assert!(
+                        marks.iter().any(|n| n.has_tag_name((W, name))),
+                        "tracking produced no {name} at step {step}"
+                    );
+                }
+            }
+            if step == 4 {
+                assert!(
+                    marks.iter().any(|n| n.has_tag_name((W, "ins"))
+                        && n.parent().is_some_and(|p| p.has_tag_name((W, "rPr")))),
+                    "paragraph split produced no paragraph-mark insertion"
+                );
+            }
+            for mark in marks {
+                assert_eq!(
+                    mark.attribute((W, "author")),
+                    Some(author.as_deref().unwrap_or("jade")),
+                    "missing/changed author in {} at step {step}",
+                    mark.tag_name().name()
+                );
+            }
+        }
+    }
+}

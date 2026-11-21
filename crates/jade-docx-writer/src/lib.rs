@@ -395,18 +395,7 @@ fn validate_xml_characters(path: &str, data: &[u8]) -> std::io::Result<()> {
     {
         return Ok(());
     }
-    // Most XML blocks contain no ASCII controls at all. A vectorizable minimum
-    // checks those blocks cheaply; only blocks containing a control need the
-    // whitespace-aware scalar check. ASCII never appears inside a UTF-8 scalar.
-    let controls = data.chunks(1024).any(|chunk| {
-        chunk.iter().copied().min().is_some_and(|byte| byte < 0x20)
-            && chunk
-                .iter()
-                .any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13))
-    });
-    let noncharacters = memchr::memmem::find_iter(data, b"\xef\xbf")
-        .any(|index| data.get(index + 2).is_some_and(|&byte| byte >= 0xbe));
-    if !controls && !noncharacters {
+    if !has_forbidden_xml_bytes(data) {
         return Ok(());
     }
     let Ok(text) = std::str::from_utf8(data) else {
@@ -421,6 +410,65 @@ fn validate_xml_characters(path: &str, data: &[u8]) -> std::io::Result<()> {
         ));
     }
     Ok(())
+}
+
+fn has_forbidden_xml_bytes(data: &[u8]) -> bool {
+    #[cfg(target_arch = "x86_64")]
+    if std::arch::is_x86_feature_detected!("avx2") {
+        // SAFETY: feature detection above guarantees AVX2 support.
+        return unsafe { has_forbidden_xml_bytes_avx2(data) };
+    }
+    has_forbidden_xml_bytes_portable(data)
+}
+
+fn has_forbidden_xml_bytes_portable(data: &[u8]) -> bool {
+    data.chunks(1024).any(|chunk| {
+        chunk.iter().copied().min().is_some_and(|byte| byte < 0x20)
+            && chunk
+                .iter()
+                .any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13))
+    }) || has_xml_noncharacters(data)
+}
+
+fn has_xml_noncharacters(data: &[u8]) -> bool {
+    // Search the uncommon continuation byte rather than the leading 0xEF,
+    // which also starts ordinary Japanese full-width characters.
+    memchr::memchr_iter(0xbf, data).any(|index| {
+        index > 0
+            && data[index - 1] == 0xef
+            && data
+                .get(index + 1)
+                .is_some_and(|&byte| matches!(byte, 0xbe | 0xbf))
+    })
+}
+
+// Reduce each block before inspecting rare ASCII controls. Runtime dispatch
+// keeps the same portable behavior on WASM and CPUs without AVX2.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn has_forbidden_xml_bytes_avx2(data: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+    data.chunks(2048).any(|chunk| {
+        let mut minimum = _mm256_set1_epi8(-1);
+        let mut vectors = chunk.chunks_exact(32);
+        for vector in &mut vectors {
+            // SAFETY: chunks_exact yields 32 readable bytes; loadu has no
+            // alignment requirement and stays entirely inside that slice.
+            minimum = _mm256_min_epu8(minimum, unsafe {
+                _mm256_loadu_si256(vector.as_ptr().cast())
+            });
+        }
+        let threshold = _mm256_set1_epi8(31);
+        let has_control = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
+            _mm256_min_epu8(minimum, threshold),
+            minimum,
+        )) != 0
+            || vectors.remainder().iter().any(|&byte| byte < 0x20);
+        has_control
+            && chunk
+                .iter()
+                .any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13))
+    }) || has_xml_noncharacters(data)
 }
 
 #[cfg(test)]
@@ -453,6 +501,13 @@ mod tests {
 
     proptest::proptest! {
         #[test]
+        fn control_scan_matches_scalar_model(bytes in proptest::collection::vec(proptest::prelude::any::<u8>(), 0..4097)) {
+            let expected = bytes.iter().any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13)) || bytes.windows(3).any(|w| w == b"\xef\xbf\xbe" || w == b"\xef\xbf\xbf");
+            proptest::prop_assert_eq!(has_forbidden_xml_bytes_portable(&bytes), expected);
+            proptest::prop_assert_eq!(has_forbidden_xml_bytes(&bytes), expected);
+        }
+
+        #[test]
         fn character_validation_matches_xml_10_scalars(value in ".*") {
             let expected = value.chars().all(|ch| matches!(ch,
                 '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}'
@@ -463,8 +518,30 @@ mod tests {
     }
 
     #[test]
+    fn control_scan_checks_every_byte_and_vector_tail() {
+        for padding in (0..257)
+            .chain(1016..1033)
+            .chain(2040..2057)
+            .chain(8184..8201)
+        {
+            for byte in 0..=255 {
+                let mut data = vec![b'x'; padding];
+                data.push(byte);
+                let expected = byte < 0x20 && !matches!(byte, 9 | 10 | 13);
+                assert_eq!(
+                    has_forbidden_xml_bytes(&data),
+                    expected,
+                    "padding={padding}, byte={byte}"
+                );
+                assert_eq!(has_forbidden_xml_bytes_portable(&data), expected);
+            }
+        }
+    }
+
+    #[test]
     fn character_validation_checks_all_controls_at_vector_boundaries() {
-        for padding in (0..65).chain([1016, 1023, 1024, 1025, 2047, 2048]) {
+        for padding in (0..257).chain([1016, 1023, 1024, 1025, 2047, 2048, 8184, 8191, 8192, 8193])
+        {
             for ch in (0..32).chain([0xfffe, 0xffff]).filter_map(char::from_u32) {
                 let xml = format!("<root>{}{ch}</root>", "x".repeat(padding));
                 assert_eq!(
