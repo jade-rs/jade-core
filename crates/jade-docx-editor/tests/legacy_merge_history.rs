@@ -146,6 +146,10 @@ proptest! {
         } else { vec![start.to_owned()] };
         expected.push("TAIL".into());
         if orphan { expected.push("ORPHAN".into()); }
+        // Merged, a cell holding only an empty paragraph adds nothing, as
+        // Word leaves it out.
+        let mut merged_expected = expected.clone();
+        if start.is_empty() && continuation.is_empty() { merged_expected.remove(0); }
         let mut merged = false;
         let mut undo = Vec::new();
         let mut redo = Vec::new();
@@ -172,9 +176,10 @@ proptest! {
                     undo.clear(); redo.clear();
                 }
             }
-            prop_assert_eq!(&texts(&session.document), &expected, "live step {}: {:?}", step, operation);
+            let expected = if merged { &merged_expected } else { &expected };
+            prop_assert_eq!(&texts(&session.document), expected, "live step {}: {:?}", step, operation);
             let saved = load(&session.document.export_docx().unwrap());
-            prop_assert_eq!(&texts(&saved), &expected, "saved step {}: {:?}", step, operation);
+            prop_assert_eq!(&texts(&saved), expected, "saved step {}: {:?}", step, operation);
             let mut expected_spans = if merged { vec![3] } else { vec![2, 1] };
             if orphan { expected_spans.push(1); }
             prop_assert_eq!(&spans(&session.document), &expected_spans, "live step {}: {:?}", step, operation);
