@@ -532,6 +532,31 @@ mod tests {
     }
 
     #[test]
+    fn the_section_after_a_new_break_links_its_headers_and_footers() {
+        let data = build_document_docx(
+            r#"<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>
+<w:sectPr><w:headerReference w:type="default" r:id="rId5"/><w:footerReference w:type="first" r:id="rId6"/><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#,
+        );
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        document
+            .insert_section_break_at(0, 2, SectionBreakType::NextPage)
+            .expect("insert section break");
+
+        let xml = export_document_xml(&document);
+        let (head, following) = xml.split_once("</w:sectPr>").expect("two sections");
+        assert!(head.contains(r#"r:id="rId5""#) && head.contains(r#"r:id="rId6""#));
+        assert!(
+            !following.contains("Reference"),
+            "the following section shows the head's stories through the link: {following}"
+        );
+        for (role, variant) in [("header", "default"), ("footer", "first")] {
+            assert!(!document.header_footer_linked(0, role, variant).unwrap());
+            assert!(document.header_footer_linked(1, role, variant).unwrap());
+        }
+    }
+
+    #[test]
     fn snapshot_batch_rebases_following_text_across_a_section_break() {
         let data = single_section_docx("abcdef");
         let mut document =

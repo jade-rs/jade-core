@@ -11510,14 +11510,16 @@ impl WordDocument {
                     .section
                     .get_or_insert_with(SectionProperties::default);
                 section.section_type = Some(break_type.as_ooxml().to_string());
+                Self::link_section_stories_to_previous(section);
                 Some(terminator.node_id.ok_or_else(|| {
                     "following section terminator has no raw XML node".to_string()
                 })?)
             } else {
-                document
+                let section = document
                     .default_section
-                    .get_or_insert_with(SectionProperties::default)
-                    .section_type = Some(break_type.as_ooxml().to_string());
+                    .get_or_insert_with(SectionProperties::default);
+                section.section_type = Some(break_type.as_ooxml().to_string());
+                Self::link_section_stories_to_previous(section);
                 None
             };
             (head_id, following_terminator_id)
@@ -11536,12 +11538,38 @@ impl WordDocument {
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?
         };
         self.set_section_start_type_raw(following_sect_pr_id, break_type)?;
+        // Word starts the section after a new break 前と同じ: the head keeps
+        // the headers and footers, and the section after it shows them
+        // through the link instead of naming the same parts again. Named
+        // twice, neither section was linked, and 前と同じ turned off gave the
+        // section no copy of its own to change.
+        if let Some(raw) = self.raw_document.as_mut() {
+            if let Some(sect_pr) = raw.element_mut(following_sect_pr_id) {
+                sect_pr.children.retain(|child| {
+                    !matches!(child, XmlNode::Element(element)
+                        if element.name == "w:headerReference"
+                            || element.name == "w:footerReference")
+                });
+            }
+            raw.rebuild_index_for_subtree(following_sect_pr_id);
+        }
 
         if let Some(document) = self.document_mut() {
             Self::rebuild_section_ranges(document);
         }
         self.rebuild_paragraph_surfaces();
         Ok(following_paragraph_index)
+    }
+
+    /// Drops `section`'s own header and footer references, so it shows the
+    /// previous section's.
+    fn link_section_stories_to_previous(section: &mut SectionProperties) {
+        section.header_reference = None;
+        section.footer_reference = None;
+        section.header_reference_first = None;
+        section.footer_reference_first = None;
+        section.header_reference_even = None;
+        section.footer_reference_even = None;
     }
 
     fn paragraph_section_properties_id(
