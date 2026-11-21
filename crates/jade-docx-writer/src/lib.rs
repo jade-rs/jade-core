@@ -364,6 +364,9 @@ pub fn write_docx_preserving_archive(
 /// run on every save and on every hash a test takes, and `document.xml` can
 /// be several megabytes.
 fn write_part<W: Write>(writer: &mut W, path: &str, data: &[u8]) -> std::io::Result<()> {
+    if path.ends_with(".xml") || path.ends_with(".rels") {
+        validate_xml_characters(path, data)?;
+    }
     let repaired = if is_wordprocessing_xml_part(path) {
         repair_markup_compatibility_root_tag(data)
     } else {
@@ -379,11 +382,240 @@ fn write_part<W: Write>(writer: &mut W, path: &str, data: &[u8]) -> std::io::Res
     }
 }
 
+// Escaping cannot make XML 1.0 forbidden characters legal, even as references.
+// Check at the package boundary so comments, notes and auxiliary parts are
+// covered as well as the main document. Never silently discard user text.
+fn validate_xml_characters(path: &str, data: &[u8]) -> std::io::Result<()> {
+    // Generated XML is UTF-8. Preserve opaque source parts in other encodings;
+    // validating their encoding belongs to the reader, not the ZIP writer.
+    if data.starts_with(&[0xff, 0xfe])
+        || data.starts_with(&[0xfe, 0xff])
+        || data.starts_with(b"<\0")
+        || data.starts_with(b"\0<")
+    {
+        return Ok(());
+    }
+    if !has_forbidden_xml_bytes(data) {
+        return Ok(());
+    }
+    let Ok(text) = std::str::from_utf8(data) else {
+        return Ok(());
+    };
+    if let Some(ch) = text.chars().find(|ch| {
+        !matches!(ch, '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}')
+    }) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("XML 1.0 forbids U+{:04X} in {path}", ch as u32),
+        ));
+    }
+    Ok(())
+}
+
+fn has_forbidden_xml_bytes(data: &[u8]) -> bool {
+    #[cfg(target_arch = "x86_64")]
+    if std::arch::is_x86_feature_detected!("avx2") {
+        // SAFETY: feature detection above guarantees AVX2 support.
+        return unsafe { has_forbidden_xml_bytes_avx2(data) };
+    }
+    has_forbidden_xml_bytes_portable(data)
+}
+
+fn has_forbidden_xml_bytes_portable(data: &[u8]) -> bool {
+    data.chunks(1024).any(|chunk| {
+        chunk.iter().copied().min().is_some_and(|byte| byte < 0x20)
+            && chunk
+                .iter()
+                .any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13))
+    }) || has_xml_noncharacters(data)
+}
+
+fn has_xml_noncharacters(data: &[u8]) -> bool {
+    // Search the uncommon continuation byte rather than the leading 0xEF,
+    // which also starts ordinary Japanese full-width characters.
+    memchr::memchr_iter(0xbf, data).any(|index| {
+        index > 0
+            && data[index - 1] == 0xef
+            && data
+                .get(index + 1)
+                .is_some_and(|&byte| matches!(byte, 0xbe | 0xbf))
+    })
+}
+
+// Reduce each block before inspecting rare ASCII controls. Runtime dispatch
+// keeps the same portable behavior on WASM and CPUs without AVX2.
+#[cfg(target_arch = "x86_64")]
+#[target_feature(enable = "avx2")]
+unsafe fn has_forbidden_xml_bytes_avx2(data: &[u8]) -> bool {
+    use std::arch::x86_64::*;
+    data.chunks(2048).any(|chunk| {
+        let mut minimum = _mm256_set1_epi8(-1);
+        let mut vectors = chunk.chunks_exact(32);
+        for vector in &mut vectors {
+            // SAFETY: chunks_exact yields 32 readable bytes; loadu has no
+            // alignment requirement and stays entirely inside that slice.
+            minimum = _mm256_min_epu8(minimum, unsafe {
+                _mm256_loadu_si256(vector.as_ptr().cast())
+            });
+        }
+        let threshold = _mm256_set1_epi8(31);
+        let has_control = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
+            _mm256_min_epu8(minimum, threshold),
+            minimum,
+        )) != 0
+            || vectors.remainder().iter().any(|&byte| byte < 0x20);
+        has_control && {
+            // Legal XML whitespace must not force a scalar scan of the entire
+            // block. Exclude it per vector, then inspect only the short tail.
+            let mut vectors = chunk.chunks_exact(32);
+            vectors.any(|vector| {
+                // SAFETY: each vector is an exact, readable 32-byte slice.
+                let bytes = unsafe { _mm256_loadu_si256(vector.as_ptr().cast()) };
+                let control = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
+                    _mm256_min_epu8(bytes, threshold),
+                    bytes,
+                ));
+                control != 0 && {
+                    let allowed = _mm256_or_si256(
+                        _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(9)),
+                        _mm256_or_si256(
+                            _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(10)),
+                            _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(13)),
+                        ),
+                    );
+                    control & !_mm256_movemask_epi8(allowed) != 0
+                }
+            }) || vectors
+                .remainder()
+                .iter()
+                .any(|&byte| byte < 32 && !matches!(byte, 9 | 10 | 13))
+        }
+    }) || has_xml_noncharacters(data)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Read;
     use zip::ZipArchive;
+
+    #[test]
+    fn rejects_forbidden_characters_in_every_xml_part() {
+        for path in [
+            "word/document.xml",
+            "word/comments.xml",
+            "word/footnotes.xml",
+            "_rels/.rels",
+        ] {
+            for ch in [
+                '\0', '\u{8}', '\u{b}', '\u{c}', '\u{1f}', '\u{fffe}', '\u{ffff}',
+            ] {
+                let original = HashMap::from([(path.to_string(), b"<root/>".to_vec())]);
+                let overrides = HashMap::from([(
+                    path.to_string(),
+                    format!("<root value=\"{ch}\"/>").into_bytes(),
+                )]);
+                let err = write_docx(&original, &overrides).expect_err("forbidden XML character");
+                assert!(err.to_string().contains(path));
+            }
+        }
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn control_scan_matches_scalar_model(bytes in proptest::collection::vec(proptest::prelude::any::<u8>(), 0..4097)) {
+            let expected = bytes.iter().any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13)) || bytes.windows(3).any(|w| w == b"\xef\xbf\xbe" || w == b"\xef\xbf\xbf");
+            proptest::prop_assert_eq!(has_forbidden_xml_bytes_portable(&bytes), expected);
+            proptest::prop_assert_eq!(has_forbidden_xml_bytes(&bytes), expected);
+        }
+
+        #[test]
+        fn character_validation_matches_xml_10_scalars(value in ".*") {
+            let expected = value.chars().all(|ch| matches!(ch,
+                '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}'
+                | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}'));
+            let xml = format!("<root>{value}</root>");
+            proptest::prop_assert_eq!(validate_xml_characters("test.xml", xml.as_bytes()).is_ok(), expected);
+        }
+    }
+
+    #[test]
+    fn control_scan_checks_every_byte_and_vector_tail() {
+        for padding in (0..257)
+            .chain(1016..1033)
+            .chain(2040..2057)
+            .chain(8184..8201)
+        {
+            for byte in 0..=255 {
+                let mut data = vec![b'x'; padding];
+                data.push(byte);
+                let expected = byte < 0x20 && !matches!(byte, 9 | 10 | 13);
+                assert_eq!(
+                    has_forbidden_xml_bytes(&data),
+                    expected,
+                    "padding={padding}, byte={byte}"
+                );
+                assert_eq!(has_forbidden_xml_bytes_portable(&data), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn control_scan_checks_after_legal_whitespace() {
+        for whitespace in [b'\t', b'\n', b'\r'] {
+            let mut data = vec![whitespace; 4097];
+            assert!(!has_forbidden_xml_bytes(&data));
+            for offset in 0..data.len() {
+                data[offset] = 0x0b;
+                assert!(has_forbidden_xml_bytes(&data), "offset={offset}");
+                assert!(has_forbidden_xml_bytes_portable(&data));
+                data[offset] = whitespace;
+            }
+        }
+    }
+
+    #[test]
+    fn character_validation_checks_all_controls_at_vector_boundaries() {
+        for padding in (0..257).chain([1016, 1023, 1024, 1025, 2047, 2048, 8184, 8191, 8192, 8193])
+        {
+            for ch in (0..32).chain([0xfffe, 0xffff]).filter_map(char::from_u32) {
+                let xml = format!("<root>{}{ch}</root>", "x".repeat(padding));
+                assert_eq!(
+                    validate_xml_characters("test.xml", xml.as_bytes()).is_ok(),
+                    matches!(ch, '\t' | '\n' | '\r'),
+                    "padding={padding}, U+{:04X}",
+                    ch as u32,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn character_validation_preserves_binary_and_utf16_parts() {
+        let utf16: Vec<u8> = [0xff, 0xfe]
+            .into_iter()
+            .chain("<root>日</root>".encode_utf16().flat_map(u16::to_le_bytes))
+            .collect();
+        let original = HashMap::from([
+            ("customXml/item.xml".to_string(), utf16),
+            ("word/media/image.png".to_string(), vec![0, 8, 255]),
+            (
+                "word/document.xml".to_string(),
+                "<root>\t\n\r日😀\u{10ffff}</root>".as_bytes().to_vec(),
+            ),
+        ]);
+        let bytes = write_docx(&original, &HashMap::new()).unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        for (path, expected) in original {
+            let mut actual = Vec::new();
+            archive
+                .by_name(&path)
+                .unwrap()
+                .read_to_end(&mut actual)
+                .unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
 
     #[test]
     fn write_docx_replaces_overridden_files() {
