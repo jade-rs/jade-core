@@ -1407,7 +1407,9 @@ fn paragraph_text_metrics(paragraph: &Paragraph) -> DocumentTextMetrics {
 
 /// The bytes the last layout showed for each field run, by the XML node of
 /// the run: shared between a document and the renderer laying it out.
-pub type RenderedFieldLengths = std::sync::Arc<std::sync::Mutex<HashMap<XmlNodeId, usize>>>;
+/// The value each field run was last laid out showing, by run node: what
+/// caret offsets past a field count, and what the caret walks through.
+pub type RenderedFieldLengths = std::sync::Arc<std::sync::Mutex<HashMap<XmlNodeId, String>>>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WordDocument {
@@ -34082,13 +34084,18 @@ impl WordDocument {
     /// The paragraph's text as the caret walks it, in rendered offsets: a
     /// note's number ahead of its first paragraph, each note reference mark
     /// where it is drawn, and an object character for each inline picture,
-    /// text box and equation. Fields count at their run text.
+    /// text box and equation, and each field's shown value.
     pub fn rendered_paragraph_text(&self, index: usize) -> String {
         let Some(paragraph) = self.paragraph(index) else {
             return String::new();
         };
         let mut marks = self.reference_marker_spans(index).into_iter().peekable();
         let mut out = self.rendered_note_marker_text(index);
+        let shown_fields = self
+            .rendered_field_lengths
+            .lock()
+            .map(|shown| shown.clone())
+            .unwrap_or_default();
         let mut model_offset = 0usize;
         for run in &paragraph.runs {
             let ids = run.footnote_reference_ids.len() + run.endnote_reference_ids.len();
@@ -34106,8 +34113,17 @@ impl WordDocument {
                     _ => out.extend(std::iter::repeat_n('*', span.rendered_len)),
                 }
             }
+            let shown = run
+                .field
+                .as_ref()
+                .and(run.node_id)
+                .and_then(|id| shown_fields.get(&id))
+                .filter(|shown| shown.len() != run.text.len());
             if self.run_is_object_character(index, run) {
                 out.push('\u{fffc}');
+            } else if let Some(shown) = shown {
+                // A field counts at the value it shows.
+                out.push_str(shown);
             } else {
                 out.push_str(&run.text);
             }
@@ -34192,9 +34208,9 @@ impl WordDocument {
         let mut model_offset = 0usize;
         for run in &paragraph.runs {
             if run.field.is_some() {
-                if let Some(&shown) = run.node_id.and_then(|id| lengths.get(&id)) {
-                    if shown != run.text.len() {
-                        spans.push((model_offset, run.text.len(), shown));
+                if let Some(shown) = run.node_id.and_then(|id| lengths.get(&id)) {
+                    if shown.len() != run.text.len() {
+                        spans.push((model_offset, run.text.len(), shown.len()));
                     }
                 }
             }
