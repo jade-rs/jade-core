@@ -20447,7 +20447,7 @@ where
                             (self.rendered_field_lengths.as_ref(), run.node_id)
                         {
                             if let Ok(mut lengths) = lengths.lock() {
-                                lengths.insert(id, value.len());
+                                lengths.insert(id, value.clone());
                             }
                         }
                     }
