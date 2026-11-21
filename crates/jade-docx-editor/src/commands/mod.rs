@@ -104,6 +104,7 @@ pub mod set_typography;
 pub mod set_watermark;
 pub mod snapshot_edit;
 pub mod split_table;
+pub mod table_format;
 mod table_range;
 pub mod table_structure;
 pub(crate) mod text_edit;
