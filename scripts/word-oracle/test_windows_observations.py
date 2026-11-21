@@ -55,7 +55,7 @@ class WindowsObservationsTests(unittest.TestCase):
 
     def test_every_imported_mac_source_has_windows_evidence_or_explicit_refusal(self):
         index = check.read_json(check.ROOT / check.INDEX)
-        self.assertEqual(check.verify_mac_input_coverage(index), (578, 1))
+        self.assertEqual(check.verify_mac_input_coverage(index), (580, 1))
         for rejection in index['rejected_sources']:
             for attempt in rejection.get('attempts', []):
                 check.verify_rejected_attempt(check.ROOT, rejection, attempt)
