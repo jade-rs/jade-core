@@ -1,0 +1,64 @@
+name: DOCX edit integrity
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 18 * * *'
+  pull_request:
+    paths:
+      - 'crates/jade-docx-*/**'
+      - 'crates/jade-opc/**'
+      - 'crates/jade-selection/**'
+      - 'fuzz/**'
+      - 'public/fixtures/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/docx-integrity.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  properties:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Model-based edit and history properties
+        env:
+          PROPTEST_CASES: '512'
+        run: cargo test --locked -p jade-docx-headless-editor --test edit_integrity
+      - name: Related DOCX regression tests
+        run: cargo test --locked -p jade-docx-reader -p jade-docx-writer -p jade-docx-document-core -p jade-docx-headless-editor --lib
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: docx-proptest-regressions
+          path: crates/jade-docx-headless-editor/tests/*.proptest-regressions
+          if-no-files-found: ignore
+
+  fuzz:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz -> target
+      - run: cargo install cargo-fuzz --locked --version 0.13.2
+      - name: Seed each fixture and edit kind
+        run: |
+          mkdir -p fuzz/corpus/edit_docx
+          cp fuzz/seeds/edit_docx/* fuzz/corpus/edit_docx/
+      - name: Fuzz mixed edits on real DOCX fixtures
+        run: cargo +nightly fuzz run edit_docx -- -max_total_time=300 -max_len=385 -timeout=60
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: docx-fuzz-corpus-and-crashes
+          path: |
+            fuzz/artifacts/
+            fuzz/corpus/
+          if-no-files-found: ignore

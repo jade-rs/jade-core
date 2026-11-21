@@ -364,6 +364,9 @@ pub fn write_docx_preserving_archive(
 /// run on every save and on every hash a test takes, and `document.xml` can
 /// be several megabytes.
 fn write_part<W: Write>(writer: &mut W, path: &str, data: &[u8]) -> std::io::Result<()> {
+    if path.ends_with(".xml") || path.ends_with(".rels") {
+        validate_xml_characters(path, data)?;
+    }
     let repaired = if is_wordprocessing_xml_part(path) {
         repair_markup_compatibility_root_tag(data)
     } else {
@@ -379,11 +382,87 @@ fn write_part<W: Write>(writer: &mut W, path: &str, data: &[u8]) -> std::io::Res
     }
 }
 
+// Escaping cannot make XML 1.0 forbidden characters legal, even as references.
+// Check at the package boundary so comments, notes and auxiliary parts are
+// covered as well as the main document. Never silently discard user text.
+fn validate_xml_characters(path: &str, data: &[u8]) -> std::io::Result<()> {
+    // Generated XML is UTF-8. Preserve opaque source parts in other encodings;
+    // validating their encoding belongs to the reader, not the ZIP writer.
+    if data.starts_with(&[0xff, 0xfe])
+        || data.starts_with(&[0xfe, 0xff])
+        || data.starts_with(b"<\0")
+        || data.starts_with(b"\0<")
+    {
+        return Ok(());
+    }
+    let Ok(text) = std::str::from_utf8(data) else {
+        return Ok(());
+    };
+    if let Some(ch) = text.chars().find(|ch| {
+        !matches!(ch, '\u{9}' | '\u{a}' | '\u{d}' | '\u{20}'..='\u{d7ff}' | '\u{e000}'..='\u{fffd}' | '\u{10000}'..='\u{10ffff}')
+    }) {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("XML 1.0 forbids U+{:04X} in {path}", ch as u32),
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Read;
     use zip::ZipArchive;
+
+    #[test]
+    fn rejects_forbidden_characters_in_every_xml_part() {
+        for path in [
+            "word/document.xml",
+            "word/comments.xml",
+            "word/footnotes.xml",
+            "_rels/.rels",
+        ] {
+            for ch in [
+                '\0', '\u{8}', '\u{b}', '\u{c}', '\u{1f}', '\u{fffe}', '\u{ffff}',
+            ] {
+                let original = HashMap::from([(path.to_string(), b"<root/>".to_vec())]);
+                let overrides = HashMap::from([(
+                    path.to_string(),
+                    format!("<root value=\"{ch}\"/>").into_bytes(),
+                )]);
+                let err = write_docx(&original, &overrides).expect_err("forbidden XML character");
+                assert!(err.to_string().contains(path));
+            }
+        }
+    }
+
+    #[test]
+    fn character_validation_preserves_binary_and_utf16_parts() {
+        let utf16: Vec<u8> = [0xff, 0xfe]
+            .into_iter()
+            .chain("<root>日</root>".encode_utf16().flat_map(u16::to_le_bytes))
+            .collect();
+        let original = HashMap::from([
+            ("customXml/item.xml".to_string(), utf16),
+            ("word/media/image.png".to_string(), vec![0, 8, 255]),
+            (
+                "word/document.xml".to_string(),
+                "<root>\t\n\r日😀\u{10ffff}</root>".as_bytes().to_vec(),
+            ),
+        ]);
+        let bytes = write_docx(&original, &HashMap::new()).unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        for (path, expected) in original {
+            let mut actual = Vec::new();
+            archive
+                .by_name(&path)
+                .unwrap()
+                .read_to_end(&mut actual)
+                .unwrap();
+            assert_eq!(actual, expected);
+        }
+    }
 
     #[test]
     fn write_docx_replaces_overridden_files() {

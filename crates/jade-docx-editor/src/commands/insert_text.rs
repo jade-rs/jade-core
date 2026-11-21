@@ -18,6 +18,7 @@ use jade_docx_layout::selection::{SelectionRange, TextPosition};
 /// Command that inserts plain text at the current caret position. When the
 /// selection spans characters it behaves like a replacement (the original range
 /// is removed and the inserted text takes its place).
+/// CRLF and lone CR inputs become LF model soft breaks, matching browser paste.
 pub struct InsertTextCommand {
     range: SelectionRange,
     text: String,
@@ -48,6 +49,13 @@ impl InsertTextCommand {
         inline_properties: Option<RunProperties>,
     ) -> Self {
         let paragraph_index = range.focus.paragraph;
+        // Match browser paste normalization. A literal CR in w:t is read by
+        // Word as a space; model line breaks must serialize as w:br instead.
+        let text = if text.contains('\r') {
+            text.replace("\r\n", "\n").replace('\r', "\n")
+        } else {
+            text
+        };
         Self {
             range,
             text,
