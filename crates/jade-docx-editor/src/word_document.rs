@@ -8209,6 +8209,19 @@ impl WordDocument {
             BodyElement::Paragraph(paragraph) => {
                 let paragraph = paragraph.as_mut();
                 for run in &mut paragraph.runs {
+                    // A text box's pictures are related from the same part.
+                    if let Some(text_box) = run.text_box.as_mut() {
+                        for block in &mut text_box.blocks {
+                            Self::resolve_images_in_element(
+                                block,
+                                doc_part,
+                                package,
+                                rel_map,
+                                metafile_cache,
+                                convert_metafile,
+                            );
+                        }
+                    }
                     if let Some(group) = run
                         .image
                         .as_mut()
