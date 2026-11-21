@@ -261,6 +261,7 @@ enum PaintSurface {
         size: (f64, f64),
         picture: Option<Picture>,
         raster_scale: Option<f64>,
+        pdf_size_points: Option<(f64, f64)>,
     },
 }
 
@@ -386,6 +387,7 @@ impl SkiaPainter {
             size: (width, height),
             picture: None,
             raster_scale,
+            pdf_size_points: None,
         }))
     }
 
@@ -404,6 +406,35 @@ impl SkiaPainter {
                 text_output_dpi: std::cell::Cell::new(None),
             }),
         }
+    }
+
+    /// The recording's logical page dimensions in PDF points.
+    pub fn recording_size_points(&self) -> Option<(f64, f64)> {
+        match &*self.shared.surface.borrow() {
+            PaintSurface::Recording { size, .. } => Some((size.0 * 0.75, size.1 * 0.75)),
+            _ => None,
+        }
+    }
+
+    /// Override PDF paper bounds while retaining the recorded drawing's scale
+    /// and top origin. None preserves the logical CSS-pixel page geometry.
+    pub fn set_pdf_page_size_points(&self, size: Option<(f64, f64)>) -> Result<(), String> {
+        if size.is_some_and(|(width, height)| {
+            [width, height]
+                .iter()
+                .any(|v| !v.is_finite() || *v <= 0.0 || !(*v as f32).is_finite())
+        }) {
+            return Err("invalid PDF paper dimensions".into());
+        }
+        let mut surface = self.shared.surface.borrow_mut();
+        let PaintSurface::Recording {
+            pdf_size_points, ..
+        } = &mut *surface
+        else {
+            return Err("PDF paper dimensions require a recording page".into());
+        };
+        *pdf_size_points = size;
+        Ok(())
     }
 
     /// Seals recording pages into a PDF, preserving CSS-pixel page geometry.
@@ -462,6 +493,7 @@ impl SkiaPainter {
                 size,
                 picture,
                 raster_scale,
+                pdf_size_points,
             } = &mut *surface
             else {
                 return Err("PDF export requires recording pages".to_string());
@@ -472,9 +504,9 @@ impl SkiaPainter {
             let picture = picture
                 .as_ref()
                 .ok_or_else(|| "could not seal the PDF page".to_string())?;
-            sizes.push((size.0 * 0.75, size.1 * 0.75));
-            let mut page =
-                document.begin_page(((size.0 * 0.75) as f32, (size.1 * 0.75) as f32), None);
+            let paper = (*pdf_size_points).unwrap_or((size.0 * 0.75, size.1 * 0.75));
+            sizes.push(paper);
+            let mut page = document.begin_page((paper.0 as f32, paper.1 as f32), None);
             let canvas = page.canvas();
             if let Some(scale) = raster_scale {
                 let mut sampled = surfaces::raster_n32_premul((
@@ -493,7 +525,7 @@ impl SkiaPainter {
             document = page.end_page();
         }
         document.close();
-        // Skia rounds MediaBox to whole points. Restore the layout's exact
+        // Skia rounds MediaBox to whole points. Restore the requested paper
         // size and move its top-origin canvas by the corresponding delta.
         let mut pdf = lopdf::Document::load_mem(&bytes).map_err(|err| err.to_string())?;
         let page_ids = pdf.get_pages().values().copied().collect::<Vec<_>>();
@@ -2273,6 +2305,71 @@ impl Painter for SkiaPainter {
 mod print_target_tests {
     use super::*;
     use jade_painter::capture::RoutedPainter;
+
+    fn media_size(bytes: &[u8]) -> (f32, f32) {
+        let pdf = lopdf::Document::load_mem(bytes).unwrap();
+        let id = *pdf.get_pages().values().next().unwrap();
+        let page = pdf.get_object(id).unwrap().as_dict().unwrap();
+        let bounds = page.get(b"MediaBox").unwrap().as_array().unwrap();
+        (bounds[2].as_float().unwrap(), bounds[3].as_float().unwrap())
+    }
+
+    #[test]
+    fn explicit_pdf_paper_keeps_top_origin_link_coordinates() {
+        let painter = SkiaPainter::new_recording(794.0, 1122.8).unwrap();
+        painter
+            .set_pdf_page_size_points(Some((595.56, 842.16)))
+            .unwrap();
+        let link = PdfLink {
+            page_index: 0,
+            rect: (8.0, 16.0, 24.0, 32.0),
+            target: PdfLinkTarget::Uri("https://example.invalid/paper".into()),
+            tooltip: None,
+        };
+        let bytes = SkiaPainter::encode_pdf_with_links(&[painter], &[link]).unwrap();
+        let size = media_size(&bytes);
+        assert!((size.0 - 595.56).abs() < 0.001 && (size.1 - 842.16).abs() < 0.001);
+        let pdf = lopdf::Document::load_mem(&bytes).unwrap();
+        let id = *pdf.get_pages().values().next().unwrap();
+        let page = pdf.get_object(id).unwrap().as_dict().unwrap();
+        let annotations = page.get(b"Annots").unwrap().as_array().unwrap();
+        let annotation = pdf
+            .get_object(annotations[0].as_reference().unwrap())
+            .unwrap()
+            .as_dict()
+            .unwrap();
+        let rect = annotation.get(b"Rect").unwrap().as_array().unwrap();
+        for (actual, expected) in rect.iter().zip([6.0, 806.16, 24.0, 830.16]) {
+            assert!((actual.as_float().unwrap() - expected).abs() < 0.001);
+        }
+    }
+
+    #[test]
+    fn clearing_pdf_paper_override_preserves_exact_logical_dimensions() {
+        let painter = SkiaPainter::new_recording(794.0, 1122.8).unwrap();
+        painter
+            .set_pdf_page_size_points(Some((595.56, 842.16)))
+            .unwrap();
+        painter.set_pdf_page_size_points(None).unwrap();
+        let bytes = SkiaPainter::encode_pdf(&[painter]).unwrap();
+        let size = media_size(&bytes);
+        assert!((size.0 - 595.5).abs() < 0.001 && (size.1 - 842.1).abs() < 0.001);
+    }
+
+    #[test]
+    fn invalid_pdf_paper_dimensions_are_rejected() {
+        let painter = SkiaPainter::new_recording(8.0, 8.0).unwrap();
+        for width in [0.0, -1.0, f64::NAN, f64::INFINITY, f64::MAX] {
+            assert!(painter
+                .set_pdf_page_size_points(Some((width, 10.0)))
+                .is_err());
+        }
+        assert_eq!(painter.recording_size_points(), Some((6.0, 6.0)));
+        assert!(SkiaPainter::new(8, 8)
+            .unwrap()
+            .set_pdf_page_size_points(Some((6.0, 6.0)))
+            .is_err());
+    }
 
     #[test]
     fn physical_text_resolution_survives_deferred_layer_capture() {

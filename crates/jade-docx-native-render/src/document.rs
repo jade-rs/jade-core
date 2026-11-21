@@ -582,6 +582,17 @@ impl NativeDocument {
                 })
             })
             .collect::<Vec<_>>();
+        if pdf_options.rendering == PdfRenderingMode::Vector
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            for page in &pages.borrow()[..count.get()] {
+                let logical = page
+                    .recording_size_points()
+                    .ok_or_else(|| "missing PDF recording dimensions".to_string())?;
+                page.set_pdf_page_size_points(Some(windows_word_pdf_paper_size(logical)))?;
+            }
+        }
         let output = if pdf_options.tagged {
             let entries = renderer.take_structure_entries();
             let tagging = crate::tagging::tagging(&self.word_document, &entries);
@@ -3055,5 +3066,42 @@ fn normalize_css_color(color: &str) -> String {
         format!("#{trimmed}")
     } else {
         trimmed.to_string()
+    }
+}
+
+// Original Windows Word PDF paper uses the same 600-dpi print grid as its
+// vector font realization. Recover authored integer twips before rounding so
+// CSS-point floating arithmetic cannot flip exact half-device-pixel cases.
+fn windows_word_pdf_paper_size(logical: (f64, f64)) -> (f64, f64) {
+    let extent = |points: f64| {
+        let twips = (points * 20.0).round();
+        let pixels = ((twips * 5.0 + 6.0) / 12.0).floor();
+        if pixels.is_finite() && pixels >= 1.0 {
+            pixels * 0.12
+        } else {
+            points
+        }
+    };
+    (extent(logical.0), extent(logical.1))
+}
+
+#[cfg(test)]
+mod windows_pdf_paper_tests {
+    use super::windows_word_pdf_paper_size;
+
+    #[test]
+    fn actual_word_paper_bounds_keep_both_half_pixel_boundaries() {
+        // Word 16.0.19127.20936 original PDF media boxes, including ties.
+        for (logical, expected) in [
+            ((595.1, 841.9), (595.08, 841.92)),
+            ((595.3, 841.9), (595.32, 841.92)),
+            ((595.5, 841.9), (595.56, 841.92)),
+            ((595.3, (16842.0 / 15.0) * 0.75), (595.32, 842.16)),
+            ((1584.0, 841.9), (1584.0, 841.92)),
+        ] {
+            let actual = windows_word_pdf_paper_size(logical);
+            assert!((actual.0 - expected.0).abs() < 1e-9);
+            assert!((actual.1 - expected.1).abs() < 1e-9);
+        }
     }
 }

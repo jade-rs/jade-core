@@ -1,0 +1,1481 @@
+[
+  {
+    "name": "word-windows-paper-grid-w11902-h16838-m15",
+    "source_sha256": "20222412dda7550eede3fe150b80e940aac25f5366a280c87eb028834a4d017b",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/05B95D9B-794A-68C9-ED51-0F6DAE5FAF24.odttf",
+        "bytes": 593340,
+        "sha256": "fb11e4519d55ed33e16af18ba97bb84c0a69fb838dedc1d8aa4f8f976203630b"
+      },
+      {
+        "file": "Resources/0A4A043F-38A5-200F-8E36-486029614853.odttf",
+        "bytes": 188388,
+        "sha256": "a3284a703cd4a6826f866201fdc759ba12eb708065ab6fe3573393f3c262ce0a"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11903-h16838-m15",
+    "source_sha256": "301a07f0f7cfdf0d5c7bf881c50fc46182155ed7d7c709066985cfe9332009fd",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/2C5E0A75-6285-675C-2832-3D18405B6418.odttf",
+        "bytes": 593340,
+        "sha256": "eedb8e4cd0470f8ea92f7cce02b1d26a050e99f1625a423f40e3b9428550a09d"
+      },
+      {
+        "file": "Resources/326C5C9E-493F-7D03-2D76-BA15A47C2003.odttf",
+        "bytes": 188388,
+        "sha256": "de1f532374f7defee462b97df575de997f234605bbbd47a3bbceb70d1dd1a97f"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11904-h16838-m15",
+    "source_sha256": "01e56c1f03ce0492b02e4a21830fda8210f00be37c0d425eb9f31fa86bb4b044",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/58F814D1-3970-0D2E-B37E-553F8E6B7153.odttf",
+        "bytes": 593340,
+        "sha256": "de4f070fd1b7e680e59e3f4e8b61f5215be9ee152e0c9781cab985c0cd2ebf7b"
+      },
+      {
+        "file": "Resources/05857152-741B-08B9-EC43-9B1868736155.odttf",
+        "bytes": 188388,
+        "sha256": "be0f0af11c4745ab4b08c4840ec5dad62a3d30ae809b524a344d4caccfdde4d3"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11905-h16838-m15",
+    "source_sha256": "f910640f7b510f558c77a7c80ff00689270bc34718bdb9474558468c1dee80e0",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/7AB521C7-2BDE-1A75-AA66-8B1F182CD271.odttf",
+        "bytes": 593340,
+        "sha256": "41dd7da07a0a5136d571817b0aaf67a8a4a3ded2434c79dbe5f3a266c1bb30d6"
+      },
+      {
+        "file": "Resources/35606BB1-291A-3789-967B-D61C8D7EEE1F.odttf",
+        "bytes": 188388,
+        "sha256": "96aa7f4c3dd5490abbfe41ba74c0637df49d3de19b80235f2f76ef2b41649607"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16834-m15",
+    "source_sha256": "c0b52e9f17fa41105e5b523ef9a736e6d1c24307f56df85f2e0dc03cee8a093f",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/1BF42B8C-78D1-5C67-CE75-0E05220DDD3A.odttf",
+        "bytes": 593340,
+        "sha256": "6cb4c43ae5bc6756bfee96f676373fa447f5ea9cfc2779b5a18e2076f0ac009d"
+      },
+      {
+        "file": "Resources/59346978-6E8A-3B54-403F-8C02AA61BF46.odttf",
+        "bytes": 188388,
+        "sha256": "117742b199a4f4359e3dd25dac837d02e86311c70f76af8ae980fd4b29fd42f4"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16835-m15",
+    "source_sha256": "ab4382d5d92a27cac171f17ec2a1ea689fa2d1e81db4b7a5378743abd65131b6",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/333D371B-6F3D-05FA-BB0D-FF4D4B140E43.odttf",
+        "bytes": 593340,
+        "sha256": "33ec5c0f184ce17b247247607d42b330acc4e58ed8793ea945bebec33ce03ba4"
+      },
+      {
+        "file": "Resources/5ACF2D04-6317-5737-1E4E-08411D2D5677.odttf",
+        "bytes": 188388,
+        "sha256": "4ead5947b3bd1d5fa69ce13707c314f14dd645438566ffde20d3ef16ba26751c"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16836-m15",
+    "source_sha256": "dbd466935e1cbeb954f7783bad539825dec98a032698db992b389bb1a8f69813",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6A0C4145-2F6D-29D7-E77D-030F3A6EA029.odttf",
+        "bytes": 593340,
+        "sha256": "bbcca386e2d2149f75186a8e308bc8e13cd79ac2d13417f71fd944c74201f048"
+      },
+      {
+        "file": "Resources/16257A3E-169E-6058-AA0A-657A8E0FB051.odttf",
+        "bytes": 188388,
+        "sha256": "c8b42e9c26566a0e1d6d78461d4785e5261886850620be51d11fb5af1eb0b9ac"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16837-m15",
+    "source_sha256": "042149e62c2be6c35dab976298720502373bc0e84d04e46ddf52c0ec06438646",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/21995038-27D6-7EB2-5073-12486B173250.odttf",
+        "bytes": 593340,
+        "sha256": "7dc19ffc59ca9b2d087e7de07f739ccebfae6aae16ee9d51b661c2a1828803cf"
+      },
+      {
+        "file": "Resources/2385425E-717C-29FF-3475-8C610D6EA261.odttf",
+        "bytes": 188388,
+        "sha256": "e9cab65e17041dce2de7c4bd0aca865daf44dbcc36281864fe594f73ec21688c"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16838-m15",
+    "source_sha256": "dde2f5b1d57cb2607ecb4f0fcabbb91310f97778c3868db9104732852123baec",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/38635897-78C7-5CF0-6932-5116123F0D03.odttf",
+        "bytes": 593340,
+        "sha256": "2acecc8f1c3140a1ee4c834730cd004314aa64e7d5b4ca953396e7b5e95c16d8"
+      },
+      {
+        "file": "Resources/19190951-767A-1ADD-1310-820177117E6E.odttf",
+        "bytes": 188388,
+        "sha256": "a9c6307a1af06272b3f797e97b5d47d56d36263e8cea75109d3c5dea9e78918f"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16839-m15",
+    "source_sha256": "6b2697570d4debf03e34f495349dd2062b3f777e6e891f65c3b618ef0c425848",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/1A54638C-1F72-44A3-A464-560ECE0AAC24.odttf",
+        "bytes": 593340,
+        "sha256": "65e84bd97bc99df1b973fadfdca131a6de2d7a380f4e4c91b1d3cc5aacf1289b"
+      },
+      {
+        "file": "Resources/03737571-062E-2EA9-613E-30629372EA2F.odttf",
+        "bytes": 188388,
+        "sha256": "ee2c1ecb7231170a8dc7967e327f21d626212d89c6a6d48806c0832e11b5f7e2"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16840-m15",
+    "source_sha256": "100d154f4c3fec09a9755ece96f1e9e3886a7cad613d871829e77fceb2e28f20",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/067B6E50-2F63-2A60-813A-46202A20D071.odttf",
+        "bytes": 593340,
+        "sha256": "77bb96897e8c561f3630345a4ea49e4d317fc8f659732c161eb478dcb386cf6b"
+      },
+      {
+        "file": "Resources/560A1A17-1E8D-3FE1-7C5B-5B795C3F6F79.odttf",
+        "bytes": 188388,
+        "sha256": "a0efe9ab62c4c8c690b087b4ef743ea302c9634aab4c4b08922bfced6e84eb33"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16841-m15",
+    "source_sha256": "7e012de76c783bc68f335262643854f3cec4722a62f90ec5dbcdab11fc703220",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/1DC479DF-25CE-53F2-6D52-38695327017A.odttf",
+        "bytes": 593340,
+        "sha256": "286ca19768abdd848a33362c04c0f3025e67d01561738097f9df460df6b3e18b"
+      },
+      {
+        "file": "Resources/57A45DA4-131A-5BC3-596A-D637CF0A052A.odttf",
+        "bytes": 188388,
+        "sha256": "b96f32da159d75b219bd2d8c30a7441538a1eb9c8deed8ad215ad9992fb043d8"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11906-h16842-m15",
+    "source_sha256": "f96c767e53721cd3f2c3bc6197df071b47df3b68a284f941258d552b1f8bf953",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6A24046E-593C-59BA-A123-BC05297A1A7E.odttf",
+        "bytes": 593340,
+        "sha256": "35279ab6951a4c2fa889e248223091e931a8b94e940cc803b9128d40b0a5011c"
+      },
+      {
+        "file": "Resources/2A7C7A51-34B8-6A39-C61F-DC44966CE837.odttf",
+        "bytes": 188388,
+        "sha256": "e211d96183286f57e75929381cfbd47760cd7021903ab47f883557e9930ad1ab"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11907-h16838-m15",
+    "source_sha256": "565b7bddd47ebcaafa79177192f29a4b938562898286653909e7d1f7cb590b1a",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/36850EFE-0CAA-5F81-D474-4022FE4C3202.odttf",
+        "bytes": 593340,
+        "sha256": "1daa60889226fcbe6f8ca03912ed4849615c7c0729b201db6422d4c523187754"
+      },
+      {
+        "file": "Resources/7D5416FD-5656-78B0-3355-E2515C4ECB45.odttf",
+        "bytes": 188388,
+        "sha256": "cd963cf996b6584b6c0a5bc45a4fc85f261f0c12144087ddd22cc80f9d296f04"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11908-h16838-m15",
+    "source_sha256": "1ee84fdc43fc440c891dc0cc7404221afa6647b3d57bf09697e7fe1ec9c188f4",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6D931AC1-5F98-6909-6A11-9D60AE166F53.odttf",
+        "bytes": 593340,
+        "sha256": "f3f98e792feeff3ad4c9997d45000caf28c4ff76ecf4fdf72a8b153acb6945d6"
+      },
+      {
+        "file": "Resources/7EAE6284-41A4-1753-BF4B-831AD2040332.odttf",
+        "bytes": 188388,
+        "sha256": "36fea921ba63fd57a9fcdb563e56bd378373cb94a146957b2a1fa7ecc134957a"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11909-h16838-m15",
+    "source_sha256": "f8803d2aca0d3b3e38422b312ccc3bb6e9714bca904952a753c44a7094ab5a0e",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/6F4B25EB-62C6-30B0-4F48-0E4EF024193E.odttf",
+        "bytes": 593340,
+        "sha256": "c5bb5decaea7069632de19beffe348a595145685435953cfe7415b3edb202253"
+      },
+      {
+        "file": "Resources/68C6569D-481A-2DE0-BB61-5605F050112F.odttf",
+        "bytes": 188388,
+        "sha256": "1d25673134ddb9b8735b7c6b5acb29190bf94bbe0e5bb573fa2fe7c289fe1a49"
+      }
+    ]
+  },
+  {
+    "name": "word-windows-paper-grid-w11910-h16838-m15",
+    "source_sha256": "dac46a276fd29da996c55011bbcbc1f77c13a1e8b56d23999fa4a1b808ca0b82",
+    "word": {
+      "product_version": "16.0.19127.20936",
+      "file_version": "16.0.19127.20936",
+      "application_version": "16.0",
+      "application_build": "16.0.19127",
+      "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+    },
+    "pdf_fonts": [
+      {
+        "xref": 6,
+        "name": "BCDEEE+YuMincho-Regular",
+        "extension": "ttf",
+        "kind": "TrueType",
+        "program_sha256": "8fd622130fd5dfd9618ec7474f170574b71ea7925c20db8ad60cea3825961040",
+        "bytes": 214412,
+        "family": "Yu Mincho",
+        "version": "Version 1.92",
+        "glyphs": 23398,
+        "units_per_em": 2048,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "meta"
+        ]
+      },
+      {
+        "xref": 9,
+        "name": "BCDFEE+MS-Mincho",
+        "extension": "ttf",
+        "kind": "Type0",
+        "program_sha256": "03a7b97912e9707f39fdfa78df4dc80f72bdc1e5836bacaa61edea4ead5a7c70",
+        "bytes": 116712,
+        "family": "MS Mincho",
+        "version": "Version 5.32",
+        "glyphs": 19410,
+        "units_per_em": 256,
+        "tables": [
+          "GlyphOrder",
+          "head",
+          "hhea",
+          "maxp",
+          "OS/2",
+          "hmtx",
+          "cmap",
+          "fpgm",
+          "prep",
+          "cvt ",
+          "loca",
+          "glyf",
+          "name",
+          "post",
+          "BASE",
+          "EBDT",
+          "EBLC",
+          "meta"
+        ]
+      }
+    ],
+    "xps_font_members": [
+      {
+        "file": "Resources/308F317D-1EFA-3842-8608-56264138DB3A.odttf",
+        "bytes": 593340,
+        "sha256": "0510dfe4d20edbcf5ff20bd8416fe2ce7dee92d7ee9fb54a34ea68e84a8e872e"
+      },
+      {
+        "file": "Resources/525D5AAA-3C13-49EE-1347-740413736123.odttf",
+        "bytes": 188388,
+        "sha256": "3ae4a4547c6d819ec584acfe43483c803531dfc6ab2bd8fffcab4a4906cf56dc"
+      }
+    ]
+  }
+]
