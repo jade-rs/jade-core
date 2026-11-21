@@ -14,13 +14,13 @@ from check_windows_font_family_cjk_case import W
 class ExtendedFontFamilyCaseTests(unittest.TestCase):
     def test_all_families_styles_and_promoted_word_coordinates_are_present(self):
         cases = check.verify()
-        self.assertEqual(len(cases), 240)
-        self.assertEqual(len({c['canonical']['source']['sha256'] for c, _, _ in cases}), 80)
-        self.assertEqual(sum(c['required_word_coordinates'] for c, _, _ in cases), 144)
+        self.assertEqual(len(cases), 384)
+        self.assertEqual(len({c['canonical']['source']['sha256'] for c, _, _ in cases}), 128)
+        self.assertEqual(sum(c['required_word_coordinates'] for c, _, _ in cases), 384)
 
     def test_word_assertion_policy_cannot_be_changed_in_the_index(self):
         index = check.read_json(check.ROOT / check.INDEX)
-        index['fixtures'][0]['required_word_coordinates'] = True
+        index['fixtures'][0]['required_word_coordinates'] = False
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             target = root / check.INDEX

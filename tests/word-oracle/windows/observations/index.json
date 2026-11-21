@@ -64135,6 +64135,3202 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261120T203250101Z-16f5e085",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T203250101Z-16f5e085.zip",
+      "archive_sha256": "e4441839d0a590857d0b97b5ace4ab89093374edec24ea8475c50b06072ea0f8",
+      "capture_sha256": "18445420b665a54efde17a825c743d3e6643c7870b2858661af7eafd43fc80e7",
+      "documents": [
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504",
+          "source_sha256": "f0c89d105fbdbaabe3357ecfae9966aa819ae8a0a025e31d5c68f6f6aa50b2ee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504",
+          "source_sha256": "ec0897ed147adde337b6bdd7d8ccbbf4abd043b0b68ef217d8b46550a38c772b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504",
+          "source_sha256": "84f1ba7ed5613e1d089b20abf577444b68cb67b9289a21d52f54f3953bc54678",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504",
+          "source_sha256": "523da6185285ad6d0b0fe1337cb9d4074e9479497b19951510376183ab4fd637",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504",
+          "source_sha256": "8bd6b51adfb5c40b42d0c7f728686e23e6536a509b7fa3d797a24d3697ee7dc6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504",
+          "source_sha256": "1c0f9a452107fcc48aa8df07ff95d289cd0038137daedc4821d2840039f82add",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504",
+          "source_sha256": "b838c2605ff60be35badc072c0240b743ee3972466b4aba168e9caf13c153b19",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504",
+          "source_sha256": "c95db92a0c6ebdc2f92c7ab8a436ec7aadc02ed5a4ca53e5480ecf353e6a604c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504",
+          "source_sha256": "42824517bc9361ce07b26b5d3241590e29e1d4eb6f5d10ae8398c89c3b03e434",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504",
+          "source_sha256": "eeff02b25881eb7fb5c3c8ce608deed3ca377c5a3fb19d4b582a50d8ad0026bd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504",
+          "source_sha256": "d6d3a111b3d2a45cf8ec115d368602ee37317b18a383207d20820a62ead0643b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504",
+          "source_sha256": "8f59a6e4d2e6f6a18bbcaf83ee88108e49d9073a4f0ec7fd82d86dfc33c26756",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504",
+          "source_sha256": "940324c8db7d4835f0ac7a29be5ee92d2d2c8bab2ecb958e1cc518381ce680f6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504",
+          "source_sha256": "4deedee7db6325c4845d47cbadcbf7281061a3f6691588deb84b595a9d6bc0d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504",
+          "source_sha256": "98c6c42b0bb6edabbd2c997b87f413e5114571659f0136dd2450e59e5b746040",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504",
+          "source_sha256": "7b6d2780122433dfb9c983b70eadfb6fd54ea750dd5c3da644777e1c6a96d304",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504",
+          "source_sha256": "ef96baa57742086608cdd4b64f202435b82d3057f9be0e76ef89fdde490208b2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504",
+          "source_sha256": "7a09c3a9ed904e2cf9f98352b9870d70fc8434909f4c6226049395a049f0423e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-regular-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504",
+          "source_sha256": "9cae51ed52cd330dd309baedaf81e2074b6b041b7fd9050ed21ab4475b4ab382",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504",
+          "source_sha256": "33c33700b50acf35a3d5e7f5c4b3b2eac9586106456659ffc2635e2fe2bffb41",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504",
+          "source_sha256": "5b1ed909b28dfbee7702f6d2ae9313f07f7e58137ea6c4242fc9c1d5148a8ae4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504",
+          "source_sha256": "0d97c032dad25d665286018414686d5d2ff7c20e888b31df6201d3791c22a356",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504",
+          "source_sha256": "15825410522374e8e7f5aa47acad98b387760ac026954b764493c67a1d94cee6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504",
+          "source_sha256": "cb43c3f5c3e28c24df2a0a4f492ebcaa4b8c420564a4cb07acbb582300f58605",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-regular-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504",
+          "source_sha256": "02b062dd423e66345c2d5fd725fcac227868e5a96dd076bbd91b6f8dccce014b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504",
+          "source_sha256": "0416c315d116343cef574bc85ce8a4fec9a8867f126e026a8a9fce19d231396b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504",
+          "source_sha256": "e4f58b58b60d44124e8e574d617c792cf91d1150362fda6a7269115f67366af2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504",
+          "source_sha256": "106d28601681cad769dde9f0becf1e7391d59937f69aeb8b5e9f0c8cb4682eef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504",
+          "source_sha256": "cfb744703ed368c63e7dba49b32a3434e65b3397a61e2230c58cd6a597550066",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504",
+          "source_sha256": "433e978c60fa40b875c447555ba2ce1cffbc6aa36952631286860c7e18e910b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504",
+          "source_sha256": "8b0e1701da54e29612072fadac9f753a785ca510a0261325c78430f71bac3328",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504",
+          "source_sha256": "d9bd312407e2c6c194b27bbcc620a4df912073d2b5a674da306e49f86151119e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504",
+          "source_sha256": "ada2538d9cc1a33f74af9514cf6a9689b7325b57425c3cf5dfb5dbc206ca38eb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504",
+          "source_sha256": "b7ba9e408f387a0c17b75223fe722b3203cd2da838f31150f7cd147d2224325b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504",
+          "source_sha256": "3271544aea3610d2610a7a2fa11872dbce196183232fce3615f1ab85f4c957df",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504",
+          "source_sha256": "4ef782216e4e55627c93f3fbe2a83f690fdb6a52620e550902bf82ae091570f7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504",
+          "source_sha256": "dbc2fce6f9f6f737e86b85ceae7bfd94f829f7907b70b2295d4538d26f913082",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504",
+          "source_sha256": "396f9a79f54714847deb95a872a1165476e8febb67557d567acc9559c8619797",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504",
+          "source_sha256": "ad8ea3b5188fb8e7650cfa0b82e9a07b5432fb7ce9db82ab379d832dd7bcca09",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504",
+          "source_sha256": "96d94781ef448bde724c7811f76a1ac091a766e24cdc6efe91d532428d17e3ea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504",
+          "source_sha256": "cd57dc3c65567568379e54800cbc34da526a1d412b5c2044e9caf25f52b83b8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504",
+          "source_sha256": "a54a3d1b214df0dabebdd8760bda943ab555e243abfa953ba6f252a1bba91eaf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504",
+          "source_sha256": "ae273b44dde7feed5000232e0a91f6a23381e0f76a8a81fd078e21726a8c4888",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504",
+          "source_sha256": "4c2ed21188cc1a4e50a7e39165f787ae79306c988336a1fec85b15a88a208cf2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504",
+          "source_sha256": "5200214f1fe35115203f1784db99667e30a4d4324441afb1e8d735b87bf54ee7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504",
+          "source_sha256": "271aef4c2c09e2bb8e601bd702595565111fbef92b09d718b59b14e1e846f6b1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504",
+          "source_sha256": "febb3c15b3e46d7ae38a649b267ccac53ca6c0dafa5ed1eef3fca2dc6b9e31bf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504",
+          "source_sha256": "089ed21a947cb07f9375d46eeb851ef03f3204cc50f05545f1af490c3a673fdb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504",
+          "source_sha256": "db43d438af25c4720d650cc163c1db102379368df3e35f6752e66dca68438393",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504",
+          "source_sha256": "dd5421504b5bceb3f34ab2a316b9821f8539d99a6b0b89c189e8736850e51a25",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504",
+          "source_sha256": "1e4159b5a8768ee13cfe119a513155246cabae9dd19f309946e8e2a8b636d7a2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504",
+          "source_sha256": "15d49f05991ca55cf46ad8dae653eaae62b52a7583dde293bcb41a87f6543624",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504",
+          "source_sha256": "f21d69530a1ca497c6ed1aab46ffe3b689db453413d3ad5ab12ab5a2fa29a39b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504",
+          "source_sha256": "de0fa6863a63f42360fbf2a453cfaac596e947702217bee01f232359ffd1d56a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504",
+          "source_sha256": "3df409839293e90bf4aba8fb2a5c6a9d3e05da8d2e05b2bde2754fa6cf00f850",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s8-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504",
+          "source_sha256": "5b2e79b5b569ef42ebfd007617320242af749b9212340078b91f741cc43cc696",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s10-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504",
+          "source_sha256": "c3aea3dcd163b5674c9e20f3fc9a34aea68a60d5deaf2bf55ca374938f1cc4dc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s14-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504",
+          "source_sha256": "05d13c548c82e12f67fdcadd7e913a743615dafcebe6550b29b38ea917adb3b2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s16-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504",
+          "source_sha256": "294f076f5123f0092b4267903c2a72da8bee064d1ddb0b6fa357c68ae2a5b373",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s19-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504",
+          "source_sha256": "27465aae567815f134f1a3ddf7f013a858b1f782f4c712cb8ea543bc60c25482",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s24-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504",
+          "source_sha256": "aec9a7852a3a7edbdb4b8ad2610ccd34570c5d87e6c7501b2303d8e9ec0f56bf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504",
+          "source_sha256": "5ffe229f24a57c225ef45a84bd2acf9bd29c58a9949e0f6d2bf130c467b416d3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504",
+          "source_sha256": "54e086e769e2d49d45c7b9a8ed0475a42bf53575e14ad180b89ad1b01b8026ec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504",
+          "source_sha256": "4c2149b99a5c21568bacf47ac6a2e3cbff5bdb2fc63dd4807d64baca925b4c70",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504",
+          "source_sha256": "0bdc19b23b7101574d882571c4ffd8f55f611e619d2ef7198a5ee63057c6175a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504",
+          "source_sha256": "478ff1772e7b3a26cc2453d7af97500dc836908d6f83aa1936eca8c68ce0781d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bold-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504",
+          "source_sha256": "aab4e97cd4c98058e18129d3ad2b1fb2594087ed2b47b4c9de439328242660d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504",
+          "source_sha256": "fe83be46e092d2266596c6fb43e12ed5ff031e9577ca88906f8cc993cc8b4436",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504",
+          "source_sha256": "46ad7d6d01e0cc5d24bb884b08f4fdbdcbe136bc02ab0ab0b1e5fdd65fdc8fc8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504",
+          "source_sha256": "513d67ff9ee071609b164f4a36977fb7645255540bf1a8a6b6e0e34ccf1dc1ea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504",
+          "source_sha256": "55b9a35caba0f79f1ee5129ee9dc81eef560b7ae41a682853b413d0e6f3a6598",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504",
+          "source_sha256": "4268413c9baeab552431122175f3c19144298fa61f02da98a70184189e43ce24",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-italic-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504",
+          "source_sha256": "e5f63d9a0af7099fd24cd153db2f45aff09b4cdfc0a1b986e60305a6eb0c4a24",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504",
+          "source_sha256": "4e66e3484e4f13e98bd5cfccdccf0f0fff1ddad7071ee78e7815e25b6d3e03c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504",
+          "source_sha256": "bddaa1a1571fcda3636475da15c59a5962519e9b61184cc53a91716cc7bdd445",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504",
+          "source_sha256": "25d9b718bd7abba3994a2d673a58a7768ac7d41d05e5cc33bf0d7a6f6cbc6f15",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504",
+          "source_sha256": "e49904bd72834445db76f27d1ef153bd46de57db406a972e3aefa8a96e29cbd5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504",
+          "source_sha256": "33861c012ed50f7fa5eba7f525f660ddd0c3925f914fe5ae0e6e511804b01c8d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-yu-bolditalic-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504",
+          "source_sha256": "3e53bc5ee083e00c82530f06ddfafc8e6a0258698a4af11c6147ce6c75910bb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504",
+          "source_sha256": "735a3d105c33b20d36687ab3cba2549ad33aab8d0700cfd43415f436dc239ec3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504",
+          "source_sha256": "547850287d4e5e44c8be77802855d68757fe44b12cc06717873701abbd0e8131",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504",
+          "source_sha256": "fd42d3a11b700fc27491ec83c366c381c27d96318ab74a00062adc212ebed1ec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504",
+          "source_sha256": "4d4387aa59e4e2782e00a7caa8d79361787cd1586af65b5716d6350b3add0ded",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504",
+          "source_sha256": "37982d989017cc5c362cd162c49ecd00322685ac03e4a9eb376804e1ef9d1266",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bold-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504",
+          "source_sha256": "7ec801c15b873bd383b0463e0887c216a7bd273277fbaa1740622d00527fd361",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504",
+          "source_sha256": "ce23b1aedd6c407ce61bb67f1f1286428d578838beae554b607d1f039c5b58ff",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504",
+          "source_sha256": "cc1987c012ecd618309caf7f3d1505638a8e431a124ac6b5a516ed49bc8a4d8c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504",
+          "source_sha256": "00d7a4d239817c398b1e3f298ac484827c7b5641ddfb80e78ff317a812fa3065",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504",
+          "source_sha256": "1f97590047281da11955c2e0b991cbe640b743265e8a2d5021b9b113c133dd98",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504",
+          "source_sha256": "2c8c019b633ac18b38481445069c0a311f5eaab2dd56b86286fc8c5274b3c632",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-italic-s24-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504",
+          "source_sha256": "ff6c183d1092920b370d6c62ab998b714bfd6f376eadde445dbce8e125aa2a72",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s8-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504",
+          "source_sha256": "095a0023201141a0873ee838a5eaf31c72eb0f895c74667e886e4f0693cb597c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s10-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504",
+          "source_sha256": "83f399d5e64c2f534c2956ac4f35a43b46aac45e40176a9eb5e82908f9842bb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s14-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504",
+          "source_sha256": "0ab7980d466ebed7c71143c0cf4ca7c916f1a5980d0d951fd7949c80e6376c2d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s16-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504",
+          "source_sha256": "8a8a072980d73146012fb380329e87ca449b61b0bf40861b02ed5aa5389010d5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s19-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504",
+          "source_sha256": "150e7e60f2b9c9a9cc6a747c9a7fa046a3665214ede26bb9177be7a9a94a15e8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/inputs/word-windows-mincho-manual-size-ms-bolditalic-s24-m15-manual-w8504.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T203527786Z-3426c1ab",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T203527786Z-3426c1ab.zip",
+      "archive_sha256": "80231a9119f12752bfec6a556d2beb360e8d048797d42cac408d8572d19572a1",
+      "capture_sha256": "3297da92a2f3ed2ced31e9f7993da3b54a4336aef95e6c9010fdc6fa395a494b",
+      "documents": [
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m14-manual-w3000",
+          "source_sha256": "869573fcc371e10a4de1b2d8afb73d59c03fb7aae1026cc834e24273e77ea8b1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m14-manual-w3000",
+          "source_sha256": "c7b5605cee0392edb1a4a1209155d03fb4bb571149db1ba5884a5b59f6f1e696",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "354a3963417ad4e90fa914b879a82aae444b12ef579fd534390de04632f53cad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m14-manual-w3000",
+          "source_sha256": "7a6b603bb5d6dd48f70dce65e69b195953e78333dd977e85a9125e1def36b5d0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m14-manual-w3000",
+          "source_sha256": "235b5bfc0325e85895df94956d0eb4be7fae9049eb09022c3e26d161b173005d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "69d4a1007f51ea99cd0bdd5a481de090d1e7e963a707622344eeaee0da4b3665",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m14-manual-w3000",
+          "source_sha256": "f210f9a6ddd24264955244ddf0782b96cbb600c3ac582324c566c30deced7d24",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m14-manual-w3000",
+          "source_sha256": "6f845aa2f6e39ae62352296fdd17ffe5e660a34d257c6cfcb111c31a168d68c8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "76fae367a8bb197ae4db846c4a67356fe6f49c396e727071e1003027aad31ad3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m14-manual-w3000",
+          "source_sha256": "3adcaaee976937e4e430a2154770090db5cf135b91601a4dd04200cb8e8dcf9b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m14-manual-w3000",
+          "source_sha256": "5f361d412178602df43045659af1713fa06d7500dbd40470058493a0b6262acf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "593442b79325147b8c6799e80b43a05cbed1ef5b242c99d51ca54e1024babd3a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m14-manual-w3000",
+          "source_sha256": "4881b4bbda7590b49c76754baa23461ed8a93e4ac6a3e2318327952390a4e8ca",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m14-manual-w3000",
+          "source_sha256": "475f80e1dc71ec97a8a83161634ecad3c92a6186e811871da915ab8c8ec32843",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "0d343a1bd82bbb4a5386de81dc5d349590748d20713d6874f20471dfeb0f26d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m14-manual-w3000",
+          "source_sha256": "1adac853fe8ae08d9760a4346d23ad05c434441a64c9d409d1473fcc8bc7fdb8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m14-manual-w3000",
+          "source_sha256": "b4a2994f30468ee4416dd7d3d02b28f82e52e2c42f681adfaee9c1f206e1526f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "e385200c181f80b898675c724a7eecbc29ec40bce27e7a3b494a5bbfecf2daee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m14-manual-w3000",
+          "source_sha256": "5b34918303474fb70cfa998289448d8056dfa17879387d3737daa7d339485256",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m14-manual-w3000",
+          "source_sha256": "e43e17fe6f90bceb6fb723def763a3c3790b6c889d08eea3991499a83b3aae89",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "4fad35506a5a0562b8ebbc2500127435399a39c87995ca2986a32af8ae34a51f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m14-manual-w3000",
+          "source_sha256": "a13dbf249c4f152555b88c64e07979a6cfb9b3435afecd9586979c943f7df757",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m14-manual-w3000",
+          "source_sha256": "f8ed972d699e3bc53b6275e761e2ade5bf08e7bb20659a50bb1ab219838c4767",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "d83f4e0d797cbd74722271a64a7772d4be1d46d40971506862b286f77aa98d29",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m14-manual-w8504",
+          "source_sha256": "65f9c4c6852727a3d49ff0db5694b4dd81c5c96f57076d78858693ef5ef944fd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m14-manual-w8504",
+          "source_sha256": "cefa0115acc3b861f9dc578c64230b7e0bcad1f58abbc5162363f63506d0707e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "b31d74e9bf36f22430e76d89e858d08a4fef11ad5642da1204e8d68af3f41e35",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m14-manual-w8504",
+          "source_sha256": "c8f23a9f47e214bb0492cef3771bd247a8d0159154f2cbc2431c5d453baad749",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m14-manual-w8504",
+          "source_sha256": "12fd1d9ec13a43cdd9f5f35fa300951eb327ed77dfea342c27a507a18d1bbb3b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "034a700c2fd0a6ae925ca9af00bdac781f4bf01314b1835e0f223665a091102c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m14-manual-w8504",
+          "source_sha256": "0a3c3ee995de80dc486936feabadf266d321b2f4abfc3c1e8b088325e968f10e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m14-manual-w8504",
+          "source_sha256": "4212c718d471fb1cb712bc314196d11c633c7db2d437be08349561444b5028e7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "17b6e7a671af6b5a3ecff95f719040b3353763d058b4ae202fc9d496fc36c03b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m14-manual-w8504",
+          "source_sha256": "932f19c8c9d8e8379a57699388b04ffc35a14f1c0dc5ef00b72414db96702971",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m14-manual-w8504",
+          "source_sha256": "0407de911108a9c0be665e825589e79f6f56a561a74d262c4e12267de73e729b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "53f634ad43a679384ef2934ddc6aea625b533b78602739d760a5a40fb6b74210",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m14-manual-w8504",
+          "source_sha256": "cb941a84d48977cf797d53d4875f1ba3ef8241a8a8459b5084a233ae3d740148",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m14-manual-w8504",
+          "source_sha256": "d0647a066f90582078170af19d0cf430ad885a0f3721e950c154ccc83a318c9e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "5d0495cf1084f89e893239fbdc4c1260d0f71141604cdbb33d819aac4b4ff8c2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m14-manual-w8504",
+          "source_sha256": "cd82f4d3c88f8a3a3d3089729a8f76fe139af4c7c283b27c895456f71d69b1b7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m14-manual-w8504",
+          "source_sha256": "1444d7ed98512dc21b16de1507f1a7642c9bf0ed58b99b527e0accbaec87b08a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "87874c52d38c2b699a78998f2696506dea5ef34bc2643f376aca261659efa735",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m14-manual-w8504",
+          "source_sha256": "b49439a6a5235355419843f1e089cfd0b9a4f46a84102f19091dae353e130ff5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m14-manual-w8504",
+          "source_sha256": "fffce08f427c6b33b204e91a20ebfc228d994d92e7775c368c06ed6c2909ae38",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "59415b1c25abc13ca7d76055e726ee3ecd70a8f0fe1c5366e405d1c54578b249",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m14-manual-w8504",
+          "source_sha256": "b74524e34fbb716b8d1dd22dae204366ea1fbd72ce519c049f3d06693e094da7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m14-manual-w8504",
+          "source_sha256": "c96633015601fd9c19a3be8ea450440b224be7936c2f334e861ecae982693aa9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "8a01535e14af9b6e8b6aca7094a808435ac6443062de080f8783c1211025b5a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "12b77c6a1fb53241f98beb87852138a2d587550d869a2e8bc5b106932a83a372",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "bc09f79d35eaf1645e8ecc42cabb6d2eb06ada648bf41eeb33a623ca13329440",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "6d7b061fd730014b0b5d89df9f65abdb99d5c78eba9d7d8c3f5af2c3b07ae154",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "591680b9a46bf413228b3ce0fc6dc03f649861496559a3d1ee95cea1bcf7d62b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "b6064fd5d55344361c21cec9d21b88708413e43251849f43ce4721b0932ab6e0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "ac164efb2ed4193d879d167971fec26c3e2fb4c3f8aa650b2649dbe515f46cdd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "52cab7315213efb3044b542e19ac4012843cbc394af12781d6db4efb5c57f57f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "d4bcc0ceb1ac519f1a49e99a8f4a374c3165e08fba864aa72bfa90663527d0af",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "c34a478bdf90f54ad898b06bd1960faf0740c653b575f2309f0aa077862d1e0d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "6e13234cfea02a672fee4ffe1c704035c523773720f91db1c1c1cabadb5bdb8c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "7a509adb3a8249521abb315d2f8951c4d2a0d472234b4704bd8c821c434d0d55",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "05e31a051452c3cfbd55692070f47523c84f89fa293d932b82cf687c1e3e7437",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "3620b79e322cd67244da994c618603aa3b6ec13ffc34fb7af8cfcd112fbaa9bb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "99545063cc4032a513bcdf9056f0d9f40092cae47feebbd78111219c4707d1b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "6fd3a1ed6193cc88fecd322c009a23479aea038bf77eabf720fd3e0ff9f643e1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "4884dc4deb6c09ee4cd3cc9ab95902b3005981e6c5c62cba2a8a35137b7cacdc",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "1cd651d59832604b4fd3fc75226254e26f15c2b16e3997bb10e73ace35ec1bde",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "be9c15fa7aaef55d1289e97ed3cec87bd67292517b8cc246d8de5165c140ca43",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "7507fcdeee401a8a3df22d7ce621c807a1441294d4447898b1166f9b4a2d967f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "175e0d63c2afd253d9210c723208d78f7a1a8bb40504f94a02b727884269d947",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "2243d8db12aeed1f9997dab3a4c5ad3880212f87ddd132a6b7b3f56655098791",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "d8aa871cdfa7a419d64a653432eafa84b273a4355dc8515d701d69adbe2ef38c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "9146f90975cf8df97e947bfd55fecc7935a21582cd09999d0784ddc1edf7cb62",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "eb2bbe1aaf65569a9fd34e5b8ddd58229ab54f4ba648c1a8013c964cc6daeace",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "c6c22e33d283eb3ca49fe24d218588588d31da420fcaa82cf068303bd9148b4a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "f2d70922c13ca552ba62591ea8a02c537ee16e3c2eab1bc239aa9e8cfdc07a36",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "14176f6dbbdb2ac096a722ed9685a48a238d4dabd03481ea1749b6513af4be02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "fe58f7f2e22a7acadff5018848128299fe1d09dd632e94e175f1b835e2ae7f42",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "ef55316cf84a2f0e02fc2af8901af3acda2d3d8eb711f03c24545401846093a4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "2c5db6e6ee00c3d256adcdfa769c74a24aa4727e42a8e3b067e7e35aad51db02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "161298df18ad87fb5c729136acace26b9e1d7be8f20417e74aa8ef2004c0297f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "b85b0797bf8d4b704c0ba55e8760a913699cce1f51cc4bed0a4c0d23fa7d494c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "708c1377edddcf72de21ed3093b1024f3c77977b6797dd30515d5684339e8743",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "4523f1a8307602c9e91e4585052c5842e89190d8b930a9b23906a55210283af5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "f9b63d4d547c74e0aa37b6927a59375c05b14aaa328118ebee94d1dbef599fb5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "da434b8805206e18d0f759531b79b7189366123d58019213f005009a77b56fe8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "72567d347c2a6c88fb62d3ab0f7d14359f26455d896eaf272b8d4611dc8af42b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "e42257324306dbd538f713f6ce70df7d9990e8436c09915af0e0760c7ef6513c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "717edb9bb1a0ea82d06d1dfeb1c35949a9632ecdaf4ad025badf626a1f4a69fb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "4293bfc977e0b0acc47f4e65d58f6f3b5ada8472e5ee882e954ec66adf7d0015",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "17d6e3feedfadfd5967a0e8d0650f1f1af55705b2265a01dc71b220968b069cb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "f986420318f46cbe053cfc94d7e5843b02e3f5e5b28080eea65deda8a72c6914",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "6ef1e0d70298f174682938a1fcdd69aba6f7e73dc397986c21fe6fe4e880f7ac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "036f09a5e740093f9ace1a428035f750490a359f52f370ec020674d0f12b0e83",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "efa813bdc272db73d11253dc041c88a4015fc072c82ba6156fbf312ebda6433c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "e1eb9530a1158426c6155e3f47c89e512c86f7d4884d20391f309be2ccff36f1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "6cce1c3a0f33fb8dd79f7315d06fc098c6748136f5528ffc670b66ddd92719bd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "6c3ed18c4d67976419ae32a73196276016cf9e508002ddbb0fdbf01204409cea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m15-manual-w3000",
+          "source_sha256": "ee62e00f73eab87fdfc252d2356ba48358001a1d40d4bcd130ebf2047c43f71d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m15-manual-w3000",
+          "source_sha256": "b426b5310bd2c165cd47c4a92365067d51787f77d58f8d567a960db8ea60bc50",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "632b7cd3726aa0627cc65fabd509d04e27fe18fcc40697417b3742e044ce4043",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m15-manual-w3000",
+          "source_sha256": "5c020cdc6f3347d3539b5302b353b9540cbe04de541b7891ba13b8d9a4ae4c3a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m15-manual-w3000",
+          "source_sha256": "eb56ec25db0455356a8bfe7784b2c8910d716c0def26e6afb12ae86aecade9be",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "302f382f1972da2995723e0f31ed30c554b6f4da7a87e6b9e65eaa36e7872590",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m15-manual-w3000",
+          "source_sha256": "6f255f5b35f783ea94fbc93e0e957f12136c87ff4f36f324e4864b8148be2097",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m15-manual-w3000",
+          "source_sha256": "bf157749e9156544bbbf9f36d18dd86a98c6a555e130133ac7c074df3a653fb0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "2c5604b27a1bea6ea3baff306e5ccc8a27b0c08c7e14a5e43ec2b47cea0ac726",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m15-manual-w3000",
+          "source_sha256": "c110d189ef9ac31452d6e78ffba065cd328425a6d88fcd50a6035c94f154c9d1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m15-manual-w3000",
+          "source_sha256": "bce2388a7215b618473d11fbf065de505970026616e12f8ac25aa147e0264957",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "59c637ed9648794cbd23289e2967238e6b195f0846102758e2b95e11dab72f74",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m15-manual-w3000",
+          "source_sha256": "b8109d3e0279cd0ee001179789afb183ac4c9d51e390be4a0585075b0cbe0085",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m15-manual-w3000",
+          "source_sha256": "15ad5df9230d27a02539dcd62767b65854d79a546c7d9ae9544d85ac614f02d9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "74656855e632666597da7dc1bfd44fa3d9c942c26e38c0cb46915637d365aac3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m15-manual-w3000",
+          "source_sha256": "92f6f597557b7cd415886fd9b5bf7c8c7852203566e7ddc27c6d7ea34d195ad7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m15-manual-w3000",
+          "source_sha256": "282349c30a8409fd47b18d28c3bbeae9cb52dbb95bb11e9d841989b2538ba179",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "15e347161fb67ba91a4bfe57503b58aa95c73440d2184f9ef3b7e406431fc703",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m15-manual-w3000",
+          "source_sha256": "a7e24d7b1e3d21a0b847b48bc80af255e1e011fadb680809d171d8e9565b9e38",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m15-manual-w3000",
+          "source_sha256": "d7a5f83ec646958d6314cd9f09670ba1cba4e8c8282298841ca1b3fae706acb8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "e69fdd7130bfc633c54500ab84d658c3a4afb326d2810e5e7a661f5cdbaceb95",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m15-manual-w3000",
+          "source_sha256": "d44f0c907ecacbc0b8cd7039d12c4800ec675728ed2a1e3ce50560ede0c95cb1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m15-manual-w3000",
+          "source_sha256": "9afd568ae5ad97d104f5cc663789aefc4a68750829bcb2cd1ebea6a08afd091a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "8c3970bdc4fc2549d66644b9aeb4a667c7aee261c7e024a61dcb4090f6915925",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m15-manual-w8504",
+          "source_sha256": "7004da00d30fe920b9ed3b2663f859b3427b08b67c16cc45bbb72da12dd1fdea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m15-manual-w8504",
+          "source_sha256": "8bf4255d174e9b0c85cc81a1605cf058ff9b8c818f2b3a30f641095fcb9b6c44",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "c2a00f5da89f0f424ee6508caab6e0c5c1a31557df0a4c670ec955c4e30e47d0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m15-manual-w8504",
+          "source_sha256": "e9968d7e9e8c46120baef392052d04ec34939fb7c6c32a270bdc3505bf0a6693",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m15-manual-w8504",
+          "source_sha256": "b56d0f23b24ff33985bdc24847833a5a84aeba56f415396a587bb5ce9ac76633",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "edbe039b79fc99bdd4780b5e3715d10f3fedf7b7715634dfb5f66376fc1dc3a1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m15-manual-w8504",
+          "source_sha256": "bf89036fc2fef27981348f045d8c090ccc500ed9196105a2721043bc59c0ffe4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m15-manual-w8504",
+          "source_sha256": "cb0b1b574d4276556efed3192a211c704d027a94f450af196b420b945b0521db",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "bb4d688391fa6b9348fc86f3f27c312331dcf06b5d9d25abfc543ad779a7ed9a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m15-manual-w8504",
+          "source_sha256": "13d73290a8a8fd5e49436d6ce44a48e289c9cbc53c7fbfb7c7d5a57bdce28c1f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m15-manual-w8504",
+          "source_sha256": "fc98a26adefc8b69db60a6fc576c75ebcee106e091105562245d3172b29e6846",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "8ed145a580365c7fac75238a8d6bc54393e9cec5caf7d57cd375295697c3a19b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m15-manual-w8504",
+          "source_sha256": "66f493722bba33be9936616d6d99f4de0f3cc44c441a9a9539081cce91d6ef1b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m15-manual-w8504",
+          "source_sha256": "dc11ee9f21b56c914a93da48e9b053bef5c7a7c1c1405d88d2f90e0e708b083c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "8ac4604341b1a3300318f7922b73ab9debe7190902dc6f7d0b584efb241b0499",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m15-manual-w8504",
+          "source_sha256": "1c5068b080c6d1d94eb1ec8ef0acb80d9b4f98f4809c88d982b9c60ae271bdec",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m15-manual-w8504",
+          "source_sha256": "06709d4801152bf8bbac52ab518aef4fa790e02dd2f12f5259c4d5da37b2e588",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "b2f7f10271421fe06a1c030eee70ce84486509cbfb3bdd946c8b8af467803a99",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m15-manual-w8504",
+          "source_sha256": "5800b80435cbac204aeb222d96d82d2ac64cee9d210e44f482ef31304845d686",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m15-manual-w8504",
+          "source_sha256": "4e1dc3b700145922497ef28541583260fd4eb3c25757c4a29ad0e72d4f2d1cd2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "670d0aacd9af328595e0c60cb9dc703aa22f2d80062c5c91bc8b7fbe2252c71c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m15-manual-w8504",
+          "source_sha256": "a59793068ed0995a558be5dd689afaeef1c79f082f18115ffb418262cd512e5e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m15-manual-w8504",
+          "source_sha256": "f8cc14b555198652602619d48960e4ee429d1907e3f048e5c03ad674d3e11aae",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "6c19eddc9daef06612d982aef554bc64946eda261b4a234bc5023029066b3548",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "f2e05b8e99888d5014756a93b35ac38ad4280ecfb5cca60efe78871b3eaa0154",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "ac4bd5a49077e2aaba38989800c146064876146cc048157f317cff08f619cca1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "1510a48fd20dcaae8450fddb88936774f46a53694f09671f1ad7b90ceab09359",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "527de775eef9318a2f35dbb505456496010091e99700e5d8dbf0d5ee27774ea4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "10a0bdafbe1b1e76f75545b2306428740050434b86a0b1918a17bdfcba537f24",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "87534c56a110b57d3190d5c42e4b1aa49742b80f0e001d2c192891ff29e5450e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "fb595d00e1dcc8f67ce2123530aca088d432e0188614ffa0383c15f294a22b78",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "e44928f2538a814f6d078f94b9841c9da272f43ba0eee431c7e673a27d09bb27",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "c5b8c05f9001826c7c61ad7871d61c1759711209d04e4b81538e2ee1c53e857b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "c52d3b1e92c760a25696516f78f95f0e499fc0185e08f1c657d68891ba0f3cc4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "c71936fbb5eb0f8f37ead621f34b8d41a7b34f84b879b4da1569a5ddef2d3a6f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "337a1509c9338fab6e8fd50df28902dcc8eaef1b922ebcdd50e460b7b8a8f5be",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "bd6665551334db844dff0282ca40068beef990c998af38447b970cfab7572688",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "7e044deb566477f7cf5c2e6f4a255e9b045410f925011016d59c826259db56b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "0ce1dba71f33b4efc80aadd39f353bc70d390a63ff07b5ce055a28edc59d2e5c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "3f5822605a14722ad04fb9ac1d7d93b78f6c95d7b952a4d62f255ddc1a89d345",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "529be0bbe28bb204488310b18d676ad4c884bb6eb25b6ab468f8ca4e86c73a07",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "575faff7b1e40df0d8443d68c4ae41c56e296b523174d456a2d54694d63c6094",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "121e862947bc0065f7bca0828ce4c075231aa50ae0aa731ee04ba42480e5c4fa",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "0873d5ffbd1637ea7f10e6feb6063308c74ab53e06d74832029e70e85ad7a43d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "3082f70ae4738e9bce85925aa3b9691250402d0c2e5a279cbb631d7be98f7968",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "3643b991f4677fb690830b0226f637d345704ef8ddf24a180a846c77d897e02f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "8c97abc39c3134213328868004d553125c347ea6c302622799df971b20d93eda",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "b418396e850c608a869a24715f465d5ae6a5164baf551f24482b1bc00caf9d64",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "da86a8037e348700af08be783e63928f096758c212881efe4c0a000012e47f8d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "17db777f976acbab638c31680eec64a22f4ac77c2c623c0dd3393aff4fd380a4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-canonical-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "30e5b97879e418827f1cd1006e665a8c26716b49793bd221c3d77d8a1107a972",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-canonical-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "2d72a3b170d8ee23f221c074fb57208647c8b6f4e9d2f72253a5e5cf43b9a995",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "4135c479adbabc35348c0f1452bca390a0d973bcdede8ff316d18d51b787d90a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-lower-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "ef893236787e5cfa5ea9d78e7cacda2777e19d2bce438047d610821fb56d9dbd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-lower-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "2c454f568234a5d55eacd01dae27b2eade03fa2141413bc302ac0f41857ee50a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "74ecb1e5e17d8862c7a881acc57a74861f550b463c9499b50cf29a3f2f23eece",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-upper-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "b3e1466600d285842bd0e409bb6e07de3beb6158986cc6848fcf2d31e8e8ad26",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-upper-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "25ebc9ad9f82deff7b7a0d8c53f1149b79584f7efc982077185503159bea6503",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "c9fa31452bb40b5199db1db5e105620417d048030b17ed8e907fde69e328ca4f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-century-mixed-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "47f3c652275ea2a6295561c43b604ababfede8f929a24ade8185bbc7dfcb5902",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-century-mixed-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "3521a529afc0f12dc071e7b365fbac0bcf93f424f6412e4804c1b5448dc71eeb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "8d2fab2c066c3befbccdad7a999d85f949545c873a5e9be26c107d2e4247e4ce",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "13315cef0ce148826e353c334d4e32c8ebef7baa9f7d434e3d77b88bf1b3f9d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-canonical-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "e57ffda76842a63b9e84864e9f9e5ef2e7dbde99054d4ec2545ea6dd86853d74",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "870d75167c942afdc1ef96b16b30c15b44208a9191bdeed5f677c2619cbc8765",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-lower-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "66a865d3f003be72346bf916b58e4237f5c38c72d89273535a99c6aa2b38a78a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-lower-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "eb0cae712a82519f22731581bba089bf25ece37bf46580ccecd7bc418483ee6d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "bebe8b4dc93ca3df78767cdc5b00885595184ef03fcf50a83aec97a3325d3ef6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-upper-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "fb9e5cd09dc6d425c88c994462f28199670cc4b3e904a2f8ad110d0219515f8f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-upper-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "d46c4600e83f21b3f2a0fc15f98279cc855a1ec525fa377b8f816da89851fff5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "4d720a7f52d0debb5aa86f80eaadf4bda524f2d8cb7289d2f1916c1a4defbd05",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "f2865830da04609c305b376dad3b9b6bd692ec958aed24650ebc728b212f4d61",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/inputs/word-windows-other-latin-bookman-mixed-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T204141044Z-453f414c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T204141044Z-453f414c.zip",
+      "archive_sha256": "91d168dc44bf4e4ff44dd20394274b5dd0b1bc2bce460fed6f744c668ab5b1d3",
+      "capture_sha256": "53ae9e85f39305a8173aea4c3515dfaf1475673993c954425dc075e388441c96",
+      "documents": [
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000",
+          "source_sha256": "65e9926e4faefcb5e37245fb8dae44ef43065a504e90473b1b0e47aa30d511d2",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000",
+          "source_sha256": "182829c43a56ce8fe380fab7ae62b5c7a6fdd25090773b4310e7480c0cd63199",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504",
+          "source_sha256": "b3dbff89d9b43648374a5f72858ff4074e4f97fed35cfeb463e2fdd3e9862b73",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504",
+          "source_sha256": "07447f36b304f7e1c4372fe9697000383f45bbc6db680d06811a1753c6a0dd00",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000",
+          "source_sha256": "0336e6c8ac1e553d2009e42ca7c8f2d9213c64c35093922c233adcf89b39b32a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000",
+          "source_sha256": "ced44e069933b2b7e19d2d8bccffb0f257c51f7c25b78397b2149381d3bec85f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504",
+          "source_sha256": "d92f10d48b2f78502c26265184e9229e1696e6c2209e34c995300556141e57c5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504",
+          "source_sha256": "7bc50947b6d9af6230e5ab46196edd6ac1addfe91da8de83e4a6d18aaa4ee175",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000",
+          "source_sha256": "9a74d5068df7d1cf62cbfc361fed8cde983290d74d951714c59a8794f20039dd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000",
+          "source_sha256": "1a9ba26dce8b1687e70c3e9ee235d957fce7028a3dae0b465cde8753ea3fa0cf",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504",
+          "source_sha256": "192580fa4e4467f664bc0b9e56fefd889e5071f70a95ad5f98b1b207da9502e6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504",
+          "source_sha256": "684850c20ca8cdb6a5620924167ffdac79af92799a8310bc8b5f6a2c86c92cfe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000",
+          "source_sha256": "c6878c81228f22036676a32d5f59f51a2543faa92f8dc4128538c678a0976761",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000",
+          "source_sha256": "b9aec8b0dc9b981606c10aaed6a2bef1bc7cbcd6282d213ce423cf001cd72c33",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504",
+          "source_sha256": "65628055fd22df7d7cac849ae2f541de7da9bea5586c894eb10318325a63ba67",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-regular-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504",
+          "source_sha256": "749596bf0549e3cffb8ec6e1d49ded0a6137672bb03dd11e5fb1ba97f7244983",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-regular-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000",
+          "source_sha256": "b4101db385c0eb46be41d99811ddd5d81913f6bc1bb7ee67ed5cc341ea7476a8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000",
+          "source_sha256": "ae00ad34b3a956a9a5797bdb111c22ad84de97f71fe247018f6489088606f18c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "cd3ef752ea7b07f4f2cd072ae40ebb7259eb1c1afa00bcaef0e10c0de9d93c14",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000",
+          "source_sha256": "520041d63f0c4bc48032f9130bcc253128370627bac5ecf5d70624fb67dbffac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000",
+          "source_sha256": "31b5dac82508bf2e12cf1957b9df092dc86bdeee9cc820480bef6e88002e89d1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000",
+          "source_sha256": "7c4718ee4084ad47df1280d5e58b9636fc64c553c2e0c1daad45d901a8659acb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504",
+          "source_sha256": "65bf71aeab2f660fb492052f4885ca8a79db1c76556b98359c3eea45f1c8f1d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504",
+          "source_sha256": "ae5a061b3e9b3e7d9fa4c467db5af07347fe549b58534f5a99e21dec143e2e7f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "e014f5d0c5fc3007a83302f2e96028461929e33691b7c1a98ffd6fe6a5e6f694",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504",
+          "source_sha256": "64f7e7d599dce14308a884b334160d246bef7894aceef70f66a7e65d1b4c2516",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504",
+          "source_sha256": "04a3246436e1aacbd8bb40358f98a7d938e568fd4e6570b5e60997945ab961bb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504",
+          "source_sha256": "03e2112696887e4f3b9cea9205dfced83be2a6d2af1d08d4f5408df29f494b10",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "6a4d20bbd5849e3746cc0cde9115377cdfd3e02e4fc15639feef10e210f8df54",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "0cb786dae2ed20b8ac9b3db53fa0ac7e98ffe85e7b5cfca3021c85716c5f42d8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "ff24dd2f4ec4461ddd20099144cec75e188b29c7004d5e181f6a399ac8ce4340",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000",
+          "source_sha256": "66f6567fae3bcee5b7a46a340ad9e288060ed7687a38e80be406f2afcbd172f6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000",
+          "source_sha256": "fde12740be0744fc3f19441f074cc190c336bc0c8c1b8459a6577481e27027a7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000",
+          "source_sha256": "ae779ac0d20f08eb090292921234e9dafdec01133d1fd4cec13c11a61bd17b35",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "c54f198c7c795cc50f708b1ee437d926897d3751be0f4ff43226e00c497aeb4c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "85c5fc9c69c30298a382ffc8d2e55f5ea14d35d1748ee8c62a45cbbfd7acb6ff",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "4e8149921480c28f83246f216f4f2d017f0dd06a1771f3ea1a4f9670953505d4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504",
+          "source_sha256": "912874379552c1d2814cb5ecddf5b8e6b9051bedef42a7a1cad0a0e48df8518f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504",
+          "source_sha256": "056bb3423e445235808991035730bcc965240c7bce1a2e114ea0266fcefcce11",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504",
+          "source_sha256": "48b3a169f681875f28fd64a738d0b90aed4c6aef2471097486dd28bae9e0c312",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000",
+          "source_sha256": "667345919852a00bf614eb198900a625feb3af7e01f7d9b2453b92dea5b6ef07",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000",
+          "source_sha256": "35138ea8dcd0c265d729b242c913d8657e9c4b417328e20c697fe2557da7a693",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "1bc66b8d5fbb94161cde23898824cd75d1e4ef2aed4a6b342ad653422569bba5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000",
+          "source_sha256": "61dea2c753d365800cdcfc1057d26a8cca12ac3bce9eeb1fa1c5dd64160ec5f3",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000",
+          "source_sha256": "86298afd431227810d4f50ff56bc394def671e4460a3c2a120c04021567c0d9a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000",
+          "source_sha256": "03873b478f7a648a3b848991b59407f9815396e518d91c680376e20d570c3ff4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504",
+          "source_sha256": "1e898c72701c3fa3cb1e16c8fb06bbdd258833161edab032647aab624358cc15",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504",
+          "source_sha256": "226baa637628e23d756d704a4c10eb6a70e8ca746c72b234c146983325991b80",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "413a306471447c99a641ba94eea2a8a0c629ec645556380a412be665ed87dfe4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504",
+          "source_sha256": "29c6ffafa5329871f8d3095b33a1ea1dcf04a9816e47ee0224673431e5e19769",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504",
+          "source_sha256": "1bdeb45f5b8ab6a337d7fdaca2cbacbefc2aaaaa11b6e595e582bae1d791c988",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504",
+          "source_sha256": "0ef26fec392e7360ce0a3a30f105e968a76d50eb25ed6013b2b1b4c0363ef05b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-manual-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "4e2c134d72d495a3f46f8ef3535d07159771dd52ea1b466f8090a5ca941c9aeb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "ff4e3fb560cca09a1dd7df7227949619ca442d37fa370e35673bafff63ba3d31",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "be53a93bdc11105157d14cf6409393a099530e5fb37a1b650a32bf30f78fb121",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000",
+          "source_sha256": "4dc2ef2e4d1ea88eff29ad41d2cd2069ae760b2b0f5f704b60019dfc2ea9e093",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000",
+          "source_sha256": "72c5c7bfbcc70021834ab851e0062dd5d617b9fa750e44dd3331f87ef8ab464c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000",
+          "source_sha256": "f1f1faa9fe0f4849d29953cddad6272b849ee708c680cb059cccd30faf6a6fdd",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w3000.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "089233d7bd74327305d6651cd640dcdf4f36b19829a6c669f66fe9f5bf77570d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "697bd58a5e9f781aa8470f63ef68eab8b009ee5a42c904e89140f58879b5bd9a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "9a8f77bede01414a4b7cf49f9b0ca897ff61e0848659433da86bb32788b0748e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-century-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504",
+          "source_sha256": "d02a9c75b7022ea86434debb3533f0a2e5e26ac9795c0e7ed16da0ce2086c552",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bold-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504",
+          "source_sha256": "e9d7a54e43fd8657d63d1c7d204c6dac68d68e66992d8be8bd9896d534f69b12",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-italic-s12-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504",
+          "source_sha256": "61995ab7c3a315026b82a58baebc6dfb3e7d40bc8dcfa186937541ce81b1b604",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/inputs/word-windows-other-latin-balanced-bookman-bolditalic-s12-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
+    },
+    {
+      "capture_id": "20261120T211623273Z-b99889bb",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261120T211623273Z-b99889bb.zip",
+      "archive_sha256": "cb5b5fd608a387ee706c7d49d37a183c0e7280f5f9b7a529812b6a158d2a7e8a",
+      "capture_sha256": "b968f78ec8fa18b73785abd613e859c529222bda0eb9efa72df6138489ba44cb",
+      "documents": [
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s8-m14-paragraph-w8504",
+          "source_sha256": "82cd16ba4612123be6e9dbfccd6dae3fd1ee42917b9be6585a5fb0ffd6539886",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s10-m14-paragraph-w8504",
+          "source_sha256": "5519bb162bcb7f67104a3d016da3040a452782bcb4498411a4e3c602e2884ef7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s14-m14-paragraph-w8504",
+          "source_sha256": "f721021888c52ed3ad6499abd7d091f73a536a3b30de8cd3945d8ef4290458de",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s16-m14-paragraph-w8504",
+          "source_sha256": "71cc487eeb6c6b1ece868ccd57598f312bed6ab238477156430ef431f454929f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s19-m14-paragraph-w8504",
+          "source_sha256": "eafafc888007a04c358595e96d94f4f634f7fc854aa2dc7d16eee009e8a44c1c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s24-m14-paragraph-w8504",
+          "source_sha256": "353621286dc6d8d9d2aea756928f95faa29d475cdb4530c90b273b67d40ebcac",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s8-m14-paragraph-w8504",
+          "source_sha256": "0ca6c827a2085ac919bce0318de2fa1d2d9a26a74697929a45ce680497b5b54e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s10-m14-paragraph-w8504",
+          "source_sha256": "12a72f2325fc4da7e5535c2a85248b905e97af2043343b7aa453ec2c6402cc62",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s14-m14-paragraph-w8504",
+          "source_sha256": "1ba10c78807dafcc27f91eca1f08893bbc13814cf2d0bae3bb79b5120fd77fb6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s16-m14-paragraph-w8504",
+          "source_sha256": "f21a5e0129ecdaf758af6dc1cdb29cd61919fa0ec734c75647435291f3189297",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s19-m14-paragraph-w8504",
+          "source_sha256": "940b02ebe78cf81f3b0f76fcb003d891a161bdb123832392d2cbd769db2dc063",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s24-m14-paragraph-w8504",
+          "source_sha256": "cf5a1e39112aae08607567a91198cd377544b813ed0fc7107931c8b96986d55d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s8-m15-paragraph-w8504",
+          "source_sha256": "76c593832f64db3bfd7177b7b74845275815779f44ffd11288bd9f88ad80764e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s10-m15-paragraph-w8504",
+          "source_sha256": "1a4b7be1e59b3dcd9bea04aee913d73ae1ddaf35c53e6704f7693099da456eef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s14-m15-paragraph-w8504",
+          "source_sha256": "0808e37a7ddd938fbb4d6e2725ffdd89c4f8fc8e4e4a11d1fd7d256cc58eec02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s16-m15-paragraph-w8504",
+          "source_sha256": "2a8adf63ce34ab770417f80323e5dfcea358117cd8e5a5a9568b49c329679679",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s19-m15-paragraph-w8504",
+          "source_sha256": "5baf2c1923a080dbf5e06f8cd6da8e4460ff929774d77628ca54161b904ff51c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-regular-s24-m15-paragraph-w8504",
+          "source_sha256": "39bcede74a31428e0e44d18654dd17f9db42ea5e85630912001ad692d1554d36",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-regular-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s8-m15-paragraph-w8504",
+          "source_sha256": "471d1fd0d37562d1dc1220b8fcf1891a704d0adc1d59a05cda5e20d0032ece8a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s10-m15-paragraph-w8504",
+          "source_sha256": "402858e99152043fe74d4c48a9b498f56c119ec0052aa48b4c702f8597de5419",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s14-m15-paragraph-w8504",
+          "source_sha256": "c2ebd64d2888279623ed6f51bbd74445baccf63e7c30c8bea8765f8fe1586887",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s16-m15-paragraph-w8504",
+          "source_sha256": "678ee33b27c5a5bd57342790dff5ac38042c4aaf1d361a500239afdf566baa8a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s19-m15-paragraph-w8504",
+          "source_sha256": "0c93611fc4e3cca73b1e0825e1f114c746ef4ccf4b4907bab6009c03560f2046",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-regular-s24-m15-paragraph-w8504",
+          "source_sha256": "ca452f2e2bafe8e0bd070214e8dfe5558eba4aea12f47124db6ec4195bfa0f6a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-regular-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s8-m14-paragraph-w8504",
+          "source_sha256": "a2c67ae95be0e9f512e5c96422bf488ad88accf10bdd8ad119f71e03277f964c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s10-m14-paragraph-w8504",
+          "source_sha256": "9190358df48e6ecf9e934e2ffbe5bf5d6825f116dfac2e55fbc17e4f50711765",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s14-m14-paragraph-w8504",
+          "source_sha256": "761716fafdd478379a58966d454a71e715cbbf9a9a55f576e771c01edd9f451c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s16-m14-paragraph-w8504",
+          "source_sha256": "ef7fe094c3e89ce4efa0b203c9a685281c2233c0dbff31e84340fc579a527025",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s19-m14-paragraph-w8504",
+          "source_sha256": "ea74d11b286ebc6f1727aedf837e41d4f859a22e8def78988b289efa247fb22f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s24-m14-paragraph-w8504",
+          "source_sha256": "e33e4af28a481b3ac0d110c27532ec7fb8b95c9bf3aaa941124d3b0a76e36121",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s8-m14-paragraph-w8504",
+          "source_sha256": "7dd73129ce597924220ff3a4ee934ee362f92714374d49ac3cff2b19e3367611",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s10-m14-paragraph-w8504",
+          "source_sha256": "26e870af79c36baeb2e3218a95363e4ba4027c2cb8b470d123cdddc666112703",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s14-m14-paragraph-w8504",
+          "source_sha256": "feede3f9e51c92709efed981c08b5fec1dbcd1f48b9ed6590305dd3eaf693769",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s16-m14-paragraph-w8504",
+          "source_sha256": "0b4946f77215aec803905cdceffe4567adc35264f8a845e9eb02effdd68216d6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s19-m14-paragraph-w8504",
+          "source_sha256": "9d61478f89cafebc2084e339de6773edfab2a9ea8883a4fa52dbe825d3338624",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s24-m14-paragraph-w8504",
+          "source_sha256": "0c06af1185e97ed658310d0419eb9ab8ee810fcc407eaf61787e544dcbdbb2a6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s8-m14-paragraph-w8504",
+          "source_sha256": "63fef6963a4bf79aa445b1aace483670211b00ea629ada1e301a6473c332d90d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s10-m14-paragraph-w8504",
+          "source_sha256": "c4daa8bfd41daa82dab7ac2fed2b53c34398fabd4c0a64a3afacb169a31a095e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s14-m14-paragraph-w8504",
+          "source_sha256": "6df0cfccaf6df94d32dcf582d218dbeb621c12a774e471ace411e10557e12e79",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s16-m14-paragraph-w8504",
+          "source_sha256": "9a4b4b70708793fcba8346b09cc7bd917a73f31c787362e03e4d85869f8f96d0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s19-m14-paragraph-w8504",
+          "source_sha256": "c660d62f01e822c38ba2086bba6862676096c57324ad101ff0de2a1958f0bf32",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s24-m14-paragraph-w8504",
+          "source_sha256": "f8448dba1c8df165097871338c85daabd133de99010a63c18ef1a0f60bfe4614",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s8-m14-paragraph-w8504",
+          "source_sha256": "af8c8abd64f4a5a300568bb26da7e40aae1af9d3235ee769d0f5e7e77fa85b02",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s10-m14-paragraph-w8504",
+          "source_sha256": "befae113feb7d14f002380b48d17361a5598f84dcd352a748d41a8cbacd03368",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s14-m14-paragraph-w8504",
+          "source_sha256": "22a9f8c23c2572fb750af4312e5970d13bd2ff6a835feec5872b1da33af37ef7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s16-m14-paragraph-w8504",
+          "source_sha256": "e4d9f7b4937fa483867d3c174817e3ddb2db6e115556fc92572c1f8c198900f8",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s19-m14-paragraph-w8504",
+          "source_sha256": "b70ef49c4a6c2859b9dcd9762eab99343a3b36c909e749470f0ce1cd26a1fb29",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s24-m14-paragraph-w8504",
+          "source_sha256": "b2a300a6908febc9880a93f40fa7a97faa61f00fcec8f2dbb504f47637d9f1ad",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s8-m14-paragraph-w8504",
+          "source_sha256": "e7003a21e61413c0aece8322db0ce988fcbc381f2ac97e66235effbc52608713",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s10-m14-paragraph-w8504",
+          "source_sha256": "e6d5863385e11909337918cb084b9e75b2b1184d1073c72c63619fd6c88bc4d7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s14-m14-paragraph-w8504",
+          "source_sha256": "03f96152796afd17eb54da00b18dacc56316cbe5b9b608e7aed9425e4f849fef",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s16-m14-paragraph-w8504",
+          "source_sha256": "8341988fc814b92a31ff637891ca1310e8437e5bfa4a890e72a3d1d5e3a7b749",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s19-m14-paragraph-w8504",
+          "source_sha256": "a24f16ac788bb2767decf7d2b7782532e02487684f422bfe8c74c78adb0b89a5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s24-m14-paragraph-w8504",
+          "source_sha256": "7c01d8193de5beb309a2f43868786d249b8b80e881065537ffd4b7d454aeccf1",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s8-m14-paragraph-w8504",
+          "source_sha256": "222775452c7bcc6ef4f58f2eda03d7a421f91383c0b0b7c391d603cbb84c432a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s8-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s10-m14-paragraph-w8504",
+          "source_sha256": "be8fa47f73b07a0bf45b423a9649a85b2c4e7861a1c3ef2d4a28725f6f675275",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s10-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s14-m14-paragraph-w8504",
+          "source_sha256": "3b3fd4cfd6d3787e6579b42a904fc729328720f2e00420065649f4926a90f34e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s14-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s16-m14-paragraph-w8504",
+          "source_sha256": "b84bc56b754cced2e4338114b0866835d5b4df93970a1d22cc60f81d2f5a5f5e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s16-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s19-m14-paragraph-w8504",
+          "source_sha256": "724ec13b6a5ecb9c30f1a3a6676b0d0f4984e33b03c06926aa5ff5c89d35f81b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s19-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s24-m14-paragraph-w8504",
+          "source_sha256": "56707226d2b0891762f8eaf4a259a521ae1ec5507ee0758ce9460ed6bbafb66f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s24-m14-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s8-m15-paragraph-w8504",
+          "source_sha256": "2f73b135543a89d25b63f5d0b894928f044adbd619b0623030c574a12df9302b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s10-m15-paragraph-w8504",
+          "source_sha256": "9fcba3c60991fc2cc72712596c79d6c9a83f1dbb87672f6b4b49ea4b9543d807",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s14-m15-paragraph-w8504",
+          "source_sha256": "f41ca4cf503dda1a8d28e356c718d6d7ce8eda5f085ba68b91a69c6a8b6a828d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s16-m15-paragraph-w8504",
+          "source_sha256": "7959e0ad9d71cf1639170be601a3f496d7aba495713ad2828a061daa36377d1e",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s19-m15-paragraph-w8504",
+          "source_sha256": "2b696137e02797291a2593e3ec1fb9477cb594837d87cbce2176f267dd4c6261",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bold-s24-m15-paragraph-w8504",
+          "source_sha256": "320fb60e36d4739a7da0f868f7bc33b1cbde91da7b3590aa3abfabf4dc78f510",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bold-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s8-m15-paragraph-w8504",
+          "source_sha256": "e9f3a1e2b010af3c86b47b0e1b6f76c7b2997e61442beb6bd9f380a778ff59b4",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s10-m15-paragraph-w8504",
+          "source_sha256": "0cb374bb0cb7825928f63cb6431f53aad90b40a85e206ca70711e983756197eb",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s14-m15-paragraph-w8504",
+          "source_sha256": "5c67ce46f23b9ba22d7d3f8a068a8f496f2a13ad812cfe05fb19b5bcfe791031",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s16-m15-paragraph-w8504",
+          "source_sha256": "ec46d6012f57fa385bd2774f4a9461a7f83bf5e13236b7b728306a042935d590",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s19-m15-paragraph-w8504",
+          "source_sha256": "9f217d88b80c559791d1c855cdd55e64a60085a55b90353fecde374cf456614f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-italic-s24-m15-paragraph-w8504",
+          "source_sha256": "2c303915dcc6115f8f37e1b9ebb03ca09152e49dc91de0b7bcde42670dec5341",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-italic-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s8-m15-paragraph-w8504",
+          "source_sha256": "bd6f5b8a8f4df56f7981509f1c203763d1a299008ceacb9f218c0177497515b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s10-m15-paragraph-w8504",
+          "source_sha256": "8e5cae320464db56cc113db0c163d1d018e42a11fb444840c9df4ab85e6398b7",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s14-m15-paragraph-w8504",
+          "source_sha256": "0b3298662d8b43fc20787199e52047e08832f75fe4cd075f361a20c385361bbe",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s16-m15-paragraph-w8504",
+          "source_sha256": "d891aa3b52f4990b417052b7823219d92a1af98116354eb543868727debdd15b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s19-m15-paragraph-w8504",
+          "source_sha256": "6047b27f62bc890447127d12b1e2ab6f98715ed4b969e1a6c81e3d2ca3229c8a",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-century-bolditalic-s24-m15-paragraph-w8504",
+          "source_sha256": "dd5cea2ecb79f7a53dac1cc1e1728551fcdca7dca4f56ab5d4cc2886372005f9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-century-bolditalic-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s8-m15-paragraph-w8504",
+          "source_sha256": "74505e7d666bbc588ef5e22bce52d6ae57a45661a58a708d20c07d75238c0c5f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s10-m15-paragraph-w8504",
+          "source_sha256": "6c7b8445de1c05bc4ddc77517e85ce6681cb3e6f324e9c14f232efbcab4a3762",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s14-m15-paragraph-w8504",
+          "source_sha256": "439d21e81999ce3ce68b729cb888c766d616c0910692393b1de85f66ca59ecee",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s16-m15-paragraph-w8504",
+          "source_sha256": "ea0fe4680fdb7d975348bc336946762a60f04b2db5a6022d466110c7bb72983c",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s19-m15-paragraph-w8504",
+          "source_sha256": "418a7bab84e8b074dc008713b69d7164dd95f2934b9b12b962801fbaa5c0e51b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bold-s24-m15-paragraph-w8504",
+          "source_sha256": "de1d84a63cec090b40c2d8d1635e7ca2d0f66a65783901a8f747016a9b9133ce",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bold-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s8-m15-paragraph-w8504",
+          "source_sha256": "0aec08d9eb429514dd99a0e5e1bae7a0d2ffd819fe9fc40ac8b22c0568f18c31",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s10-m15-paragraph-w8504",
+          "source_sha256": "b3dbc21ced898fe8c1554fe9c91f31003713143b86fe6822495d2a16f6dfd7b5",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s14-m15-paragraph-w8504",
+          "source_sha256": "170fa78cdf8f215314888a2f78bc91cb99f65a0e2e931644e384949ab2ce36b9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s16-m15-paragraph-w8504",
+          "source_sha256": "94f5884926cc9240de4eb3cbb2a66307f68762d598727bf22c8488987a547d8b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s19-m15-paragraph-w8504",
+          "source_sha256": "06cb8be5b7024fa99eb29287d371dd7f34aaea987b2a4ae478e2c59a67b1311f",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-italic-s24-m15-paragraph-w8504",
+          "source_sha256": "525d5b79aec8eab78be5466b5dede492753111a40ba414e81aaee41b15d27424",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-italic-s24-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s8-m15-paragraph-w8504",
+          "source_sha256": "943ea212bc0e04e856f6a24df5c637aa013e63c16f20c2bd99e1c8cb74fd02da",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s8-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s10-m15-paragraph-w8504",
+          "source_sha256": "656bfe7999d44572ee252f8daf16549cefc00f13f6629ecd804e038ad2989e71",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s10-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s14-m15-paragraph-w8504",
+          "source_sha256": "0eee6f0abfd8ee1fa259538f1f31864a39b3ed9b35515c61b478a4e564f70925",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s14-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s16-m15-paragraph-w8504",
+          "source_sha256": "0097e14a2552d16c0522ef2a9cf4e73f42a5a492f5a1c0a356ab519393732ff0",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s16-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s19-m15-paragraph-w8504",
+          "source_sha256": "57a27ceace98b40ac0610d93f82b9a4bdf63d37f0ad094e23c33856c56456179",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s19-m15-paragraph-w8504.docx"
+          ]
+        },
+        {
+          "name": "word-windows-other-latin-balanced-size-bookman-bolditalic-s24-m15-paragraph-w8504",
+          "source_sha256": "f5b2a142bf40763974d89bffdce199adeb99d38ab2d97d5623f1a1d0f568ff92",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/inputs/word-windows-other-latin-balanced-size-bookman-bolditalic-s24-m15-paragraph-w8504.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -64424,6 +67620,22 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T195707706Z-00fd0624/word-output-font-facts.json",
       "sha256": "7803ef8b2413530d2102648cb03e27ee821736c53c2b80d693007cdb4393d384"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203250101Z-16f5e085/word-output-font-facts.json",
+      "sha256": "b4910948e09db688c2709d045819664e497373430fad65a84ff43b1c0168af15"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T203527786Z-3426c1ab/word-output-font-facts.json",
+      "sha256": "4eeaf88a9d7f4a0cd57a8fabb4e25489169332338d2a71f1945da57f0106e5b2"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T204141044Z-453f414c/word-output-font-facts.json",
+      "sha256": "10e9ab1dc6b7ffb29d209c5482eab15159e2edffd1a81af148b4f94cc2c8452d"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T211623273Z-b99889bb/word-output-font-facts.json",
+      "sha256": "f8ac0177a7a061c1c52ec472217918c5aa00b74ef4ce0ab7ff64cd6c71c8efbe"
     }
   ]
 }
