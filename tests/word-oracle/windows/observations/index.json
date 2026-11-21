@@ -67465,6 +67465,77 @@
           ]
         }
       ]
+    },
+    {
+      "capture_id": "20261121T003502584Z-168d7f0c",
+      "word": {
+        "product_version": "16.0.19127.20936",
+        "file_version": "16.0.19127.20936",
+        "application_version": "16.0",
+        "application_build": "16.0.19127",
+        "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+      },
+      "archive": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261121T003502584Z-168d7f0c.zip",
+      "archive_sha256": "24b05b1f0be563000622df90c55ac32463c72e1bbe7eba211a2621474f9759bb",
+      "capture_sha256": "0ad1bc7fd213b9a1f33d487eec3952c140d19c7133593a2bec6619ab9d2fe758",
+      "documents": [
+        {
+          "name": "word-windows-long-mixed-regular-s17-alternate-24to96-m14",
+          "source_sha256": "b7103e76e557db300103c99e30ab333c6189b8cfcd0bedb94578456c44e53bea",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s17-alternate-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-regular-s17-blocks-24to96-m14",
+          "source_sha256": "07f8ec3829dafa5a124a5529a9f6fc523cb175a0d18c4b3726c65e7a0b83698b",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s17-blocks-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-regular-s19-alternate-24to96-m14",
+          "source_sha256": "54a964d49045d8ac8298aa854dcf0aa05b8d9d0f8fbc99ba1d7ea85700098b77",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s19-alternate-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-regular-s19-blocks-24to96-m14",
+          "source_sha256": "22ea10754e88d7de1b0c58ef0d7f68336de99c9ec95de5640d06b70bebb940c6",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-regular-s19-blocks-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-bold-s17-alternate-24to96-m14",
+          "source_sha256": "b6e257eb6c2a08788a30713a085c1fd01070823b0390fd98fb29d750e470197d",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s17-alternate-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-bold-s17-blocks-24to96-m14",
+          "source_sha256": "9a7b160408c4f01131724fc0730489ecca40b37a239c5f5182621852d24d1410",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s17-blocks-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-bold-s19-alternate-24to96-m14",
+          "source_sha256": "66f8a1ff4c4b11199e725d2c7c22bc35af4dfb8c5fec0487ca0e6320ff46d924",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s19-alternate-24to96-m14.docx"
+          ]
+        },
+        {
+          "name": "word-windows-long-mixed-bold-s19-blocks-24to96-m14",
+          "source_sha256": "4dabb3ed411a2c49473964eb40f14cc5f10c10db205c6448473f44a98451ace9",
+          "source_aliases": [
+            "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/inputs/word-windows-long-mixed-bold-s19-blocks-24to96-m14.docx"
+          ]
+        }
+      ]
     }
   ],
   "rejected_sources": [
@@ -67774,6 +67845,10 @@
     {
       "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-output-font-facts.json",
       "sha256": "199f161423f6435ce851ba6e4fa8b164dff01721ea5d3ed2929a0d7d3f6e0af2"
+    },
+    {
+      "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261121T003502584Z-168d7f0c/word-output-font-facts.json",
+      "sha256": "1a7e6377b39685df4441c6a6d2fb8c80850ff4c9f89e29a88ca6dc059ae5cf77"
     }
   ]
 }
