@@ -10,6 +10,7 @@ import gzip
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from extract_windows_emf import extract, emf_glyphs
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'word-compat-comprehensive-mac': '20261114T004202539Z-7cf29738',
     'floating-inside-outside-mac': '20261114T004143028Z-b4cb9887',
     'header-footer-edge-cases-mac': '20261114T004143028Z-b4cb9887',
     'textbox-body-properties-mac': '20261114T004202539Z-7cf29738',
@@ -137,6 +139,7 @@ REQUIRED_CAPTURES = {
 # Word. Their live layout must match EMF; their actual vector PDF must match
 # Word's PDF. Existing shared screen/PDF cases retain all four assertions.
 INDEPENDENT_OUTPUT_CASES = frozenset({
+    'word-compat-comprehensive-mac',
     'floating-inside-outside-mac',
     'header-footer-edge-cases-mac',
     'textbox-body-properties-mac',
@@ -190,7 +193,7 @@ def ordered(glyphs):
     return result
 
 
-def compare(expected, actual, label):
+def compare(expected, actual, label, *, font_metrics=False):
     require(actual['page_count'] == expected['page_count'], f'{label}: page count')
     expected_glyphs = [g for g in expected['glyphs'] if not g[1].isspace()]
     actual_glyphs = [g for g in actual['glyphs'] if not g[1].isspace()]
@@ -204,6 +207,11 @@ def compare(expected, actual, label):
     # rounding. Match the same character/page at its actual XY origin instead;
     # every origin still needs a distinct partner within 0.375pt on BOTH axes.
     tolerance = .375
+    if font_metrics:
+        for model in (expected_glyphs, actual_glyphs):
+            require(all(len(g) == 6 and isinstance(g[4], str) and bool(g[4])
+                        and math.isfinite(g[5]) and g[5] > 0 for g in model),
+                    f'{label}: invalid font metrics')
     buckets = defaultdict(list)
     for i, glyph in enumerate(actual_glyphs):
         require(all(math.isfinite(glyph[axis]) for axis in (2, 3)),
@@ -216,7 +224,9 @@ def compare(expected, actual, label):
         nearby = [j for dx in (-1, 0, 1) for dy in (-1, 0, 1)
                   for j in buckets.get((word[0], word[1], x + dx, y + dy), ())
                   if all(abs(word[axis] - actual_glyphs[j][axis]) <= tolerance
-                         for axis in (2, 3))]
+                         for axis in (2, 3))
+                  and (not font_metrics or (word[4] == actual_glyphs[j][4]
+                       and abs(word[5] - actual_glyphs[j][5]) <= .001))]
         require(bool(nearby), f'{label}/{i}: axis mismatch: Word {word}')
         nearby.sort(key=lambda j: sum((word[axis] - actual_glyphs[j][axis]) ** 2
                                       for axis in (2, 3)))
@@ -247,7 +257,7 @@ def compare(expected, actual, label):
     return len(expected_glyphs)
 
 
-def pdf_origins(path, unclipped=False):
+def pdf_origins(path, unclipped=False, *, font_metrics=False):
     import pymupdf
     flags = pymupdf.TEXTFLAGS_RAWDICT
     if unclipped:
@@ -258,7 +268,9 @@ def pdf_origins(path, unclipped=False):
             for block in page.get_text('rawdict', flags=flags)['blocks']:
                 for line in block.get('lines', []):
                     for span in line['spans']:
-                        glyphs.extend([number, char['c'], *char['origin']]
+                        metrics = ([re.sub(r'^[A-Z]{6}\+', '', span['font']), span['size']]
+                                   if font_metrics else [])
+                        glyphs.extend([number, char['c'], *char['origin'], *metrics]
                                       for char in span['chars'] if not char['c'].isspace())
         return dict(page_count=len(document), glyphs=glyphs)
 
@@ -474,6 +486,13 @@ def check_windows(executable, output, root=ROOT):
             compare(visible, actual_visible, name + '/PDF-visible')
         require(painted_path.read_bytes() != original_pdf.read_bytes(), 'Word self-comparison')
         compare(visible, pdf_origins(painted_path), name + '/painted-PDF')
+        if name == 'word-compat-comprehensive-mac':
+            # These exact original font sizes are now supported in both body
+            # and tables. Keep the same strict XY match and distinct partners.
+            for unclipped in (False, True):
+                compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
+                        pdf_origins(painted_path, unclipped, font_metrics=True),
+                        name + '/physical-font-metrics', font_metrics=True)
         print(f'{name}: {document["pages"]} pages, {len(drawing["glyphs"])} glyphs, '
               f'Windows Word {capture["word"]["product_version"]}: PASS', flush=True)
     return checked

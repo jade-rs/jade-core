@@ -753,7 +753,7 @@ jobs:
       - name: Verify Windows font reuse and rendering
         run: |
           cargo clippy --manifest-path crates/jade-skia-painter/Cargo.toml --locked --lib --test windows_font_reuse -- -D warnings
-          cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked --test windows_font_reuse --test font_styles --test opentype_features -- --test-threads=1
+          cargo test --manifest-path crates/jade-skia-painter/Cargo.toml --locked --lib --test windows_font_reuse --test font_styles --test opentype_features -- --test-threads=1
       - name: Verify Windows native editing histories
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test native_document --test tables --test typing_differential -- --test-threads=1
 

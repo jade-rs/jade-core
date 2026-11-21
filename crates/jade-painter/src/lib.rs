@@ -191,6 +191,16 @@ pub trait Painter {
     /// per-line advance decisions. This exists for painting-time adjustments
     /// that need the width of what is about to be drawn.
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error>;
+
+    /// Source-face ASCII advances at a 1000-pixel GDI em for physical Windows text.
+    /// Backends without exact source-font metrics retain their existing drawing path.
+    fn measure_windows_pdf_ascii_widths(
+        &self,
+        _text: &str,
+    ) -> Result<Option<Vec<f64>>, Self::Error> {
+        Ok(None)
+    }
+
     /// Full metrics for `text` under the current font.
     ///
     /// Separate from [`Self::measure_text_width`] because the renderer reads

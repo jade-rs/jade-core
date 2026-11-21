@@ -27,6 +27,8 @@ use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
 mod pdf_text;
 #[cfg(target_os = "windows")]
+mod windows_pdf_metrics;
+#[cfg(target_os = "windows")]
 mod windows_typefaces;
 pub use skia_safe::Typeface;
 
@@ -1965,6 +1967,21 @@ impl Painter for SkiaPainter {
         result
     }
 
+    fn measure_windows_pdf_ascii_widths(
+        &self,
+        text: &str,
+    ) -> Result<Option<Vec<f64>>, Self::Error> {
+        #[cfg(target_os = "windows")]
+        {
+            Ok(windows_pdf_metrics::widths(&self.font().typeface(), text))
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = text;
+            Ok(None)
+        }
+    }
+
     fn measure_text_width(&self, text: &str) -> Result<f64, Self::Error> {
         let paint = self.fill_paint();
         Ok(self
@@ -2369,6 +2386,35 @@ mod print_target_tests {
             .unwrap()
             .set_pdf_page_size_points(Some((6.0, 6.0)))
             .is_err());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn source_gdi_metrics_survive_nested_deferred_layers_without_painting() {
+        let bytes = std::fs::read(
+            std::path::PathBuf::from(std::env::var_os("WINDIR").expect("Windows font directory"))
+                .join("Fonts/arial.ttf"),
+        )
+        .unwrap();
+        let painter = SkiaPainter::new_recording(4.0, 4.0).unwrap();
+        painter.register_font_bytes("Arial", 400, &bytes).unwrap();
+        painter.set_font("12px 'Arial'");
+        let expected = painter
+            .measure_windows_pdf_ascii_widths("ilW")
+            .unwrap()
+            .unwrap();
+        assert_eq!(expected.len(), 3);
+        assert!(expected.iter().all(|width| *width > 0.0));
+        let outer_sink = Rc::new(RefCell::new(Vec::new()));
+        let inner_sink = Rc::new(RefCell::new(Vec::new()));
+        let outer = RoutedPainter::new(painter.clone(), Some(outer_sink.clone()));
+        let inner = RoutedPainter::new(outer, Some(inner_sink.clone()));
+        assert_eq!(
+            inner.measure_windows_pdf_ascii_widths("ilW").unwrap(),
+            Some(expected)
+        );
+        assert!(outer_sink.borrow().is_empty());
+        assert!(inner_sink.borrow().is_empty());
     }
 
     #[test]
