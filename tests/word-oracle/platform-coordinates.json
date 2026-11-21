@@ -2664,6 +2664,136 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "floating-inside-outside-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-inside-outside-mac/source.docx",
+        "sha256": "7928b10c2849bac71a61b74b282cdc700afb1344e77dbc9f1134fdd6c7a79312"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/floating-inside-outside-mac/manifest.json",
+        "sha256": "335b46e90cb725a9d04a2f6f7a89440458a02b6722e96523eef05dd602b810aa"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004143028Z-b4cb9887",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004143028Z-b4cb9887.zip",
+            "sha256": "d1cc6d692fca913877eca1615ee8dfedb9c2f51d83b3268a4c0e6f10c19e9913"
+          },
+          "capture_sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6",
+          "fixture": "ww14-floating-inside-outside-7928b10c",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
+    },
+    {
+      "mac_case": "header-footer-edge-cases-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/header-footer-edge-cases-mac/source.docx",
+        "sha256": "d6c325b84a42e5df290543623f000e00eafdbdbe72322b2f56fd391ba7a37d69"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/header-footer-edge-cases-mac/manifest.json",
+        "sha256": "fcf89e6ac6d3630d57448a6a4a323ecc16388b78da99bd15c11dd74d8e6d3320"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004143028Z-b4cb9887",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004143028Z-b4cb9887.zip",
+            "sha256": "d1cc6d692fca913877eca1615ee8dfedb9c2f51d83b3268a4c0e6f10c19e9913"
+          },
+          "capture_sha256": "ada5f1b670a85bc2a502be4911089f1d8e36a3a432e7ea7b02db935af547aef6",
+          "fixture": "ww14-header-footer-edge-cases-d6c325b8",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
+    },
+    {
+      "mac_case": "textbox-body-properties-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/textbox-body-properties-mac/source.docx",
+        "sha256": "a360a8668dc3d745f0d617be078ca16197ab6d58e7c1aee7687802d74e1182cc"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/textbox-body-properties-mac/manifest.json",
+        "sha256": "3b531993e7dee73daf8d88b2e815c4b5c2a3f2f72b1ccf3d24e9775f5bb5426d"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004202539Z-7cf29738",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004202539Z-7cf29738.zip",
+            "sha256": "186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78"
+          },
+          "capture_sha256": "b5d3d7f10a2bda388ebd78c4b6680b0dd32200970e3230c0b27aeab9daa549cf",
+          "fixture": "ww14-textbox-body-properties-a360a866",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
+    },
+    {
+      "mac_case": "textbox-tall-header-overlap-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/textbox-tall-header-overlap-mac/source.docx",
+        "sha256": "544e9bedd0958929959c11e46a520afe98f534d39e8466ac9d4f0c5ec05b3898"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/textbox-tall-header-overlap-mac/manifest.json",
+        "sha256": "93d04d08bc5ba24a657d15523cbb905839230203c445e62363cf3f8b63b78eaf"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004202539Z-7cf29738",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004202539Z-7cf29738.zip",
+            "sha256": "186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78"
+          },
+          "capture_sha256": "b5d3d7f10a2bda388ebd78c4b6680b0dd32200970e3230c0b27aeab9daa549cf",
+          "fixture": "ww14-textbox-tall-header-overlap-544e9bed",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
+    },
+    {
+      "mac_case": "toc-instrtext-edge-cases-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/toc-instrtext-edge-cases-mac/source.docx",
+        "sha256": "3dbe67594235f371babbe632095e927e2d961a975d4830291dc60db57d1a3fba"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/toc-instrtext-edge-cases-mac/manifest.json",
+        "sha256": "99db9a6f2ba21c0779976707751b3078a4f72dd30176a067dcec6ffe02f08707"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004202539Z-7cf29738",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004202539Z-7cf29738.zip",
+            "sha256": "186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78"
+          },
+          "capture_sha256": "b5d3d7f10a2bda388ebd78c4b6680b0dd32200970e3230c0b27aeab9daa549cf",
+          "fixture": "ww14-toc-instrtext-edge-cases-3dbe6759",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
     }
   ]
 }
