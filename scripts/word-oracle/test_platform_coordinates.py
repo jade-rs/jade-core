@@ -12,6 +12,37 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_physical_font_metrics_reject_size_or_face_changes_at_same_origin(self):
+        word = dict(page_count=1, glyphs=[[1, 'A', 50., 80., 'ArialMT', 10.56]])
+        self.assertEqual(check.compare(word, copy.deepcopy(word), 'font', font_metrics=True), 1)
+        for font, size in [('ArialMT', 10.5), ('Calibri', 10.56),
+                           ('ArialMT', float('nan')), ('ArialMT', 0.)]:
+            jade = dict(page_count=1, glyphs=[[1, 'A', 50., 80., font, size]])
+            with self.subTest(font=font, size=size), self.assertRaises(ValueError):
+                check.compare(word, jade, 'font drift', font_metrics=True)
+
+    def test_physical_font_matching_keeps_geometry_and_distinct_partners(self):
+        word = dict(page_count=1, glyphs=[[1, 'A', x, 80., 'ArialMT', 10.56]
+                                         for x in (0., .2, 1.)])
+        jade = copy.deepcopy(word)
+        jade['glyphs'].reverse()
+        self.assertEqual(check.compare(word, jade, 'reordered paint', font_metrics=True), 3)
+        jade['glyphs'][0][2] += .376
+        with self.assertRaises(ValueError):
+            check.compare(word, jade, 'moved font', font_metrics=True)
+        jade = copy.deepcopy(word)
+        jade['glyphs'][1][2] = 1.
+        with self.assertRaises(ValueError):
+            check.compare(word, jade, 'duplicate font', font_metrics=True)
+
+    def test_font_metric_pdf_extraction_retains_real_original_sizes(self):
+        pdf = check.ROOT / 'tests/word-oracle/mac-glyph-corpus-20261019/pdf/word-compat-comprehensive.pdf'
+        plain = check.pdf_origins(pdf)
+        metrics = check.pdf_origins(pdf, font_metrics=True)
+        self.assertEqual(plain['glyphs'], [g[:4] for g in metrics['glyphs']])
+        self.assertEqual(check.compare(metrics, metrics, 'original font', font_metrics=True), 1427)
+
+
     def test_comprehensive_keeps_same_input_versions_and_actual_mac_pdf(self):
         from collections import Counter
         name = 'word-compat-comprehensive-mac'

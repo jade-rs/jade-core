@@ -7620,6 +7620,22 @@ where
                 _ => context.fill_text(text, x, y),
             }
         };
+        // Tables retain their logical layout and source glyph origins. Route
+        // eligible physical Windows text through the same executor as body
+        // text, so the print device realizes the font em consistently.
+        let physical_style = if combined_properties.is_none()
+            && joined_step.is_none()
+            && !steps.is_empty()
+            && context.text_output_dpi().is_some()
+        {
+            let applied = self.resolve_applied_run_style_uncached(run_props);
+            let mut style = self.cmd_text_style(run_props, &applied);
+            style.fill_color = Rc::from(resolved.as_ref());
+            crate::draw_command::executor::windows_pdf_text::eligible(context, text, &style)
+                .then_some(style)
+        } else {
+            None
+        };
         self.reset_font_state();
         if let Some(properties) = combined_properties.as_ref() {
             let applied = self.resolve_applied_run_style_uncached(Some(properties));
@@ -7631,6 +7647,16 @@ where
                 text_y,
                 &command_style,
                 (text, &applied.resolved, text.contains('\u{ad}')),
+                &steps,
+            )
+            .map_err(PainterError::into_js_value)?;
+        } else if let Some(command_style) = physical_style.as_ref() {
+            self.draw_planned_text(
+                context,
+                x,
+                text_y,
+                command_style,
+                (text, &resolved_style, false),
                 &steps,
             )
             .map_err(PainterError::into_js_value)?;

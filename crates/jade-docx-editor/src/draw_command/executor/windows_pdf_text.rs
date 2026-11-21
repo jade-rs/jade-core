@@ -25,13 +25,13 @@ pub(crate) fn eligible<P: Painter>(context: &P, text: &str, style: &TextStyle) -
         && ((style.letter_spacing_px != 0.0
             && style.enable_pair_kerning
             && regular_calibri(&style.font_descriptor_latin_ascii).is_some())
-            || realized_aptos_parts(&style.font_descriptor_latin_ascii, dpi).is_some())
+            || realized_print_parts(&style.font_descriptor_latin_ascii, dpi).is_some())
 }
 
-// Actual Windows Word 16.0.19127.20936 PDFs independently retain this
-// realization on all 56 long-run controls (four styles, seven point sizes).
-// Only the physical font changes: the precomputed logical origins stay intact.
-fn realized_aptos_parts(descriptor: &str, dpi: f64) -> Option<(&str, &str, f64)> {
+// Source-only physical em realization on the existing print-device grid.
+// Keep precomputed glyph origins and preserve the tracked Calibri path.
+// Actual corpus font-size and coordinate assertions are required for promotion.
+fn realized_print_parts(descriptor: &str, dpi: f64) -> Option<(&str, &str, f64)> {
     if !dpi.is_finite() || dpi <= 0.0 {
         return None;
     }
@@ -59,7 +59,7 @@ fn realized_aptos_parts(descriptor: &str, dpi: f64) -> Option<(&str, &str, f64)>
             .next()?
             .trim()
             .trim_matches(&['\'', '"'][..]);
-        if !family.eq_ignore_ascii_case("Aptos Display") {
+        if family.is_empty() {
             return None;
         }
         let realized = (source_em * dpi / 96.0).round() * 96.0 / dpi;
@@ -112,7 +112,13 @@ pub(super) fn try_draw<P: Painter>(
     dpi: f64,
 ) -> Result<bool, P::Error> {
     if eligible(context, text, style) && fonts.len() == 1 && glyphs.len() == text.len() {
-        if let Some((prefix, suffix, realized)) = realized_aptos_parts(&fonts[0], dpi) {
+        // Keep the tracked Calibri advance model ahead of font-size-only drawing.
+        let tracked_calibri = style.letter_spacing_px != 0.0
+            && style.enable_pair_kerning
+            && regular_calibri(&fonts[0]).is_some();
+        if let Some((prefix, suffix, realized)) =
+            realized_print_parts(&fonts[0], dpi).filter(|_| !tracked_calibri)
+        {
             if glyphs.iter().enumerate().all(|(index, glyph)| {
                 glyph.font_index == 0
                     && glyph.text_start as usize == index
@@ -163,17 +169,20 @@ pub(super) fn try_draw<P: Painter>(
         return Ok(false);
     };
     font_state.set_font_rc_if_changed(context, &fonts[0]);
-    if let Some(widths) = context.measure_windows_pdf_ascii_widths(text)? {
-        if let Some(origins) = normalized_print_origins(glyphs, &widths, print_em, dpi) {
-            let font: Rc<str> = Rc::from(format!("{prefix}{print_em:.6}px{suffix}"));
-            font_state.set_font_rc_if_changed(context, &font);
-            for (glyph, origin) in glyphs.iter().zip(origins) {
-                context.fill_text(glyph.text(text).unwrap_or_default(), x + origin, y)?;
+    // Font-size realization keeps authored tracking in logical units. Only
+    // normalize integer source-device advances when its em already matches
+    // the physical em; otherwise retain the established scaled advance path.
+    if print_em_matches_source(source_em, print_em) {
+        if let Some(widths) = context.measure_windows_pdf_ascii_widths(text)? {
+            if let Some(origins) = normalized_print_origins(glyphs, &widths, print_em, dpi) {
+                let font: Rc<str> = Rc::from(format!("{prefix}{print_em:.6}px{suffix}"));
+                font_state.set_font_rc_if_changed(context, &font);
+                for (glyph, origin) in glyphs.iter().zip(origins) {
+                    context.fill_text(glyph.text(text).unwrap_or_default(), x + origin, y)?;
+                }
+                return Ok(true);
             }
-            return Ok(true);
         }
-    }
-    if (source_em - print_em).abs() < 1e-9 {
         return Ok(false);
     }
     let ratio = print_em / source_em;
@@ -186,6 +195,14 @@ pub(super) fn try_draw<P: Painter>(
         context.fill_text(glyph.text(text).unwrap_or_default(), x + print_x, y)?;
     }
     Ok(true)
+}
+
+fn print_em_matches_source(source: f64, physical: f64) -> bool {
+    source.is_finite()
+        && physical.is_finite()
+        && source > 0.0
+        && physical > 0.0
+        && (source - physical).abs() < 1e-9
 }
 
 // Word's physical text stream normalizes integer device advances by the
@@ -241,6 +258,34 @@ fn normalized_print_origins(
 #[cfg(test)]
 mod tests {
     use super::{normalized_print_origins, regular_calibri, GlyphRunStep};
+
+    #[test]
+    fn physical_em_realization_handles_body_fonts_and_styles() {
+        for (descriptor, expected) in [
+            ("10.5pt Arial", 14.08),
+            ("bold 16pt Calibri", 21.28),
+            ("italic 13pt Arial", 17.28),
+        ] {
+            let (_, _, em) = super::realized_print_parts(descriptor, 600.0).unwrap();
+            assert!((em - expected).abs() < 1e-9);
+        }
+        assert!(super::realized_print_parts("12pt Arial", 600.0).is_none());
+        assert!(super::realized_print_parts("NaNpt Arial", 600.0).is_none());
+        assert!(super::realized_print_parts("12pt Arial", f64::NAN).is_none());
+        assert!(super::realized_print_parts("12pt Arial", 0.0).is_none());
+    }
+
+    #[test]
+    fn resized_print_fonts_keep_logical_tracking_on_the_scaled_path() {
+        assert!(super::print_em_matches_source(32.0, 32.0));
+        assert!(!super::print_em_matches_source(
+            22.0 * 96.0 / 72.0,
+            183.0 * 96.0 / 600.0
+        ));
+        for (source, physical) in [(0.0, 0.0), (f64::NAN, 32.0), (32.0, f64::NAN)] {
+            assert!(!super::print_em_matches_source(source, physical));
+        }
+    }
 
     fn glyphs(offsets: &[f64]) -> Vec<GlyphRunStep> {
         offsets
