@@ -543,6 +543,23 @@ jobs:
             !target/windows-font-spacing/**/fonts/*.ttc
             !target/windows-font-spacing/font-cache/**
           if-no-files-found: ignore
+      - name: Assert original Windows Word PDF paper bounds and glyph geometry
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p 'test_windows_emf*.py'
+          python -m unittest discover -s scripts/word-oracle -p test_windows_paper_geometry.py
+          python scripts/word-oracle/check_windows_paper_geometry.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload original Windows Word paper-geometry results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-paper-geometry-differences
+          path: |
+            target/windows-paper-geometry
+            !target/windows-paper-geometry/**/fonts/*.ttf
+            !target/windows-paper-geometry/**/fonts/*.otf
+            !target/windows-paper-geometry/**/fonts/*.ttc
+            !target/windows-paper-geometry/font-cache/**
+          if-no-files-found: ignore
       - name: Assert independent versioned Windows Word XPS print origins
         run: python scripts/word-oracle/check_windows_xps.py --compare-rendered
       - name: Upload Windows Word XPS coordinate differences

@@ -1,0 +1,489 @@
+{
+  "schema": 1,
+  "purpose": "Required original Windows Word PDF paper bounds and glyph geometry. XPS retains its independent physical paper grid.",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "fixtures": [
+    {
+      "name": "word-windows-paper-grid-w11902-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8500,
+      "page_width_twips": 11902,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11902-h16838-m15.docx",
+        "sha256": "20222412dda7550eede3fe150b80e940aac25f5366a280c87eb028834a4d017b"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11902-h16838-m15.pdf",
+        "sha256": "f92519d804fbdb38b5a27e5b242e8f9b576d237c8ba9e2173d2cd5f80527dfda"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11902-h16838-m15.xps",
+        "sha256": "55f85408a819931c468fd00e2dabe257d744e7e2b7bedcb40c910045860512d5"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11903-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8501,
+      "page_width_twips": 11903,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11903-h16838-m15.docx",
+        "sha256": "301a07f0f7cfdf0d5c7bf881c50fc46182155ed7d7c709066985cfe9332009fd"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11903-h16838-m15.pdf",
+        "sha256": "630b06b0c13b595ce0cd753e7f771155e1fa6be67dc8891f0966d72e4a2cdef4"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11903-h16838-m15.xps",
+        "sha256": "f21efbb8a6bcc4c4e5f2f8f880132c2b0857921870ef8480d761f9a06426320e"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11904-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8502,
+      "page_width_twips": 11904,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11904-h16838-m15.docx",
+        "sha256": "01e56c1f03ce0492b02e4a21830fda8210f00be37c0d425eb9f31fa86bb4b044"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11904-h16838-m15.pdf",
+        "sha256": "cc7306d4cea5d4ae1159a8c5599a1f59cbf604c5e8cc33941d2e8779f9347d1e"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11904-h16838-m15.xps",
+        "sha256": "9ffa86dad332d57799c90a6fe704a9e32d9ae5902f4772a024d96432700c14ec"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11905-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8503,
+      "page_width_twips": 11905,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11905-h16838-m15.docx",
+        "sha256": "f910640f7b510f558c77a7c80ff00689270bc34718bdb9474558468c1dee80e0"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11905-h16838-m15.pdf",
+        "sha256": "331e8eb66858418fd59dbefb32196398187adf7a522e943a40a275de4ef674a5"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11905-h16838-m15.xps",
+        "sha256": "6182affe360d69514750ecd92953c7db74ef14a7ab6cdf507e8b4f371bdcec70"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16834-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16834,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16834-m15.docx",
+        "sha256": "c0b52e9f17fa41105e5b523ef9a736e6d1c24307f56df85f2e0dc03cee8a093f"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16834-m15.pdf",
+        "sha256": "6c8be3ba186810144045244a11a616aca9decabd9a4ae0e44211e9c0cf7c45d1"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16834-m15.xps",
+        "sha256": "4f8bced22fed3a5e13699010f2b669eb664765dfc05c3b7490936dcdbf48743b"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16835-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16835,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16835-m15.docx",
+        "sha256": "ab4382d5d92a27cac171f17ec2a1ea689fa2d1e81db4b7a5378743abd65131b6"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16835-m15.pdf",
+        "sha256": "bf2c8c4ff90783dfaba8a140b35e90645e37f3b417785caa7d55163f7236b681"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16835-m15.xps",
+        "sha256": "77cf65692056facea2587bc0a4a8b011de11028278f238c8ba1d6ab9f12deabc"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16836-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16836,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16836-m15.docx",
+        "sha256": "dbd466935e1cbeb954f7783bad539825dec98a032698db992b389bb1a8f69813"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16836-m15.pdf",
+        "sha256": "b4d785639ae8cf0d71b9e4234f448411f17dfb1cc5715a8fb7ed64d3ec33afbc"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16836-m15.xps",
+        "sha256": "84c6d97a1056bb1c5803100da83a514bc0f227627810e673bff5c7ec24c096ed"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16837-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16837,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16837-m15.docx",
+        "sha256": "042149e62c2be6c35dab976298720502373bc0e84d04e46ddf52c0ec06438646"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16837-m15.pdf",
+        "sha256": "eceefb2c482f296f5d5ffdc498289a7bb62f1d9c51ea9ad767904c6083a64acf"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16837-m15.xps",
+        "sha256": "931a30108eeab569944a16d26bb1c0060a3fc1f4c23b6970c77ad37302099eb5"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16838-m15.docx",
+        "sha256": "dde2f5b1d57cb2607ecb4f0fcabbb91310f97778c3868db9104732852123baec"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16838-m15.pdf",
+        "sha256": "fb2331a5b242d4a837ad5ceda6c12d4b84e25e2dd55b2043afb0d732e5c557ec"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16838-m15.xps",
+        "sha256": "f66065949688a116a7ff19470befc5656a9148502d222e9e4239f7f263abef4b"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16839-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16839,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16839-m15.docx",
+        "sha256": "6b2697570d4debf03e34f495349dd2062b3f777e6e891f65c3b618ef0c425848"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16839-m15.pdf",
+        "sha256": "277675849fc151ffe3d45f445575e0b8785c60e405847d2f6e4e56a96988b40d"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16839-m15.xps",
+        "sha256": "9be32a5d10ff7afbeae62cd7d7e475aa77df4b79e26c25a1aa50c912a8f5ef9f"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16840-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16840,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16840-m15.docx",
+        "sha256": "100d154f4c3fec09a9755ece96f1e9e3886a7cad613d871829e77fceb2e28f20"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16840-m15.pdf",
+        "sha256": "9975acc56e3bfddaba8fd00bf70158a8c02c15850484c691cc2bc085b0994da3"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16840-m15.xps",
+        "sha256": "1f1f87303fc78666c744b5fd2e7eccac2e2b456382cb29b1a7641b4afb3e10e3"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16841-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16841,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16841-m15.docx",
+        "sha256": "7e012de76c783bc68f335262643854f3cec4722a62f90ec5dbcdab11fc703220"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16841-m15.pdf",
+        "sha256": "17e6738bd68c77685c0ba66b98828f78644286e11d0f1916d1745e8d59c76de1"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16841-m15.xps",
+        "sha256": "0b2c723a9b80b366a286f485b669d7229512583f1e8ae31ada7c376c74853aa6"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11906-h16842-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8504,
+      "page_width_twips": 11906,
+      "page_height_twips": 16842,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11906-h16842-m15.docx",
+        "sha256": "f96c767e53721cd3f2c3bc6197df071b47df3b68a284f941258d552b1f8bf953"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16842-m15.pdf",
+        "sha256": "6263d81b15339ddb80dcb08f80b81b151e4c52680a383dc1a33be8fbe2a18991"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11906-h16842-m15.xps",
+        "sha256": "8fcbe4fc82483681069d603dab5e0e2e18053927983c4dcb33ad8c9ad8886059"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11907-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8505,
+      "page_width_twips": 11907,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11907-h16838-m15.docx",
+        "sha256": "565b7bddd47ebcaafa79177192f29a4b938562898286653909e7d1f7cb590b1a"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11907-h16838-m15.pdf",
+        "sha256": "3f6ab6dab6fc913732c229ba71d26b9bf35463d0230c66e4d499b79b94486c7d"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11907-h16838-m15.xps",
+        "sha256": "53a9b2a4584a7e08ea3d25c10438bfb6dbe8def7595fde321d29648e04e5d96f"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11908-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8506,
+      "page_width_twips": 11908,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11908-h16838-m15.docx",
+        "sha256": "1ee84fdc43fc440c891dc0cc7404221afa6647b3d57bf09697e7fe1ec9c188f4"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11908-h16838-m15.pdf",
+        "sha256": "9aba54a30da6a834f1ac5b90959744931a8202ddf1c45ffd46d305c399f83cd8"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11908-h16838-m15.xps",
+        "sha256": "53aadeba359f2c690698ea109902cd6c69a3a850b1c1634671e95dfb979ef6df"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11909-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8507,
+      "page_width_twips": 11909,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11909-h16838-m15.docx",
+        "sha256": "f8803d2aca0d3b3e38422b312ccc3bb6e9714bca904952a753c44a7094ab5a0e"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11909-h16838-m15.pdf",
+        "sha256": "314559307917a3e1676306d8f64a35e9ad07e935eb3b3b9275d73753fb79a97a"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11909-h16838-m15.xps",
+        "sha256": "9a0bbe45f2e6511e1a7a00fe91245e074032765050db6b3baadfb51ff525ce8b"
+      }
+    },
+    {
+      "name": "word-windows-paper-grid-w11910-h16838-m15",
+      "family": "Yu Mincho",
+      "style": "regular",
+      "font_size_pt": 12,
+      "compatibility_mode": 15,
+      "line_ending": "paragraph",
+      "balanced": false,
+      "line_width_twips": 8508,
+      "page_width_twips": 11910,
+      "page_height_twips": 16838,
+      "source": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/inputs/word-windows-paper-grid-w11910-h16838-m15.docx",
+        "sha256": "dac46a276fd29da996c55011bbcbc1f77c13a1e8b56d23999fa4a1b808ca0b82"
+      },
+      "capture": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/capture.json",
+        "sha256": "70a69050cef576075c65e71ea7cdd002820f727775568011e923ac8607ea13da"
+      },
+      "pdf": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11910-h16838-m15.pdf",
+        "sha256": "eec222ccb32db2a84dbd453ea88ba82d261e9d6f9c741ffc9b237d8ccf3459f0"
+      },
+      "xps": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/20261120T231446604Z-84e9e3aa/word-windows-paper-grid-w11910-h16838-m15.xps",
+        "sha256": "695821d6fe8fcbec3e5369e5b5bb86b89dc52c86652a3f61de8c2a95ea6b4f62"
+      }
+    }
+  ]
+}

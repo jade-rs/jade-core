@@ -19,6 +19,28 @@ import struct
 import unicodedata
 
 
+def _integer_reference_canvas(scale, canvas, frame, device, millimeters, page_points):
+    # Recognize Word whole-page canvases with integer device/frame rounding.
+    # EMF records page-space/.01mm factors as FLOAT; the reference device has
+    # integer pixel and millimetre extents, and the frame includes its end edge.
+    if min(device) <= 0 or min(millimeters) <= 0:
+        return False
+    for axis in (0, 1):
+        reference_scale = millimeters[axis] * 100.0 / device[axis]
+        expected_float = struct.unpack('<f', struct.pack('<f', reference_scale))[0]
+        if scale[axis] != expected_float:
+            return False
+        dpi = round(device[axis] * 25.4 / millimeters[axis])
+        twips = round(page_points[axis] * 20)
+        if dpi <= 0 or abs(page_points[axis] * 20 - twips) > 1e-6:
+            return False
+        if canvas[axis] != (twips * dpi + 720) // 1440:
+            return False
+        if abs(reference_scale * canvas[axis] - frame[axis]) > 0.5 * reference_scale + 1.0:
+            return False
+    return True
+
+
 def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
     if len(data) < 88 or len(data) > 64 * 1024 * 1024:
         raise ValueError('Invalid EMF size')
@@ -36,6 +58,7 @@ def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
     # GM_ADVANCED ignores exScale/eyScale. Only whole-page device-pixel
     # canvases and pure translations have an independently checked mapping.
     device = struct.unpack_from('<ii', data, 72)
+    millimeters = struct.unpack_from('<ii', data, 80)
     state['world_translation'] = (0.0, 0.0)
     fonts = {}
     if not all(math.isfinite(v) and v > 0 for v in (width_pt, height_pt)):
@@ -136,7 +159,9 @@ def emf_glyphs(data, page, width_pt, height_pt, graphics_modes=None):
                 if not all(math.isfinite(v) and v > 0 for v in (scale_x, scale_y)):
                     raise ValueError('Invalid drawing-unit scale')
                 if abs(scale_x * canvas[0] - right) > 2 or abs(scale_y * canvas[1] - bottom) > 2:
-                    raise ValueError('Text scale does not describe the whole-page canvas')
+                    if not _integer_reference_canvas((scale_x, scale_y), canvas, (right, bottom),
+                                                     device, millimeters, (width_pt, height_pt)):
+                        raise ValueError('Text scale does not describe the whole-page canvas')
             elif device != state['canvas'] or min(device) <= 0:
                 raise ValueError('Advanced text requires a whole-page device-pixel canvas')
             if graphics_modes is not None:
