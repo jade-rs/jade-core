@@ -543,6 +543,22 @@ jobs:
             !target/windows-font-spacing/**/fonts/*.ttc
             !target/windows-font-spacing/font-cache/**
           if-no-files-found: ignore
+      - name: Assert original Windows Word mixed long-run coordinates
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_long_mixed.py
+          python scripts/word-oracle/check_windows_long_mixed.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload original Windows Word mixed long-run results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-word-long-mixed-differences
+          path: |
+            target/windows-long-mixed
+            !target/windows-long-mixed/**/fonts/*.ttf
+            !target/windows-long-mixed/**/fonts/*.otf
+            !target/windows-long-mixed/**/fonts/*.ttc
+            !target/windows-long-mixed/font-cache/**
+          if-no-files-found: ignore
       - name: Assert original Windows Word PDF paper bounds and glyph geometry
         run: |
           python -m unittest discover -s scripts/word-oracle -p 'test_windows_emf*.py'
