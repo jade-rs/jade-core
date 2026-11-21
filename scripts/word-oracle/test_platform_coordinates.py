@@ -12,10 +12,49 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_float_lookahead_keeps_same_input_originals_and_all_four_planes(self):
+        name = 'word-mac-probe-float-lookahead'
+        self.assertNotIn(name, check.INDEPENDENT_OUTPUT_CASES)
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004202539Z-7cf29738')
+        _, source, archive, document, drawing, fonts = next(
+            row for row in check.verify() if row[0] == name)
+        self.assertEqual(fonts, 'original-word-pdf')
+        original = check.read_json(check.ROOT / (
+            'tests/word-oracle/mac-probes-20261019/' + name + '.json'))
+        manifest = check.read_json(source.parent / 'manifest.json')
+        self.assertEqual(document['sha256'], original['docx_sha256'])
+        self.assertEqual(manifest['reference']['version'], original['word_version'])
+        self.assertEqual(manifest['reference']['build'], original['word_build'])
+        self.assertEqual(original['word_build'], '16.114.26101123')
+        self.assertEqual(manifest['reference']['pdfSha256'], original['pdf_sha256'])
+        pages = json.loads(gzip.decompress((source.parent / 'pages.json.gz').read_bytes()))
+        expected = [dict(size=[page['width_pt'], page['height_pt']],
+                         body=[[g['text'], g['x_pt'], row['baseline_pt']]
+                               for row in page['rows'] for g in row['characters']])
+                    for page in original['pages']]
+        self.assertEqual(len(pages), 5)
+        for page, reference in zip(pages, expected):
+            self.assertEqual(page['size'], reference['size'])
+            self.assertEqual(page['body'], reference['body'])
+            self.assertFalse(page['header'] or page['footer'])
+        self.assertEqual(document['pages'], 5)
+        self.assertEqual(len(drawing['glyphs']), 1930)
+        self.assertTrue(archive.is_file())
+
+    def test_float_lookahead_version_expectation_cannot_be_removed(self):
+        original = check.read_json
+        index = copy.deepcopy(original(check.ROOT / check.INDEX))
+        index['fixtures'] = [case for case in index['fixtures']
+                             if case['mac_case'] != 'word-mac-probe-float-lookahead']
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == check.ROOT / check.INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                check.verify()
+
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 104)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 83)
+        self.assertGreaterEqual(len(cases), 105)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 84)
 
     def test_section_start_spacing_preserves_versioned_original_outputs(self):
         name = 'header-footer-sectionpages-mac'

@@ -2613,6 +2613,31 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "word-mac-probe-float-lookahead",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-float-lookahead/source.docx",
+        "sha256": "c467a0189eda20dbf17ab2b8d95704beecb7341322031333f8877383c03bad50"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-float-lookahead/manifest.json",
+        "sha256": "61cef7cd4927a42768baffbedfebac4ebb7005bb1ace1064504d4e2fa7b10f37"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004202539Z-7cf29738",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004202539Z-7cf29738.zip",
+            "sha256": "186eafa1c44e8f2baab5244f7a26a802b4b0c51870b4736e62ec45b6661e6e78"
+          },
+          "capture_sha256": "b5d3d7f10a2bda388ebd78c4b6680b0dd32200970e3230c0b27aeab9daa549cf",
+          "fixture": "ww14-word-mac-probe-float-lookahead-c467a018",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
