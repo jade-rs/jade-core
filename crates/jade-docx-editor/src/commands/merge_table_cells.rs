@@ -235,6 +235,7 @@ impl MergeTableCellsCommand {
             row_span,
             master_index,
             cells: planned_cells,
+            dropped: HashSet::new(),
         })
     }
 
@@ -269,7 +270,7 @@ impl MergeTableCellsCommand {
                 .ok_or_else(|| CommandError::Custom("テーブルが存在しません".into()))?;
 
             let mut combined_blocks: Vec<BodyElement> = Vec::new();
-            for cell in plan.cells.iter() {
+            for (index, cell) in plan.cells.iter().enumerate() {
                 let row = table
                     .rows
                     .get_mut(cell.row_index)
@@ -278,7 +279,10 @@ impl MergeTableCellsCommand {
                     .cells
                     .get_mut(cell.cell_index)
                     .ok_or_else(|| CommandError::Custom("セルが存在しません".into()))?;
-                combined_blocks.extend(std::mem::take(&mut table_cell.blocks));
+                let blocks = std::mem::take(&mut table_cell.blocks);
+                if !plan.dropped.contains(&index) {
+                    combined_blocks.extend(blocks);
+                }
             }
 
             let master_ptr = {
@@ -374,6 +378,48 @@ impl MergeTableCellsCommand {
     }
 }
 
+impl MergeTableCellsCommand {
+    /// The cells of `plan` that hold one empty paragraph and nothing else:
+    /// what Word leaves out of the merged cell. When every cell is empty the
+    /// master's paragraph stays, as `<w:tc>` must hold one.
+    fn empty_cells(document: &WordDocument, plan: &MergePlan) -> HashSet<usize> {
+        let Some(table) = document.table_by_order(plan.table_order_index) else {
+            return HashSet::new();
+        };
+        let empty: HashSet<usize> = plan
+            .cells
+            .iter()
+            .enumerate()
+            .filter(|(_, cell)| {
+                table
+                    .rows
+                    .get(cell.row_index)
+                    .and_then(|row| row.cells.get(cell.cell_index))
+                    .is_some_and(|cell| match cell.blocks.as_slice() {
+                        [BodyElement::Paragraph(paragraph)] => paragraph.runs.iter().all(|run| {
+                            run.text.is_empty()
+                                && run.image.is_none()
+                                && run.text_box.is_none()
+                                && run.field.is_none()
+                                && run.footnote_reference_ids.is_empty()
+                                && run.endnote_reference_ids.is_empty()
+                        }),
+                        _ => false,
+                    })
+            })
+            .map(|(index, _)| index)
+            .collect();
+        if empty.len() == plan.cells.len() {
+            empty
+                .into_iter()
+                .filter(|&index| index != plan.master_index)
+                .collect()
+        } else {
+            empty
+        }
+    }
+}
+
 impl Command for MergeTableCellsCommand {
     fn name(&self) -> &'static str {
         "merge_table_cells"
@@ -386,7 +432,9 @@ impl Command for MergeTableCellsCommand {
             ));
         }
 
-        let plan = Self::build_plan(ctx.document, self.table_order_index, &self.selected_cells)?;
+        let mut plan =
+            Self::build_plan(ctx.document, self.table_order_index, &self.selected_cells)?;
+        plan.dropped = Self::empty_cells(ctx.document, &plan);
         let backup = Self::capture_backup(ctx.document, self.table_order_index)?;
         let previous_selection = *ctx.selection;
 
@@ -433,6 +481,10 @@ struct MergePlan {
     row_span: usize,
     master_index: usize,
     cells: Vec<SelectionCellPlan>,
+    /// The cells (indices into `cells`) whose content the merge drops:
+    /// Word leaves out a cell that holds only an empty paragraph, unless
+    /// every cell does, when the master keeps its own.
+    dropped: HashSet<usize>,
 }
 
 #[derive(Clone, Debug)]
@@ -833,7 +885,7 @@ fn apply_plan_to_raw(
             if let Some(cell_element) = find_cell_element_mut(row_element, master_id) {
                 let mut combined = Vec::new();
                 let mut master_properties = None;
-                for cell in plan.cells.iter() {
+                for (index, cell) in plan.cells.iter().enumerate() {
                     if let Some(id) = cell.cell_id {
                         if let Some(nodes) = cell_children.remove(&id) {
                             for node in nodes {
@@ -844,7 +896,7 @@ fn apply_plan_to_raw(
                                     } else if id != master_id {
                                         follower_properties.insert(id, node);
                                     }
-                                } else {
+                                } else if !plan.dropped.contains(&index) {
                                     combined.push(node);
                                 }
                             }
@@ -1267,6 +1319,58 @@ mod tests {
                         after.span == before.span && after.vertical_merge == before.vertical_merge
                     })
         }));
+    }
+
+    fn merge_row(cells: Vec<TableCell>) -> Vec<String> {
+        let columns = cells.len();
+        let mut word_doc = table_with_rows(vec![cells]);
+        let mut selection = None;
+        let mut executor = CommandExecutor::new();
+        let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+        executor
+            .execute(
+                Box::new(MergeTableCellsCommand::new(
+                    0,
+                    (0..columns)
+                        .map(|column| TableCellSelection {
+                            row: 0,
+                            column,
+                            column_span: 1,
+                        })
+                        .collect(),
+                )),
+                &mut ctx,
+            )
+            .expect("merge");
+        let table = word_doc.table_by_order(0).expect("table exists");
+        table.rows[0].cells[0]
+            .blocks
+            .iter()
+            .filter_map(|block| match block {
+                BodyElement::Paragraph(paragraph) => Some(
+                    paragraph
+                        .runs
+                        .iter()
+                        .map(|run| run.text.as_str())
+                        .collect::<String>(),
+                ),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// Word leaves an empty cell's paragraph out of a merge, so merging
+    /// "A" with an empty cell gives "A", not "A" and an empty line.
+    #[test]
+    fn a_merge_leaves_out_empty_cells() {
+        assert_eq!(merge_row(vec![make_cell("A"), make_cell("")]), ["A"]);
+        assert_eq!(merge_row(vec![make_cell(""), make_cell("B")]), ["B"]);
+        assert_eq!(
+            merge_row(vec![make_cell("A"), make_cell(""), make_cell("C")]),
+            ["A", "C"]
+        );
+        // All empty, the merged cell keeps one empty paragraph.
+        assert_eq!(merge_row(vec![make_cell(""), make_cell("")]), [""]);
     }
 
     #[test]
