@@ -113,7 +113,14 @@ impl Command for SetParagraphFormatCommand {
                 .find(|child| matches!(child, XmlNode::Element(element) if element.name == "w:sectPr"))
                 .cloned()
         });
-        let xml = match (self.format.xml.clone(), section) {
+        // The copy may come from another document, whose ids mean other
+        // nodes here.
+        let copied = self
+            .format
+            .xml
+            .clone()
+            .map(super::table_format::with_fresh_ids);
+        let xml = match (copied, section) {
             (Some(mut xml), Some(section)) => {
                 xml.children.push(section);
                 Some(xml)
