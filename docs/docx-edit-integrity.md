@@ -117,15 +117,19 @@ Validated against `jade-core` main `9c3e2215`:
 - Before the fixes, forbidden-control export and CR persistence properties failed.
 - 512 cases per property: 1,536 generated edit/history/coordinate sequences, up to
   64 operations each, plus eleven focused regression/package tests; all 14 tests passed.
-- Microsoft365 Open XML SDK: 34,518 saved PBT/structural/history states validated,
+- Microsoft365 Open XML SDK: 34,173 saved PBT/structural/history states validated,
   zero invalid documents or errors. A preceding run reproduced 32 missing-author
   errors before the anonymous-comment fix. The five source fixtures also passed.
-- Reader, writer, document-core and headless-editor library tests: 2,190 passed,
+- Reader, writer, document-core and headless-editor library tests: 2,192 passed,
   two existing ignored tests, zero failures.
 - `cargo clippy --locked -p jade-docx-writer -p jade-docx-reader -p jade-docx-document-core -p jade-docx-headless-editor --all-targets -- -D warnings` passed.
 - Workspace and standalone fuzz harness formatting checks passed.
-- Initial ASan/libFuzzer campaign: 68 runs in 304 seconds, including all ten original seed
-  sequences (five fixture types, 8/32 operations); no crashes, sanitizer errors
-  or package invariant failures. Final coverage: 28,206 edges, 95,027 features.
+- Expanded ASan/libFuzzer campaign: 432 runs in 901 seconds with all eight
+  operation kinds and five fixture types; no crashes, sanitizer errors or
+  package invariant failures. Final coverage: 31,661 edges, 156,330 features.
+  All 5,484 saved fuzz states passed Microsoft365 SDK validation with zero errors.
+  This campaign used the comment fix and expanded harness before the final
+  character-guard performance optimization; the optimized guard is covered by
+  the final PBT run, focused boundary tests and the CI fuzz campaign.
   Throughput was limited by concurrent host load; this is a bounded campaign,
   supplemented by the model-based properties and recurring CI campaigns.
