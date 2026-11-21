@@ -50875,7 +50875,8 @@ mod tests {
                 .unwrap()
         };
         let advance = baseline("C") - baseline("B");
-        assert!((baseline("B") - baseline("A") - 2.0 * advance).abs() < 0.001);
+        // Word's nominal 12pt line unit is independent of the text line advance.
+        assert!((baseline("B") - baseline("A") - advance - points_to_px(12.0)).abs() < 0.001);
     }
 
     #[test]
