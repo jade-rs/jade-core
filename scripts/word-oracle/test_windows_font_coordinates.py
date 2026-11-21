@@ -10,6 +10,63 @@ from generate_windows_footnote_probes import generate
 
 
 class WindowsFontCoordinatesTests(unittest.TestCase):
+    def test_archived_floating_order_keeps_actual_windows_and_historical_mac_inputs(self):
+        import hashlib
+        from zipfile import ZipFile
+        from check_platform_coordinates import checked_file, read_json
+        case, source, archive, document, drawing = next(
+            row for row in verify() if row[0]['name'] ==
+            'word-windows-floating-order-compat14-word16.0.19127.20936')
+        self.assertEqual(archive.suffix, '.zip')
+        self.assertEqual(case['word_product_version'], '16.0.19127.20936')
+        self.assertEqual(case['word_executable_sha256'],
+                         '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        self.assertEqual(case['capture_id'], '20261114T004214564Z-4ebc9049')
+        self.assertEqual(case['source']['sha256'],
+                         '32e7c583bddf915d4a036bc87222064b835993347fc52b0f9eabc8c912c6db96')
+        self.assertEqual(len(drawing['glyphs']), case['glyph_count'])
+        with ZipFile(archive) as bundle:
+            self.assertEqual(bundle.read('inputs/' + document['name'] + '.docx'),
+                             source.read_bytes())
+        manifest = read_json(source.parent / 'manifest.json')
+        self.assertEqual(manifest['reference']['version'], '16.114')
+        self.assertEqual(manifest['reference']['build'], '16.114.26101123')
+        original_hash = 'eb417a0f7dc283af99425b43a28a356f90ed2ba5a53112e93508b763996b6ba7'
+        self.assertEqual(manifest['reference']['capturedDocxSha256'], original_hash)
+        original = checked_file(ROOT, dict(file=(
+            'crates/jade-docx-native-render/tests/fixtures/'
+            'word-mac-probe-floating-order-malformed.docx'), sha256=original_hash))
+        self.assertNotEqual(hashlib.sha256(original.read_bytes()).hexdigest(),
+                            case['source']['sha256'])
+        shared = read_json(ROOT / 'tests/word-oracle/platform-coordinates.json')
+        self.assertNotIn('word-mac-probe-floating-order',
+                         {row['mac_case'] for row in shared['fixtures']})
+
+    def test_archived_floating_order_cannot_be_relabelled_as_another_word(self):
+        from check_platform_coordinates import archive_reference
+        case, *_ = next(row for row in verify() if row[0]['name'] ==
+                        'word-windows-floating-order-compat14-word16.0.19127.20936')
+        for field, value in [('word_product_version', '16.0.0.0'),
+                             ('word_executable_sha256', '0' * 64)]:
+            changed = dict(case, archive=case['capture'])
+            changed[field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                archive_reference(ROOT, {'source': case['source']}, changed)
+
+    def test_archived_floating_order_cannot_mix_documents_from_one_capture(self):
+        import copy
+        from unittest.mock import patch
+        import check_windows_font_coordinates as check
+        index = copy.deepcopy(check.read_json(ROOT / INDEX))
+        case = next(case for case in index['fixtures'] if case['name'] ==
+                    'word-windows-floating-order-compat14-word16.0.19127.20936')
+        case['capture_document_name'] = 'another-document'
+        original = check.read_json
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == ROOT / INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, 'Archived font document identity changed'):
+                check.verify()
+
     def test_yu_latin_use_fe_layout_controls_preserve_identical_word_origins(self):
         from zipfile import ZipFile
         from generate_windows_yu_latin_advance_probes import generate_fe_layout
@@ -435,7 +492,7 @@ class WindowsFontCoordinatesTests(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     def test_original_evidence_and_coverage(self):
-        self.assertEqual(len(verify()), 1971)
+        self.assertEqual(len(verify()), 1972)
         self.assertEqual(sum(bool(case[0].get('solid_paragraph_background')) for case in verify()), 1263)
 
     def test_isolated_missing_font_captures_preserve_word_selected_faces(self):

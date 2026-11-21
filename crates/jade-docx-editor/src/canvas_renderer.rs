@@ -20858,12 +20858,8 @@ where
         } else {
             0.0
         };
-        let table_space_after = self.floating_table_space_after(
-            paragraph,
-            body_element_index,
-            line_height_points,
-            paragraph_style.word_platform,
-        );
+        let table_space_after =
+            self.floating_table_space_after(paragraph, body_element_index, line_height_points);
         paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
             self.current_y,
             line_height,
@@ -39031,15 +39027,16 @@ where
     /// The Mac mode-14 floating-order probe includes the paragraph's space
     /// after when it checks a floating table above its first text row. Keep
     /// this separate from drawing look-ahead and from the table's paint frame.
+    // Mac Word16.114 and Windows Word16.0.19127.20936, mode14, floating-order:
+    // paragraph-after spacing can reach a table above the last text line.
+    // Include it in wrap eligibility while retaining the table's actual frame.
     fn floating_table_space_after(
         &self,
         paragraph: &Paragraph,
         body_element_index: usize,
         line_height_points: f32,
-        platform: jade_docx_layout::line_metrics::WordLayoutPlatform,
     ) -> f64 {
-        if platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            || self.document_east_asian_rules.compatibility_mode != Some(14)
+        if self.document_east_asian_rules.compatibility_mode != Some(14)
             || self.pageless_mode
             || self.rendering_header_footer_story
             || self.rendering_note_story
@@ -75288,84 +75285,85 @@ mod tests {
     #[test]
     fn table_wrap_space_after_is_limited_to_the_observed_body_policy() {
         use jade_docx_layout::line_metrics::WordLayoutPlatform::{Mac, Windows};
-        let (mut renderer, _) = recording_renderer();
-        renderer.pageless_mode = false;
-        renderer.document_east_asian_rules.compatibility_mode = Some(14);
-        renderer.active_float_exclusions.push(PageFloatExclusion {
-            is_table: true,
-            page_number: renderer.current_page_number,
-            bounds: FloatExclusion {
-                top: 500.0,
-                bottom: 600.0,
-                left: 400.0,
-                right: 500.0,
-                wrap_text: WrapTextSide::BothSides,
-                polygon: None,
-            },
-        });
-        let mut paragraph = note_test_paragraph("body", None);
-        paragraph.properties = Some(ParagraphProperties {
-            spacing: Some(Spacing {
-                after: Some(10.0),
+        let previous = jade_docx_layout::line_metrics::word_layout_platform();
+        for platform in [Mac, Windows] {
+            jade_docx_layout::line_metrics::set_word_layout_platform(platform);
+            let (mut renderer, _) = recording_renderer();
+            renderer.pageless_mode = false;
+            renderer.document_east_asian_rules.compatibility_mode = Some(14);
+            renderer.active_float_exclusions.push(PageFloatExclusion {
+                is_table: true,
+                page_number: renderer.current_page_number,
+                bounds: FloatExclusion {
+                    top: 500.0,
+                    bottom: 600.0,
+                    left: 400.0,
+                    right: 500.0,
+                    wrap_text: WrapTextSide::BothSides,
+                    polygon: None,
+                },
+            });
+            let mut paragraph = note_test_paragraph("body", None);
+            paragraph.properties = Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    after: Some(10.0),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        });
-        let expected = jade_docx_layout::text_extract::spacing_after_px(&paragraph, 11.0);
-        assert!(expected > 0.0);
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            expected
-        );
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Windows),
-            0.0
-        );
-        for mode in [None, Some(13), Some(15), Some(16)] {
-            renderer.document_east_asian_rules.compatibility_mode = mode;
+            });
+            let expected = jade_docx_layout::text_extract::spacing_after_px(&paragraph, 11.0);
+            assert!(expected > 0.0);
             assert_eq!(
-                renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                expected
+            );
+            for mode in [None, Some(13), Some(15), Some(16)] {
+                renderer.document_east_asian_rules.compatibility_mode = mode;
+                assert_eq!(
+                    renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                    0.0
+                );
+            }
+            renderer.document_east_asian_rules.compatibility_mode = Some(14);
+            renderer.pageless_mode = true;
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                0.0
+            );
+            renderer.pageless_mode = false;
+            renderer.rendering_header_footer_story = true;
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                0.0
+            );
+            renderer.rendering_header_footer_story = false;
+            renderer.rendering_note_story = true;
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                0.0
+            );
+            renderer.rendering_note_story = false;
+            renderer.spacing_scan_from_story = true;
+            renderer.contextual_suppress_after.insert(0);
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                0.0
+            );
+            renderer.contextual_suppress_after = ElementIndexSet::default();
+            renderer.spacing_scan_from_story = false;
+            paragraph.runs[0].text.push_str(PAGE_BREAK_STR);
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
+                0.0
+            );
+            paragraph.runs[0].text = "body".into();
+            renderer.active_float_exclusions[0].is_table = false;
+            assert_eq!(
+                renderer.floating_table_space_after(&paragraph, 0, 11.0),
                 0.0
             );
         }
-        renderer.document_east_asian_rules.compatibility_mode = Some(14);
-        renderer.pageless_mode = true;
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            0.0
-        );
-        renderer.pageless_mode = false;
-        renderer.rendering_header_footer_story = true;
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            0.0
-        );
-        renderer.rendering_header_footer_story = false;
-        renderer.rendering_note_story = true;
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            0.0
-        );
-        renderer.rendering_note_story = false;
-        renderer.spacing_scan_from_story = true;
-        renderer.contextual_suppress_after.insert(0);
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            0.0
-        );
-        renderer.contextual_suppress_after = ElementIndexSet::default();
-        renderer.spacing_scan_from_story = false;
-        paragraph.runs[0].text.push_str(PAGE_BREAK_STR);
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            0.0
-        );
-        paragraph.runs[0].text = "body".into();
-        renderer.active_float_exclusions[0].is_table = false;
-        assert_eq!(
-            renderer.floating_table_space_after(&paragraph, 0, 11.0, Mac),
-            0.0
-        );
+        jade_docx_layout::line_metrics::set_word_layout_platform(previous);
     }
 
     #[test]
