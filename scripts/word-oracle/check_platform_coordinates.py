@@ -24,6 +24,7 @@ INDEX = Path('tests/word-oracle/platform-coordinates.json')
 # Keep this separate from logical EMF coordinates: Windows print realization
 # can differ from screen metrics. Every case retains its own Word PDF.
 PHYSICAL_FONT_CASES = {
+    'inline-image-rotation-table-picture-only-mac',
     'align-center-mac',
     'alignment-mac',
     'aptos-range-compat-14-en-US-mac',

@@ -43,13 +43,13 @@ fn supported_print_text(text: &str) -> bool {
         })
 }
 
-fn single_scalar_steps(text: &str, glyphs: &[GlyphRunStep]) -> bool {
+fn single_scalar_steps(text: &str, glyphs: &[GlyphRunStep], font_count: usize) -> bool {
     glyphs.len() == text.chars().count()
         && glyphs
             .iter()
             .zip(text.char_indices())
             .all(|(glyph, (start, c))| {
-                glyph.font_index == 0
+                (glyph.font_index as usize) < font_count
                     && glyph.text_start as usize == start
                     && glyph.text_end as usize == start + c.len_utf8()
                     && glyph.x_offset.is_finite()
@@ -97,6 +97,24 @@ fn realized_print_parts(descriptor: &str, dpi: f64) -> Option<(&str, &str, f64)>
     None
 }
 
+// Realization must use the actual selected slot, including a different
+// East Asian face. Already realized slots keep their original descriptor/Rc.
+fn realized_print_fonts(fonts: &[Rc<str>], dpi: f64) -> Option<Vec<Rc<str>>> {
+    let mut changed = false;
+    let physical = fonts
+        .iter()
+        .map(|font| {
+            if let Some((prefix, suffix, realized)) = realized_print_parts(font, dpi) {
+                changed = true;
+                Rc::from(format!("{prefix}{realized:.6}px{suffix}"))
+            } else {
+                Rc::clone(font)
+            }
+        })
+        .collect();
+    changed.then_some(physical)
+}
+
 fn regular_calibri(descriptor: &str) -> Option<(&str, &str)> {
     for token in descriptor.split_whitespace() {
         let numeric = token
@@ -140,21 +158,25 @@ pub(super) fn try_draw<P: Painter>(
     dpi: f64,
 ) -> Result<bool, P::Error> {
     if eligible(context, text, style)
-        && fonts.len() == 1
-        && single_scalar_steps(text, glyphs)
-        && (text.is_ascii() || !jade_painter::font_features::has_features(&fonts[0]))
+        && !fonts.is_empty()
+        && single_scalar_steps(text, glyphs, fonts.len())
+        && ((text.is_ascii() && fonts.len() == 1)
+            || fonts
+                .iter()
+                .all(|font| !jade_painter::font_features::has_features(font)))
     {
-        // Keep the tracked Calibri advance model ahead of font-size-only drawing.
+        // Keep tracked Calibri on the established advance path. Mixed-font
+        // runs otherwise realize each selected font, preserving every origin.
         let tracked_calibri = style.letter_spacing_px != 0.0
             && style.enable_pair_kerning
-            && regular_calibri(&fonts[0]).is_some();
-        if let Some((prefix, suffix, realized)) =
-            realized_print_parts(&fonts[0], dpi).filter(|_| !tracked_calibri)
-        {
-            {
-                let font: Rc<str> = Rc::from(format!("{prefix}{realized:.6}px{suffix}"));
-                font_state.set_font_rc_if_changed(context, &font);
+            && fonts.iter().any(|font| regular_calibri(font).is_some());
+        if !tracked_calibri {
+            if let Some(physical_fonts) = realized_print_fonts(fonts, dpi) {
                 for glyph in glyphs {
+                    font_state.set_font_rc_if_changed(
+                        context,
+                        &physical_fonts[glyph.font_index as usize],
+                    );
                     context.fill_text(
                         glyph.text(text).unwrap_or_default(),
                         x + glyph.x_offset,
@@ -347,13 +369,46 @@ mod tests {
                 x_offset: i as f64 * 10.0,
             })
             .collect();
-        assert!(super::single_scalar_steps(text, &steps));
+        assert!(super::single_scalar_steps(text, &steps, 1));
         steps[1].text_end -= 1;
-        assert!(!super::single_scalar_steps(text, &steps));
+        assert!(!super::single_scalar_steps(text, &steps, 1));
         steps[1].text_end += 1;
         steps[2].x_offset = f64::NAN;
-        assert!(!super::single_scalar_steps(text, &steps));
-        assert!(!super::single_scalar_steps(text, &steps[..3]));
+        assert!(!super::single_scalar_steps(text, &steps, 1));
+        assert!(!super::single_scalar_steps(text, &steps[..3], 1));
+    }
+
+    #[test]
+    fn mixed_print_fonts_realize_each_slot_without_replacing_exact_slots() {
+        let fonts: Vec<std::rc::Rc<str>> =
+            ["10.5pt 'MS Mincho'", "12pt Arial", "bold 16pt Calibri"]
+                .into_iter()
+                .map(std::rc::Rc::from)
+                .collect();
+        let printed = super::realized_print_fonts(&fonts, 600.0).unwrap();
+        assert_eq!(printed[0].as_ref(), "14.080000px 'MS Mincho'");
+        assert!(std::rc::Rc::ptr_eq(&printed[1], &fonts[1]));
+        assert_eq!(printed[2].as_ref(), "bold 21.280000px Calibri");
+        assert!(super::realized_print_fonts(&fonts[1..2], 600.0).is_none());
+        let text = "A日";
+        let mut steps = vec![
+            GlyphRunStep {
+                text_start: 0,
+                text_end: 1,
+                font_index: 1,
+                x_offset: 2.25,
+            },
+            GlyphRunStep {
+                text_start: 1,
+                text_end: 4,
+                font_index: 0,
+                x_offset: 31.75,
+            },
+        ];
+        assert!(super::single_scalar_steps(text, &steps, fonts.len()));
+        assert!(!super::single_scalar_steps(text, &steps, 1));
+        steps[1].font_index = fonts.len() as u16;
+        assert!(!super::single_scalar_steps(text, &steps, fonts.len()));
     }
 
     fn glyphs(offsets: &[f64]) -> Vec<GlyphRunStep> {
