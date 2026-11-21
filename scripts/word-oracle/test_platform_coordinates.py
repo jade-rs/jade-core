@@ -14,8 +14,35 @@ import check_platform_coordinates as check
 class PlatformCoordinates(unittest.TestCase):
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 99)
-        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 78)
+        self.assertGreaterEqual(len(cases), 100)
+        self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 79)
+
+    def test_windows_kerned_punctuation_keeps_shared_four_plane_assertions(self):
+        name = 'word-mac-probe-pairs-kerned'
+        self.assertNotIn(name, check.INDEPENDENT_OUTPUT_CASES)
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004214564Z-4ebc9049')
+        cases = [case for case in check.verify() if case[0] == name]
+        self.assertEqual(len(cases), 1)
+        _, source, archive, document, drawing, font_source = cases[0]
+        self.assertEqual(font_source, 'original-word-pdf')
+        self.assertEqual(document['sha256'],
+                         'f6bc744c18f1098e7945c231a42b87af37335461eab8a42b96eb5132d41a4562')
+        self.assertEqual(len(drawing['glyphs']), 96)
+        with ZipFile(archive) as bundle, tempfile.TemporaryDirectory() as temporary:
+            pdf = Path(temporary) / 'original-word.pdf'
+            pdf.write_bytes(bundle.read(document['pdf']))
+            check.compare(drawing, check.pdf_origins(pdf), name + '/original-EMF-PDF')
+        self.assertTrue(source.is_file())
+
+    def test_windows_kerned_punctuation_reference_cannot_be_removed(self):
+        original = check.read_json
+        index = copy.deepcopy(original(check.ROOT / check.INDEX))
+        index['fixtures'] = [case for case in index['fixtures']
+                             if case['mac_case'] != 'word-mac-probe-pairs-kerned']
+        with patch.object(check, 'read_json', side_effect=lambda path:
+                          index if path == check.ROOT / check.INDEX else original(path)):
+            with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                check.verify()
 
     def test_existing_four_plane_assertions_cannot_be_changed_to_independent_outputs(self):
         self.reject_index_edit(lambda c: c['windows'][0].update(

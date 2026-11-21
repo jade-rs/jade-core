@@ -3465,6 +3465,7 @@ fn pair_has_fixed_cjk_advances(
             .is_some_and(|width| (width - cell(previous)).abs() <= tolerance)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn fixed_punctuation_pair_adjustment(
     grapheme: &str,
     script: ScriptCategory,
