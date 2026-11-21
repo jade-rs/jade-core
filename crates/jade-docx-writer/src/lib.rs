@@ -464,10 +464,32 @@ unsafe fn has_forbidden_xml_bytes_avx2(data: &[u8]) -> bool {
             minimum,
         )) != 0
             || vectors.remainder().iter().any(|&byte| byte < 0x20);
-        has_control
-            && chunk
+        has_control && {
+            // Legal XML whitespace must not force a scalar scan of the entire
+            // block. Exclude it per vector, then inspect only the short tail.
+            let mut vectors = chunk.chunks_exact(32);
+            vectors.any(|vector| {
+                // SAFETY: each vector is an exact, readable 32-byte slice.
+                let bytes = unsafe { _mm256_loadu_si256(vector.as_ptr().cast()) };
+                let control = _mm256_movemask_epi8(_mm256_cmpeq_epi8(
+                    _mm256_min_epu8(bytes, threshold),
+                    bytes,
+                ));
+                control != 0 && {
+                    let allowed = _mm256_or_si256(
+                        _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(9)),
+                        _mm256_or_si256(
+                            _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(10)),
+                            _mm256_cmpeq_epi8(bytes, _mm256_set1_epi8(13)),
+                        ),
+                    );
+                    control & !_mm256_movemask_epi8(allowed) != 0
+                }
+            }) || vectors
+                .remainder()
                 .iter()
-                .any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13))
+                .any(|&byte| byte < 32 && !matches!(byte, 9 | 10 | 13))
+        }
     }) || has_xml_noncharacters(data)
 }
 
@@ -534,6 +556,20 @@ mod tests {
                     "padding={padding}, byte={byte}"
                 );
                 assert_eq!(has_forbidden_xml_bytes_portable(&data), expected);
+            }
+        }
+    }
+
+    #[test]
+    fn control_scan_checks_after_legal_whitespace() {
+        for whitespace in [b'\t', b'\n', b'\r'] {
+            let mut data = vec![whitespace; 4097];
+            assert!(!has_forbidden_xml_bytes(&data));
+            for offset in 0..data.len() {
+                data[offset] = 0x0b;
+                assert!(has_forbidden_xml_bytes(&data), "offset={offset}");
+                assert!(has_forbidden_xml_bytes_portable(&data));
+                data[offset] = whitespace;
             }
         }
     }
