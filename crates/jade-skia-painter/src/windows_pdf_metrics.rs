@@ -128,7 +128,11 @@ fn static_truetype(data: &[u8]) -> bool {
     let Some(tables) = data.get(12..12 + count * 16) else {
         return false;
     };
-    !tables.chunks_exact(16).any(|table| &table[..4] == b"fvar")
+    !tables
+        .as_chunks::<16>()
+        .0
+        .iter()
+        .any(|table| &table[..4] == b"fvar")
 }
 
 fn measure(face: &Typeface, data: &FontData) -> Option<Widths> {
