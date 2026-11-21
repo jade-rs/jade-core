@@ -532,7 +532,7 @@ mod tests {
     }
 
     #[test]
-    fn the_section_after_a_new_break_links_its_headers_and_footers() {
+    fn the_section_after_a_new_break_is_linked_to_its_headers_and_footers() {
         let data = build_document_docx(
             r#"<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>
 <w:sectPr><w:headerReference w:type="default" r:id="rId5"/><w:footerReference w:type="first" r:id="rId6"/><w:pgSz w:w="11906" w:h="16838"/></w:sectPr>"#,
@@ -543,17 +543,48 @@ mod tests {
             .insert_section_break_at(0, 2, SectionBreakType::NextPage)
             .expect("insert section break");
 
+        // Both sections name the same stories, so deleting the break later
+        // leaves the joined section with them.
         let xml = export_document_xml(&document);
         let (head, following) = xml.split_once("</w:sectPr>").expect("two sections");
-        assert!(head.contains(r#"r:id="rId5""#) && head.contains(r#"r:id="rId6""#));
-        assert!(
-            !following.contains("Reference"),
-            "the following section shows the head's stories through the link: {following}"
-        );
+        for section in [head, following] {
+            assert!(section.contains(r#"r:id="rId5""#) && section.contains(r#"r:id="rId6""#));
+        }
         for (role, variant) in [("header", "default"), ("footer", "first")] {
             assert!(!document.header_footer_linked(0, role, variant).unwrap());
             assert!(document.header_footer_linked(1, role, variant).unwrap());
         }
+    }
+
+    #[test]
+    fn joining_a_linked_section_keeps_the_stories_it_showed() {
+        let data = build_document_docx(
+            r#"<w:p><w:pPr><w:sectPr><w:headerReference w:type="default" r:id="rId5"/><w:footerReference w:type="default" r:id="rId6"/><w:pgSz w:w="11906" w:h="16838"/></w:sectPr></w:pPr><w:r><w:t>Alpha</w:t></w:r></w:p>
+<w:p><w:r><w:t>Bravo</w:t></w:r></w:p>
+<w:sectPr><w:footerReference w:type="default" r:id="rId7"/><w:pgSz w:w="16838" w:h="11906"/></w:sectPr>"#,
+        );
+        let mut document =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load docx");
+        assert!(document
+            .remove_section_break_at_paragraph(0)
+            .expect("remove the break"));
+
+        // The header came through the link and stays; the footer the
+        // following section named itself is its own.
+        let xml = export_document_xml(&document);
+        assert_eq!(xml.matches("<w:sectPr").count(), 1, "{xml}");
+        assert!(xml.contains(r#"r:id="rId5""#), "{xml}");
+        assert!(
+            xml.contains(r#"r:id="rId7""#) && !xml.contains(r#"r:id="rId6""#),
+            "{xml}"
+        );
+        let section = document
+            .document
+            .as_ref()
+            .and_then(|document| document.default_section.as_ref())
+            .expect("final section");
+        assert_eq!(section.header_reference.as_deref(), Some("rId5"));
+        assert_eq!(section.footer_reference.as_deref(), Some("rId7"));
     }
 
     #[test]
