@@ -9335,6 +9335,7 @@ impl WordDocument {
                 _ => return Ok(false),
             }
         };
+        self.carry_stories_into_following_section(body_index, paragraph_id)?;
         if let (Some(raw), Some(paragraph_id)) = (self.raw_document.as_mut(), paragraph_id) {
             if let Some(sect_pr_id) = Self::paragraph_section_properties_id(raw, paragraph_id) {
                 let path = raw
@@ -9357,6 +9358,171 @@ impl WordDocument {
         }
         Self::rebuild_section_ranges(document);
         Ok(true)
+    }
+
+    /// Gives the section after the break on body paragraph `body_index` the
+    /// headers and footers of the section that break ends wherever it names
+    /// none of its own, before the two are joined. Linked (前と同じ), it
+    /// showed them; Word keeps showing them once the break is gone, where
+    /// joined without them it showed the stories of a section further back,
+    /// or none.
+    fn carry_stories_into_following_section(
+        &mut self,
+        body_index: usize,
+        paragraph_id: Option<XmlNodeId>,
+    ) -> Result<(), String> {
+        let (ending, following) = {
+            let Some(body) = self
+                .document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+            else {
+                return Ok(());
+            };
+            let section_of = |index: usize| match body.elements.get(index) {
+                Some(BodyElement::Paragraph(paragraph)) => paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.section.clone())
+                    .map(|section| (section, paragraph.node_id)),
+                _ => None,
+            };
+            let Some((ending, _)) = section_of(body_index) else {
+                return Ok(());
+            };
+            let following =
+                (body_index + 1..body.elements.len()).find(|&index| section_of(index).is_some());
+            (ending, following)
+        };
+        // The model: the following section's mark, or the final section.
+        let document = self
+            .document_mut()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        let into = match following {
+            Some(index) => match document
+                .body
+                .as_mut()
+                .and_then(|body| body.elements.get_mut(index))
+            {
+                Some(BodyElement::Paragraph(paragraph)) => paragraph
+                    .properties
+                    .as_mut()
+                    .and_then(|props| props.section.as_mut()),
+                _ => None,
+            },
+            None => document.default_section.as_mut(),
+        };
+        if let Some(into) = into {
+            Self::fill_missing_story_references(into, &ending);
+        }
+        // The XML: references the following `w:sectPr` lacks, copied whole.
+        let Some(paragraph_id) = paragraph_id else {
+            return Ok(());
+        };
+        let following_id = match following {
+            Some(index) => self
+                .document
+                .as_ref()
+                .and_then(|document| document.body.as_ref())
+                .and_then(|body| match body.elements.get(index) {
+                    Some(BodyElement::Paragraph(paragraph)) => paragraph.node_id,
+                    _ => None,
+                })
+                .and_then(|id| {
+                    self.raw_document
+                        .as_ref()
+                        .and_then(|raw| Self::paragraph_section_properties_id(raw, id))
+                }),
+            None => self.ensure_default_sect_pr_id()?,
+        };
+        let Some(raw) = self.raw_document.as_mut() else {
+            return Ok(());
+        };
+        let (Some(from_id), Some(into_id)) = (
+            Self::paragraph_section_properties_id(raw, paragraph_id),
+            following_id,
+        ) else {
+            return Ok(());
+        };
+        let Some(from) = raw.element(from_id).cloned() else {
+            return Ok(());
+        };
+        Self::carry_story_references_raw(raw, &from, into_id)
+    }
+
+    /// Fills each header and footer reference `into` leaves unset from `from`.
+    fn fill_missing_story_references(into: &mut SectionProperties, from: &SectionProperties) {
+        for (into, from) in [
+            (&mut into.header_reference, &from.header_reference),
+            (&mut into.footer_reference, &from.footer_reference),
+            (
+                &mut into.header_reference_first,
+                &from.header_reference_first,
+            ),
+            (
+                &mut into.footer_reference_first,
+                &from.footer_reference_first,
+            ),
+            (&mut into.header_reference_even, &from.header_reference_even),
+            (&mut into.footer_reference_even, &from.footer_reference_even),
+        ] {
+            if into.is_none() {
+                into.clone_from(from);
+            }
+        }
+    }
+
+    /// Copies into `w:sectPr` `into_id` each header and footer reference of
+    /// `from` whose kind and variant it does not name, ahead of its other
+    /// children as the schema orders them.
+    fn carry_story_references_raw(
+        raw: &mut DocxXmlDocument,
+        from: &XmlElement,
+        into_id: XmlNodeId,
+    ) -> Result<(), String> {
+        let is_reference = |name: &str| name == "w:headerReference" || name == "w:footerReference";
+        let kind = |element: &XmlElement| {
+            element
+                .attributes
+                .iter()
+                .find(|attribute| attribute.name == "w:type")
+                .map_or_else(
+                    || "default".to_string(),
+                    |attribute| attribute.value.clone(),
+                )
+        };
+        let Some(into) = raw.element(into_id) else {
+            return Ok(());
+        };
+        let named: HashSet<(String, String)> = into
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element) if is_reference(&element.name) => {
+                    Some((element.name.clone(), kind(element)))
+                }
+                _ => None,
+            })
+            .collect();
+        let missing: Vec<XmlElement> = from
+            .children
+            .iter()
+            .filter_map(|child| match child {
+                XmlNode::Element(element)
+                    if is_reference(&element.name)
+                        && !named.contains(&(element.name.clone(), kind(element))) =>
+                {
+                    Some(element.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        for (index, reference) in missing.into_iter().enumerate() {
+            let copy = raw.create_element(reference.name, reference.attributes, Vec::new());
+            raw.insert_node(into_id, index, XmlNode::Element(copy))
+                .map_err(|error| error.to_string())?;
+        }
+        Ok(())
     }
 
     /// Moves the section break of top-level body paragraph `from` (its
@@ -9406,9 +9572,30 @@ impl WordDocument {
                 paragraph(to_body_index)?.node_id,
             )
         };
-        let Some(section) = section else {
+        let Some(mut section) = section else {
             return self.remove_section_break_at_paragraph(to);
         };
+        // A break on `to` goes, its section joining `from`'s, which keeps the
+        // headers and footers it showed through the link.
+        let ending = self
+            .document
+            .as_ref()
+            .and_then(|document| document.body.as_ref())
+            .and_then(|body| match body.elements.get(to_body_index) {
+                Some(BodyElement::Paragraph(paragraph)) => paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.section.clone()),
+                _ => None,
+            });
+        let ending_raw = match (self.raw_document.as_ref(), to_id) {
+            (Some(raw), Some(to_id)) => Self::paragraph_section_properties_id(raw, to_id)
+                .and_then(|id| raw.element(id).cloned()),
+            _ => None,
+        };
+        if let Some(ending) = ending.as_ref() {
+            Self::fill_missing_story_references(&mut section, ending);
+        }
 
         if let (Some(raw), Some(from_id), Some(to_id)) =
             (self.raw_document.as_ref(), from_id, to_id)
@@ -9426,6 +9613,12 @@ impl WordDocument {
                 .raw_document
                 .as_mut()
                 .ok_or_else(|| "raw document xml is unavailable".to_string())?;
+            if let (Some(ending), Some(moved)) = (
+                ending_raw.as_ref(),
+                Self::paragraph_section_properties_id(raw, to_id),
+            ) {
+                Self::carry_story_references_raw(raw, ending, moved)?;
+            }
             let path = raw
                 .path(sect_pr_id)
                 .ok_or_else(|| "section properties are not indexed".to_string())?;
