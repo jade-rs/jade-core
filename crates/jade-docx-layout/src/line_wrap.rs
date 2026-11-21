@@ -3465,16 +3465,18 @@ fn pair_has_fixed_cjk_advances(
             .is_some_and(|width| (width - cell(previous)).abs() <= tolerance)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn fixed_punctuation_pair_adjustment(
     grapheme: &str,
     script: ScriptCategory,
     font_descriptor: &str,
     font_descriptor_hash: u64,
     state: &TextAdvanceState,
+    style: &ResolvedRunStyle,
     measured_width: f64,
     paragraph_style: Option<&ParagraphStyle>,
 ) -> Option<f64> {
-    paragraph_style?;
+    let paragraph_style = paragraph_style?;
     // Word for Mac 16.114 shares the blank of a kerned pair whatever
     // `characterSpacingControl` says (probe pairs-kerned and its
     // doNotCompress twin are identical).
@@ -3503,7 +3505,18 @@ fn fixed_punctuation_pair_adjustment(
     let em = crate::line_metrics::word_fixed_east_asian_em_px(font_descriptor)?;
     let previous_width = state.prev_raw_glyph_width?;
     let tolerance = fixed_cjk_metric_tolerance_px(em);
-    if (measured_width - em).abs() > tolerance || (previous_width - em).abs() > tolerance {
+    // Windows' printer-grid realization can move a fixed cell away from
+    // its nominal em. Classify the same cell used during measurement;
+    // otherwise a half-device size suppresses required punctuation kerning.
+    // Mac retains its nominal-cell classification and pair adjustment.
+    let cell = if paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph_style.oracle_advance_px_by_text_offset.is_none()
+    {
+        em + style.windows_cjk_extra_px(font_descriptor, 0)
+    } else {
+        em
+    };
+    if (measured_width - cell).abs() > tolerance || (previous_width - cell).abs() > tolerance {
         return None;
     }
     // Only kerned runs reach here (the caller checks `w:kern`). Word for
@@ -3742,6 +3755,7 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
             font_descriptor,
             font_descriptor_hash,
             state,
+            style,
             measured_glyph_width,
             paragraph_style,
         )
@@ -15139,6 +15153,54 @@ mod tests {
                 "{descriptor} delta={delta}: {adjustment}"
             );
             assert_eq!(*ctx.pair_measurements.borrow(), expected_pairs);
+        }
+    }
+
+    #[test]
+    fn windows_fixed_punctuation_pairs_recognize_realized_cells_without_changing_mac() {
+        use crate::line_metrics::WordLayoutPlatform;
+        for descriptor in ["10.50pt 'MS Mincho', serif", "10.50pt 'Yu Mincho', serif"] {
+            let style = ResolvedRunStyle::new(
+                descriptor, descriptor, descriptor, descriptor, 0.0, 1.0, true, None,
+            );
+            let em = 14.0;
+            let realized = em + style.windows_cjk_extra_px(descriptor, 0);
+            assert!((realized - em).abs() > fixed_cjk_metric_tolerance_px(em));
+            let adjustment = |platform, width, previous_width| {
+                let paragraph = ParagraphStyle {
+                    word_platform: platform,
+                    ..Default::default()
+                };
+                let state = TextAdvanceState {
+                    prev_grapheme: Some("。".into()),
+                    prev_font_descriptor_hash: Some(style.font_descriptor_east_asia_hash),
+                    prev_raw_glyph_width: Some(previous_width),
+                    ..Default::default()
+                };
+                fixed_punctuation_pair_adjustment(
+                    "）",
+                    ScriptCategory::EastAsia,
+                    descriptor,
+                    style.font_descriptor_east_asia_hash,
+                    &state,
+                    &style,
+                    width,
+                    Some(&paragraph),
+                )
+            };
+            assert_eq!(
+                adjustment(WordLayoutPlatform::Windows, realized, realized),
+                Some(-0.5 * em)
+            );
+            assert_eq!(
+                adjustment(WordLayoutPlatform::Windows, realized + 1.0 / 64.0, realized),
+                None
+            );
+            assert_eq!(adjustment(WordLayoutPlatform::Mac, em, em), Some(-0.5 * em));
+            assert_eq!(
+                adjustment(WordLayoutPlatform::Mac, realized, realized),
+                None
+            );
         }
     }
 

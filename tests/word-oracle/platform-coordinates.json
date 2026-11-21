@@ -2487,6 +2487,31 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "word-mac-probe-pairs-kerned",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-pairs-kerned/source.docx",
+        "sha256": "f6bc744c18f1098e7945c231a42b87af37335461eab8a42b96eb5132d41a4562"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/word-mac-probe-pairs-kerned/manifest.json",
+        "sha256": "ef6eaca42b478a9e52141a648077ad2f477d44057c27ad9d2deb00623a254297"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004214564Z-4ebc9049",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004214564Z-4ebc9049.zip",
+            "sha256": "c4af57ec9ebdc3bc52b38791f01fc5a941f0177623b05aac670b3baebf51f8c4"
+          },
+          "capture_sha256": "1de41eda50c31dd584217c4575b7ffb599b39b0ccc1c5f66aa185523c9bdc2e5",
+          "fixture": "ww14-word-mac-probe-pairs-kerned-f6bc744c",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
