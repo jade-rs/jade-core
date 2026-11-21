@@ -395,15 +395,18 @@ fn validate_xml_characters(path: &str, data: &[u8]) -> std::io::Result<()> {
     {
         return Ok(());
     }
-    // Reduce bytes without an early exit so LLVM can vectorize this scan.
-    // Decoding every scalar here made large-document exports significantly
-    // slower. ASCII controls cannot occur inside a UTF-8 multibyte sequence.
-    let controls = data.iter().fold(0u8, |invalid, &byte| {
-        invalid | u8::from(byte < 9 || byte.wrapping_sub(11) < 2 || byte.wrapping_sub(14) < 18)
+    // Most XML blocks contain no ASCII controls at all. A vectorizable minimum
+    // checks those blocks cheaply; only blocks containing a control need the
+    // whitespace-aware scalar check. ASCII never appears inside a UTF-8 scalar.
+    let controls = data.chunks(1024).any(|chunk| {
+        chunk.iter().copied().min().is_some_and(|byte| byte < 0x20)
+            && chunk
+                .iter()
+                .any(|&byte| byte < 0x20 && !matches!(byte, 9 | 10 | 13))
     });
     let noncharacters = memchr::memmem::find_iter(data, b"\xef\xbf")
         .any(|index| data.get(index + 2).is_some_and(|&byte| byte >= 0xbe));
-    if controls == 0 && !noncharacters {
+    if !controls && !noncharacters {
         return Ok(());
     }
     let Ok(text) = std::str::from_utf8(data) else {
@@ -461,7 +464,7 @@ mod tests {
 
     #[test]
     fn character_validation_checks_all_controls_at_vector_boundaries() {
-        for padding in 0..65 {
+        for padding in (0..65).chain([1016, 1023, 1024, 1025, 2047, 2048]) {
             for ch in (0..32).chain([0xfffe, 0xffff]).filter_map(char::from_u32) {
                 let xml = format!("<root>{}{ch}</root>", "x".repeat(padding));
                 assert_eq!(

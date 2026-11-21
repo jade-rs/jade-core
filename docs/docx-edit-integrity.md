@@ -105,7 +105,7 @@ not a proof covering every OOXML document, every command or every ECMA-376/ISO
 29500 requirement. Rendering parity and Microsoft Word's repair behavior require
 separate application-level compatibility checks.
 
-The XML-character guard uses a vectorizable byte reduction and a targeted UTF-8
+The XML-character guard uses a vectorizable block minimum and a targeted UTF-8
 noncharacter search; scalar decoding is reserved for suspicious data. The first
 implementation decoded every character on every export and failed the existing
 Callgrind regression gate. The same gate checks the optimized implementation.
