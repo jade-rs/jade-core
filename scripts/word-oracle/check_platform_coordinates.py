@@ -20,6 +20,7 @@ from extract_windows_emf import extract, emf_glyphs
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
 REQUIRED_CAPTURES = {
+    'word-mac-probe-floating-horizontal-14': '20261114T004202539Z-7cf29738',
     'word-mac-probe-grid-line-unit': '20261114T004214564Z-4ebc9049',
     'word-mac-probe-grid-line-unit-table': '20261114T004214564Z-4ebc9049',
     'word-mac-probe-pairs-kerned': '20261114T004214564Z-4ebc9049',
