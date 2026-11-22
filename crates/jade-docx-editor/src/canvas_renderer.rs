@@ -3154,6 +3154,15 @@ fn body_element_has_horizontal_float_wrap(element: &BodyElement) -> bool {
     }
 }
 
+/// Whether a body paragraph consumes no surfaces beyond its own: no text box
+/// and no footnote reference, so the footnote surface maps cannot shift.
+fn paragraph_hosts_no_note_surfaces(paragraph: &Paragraph) -> bool {
+    paragraph
+        .runs
+        .iter()
+        .all(|run| run.text_box.is_none() && run.footnote_reference_ids.is_empty())
+}
+
 fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
     document
         .body
@@ -3167,7 +3176,16 @@ fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
 /// edit. Contains no document references, so it does not make `Rc::make_mut`
 /// copy or relocate the document.
 pub struct LocalTextEditCache {
+    /// `CanvasRenderer::header_footer_epoch` at capture. Negative answers
+    /// cover header/footer stories too, so they carry only if those are the
+    /// same stories at restore.
+    header_footer_epoch: u64,
     no_comment_anchors: bool,
+    no_deleted_runs: bool,
+    deleted_runs_witness: Option<DeletedRunsWitness>,
+    /// The footnote surface maps belong to the pre-edit snapshot and the edited
+    /// body paragraph at this index hosted no note reference or text box.
+    footnote_surface_layout: Option<usize>,
     auxiliary_story_base: Option<(usize, AuxiliaryStoryBaseSnapshot)>,
     unanchored_footnote_body_count: Option<usize>,
     no_behind_text_objects: bool,
@@ -3177,6 +3195,18 @@ pub struct LocalTextEditCache {
 
 /// Measured header and footer content heights per physical page.
 type ChromeHeights = (Vec<Option<f64>>, Vec<Option<f64>>);
+
+/// Where a deleted or moved-from run was found. A positive witness is never
+/// trusted on its own: it is rescanned against the current stories, so it stays
+/// sound across any edit, and only costs the one story it names.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum DeletedRunsWitness {
+    Body(usize),
+    Footnote(String),
+    Endnote(String),
+    /// Index into `CanvasRenderer::header_footer_story_bodies`.
+    HeaderFooter(usize),
+}
 
 /// Cache both answers for an immutable snapshot without retaining it. Release
 /// the weak key before editing so `Rc::make_mut` can preserve its allocation.
@@ -4308,6 +4338,19 @@ where
     last_document_comment_anchors: Option<bool>,
     /// Deleted-run scan for the exact immutable `last_document` snapshot.
     last_document_deleted_runs: Option<bool>,
+    /// Where the scan behind `last_document_deleted_runs == Some(true)` found
+    /// its first deleted run, so a local text edit can carry the answer.
+    last_document_deleted_runs_witness: Option<DeletedRunsWitness>,
+    /// Bumped whenever the header/footer stories are replaced.
+    header_footer_epoch: u64,
+    #[cfg(test)]
+    deleted_runs_document_scans: std::cell::Cell<usize>,
+    /// The immutable snapshot the footnote surface maps were computed for.
+    /// Weak, and dropped with the document cache, so `Rc::make_mut` keeps the
+    /// allocation in place.
+    footnote_surface_layout_document: std::rc::Weak<Document>,
+    #[cfg(test)]
+    footnote_surface_layout_scans: std::cell::Cell<usize>,
     /// A positive witness, not a cached answer: recheck this current body block
     /// before falling back to the complete scan. Safe across edits, document
     /// replacement and cache drops; it retains neither a document nor an address.
@@ -9586,6 +9629,13 @@ where
     }
 
     fn update_footnote_surface_layout(&mut self, document: &Rc<Document>) {
+        let key = Rc::downgrade(document);
+        if self.footnote_surface_layout_document.ptr_eq(&key) {
+            return;
+        }
+        #[cfg(test)]
+        self.footnote_surface_layout_scans
+            .set(self.footnote_surface_layout_scans.get() + 1);
         let (bases, extras, body_count) = Self::compute_footnote_surface_layout(
             document,
             self.cached_unanchored_footnote_body_count(document),
@@ -9601,10 +9651,13 @@ where
                 })
             })
             .collect();
+        // Collected from a HashMap: sort so the order is deterministic.
+        self.footnote_surface_ranges.sort_unstable();
         self.footnote_surface_bases = bases;
         self.footnote_surface_extras = extras;
         self.unanchored_footnote_body_count =
             body_count.map(|count| (Rc::downgrade(document), count));
+        self.footnote_surface_layout_document = key;
     }
 
     fn cached_unanchored_footnote_body_count(&self, document: &Rc<Document>) -> Option<usize> {
@@ -9631,14 +9684,7 @@ where
 
     fn blocks_contain_deleted_runs(elements: &[BodyElement]) -> bool {
         elements.iter().any(|element| match element {
-            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().any(|run| {
-                run.revision.as_ref().is_some_and(|mark| {
-                    matches!(mark.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
-                }) || run
-                    .text_box
-                    .as_ref()
-                    .is_some_and(|text_box| Self::blocks_contain_deleted_runs(&text_box.blocks))
-            }),
+            BodyElement::Paragraph(paragraph) => Self::paragraph_contains_deleted_runs(paragraph),
             BodyElement::Table(table) => table.rows.iter().any(|row| {
                 row.cells
                     .iter()
@@ -9648,40 +9694,100 @@ where
         })
     }
 
-    fn document_contains_deleted_runs(&self, document: &Document) -> bool {
-        document
-            .body
-            .as_ref()
-            .is_some_and(|body| Self::blocks_contain_deleted_runs(&body.elements))
-            || document
-                .footnotes
-                .values()
-                .chain(document.endnotes.values())
-                .any(|note| Self::blocks_contain_deleted_runs(&note.body))
-            || [
-                self.header_body.as_ref(),
-                self.footer_body.as_ref(),
-                self.header_body_first.as_ref(),
-                self.footer_body_first.as_ref(),
-                self.header_body_even.as_ref(),
-                self.footer_body_even.as_ref(),
+    fn paragraph_contains_deleted_runs(paragraph: &Paragraph) -> bool {
+        paragraph.runs.iter().any(|run| {
+            run.revision.as_ref().is_some_and(|mark| {
+                matches!(mark.kind, RevisionKind::Deleted | RevisionKind::MovedFrom)
+            }) || run
+                .text_box
+                .as_ref()
+                .is_some_and(|text_box| Self::blocks_contain_deleted_runs(&text_box.blocks))
+        })
+    }
+
+    /// Every header/footer story the deleted-run scan covers, in a fixed order
+    /// that `DeletedRunsWitness::HeaderFooter` indexes.
+    fn header_footer_story_bodies(&self) -> impl Iterator<Item = &Rc<Body>> {
+        [
+            self.header_body.as_ref(),
+            self.footer_body.as_ref(),
+            self.header_body_first.as_ref(),
+            self.footer_body_first.as_ref(),
+            self.header_body_even.as_ref(),
+            self.footer_body_even.as_ref(),
+        ]
+        .into_iter()
+        .chain(self.section_header_footers.iter().flat_map(|section| {
+            [
+                section.header_body.as_ref(),
+                section.footer_body.as_ref(),
+                section.header_body_first.as_ref(),
+                section.footer_body_first.as_ref(),
+                section.header_body_even.as_ref(),
+                section.footer_body_even.as_ref(),
             ]
-            .into_iter()
-            .flatten()
-            .any(|body| Self::blocks_contain_deleted_runs(&body.elements))
-            || self.section_header_footers.iter().any(|section| {
-                [
-                    section.header_body.as_ref(),
-                    section.footer_body.as_ref(),
-                    section.header_body_first.as_ref(),
-                    section.footer_body_first.as_ref(),
-                    section.header_body_even.as_ref(),
-                    section.footer_body_even.as_ref(),
-                ]
-                .into_iter()
-                .flatten()
-                .any(|body| Self::blocks_contain_deleted_runs(&body.elements))
+        }))
+        .flatten()
+    }
+
+    /// Scans every story for a deleted or moved-from run and names the first.
+    fn document_deleted_runs_witness(&self, document: &Document) -> Option<DeletedRunsWitness> {
+        #[cfg(test)]
+        self.deleted_runs_document_scans
+            .set(self.deleted_runs_document_scans.get() + 1);
+        if let Some(index) = document.body.as_ref().and_then(|body| {
+            body.elements.iter().position(|element| {
+                Self::blocks_contain_deleted_runs(std::slice::from_ref(element))
             })
+        }) {
+            return Some(DeletedRunsWitness::Body(index));
+        }
+        if let Some(id) = document
+            .footnotes
+            .iter()
+            .find_map(|(id, note)| Self::blocks_contain_deleted_runs(&note.body).then_some(id))
+        {
+            return Some(DeletedRunsWitness::Footnote(id.clone()));
+        }
+        if let Some(id) = document
+            .endnotes
+            .iter()
+            .find_map(|(id, note)| Self::blocks_contain_deleted_runs(&note.body).then_some(id))
+        {
+            return Some(DeletedRunsWitness::Endnote(id.clone()));
+        }
+        self.header_footer_story_bodies()
+            .position(|body| Self::blocks_contain_deleted_runs(&body.elements))
+            .map(DeletedRunsWitness::HeaderFooter)
+    }
+
+    /// Whether the story the witness names still holds a deleted run now.
+    fn deleted_runs_witness_holds(
+        &self,
+        document: &Document,
+        witness: &DeletedRunsWitness,
+    ) -> bool {
+        match witness {
+            DeletedRunsWitness::Body(index) => document
+                .body
+                .as_ref()
+                .and_then(|body| body.elements.get(*index))
+                .is_some_and(|element| {
+                    Self::blocks_contain_deleted_runs(std::slice::from_ref(element))
+                }),
+            DeletedRunsWitness::Footnote(id) => document
+                .footnotes
+                .get(id)
+                .is_some_and(|note| Self::blocks_contain_deleted_runs(&note.body)),
+            DeletedRunsWitness::Endnote(id) => document
+                .endnotes
+                .get(id)
+                .is_some_and(|note| Self::blocks_contain_deleted_runs(&note.body)),
+            DeletedRunsWitness::HeaderFooter(index) => self
+                .header_footer_story_bodies()
+                .nth(*index)
+                .is_some_and(|body| Self::blocks_contain_deleted_runs(&body.elements)),
+        }
     }
 
     fn paragraph_contains_comment_anchors(paragraph: &Paragraph) -> bool {
@@ -10029,6 +10135,13 @@ where
             document_has_comments: false,
             last_document_comment_anchors: None,
             last_document_deleted_runs: None,
+            last_document_deleted_runs_witness: None,
+            header_footer_epoch: 0,
+            #[cfg(test)]
+            deleted_runs_document_scans: std::cell::Cell::new(0),
+            footnote_surface_layout_document: std::rc::Weak::new(),
+            #[cfg(test)]
+            footnote_surface_layout_scans: std::cell::Cell::new(0),
             comment_anchor_body_witness: std::cell::Cell::new(None),
             #[cfg(test)]
             comment_anchor_document_scans: std::cell::Cell::new(0),
@@ -14552,6 +14665,7 @@ where
         self.last_document = None;
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
+        self.footnote_surface_layout_document = std::rc::Weak::new();
         self.invalidate_paragraph_content_hash_cache();
     }
 
@@ -14566,6 +14680,7 @@ where
                 .then_some(&self.horizontal_float_wrap_cache)
         });
         LocalTextEditCache {
+            header_footer_epoch: self.header_footer_epoch,
             auxiliary_story_base: None,
             unanchored_footnote_body_count: self
                 .last_document
@@ -14577,6 +14692,14 @@ where
                 .is_some_and(|document| self.cached_no_behind_text_objects(document)),
             no_comment_anchors: self.last_document.is_some()
                 && self.last_document_comment_anchors == Some(false),
+            no_deleted_runs: self.last_document.is_some()
+                && self.last_document_deleted_runs == Some(false),
+            deleted_runs_witness: self
+                .last_document
+                .as_ref()
+                .filter(|_| self.last_document_deleted_runs == Some(true))
+                .and(self.last_document_deleted_runs_witness.clone()),
+            footnote_surface_layout: None,
             no_horizontal_float_wrap: float_cache.is_some_and(|cache| cache.witness.is_none()),
             horizontal_float_wrap_witness: float_cache.and_then(|cache| cache.witness),
         }
@@ -14584,7 +14707,7 @@ where
 
     /// Capture the auxiliary count only when the old body paragraph hosts no
     /// text-box paragraphs. The same check must pass after the local edit.
-    pub(crate) fn local_text_edit_cache_for_paragraph(
+    pub fn local_text_edit_cache_for_paragraph(
         &self,
         model: &WordDocument,
         index: usize,
@@ -14601,6 +14724,18 @@ where
                     })
             })
             .map(|snapshot| (index, snapshot));
+        cache.footnote_surface_layout = model
+            .document
+            .as_ref()
+            .filter(|document| {
+                self.footnote_surface_layout_document
+                    .ptr_eq(&Rc::downgrade(document))
+                    && model.is_body_paragraph_surface(index)
+                    && model
+                        .paragraph(index)
+                        .is_some_and(paragraph_hosts_no_note_surfaces)
+            })
+            .map(|_| index);
         cache
     }
 
@@ -14642,8 +14777,34 @@ where
         if cache.no_behind_text_objects {
             self.restore_no_behind_text_objects(document, paragraph);
         }
-        if cache.no_comment_anchors && !Self::paragraph_contains_comment_anchors(paragraph) {
-            self.last_document_comment_anchors = Some(false);
+        // The other body paragraphs and every note body are unchanged, so the
+        // surface enumeration only moves if the edited paragraph gained a note
+        // reference or a text box.
+        if cache.footnote_surface_layout == Some(paragraph_index)
+            && model.is_body_paragraph_surface(paragraph_index)
+            && paragraph_hosts_no_note_surfaces(paragraph)
+        {
+            self.footnote_surface_layout_document = Rc::downgrade(document);
+        }
+        let same_header_footers = cache.header_footer_epoch == self.header_footer_epoch;
+        let no_comment_anchors = same_header_footers
+            && cache.no_comment_anchors
+            && !Self::paragraph_contains_comment_anchors(paragraph);
+        // Only the edited paragraph changed: a negative answer survives if it
+        // has no deleted run now. A positive one survives if its witness story
+        // still holds one in the edited stories.
+        let deleted_runs_witness = cache
+            .deleted_runs_witness
+            .filter(|witness| self.deleted_runs_witness_holds(document, witness));
+        let no_deleted_runs = deleted_runs_witness.is_none()
+            && same_header_footers
+            && cache.no_deleted_runs
+            && !Self::paragraph_contains_deleted_runs(paragraph);
+        if no_comment_anchors || no_deleted_runs || deleted_runs_witness.is_some() {
+            self.last_document_comment_anchors = no_comment_anchors.then_some(false);
+            self.last_document_deleted_runs = (no_deleted_runs || deleted_runs_witness.is_some())
+                .then_some(deleted_runs_witness.is_some());
+            self.last_document_deleted_runs_witness = deleted_runs_witness;
             self.last_document = Some(Rc::clone(document));
         }
         let witness = cache.horizontal_float_wrap_witness.filter(|&index| {
@@ -15989,13 +16150,13 @@ where
             .as_ref()
             .filter(|cached| Rc::ptr_eq(cached, &document_rc))
             .and(self.last_document_deleted_runs);
-        self.last_document_deleted_runs = if options.render_changes {
-            Some(
-                cached_deleted_runs
-                    .unwrap_or_else(|| self.document_contains_deleted_runs(document)),
-            )
-        } else {
-            cached_deleted_runs
+        self.last_document_deleted_runs = match cached_deleted_runs {
+            None if options.render_changes => {
+                self.last_document_deleted_runs_witness =
+                    self.document_deleted_runs_witness(document);
+                Some(self.last_document_deleted_runs_witness.is_some())
+            }
+            cached => cached,
         };
         self.last_render_body_element_count = 0;
         self.last_render_prefix_skips = 0;
@@ -41020,6 +41181,7 @@ where
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
         self.begin_header_footer_edit();
+        self.header_footer_epoch = self.header_footer_epoch.wrapping_add(1);
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -41042,6 +41204,7 @@ where
     pub fn set_section_header_footers(&mut self, sections: Vec<SectionHeaderFooters>) {
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
+        self.header_footer_epoch = self.header_footer_epoch.wrapping_add(1);
         self.section_header_footers = sections;
         self.clear_hf_story_memo();
     }
@@ -46797,6 +46960,325 @@ mod tests {
             .horizontal_float_wrap_cache
             .get(model.document.as_ref().unwrap()));
         assert!(!renderer.document_has_comment_anchors(model.document.as_ref().unwrap()));
+    }
+
+    /// Typing with revision marks shown in a document with a footnote must not
+    /// rescan every story for deleted runs, or re-walk the body for footnote
+    /// surfaces, on each keystroke. Edits that can change either answer
+    /// (a tracked deletion, an undo, a new footnote) must scan again.
+    #[test]
+    fn typing_carries_deleted_runs_and_footnote_surfaces_across_local_edits() {
+        use crate::commands::delete_text::{DeleteDirection, DeleteTextCommand};
+        use crate::commands::insert_footnote::InsertFootnoteCommand;
+        use crate::commands::insert_text::InsertTextCommand;
+        use crate::commands::{Command, CommandContext, CommandExecutor};
+
+        // Commands edit the raw package, so load a real one.
+        let tails = "<w:p><w:r><w:t>tail</w:t></w:r></w:p>".repeat(20);
+        let document_xml = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>title</w:t></w:r></w:p><w:p><w:r><w:t>host</w:t></w:r><w:r><w:footnoteReference w:id="2"/></w:r></w:p><w:p><w:r><w:t>after</w:t></w:r></w:p>{tails}</w:body></w:document>"#
+        );
+        let parts = [
+            (
+                "[Content_Types].xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footnotes.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml"/></Types>"#
+                    .to_string(),
+            ),
+            (
+                "_rels/.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#
+                    .to_string(),
+            ),
+            ("word/document.xml", document_xml),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes" Target="footnotes.xml"/></Relationships>"#
+                    .to_string(),
+            ),
+            (
+                "word/footnotes.xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:footnotes xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:footnote w:id="0" w:type="separator"><w:p><w:r><w:separator/></w:r></w:p></w:footnote><w:footnote w:id="1" w:type="continuationSeparator"><w:p><w:r><w:continuationSeparator/></w:r></w:p></w:footnote><w:footnote w:id="2"><w:p><w:r><w:footnoteRef/></w:r><w:r><w:tab/><w:t>note body</w:t></w:r></w:p></w:footnote></w:footnotes>"#
+                    .to_string(),
+            ),
+        ];
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        {
+            use std::io::Write as _;
+            let mut zip = zip::ZipWriter::new(&mut cursor);
+            for (path, content) in &parts {
+                zip.start_file(*path, zip::write::SimpleFileOptions::default())
+                    .unwrap();
+                zip.write_all(content.as_bytes()).unwrap();
+            }
+            zip.finish().unwrap();
+        }
+        let mut model = futures::executor::block_on(WordDocument::load(
+            &cursor.into_inner(),
+            &Options::default(),
+        ))
+        .unwrap();
+        // Surfaces: 0 title, 1 host, 2 footnote body, 3 "after", 4.. tails.
+        let edited = 3;
+        assert!(model.is_body_paragraph_surface(edited));
+        let options = Options {
+            render_changes: true,
+            ..Options::default()
+        };
+        let (mut renderer, painter) = recording_renderer();
+        let render = |renderer: &mut CanvasRenderer<_>, model: &WordDocument| {
+            renderer
+                .render_with_numbering_rc(
+                    Rc::clone(model.document.as_ref().unwrap()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+        };
+        // The control renders every state from scratch scans, so its paint
+        // (including revision ink and painter state) is the reference.
+        let (mut control, control_painter) = recording_renderer();
+        let paint_both = |renderer: &mut CanvasRenderer<_>,
+                          control: &mut CanvasRenderer<_>,
+                          model: &WordDocument| {
+            painter.clear();
+            control_painter.clear();
+            render(renderer, model);
+            render(control, model);
+            let ops = painter.ops();
+            assert!(!ops.is_empty());
+            assert_eq!(ops, control_painter.ops());
+            assert_eq!(
+                renderer.footnote_surface_bases,
+                control.footnote_surface_bases
+            );
+            assert_eq!(
+                renderer.footnote_surface_extras,
+                control.footnote_surface_extras
+            );
+            assert_eq!(
+                renderer.footnote_surface_ranges,
+                control.footnote_surface_ranges
+            );
+            assert_eq!(
+                renderer.last_document_deleted_runs,
+                control.last_document_deleted_runs
+            );
+            // Release the control's references so edits stay in place.
+            control.drop_document_cache();
+        };
+        paint_both(&mut renderer, &mut control, &model);
+        assert_eq!(renderer.footnote_surface_bases.get("2"), Some(&2));
+        let scans = |renderer: &CanvasRenderer<_>| {
+            (
+                renderer.deleted_runs_document_scans.get(),
+                renderer.footnote_surface_layout_scans.get(),
+            )
+        };
+        let mut executor = CommandExecutor::new();
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(edited, 0)));
+        let edit = |renderer: &mut CanvasRenderer<_>,
+                    control: &mut CanvasRenderer<_>,
+                    model: &mut WordDocument,
+                    executor: &mut CommandExecutor,
+                    selection: &mut Option<SelectionRange>,
+                    command: Box<dyn Command>| {
+            let cache = renderer.local_text_edit_cache_for_paragraph(model, edited);
+            renderer.drop_document_cache();
+            assert_eq!(Rc::weak_count(model.document.as_ref().unwrap()), 0);
+            let revision = executor.history_revision();
+            executor
+                .execute(command, &mut CommandContext::new(model, selection))
+                .unwrap();
+            renderer.restore_local_text_edit_cache_after_command(
+                cache, model, edited, executor, revision,
+            );
+            paint_both(renderer, control, model);
+        };
+        let insert = |offset: usize| -> Box<dyn Command> {
+            Box::new(InsertTextCommand::new(
+                SelectionRange::collapsed(TextPosition::new(edited, offset)),
+                "x".to_string(),
+                None,
+            ))
+        };
+
+        let before = scans(&renderer);
+        for offset in 0..20 {
+            edit(
+                &mut renderer,
+                &mut control,
+                &mut model,
+                &mut executor,
+                &mut selection,
+                insert(offset),
+            );
+        }
+        assert_eq!(scans(&renderer), before, "typing must not rescan");
+        assert_eq!(renderer.last_document_deleted_runs, Some(false));
+
+        // A tracked deletion adds a deleted run to the edited paragraph.
+        model.set_revision_session(Some(crate::word_document::RevisionSession {
+            author: Some("reviewer".to_string()),
+            date: Some("2026-09-24T00:00:00Z".to_string()),
+            date_utc: None,
+        }));
+        edit(
+            &mut renderer,
+            &mut control,
+            &mut model,
+            &mut executor,
+            &mut selection,
+            Box::new(DeleteTextCommand::new(
+                SelectionRange::collapsed(TextPosition::new(edited, 5)),
+                DeleteDirection::Backward,
+            )),
+        );
+        assert_eq!(scans(&renderer), (before.0 + 1, before.1));
+        assert_eq!(renderer.last_document_deleted_runs, Some(true));
+        // The positive answer then carries through its witness.
+        edit(
+            &mut renderer,
+            &mut control,
+            &mut model,
+            &mut executor,
+            &mut selection,
+            insert(0),
+        );
+        assert_eq!(scans(&renderer), (before.0 + 1, before.1));
+        assert_eq!(renderer.last_document_deleted_runs, Some(true));
+        model.set_revision_session(None);
+
+        // An undo is not a proven local edit.
+        renderer.drop_document_cache();
+        assert!(executor
+            .undo(&mut CommandContext::new(&mut model, &mut selection))
+            .unwrap());
+        paint_both(&mut renderer, &mut control, &model);
+        assert_eq!(scans(&renderer), (before.0 + 2, before.1 + 1));
+
+        // A new footnote moves the surfaces after its host.
+        let after_undo = scans(&renderer);
+        edit(
+            &mut renderer,
+            &mut control,
+            &mut model,
+            &mut executor,
+            &mut selection,
+            Box::new(InsertFootnoteCommand::new(
+                SelectionRange::collapsed(TextPosition::new(edited, 1)),
+                "new note".to_string(),
+            )),
+        );
+        let after_footnote = scans(&renderer);
+        assert_eq!(after_footnote, (after_undo.0 + 1, after_undo.1 + 1));
+        assert_eq!(renderer.footnote_surface_bases.len(), 2);
+        // The edited paragraph now hosts a reference, so typing there must
+        // keep recomputing the surface maps.
+        edit(
+            &mut renderer,
+            &mut control,
+            &mut model,
+            &mut executor,
+            &mut selection,
+            insert(0),
+        );
+        assert_eq!(scans(&renderer), (after_footnote.0, after_footnote.1 + 1));
+    }
+
+    #[test]
+    fn deleted_runs_witness_is_rechecked_after_a_local_edit() {
+        let deleted = |text: &str| {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.runs[0].revision = Some(RevisionMark {
+                kind: RevisionKind::Deleted,
+                id: None,
+                author: None,
+                date: None,
+                date_utc: None,
+                insertion: None,
+            });
+            paragraph
+        };
+        let mut document = doc_with_paragraph_texts(&["one", "two"]);
+        document.body.as_mut().unwrap().elements[1] = BodyElement::from_paragraph(deleted("gone"));
+        let mut model = WordDocument::from_document(document);
+        let options = Options {
+            render_changes: true,
+            ..Options::default()
+        };
+        let (mut renderer, _) = recording_renderer();
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(model.document.as_ref().unwrap()),
+                &options,
+                None,
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        assert_eq!(
+            renderer.last_document_deleted_runs_witness,
+            Some(DeletedRunsWitness::Body(1))
+        );
+        // Editing another paragraph keeps the positive answer.
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        model.paragraph_mut(0).unwrap().runs[0].text.push('x');
+        renderer.restore_local_text_edit_cache(cache, &model, 0);
+        assert_eq!(renderer.last_document_deleted_runs, Some(true));
+        // Removing the witnessed deletion must not carry a stale answer.
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        model.paragraph_mut(1).unwrap().runs[0].revision = None;
+        renderer.restore_local_text_edit_cache(cache, &model, 1);
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        assert!(renderer
+            .document_deleted_runs_witness(model.document.as_ref().unwrap())
+            .is_none());
+        // A negative answer is dropped when the edit adds a deletion.
+        renderer.restore_document_cache(Rc::clone(model.document.as_ref().unwrap()));
+        renderer.last_document_deleted_runs = Some(false);
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        *model.paragraph_mut(0).unwrap() = deleted("cut");
+        renderer.restore_local_text_edit_cache(cache, &model, 0);
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        // Replacing the header/footer stories between capture and restore
+        // voids both negative answers, even for a clean edited paragraph.
+        *model.paragraph_mut(0).unwrap() = note_test_paragraph("clean", None);
+        model.paragraph_mut(1).unwrap().runs[0].revision = None;
+        renderer.restore_document_cache(Rc::clone(model.document.as_ref().unwrap()));
+        renderer.last_document_deleted_runs = Some(false);
+        renderer.last_document_comment_anchors = Some(false);
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        renderer.set_header_footer_bodies(
+            Some(Rc::new(Body {
+                elements: vec![BodyElement::from_paragraph(deleted("header"))],
+            })),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        model.paragraph_mut(0).unwrap().runs[0].text.push('x');
+        renderer.restore_local_text_edit_cache(cache, &model, 0);
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        assert_eq!(renderer.last_document_comment_anchors, None);
+        assert_eq!(
+            renderer.document_deleted_runs_witness(model.document.as_ref().unwrap()),
+            Some(DeletedRunsWitness::HeaderFooter(0))
+        );
     }
 
     #[test]
