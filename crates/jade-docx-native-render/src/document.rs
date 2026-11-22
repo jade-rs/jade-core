@@ -884,7 +884,7 @@ impl NativeDocument {
                     self.stale_pages
                         .extend((0..pages).filter(|page| !drawn.contains(page)));
                 }
-                for page in drawn.clone() {
+                for page in drawn.start..drawn.end.min(pages) {
                     self.stale_pages.remove(&page);
                 }
             }
@@ -1073,7 +1073,10 @@ impl NativeDocument {
             // bounded to the pages on screen): the layout is not whole. Lay
             // every page out again, draw the pages on screen, and leave every
             // other page stale, since the pages may have moved.
-            self.repaint_all_drawing(Some(0..visible_end), true)?;
+            // `visible_end` may mean "no bound" (`usize::MAX`); pages past
+            // the old count are left stale by the layout itself.
+            let drawn = 0..visible_end.min(self.page_count().max(1));
+            self.repaint_all_drawing(Some(drawn), true)?;
             return Ok(());
         };
         let drawn = first..(last + 1).min(visible_end);

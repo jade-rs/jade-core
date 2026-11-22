@@ -380,6 +380,16 @@ fn a_select_deep_in_a_long_document_matches_a_full_repaint() {
 /// draw then may have moved, and must say so.
 #[test]
 fn a_select_after_a_bounded_edit_leaves_no_page_unpainted() {
+    select_after_a_bounded_edit(1);
+}
+
+/// The same with no bound, which a shell passes as `usize::MAX`.
+#[test]
+fn an_unbounded_select_after_a_bounded_edit_leaves_no_page_unpainted() {
+    select_after_a_bounded_edit(usize::MAX);
+}
+
+fn select_after_a_bounded_edit(bound: usize) {
     let path = "public/fixtures/contract.docx";
     let filler = "A clause long enough to wrap over several lines of the page. ".repeat(60);
     let mut document = open_fixture(path);
@@ -393,7 +403,9 @@ fn a_select_after_a_bounded_edit_leaves_no_page_unpainted() {
         .insert_text(paragraph, 0, &filler, usize::MAX)
         .expect("insert");
     let last = document.paragraph_count() - 1;
-    document.select((last, 0), (last, 0), 1).expect("select");
+    document
+        .select((last, 0), (last, 0), bound)
+        .expect("select");
     reference
         .select((last, 0), (last, 0), usize::MAX)
         .expect("select");
