@@ -12,6 +12,10 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_original_ruby_print_cases_require_face_size_and_origin_assertions(self):
+        required = {'ruby-wide-grid-mac', 'eqruby-grid-mac', 'ruby-grid-mac', 'eqruby-nogrid-mac', 'ruby-nogrid-mac', 'ruby-wide-nogrid-mac'}
+        self.assertLessEqual(required, check.PHYSICAL_FONT_CASES)
+
     def test_three_originals_retain_actual_mac_pdf_and_versioned_windows_input(self):
         import hashlib
         from collections import Counter

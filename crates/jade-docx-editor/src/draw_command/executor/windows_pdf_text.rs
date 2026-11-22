@@ -115,6 +115,25 @@ fn realized_print_fonts(fonts: &[Rc<str>], dpi: f64) -> Option<Vec<Rc<str>>> {
     changed.then_some(physical)
 }
 
+// Direct ruby guides and cached single-scalar Text commands retain logical
+// widths/origins, but must use the same physical em as positioned body text.
+// Kerning, effects, features, clusters and non-print/Mac drawing keep their path.
+pub(crate) fn single_scalar_font<P: Painter>(
+    context: &P,
+    text: &str,
+    style: &TextStyle,
+) -> Option<Rc<str>> {
+    if style.enable_pair_kerning || text.chars().count() != 1 || !eligible(context, text, style) {
+        return None;
+    }
+    let descriptor = style.font_for_grapheme(text, super::classify_script(text));
+    if jade_painter::font_features::has_features(descriptor) {
+        return None;
+    }
+    let (prefix, suffix, em) = realized_print_parts(descriptor, context.text_output_dpi()?)?;
+    Some(Rc::from(format!("{prefix}{em:.6}px{suffix}")))
+}
+
 fn regular_calibri(descriptor: &str) -> Option<(&str, &str)> {
     for token in descriptor.split_whitespace() {
         let numeric = token
