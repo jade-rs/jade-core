@@ -123,6 +123,9 @@ PHYSICAL_FONT_CASES = {
     'word-mac-probe-vert-align-sweep-2',
 }
 REQUIRED_CAPTURES = {
+    'tabs-geometry-mac': '20261114T130556208Z-6d6ad7b2',
+    '2col-mac': '20261114T231659226Z-87aed8b1',
+    'char-spacing-mac': '20261114T231718277Z-f02fe908',
     'word-compat-comprehensive-mac': '20261114T004202539Z-7cf29738',
     'floating-inside-outside-mac': '20261114T004143028Z-b4cb9887',
     'header-footer-edge-cases-mac': '20261114T004143028Z-b4cb9887',
