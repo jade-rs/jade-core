@@ -4239,7 +4239,7 @@ where
     /// valid for `footnote_height_geometry` (page width, side margins,
     /// section), since a note's height depends on its width.
     footnote_height_cache: HashMap<(String, usize, Option<FootnoteCarry>), FootnoteHeightPlan>,
-    footnote_height_geometry: Option<(u64, u64, u64, usize)>,
+    footnote_height_geometry: Option<(u64, u64, u64, usize, u64)>,
     windows_footnote_separator_height: Option<f64>,
     measured_note_line_bottoms: Option<MeasuredNoteLineBottoms>,
     /// Set while notes are laid out off-page only to measure them.
@@ -7337,8 +7337,15 @@ where
                 && !self.render_skip_draw
                 && !self.paint_windows_footnote_separator(document, wanted, separator_height)
             {
-                let column_width =
-                    (self.page_width - self.margin_left - self.margin_right).max(0.0);
+                // In a multi-column section the area is the column's.
+                let (left, column_width) = if self.column_layout.count() > 1 {
+                    (self.current_column_x(), self.current_column_width())
+                } else {
+                    (
+                        self.margin_left,
+                        (self.page_width - self.margin_left - self.margin_right).max(0.0),
+                    )
+                };
                 let separator_width = if continuing {
                     column_width
                 } else {
@@ -7350,8 +7357,8 @@ where
                 context.set_stroke_style_str("#000000");
                 context.set_line_width(1.0);
                 context.begin_path();
-                context.move_to(self.margin_left, y);
-                context.line_to(self.margin_left + separator_width, y);
+                context.move_to(left, y);
+                context.line_to(left + separator_width, y);
                 context.stroke();
                 context.restore();
             }
@@ -8041,6 +8048,7 @@ where
             self.margin_left.to_bits(),
             self.margin_right.to_bits(),
             self.active_section_index,
+            self.current_column_width().to_bits(),
         );
         if self.footnote_height_geometry != Some(geometry) {
             self.footnote_height_geometry = Some(geometry);
@@ -8879,6 +8887,23 @@ where
         result?;
         self.footnote_reserve_px = 0.0;
         self.carried_footnote_reserve_pending = self.footnote_carry.is_some();
+        Ok(())
+    }
+
+    /// Moves on to the next column of a multi-column section. Word lays the
+    /// footnote area out in the section's columns: the notes referenced in
+    /// the column that ends go at its foot, and a note it could not hold
+    /// continues at the foot of the next.
+    fn advance_to_next_column(&mut self) -> Result<(), JsValue> {
+        if !self.measuring_keep_next {
+            self.render_pending_footnotes_for_current_page()?;
+        }
+        self.column_index += 1;
+        self.current_y = self.current_column_top();
+        self.last_line_baseline = self.current_y;
+        if !self.measuring_keep_next {
+            self.reserve_carried_footnote_on_new_page()?;
+        }
         Ok(())
     }
 
@@ -18190,10 +18215,7 @@ where
             }
             if self.column_layout.count() > 1 && self.column_index + 1 < self.column_layout.count()
             {
-                self.column_index += 1;
-                self.current_y = self.current_column_top();
-                self.last_line_baseline = self.current_y;
-                return Ok(());
+                return self.advance_to_next_column();
             }
 
             self.render_footer_simple()?;
@@ -26697,10 +26719,7 @@ where
             && self.column_layout.count() > 1
             && self.column_index + 1 < self.column_layout.count()
         {
-            self.column_index += 1;
-            self.current_y = self.current_column_top();
-            self.last_line_baseline = self.current_y;
-            return Ok(());
+            return self.advance_to_next_column();
         }
         self.force_page_break()
     }
@@ -76390,6 +76409,91 @@ mod tests {
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
         }
+    }
+
+    /// Word lays the footnote area out in a multi-column section's columns:
+    /// a note goes at the foot of the column its reference is in, with the
+    /// separator across that column.
+    #[test]
+    fn footnotes_in_a_two_column_section_go_at_the_foot_of_their_columns() {
+        use jade_docx_reader::document::{PageSettings, SectionColumns};
+        let mut footnotes = BTreeMap::new();
+        for id in ["1", "2"] {
+            footnotes.insert(
+                id.to_string(),
+                crate::document::Note {
+                    id: id.to_string(),
+                    note_type: None,
+                    body: vec![BodyElement::from_paragraph(note_test_paragraph(
+                        "\tnote", None,
+                    ))],
+                },
+            );
+        }
+        let mut elements = vec![BodyElement::from_paragraph(note_test_paragraph(
+            "first",
+            Some("1"),
+        ))];
+        for _ in 0..60 {
+            elements.push(BodyElement::from_paragraph(note_test_paragraph(
+                "filler", None,
+            )));
+        }
+        elements.push(BodyElement::from_paragraph(note_test_paragraph(
+            "second",
+            Some("2"),
+        )));
+        let settings = PageSettings {
+            width: Some(400.0),
+            height: Some(792.0),
+            margin_top: Some(72.0),
+            margin_bottom: Some(72.0),
+            margin_left: Some(40.0),
+            margin_right: Some(40.0),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            footnotes,
+            page_settings: Some(settings.clone()),
+            default_section: Some(SectionProperties {
+                page_settings: Some(settings),
+                columns: Some(SectionColumns {
+                    count: Some(2),
+                    space: Some(20.0),
+                    equal_width: Some(true),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (bases, _, _) = CanvasRenderer::<Canvas2dPainter<CanvasRenderingContext2d>>::compute_footnote_surface_layout(
+            &document, None,
+        );
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let paragraphs = renderer.selection.paragraphs();
+        let first_line = |index: usize| paragraphs[index].lines[0].clone();
+        let host_one = first_line(0);
+        // A note's paragraphs follow its reference's paragraph.
+        let host_two = first_line(bases["2"] - 1);
+        let note_one = first_line(bases["1"]);
+        let note_two = first_line(bases["2"]);
+        let page = |line: &SelectionLineLayout| renderer.page_for_y(line.absolute_top);
+        // The second reference is in the second column of the same page.
+        assert_eq!(page(&host_one), page(&host_two));
+        assert!(host_two.start_x > host_one.start_x + points_to_px(100.0));
+        // Each note sits under its own column's text, at the page foot.
+        assert_eq!(page(&note_one), page(&host_one));
+        assert_eq!(page(&note_two), page(&host_two));
+        assert!((note_one.start_x - host_one.start_x).abs() < 1.0);
+        assert!((note_two.start_x - host_two.start_x).abs() < 1.0);
+        assert!((note_one.absolute_top - note_two.absolute_top).abs() < 1.0);
+        assert!(note_one.absolute_top > host_one.absolute_top);
     }
 
     /// Widow control moving a whole paragraph to the next column carries it
