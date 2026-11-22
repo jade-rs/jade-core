@@ -5073,6 +5073,56 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-unequal-variant-three-24-left",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-unequal-variant-three-24-left/source.docx",
+        "sha256": "653145c06db76e4a3ec26f45fce695783529c9d6335efbf4b1e88420d0d6ee92"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-unequal-variant-three-24-left/manifest.json",
+        "sha256": "9cba4a39a470891b5274d0de11db31788d8d4e763aa0adcd9529c43f89851be4"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004559814Z-c5e13cee",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004559814Z-c5e13cee.zip",
+            "sha256": "81702af836b28810390eca288aaeec300d2db2e712b930fdd9847033c631b9f4"
+          },
+          "capture_sha256": "d14b4b87993cab2460c5a1b227acda3bc89a0071d10259efb6c6d83dd53cfc80",
+          "fixture": "ww14-probe-unequal-variant-three-24-left-653145c0",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-unequal-variant-three-24-right",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-unequal-variant-three-24-right/source.docx",
+        "sha256": "6feaf145dd75bbac33dc1193c1d5466513b670b29828392fadbf489f8bfacc28"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-unequal-variant-three-24-right/manifest.json",
+        "sha256": "bc8d3f6a40b2632f24726b80c7d10d92432c5c63fa3a7525dfda205022026273"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004559814Z-c5e13cee",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004559814Z-c5e13cee.zip",
+            "sha256": "81702af836b28810390eca288aaeec300d2db2e712b930fdd9847033c631b9f4"
+          },
+          "capture_sha256": "d14b4b87993cab2460c5a1b227acda3bc89a0071d10259efb6c6d83dd53cfc80",
+          "fixture": "ww14-probe-unequal-variant-three-24-right-6feaf145",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

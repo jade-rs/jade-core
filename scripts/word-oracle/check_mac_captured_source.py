@@ -375,6 +375,14 @@ SHARED_ORIGINALS = {
         'fc087a2a80e5a758a6de90bfff3a16af0e29474d56edb2eb4b0dd09f18e77d6d',
         '05b21cf82d5a4093a7157eb1e81794c9771c02da8b998f1093be0c65e653db4c',
         '38452ad3a1c6df1d5521872c1a7928abb294507b001284a01fe41d933beedee6', 2, 347),
+    'probe-unequal-variant-three-24-left': (
+        '653145c06db76e4a3ec26f45fce695783529c9d6335efbf4b1e88420d0d6ee92',
+        '9cba4a39a470891b5274d0de11db31788d8d4e763aa0adcd9529c43f89851be4',
+        '313a1ad6e8cd802ce5f2446eb756912be29d5dd0430d48980571377f93ae695c', 2, 233),
+    'probe-unequal-variant-three-24-right': (
+        '6feaf145dd75bbac33dc1193c1d5466513b670b29828392fadbf489f8bfacc28',
+        'bc8d3f6a40b2632f24726b80c7d10d92432c5c63fa3a7525dfda205022026273',
+        '88c6685aa8c4cd1db1421de9ebbd2e5a3b5add79f01ec7b8e5970c09cfadcc39', 2, 233),
 }
 
 
@@ -457,9 +465,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 87 and sum(r['glyphs'] for r in results) == 29630,
+    require(len(results) == 89 and sum(r['glyphs'] for r in results) == 30096,
             'Shared Mac original coverage changed')
-    print('87 shared Mac originals29630: layout and painted-PDF PASS', flush=True)
+    print('89 shared Mac originals30096: layout and painted-PDF PASS', flush=True)
     return results
 
 
