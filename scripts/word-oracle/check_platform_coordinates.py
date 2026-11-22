@@ -24,26 +24,26 @@ INDEX = Path('tests/word-oracle/platform-coordinates.json')
 # Keep this separate from logical EMF coordinates: Windows print realization
 # can differ from screen metrics. Every case retains its own Word PDF.
 PHYSICAL_FONT_CASES = {
-    'eqruby-grid-mac',
-    'eqruby-nogrid-mac',
-    'ruby-grid-mac',
-    'ruby-nogrid-mac',
-    'ruby-wide-grid-mac',
-    'ruby-wide-nogrid-mac',
-    'inline-image-rotation-table-picture-only-mac',
+    '2col-mac',
     'align-center-mac',
     'alignment-mac',
+    'aptos-ascii-advances-mac',
+    'aptos-kerning-mac',
+    'aptos-numeric-ranges-mac',
     'aptos-range-compat-14-en-US-mac',
     'aptos-range-compat-15-en-US-mac',
     'ascii-punctuation-mac',
     'borderless-table-mac',
     'cell-alignment-mac',
+    'char-spacing-mac',
     'column-break-mac',
     'column-table-fixed-preferred-width-mac',
     'column-table-fixed-preferred-width-smaller-mac',
     'decimal-tabs-mac',
     'direction-with-selection-mac',
     'endnote-mac',
+    'eqruby-grid-mac',
+    'eqruby-nogrid-mac',
     'exact-and-minimum-lines-mac',
     'floating-inside-outside-mac',
     'floating-simple-position-mac',
@@ -60,10 +60,12 @@ PHYSICAL_FONT_CASES = {
     'fractional-picture-anchors-mac',
     'header-footer-edge-cases-mac',
     'header-footer-sectionpages-mac',
+    'header-footer-sections-mac',
     'header-tab-overflow-long-mac',
     'indents-mac',
     'inline-image-position-grid-mac',
     'inline-image-position-nogrid-mac',
+    'inline-image-rotation-table-picture-only-mac',
     'jade-script-baseline-20261030',
     'kana-mac',
     'keep-mac',
@@ -83,6 +85,7 @@ PHYSICAL_FONT_CASES = {
     'nested-merged-tables-mac',
     'note-styles-creation-mac',
     'numbering-by-style-mac',
+    'numbering-restart-mac',
     'odd-even-stories-mac',
     'paragraph-spacing-mac',
     'probe-contextual-paragraph-spacing-mode14',
@@ -93,6 +96,10 @@ PHYSICAL_FONT_CASES = {
     'probe-unequal-left-narrow-first-2-1',
     'probe-unequal-left-wide-first-1-1',
     'probe-unequal-left-wide-first-2-1',
+    'ruby-grid-mac',
+    'ruby-nogrid-mac',
+    'ruby-wide-grid-mac',
+    'ruby-wide-nogrid-mac',
     'run-styles-mac',
     'script-position-mac',
     'section-break-types-mac',
@@ -103,11 +110,13 @@ PHYSICAL_FONT_CASES = {
     'table-row-after-spacing-short-5pt',
     'table-vertical-merge-page-break-mac',
     'table3x2merged-mac',
+    'tabs-geometry-mac',
     'tabs-mac',
     'textbox-body-properties-mac',
     'textbox-exact-line-matrix-mac',
     'textbox-fixed-pitch-matrix-mac',
     'textbox-tall-header-overlap-mac',
+    'toc-instrtext-edge-cases-mac',
     'toc-sequence-page-number-mac',
     'underline-kinds-mac',
     'unequal-columns-mac',
@@ -121,12 +130,15 @@ PHYSICAL_FONT_CASES = {
     'word-mac-probe-floating-horizontal-15',
     'word-mac-probe-grid-line-unit',
     'word-mac-probe-grid-line-unit-table',
+    'word-mac-probe-indent',
+    'word-mac-probe-numbering-label',
     'word-mac-probe-numbering-label-faces',
     'word-mac-probe-object-space-runs-unbalanced',
     'word-mac-probe-pairs-kerned',
     'word-mac-probe-squeeze-conditions-nocompress',
     'word-mac-probe-squeeze-plain',
     'word-mac-probe-vert-align-sweep-2',
+    'wrong-num-mac',
 }
 REQUIRED_CAPTURES = {
     'tabs-geometry-mac': '20261114T130556208Z-6d6ad7b2',
@@ -368,6 +380,69 @@ def compare(expected, actual, label, *, font_metrics=False):
     return len(expected_glyphs)
 
 
+def pdf_font_program_aliases(document, page, cache):
+    """Resolve PDF display aliases only from that PDF's embedded font names."""
+    import io
+    from fontTools.ttLib import TTFont
+    aliases = defaultdict(set)
+    for font in page.get_fonts(full=True):
+        xref, _, kind, declared = font[:4]
+        if kind == 'Type3':
+            continue
+        if xref not in cache:
+            _, extension, _, data = document.extract_font(xref)
+            identity = None
+            if data and extension in ('ttf', 'otf'):
+                with TTFont(io.BytesIO(data)) as program:
+                    values = defaultdict(set)
+                    if 'name' in program:
+                        for record in program['name'].names:
+                            if record.nameID in (1, 2, 4, 6, 16, 17):
+                                value = re.sub(r'^[A-Z]{6}\+', '', record.toUnicode()).strip()
+                                if value:
+                                    values[record.nameID].add(value)
+                    postscript = values[6]
+                    require(len(postscript) <= 1, 'Ambiguous embedded PostScript font name')
+                    if postscript:
+                        actual = next(iter(postscript))
+                        permitted = set(postscript) | values[4]
+                        for family in values[1] | values[16]:
+                            for style in values[2] | values[17]:
+                                if style.casefold() in ('regular', 'normal', 'roman'):
+                                    permitted.add(family)
+                                else:
+                                    permitted.update((family + ',' + style.replace(' ', ''),
+                                                      family + ' ' + style))
+                        identity = (actual, permitted)
+            cache[xref] = identity
+        identity = cache[xref]
+        alias = re.sub(r'^[A-Z]{6}\+', '', declared)
+        if identity is not None and alias in identity[1]:
+            aliases[alias].add(identity[0])
+    require(all(len(values) == 1 for values in aliases.values()),
+            'Ambiguous PDF font alias')
+    return {alias: next(iter(values)) for alias, values in aliases.items()}
+
+
+def pdf_font_identity(document, span_font, aliases=None):
+    """Read the actual PDF face, including unnamed Type3 outline fonts."""
+    if span_font == 'Type3' or span_font.startswith('Type3 ('):
+        match = re.fullmatch(r'Type3 \((\d+) 0 R\)', span_font)
+        require(match is not None, 'Type3 font identity lacks an object reference')
+        xref = int(match.group(1))
+        require(0 < xref < document.xref_length()
+                and document.xref_get_key(xref, 'Subtype') == ('name', '/Type3'),
+                'Invalid Type3 font reference')
+        kind, declared = document.xref_get_key(xref, 'FontDescriptor/FontName')
+        require(kind == 'name' and declared.startswith('/') and len(declared) > 1,
+                'Type3 font descriptor lacks an actual font name')
+        span_font = re.sub(r'#([0-9a-fA-F]{2})',
+                           lambda m: chr(int(m.group(1), 16)), declared[1:])
+        return re.sub(r'^[A-Z]{6}\+', '', span_font)
+    identity = re.sub(r'^[A-Z]{6}\+', '', span_font)
+    return (aliases or {}).get(identity, identity)
+
+
 def pdf_origins(path, unclipped=False, *, font_metrics=False):
     import pymupdf
     flags = pymupdf.TEXTFLAGS_RAWDICT
@@ -375,11 +450,13 @@ def pdf_origins(path, unclipped=False, *, font_metrics=False):
         flags &= ~pymupdf.TEXT_CLIP
     with pymupdf.open(path) as document:
         glyphs = []
+        font_cache = {}
         for number, page in enumerate(document, 1):
+            aliases = pdf_font_program_aliases(document, page, font_cache) if font_metrics else {}
             for block in page.get_text('rawdict', flags=flags)['blocks']:
                 for line in block.get('lines', []):
                     for span in line['spans']:
-                        metrics = ([re.sub(r'^[A-Z]{6}\+', '', span['font']), span['size']]
+                        metrics = ([pdf_font_identity(document, span['font'], aliases), span['size']]
                                    if font_metrics else [])
                         glyphs.extend([number, char['c'], *char['origin'], *metrics]
                                       for char in span['chars'] if not char['c'].isspace())

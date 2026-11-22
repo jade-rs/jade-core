@@ -6880,6 +6880,21 @@ where
             return Ok(());
         }
 
+        if context.text_output_dpi().is_some()
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            let command_style = self.cmd_text_style(None, style);
+            if let Some(font) =
+                crate::draw_command::executor::windows_pdf_text::positioned_scalar_font(
+                    context,
+                    character,
+                    &command_style,
+                )
+            {
+                self.set_font_if_changed_rc(context, &font);
+            }
+        }
         let baseline_y = baseline + style.baseline_shift_px;
         for &x in segment.glyph_positions.iter() {
             context

@@ -36,6 +36,7 @@ fn supported_print_text(text: &str) -> bool {
         && text.chars().all(|c| {
             let value = u32::from(c);
             (' '..='~').contains(&c)
+                || matches!(value, 0x2026 | 0x2192 | 0x2460..=0x2473)
                 || (matches!(value, 0x3000..=0x303f | 0x3040..=0x30ff | 0x31f0..=0x31ff
                 | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff
                 | 0xff01..=0xff60 | 0xffe0..=0xffe6 | 0x20000..=0x2ffff)
@@ -115,15 +116,15 @@ fn realized_print_fonts(fonts: &[Rc<str>], dpi: f64) -> Option<Vec<Rc<str>>> {
     changed.then_some(physical)
 }
 
-// Direct ruby guides and cached single-scalar Text commands retain logical
-// widths/origins, but must use the same physical em as positioned body text.
-// Kerning, effects, features, clusters and non-print/Mac drawing keep their path.
-pub(crate) fn single_scalar_font<P: Painter>(
+// Supplied scalar origins, including tab leaders, retain logical placement.
+// Realize only the Windows print font; never remeasure or reposition the glyph.
+// Effects, features, clusters, screen and Mac drawing keep their paths.
+pub(crate) fn positioned_scalar_font<P: Painter>(
     context: &P,
     text: &str,
     style: &TextStyle,
 ) -> Option<Rc<str>> {
-    if style.enable_pair_kerning || text.chars().count() != 1 || !eligible(context, text, style) {
+    if text.chars().count() != 1 || !eligible(context, text, style) {
         return None;
     }
     let descriptor = style.font_for_grapheme(text, super::classify_script(text));
@@ -132,6 +133,18 @@ pub(crate) fn single_scalar_font<P: Painter>(
     }
     let (prefix, suffix, em) = realized_print_parts(descriptor, context.text_output_dpi()?)?;
     Some(Rc::from(format!("{prefix}{em:.6}px{suffix}")))
+}
+
+// Unpositioned scalar Text keeps the existing conservative kerning guard.
+pub(crate) fn single_scalar_font<P: Painter>(
+    context: &P,
+    text: &str,
+    style: &TextStyle,
+) -> Option<Rc<str>> {
+    if style.enable_pair_kerning {
+        return None;
+    }
+    positioned_scalar_font(context, text, style)
 }
 
 fn regular_calibri(descriptor: &str) -> Option<(&str, &str)> {
@@ -357,7 +370,14 @@ mod tests {
 
     #[test]
     fn simple_cjk_printing_rejects_joining_and_combining_sequences() {
-        for text in ["ASCII 123", "日本語カナかな。ＡＢ１２", "𠀀"] {
+        for text in [
+            "ASCII 123",
+            "日本語カナかな。ＡＢ１２",
+            "𠀀",
+            "something…",
+            "Heading→①",
+            "①②③⑳",
+        ] {
             assert!(super::supported_print_text(text), "{text}");
         }
         for text in [
@@ -370,6 +390,8 @@ mod tests {
             "مرحبا",
             "officeé",
             "😀",
+            "①\u{fe00}",
+            "…\u{200d}",
         ] {
             assert!(!super::supported_print_text(text), "{text}");
         }
