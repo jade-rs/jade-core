@@ -4081,6 +4081,15 @@ where
     /// element start, so a page ended by pushing that element can leave the
     /// space out of its justified used height.
     valign_element_space_after: Option<(usize, f64, f64)>,
+    /// `(page, y, px)` the latest body paragraph's space-after really took.
+    valign_spacing_after_consumed: Option<(usize, f64, f64)>,
+    /// Whether a top-level element hook already ran in this pass. The first
+    /// one to carry a gap is a seek resume (a pass from the body start
+    /// begins at a page top, which is never a gap slot).
+    valign_hook_seen: bool,
+    /// `(page offset y, real body bottom)` of each page measured in the last
+    /// full repaint (diagnostics for the overflow checks).
+    valign_page_bounds: Vec<(f64, f64)>,
     /// Slot candidate `(page, body element, natural used height at its start)`
     /// awaiting proof that the element placed content on that page (rather
     /// than being pushed whole to the next one).
@@ -9781,6 +9790,9 @@ where
             valign_element_pages: Vec::new(),
             valign_flow_fallback_pages: Vec::new(),
             valign_element_space_after: None,
+            valign_spacing_after_consumed: None,
+            valign_hook_seen: false,
+            valign_page_bounds: Vec::new(),
             valign_pending_gap_slot: None,
             valign_gap_applied: (0, 0.0),
             section_mark_flow_page: None,
@@ -15800,6 +15812,9 @@ where
         self.valign_gap_skip_pages.clear();
         self.valign_element_pages.clear();
         self.valign_element_space_after = None;
+        self.valign_spacing_after_consumed = None;
+        self.valign_hook_seen = false;
+        self.valign_page_bounds.clear();
         self.valign_pending_gap_slot = None;
         self.valign_gap_applied = (0, 0.0);
         let stable_edit_metadata = self
@@ -16823,6 +16838,9 @@ where
             self.page_valign_offsets.clear();
             self.page_valign_gaps.clear();
         }
+        // The applied justified shift only holds while its page is laid out:
+        // later geometry queries see the real body bottom.
+        self.valign_gap_applied = (0, 0.0);
 
         // Store shared reference to avoid cloning on every render.
         if self.last_fast_replay_stable {
@@ -22190,9 +22208,17 @@ where
                 line_height_points,
                 self.paragraph_spacing_grid_pitch_pt(paragraph),
             );
+            let y_before_spacing_after = self.current_y;
             if !suppress_spacing_after {
                 self.apply_spacing_after_value(spacing_after)?;
             }
+            // What the space-after really took: a space that does not fit is
+            // clamped at the page foot, and a suppressed one takes nothing.
+            self.valign_spacing_after_consumed = Some((
+                self.current_page_number,
+                self.current_y,
+                self.current_y - y_before_spacing_after,
+            ));
             // Word collapses the next paragraph's before spacing against the
             // specified after spacing even when contextual spacing hides it.
             self.trailing_spacing_after = Some((
@@ -39497,26 +39523,39 @@ where
     /// [`Self::valign_gap_bottom_allowance`]), as does the pending
     /// space-after, so every fit decision matches the unshifted flow.
     fn begin_justified_valign_element(&mut self, body_element_index: usize) {
-        if self.pageless_mode
-            || self.measuring_keep_next
-            || self.active_section_vertical_align() != SectionVerticalAlign::Both
+        if self.measuring_keep_next {
+            return;
+        }
+        let resumed = !std::mem::replace(&mut self.valign_hook_seen, true);
+        if self.pageless_mode || self.active_section_vertical_align() != SectionVerticalAlign::Both
         {
             return;
         }
         if self.render_full_repaint {
             self.valign_element_pages
                 .push((body_element_index, self.current_page_number));
-            self.valign_element_space_after = self
-                .trailing_spacing_after
-                .filter(|(page, _, y, _)| {
+            self.valign_element_space_after =
+                self.valign_spacing_after_consumed.filter(|(page, y, _)| {
                     *page == self.current_page_number && (y - self.current_y).abs() < 0.01
-                })
-                .map(|(page, _, y, after)| (page, y, after));
+                });
         }
         if self.column_layout.count() > 1 {
             return;
         }
-        if !self.valign_gaps_suspended {
+        if !self.valign_gaps_suspended && resumed {
+            // A seek resume: the snapshot was taken by a painted pass after
+            // this hook (and after any space-before), so its position already
+            // holds every shift applied on the page up to and including this
+            // element. Adopt that shift so the body bottom matches too.
+            let page = self.current_page_number;
+            let shift = self
+                .page_valign_gaps
+                .iter()
+                .filter(|(element, gap)| gap.page == page && **element <= body_element_index)
+                .map(|(_, gap)| gap.shift)
+                .fold(0.0, f64::max);
+            self.valign_gap_applied = (page, shift);
+        } else if !self.valign_gaps_suspended {
             if let Some(gap) = self.page_valign_gaps.get(&body_element_index).copied() {
                 let natural_start =
                     self.effective_body_top() + self.current_page_valign_offset() + gap.start_used;
@@ -39604,17 +39643,17 @@ where
         self.resolve_pending_valign_gap_slot(used);
         let page = self.current_page_number;
         if self.active_section_vertical_align() == SectionVerticalAlign::Both {
-            // Word spreads to the last line's bottom: the page's final
-            // space-after does not take part. A paragraph pushed to the next
-            // page may already have consumed the pending space-after, so the
-            // value seen at its start counts too.
-            let pending = self
-                .trailing_spacing_after
-                .map(|(after_page, _, after_y, after)| (after_page, after_y, after));
-            if let Some((_, _, after)) = [pending, self.valign_element_space_after]
-                .into_iter()
-                .flatten()
-                .find(|(after_page, after_y, _)| *after_page == page && (after_y - y).abs() < 0.01)
+            // Word spreads to the last line's bottom: the space the page's
+            // final space-after actually took (it is clamped at the page
+            // foot) does not take part. The value seen at the latest element
+            // start covers a page ended by pushing that element.
+            if let Some((_, _, after)) = [
+                self.valign_spacing_after_consumed,
+                self.valign_element_space_after,
+            ]
+            .into_iter()
+            .flatten()
+            .find(|(after_page, after_y, _)| *after_page == page && (after_y - y).abs() < 0.01)
             {
                 used = (used - after).max(0.0);
             }
@@ -39642,10 +39681,12 @@ where
         // Keep the tallest observation for the page (a page is only finalized
         // once, but guarding against double-records keeps this robust).
         self.valign_used_heights[index] = self.valign_used_heights[index].max(used);
-        self.valign_available_heights[index] = (self.effective_body_bottom()
-            - self.valign_gap_bottom_allowance()
-            - self.effective_body_top())
-        .max(0.0);
+        let body_bottom = self.effective_body_bottom() - self.valign_gap_bottom_allowance();
+        self.valign_available_heights[index] = (body_bottom - self.effective_body_top()).max(0.0);
+        if self.valign_page_bounds.len() <= index {
+            self.valign_page_bounds.resize(index + 1, (0.0, 0.0));
+        }
+        self.valign_page_bounds[index] = (self.page_offset_y, body_bottom);
     }
 
     pub fn margin_left(&self) -> f64 {

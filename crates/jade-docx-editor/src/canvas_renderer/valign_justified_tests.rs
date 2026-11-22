@@ -263,6 +263,51 @@ struct SweepOutcome {
     skipped_pages: usize,
     /// Pages whose gaps the painted-pass safety net had to drop.
     fallback_pages: usize,
+    /// A render failed or panicked: nothing was compared.
+    errored: bool,
+    /// A spread page whose lines reach further below its body bottom than
+    /// under `top` (page, excess px).
+    overflow: Option<(usize, f64)>,
+}
+
+/// How far the lowest body line on the page at `offset` reaches below
+/// `bottom` (lines starting at or below `bottom`, such as footnotes, are
+/// not body lines). Empty paragraphs are left out: the one that can sit
+/// past the bottom is Word for Mac's empty section mark, which Word leaves
+/// out of page vAlign by design (as for `center`/`bottom`); an ordinary
+/// empty paragraph counts in the used height and cannot overshoot.
+/// `None` when the page has no such line.
+fn page_line_excess(
+    renderer: &CanvasRenderer<RecordingPainter>,
+    offset: f64,
+    bottom: f64,
+) -> Option<f64> {
+    renderer
+        .selection
+        .paragraphs()
+        .iter()
+        .filter(|paragraph| !paragraph.text.is_empty())
+        .flat_map(|paragraph| paragraph.lines.iter())
+        .filter(|line| ((line.absolute_top - line.top) - offset).abs() < 0.5 && line.top < bottom)
+        .map(|line| line.top + line.height - bottom)
+        .reduce(f64::max)
+}
+
+/// First spread page of `both` whose lines overshoot its real body bottom
+/// by more than they do under `top`.
+fn spread_page_overflow(
+    top: &CanvasRenderer<RecordingPainter>,
+    both: &CanvasRenderer<RecordingPainter>,
+) -> Option<(usize, f64)> {
+    let mut pages: Vec<usize> = both.page_valign_gaps.values().map(|gap| gap.page).collect();
+    pages.sort();
+    pages.dedup();
+    pages.into_iter().find_map(|page| {
+        let &(offset, bottom) = both.valign_page_bounds.get(page - 1)?;
+        let spread = page_line_excess(both, offset, bottom)?;
+        let natural = page_line_excess(top, offset, bottom).unwrap_or(f64::MIN);
+        (spread > natural.max(0.0) + 0.5).then_some((page, spread))
+    })
 }
 
 fn sweep_document(document: &Document) -> SweepOutcome {
@@ -277,10 +322,15 @@ fn sweep_document(document: &Document) -> SweepOutcome {
             .map(|_| renderer)
     };
     let (Ok(top), Ok(both)) = (render("top"), render("both")) else {
-        return SweepOutcome::default();
+        return SweepOutcome {
+            errored: true,
+            ..Default::default()
+        };
     };
     let spread: HashSet<usize> = both.page_valign_gaps.values().map(|gap| gap.page).collect();
     SweepOutcome {
+        overflow: spread_page_overflow(&top, &both),
+        errored: false,
         changed: flow_signature(&top) != flow_signature(&both),
         spread_pages: spread.len(),
         skipped_pages: both.valign_gap_skip_pages.len(),
@@ -333,7 +383,10 @@ fn sweep_fixtures(names: &[String]) -> Vec<(&'static str, String, SweepOutcome)>
                                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                                     sweep_document(document)
                                 }))
-                                .unwrap_or_default();
+                                .unwrap_or(SweepOutcome {
+                                    errored: true,
+                                    ..Default::default()
+                                });
                             out.push((label, name.clone(), outcome));
                         }
                         jade_docx_layout::line_metrics::set_word_layout_platform(
@@ -356,6 +409,17 @@ fn report(results: &[(&'static str, String, SweepOutcome)]) -> Vec<String> {
         .iter()
         .filter(|(_, _, outcome)| outcome.changed)
         .map(|(platform, name, _)| format!("{platform}:{name}"))
+        .chain(results.iter().filter_map(|(platform, name, outcome)| {
+            let (page, excess) = outcome.overflow?;
+            Some(format!(
+                "{platform}:{name} overflows page {page} by {excess:.2}px"
+            ))
+        }))
+        .collect();
+    let errored: Vec<String> = results
+        .iter()
+        .filter(|(_, _, outcome)| outcome.errored)
+        .map(|(platform, name, _)| format!("{platform}:{name}"))
         .collect();
     let spread = results.iter().filter(|r| r.2.spread_pages > 0).count();
     let skipped: usize = results.iter().map(|r| r.2.skipped_pages).sum();
@@ -365,8 +429,10 @@ fn report(results: &[(&'static str, String, SweepOutcome)]) -> Vec<String> {
         .map(|(platform, name, outcome)| format!("{platform}:{name}({})", outcome.fallback_pages))
         .collect();
     eprintln!(
-        "valign sweep: {} renders, {} spread, {} float/column pages skipped, {} safety-net fallbacks {:?}, {} changed",
+        "valign sweep: {} renders, {} errored {:?}, {} spread, {} float/column pages skipped, {} safety-net fallbacks {:?}, {} changed or overflowing",
         results.len(),
+        errored.len(),
+        errored,
         spread,
         skipped,
         fallback.len(),
@@ -481,14 +547,16 @@ fn justified_spacing_collapse_keeps_pagination_and_drops_final_space_after() {
 }
 
 /// Repainting one page from a mid-page (spanning) seek snapshot must not
-/// add a resumed element's gap a second time: the snapshot was taken after
-/// the gap, and the shift is applied absolutely.
-#[test]
-fn justified_seek_resume_does_not_shift_twice() {
+/// add a resumed element's gap a second time (the snapshot was taken after
+/// the gap) nor lose the page's applied shift: the page draws exactly what
+/// a full repaint of that page draws.
+fn assert_seek_resume_matches_full_repaint(spacing: &str) {
     let long = "word ".repeat(140);
     let mut body = String::new();
     for index in 0..40 {
-        body.push_str(&paragraph(&format!("{index} {long}"), ""));
+        body.push_str(&format!(
+            r#"<w:p><w:pPr>{spacing}</w:pPr><w:r><w:t>{index} {long}</w:t></w:r></w:p>"#
+        ));
     }
     body.push_str(&format!(
         r#"<w:sectPr>{MARGINS}<w:vAlign w:val="both"/></w:sectPr>"#
@@ -503,13 +571,8 @@ fn justified_seek_resume_does_not_shift_twice() {
         ..Default::default()
     };
     options.set_pageless(false);
-    let mut renderer = rendered(&document, &options);
-    assert!(
-        !renderer.page_valign_gaps.is_empty(),
-        "pages with several paragraphs are spread"
-    );
     let painted_text = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<(String, i64, i64)> {
-        renderer
+        let mut glyphs: Vec<_> = renderer
             .host
             .painter()
             .inner()
@@ -521,20 +584,16 @@ fn justified_seek_resume_does_not_shift_twice() {
                 }
                 _ => None,
             })
-            .collect()
+            .collect();
+        glyphs.sort();
+        glyphs
     };
-    let full: HashSet<(String, i64, i64)> = painted_text(&renderer).into_iter().collect();
-    let anchors = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<Option<(usize, f64)>> {
-        let cache = renderer.paragraph_layout_cache.borrow();
-        (0..40)
-            .map(|index| {
-                cache
-                    .get_entry(index)
-                    .map(|entry| (entry.start_page, entry.start_y))
-            })
-            .collect()
-    };
-    let full_anchors = anchors(&renderer);
+    let mut renderer = rendered(&document, &options);
+    assert!(
+        !renderer.page_valign_gaps.is_empty(),
+        "pages with several paragraphs are spread"
+    );
+    let mut reference = rendered(&document, &options);
     let pages: Vec<usize> = renderer
         .page_start_seek_cache_by_page
         .borrow()
@@ -542,9 +601,18 @@ fn justified_seek_resume_does_not_shift_twice() {
         .filter(|(_, snapshot)| snapshot.spanning)
         .map(|(page, _)| *page)
         .collect();
-    assert!(!pages.is_empty(), "spanning snapshots exist");
+    assert!(pages.len() > 3, "spanning snapshots exist");
     let mut resumed = 0;
     for page in pages {
+        reference.clear_dirty_regions();
+        reference.host.painter().inner().clear();
+        reference.set_visible_page_range(Some(page..=page));
+        reference.mark_full_repaint();
+        reference
+            .render(&document, &options)
+            .expect("full page render");
+        let expected = painted_text(&reference);
+
         renderer.clear_dirty_regions();
         renderer.host.painter().inner().clear();
         renderer.set_visible_page_range(Some(page..=page));
@@ -553,24 +621,63 @@ fn justified_seek_resume_does_not_shift_twice() {
         if renderer.last_render_body_element_count < 40 {
             resumed += 1;
         }
-        for (index, (full, now)) in full_anchors.iter().zip(anchors(&renderer)).enumerate() {
-            if let (Some(full), Some(now)) = (full, now) {
-                assert!(
-                    full.0 == now.0 && (full.1 - now.1).abs() < 0.01,
-                    "paragraph {index} starts at {now:?} after repainting page {page}, not {full:?}"
-                );
-            }
-        }
         let painted = painted_text(&renderer);
         assert!(!painted.is_empty(), "page {page} painted text");
-        for glyphs in &painted {
-            assert!(
-                full.contains(glyphs),
-                "repainting page {page} drew {glyphs:?} where the full render did not"
-            );
-        }
+        assert_eq!(
+            painted, expected,
+            "repainting page {page} from its seek snapshot ({spacing})"
+        );
     }
     assert!(resumed > 0, "at least one repaint resumed from a snapshot");
+}
+
+#[test]
+fn justified_seek_resume_does_not_shift_twice() {
+    assert_seek_resume_matches_full_repaint(r#"<w:spacing w:before="0" w:after="0"/>"#);
+}
+
+/// Space-before puts a resumed snapshot below the element's gap position;
+/// the page's applied shift must still be adopted.
+#[test]
+fn justified_seek_resume_with_paragraph_spacing() {
+    assert_seek_resume_matches_full_repaint(r#"<w:spacing w:before="240" w:after="240"/>"#);
+}
+
+/// A space-after that does not fit is clamped at the page foot: only what
+/// it took leaves the used height, so no spread line ends below the body
+/// bottom.
+#[test]
+fn justified_clamped_space_after_never_overflows_the_page() {
+    for (after, count) in [(240, 40), (300, 70)] {
+        let mut body = String::new();
+        for index in 0..count {
+            body.push_str(&format!(
+                r#"<w:p><w:pPr><w:spacing w:before="0" w:after="{after}"/></w:pPr><w:r><w:t>Line {index}</w:t></w:r></w:p>"#
+            ));
+        }
+        body.push_str(&format!(r#"<w:sectPr>{MARGINS}</w:sectPr>"#));
+        let document = load(&body);
+        let top = rendered(
+            &with_vertical_alignment(&document, "top"),
+            &Options::default(),
+        );
+        let both = rendered(
+            &with_vertical_alignment(&document, "both"),
+            &Options::default(),
+        );
+        assert_eq!(flow_signature(&both), flow_signature(&top), "after={after}");
+        let spread: HashSet<usize> = both.page_valign_gaps.values().map(|gap| gap.page).collect();
+        assert!(!spread.is_empty(), "after={after}: pages are spread");
+        for page in spread {
+            let (offset, bottom) = both.valign_page_bounds[page - 1];
+            let excess = page_line_excess(&both, offset, bottom).expect("body lines");
+            assert!(
+                excess <= 0.01,
+                "after={after}: page {page}'s last line ends {excess}px below the body bottom"
+            );
+        }
+        assert_eq!(spread_page_overflow(&top, &both), None, "after={after}");
+    }
 }
 
 /// The hook behind the seek fix: an element resumed from a snapshot taken
@@ -602,6 +709,7 @@ fn justified_gap_is_applied_absolutely_on_resume() {
     ] {
         renderer.current_page_number = gap.page;
         renderer.valign_gap_applied = (0, 0.0);
+        renderer.valign_hook_seen = true;
         renderer.current_y = start;
         renderer.begin_justified_valign_element(element);
         assert!(
@@ -692,4 +800,48 @@ fn justified_fixture_subset_keeps_pagination() {
     );
     let changed = report(&results);
     assert!(changed.is_empty(), "flow changed: {changed:#?}");
+}
+
+/// Typing cost in a ~50-page document, `both` against `top`: a justified
+/// document re-measures on every edit (as `center`/`bottom` do). Prints the
+/// mean time per keystroke; run with `--ignored --nocapture`.
+#[test]
+#[ignore]
+fn valign_typing_timing() {
+    let mut body = String::new();
+    for index in 0..900 {
+        body.push_str(&paragraph(
+            &format!("{index} {}", "typing text ".repeat(9)),
+            "",
+        ));
+    }
+    body.push_str(&format!(r#"<w:sectPr>{MARGINS}</w:sectPr>"#));
+    let base = load(&body);
+    for align in ["top", "both"] {
+        let mut document = with_vertical_alignment(&base, align);
+        let mut renderer = rendered(&document, &Options::default());
+        let pages = renderer.current_page_number;
+        let edited = 450;
+        renderer.clear_dirty_regions();
+        renderer.set_visible_page_range(Some(pages / 2..=pages / 2));
+        let keystrokes = 20;
+        let started = std::time::Instant::now();
+        for _ in 0..keystrokes {
+            if let Some(body) = document.body.as_mut() {
+                if let BodyElement::Paragraph(paragraph) = &mut body.elements[edited] {
+                    paragraph.runs[0].text.push('x');
+                }
+            }
+            renderer.set_incremental_dirty_from(edited);
+            renderer
+                .render(&document, &Options::default())
+                .expect("edit render");
+            renderer.clear_dirty_regions();
+        }
+        let per_key = started.elapsed() / keystrokes;
+        eprintln!(
+            "valign typing: {align}: {pages} pages, {per_key:?} per keystroke, last pass laid out {} elements",
+            renderer.last_render_body_element_count
+        );
+    }
 }
