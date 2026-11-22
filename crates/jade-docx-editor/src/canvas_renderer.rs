@@ -708,6 +708,12 @@ fn section_justified_gap(
     (page_content_height - used_content_height).max(0.0) / gap_count as f64
 }
 
+/// A cached consumed space-after (`NaN` = not recorded).
+#[inline]
+fn recorded_spacing_after(value: f64) -> Option<f64> {
+    (!value.is_nan()).then_some(value)
+}
+
 /// One `w:vAlign="both"` gap slot: a top-level body element shifted down on
 /// its page. Positions are absolute so that a pass resuming mid-page (a seek
 /// snapshot taken with or without the gap) lands on the same spot.
@@ -3466,8 +3472,9 @@ struct CachedParagraphRender {
     start_spacing_after_input: f64,
     end_spacing_after: Option<f64>,
     /// What `end_spacing_after` actually took (see
-    /// `ParagraphLayoutResult::trailing_spacing_after_consumed`).
-    end_spacing_after_consumed: Option<f64>,
+    /// `ParagraphLayoutResult::trailing_spacing_after_consumed`); `NaN` when
+    /// not recorded.
+    end_spacing_after_consumed: f64,
     start_line_number_state: Option<LineNumberState>,
     end_line_number_state: Option<LineNumberState>,
     /// Cached numbering counter increment needed to keep numbering state in sync when replaying.
@@ -4086,6 +4093,9 @@ where
     valign_element_space_after: Option<(usize, f64, f64)>,
     /// `(page, y, px)` the latest body paragraph's space-after really took.
     valign_spacing_after_consumed: Option<(usize, f64, f64)>,
+    /// Whether any section of the current document uses `w:vAlign="both"`.
+    /// Every justified hook and bookkeeping step is skipped when it does not.
+    valign_justify_active: bool,
     /// Set where a seek snapshot is restored: the next top-level element
     /// hook resumes from a position a painted pass already shifted.
     valign_seek_resume: bool,
@@ -9796,6 +9806,7 @@ where
             valign_flow_fallback_pages: Vec::new(),
             valign_element_space_after: None,
             valign_spacing_after_consumed: None,
+            valign_justify_active: false,
             valign_seek_resume: false,
             valign_section_mark_surfaces: Vec::new(),
             valign_page_bounds: Vec::new(),
@@ -15814,16 +15825,18 @@ where
         // during a full repaint and turned into `page_valign_offsets` at the end.
         self.valign_used_heights.clear();
         self.valign_available_heights.clear();
-        self.valign_gap_slots.clear();
-        self.valign_gap_skip_pages.clear();
-        self.valign_element_pages.clear();
-        self.valign_element_space_after = None;
-        self.valign_spacing_after_consumed = None;
-        self.valign_seek_resume = false;
-        self.valign_section_mark_surfaces.clear();
-        self.valign_page_bounds.clear();
-        self.valign_pending_gap_slot = None;
-        self.valign_gap_applied = (0, 0.0);
+        if self.valign_justify_active {
+            self.valign_gap_slots.clear();
+            self.valign_gap_skip_pages.clear();
+            self.valign_element_pages.clear();
+            self.valign_element_space_after = None;
+            self.valign_spacing_after_consumed = None;
+            self.valign_seek_resume = false;
+            self.valign_section_mark_surfaces.clear();
+            self.valign_page_bounds.clear();
+            self.valign_pending_gap_slot = None;
+            self.valign_gap_applied = (0, 0.0);
+        }
         let stable_edit_metadata = self
             .fast_replay_trigger
             .filter(|_| preserve_stable_edit_pagination)
@@ -16584,8 +16597,10 @@ where
                     let flow_before = (self.current_page_number, self.column_index);
                     let y_before = self.current_y;
                     if empty_section_mark {
-                        self.valign_section_mark_surfaces
-                            .push(self.paragraph_counter);
+                        if self.valign_justify_active {
+                            self.valign_section_mark_surfaces
+                                .push(self.paragraph_counter);
+                        }
                         let next_break = SectionBreakType::from_word_value(
                             sections[index + 1]
                                 .properties
@@ -16685,7 +16700,8 @@ where
         self.record_valign_used_height_for_current_page();
         // Endnotes continue the flow after the last body line, so a justified
         // final page that holds them stays top-aligned (unconfirmed in Word).
-        if self.document_has_notes
+        if self.valign_justify_active
+            && self.document_has_notes
             && options.render_endnotes
             && self
                 .endnote_order
@@ -17188,7 +17204,8 @@ where
             }
             return Ok(());
         }
-        if body_element_index != usize::MAX
+        if self.valign_justify_active
+            && body_element_index != usize::MAX
             && section_index != usize::MAX
             && !self.rendering_header_footer_story
             && !self.rendering_note_story
@@ -17412,7 +17429,9 @@ where
                 amount,
             )
         });
-        self.note_replayed_spacing_after(layout.trailing_spacing_after_consumed);
+        self.note_replayed_spacing_after(recorded_spacing_after(
+            layout.trailing_spacing_after_consumed,
+        ));
         self.last_render_prefix_skips += 1;
         true
     }
@@ -17949,6 +17968,14 @@ where
                 )
             })
             .collect();
+        // Justified (`both`) bookkeeping runs only when some section uses it,
+        // so every other document skips it outright.
+        self.valign_justify_active = if self.section_vertical_alignments.is_empty() {
+            self.section_vertical_align == SectionVerticalAlign::Both
+        } else {
+            self.section_vertical_alignments
+                .contains(&SectionVerticalAlign::Both)
+        };
 
         // Resolve the fallback and section-owned page borders.
         self.page_borders = document
@@ -19242,10 +19269,13 @@ where
                                             amount,
                                         )
                                     });
-                                self.valign_spacing_after_consumed =
-                                    entry.end_spacing_after_consumed.map(|consumed| {
-                                        (self.current_page_number, self.current_y, consumed)
-                                    });
+                                if self.valign_justify_active {
+                                    self.valign_spacing_after_consumed =
+                                        recorded_spacing_after(entry.end_spacing_after_consumed)
+                                            .map(|consumed| {
+                                                (self.current_page_number, self.current_y, consumed)
+                                            });
+                                }
                                 return Ok(());
                             }
                         } else {
@@ -19344,10 +19374,14 @@ where
                                     amount,
                                 )
                             });
-                            self.valign_spacing_after_consumed =
-                                entry.end_spacing_after_consumed.map(|consumed| {
+                            if self.valign_justify_active {
+                                self.valign_spacing_after_consumed = recorded_spacing_after(
+                                    entry.end_spacing_after_consumed,
+                                )
+                                .map(|consumed| {
                                     (self.current_page_number, self.current_y, consumed)
                                 });
+                            }
                             return Ok(());
                         }
                     } else {
@@ -19436,9 +19470,12 @@ where
                             amount,
                         )
                     });
-                    self.valign_spacing_after_consumed = entry
-                        .end_spacing_after_consumed
+                    if self.valign_justify_active {
+                        self.valign_spacing_after_consumed = recorded_spacing_after(
+                            entry.end_spacing_after_consumed,
+                        )
                         .map(|consumed| (self.current_page_number, self.current_y, consumed));
+                    }
                     return Ok(());
                 }
             } else if shift_replay {
@@ -19634,9 +19671,12 @@ where
                             amount,
                         )
                     });
-                    self.valign_spacing_after_consumed = entry
-                        .end_spacing_after_consumed
+                    if self.valign_justify_active {
+                        self.valign_spacing_after_consumed = recorded_spacing_after(
+                            entry.end_spacing_after_consumed,
+                        )
                         .map(|consumed| (self.current_page_number, self.current_y, consumed));
+                    }
                     return Ok(());
                 }
             }
@@ -19785,10 +19825,13 @@ where
                                             amount,
                                         )
                                     });
-                                self.valign_spacing_after_consumed =
-                                    entry.end_spacing_after_consumed.map(|consumed| {
-                                        (self.current_page_number, self.current_y, consumed)
-                                    });
+                                if self.valign_justify_active {
+                                    self.valign_spacing_after_consumed =
+                                        recorded_spacing_after(entry.end_spacing_after_consumed)
+                                            .map(|consumed| {
+                                                (self.current_page_number, self.current_y, consumed)
+                                            });
+                                }
                                 return Ok(());
                             }
                         } else {
@@ -19888,10 +19931,14 @@ where
                                     amount,
                                 )
                             });
-                            self.valign_spacing_after_consumed =
-                                entry.end_spacing_after_consumed.map(|consumed| {
+                            if self.valign_justify_active {
+                                self.valign_spacing_after_consumed = recorded_spacing_after(
+                                    entry.end_spacing_after_consumed,
+                                )
+                                .map(|consumed| {
                                     (self.current_page_number, self.current_y, consumed)
                                 });
+                            }
                             return Ok(());
                         }
                     }
@@ -20058,9 +20105,12 @@ where
                                 amount,
                             )
                         });
-                        self.valign_spacing_after_consumed = entry
-                            .end_spacing_after_consumed
+                        if self.valign_justify_active {
+                            self.valign_spacing_after_consumed = recorded_spacing_after(
+                                entry.end_spacing_after_consumed,
+                            )
                             .map(|consumed| (self.current_page_number, self.current_y, consumed));
+                        }
                         return Ok(());
                     }
                 } else {
@@ -20157,9 +20207,12 @@ where
                             amount,
                         )
                     });
-                    self.valign_spacing_after_consumed = entry
-                        .end_spacing_after_consumed
+                    if self.valign_justify_active {
+                        self.valign_spacing_after_consumed = recorded_spacing_after(
+                            entry.end_spacing_after_consumed,
+                        )
                         .map(|consumed| (self.current_page_number, self.current_y, consumed));
+                    }
                     return Ok(());
                 }
             }
@@ -22254,11 +22307,13 @@ where
             }
             // What the space-after really took: a space that does not fit is
             // clamped at the page foot, and a suppressed one takes nothing.
-            self.valign_spacing_after_consumed = Some((
-                self.current_page_number,
-                self.current_y,
-                self.current_y - y_before_spacing_after,
-            ));
+            if self.valign_justify_active {
+                self.valign_spacing_after_consumed = Some((
+                    self.current_page_number,
+                    self.current_y,
+                    self.current_y - y_before_spacing_after,
+                ));
+            }
             // Word collapses the next paragraph's before spacing against the
             // specified after spacing even when contextual spacing hides it.
             self.trailing_spacing_after = Some((
@@ -22372,7 +22427,9 @@ where
                         end_spacing_after: self
                             .trailing_spacing_after
                             .map(|(_, _, _, amount)| amount),
-                        end_spacing_after_consumed: self.current_spacing_after_consumed(),
+                        end_spacing_after_consumed: self
+                            .current_spacing_after_consumed()
+                            .unwrap_or(f64::NAN),
                         numbering_increment,
                         start_numbering_state: cache_numbering_state,
                         commands: cache_commands.into(),
@@ -22671,7 +22728,8 @@ where
             );
             result.trailing_spacing_after =
                 self.trailing_spacing_after.map(|(_, _, _, amount)| amount);
-            result.trailing_spacing_after_consumed = self.current_spacing_after_consumed();
+            result.trailing_spacing_after_consumed =
+                self.current_spacing_after_consumed().unwrap_or(f64::NAN);
             self.paragraph_layout_cache
                 .borrow_mut()
                 .insert(paragraph_index, result);
@@ -39516,6 +39574,9 @@ where
     /// The space-after the paragraph that just ended at `current_y` really
     /// took, when the latest record is for that spot.
     fn current_spacing_after_consumed(&self) -> Option<f64> {
+        if !self.valign_justify_active {
+            return None;
+        }
         self.valign_spacing_after_consumed
             .filter(|(page, y, _)| {
                 *page == self.current_page_number && (y - self.current_y).abs() < 0.01
@@ -39526,6 +39587,9 @@ where
     /// A cached paragraph was replayed to `current_y`: restore what its
     /// space-after took, as its live layout recorded.
     fn note_replayed_spacing_after(&mut self, consumed: Option<f64>) {
+        if !self.valign_justify_active {
+            return;
+        }
         self.valign_spacing_after_consumed =
             consumed.map(|consumed| (self.current_page_number, self.current_y, consumed));
     }
@@ -39542,8 +39606,10 @@ where
     /// How far the body bottom is moved down so fit decisions see the natural
     /// flow: the justified gap already added on this page. Footnote, note
     /// and header/footer stories keep the real bottom.
+    #[inline]
     fn valign_gap_bottom_allowance(&self) -> f64 {
-        if self.pageless_mode
+        if !self.valign_justify_active
+            || self.pageless_mode
             || self.rendering_page_footnotes
             || self.rendering_header_footer_story
             || self.rendering_note_story
@@ -67973,7 +68039,7 @@ mod tests {
             start_line_number_state: None,
             end_line_number_state: None,
             end_spacing_after: None,
-            end_spacing_after_consumed: None,
+            end_spacing_after_consumed: f64::NAN,
             numbering_increment: None,
             start_numbering_state: None,
             commands: Vec::new().into(),
@@ -68961,7 +69027,7 @@ mod tests {
             start_line_number_state: None,
             end_line_number_state: None,
             end_spacing_after: None,
-            end_spacing_after_consumed: None,
+            end_spacing_after_consumed: f64::NAN,
             numbering_increment: None,
             start_numbering_state: None,
             commands: Vec::new().into(),
@@ -74606,7 +74672,7 @@ mod tests {
                 start_line_number_state: None,
                 end_line_number_state: None,
                 end_spacing_after: None,
-                end_spacing_after_consumed: None,
+                end_spacing_after_consumed: f64::NAN,
                 numbering_increment: None,
                 start_numbering_state: None,
                 commands: Vec::new().into(),
@@ -74678,7 +74744,7 @@ mod tests {
                 start_line_number_state: None,
                 end_line_number_state: None,
                 end_spacing_after: None,
-                end_spacing_after_consumed: None,
+                end_spacing_after_consumed: f64::NAN,
                 numbering_increment: None,
                 start_numbering_state: None,
                 commands: Vec::new().into(),
@@ -74699,7 +74765,7 @@ mod tests {
                 start_line_number_state: None,
                 end_line_number_state: None,
                 end_spacing_after: None,
-                end_spacing_after_consumed: None,
+                end_spacing_after_consumed: f64::NAN,
                 numbering_increment: None,
                 start_numbering_state: None,
                 commands: Vec::new().into(),
@@ -74829,7 +74895,7 @@ mod tests {
                     start_line_number_state: None,
                     end_line_number_state: None,
                     end_spacing_after: None,
-                    end_spacing_after_consumed: None,
+                    end_spacing_after_consumed: f64::NAN,
                     numbering_increment: None,
                     start_numbering_state: None,
                     commands: Vec::new().into(),

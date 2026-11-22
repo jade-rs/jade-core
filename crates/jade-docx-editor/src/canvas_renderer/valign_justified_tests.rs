@@ -885,8 +885,7 @@ fn justified_cached_layouts_keep_the_consumed_space_after() {
         for index in 0..40 {
             let entry = cache.get_entry(index).expect("cached layout");
             let nominal = entry.trailing_spacing_after.expect("space-after");
-            let consumed = entry
-                .trailing_spacing_after_consumed
+            let consumed = recorded_spacing_after(entry.trailing_spacing_after_consumed)
                 .expect("consumed space-after");
             assert!(consumed <= nominal + 1e-9, "paragraph {index}");
             if consumed + 0.01 < nominal {

@@ -1008,8 +1008,9 @@ pub struct ParagraphLayoutResult {
     pub trailing_spacing_after: Option<f64>,
     /// How much of `trailing_spacing_after` the paragraph actually took (a
     /// space-after clamped at the page foot takes less, a suppressed one
-    /// nothing). Restored on replay for section `w:vAlign="both"`.
-    pub trailing_spacing_after_consumed: Option<f64>,
+    /// nothing). Restored on replay for section `w:vAlign="both"`; `NaN`
+    /// when not recorded (a plain `f64` keeps the cached entry small).
+    pub trailing_spacing_after_consumed: f64,
     /// Height of this paragraph.
     pub height: f64,
 }
@@ -1043,7 +1044,7 @@ impl ParagraphLayoutResult {
             start_last_line_baseline,
             end_last_line_baseline,
             trailing_spacing_after: None,
-            trailing_spacing_after_consumed: None,
+            trailing_spacing_after_consumed: f64::NAN,
             height: end_y - start_y,
         }
     }
