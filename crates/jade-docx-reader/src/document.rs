@@ -5397,6 +5397,14 @@ pub struct PageBorders {
     /// the text margin). Defaults to `text` semantics when absent.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset_from: Option<String>,
+    /// `w:display` — `allPages` (the default), `firstPage` (only the
+    /// section's first page) or `notFirstPage` (every page but the first).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<String>,
+    /// `w:zOrder` — `front` (the default: in front of text) or `back`
+    /// (behind text).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub z_order: Option<String>,
 }
 
 impl PageBorders {

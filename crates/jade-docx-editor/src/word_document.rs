@@ -11072,22 +11072,37 @@ impl WordDocument {
         }
         let mut normalized = spec.map(PageBorderSpec::normalized).transpose()?;
         if let Some(borders) = normalized.as_mut() {
+            let current = self.page_borders(section);
+            // The frame dialog does not edit which pages carry the frame
+            // (`w:display`) or whether it sits behind text (`w:zOrder`):
+            // keep the section's own values.
+            if let Some(current) = current {
+                borders.display = current.display.clone();
+                borders.z_order = current.z_order.clone();
+            }
             // Word uses edge-local `w:space` even though the UI exposes one
-            // frame anchor. Make the authored default explicit so export and
-            // reopen retain exactly the geometry Jade renders.
-            let default_space = if borders.offset_from.as_deref() == Some("page") {
-                24
-            } else {
-                0
+            // frame anchor. An edge measured from the same reference keeps
+            // its authored space; any other takes Word's default for the
+            // anchor (24pt from the page edge; 1pt above and below the text,
+            // 4pt beside it), written out so export and reopen retain exactly
+            // the geometry Jade renders.
+            let anchored_to_page = |offset_from: Option<&str>| offset_from == Some("page");
+            let page = anchored_to_page(borders.offset_from.as_deref());
+            let kept =
+                current.filter(|current| anchored_to_page(current.offset_from.as_deref()) == page);
+            let current_space = |edge: fn(&PageBorders) -> &Option<BorderEdge>| {
+                kept.and_then(|current| edge(current).as_ref())
+                    .and_then(|edge| edge.space)
             };
-            for edge in [
-                &mut borders.top,
-                &mut borders.bottom,
-                &mut borders.left,
-                &mut borders.right,
+            for (edge, current, text_default) in [
+                (&mut borders.top, current_space(|b| &b.top), 1),
+                (&mut borders.bottom, current_space(|b| &b.bottom), 1),
+                (&mut borders.left, current_space(|b| &b.left), 4),
+                (&mut borders.right, current_space(|b| &b.right), 4),
             ] {
                 if let Some(edge) = edge.as_mut() {
-                    edge.space = Some(default_space);
+                    let default = if page { 24 } else { text_default };
+                    edge.space = Some(current.unwrap_or(default));
                 }
             }
         }
@@ -12212,16 +12227,24 @@ impl WordDocument {
                 )));
             }
         }
-        let offset_from = borders.offset_from.clone();
+        let container_attributes = [
+            ("w:zOrder", borders.z_order.clone()),
+            ("w:display", borders.display.clone()),
+            ("w:offsetFrom", borders.offset_from.clone()),
+        ];
         self.upsert_sect_pr_child(sect_pr_id, "w:pgBorders", move |element| {
-            element
-                .attributes
-                .retain(|attribute| attribute.name != "w:offsetFrom");
-            if let Some(offset_from) = offset_from {
-                element.attributes.push(XmlAttribute {
-                    name: "w:offsetFrom".to_string(),
-                    value: offset_from,
-                });
+            element.attributes.retain(|attribute| {
+                !container_attributes
+                    .iter()
+                    .any(|(name, _)| attribute.name == *name)
+            });
+            for (name, value) in container_attributes {
+                if let Some(value) = value {
+                    element.attributes.push(XmlAttribute {
+                        name: name.to_string(),
+                        value,
+                    });
+                }
             }
             let mut extensions = std::mem::take(&mut element.children)
                 .into_iter()

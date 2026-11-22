@@ -983,6 +983,30 @@ pub(super) struct CellBorderSpec {
 }
 
 impl CellBorderSpec {
+    /// How wide a band, in px, [`CanvasRenderer::draw_border_side`] paints
+    /// across the line it is given: every rule of a double or banded style
+    /// and the gaps between them, or an art border's tiles.
+    pub(super) fn painted_band_px(&self) -> f64 {
+        let width = self.width_px;
+        match self.kind {
+            BorderKind::None => 0.0,
+            BorderKind::Thick => width.max(2.0),
+            BorderKind::Double => {
+                let metrics = jade_docx_layout::border_geometry::double_border_metrics(
+                    width,
+                    jade_docx_layout::line_metrics::word_layout_platform(),
+                );
+                2.0 * metrics.stripe_offset + metrics.stripe_width
+            }
+            BorderKind::Triple => {
+                let stripe = (width / 5.0).max(0.5);
+                2.0 * (width * 2.0 / 5.0).max(stripe) + stripe
+            }
+            kind if kind.is_banded_style() => width * super::border_styles::band_units(kind),
+            _ => width,
+        }
+    }
+
     fn hidden() -> Self {
         Self {
             kind: BorderKind::None,
