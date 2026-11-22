@@ -419,6 +419,46 @@ SHARED_ORIGINALS = {
         '481565abb6f1950da3904986542cb95fbedb564e43a0e6ff10b23f2e5b3ecf60',
         '5cdebae7e8ae60621a2e7b00e86d5d982a7cb6760e6c6fef477ef57c56015b97',
         '664310d26e900561a3b56991caeff51e2c67c5e8893351e6155ac6649e3dde30', 2, 107),
+    'probe-table-flow-continuous-vertical-merge-start-column-1': (
+        '4676dd4f7e155555b8688f5141677dde47b6d69470d5c1eb1cbc0a1904cca378',
+        'af3b37320ae0fefa71427722c2025bbb585cdb8537b803b769694737d32a5310',
+        'e3a278070c42dd740bc32145a411c9a359a1bf7cc5b79bc6f5c8daa4bb1d2b06', 2, 282),
+    'probe-table-flow-continuous-vertical-merge-start-column-2': (
+        '1597dfc6cb93d4fd97bf64899f76ac1b36e4fe97be29bad19cdac77457349d83',
+        'c279d74ca975d268b33ede500441cee2d6088487aeb9e25d3b041720045beda1',
+        '56c114badb0430a0d1f957212b5f210eb3f4eb4e449a41a247a2bacc2b73dee0', 3, 270),
+    'probe-table-flow-split-rows-continuous-start-column-1': (
+        'a47ad80e3904b49ed758c672faa0b7ccac3890db02d6288fd24fc3f32f8946e0',
+        'f1a0ddbf3fb9fe4df688ab55dfa131005f412df8194e7577e16c491709dae744',
+        '39e7a5e32de47fec2d11046dd3e816c08940be918785dba6b5323614a2caf321', 4, 752),
+    'probe-table-flow-split-rows-start-column-1': (
+        'a165ed52bb7cd7946c868e80c16938057f2328b838e1e07b3813b43adc54bac7',
+        '9bef80a06b55791909f20d9dda11d78af410a6d107df9525c6e27cac2e4be8d5',
+        '651dc339cb2f718b88bbf9c15930a6a9fd148f0a7e492f87fa2456b157e1ec5d', 4, 615),
+    'probe-table-flow-split-rows-start-column-2': (
+        '6f99c8f0650b376f4f02bb913e479d8f71a08502dbee4b9afcf7fd8a3ba8a32d',
+        'ed5983aed16847fd7a5df6b11b484894a6be9c8632c1de5909a3ff8026077a54',
+        '9cdc53f1e44c423f1541169836c0f3082c5fa87d65f3ab5db36e645c3f3c4476', 4, 615),
+    'probe-table-flow-start-column-1': (
+        'a2ea8cefe1f356dcb1a375e7f805fc942a926e7cd682ed6dce35d59adbb458c6',
+        '14af706f357ec1aac10fc2e3eb707fbbfdeaba3b8bcf3a29638480a826d2ef43',
+        'ee8c163838037d0981d6c642cf987bade768e3783595e3b82bec7bfb82ca1bfa', 2, 107),
+    'probe-table-flow-start-column-2': (
+        'e304ac753beb4f20232b3a57402a90648e8a94d11930f96ed876ec823fb0841a',
+        '5d9f00cb863b475adebe81deb4eefebad19cab33a9fc195e0f433c9061bda51e',
+        'ff8900d22e1276a51800dcf4d87b2649386a02362da7c7c9f9bac4e4ac8e62b0', 2, 107),
+    'table-flow-continuous-start-column-1-mac': (
+        '1b4508e5c029d061df1e8c0085c94e280486caca837df868db72cacfb58a876b',
+        'a9f529fde1fd546a596036bbec148e14c40aeefa3a6ac2b8e9faae32d7b865ea',
+        'b4715943d684f5803c908d520ef935347439f9abc38912a37d47cc23ba957d5d', 2, 244),
+    'table-flow-continuous-vertical-merge-start-column-2-mac': (
+        '1597dfc6cb93d4fd97bf64899f76ac1b36e4fe97be29bad19cdac77457349d83',
+        '4c2a4ed0f961344f260bd9f219b1a8f84608635536baac8a8e6cea77fb71f327',
+        '24800a0e47c5fb9465f98d4d58d7ef7f4ebb2ba6caefd7f03954465a8d129618', 3, 270),
+    'table-flow-split-rows-start-column-1-mac': (
+        'a165ed52bb7cd7946c868e80c16938057f2328b838e1e07b3813b43adc54bac7',
+        '9bef80a06b55791909f20d9dda11d78af410a6d107df9525c6e27cac2e4be8d5',
+        '651dc339cb2f718b88bbf9c15930a6a9fd148f0a7e492f87fa2456b157e1ec5d', 4, 615),
 }
 
 
@@ -501,9 +541,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 98 and sum(r['glyphs'] for r in results) == 31353,
+    require(len(results) == 108 and sum(r['glyphs'] for r in results) == 35230,
             'Shared Mac original coverage changed')
-    print('98 shared Mac originals31353: layout and painted-PDF PASS', flush=True)
+    print('108 shared Mac originals35230: layout and painted-PDF PASS', flush=True)
     return results
 
 

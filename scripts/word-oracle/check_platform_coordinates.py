@@ -237,6 +237,16 @@ PHYSICAL_FONT_CASES = {
     'probe-width-equal-pct-2500-pct-2500',
     'probe-width-equal-pct-2500-pct-5000',
     'probe-width-equal-pct-5000-pct-2500',
+    'probe-table-flow-continuous-vertical-merge-start-column-1',
+    'probe-table-flow-continuous-vertical-merge-start-column-2',
+    'probe-table-flow-split-rows-continuous-start-column-1',
+    'probe-table-flow-split-rows-start-column-1',
+    'probe-table-flow-split-rows-start-column-2',
+    'probe-table-flow-start-column-1',
+    'probe-table-flow-start-column-2',
+    'table-flow-continuous-start-column-1-mac',
+    'table-flow-continuous-vertical-merge-start-column-2-mac',
+    'table-flow-split-rows-start-column-1-mac',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -452,6 +462,16 @@ REQUIRED_CAPTURES = {
     'probe-width-equal-pct-2500-pct-2500': '20261114T004559814Z-c5e13cee',
     'probe-width-equal-pct-2500-pct-5000': '20261114T004559814Z-c5e13cee',
     'probe-width-equal-pct-5000-pct-2500': '20261114T004559814Z-c5e13cee',
+    'probe-table-flow-continuous-vertical-merge-start-column-1': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-continuous-vertical-merge-start-column-2': '20261114T020800482Z-949d78a3',
+    'probe-table-flow-split-rows-continuous-start-column-1': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-split-rows-start-column-1': '20261114T020802205Z-aa2e15c3',
+    'probe-table-flow-split-rows-start-column-2': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-start-column-1': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-start-column-2': '20261114T004434269Z-e27596ca',
+    'table-flow-continuous-start-column-1-mac': '20261114T020756625Z-d80a345e',
+    'table-flow-continuous-vertical-merge-start-column-2-mac': '20261114T020800482Z-949d78a3',
+    'table-flow-split-rows-start-column-1-mac': '20261114T020802205Z-aa2e15c3',
 }
 
 # These original inputs have distinct screen and print origins in Windows

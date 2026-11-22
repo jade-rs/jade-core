@@ -5348,6 +5348,256 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-table-flow-continuous-vertical-merge-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-continuous-vertical-merge-start-column-1/source.docx",
+        "sha256": "4676dd4f7e155555b8688f5141677dde47b6d69470d5c1eb1cbc0a1904cca378"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-continuous-vertical-merge-start-column-1/manifest.json",
+        "sha256": "af3b37320ae0fefa71427722c2025bbb585cdb8537b803b769694737d32a5310"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-table-flow-continuous-vertical-merge-start-4676dd4f",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-continuous-vertical-merge-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-continuous-vertical-merge-start-column-2/source.docx",
+        "sha256": "1597dfc6cb93d4fd97bf64899f76ac1b36e4fe97be29bad19cdac77457349d83"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-continuous-vertical-merge-start-column-2/manifest.json",
+        "sha256": "c279d74ca975d268b33ede500441cee2d6088487aeb9e25d3b041720045beda1"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020800482Z-949d78a3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020800482Z-949d78a3.zip",
+            "sha256": "41775dab7ae6c6fb0c7358ebd11e045e0e96e822ee6ba8d566dbebed33bb4ab8"
+          },
+          "capture_sha256": "561a9c1f528e2c8caa7e54637dd170b5d29804841773b2b6b6f9b5e76f4b793b",
+          "fixture": "ww14-table-flow-continuous-vertical-merge-start-colum-1597dfc6",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-split-rows-continuous-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-split-rows-continuous-start-column-1/source.docx",
+        "sha256": "a47ad80e3904b49ed758c672faa0b7ccac3890db02d6288fd24fc3f32f8946e0"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-split-rows-continuous-start-column-1/manifest.json",
+        "sha256": "f1a0ddbf3fb9fe4df688ab55dfa131005f412df8194e7577e16c491709dae744"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-table-flow-split-rows-continuous-start-col-a47ad80e",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-split-rows-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-split-rows-start-column-1/source.docx",
+        "sha256": "a165ed52bb7cd7946c868e80c16938057f2328b838e1e07b3813b43adc54bac7"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-split-rows-start-column-1/manifest.json",
+        "sha256": "9bef80a06b55791909f20d9dda11d78af410a6d107df9525c6e27cac2e4be8d5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020802205Z-aa2e15c3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020802205Z-aa2e15c3.zip",
+            "sha256": "d941e8fd4761267a3198d888807e94642db7f3599cc7116e4eed8575203aecbd"
+          },
+          "capture_sha256": "19fed2f4221aeab53f10c132adfcd3b4e6736c3ef674e09d9995646d1edaaf39",
+          "fixture": "ww14-table-flow-split-rows-start-column-1-mac-a165ed52",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-split-rows-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-split-rows-start-column-2/source.docx",
+        "sha256": "6f99c8f0650b376f4f02bb913e479d8f71a08502dbee4b9afcf7fd8a3ba8a32d"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-split-rows-start-column-2/manifest.json",
+        "sha256": "ed5983aed16847fd7a5df6b11b484894a6be9c8632c1de5909a3ff8026077a54"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-table-flow-split-rows-start-column-2-6f99c8f0",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-start-column-1/source.docx",
+        "sha256": "a2ea8cefe1f356dcb1a375e7f805fc942a926e7cd682ed6dce35d59adbb458c6"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-start-column-1/manifest.json",
+        "sha256": "14af706f357ec1aac10fc2e3eb707fbbfdeaba3b8bcf3a29638480a826d2ef43"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-table-flow-start-column-1-a2ea8cef",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-start-column-2/source.docx",
+        "sha256": "e304ac753beb4f20232b3a57402a90648e8a94d11930f96ed876ec823fb0841a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-start-column-2/manifest.json",
+        "sha256": "5d9f00cb863b475adebe81deb4eefebad19cab33a9fc195e0f433c9061bda51e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-table-flow-start-column-2-e304ac75",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "table-flow-continuous-start-column-1-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-flow-continuous-start-column-1-mac/source.docx",
+        "sha256": "1b4508e5c029d061df1e8c0085c94e280486caca837df868db72cacfb58a876b"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-flow-continuous-start-column-1-mac/manifest.json",
+        "sha256": "a9f529fde1fd546a596036bbec148e14c40aeefa3a6ac2b8e9faae32d7b865ea"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020756625Z-d80a345e",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020756625Z-d80a345e.zip",
+            "sha256": "12bc1c3d55d401451b28d7ff1661ea3f6955a692fb16373ff23cf6e343fddbf8"
+          },
+          "capture_sha256": "0070f1f0872eaa19214f394f8e37d005d7ba414a5b17c84591974d458af03faf",
+          "fixture": "ww14-table-flow-continuous-start-column-1-mac-1b4508e5",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "table-flow-continuous-vertical-merge-start-column-2-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-flow-continuous-vertical-merge-start-column-2-mac/source.docx",
+        "sha256": "1597dfc6cb93d4fd97bf64899f76ac1b36e4fe97be29bad19cdac77457349d83"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-flow-continuous-vertical-merge-start-column-2-mac/manifest.json",
+        "sha256": "4c2a4ed0f961344f260bd9f219b1a8f84608635536baac8a8e6cea77fb71f327"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020800482Z-949d78a3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020800482Z-949d78a3.zip",
+            "sha256": "41775dab7ae6c6fb0c7358ebd11e045e0e96e822ee6ba8d566dbebed33bb4ab8"
+          },
+          "capture_sha256": "561a9c1f528e2c8caa7e54637dd170b5d29804841773b2b6b6f9b5e76f4b793b",
+          "fixture": "ww14-table-flow-continuous-vertical-merge-start-colum-1597dfc6",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "table-flow-split-rows-start-column-1-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-flow-split-rows-start-column-1-mac/source.docx",
+        "sha256": "a165ed52bb7cd7946c868e80c16938057f2328b838e1e07b3813b43adc54bac7"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-flow-split-rows-start-column-1-mac/manifest.json",
+        "sha256": "9bef80a06b55791909f20d9dda11d78af410a6d107df9525c6e27cac2e4be8d5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020802205Z-aa2e15c3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020802205Z-aa2e15c3.zip",
+            "sha256": "d941e8fd4761267a3198d888807e94642db7f3599cc7116e4eed8575203aecbd"
+          },
+          "capture_sha256": "19fed2f4221aeab53f10c132adfcd3b4e6736c3ef674e09d9995646d1edaaf39",
+          "fixture": "ww14-table-flow-split-rows-start-column-1-mac-a165ed52",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
