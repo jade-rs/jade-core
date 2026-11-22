@@ -3,6 +3,15 @@ use super::*;
 #[cfg(test)]
 mod topology_tests;
 
+/// What [`CanvasRenderer::measure_elements_height`] measures.
+#[derive(Clone, Copy, Debug)]
+pub(super) enum Measure {
+    /// A keepNext group: up to the lines of its tail that cannot split.
+    GroupHead,
+    /// Every element whole, stopping once the height is past `past`.
+    Whole { past: f64 },
+}
+
 /// Source topology only. Explicit breaks and section boundaries retain priority.
 pub(super) fn group_end(
     elements: &[BodyElement],
@@ -79,6 +88,34 @@ where
         deleted: &HashMap<String, Vec<u32>>,
         first_element: usize,
         section: usize,
+    ) -> Result<f64, JsValue> {
+        self.measure_elements_height(
+            elements,
+            options,
+            numbering_part,
+            counter,
+            deleted,
+            first_element,
+            section,
+            Measure::GroupHead,
+        )
+    }
+
+    /// How tall `elements` lay out from here in the current column, with no
+    /// page or column breaks: a keepNext group as far as its tail's first
+    /// lines ([`Measure::GroupHead`]), or whole until past a height
+    /// ([`Measure::Whole`]).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn measure_elements_height(
+        &mut self,
+        elements: &[BodyElement],
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        counter: &NumberingCounter,
+        deleted: &HashMap<String, Vec<u32>>,
+        first_element: usize,
+        section: usize,
+        measure: Measure,
     ) -> Result<f64, JsValue> {
         let mut measurer = self
             .keep_next_measurer
@@ -276,15 +313,21 @@ where
         std::mem::swap(&mut measurer.math_fonts, &mut self.math_fonts);
         // A group ending at a table, a page break or the section end can
         // have no tail paragraph.
+        let group_head = matches!(measure, Measure::GroupHead);
         let tail = elements.len().checked_sub(1).filter(|&last| {
-            elements[last].as_paragraph().is_some_and(|paragraph| {
-                !paragraph
-                    .properties
-                    .as_ref()
-                    .and_then(|props| props.keep_next)
-                    .unwrap_or(false)
-            })
+            group_head
+                && elements[last].as_paragraph().is_some_and(|paragraph| {
+                    !paragraph
+                        .properties
+                        .as_ref()
+                        .and_then(|props| props.keep_next)
+                        .unwrap_or(false)
+                })
         });
+        let past = match measure {
+            Measure::Whole { past } => Some(past),
+            Measure::GroupHead => None,
+        };
         measurer.keep_next_tail_bottom = None;
         measurer.paragraph_join = None;
         measurer.paragraph_join_last = None;
@@ -304,8 +347,9 @@ where
                     .as_paragraph()
                     .is_some()
                     .then_some(Some(offset) == tail);
-                measurer.keep_next_table_prefix =
-                    offset + 1 == elements.len() && matches!(element, BodyElement::Table(_));
+                measurer.keep_next_table_prefix = group_head
+                    && offset + 1 == elements.len()
+                    && matches!(element, BodyElement::Table(_));
                 measurer.render_body_element(
                     element,
                     options,
@@ -316,6 +360,9 @@ where
                     section,
                 )?;
                 if measurer.keep_next_tail_bottom.is_some() {
+                    break;
+                }
+                if past.is_some_and(|past| measurer.current_y - start_y > past) {
                     break;
                 }
             }

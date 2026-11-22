@@ -2147,6 +2147,9 @@ struct ColumnLayout {
     offsets: Vec<f64>,
     /// Top of a continuous section on the page where it begins.
     section_top: Option<(usize, f64)>,
+    /// The lowest point an earlier column reached on a page: a continuous
+    /// section after the columns starts below the tallest of them.
+    flow_bottom: Option<(usize, f64)>,
     /// Whether a vertical separator rule should be drawn in each gutter
     /// (`w:cols w:sep="true"`, ECMA-376 Part 1 §17.6.4).
     separator: bool,
@@ -2221,6 +2224,7 @@ impl ColumnLayout {
             widths,
             offsets,
             section_top: None,
+            flow_bottom: None,
             separator: false,
         }
     }
@@ -3767,6 +3771,14 @@ where
     auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
     measuring_keep_next: bool,
+    /// A multi-column section ended by a continuous break is balanced on
+    /// its last page, as Word balances it: on `page`, a column moves on to
+    /// the next once a line would start at or below `limit`.
+    column_balance: Option<(usize, f64)>,
+    /// The page and column top whose separators were last drawn.
+    column_separators_drawn: Option<(usize, u64)>,
+    /// The page whose balance was last worked out.
+    column_balance_page: Option<usize>,
     /// Set while a keepNext group measurement lays out a group member after
     /// the first: `Some(true)` for the final, non-keepNext paragraph,
     /// `Some(false)` for a keepNext one. Only the member's first lines that
@@ -8894,7 +8906,79 @@ where
     /// footnote area out in the section's columns: the notes referenced in
     /// the column that ends go at its foot, and a note it could not hold
     /// continues at the foot of the next.
+    /// Works out, once per page, where the columns of a section ended by a
+    /// continuous break balance: at the first element of a page's first
+    /// column, the rest of the section is measured in one column, and when
+    /// it fits the page's columns, each column but the last takes an equal
+    /// share of it — the first the longer, as Word fills them.
+    #[allow(clippy::too_many_arguments)]
+    fn balance_columns_from(
+        &mut self,
+        rest: &[BodyElement],
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        counter: &NumberingCounter,
+        deleted: &HashMap<String, Vec<u32>>,
+        first_element: usize,
+        section: usize,
+    ) -> Result<(), JsValue> {
+        let columns = self.column_layout.count();
+        if columns < 2
+            || self.column_index != 0
+            || self.measuring_keep_next
+            || self.pageless_mode
+            || self.rendering_header_footer_story
+            || self.rendering_note_story
+            || self.paragraph_frame_column.is_some()
+            || self.column_balance_page == Some(self.current_page_number)
+        {
+            return Ok(());
+        }
+        self.column_balance_page = Some(self.current_page_number);
+        self.column_balance = None;
+        let top = self.current_column_top();
+        let used = (self.current_y - top).max(0.0);
+        let room = (self.effective_body_bottom() - top).max(0.0) * columns as f64;
+        let height = self.measure_elements_height(
+            rest,
+            options,
+            numbering_part,
+            counter,
+            deleted,
+            first_element,
+            section,
+            keep_next::Measure::Whole { past: room - used },
+        )?;
+        let total = used + height;
+        if total <= room {
+            self.column_balance = Some((self.current_page_number, top + total / columns as f64));
+        }
+        Ok(())
+    }
+
+    /// Whether a line starting at `flow_y` goes on to the next column of a
+    /// balanced page ([`Self::balance_columns_from`]): a column holds the
+    /// lines that start above its share.
+    fn column_balance_reached(&self, flow_y: f64) -> bool {
+        const EPS: f64 = jade_docx_layout::paragraph_pagination::FLOW_EPSILON_PX;
+        let Some((page, limit)) = self.column_balance else {
+            return false;
+        };
+        page == self.current_page_number
+            && !self.rendering_page_footnotes
+            && !self.rendering_note_story
+            && self.column_index + 1 < self.column_layout.count()
+            && flow_y > self.current_column_top() + EPS
+            && flow_y + EPS >= limit
+    }
+
     fn advance_to_next_column(&mut self) -> Result<(), JsValue> {
+        let page = self.current_page_number;
+        let bottom = match self.column_layout.flow_bottom {
+            Some((at, y)) if at == page => y.max(self.current_y),
+            _ => self.current_y,
+        };
+        self.column_layout.flow_bottom = Some((page, bottom));
         if !self.measuring_keep_next {
             self.render_pending_footnotes_for_current_page()?;
         }
@@ -9401,6 +9485,9 @@ where
             auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
             measuring_keep_next: false,
+            column_balance: None,
+            column_separators_drawn: None,
+            column_balance_page: None,
             keep_next_tail_pending: None,
             keep_next_tail_bottom: None,
             keep_next_table_prefix: false,
@@ -11534,6 +11621,8 @@ where
     }
 
     fn clear_current_page_for_render(&mut self, page: usize) -> Result<(), JsValue> {
+        // A page drawn afresh draws its column rules afresh.
+        self.column_separators_drawn = None;
         self.current_page_cleared_whole = false;
         if self.pageless_mode {
             return Ok(());
@@ -11606,7 +11695,6 @@ where
         if !self.hides_page_chrome() {
             self.draw_page_borders(page);
         }
-        self.draw_column_separators();
         Ok(())
     }
 
@@ -11871,23 +11959,38 @@ where
         context.restore();
     }
 
-    /// Draws vertical separator rules between columns (`w:cols w:sep="true"`,
-    /// ECMA-376 Part 1 §17.6.4) on the freshly cleared current page. Each rule
-    /// is centered in its gutter and spans the body content height. No-op in
-    /// pageless mode, for single-column layouts, or when the separator is off.
-    fn draw_column_separators(&self) {
-        if self.pageless_mode {
+    /// Draws the vertical rules between the columns just laid out on this
+    /// page (`w:cols w:sep="true"`, ECMA-376 Part 1 §17.6.4), as Word draws
+    /// them: each centred in its gutter, from the columns' top down to the
+    /// foot of the tallest. Called where a stretch of columns ends — a page
+    /// break, a section change, the end of the body — once per stretch.
+    fn finish_column_separators(&mut self) {
+        if self.pageless_mode
+            || self.measuring_keep_next
+            || self.rendering_header_footer_story
+            || self.rendering_note_story
+            || self.rendering_page_footnotes
+        {
             return;
         }
         let positions = self.column_layout.separator_positions();
         if positions.is_empty() {
             return;
         }
-        let top = self.effective_body_top();
-        let bottom = self.effective_body_bottom();
+        let page = self.current_page_number;
+        let top = self.current_column_top();
+        if self.column_separators_drawn == Some((page, top.to_bits())) {
+            return;
+        }
+        let bottom = match self.column_layout.flow_bottom {
+            Some((at, y)) if at == page => y.max(self.current_y),
+            _ => self.current_y,
+        }
+        .min(self.effective_body_bottom());
         if bottom <= top {
             return;
         }
+        self.column_separators_drawn = Some((page, top.to_bits()));
         let context = self.host.painter();
         context.save();
         context.set_stroke_style_str(COLUMN_SEPARATOR_COLOR);
@@ -15966,6 +16069,16 @@ where
                 if seek_snapshot.as_ref().map(|s| s.section_index) != Some(index) {
                     self.update_doc_grid(section.properties.as_ref(), document);
                 }
+                // Word balances a section's columns on its last page when a
+                // continuous section follows (§17.18.77 `continuous`).
+                self.column_balance = None;
+                self.column_balance_page = None;
+                let balances_columns = sections.get(index + 1).is_some_and(|next| {
+                    next.properties
+                        .as_ref()
+                        .and_then(|props| props.section_type.as_deref())
+                        == Some("continuous")
+                });
 
                 let element_start =
                     if seek_snapshot.as_ref().map(|s| s.section_index) == Some(index) {
@@ -15990,6 +16103,17 @@ where
                         .is_some_and(|last| body_element_index > last)
                     {
                         self.active_keep_next_group_end = None;
+                    }
+                    if balances_columns {
+                        self.balance_columns_from(
+                            &body.elements[body_element_index..end],
+                            options,
+                            numbering_part,
+                            &numbering_counter,
+                            &deleted_numbering_offsets,
+                            body_element_index,
+                            index,
+                        )?;
                     }
                     // A later member of a join is laid out with its first.
                     let joined_member = self
@@ -16177,6 +16301,8 @@ where
 
             if truncated {
                 self.last_layout_complete = false;
+            } else {
+                self.finish_column_separators();
             }
         }
 
@@ -17766,6 +17892,8 @@ where
         target_section_index: usize,
         mut section_mark_top: Option<f64>,
     ) -> Result<(), JsValue> {
+        // The columns of the section ending get their rules.
+        self.finish_column_separators();
         let resolved = Self::resolve_section_page_settings(section_props, document);
         let resolved_direction = Self::resolve_section_text_direction(section_props, document);
 
@@ -17899,6 +18027,13 @@ where
                 // column definition here preserves the historical renderer
                 // behavior for continuous column-layout changes.
                 let previous_layout = section_mark_top.map(|_| self.column_layout.clone());
+                // Below the tallest of the columns just ended, as Word starts
+                // the section after them.
+                let tallest = (self.column_layout.count() > 1)
+                    .then_some(self.column_layout.flow_bottom)
+                    .flatten()
+                    .filter(|(page, _)| *page == self.current_page_number)
+                    .map(|(_, y)| y);
                 self.apply_columns(section_props, document);
                 if let Some((top, previous)) = section_mark_top.zip(previous_layout) {
                     if previous.widths != self.column_layout.widths
@@ -17906,6 +18041,10 @@ where
                     {
                         self.current_y = top;
                     }
+                }
+                if let Some(tallest) = tallest.filter(|tallest| *tallest > self.current_y) {
+                    self.current_y = tallest;
+                    self.last_line_baseline = tallest;
                 }
                 if self.column_layout.count() > 1 {
                     self.column_layout.section_top =
@@ -18208,6 +18347,9 @@ where
         } else {
             self.current_y
         };
+        if self.column_balance_reached(flow_y) {
+            return self.advance_to_next_column();
+        }
         if flow_y + needed > bottom_limit + jade_docx_layout::paragraph_pagination::FLOW_EPSILON_PX
         {
             if self.rendering_page_footnotes {
@@ -18218,6 +18360,7 @@ where
                 return self.advance_to_next_column();
             }
 
+            self.finish_column_separators();
             self.render_footer_simple()?;
             let previous_page_height = self.page_height;
             self.advance_page_offset(previous_page_height);
@@ -18273,6 +18416,7 @@ where
             return Ok(());
         }
 
+        self.finish_column_separators();
         self.render_footer_simple()?;
         let previous_page_height = self.page_height;
         self.advance_page_offset(previous_page_height);
@@ -76409,6 +76553,108 @@ mod tests {
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
         }
+    }
+
+    /// Word balances a multi-column section's columns before a continuous
+    /// section break: eleven equal lines go six and five, the first column
+    /// the longer, and the section after starts below the taller column.
+    #[test]
+    fn columns_before_a_continuous_break_balance_as_word_balances_them() {
+        use jade_docx_reader::document::{PageSettings, SectionColumns};
+        let settings = PageSettings {
+            width: Some(400.0),
+            height: Some(792.0),
+            margin_top: Some(72.0),
+            margin_bottom: Some(72.0),
+            margin_left: Some(40.0),
+            margin_right: Some(40.0),
+            ..Default::default()
+        };
+        let section = |count: u32, continuous: bool| SectionProperties {
+            page_settings: Some(settings.clone()),
+            section_type: continuous.then(|| "continuous".to_string()),
+            columns: Some(SectionColumns {
+                count: Some(count),
+                space: Some(20.0),
+                equal_width: Some(true),
+                separator: Some(count > 1),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let line = |text: &str| {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.properties = Some(ParagraphProperties {
+                spacing: Some(Spacing {
+                    line: Some(20.0),
+                    line_rule: Some("exact".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            BodyElement::from_paragraph(paragraph)
+        };
+        let mut elements = vec![line("intro")];
+        for item in 1..=11 {
+            elements.push(line(&format!("item {item}")));
+        }
+        elements.push(line("after"));
+        let range = |start: usize, end: usize, properties: SectionProperties| SectionRange {
+            start,
+            end,
+            properties: Some(properties),
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            page_settings: Some(settings.clone()),
+            default_section: Some(section(1, true)),
+            sections: vec![
+                range(0, 1, section(1, false)),
+                range(1, 12, section(2, true)),
+                range(12, 13, section(1, true)),
+            ],
+            ..Default::default()
+        };
+        let (mut renderer, painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let paragraphs = renderer.selection.paragraphs();
+        let first = |index: usize| paragraphs[index].lines[0].clone();
+        let left = first(1).start_x;
+        let in_second = (1..=11)
+            .filter(|&item| first(item).start_x > left + points_to_px(100.0))
+            .collect::<Vec<_>>();
+        assert_eq!(in_second, (7..=11).collect::<Vec<_>>());
+        assert!((first(7).absolute_top - first(1).absolute_top).abs() < 1.0);
+        // Below the first, taller column, not over its sixth line.
+        assert!(first(12).absolute_top >= first(6).absolute_top + points_to_px(20.0) - 1.0);
+        assert!((first(12).start_x - left).abs() < 1.0);
+        // The rule between the columns runs beside them only: not through
+        // the paragraphs above and below.
+        let ops = painter.ops();
+        let rules = ops
+            .windows(2)
+            .filter_map(|pair| match pair {
+                [jade_painter::recording::Op::MoveTo(x0, y0), jade_painter::recording::Op::LineTo(x1, y1)]
+                    if (x0 - x1).abs() < 0.01
+                        && y1 - y0 > points_to_px(40.0)
+                        && *x0 > left + points_to_px(100.0) =>
+                {
+                    Some((*y0, *y1))
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(rules.len(), 1, "{rules:?}");
+        let (top, bottom) = rules[0];
+        assert!(top >= first(1).absolute_top - 1.0, "{top}");
+        assert!(bottom <= first(12).absolute_top + 1.0, "{bottom}");
+        assert!(
+            bottom >= first(6).absolute_top + points_to_px(20.0) - 1.0,
+            "{bottom}"
+        );
     }
 
     /// Word lays the footnote area out in a multi-column section's columns:
