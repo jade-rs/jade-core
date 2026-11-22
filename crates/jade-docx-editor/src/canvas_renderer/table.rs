@@ -4690,6 +4690,18 @@ where
                         border_sides,
                     )?;
                 }
+                self.paint_vertical_merge_continuation_selection(&CellSelectionTarget {
+                    table_id: table_index,
+                    row: row_index,
+                    column: cell.column_index,
+                    column_span: cell.span,
+                    rect: (
+                        cell_rect.x,
+                        draw_rect.y,
+                        cell_rect.width,
+                        draw_rect.height.min(row_height),
+                    ),
+                })?;
                 // In pre-assigned mode `assign_row_paragraph_indices` already
                 // reserved this continuation cell's paragraphs, so advancing the
                 // counter again here would double-count them.
@@ -4773,6 +4785,23 @@ where
                 }
             }
 
+            // The same page fragment the cell registry records below.
+            let selection_target = CellSelectionTarget {
+                table_id: table_index,
+                row: row_index,
+                column: cell.column_index,
+                column_span: cell.span,
+                rect: (cell_rect.x, draw_rect.y, cell_rect.width, draw_rect.height),
+            };
+            let selection_frame = self.begin_cell_selection(&selection_target, || {
+                indices_preassigned.then(|| {
+                    if cell.selection_paragraph_indices.is_empty() {
+                        collect_cell_paragraph_indices(cell)
+                    } else {
+                        cell.selection_paragraph_indices.clone()
+                    }
+                })
+            })?;
             let start_paragraph = self.paragraph_counter;
             self.set_structure_row(row_index);
             self.render_cell_blocks(
@@ -4815,6 +4844,7 @@ where
                         .all(|index| (start_paragraph..self.paragraph_counter).contains(index)),
                 "lazy cell paragraph indices must come from this cell's render pass"
             );
+            self.finish_cell_selection(selection_frame, &selection_target, &paragraph_indices)?;
             if !paragraph_indices.is_empty() {
                 let layout = CellLayout {
                     text_bounds: cell_ink_projection_is_horizontal(cell.text_direction).then_some(
@@ -8581,6 +8611,15 @@ where
                     )?;
                 }
 
+                let selection_target = CellSelectionTarget {
+                    table_id: table_index,
+                    row: row.source_index,
+                    column: column_index,
+                    column_span: span,
+                    rect: (cell_rect.x, cell_rect.y, cell_rect.width, cell_rect.height),
+                };
+                // Nested rows number their paragraphs while painting.
+                let selection_frame = self.begin_cell_selection(&selection_target, || None)?;
                 self.set_structure_row(row_index);
                 self.render_cell_blocks(
                     cell,
@@ -8599,6 +8638,7 @@ where
                 for block in &cell.blocks {
                     paragraph_indices.extend(block.paragraph_indices.iter().copied());
                 }
+                self.finish_cell_selection(selection_frame, &selection_target, &paragraph_indices)?;
                 if !paragraph_indices.is_empty() {
                     self.selection.record_table_cell_fragment(CellLayout {
                         text_bounds: cell_ink_projection_is_horizontal(cell.text_direction)

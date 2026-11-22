@@ -334,6 +334,28 @@ pub struct CellLayout {
     pub order: usize,
 }
 
+/// The row x column region of a rectangular cell selection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CellRectSelection {
+    pub table_id: usize,
+    /// First and last row, inclusive.
+    pub rows: (usize, usize),
+    /// First and last grid column, inclusive.
+    pub columns: (usize, usize),
+}
+
+impl CellRectSelection {
+    /// Whether a cell at `row` spanning `column_span` grid columns from
+    /// `column` in table `table_id` lies in the selection.
+    pub fn contains(&self, table_id: usize, row: usize, column: usize, column_span: usize) -> bool {
+        let last = column + column_span.max(1) - 1;
+        table_id == self.table_id
+            && (self.rows.0..=self.rows.1).contains(&row)
+            && column <= self.columns.1
+            && last >= self.columns.0
+    }
+}
+
 const SOFT_BREAK_MIN_HIT_WIDTH: f64 = 8.0;
 const CARET_THICKNESS: f64 = 1.5;
 const CELL_SELECTION_GUTTER_WIDTH: f64 = 8.0;
@@ -1176,6 +1198,25 @@ impl SelectionManager {
 
     pub fn cell_selection_span(&self) -> Option<(usize, usize)> {
         self.cell_selection_bounds()
+    }
+
+    /// The table, rows and columns the active rectangular cell selection
+    /// covers, independent of cell ids. A render pass reads it before it
+    /// rebuilds the cell registry, so it can paint by cell position.
+    pub fn cell_selection_rect_bounds(&self) -> Option<CellRectSelection> {
+        let state = self.cell_selection.as_ref()?;
+        let anchor = self.cells.get(state.anchor_cell)?;
+        let focus = self.cells.get(state.focus_cell)?;
+        if anchor.table_id != focus.table_id {
+            return None;
+        }
+        let columns = |cell: &CellLayout| (cell.column, cell.column + cell.column_span.max(1) - 1);
+        let ((a0, a1), (f0, f1)) = (columns(anchor), columns(focus));
+        Some(CellRectSelection {
+            table_id: anchor.table_id,
+            rows: (anchor.row.min(focus.row), anchor.row.max(focus.row)),
+            columns: (a0.min(f0), a1.max(f1)),
+        })
     }
 
     /// Computes the set of cells inside the rectangular (row × column) region

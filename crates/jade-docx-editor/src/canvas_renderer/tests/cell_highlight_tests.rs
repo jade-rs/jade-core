@@ -1,5 +1,5 @@
 //! A fully selected table cell is filled on the page surface it sits on,
-//! whichever pass paints it.
+//! and a full pass paints the same selection as a frozen pixel pass.
 
 use super::*;
 use jade_docx_reader::document::{Table, TableCell, TableRow};
@@ -65,6 +65,82 @@ fn selection_fills(painter: &RecordingPainter) -> Vec<(f64, f64, f64, f64)> {
 }
 
 type Rect = (f64, f64, f64, f64);
+
+/// Every selection paint op: fills in the selection colour, and the path
+/// points stroked as selection edges.
+fn selection_ops(painter: &RecordingPainter) -> Vec<Op> {
+    let (mut fill, mut stroke) = (String::new(), String::new());
+    let mut stack = Vec::new();
+    let mut ops = Vec::new();
+    for op in painter.ops() {
+        match &op {
+            Op::Save => stack.push((fill.clone(), stroke.clone())),
+            Op::Restore => (fill, stroke) = stack.pop().unwrap_or_default(),
+            Op::SetFillStyle(style) => fill = style.clone(),
+            Op::SetStrokeStyle(style) => stroke = style.clone(),
+            Op::FillRect(..) if fill == SELECTION_FILL_STYLE => ops.push(op),
+            Op::MoveTo(..) | Op::LineTo(..) if stroke == SELECTION_EDGE_STYLE => ops.push(op),
+            _ => {}
+        }
+    }
+    ops
+}
+
+fn cell_id(renderer: &CanvasRenderer<RecordingPainter>, row: usize, column: usize) -> usize {
+    renderer
+        .cell_layouts_debug()
+        .iter()
+        .position(|cell| cell.row == row && cell.column == column)
+        .expect("cell")
+}
+
+/// Selects cells `from..=to` as a rectangle, as a drag across cells does.
+fn select_cells(renderer: &mut CanvasRenderer<RecordingPainter>, from: usize, to: usize) {
+    let range = renderer.selection.cell_selection_range(from, to);
+    renderer.selection.set_selection(range);
+    renderer.selection.set_cell_selection(from, to);
+}
+
+/// Selection ops of every page after a full pass, then after a frozen pass
+/// over every page, and after a frozen rerender of each page on its own.
+fn assert_full_and_frozen_passes_agree(
+    document: &Rc<Document>,
+    options: &Options,
+    renderer: &mut CanvasRenderer<RecordingPainter>,
+    pages: &[RecordingPainter],
+    context: &str,
+) {
+    let page_count = renderer.resolved_total_page_count();
+    for page in pages {
+        page.clear();
+    }
+    renderer.set_visible_page_range(None);
+    renderer.mark_full_repaint();
+    renderer
+        .render_with_numbering_rc(Rc::clone(document), options, None, None, None, None)
+        .unwrap();
+    let full: Vec<Vec<Op>> = pages[..page_count].iter().map(selection_ops).collect();
+    assert!(
+        full.iter().any(|ops| !ops.is_empty()),
+        "{context}: nothing selected"
+    );
+    frozen_rerender(renderer, pages, None);
+    for page in 0..page_count {
+        assert_eq!(
+            selection_ops(&pages[page]),
+            full[page],
+            "{context}: frozen page {page}"
+        );
+    }
+    for page in 0..page_count {
+        frozen_rerender(renderer, pages, Some(page));
+        assert_eq!(
+            selection_ops(&pages[page]),
+            full[page],
+            "{context}: frozen rerender of page {page}"
+        );
+    }
+}
 
 fn select_everything(renderer: &mut CanvasRenderer<RecordingPainter>) {
     let last = renderer.selection.paragraphs().len() - 1;
@@ -181,18 +257,13 @@ fn split_selected_cell_is_highlighted_on_both_pages_by_a_full_pass() {
         .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
         .unwrap();
 
-    for (page, (x, y, width, height)) in split_cell_fragments(&renderer) {
+    for (page, rect) in split_cell_fragments(&renderer) {
         let fills = selection_fills(&pages[page]);
         assert_on_page(&renderer, page, &fills);
-        // The part continued from the previous page used to look up the first
-        // page's fragment and fill it below this page's surface.
+        // Word fills a wholly selected cell, not each of its lines.
         assert!(
-            fills.iter().any(|&(fx, fy, fw, fh)| fx >= x - 0.5
-                && fx + fw <= x + width + 0.5
-                && fy >= y - 0.5
-                && fy + fh <= y + height + 0.5),
-            "page {page}: no highlight inside the cell fragment {:?}: {fills:?}",
-            (x, y, width, height)
+            fills.contains(&rect),
+            "page {page}: expected the cell fragment {rect:?} in {fills:?}"
         );
     }
 }
@@ -254,4 +325,204 @@ fn overlay_cell_rects_are_relative_to_their_page() {
             rect.page
         );
     }
+}
+
+#[test]
+fn full_and_frozen_passes_paint_the_same_selection() {
+    let document = Rc::new(split_cell_document());
+    let options = options_for_seek_tests();
+    let (mut renderer, pages) = selected_renderer(&document, &options);
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "all");
+
+    // From inside "Before" to inside the last cell: the cells in between are
+    // whole, the last one is partly selected and keeps its line highlight.
+    let last = renderer.selection.paragraphs().len() - 2;
+    renderer.set_selection_range(Some(SelectionRange::new(
+        TextPosition::new(0, 3),
+        TextPosition::new(last, 2),
+    )));
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "partial");
+
+    // Within the split cell only.
+    let first = renderer.cell_layouts_debug()[cell_id(&renderer, 1, 0)].paragraphs[0];
+    renderer.set_selection_range(Some(SelectionRange::new(
+        TextPosition::new(first + 2, 1),
+        TextPosition::new(first + 50, 4),
+    )));
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "in cell");
+
+    let (from, to) = (cell_id(&renderer, 0, 0), cell_id(&renderer, 1, 0));
+    select_cells(&mut renderer, from, to);
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "cells");
+}
+
+#[test]
+fn rectangular_cell_selection_fills_only_the_selected_cells() {
+    let document = Rc::new(split_cell_document());
+    let options = options_for_seek_tests();
+    let (mut renderer, pages) = selected_renderer(&document, &options);
+    // The first column of the first two rows. The linear text range under
+    // it also runs through r0c1, which must stay unpainted.
+    let (from, to) = (cell_id(&renderer, 0, 0), cell_id(&renderer, 1, 0));
+    select_cells(&mut renderer, from, to);
+    for pass in ["full", "frozen"] {
+        for page in &pages {
+            page.clear();
+        }
+        if pass == "full" {
+            renderer.mark_full_repaint();
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+        } else {
+            frozen_rerender(&mut renderer, &pages, None);
+        }
+        let mut expected = vec![Vec::new(); renderer.resolved_total_page_count()];
+        for cell in renderer.cell_layouts_debug() {
+            if cell.column == 0 && cell.row <= 1 {
+                let page = renderer.page_for_y(cell.top);
+                expected[page].push((
+                    cell.left,
+                    cell.top - renderer.page_top_y(page),
+                    cell.right - cell.left,
+                    cell.bottom - cell.top,
+                ));
+            }
+        }
+        for (page, expected) in expected.iter().enumerate() {
+            assert_eq!(
+                &selection_fills(&pages[page]),
+                expected,
+                "{pass}: page {page}"
+            );
+        }
+    }
+}
+
+#[test]
+fn cell_split_over_a_column_break_is_filled_in_both_columns() {
+    let mut document = split_cell_document();
+    document.default_section = Some(SectionProperties {
+        columns: Some(SectionColumns {
+            count: Some(2),
+            ..SectionColumns::default()
+        }),
+        ..SectionProperties::default()
+    });
+    let document = Rc::new(document);
+    let options = options_for_seek_tests();
+    let (mut renderer, pages) = selected_renderer(&document, &options);
+    let fragments = split_cell_fragments(&renderer);
+    assert!(
+        fragments.len() >= 2 && fragments[0].0 == fragments[1].0,
+        "the long cell must continue in the second column of its page: {fragments:?}"
+    );
+    assert_ne!(fragments[0].1 .0, fragments[1].1 .0);
+    for pass in ["full", "frozen"] {
+        for page in &pages {
+            page.clear();
+        }
+        if pass == "full" {
+            renderer.mark_full_repaint();
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+        } else {
+            frozen_rerender(&mut renderer, &pages, None);
+        }
+        for (page, rect) in &fragments {
+            let fills = selection_fills(&pages[*page]);
+            let close = |a: f64, b: f64| (a - b).abs() < 1e-6;
+            assert!(
+                fills.iter().any(|fill| close(fill.0, rect.0)
+                    && close(fill.1, rect.1)
+                    && close(fill.2, rect.2)
+                    && close(fill.3, rect.3)),
+                "{pass}: page {page}: expected the cell fragment {rect:?} in {fills:?}"
+            );
+        }
+    }
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "columns");
+}
+
+/// A 2-column table whose first column merges every row (`vMerge`), with
+/// rows tall enough that the merged cell runs onto the next page.
+fn vertical_merge_document() -> Document {
+    let rows = (0..6)
+        .map(|row| {
+            let lines: Vec<String> = (0..15)
+                .map(|line| format!("row {row} line {line}"))
+                .collect();
+            let lines: Vec<&str> = lines.iter().map(String::as_str).collect();
+            TableRow {
+                cells: vec![
+                    TableCell {
+                        blocks: if row == 0 {
+                            paragraphs(&["merged"])
+                        } else {
+                            Vec::new()
+                        },
+                        vertical_merge: Some(if row == 0 { "restart" } else { "continue" }.into()),
+                        ..Default::default()
+                    },
+                    TableCell {
+                        blocks: paragraphs(&lines),
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            }
+        })
+        .collect();
+    let mut elements = paragraphs(&["Before the table"]);
+    elements.push(BodyElement::Table(Box::new(Table {
+        rows,
+        ..Default::default()
+    })));
+    elements.extend(paragraphs(&["After the table"]));
+    Document {
+        body: Some(Body { elements }),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn vertically_merged_cell_is_filled_on_every_page_it_reaches() {
+    let document = Rc::new(vertical_merge_document());
+    let options = options_for_seek_tests();
+    let (mut renderer, pages) = selected_renderer(&document, &options);
+    let owner = renderer.cell_layouts_debug()[cell_id(&renderer, 0, 0)].clone();
+    let table_pages: std::collections::BTreeSet<usize> = renderer
+        .cell_layouts_debug()
+        .iter()
+        .map(|cell| renderer.page_for_y(cell.top))
+        .collect();
+    assert!(
+        table_pages.len() >= 2,
+        "the table must cross a page: {table_pages:?}"
+    );
+    for pass in ["full", "frozen"] {
+        for page in &pages {
+            page.clear();
+        }
+        if pass == "full" {
+            renderer.mark_full_repaint();
+            renderer
+                .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+                .unwrap();
+        } else {
+            frozen_rerender(&mut renderer, &pages, None);
+        }
+        for &page in &table_pages {
+            let fills = selection_fills(&pages[page]);
+            assert_on_page(&renderer, page, &fills);
+            assert!(
+                fills
+                    .iter()
+                    .any(|&(x, _, width, _)| x == owner.left && width == owner.right - owner.left),
+                "{pass}: page {page}: the merged cell is not filled: {fills:?}"
+            );
+        }
+    }
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "vmerge");
 }
