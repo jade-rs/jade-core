@@ -11096,28 +11096,12 @@ impl WordDocument {
         }
 
         self.sync_page_borders_raw(section, normalized.as_ref())?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self
-            .document_mut()
+        self.document
+            .as_ref()
             .ok_or_else(|| "document is unavailable".to_string())?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .page_borders = normalized.clone();
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .page_borders = normalized.clone();
-            if let Some(last_section) = document.sections.last_mut() {
-                last_section
-                    .properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .page_borders = normalized;
-            }
-        }
+        self.edit_section_properties(section, |properties| {
+            properties.page_borders = normalized.clone()
+        });
         Ok(true)
     }
 
@@ -11187,28 +11171,12 @@ impl WordDocument {
             Self::set_element_attr(element, "w:start", start.map(|value| value.to_string()));
         })?;
 
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self
-            .document_mut()
+        self.document
+            .as_ref()
             .ok_or_else(|| "document is unavailable".to_string())?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .page_number_type = Some(next.clone());
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .page_number_type = Some(next.clone());
-            if let Some(last_section) = document.sections.last_mut() {
-                last_section
-                    .properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .page_number_type = Some(next);
-            }
-        }
+        self.edit_section_properties(section, |properties| {
+            properties.page_number_type = Some(next.clone())
+        });
         Ok(true)
     }
 
@@ -11270,25 +11238,12 @@ impl WordDocument {
                 properties.children.insert(0, XmlNode::Element(fresh));
             }
         })?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self.document_mut().ok_or("document is unavailable")?;
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            range
-                .properties
-                .get_or_insert_with(SectionProperties::default)
-                .endnote_position = Some(position);
-        }
-        if targets_default {
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default)
-                .endnote_position = Some(position);
-            if let Some(last) = document.sections.last_mut() {
-                last.properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .endnote_position = Some(position);
-            }
-        }
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
+            properties.endnote_position = Some(position)
+        });
         Ok(true)
     }
 
@@ -11397,35 +11352,16 @@ impl WordDocument {
                 }
             }
         })?;
-        let targets_default = self.section_targets_default_sect_pr(section);
-        let document = self.document_mut().ok_or("document is unavailable")?;
-        let update = |properties: &mut SectionProperties| {
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
             if is_footnote {
                 properties.footnote_properties = Some(next.clone());
             } else {
                 properties.endnote_properties = Some(next.clone());
             }
-        };
-        if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-            update(
-                range
-                    .properties
-                    .get_or_insert_with(SectionProperties::default),
-            );
-        }
-        if targets_default {
-            update(
-                document
-                    .default_section
-                    .get_or_insert_with(SectionProperties::default),
-            );
-            if let Some(last) = document.sections.last_mut() {
-                update(
-                    last.properties
-                        .get_or_insert_with(SectionProperties::default),
-                );
-            }
-        }
+        });
         self.refresh_note_cross_references();
         Ok(true)
     }
@@ -12429,6 +12365,8 @@ impl WordDocument {
     }
 
     pub fn export_docx(&self) -> Result<Vec<u8>, DocxExportError> {
+        #[cfg(debug_assertions)]
+        self.debug_assert_section_ranges_are_derived();
         let package = self
             .package
             .as_ref()
@@ -30025,31 +29963,12 @@ impl WordDocument {
 
         self.sync_title_page_raw(different_first_page, section)?;
         let targets_default = self.section_targets_default_sect_pr(section);
-        {
-            let document = self
-                .document_mut()
-                .ok_or_else(|| "document is unavailable".to_string())?;
-            if let Some(range) = section.and_then(|index| document.sections.get_mut(index)) {
-                range
-                    .properties
-                    .get_or_insert_with(SectionProperties::default)
-                    .title_page = different_first_page;
-            }
-            if targets_default {
-                document
-                    .default_section
-                    .get_or_insert_with(SectionProperties::default)
-                    .title_page = different_first_page;
-                // The final section range mirrors the body-level `w:sectPr`;
-                // leaving it stale makes the ribbon read back the old switch.
-                if let Some(last_section) = document.sections.last_mut() {
-                    last_section
-                        .properties
-                        .get_or_insert_with(SectionProperties::default)
-                        .title_page = different_first_page;
-                }
-            }
-        }
+        self.document
+            .as_ref()
+            .ok_or_else(|| "document is unavailable".to_string())?;
+        self.edit_section_properties(section, |properties| {
+            properties.title_page = different_first_page
+        });
         if targets_default {
             self.title_page = different_first_page;
         }
@@ -30240,57 +30159,23 @@ impl WordDocument {
     ) {
         let edit_section = self.hf_edit_section;
         let targets_default = self.section_targets_default_sect_pr(edit_section);
-        if let Some(section) = edit_section.filter(|_| !targets_default) {
-            // An earlier section's properties live on the paragraph that ends
-            // it, and section ranges are rebuilt from there (a section break
-            // does). Written only into the range, the reference was dropped by
-            // the next rebuild while the exported `w:sectPr` kept it.
-            self.edit_section_properties(Some(section), |properties| {
-                Self::set_section_hf_reference(properties, role, variant, rel_id.clone())
-            });
+        self.edit_section_properties(edit_section, |properties| {
+            Self::set_section_hf_reference(properties, role, variant, rel_id.clone())
+        });
+        if !targets_default {
+            return;
         }
         let Some(document) = self.document_mut() else {
             return;
         };
-        if let Some(range) = edit_section.and_then(|index| document.sections.get_mut(index)) {
-            Self::set_section_hf_reference(
-                range
-                    .properties
-                    .get_or_insert_with(SectionProperties::default),
-                role,
-                variant,
-                rel_id.clone(),
-            );
-        }
-        if !targets_default {
-            return;
-        }
         match role {
             HeaderFooterRole::Header if variant == HeaderFooterVariant::Default => {
-                document.header_reference = Some(rel_id.clone())
+                document.header_reference = Some(rel_id)
             }
             HeaderFooterRole::Footer if variant == HeaderFooterVariant::Default => {
-                document.footer_reference = Some(rel_id.clone())
+                document.footer_reference = Some(rel_id)
             }
             _ => {}
-        }
-        Self::set_section_hf_reference(
-            document
-                .default_section
-                .get_or_insert_with(SectionProperties::default),
-            role,
-            variant,
-            rel_id.clone(),
-        );
-        if let Some(last_section) = document.sections.last_mut() {
-            Self::set_section_hf_reference(
-                last_section
-                    .properties
-                    .get_or_insert_with(SectionProperties::default),
-                role,
-                variant,
-                rel_id,
-            );
         }
     }
 
@@ -36248,6 +36133,34 @@ impl WordDocument {
     /// and `document.page_settings` from the first section — the renderer
     /// lays that section out with it, and removing or restoring a break can
     /// give the first section different properties.
+    /// Section ranges are derived from the section-ending paragraphs and the
+    /// body-level `w:sectPr`, and rebuilt from them (a section break does).
+    /// A setter that writes a range alone loses its change at the next
+    /// rebuild while the saved `w:sectPr` keeps it; section properties are
+    /// written through `edit_section_properties`. Debug builds check, on
+    /// every export, that the ranges still match what a rebuild derives.
+    #[cfg(debug_assertions)]
+    fn debug_assert_section_ranges_are_derived(&self) {
+        let Some(document) = self.document.as_deref() else {
+            return;
+        };
+        if document.body.is_none() || document.sections.is_empty() {
+            return;
+        }
+        let properties = |sections: &[SectionRange]| -> Vec<String> {
+            sections
+                .iter()
+                .map(|section| format!("{:?}", section.properties))
+                .collect()
+        };
+        debug_assert_eq!(
+            properties(&document.sections),
+            properties(&Self::section_ranges(document)),
+            "a section property was written into a section range only; \
+             write it through `edit_section_properties`"
+        );
+    }
+
     pub(crate) fn rebuild_section_ranges(document: &mut Document) {
         document.sections = Self::section_ranges(document);
         document.sync_page_settings_with_first_section();

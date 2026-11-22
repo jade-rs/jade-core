@@ -449,7 +449,11 @@ impl WordDocument {
     }
 
     /// Edits `section`'s structured properties: the terminating paragraph's
-    /// for every section but the last, the body's for the last.
+    /// for every section but the last, the body's for the last, then
+    /// rebuilds the section ranges from them. Every section-property setter
+    /// writes through here: a write into `document.sections[i]` alone is
+    /// dropped by the next rebuild (debug exports assert against it).
+    /// `None` names the body-level `w:sectPr`.
     pub(super) fn edit_section_properties(
         &mut self,
         section: Option<usize>,
