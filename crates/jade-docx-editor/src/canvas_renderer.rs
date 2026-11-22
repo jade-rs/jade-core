@@ -23558,6 +23558,11 @@ where
         // value let a plain paragraph after a replayed italic one skip its
         // `set_font` and be drawn in italics.
         self.invalidate_context_state_tracking();
+        // The column `base_x` and `column_right_edge` were measured in. A
+        // keep or widow rule below may move the whole paragraph on to the
+        // next column before its lines are placed; it is carried there
+        // whole, its indents with it.
+        let entry_column_x = self.current_column_x();
         // Group measurement consumes line geometry, never editor-only marks.
         let show_formatting_marks = show_formatting_marks && !self.measuring_keep_next;
         let mut commands_out = commands_out;
@@ -24358,8 +24363,8 @@ where
             };
 
         let mut column_origin_x = self.current_column_x();
-        let column_offset = base_x - column_origin_x;
-        let mut current_column_right = column_right_edge;
+        let column_offset = base_x - entry_column_x;
+        let mut current_column_right = column_right_edge + (column_origin_x - entry_column_x);
         const COLUMN_EPS: f64 = 1e-6;
 
         // Paragraph-scoped decoration pass.
@@ -25032,6 +25037,19 @@ where
             }
             if line_index == 0 {
                 if let Some(numbering) = pending_numbering {
+                    // Its number goes along when the paragraph started in a
+                    // later column than the one it was measured in.
+                    let column_shift = column_origin_x - entry_column_x;
+                    let shifted;
+                    let numbering = if column_shift.abs() > COLUMN_EPS {
+                        shifted = PendingNumberingRender {
+                            number_x: numbering.number_x + column_shift,
+                            ..numbering.clone()
+                        };
+                        &shifted
+                    } else {
+                        numbering
+                    };
                     self.draw_pending_numbering_marker(
                         numbering,
                         baseline,
@@ -76357,6 +76375,87 @@ mod tests {
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
         }
+    }
+
+    /// Widow control moving a whole paragraph to the next column carries it
+    /// there whole: its lines start at that column's left plus its indent,
+    /// not where they would have stood in the column it left.
+    #[test]
+    fn a_paragraph_widow_control_moves_to_the_next_column_starts_in_it() {
+        use jade_docx_reader::document::{Indent, PageSettings, SectionColumns, Spacing};
+        let mut elements = Vec::new();
+        for (text, indent) in [
+            ("filler", 0.0),
+            ("filler", 0.0),
+            ("filler", 0.0),
+            ("filler", 0.0),
+            ("one two three four five six seven eight nine", 15.0),
+        ] {
+            let mut paragraph = note_test_paragraph(text, None);
+            paragraph.properties = Some(ParagraphProperties {
+                widow_control: Some(true),
+                indent: Some(Indent {
+                    left: Some(indent),
+                    ..Default::default()
+                }),
+                spacing: Some(Spacing {
+                    line: Some(20.0),
+                    line_rule: Some("exact".into()),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            });
+            elements.push(BodyElement::from_paragraph(paragraph));
+        }
+        let settings = PageSettings {
+            width: Some(300.0),
+            height: Some(792.0),
+            margin_top: Some((792.0 - 100.0) / 2.0),
+            margin_bottom: Some((792.0 - 100.0) / 2.0),
+            margin_left: Some(20.0),
+            margin_right: Some(20.0),
+            ..Default::default()
+        };
+        let document = Document {
+            body: Some(Body { elements }),
+            page_settings: Some(settings.clone()),
+            default_section: Some(SectionProperties {
+                page_settings: Some(settings),
+                columns: Some(SectionColumns {
+                    count: Some(2),
+                    space: Some(20.0),
+                    equal_width: Some(true),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let (mut renderer, _painter) = recording_renderer();
+        renderer.pageless_mode = false;
+        let mut options = Options::default();
+        options.set_pageless(false);
+        renderer.render(&document, &options).unwrap();
+        let paragraphs = renderer.selection.paragraphs();
+        let moved = &paragraphs[4].lines;
+        assert!(moved.len() >= 2, "the paragraph wraps");
+        let filler = &paragraphs[0].lines[0];
+        // On the same page, at the second column's top.
+        assert_eq!(
+            renderer.page_for_y(moved[0].absolute_top),
+            renderer.page_for_y(filler.absolute_top)
+        );
+        assert!((moved[0].absolute_top - filler.absolute_top).abs() < 1.0);
+        // Second column: (300 - 40 - 20) / 2 = 120pt wide, starting 140pt
+        // past the first column's left; the indent comes with it.
+        let column_step = points_to_px(140.0);
+        let indent = points_to_px(15.0);
+        assert!(
+            (moved[0].start_x - (filler.start_x + column_step + indent)).abs() < 1.0,
+            "moved line starts at {} but the second column's indent is at {}",
+            moved[0].start_x,
+            filler.start_x + column_step + indent
+        );
     }
 
     /// A keepNext paragraph may itself split between its lines: Word keeps
