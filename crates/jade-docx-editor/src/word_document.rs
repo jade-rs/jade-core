@@ -11956,7 +11956,6 @@ impl WordDocument {
                     ("w:gutter", "0"),
                 ]),
             ),
-            ("w:cols", attributes(&[("w:space", "425")])),
             (
                 "w:docGrid",
                 attributes(&[("w:type", "lines"), ("w:linePitch", "360")]),
@@ -12366,7 +12365,7 @@ impl WordDocument {
 
     pub fn export_docx(&self) -> Result<Vec<u8>, DocxExportError> {
         #[cfg(debug_assertions)]
-        self.debug_assert_section_ranges_are_derived();
+        self.debug_check_section_ranges_are_derived();
         let package = self
             .package
             .as_ref()
@@ -36138,9 +36137,12 @@ impl WordDocument {
     /// A setter that writes a range alone loses its change at the next
     /// rebuild while the saved `w:sectPr` keeps it; section properties are
     /// written through `edit_section_properties`. Debug builds check, on
-    /// every export, that the ranges still match what a rebuild derives.
+    /// every export, that the ranges still match what a rebuild derives:
+    /// this crate's tests panic, and other debug builds (`wasm-dev`, whose
+    /// collaboration capture and story export also export) only warn, so a
+    /// false positive cannot end an editing session.
     #[cfg(debug_assertions)]
-    fn debug_assert_section_ranges_are_derived(&self) {
+    fn debug_check_section_ranges_are_derived(&self) {
         let Some(document) = self.document.as_deref() else {
             return;
         };
@@ -36153,12 +36155,19 @@ impl WordDocument {
                 .map(|section| format!("{:?}", section.properties))
                 .collect()
         };
-        debug_assert_eq!(
-            properties(&document.sections),
-            properties(&Self::section_ranges(document)),
-            "a section property was written into a section range only; \
-             write it through `edit_section_properties`"
-        );
+        let ranges = properties(&document.sections);
+        let derived = properties(&Self::section_ranges(document));
+        if ranges == derived {
+            return;
+        }
+        let message = "a section property was written into a section range only; \
+                       write it through `edit_section_properties`";
+        #[cfg(test)]
+        panic!("{message}\n  ranges: {ranges:?}\n derived: {derived:?}");
+        #[cfg(all(not(test), target_arch = "wasm32"))]
+        web_sys::console::warn_1(&message.into());
+        #[cfg(all(not(test), not(target_arch = "wasm32")))]
+        eprintln!("warning: {message}");
     }
 
     pub(crate) fn rebuild_section_ranges(document: &mut Document) {

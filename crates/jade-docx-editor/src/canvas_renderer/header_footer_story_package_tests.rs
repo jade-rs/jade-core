@@ -932,6 +932,31 @@ fn a_range_only_section_write_is_caught_on_export() {
     let _ = word_doc.export_docx();
 }
 
+/// A document saved without section properties gets Word's default
+/// section written when a section edit first needs one; the model and a
+/// reload of that file read the same columns.
+#[test]
+fn a_materialised_default_section_reads_back_as_the_model_has_it() {
+    let data = super::section_tests::build_docx_with_body("<w:p><w:r><w:t>only</w:t></w:r></w:p>");
+    let mut word_doc =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    word_doc
+        .set_page_number_format("upperRoman", Some(2), None)
+        .expect("page number format");
+    let columns = |word_doc: &WordDocument| {
+        let document = word_doc.document.as_deref().expect("document");
+        format!(
+            "{:?}",
+            document
+                .sections
+                .last()
+                .and_then(|section| section.properties.as_ref())
+                .map(|properties| &properties.columns)
+        )
+    };
+    assert_eq!(columns(&word_doc), columns(&reload(&word_doc)));
+}
+
 /// Seek snapshots resume the body. A story's paragraphs are numbered past
 /// the body's and laid out at body positions, so recording them would hand
 /// a seek a resume point inside a header or footer.

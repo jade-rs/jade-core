@@ -452,8 +452,12 @@ impl WordDocument {
     /// for every section but the last, the body's for the last, then
     /// rebuilds the section ranges from them. Every section-property setter
     /// writes through here: a write into `document.sections[i]` alone is
-    /// dropped by the next rebuild (debug exports assert against it).
-    /// `None` names the body-level `w:sectPr`.
+    /// dropped by the next rebuild (debug exports check against it).
+    /// `None` names the body-level `w:sectPr`. When the body ends in a
+    /// section-ending paragraph, no section reads that `w:sectPr`, so an
+    /// edit aimed at `None` changes nothing visible; the raw writers target
+    /// the same `w:sectPr`, so the model and the saved file still agree. Name
+    /// the section to change the last one.
     pub(super) fn edit_section_properties(
         &mut self,
         section: Option<usize>,
