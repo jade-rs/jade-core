@@ -11,10 +11,11 @@ const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
 const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 const REL: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
 
-/// A package of one page per section, each section ending in a page break
-/// and sharing the footer "F" followed by a PAGE field. `numbering[s]` is
-/// appended to section `s`'s properties.
-fn package(numbering: &[&str]) -> Vec<u8> {
+/// A package of sections `(properties, pages)`: each section fills `pages`
+/// pages, separated by page breaks, and ends in a next-page break. All share
+/// the footer "F" followed by a PAGE field. `properties` is appended to the
+/// section's `sectPr`.
+fn package(sections: &[(&str, usize)]) -> Vec<u8> {
     use zip::write::SimpleFileOptions;
     let geometry = r#"<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>"#;
     let section = |extra: &str| {
@@ -23,9 +24,14 @@ fn package(numbering: &[&str]) -> Vec<u8> {
         )
     };
     let mut body = String::new();
-    let last = numbering.len() - 1;
-    for (index, extra) in numbering.iter().enumerate() {
-        body.push_str(&format!("<w:p><w:r><w:t>s{index}</w:t></w:r></w:p>"));
+    let last = sections.len() - 1;
+    for (index, (extra, pages)) in sections.iter().enumerate() {
+        for page in 0..*pages {
+            if page > 0 {
+                body.push_str(r#"<w:p><w:r><w:br w:type="page"/></w:r></w:p>"#);
+            }
+            body.push_str(&format!("<w:p><w:r><w:t>s{index}</w:t></w:r></w:p>"));
+        }
         if index < last {
             body.push_str(&format!("<w:p><w:pPr>{}</w:pPr></w:p>", section(extra)));
         } else {
@@ -101,13 +107,39 @@ fn footer_numbers(data: &[u8]) -> Vec<String> {
 /// to that section alone: the sections before it number from 1.
 #[test]
 fn a_restart_in_the_last_section_leaves_earlier_pages_numbered_from_one() {
-    let numbers = footer_numbers(&package(&["", "", r#"<w:pgNumType w:start="5"/>"#]));
+    let numbers = footer_numbers(&package(&[
+        ("", 1),
+        ("", 1),
+        (r#"<w:pgNumType w:start="5"/>"#, 1),
+    ]));
     assert_eq!(numbers, ["1", "2", "5"]);
 }
 
 /// A restart in a middle section carries on into a section without one.
 #[test]
 fn a_section_without_a_start_continues_from_the_previous_one() {
-    let numbers = footer_numbers(&package(&["", r#"<w:pgNumType w:start="10"/>"#, ""]));
+    let numbers = footer_numbers(&package(&[
+        ("", 1),
+        (r#"<w:pgNumType w:start="10"/>"#, 1),
+        ("", 1),
+    ]));
     assert_eq!(numbers, ["1", "10", "11"]);
+}
+
+/// A single section's start numbers its pages from there.
+#[test]
+fn a_single_sections_start_numbers_its_pages() {
+    let numbers = footer_numbers(&package(&[(r#"<w:pgNumType w:start="5"/>"#, 2)]));
+    assert_eq!(numbers, ["5", "6"]);
+}
+
+/// A first section's start carries on through sections without one.
+#[test]
+fn a_first_sections_start_carries_on_through_later_sections() {
+    let numbers = footer_numbers(&package(&[
+        (r#"<w:pgNumType w:start="3"/>"#, 1),
+        ("", 1),
+        ("", 1),
+    ]));
+    assert_eq!(numbers, ["3", "4", "5"]);
 }

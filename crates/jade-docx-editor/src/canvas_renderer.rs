@@ -4081,7 +4081,10 @@ where
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
     page_number_format: Option<String>,
-    /// First displayed page number (`w:pgNumType/@w:start`). `None` = 1.
+    /// First displayed page number (`w:pgNumType/@w:start`) of the default
+    /// (last) section. `None` = 1. Read only when no per-section numbering is
+    /// installed (`section_page_numbering` empty); with sections, each
+    /// section's own start applies instead.
     page_number_start: Option<u32>,
     /// `w:pgNumType` per section (`document.sections` order). A section with
     /// `w:start` restarts the displayed page number; one without continues
@@ -17559,7 +17562,8 @@ where
         self.default_font_size_pt = document.default_font_size;
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
-        // from the default section. MVP: a single document-wide value.
+        // from the default section. The start is read only on the path without
+        // per-section numbering below.
         let page_number_type = document
             .default_section
             .as_ref()
