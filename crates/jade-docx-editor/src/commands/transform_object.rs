@@ -81,7 +81,10 @@ impl TransformObjectCommand {
         // Word keeps the frame an object is placed from when it is dragged:
         // one positioned from the margin stays positioned from the margin,
         // its offset taken again from there. Frames that cannot be worked
-        // out here (a character, an inside margin) become the page's.
+        // out here (a column, a character, an inside margin) become the
+        // page's: only the renderer knows which column the anchor is in, and
+        // keeping `column` with a margin-relative offset would make an
+        // object in column 2 or later jump left by the columns before it.
         let from = |position: &Option<ImagePosition>| {
             position
                 .as_ref()
@@ -89,9 +92,7 @@ impl TransformObjectCommand {
                 .map(str::to_ascii_lowercase)
         };
         let (relative_h, offset_h) = match (from(&layout.position_h).as_deref(), margins) {
-            (Some(frame @ ("margin" | "column")), Some(margins)) => {
-                (frame.to_string(), transform.x - margins.left)
-            }
+            (Some("margin"), Some(margins)) => ("margin".to_string(), transform.x - margins.left),
             _ => ("page".to_string(), transform.x),
         };
         let (relative_v, offset_v) = match (
@@ -560,6 +561,53 @@ mod tests {
         assert_eq!(image.width_px, Some(164.0));
         assert_eq!(image.height_px, Some(118.0));
         assert_eq!(image.layout.rotation_deg, Some(24.0));
+    }
+
+    /// A dragged column-relative object keeps where it was dropped: its frame
+    /// becomes the page and its offset the dropped page x, not an offset from
+    /// the left margin left labelled `column` (which would put an object
+    /// dropped in column 2 back in column 1).
+    #[test]
+    fn dragging_a_column_relative_image_positions_it_from_the_page() {
+        let mut run = image_run();
+        run.image.as_mut().expect("image").layout.position_h = Some(ImagePosition {
+            relative_from: Some("column".to_string()),
+            offset_px: Some(10.0),
+            align: None,
+        });
+        let mut word_doc = sample_document(run);
+        let mut selection = Some(SelectionRange::collapsed(TextPosition::new(0, 0)));
+        let transform = FloatingObjectTransform {
+            x: 442.0,
+            y: 56.0,
+            width: 120.0,
+            height: 80.0,
+            rotation_deg: 0.0,
+        };
+        let mut executor = CommandExecutor::new();
+        {
+            let mut ctx = CommandContext::new(&mut word_doc, &mut selection);
+            executor
+                .execute(
+                    Box::new(TransformObjectCommand::new(
+                        FloatingObjectTarget {
+                            paragraph_index: 0,
+                            run_index: 0,
+                            kind: FloatingObjectKind::Image,
+                        },
+                        transform,
+                    )),
+                    &mut ctx,
+                )
+                .expect("transform image");
+        }
+        let position = word_doc
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs[0].image.as_ref())
+            .and_then(|image| image.layout.position_h.clone())
+            .expect("horizontal position");
+        assert_eq!(position.relative_from.as_deref(), Some("page"));
+        assert_eq!(position.offset_px, Some(442.0));
     }
 
     #[test]

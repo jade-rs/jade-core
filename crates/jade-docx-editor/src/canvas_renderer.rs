@@ -20988,6 +20988,10 @@ where
         // floats anchored by this paragraph as well as still-active floats
         // from earlier body elements on the same page.
         let float_anchor_top = self.float_anchor_top(body_element_index, paragraph_top_y);
+        // Word places a `relativeFrom="column"` object from the column its
+        // anchor is in: the one this paragraph starts in, even when its lines
+        // flow on into the next column before the objects are painted.
+        let float_anchor_column = Some((self.current_column_x(), self.current_column_width()));
         let mut paragraph_float_exclusions = Vec::new();
         for (run_index, image) in &floating_images {
             let target = FloatingObjectTarget {
@@ -20995,13 +20999,14 @@ where
                 run_index: *run_index,
                 kind: FloatingObjectKind::Image,
             };
-            if let Some(bounds) = self.floating_object_wrap_exclusion(
+            if let Some(bounds) = self.floating_object_wrap_exclusion_in_column(
                 target,
                 image.width_px.unwrap_or(line_height).max(1.0),
                 image.height_px.unwrap_or(line_height).max(1.0),
                 &image.layout,
                 float_anchor_top,
                 line_height,
+                float_anchor_column,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&image.layout)));
             }
@@ -21012,13 +21017,14 @@ where
                 run_index: *run_index,
                 kind: FloatingObjectKind::TextBox,
             };
-            if let Some(bounds) = self.floating_object_wrap_exclusion(
+            if let Some(bounds) = self.floating_object_wrap_exclusion_in_column(
                 target,
                 text_box.width_px.unwrap_or(line_height).max(1.0),
                 text_box.height_px.unwrap_or(line_height).max(1.0),
                 &text_box.layout,
                 float_anchor_top,
                 line_height,
+                float_anchor_column,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&text_box.layout)));
             }
@@ -21373,19 +21379,21 @@ where
                         float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
+                        float_anchor_column,
                     )?;
                 }
                 FloatingPaintObject::TextBox {
                     run_index,
                     text_box,
                 } => {
-                    let _ = self.render_floating_text_box(
+                    let _ = self.render_floating_text_box_in_column(
                         text_box,
                         paragraph_index,
                         *run_index,
                         float_anchor_top,
                         line_height,
                         render_changes,
+                        float_anchor_column,
                     )?;
                 }
             }
@@ -21811,19 +21819,21 @@ where
                         float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
+                        float_anchor_column,
                     )?;
                 }
                 FloatingPaintObject::TextBox {
                     run_index,
                     text_box,
                 } => {
-                    let _ = self.render_floating_text_box(
+                    let _ = self.render_floating_text_box_in_column(
                         text_box,
                         paragraph_index,
                         run_index,
                         float_anchor_top,
                         line_height,
                         render_changes,
+                        float_anchor_column,
                     )?;
                 }
             }
@@ -26903,6 +26913,7 @@ where
     /// Paints a floating image (anchored via `wp:anchor`) at an absolute
     /// position relative to margins, page, paragraph, or line as specified in
     /// the DOCX. Unlike inline images it does not advance the text cursor.
+    #[allow(clippy::too_many_arguments)]
     fn render_floating_image(
         &mut self,
         image: &RunImage,
@@ -26911,6 +26922,7 @@ where
         paragraph_start_y: f64,
         line_height: f64,
         hyperlink_regions_out: Option<&mut Vec<CachedHyperlinkRegion>>,
+        anchor_column: Option<(f64, f64)>,
     ) -> Result<Option<f64>, JsValue> {
         if !matches!(image.layout.kind, RunImageKind::Floating) {
             return Ok(None);
@@ -26928,6 +26940,7 @@ where
             &image.layout,
             paragraph_start_y,
             line_height,
+            anchor_column,
         );
 
         // Always record the object region for hit-testing and selection
@@ -29720,6 +29733,7 @@ where
         true
     }
 
+    #[cfg(test)]
     fn render_floating_text_box(
         &mut self,
         text_box: &RunTextBox,
@@ -29728,6 +29742,31 @@ where
         paragraph_start_y: f64,
         line_height: f64,
         render_changes: bool,
+    ) -> Result<Option<f64>, JsValue> {
+        self.render_floating_text_box_in_column(
+            text_box,
+            paragraph_index,
+            run_index,
+            paragraph_start_y,
+            line_height,
+            render_changes,
+            None,
+        )
+    }
+
+    /// [`Self::render_floating_text_box`] with the anchor paragraph's column
+    /// `(x, width)`, the frame of `relativeFrom="column"`; `None` is the
+    /// current column.
+    #[allow(clippy::too_many_arguments)]
+    fn render_floating_text_box_in_column(
+        &mut self,
+        text_box: &RunTextBox,
+        paragraph_index: usize,
+        run_index: usize,
+        paragraph_start_y: f64,
+        line_height: f64,
+        render_changes: bool,
+        anchor_column: Option<(f64, f64)>,
     ) -> Result<Option<f64>, JsValue> {
         if !matches!(text_box.layout.kind, RunImageKind::Floating) || text_box.layout.hidden() {
             return Ok(None);
@@ -29782,6 +29821,7 @@ where
             &text_box.layout,
             paragraph_start_y,
             line_height,
+            anchor_column,
         );
         let result = self.render_floating_text_box_inner(
             text_box,
@@ -39234,6 +39274,7 @@ where
         self.selection.clamp_position(position)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn resolve_floating_object_transform(
         &self,
         target: FloatingObjectTarget,
@@ -39242,6 +39283,7 @@ where
         layout: &RunImageLayout,
         paragraph_start_y: f64,
         line_height: f64,
+        anchor_column: Option<(f64, f64)>,
     ) -> FloatingObjectTransform {
         if let Some(preview) = self.object_transform_preview.as_ref() {
             if preview.target == target {
@@ -39259,7 +39301,7 @@ where
                 layout
                     .position_h
                     .as_ref()
-                    .map(|pos| self.resolve_horizontal_position(pos, width))
+                    .map(|pos| self.resolve_horizontal_position(pos, width, anchor_column))
                     .unwrap_or(self.margin_left),
                 layout
                     .position_v
@@ -39293,6 +39335,30 @@ where
         paragraph_start_y: f64,
         line_height: f64,
     ) -> Option<FloatExclusion> {
+        self.floating_object_wrap_exclusion_in_column(
+            target,
+            width,
+            height,
+            layout,
+            paragraph_start_y,
+            line_height,
+            None,
+        )
+    }
+
+    /// [`Self::floating_object_wrap_exclusion`] with the anchor paragraph's
+    /// column `(x, width)`; `None` is the current column.
+    #[allow(clippy::too_many_arguments)]
+    fn floating_object_wrap_exclusion_in_column(
+        &self,
+        target: FloatingObjectTarget,
+        width: f64,
+        height: f64,
+        layout: &RunImageLayout,
+        paragraph_start_y: f64,
+        line_height: f64,
+        anchor_column: Option<(f64, f64)>,
+    ) -> Option<FloatExclusion> {
         if !matches!(
             layout.wrap,
             WrapMode::Square | WrapMode::Tight | WrapMode::Through | WrapMode::TopAndBottom
@@ -39306,6 +39372,7 @@ where
             layout,
             paragraph_start_y,
             line_height,
+            anchor_column,
         );
         let radians = transform.rotation_deg.to_radians();
         let rotated_width =
@@ -39539,12 +39606,24 @@ where
     /// position descriptor.  `wp:posOffset` (absolute) takes precedence; when
     /// only `wp:align` is present the object is aligned within the reference
     /// box implied by `relativeFrom`.
-    fn resolve_horizontal_position(&self, pos: &ImagePosition, width: f64) -> f64 {
+    ///
+    /// `anchor_column` is the anchor paragraph's column `(x, width)`, the
+    /// `column` frame; `None` uses the current column.
+    fn resolve_horizontal_position(
+        &self,
+        pos: &ImagePosition,
+        width: f64,
+        anchor_column: Option<(f64, f64)>,
+    ) -> f64 {
         if pos.offset_px.is_some() || pos.align.is_none() {
-            return self.resolve_horizontal_base(pos.relative_from.as_deref(), width)
-                + pos.offset_px.unwrap_or(0.0);
+            return self.resolve_horizontal_base(
+                pos.relative_from.as_deref(),
+                width,
+                anchor_column,
+            ) + pos.offset_px.unwrap_or(0.0);
         }
-        let (box_start, box_extent) = self.horizontal_reference_box(pos.relative_from.as_deref());
+        let (box_start, box_extent) =
+            self.horizontal_reference_box(pos.relative_from.as_deref(), anchor_column);
         box_start
             + horizontal_align_offset_within(
                 pos.align.as_deref(),
@@ -39583,8 +39662,13 @@ where
     /// page parity (inside = left on odd pages, right on even pages), the same
     /// book-page convention [`horizontal_align_offset_within`] uses for
     /// `inside` / `outside` alignment.  The margin widths are this page's, so
-    /// mirrored margins are already swapped on even pages.
-    fn horizontal_reference_box(&self, relative: Option<&str>) -> (f64, f64) {
+    /// mirrored margins are already swapped on even pages.  The parity rule
+    /// is ECMA-376's (§20.4.3.4) and applies with or without mirror margins.
+    fn horizontal_reference_box(
+        &self,
+        relative: Option<&str>,
+        anchor_column: Option<(f64, f64)>,
+    ) -> (f64, f64) {
         let left_margin_area = (0.0, self.margin_left);
         let right_margin_area = (self.page_width - self.margin_right, self.margin_right);
         let odd_page = !self.current_page_number.is_multiple_of(2);
@@ -39606,10 +39690,11 @@ where
                     left_margin_area
                 }
             }
-            Some("column") => (
-                self.current_column_x(),
-                self.current_column_width().max(0.0),
-            ),
+            Some("column") => {
+                let (x, width) = anchor_column
+                    .unwrap_or_else(|| (self.current_column_x(), self.current_column_width()));
+                (x, width.max(0.0))
+            }
             // margin / text / character / line / None resolve to the body
             // content box.
             _ => (
@@ -39620,13 +39705,17 @@ where
     }
 
     /// Returns the `(start, extent)` of the vertical reference box used for
-    /// `wp:align` positioning, keyed by the `relativeFrom` attribute.  Page-
-    /// local coordinates (page top edge = 0).
+    /// `wp:align` positioning and as the origin of `wp:posOffset` for the
+    /// margin areas, keyed by the `relativeFrom` attribute.  Page-local
+    /// coordinates (page top edge = 0).  Vertically the inside margin is the
+    /// top margin area and the outside margin the bottom one.
     fn vertical_reference_box(&self, relative: Option<&str>) -> (f64, f64) {
         match relative {
             Some("page") => (0.0, self.page_height),
-            Some("topMargin") => (0.0, self.margin_top),
-            Some("bottomMargin") => (self.page_height - self.margin_bottom, self.margin_bottom),
+            Some("topMargin" | "insideMargin") => (0.0, self.margin_top),
+            Some("bottomMargin" | "outsideMargin") => {
+                (self.page_height - self.margin_bottom, self.margin_bottom)
+            }
             // margin / text / paragraph / line / None resolve to the body box.
             _ => (
                 self.margin_top,
@@ -39639,13 +39728,18 @@ where
     /// `relativeFrom` attribute (page, margin, etc.).  Word measures
     /// `wp:posOffset` from the leading edge of the reference area: the page,
     /// the left / right / inside / outside margin area, or the anchor's column.
-    fn resolve_horizontal_base(&self, relative: Option<&str>, image_width: f64) -> f64 {
+    fn resolve_horizontal_base(
+        &self,
+        relative: Option<&str>,
+        image_width: f64,
+        anchor_column: Option<(f64, f64)>,
+    ) -> f64 {
         match relative {
             Some("page") => 0.0,
             Some(
                 frame
                 @ ("leftMargin" | "rightMargin" | "insideMargin" | "outsideMargin" | "column"),
-            ) => self.horizontal_reference_box(Some(frame)).0,
+            ) => self.horizontal_reference_box(Some(frame), anchor_column).0,
             Some("margin") | Some("line") | Some("character") => self.margin_left,
             Some("pageCenter") => (self.page_width - image_width) / 2.0,
             _ => self.margin_left,
@@ -39664,10 +39758,12 @@ where
         match relative {
             Some("page") => 0.0,
             Some("margin") => self.margin_top,
-            // The top / bottom margin areas start at the page top and at the
-            // bottom margin's top edge; Word offsets from there.
-            Some("topMargin") => 0.0,
-            Some("bottomMargin") => self.page_height - self.margin_bottom,
+            // The top / bottom (inside / outside) margin areas start at the
+            // page top and at the bottom margin's top edge; Word offsets
+            // from there.
+            Some(frame @ ("topMargin" | "bottomMargin" | "insideMargin" | "outsideMargin")) => {
+                self.vertical_reference_box(Some(frame)).0
+            }
             Some("paragraph") => paragraph_start_y,
             Some("line") => {
                 // Word for Mac measures from the top of the line (`textbox`:
@@ -75337,6 +75433,7 @@ mod tests {
             &layout,
             120.0,
             20.0,
+            None,
         );
 
         assert_eq!(transform.x, 24.0);
