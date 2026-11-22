@@ -11613,7 +11613,10 @@ where
             // The cached segments carry the run's revision mark and link,
             // which drawing reads: rejecting a deletion while the original
             // is shown keeps the text and properties but drops the mark.
-            fn hash_revision(mark: &RevisionMark, hasher: &mut FxHasher) {
+            fn hash_revision(
+                mark: &RevisionMark,
+                hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+            ) {
                 std::mem::discriminant(&mark.kind).hash(hasher);
                 mark.id.hash(hasher);
                 mark.author.hash(hasher);
