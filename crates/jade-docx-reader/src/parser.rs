@@ -7854,6 +7854,8 @@ impl DocumentParser {
         let mut offset_y = None;
         let mut relative_from_h = None;
         let mut relative_from_v = None;
+        let mut align_h = None;
+        let mut align_v = None;
         let mut rotation_deg = None;
         let mut text_vertical_alignment = None;
         let mut dist_top = None;
@@ -7869,17 +7871,21 @@ impl DocumentParser {
             if let Some(rest) = part.strip_prefix("position:") {
                 is_absolute = rest.trim().eq_ignore_ascii_case("absolute");
             } else if let Some(rest) = part.strip_prefix("width:") {
-                width_px = Self::points_str_to_px(rest.trim());
+                width_px = Self::vml_css_length_to_px(rest);
             } else if let Some(rest) = part.strip_prefix("height:") {
-                height_px = Self::points_str_to_px(rest.trim());
+                height_px = Self::vml_css_length_to_px(rest);
             } else if let Some(rest) = part.strip_prefix("margin-left:") {
-                offset_x = Self::points_str_to_px(rest.trim());
+                offset_x = Self::vml_css_length_to_px(rest);
             } else if let Some(rest) = part.strip_prefix("margin-top:") {
-                offset_y = Self::points_str_to_px(rest.trim());
+                offset_y = Self::vml_css_length_to_px(rest);
             } else if let Some(rest) = part.strip_prefix("mso-position-horizontal-relative:") {
                 relative_from_h = Some(rest.trim().to_string());
             } else if let Some(rest) = part.strip_prefix("mso-position-vertical-relative:") {
                 relative_from_v = Some(rest.trim().to_string());
+            } else if let Some(rest) = part.strip_prefix("mso-position-horizontal:") {
+                align_h = Self::vml_position_align(rest, true);
+            } else if let Some(rest) = part.strip_prefix("mso-position-vertical:") {
+                align_v = Self::vml_position_align(rest, false);
             } else if let Some(rest) = part.strip_prefix("rotation:") {
                 rotation_deg = rest.trim().parse::<f64>().ok();
             } else if let Some(rest) = part.strip_prefix("v-text-anchor:") {
@@ -7903,8 +7909,14 @@ impl DocumentParser {
             is_absolute,
             width_px,
             height_px,
-            position_h: Self::build_position(relative_from_h, offset_x, true),
-            position_v: Self::build_position(relative_from_v, offset_y, false),
+            position_h: Self::with_vml_align(
+                Self::build_position(relative_from_h, offset_x.or(align_h.map(|_| 0.0)), true),
+                align_h,
+            ),
+            position_v: Self::with_vml_align(
+                Self::build_position(relative_from_v, offset_y.or(align_v.map(|_| 0.0)), false),
+                align_v,
+            ),
             rotation_deg,
             text_vertical_alignment,
             dist_top,
@@ -7912,6 +7924,40 @@ impl DocumentParser {
             dist_left,
             dist_right,
         }
+    }
+
+    /// Maps VML's `mso-position-horizontal` / `mso-position-vertical` keyword
+    /// to the lowercased `wp:align` value it corresponds to.  `absolute` (the
+    /// default) and any unknown keyword yield `None`, so the object keeps its
+    /// `margin-left` / `margin-top` offset.
+    fn vml_position_align(value: &str, horizontal: bool) -> Option<&'static str> {
+        let value = value.trim();
+        let keywords: &[&'static str] = if horizontal {
+            &["left", "center", "right", "inside", "outside"]
+        } else {
+            &["top", "center", "bottom", "inside", "outside"]
+        };
+        keywords
+            .iter()
+            .copied()
+            .find(|keyword| value.eq_ignore_ascii_case(keyword))
+    }
+
+    /// An alignment keyword overrides the `margin-left` / `margin-top` offset in
+    /// Word: the object is aligned within its relative frame, as DrawingML's
+    /// `wp:align` is, so the offset is dropped and the keyword recorded.
+    fn with_vml_align(
+        position: Option<ImagePosition>,
+        align: Option<&'static str>,
+    ) -> Option<ImagePosition> {
+        let Some(align) = align else {
+            return position;
+        };
+        position.map(|position| ImagePosition {
+            offset_px: None,
+            align: Some(align.to_string()),
+            ..position
+        })
     }
 
     fn parse_vml_wrap_mode(element: &BytesStart<'_>) -> Option<WrapMode> {
@@ -7990,14 +8036,40 @@ impl DocumentParser {
         }
     }
 
+    /// Converts a VML length with a CSS unit (`pt`, `in`, `cm`, `mm`, `pc`,
+    /// `px`) to CSS pixels.  A unitless number yields `None` here; VML
+    /// attributes such as `strokeweight` and `inset` give it different default
+    /// units, and style properties use [`Self::vml_css_length_to_px`].
     fn points_str_to_px(value: &str) -> Option<f64> {
         let trimmed = value.trim_end_matches(';').trim();
-        if let Some(points) = trimmed.strip_suffix("pt") {
-            if let Ok(val) = points.trim().parse::<f64>() {
-                return Some(val * 96.0 / 72.0);
-            }
-        }
-        None
+        let (number, px_per_unit) = [
+            ("pt", 96.0 / 72.0),
+            ("in", 96.0),
+            ("cm", 96.0 / 2.54),
+            ("mm", 96.0 / 25.4),
+            ("pc", 16.0),
+            ("px", 1.0),
+        ]
+        .into_iter()
+        .find_map(|(unit, scale)| {
+            let len = trimmed.len().checked_sub(unit.len())?;
+            (trimmed.is_char_boundary(len) && trimmed[len..].eq_ignore_ascii_case(unit))
+                .then(|| (&trimmed[..len], scale))
+        })?;
+        let value = number.trim().parse::<f64>().ok()?;
+        value.is_finite().then_some(value * px_per_unit)
+    }
+
+    /// A length in a VML `style` attribute: a unit as [`Self::points_str_to_px`]
+    /// accepts, or a bare number, which CSS (and so VML's style) reads as px.
+    fn vml_css_length_to_px(value: &str) -> Option<f64> {
+        let trimmed = value.trim_end_matches(';').trim();
+        Self::points_str_to_px(trimmed).or_else(|| {
+            trimmed
+                .parse::<f64>()
+                .ok()
+                .filter(|value| value.is_finite())
+        })
     }
 
     /// Populates `RunImage` fields for width, height, relationship id, and
