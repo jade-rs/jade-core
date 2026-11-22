@@ -161,6 +161,12 @@ PHYSICAL_FONT_CASES = {
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3',
     'probe-fixed-auto-table-grid-2000-cell-pct-1250',
+    'probe-fixed-auto-table-grid-1000-cell-pct-2500',
+    'probe-fixed-auto-table-grid-2000-cell-pct-5000',
+    'probe-fixed-auto-table-grid-4000-cell-pct-2500',
+    'probe-unequal-variant-narrow-first-2-9-dxa',
+    'probe-width-equal-auto-0-pct-2500',
+    'probe-width-single-auto-0-pct-2500',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -300,6 +306,12 @@ REQUIRED_CAPTURES = {
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2': '20261114T004450252Z-ac1d5d7d',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3': '20261114T004450252Z-ac1d5d7d',
     'probe-fixed-auto-table-grid-2000-cell-pct-1250': '20261114T004402030Z-30b8d3b5',
+    'probe-fixed-auto-table-grid-1000-cell-pct-2500': '20261114T004402030Z-30b8d3b5',
+    'probe-fixed-auto-table-grid-2000-cell-pct-5000': '20261114T004402030Z-30b8d3b5',
+    'probe-fixed-auto-table-grid-4000-cell-pct-2500': '20261114T004402030Z-30b8d3b5',
+    'probe-unequal-variant-narrow-first-2-9-dxa': '20261114T004559814Z-c5e13cee',
+    'probe-width-equal-auto-0-pct-2500': '20261114T004559814Z-c5e13cee',
+    'probe-width-single-auto-0-pct-2500': '20261114T004612020Z-5d981186',
 }
 
 # These original inputs have distinct screen and print origins in Windows

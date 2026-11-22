@@ -115,6 +115,30 @@ SHARED_ORIGINALS = {
         'be95c64a1a69e75986bf913c8f5dab2875b8522024b7c6be69b0bc09f392eb5d',
         'fcfede5701e593c8c0e25df865fcb3b6c310262ec2f3256061e8d816b96f54de',
         '38c12e496292da1d999e69ae621e127d9fe70d5f4a203b24bff8576a38927a9b', 3, 107),
+    'probe-fixed-auto-table-grid-1000-cell-pct-2500': (
+        '2aa4101101d3b6fd8ab7c99736cebcda3278088e786b8e916574ca790b28add5',
+        '17c2be32321b8ef24c4fbe9401c0f4ca027de239efe5ec4d0788d0ea3b545674',
+        'd6606df22b93edfd37faedda873a7b175152228e2e715aea49cc8a29e16cbbd6', 3, 59),
+    'probe-fixed-auto-table-grid-2000-cell-pct-5000': (
+        '5bc7d88f7f89d23ce3e4bd986c38ae1a34c29b8c7e2fd16c953f947908e72767',
+        '3d661bacb46f4f70792afdedaa2ae34fc7dc9d69aebdb61e3844c1708a8b2a12',
+        'b404095f8e702faf86225ff49e25ca7627b0d74e1af24479d26df6ffc0ed5d3e', 3, 56),
+    'probe-fixed-auto-table-grid-4000-cell-pct-2500': (
+        '4b7ee04b8912d2e03b26013309a7a2a96de50ff8ed52bc4748587473b1047c2b',
+        '0b68b4021f26f75ebafd0da04ae7252e6d91f771f35c50ccc6eabe8b15addc62',
+        'd6606df22b93edfd37faedda873a7b175152228e2e715aea49cc8a29e16cbbd6', 3, 59),
+    'probe-unequal-variant-narrow-first-2-9-dxa': (
+        'c1ff95bbbba66d57c63e1deaac29a8d5eee89c09d5c684ef49285b93d33c7e97',
+        'd19f7e75200d0c7d835dc9c41b05a1eacddc2b14ce3a9505fc7d361bdc365330',
+        '8566c1efacd37b11c5ae71e5ad3bc36a9e6cc1b40a4aa9518140a503bebc7b99', 2, 96),
+    'probe-width-equal-auto-0-pct-2500': (
+        'b5b8e4255b28f3848752fec0e32a8a51ea104449ef3b234c5d3490f1d0823fdf',
+        'cab1903237094d01f3e164a0692876239d94df78ab4b524385cdb14447514927',
+        '9db8f29647e323c8d8bdded50b9103d64097013356ff46473c99db26a4cd3b3b', 2, 59),
+    'probe-width-single-auto-0-pct-2500': (
+        '507021382dc70224b5842454c13b3a28c4685824e65feb02bbf5257c7c52cfea',
+        '919a01910562695afa8d76c491ea0364dcc2f116743c42f27b67f84529f08d97',
+        'd6606df22b93edfd37faedda873a7b175152228e2e715aea49cc8a29e16cbbd6', 3, 59),
 }
 
 
@@ -168,8 +192,11 @@ def check_shared_originals(executable, output, root=ROOT):
         extract_fonts(font_pdf, fonts)
         actual_file = target/'native.json'
         painted = target/'native.pdf'
-        subprocess.run([str(executable), str(source), str(actual_file), 'mac', str(painted),
-                        '--fonts-directory', str(fonts)], check=True)
+        arguments = [str(executable), str(source), str(actual_file), 'mac', str(painted),
+                     '--fonts-directory', str(fonts)]
+        if manifest.get('capturePaintedGlyphs') and manifest.get('clipPaintedGlyphs'):
+            arguments.append('--painted-table-headers')
+        subprocess.run(arguments, check=True)
         actual = read_json(actual_file)
         require_original_font_programs_registered(fonts, actual)
         require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
@@ -183,10 +210,11 @@ def check_shared_originals(executable, output, root=ROOT):
                             Mac_coordinates_sha256=manifest['coordinatesSha256'],
                             font_program_provider_Windows_Word=capture['word'],
                             font_program_provider_archive=provider['archive'],
-                            glyphs=glyphs, page_count=expected['page_count']))
-    require(len(results) == 22 and sum(r['glyphs'] for r in results) == 16879,
+                            glyphs=glyphs, page_count=expected['page_count'],
+                            native_table_glyph_projection=actual['table_glyph_projection']))
+    require(len(results) == 28 and sum(r['glyphs'] for r in results) == 17267,
             'Shared Mac original coverage changed')
-    print('22 shared Mac originals16879: layout and painted-PDF PASS', flush=True)
+    print('28 shared Mac originals17267: layout and painted-PDF PASS', flush=True)
     return results
 
 
