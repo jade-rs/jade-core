@@ -2382,7 +2382,7 @@ impl ColumnLayout {
         let available_for_columns = (total_body_width - gaps.iter().sum::<f64>()).max(1.0);
 
         let widths = if use_custom_widths {
-            let mut collected: Vec<f64> = columns
+            let collected: Vec<f64> = columns
                 .columns
                 .iter()
                 .take(count)
@@ -2390,14 +2390,9 @@ impl ColumnLayout {
                 .collect();
             let total_declared: f64 = collected.iter().sum();
             if total_declared > 0.0 {
-                // Word for Mac uses the authored column widths even when
-                // their sum differs from the available body width.
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                {
-                    let scale = available_for_columns / total_declared;
-                    collected.iter_mut().for_each(|w| *w *= scale);
-                }
+                // Both Word platforms retain explicitly authored unequal widths,
+                // even when their sum and gutters exceed the page body. Scaling
+                // them shifts later columns and changes table wrapping.
                 collected
             } else {
                 vec![available_for_columns / count.max(1) as f64; count]
@@ -72634,6 +72629,40 @@ mod tests {
             ScriptCategory::EastAsia,
             "expected ideographic full stop to use EastAsia fonts"
         );
+    }
+
+    #[test]
+    fn authored_unequal_column_widths_are_not_scaled_to_the_page_body() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        // Retained probe-unequal-center-three-10: 9,026 twips of body,
+        // but 8,116 twips of explicit columns plus two 480-twip gutters.
+        // Windows and Mac Word both keep those explicit widths.
+        let columns = SectionColumns {
+            count: Some(3),
+            equal_width: Some(false),
+            columns: [(92.5, 24.0), (135.0, 24.0), (178.3, 0.0)]
+                .into_iter()
+                .map(|(width, space)| jade_docx_reader::ColumnDefinition {
+                    width: Some(width),
+                    space: Some(space),
+                })
+                .collect(),
+            ..SectionColumns::default()
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let layout = ColumnLayout::from_section(&columns, points_to_px(451.3), 96.0);
+            for (index, expected) in [92.5, 135.0, 178.3].into_iter().enumerate() {
+                assert!((layout.width(index) - points_to_px(expected)).abs() < 0.0001);
+            }
+            assert!((layout.start_x(0) - 96.0).abs() < 0.0001);
+            assert!((layout.start_x(1) - (96.0 + points_to_px(116.5))).abs() < 0.0001);
+            assert!((layout.start_x(2) - (96.0 + points_to_px(275.5))).abs() < 0.0001);
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
