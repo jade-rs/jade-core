@@ -2096,12 +2096,14 @@ pub struct SectionHeaderFooters {
     pub footer_first: Option<Vec<HeaderLine>>,
     pub header_even: Option<Vec<HeaderLine>>,
     pub footer_even: Option<Vec<HeaderLine>>,
-    pub header_body: Option<Body>,
-    pub footer_body: Option<Body>,
-    pub header_body_first: Option<Body>,
-    pub footer_body_first: Option<Body>,
-    pub header_body_even: Option<Body>,
-    pub footer_body_even: Option<Body>,
+    /// Rich stories are shared, not copied: the renderer selects one per
+    /// page and must not deep-clone paragraphs, tables and pictures to do so.
+    pub header_body: Option<Rc<Body>>,
+    pub footer_body: Option<Rc<Body>>,
+    pub header_body_first: Option<Rc<Body>>,
+    pub footer_body_first: Option<Rc<Body>>,
+    pub header_body_even: Option<Rc<Body>>,
+    pub footer_body_even: Option<Rc<Body>>,
     pub title_page: bool,
 }
 
@@ -2461,12 +2463,12 @@ impl WordDocument {
                 footer_first,
                 header_even,
                 footer_even,
-                header_body,
-                footer_body,
-                header_body_first,
-                footer_body_first,
-                header_body_even,
-                footer_body_even,
+                header_body: header_body.map(Rc::new),
+                footer_body: footer_body.map(Rc::new),
+                header_body_first: header_body_first.map(Rc::new),
+                footer_body_first: footer_body_first.map(Rc::new),
+                header_body_even: header_body_even.map(Rc::new),
+                footer_body_even: footer_body_even.map(Rc::new),
                 title_page,
             });
         }
