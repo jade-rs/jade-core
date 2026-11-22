@@ -330,6 +330,8 @@ mod section_tests;
 mod structure;
 mod table;
 #[cfg(test)]
+mod table_footer_tests;
+#[cfg(test)]
 mod table_row_clone_tests;
 #[cfg(test)]
 mod valign_justified_tests;
@@ -39914,19 +39916,20 @@ where
         if self.pageless_mode {
             return margin_edge;
         }
-        let footer_height = self
-            .current_page_footer_content_height()
-            .unwrap_or_else(|| {
-                self.active_footer_lines()
-                    .filter(|lines| !lines.is_empty())
-                    .map(|lines| {
-                        lines
-                            .iter()
-                            .map(Self::header_footer_line_height)
-                            .sum::<f64>()
-                    })
-                    .unwrap_or(0.0)
-            });
+        // Without a footer story the footer distance reserves nothing: the
+        // body keeps its bottom margin, as the header side keeps its top.
+        let Some(footer_height) = self.current_page_footer_content_height().or_else(|| {
+            self.active_footer_lines()
+                .filter(|lines| !lines.is_empty())
+                .map(|lines| {
+                    lines
+                        .iter()
+                        .map(Self::header_footer_line_height)
+                        .sum::<f64>()
+                })
+        }) else {
+            return margin_edge + self.valign_gap_bottom_allowance();
+        };
         let footer_top = self.footer_edit_content_bottom() - footer_height;
         footer_top.min(margin_edge) + self.valign_gap_bottom_allowance()
     }
@@ -41461,13 +41464,25 @@ where
     fn measure_page_footer(&mut self) -> Result<(), JsValue> {
         let estimate = self
             .active_footer_lines()
+            .filter(|lines| !lines.is_empty())
             .map(|lines| {
                 lines
                     .iter()
                     .map(Self::header_footer_line_height)
                     .sum::<f64>()
             })
-            .unwrap_or(0.0);
+            .unwrap_or_else(|| {
+                // A footer story without text lines (an empty footer, or a
+                // host that passes only the body) still holds a paragraph.
+                if self
+                    .active_footer_body()
+                    .is_some_and(|body| !body.elements.is_empty())
+                {
+                    Self::header_footer_line_height(&HeaderLine::default())
+                } else {
+                    0.0
+                }
+            });
         let margin_edge = self.page_height - self.margin_bottom;
         if self.footer_edit_content_bottom() - estimate >= margin_edge {
             return Ok(());
@@ -76544,7 +76559,7 @@ mod tests {
                 margin_left: Some(0.0),
                 margin_right: Some(0.0),
                 margin_top: Some(0.0),
-                margin_bottom: Some(0.0),
+                margin_bottom: Some(36.0),
                 ..Default::default()
             });
             document.default_section = Some(SectionProperties {
@@ -76571,8 +76586,8 @@ mod tests {
                         before: (index == 1).then_some(24.0),
                         after: Some(0.0),
                         // The first line fits the 64pt body this page leaves
-                        // between the default footer distance and its top;
-                        // the following 24pt before does not.
+                        // above its 36pt bottom margin; the following 24pt
+                        // before does not.
                         line: Some(if index == 0 { 50.0 } else { 10.0 }),
                         line_rule: Some("exact".into()),
                         ..Default::default()
