@@ -2898,6 +2898,81 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "courier-new-line-metrics",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/courier-new-line-metrics/source.docx",
+        "sha256": "a17e0c561725568bcb95b5549cf1fd247af6e34ef34aeba411a38f9b32a08f27"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/courier-new-line-metrics/manifest.json",
+        "sha256": "cefeb9d78d82d84607f634f545fcb86c0275a72d3cea4c493ab16ef39cd3b4fe"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004252975Z-a999e8fb",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004252975Z-a999e8fb.zip",
+            "sha256": "189d77201e3bdd409173c1d4ff5f70941b25c4bc44b9fdc46c9dd9cba53914aa"
+          },
+          "capture_sha256": "56c509f2195fefaa9e8ccea7fce283832d222a52fbc09a408303060348efa10d",
+          "fixture": "ww14-courier-new-line-metrics-a17e0c56",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "courier-new-regular-adjacent",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/courier-new-regular-adjacent/source.docx",
+        "sha256": "89ef3a72d6322925150d96932f407e839cbb1667052966442c76a0407a211465"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/courier-new-regular-adjacent/manifest.json",
+        "sha256": "ec16d63256e3db4cbbd33a8cb982f41d28e6a00d4bbb93ae0a46648182a25032"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004252975Z-a999e8fb",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004252975Z-a999e8fb.zip",
+            "sha256": "189d77201e3bdd409173c1d4ff5f70941b25c4bc44b9fdc46c9dd9cba53914aa"
+          },
+          "capture_sha256": "56c509f2195fefaa9e8ccea7fce283832d222a52fbc09a408303060348efa10d",
+          "fixture": "ww14-courier-new-regular-adjacent-89ef3a72",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-column-fixed-dxa-4400",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-column-fixed-dxa-4400/source.docx",
+        "sha256": "4ea5548ae2e68907aba9b8dc43e834ec07f293f0bb0c04de70a81fe567085b23"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-column-fixed-dxa-4400/manifest.json",
+        "sha256": "96702526e1b4a5eba635d86473921d23c86fcbc87c1621b81029c16a296f54f3"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-column-fixed-dxa-4400-4ea5548a",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

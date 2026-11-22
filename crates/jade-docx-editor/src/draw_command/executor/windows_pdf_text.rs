@@ -36,7 +36,7 @@ fn supported_print_text(text: &str) -> bool {
         && text.chars().all(|c| {
             let value = u32::from(c);
             (' '..='~').contains(&c)
-                || matches!(value, 0x2026 | 0x2192 | 0x2460..=0x2473)
+                || matches!(value, 0x2014 | 0x2026 | 0x2192 | 0x2460..=0x2473)
                 || (matches!(value, 0x3000..=0x303f | 0x3040..=0x30ff | 0x31f0..=0x31ff
                 | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff
                 | 0xff01..=0xff60 | 0xffe0..=0xffe6 | 0x20000..=0x2ffff)
