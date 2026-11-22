@@ -435,3 +435,112 @@ fn repeat_renders_keep_the_shared_pages_chrome() {
         assert_eq!(painted, fresh);
     }
 }
+
+/// Section A fills page 1 exactly with one-line paragraphs, so B's first
+/// paragraph, placed after the continuous break at the bottom of page 1,
+/// lands on page 2: page 2 is B's first page.
+#[test]
+fn a_break_at_the_bottom_of_a_full_page_starts_b_on_the_next_page() {
+    let fill = paragraphs("a", 36);
+    let (renderer, pages) = render(&package(
+        &[
+            section("A", RED, "nextPage", fill, ""),
+            section(
+                "B",
+                BLUE,
+                "continuous",
+                paragraphs("b", 40),
+                r#"<w:titlePg/><w:pgNumType w:start="7"/>"#,
+            ),
+        ],
+        "",
+    ));
+    assert!(!pages[0].body.contains("b0"), "{:?}", pages[0]);
+    assert!(pages[1].body.starts_with("b0"), "{:?}", pages[1]);
+    assert_eq!(
+        chrome(&pages)[..2],
+        [(RED, "HA1", "FA1"), (BLUE, "HB-first7", "")]
+    );
+    assert_eq!(renderer.first_page_of_section_index(1), Some(2));
+}
+
+/// B's first paragraph has several lines and moves on to page 2 whole
+/// (`keepLines`): nothing of B is committed on page 1.
+#[test]
+fn a_multi_line_first_paragraph_that_moves_whole_starts_b_on_the_next_page() {
+    let long = "word ".repeat(40);
+    let b_body = format!(
+        r#"<w:p><w:pPr><w:keepLines/></w:pPr><w:r><w:t xml:space="preserve">{long}</w:t></w:r></w:p>{}"#,
+        paragraphs("b", 40)
+    );
+    let (_, pages) = render(&package(
+        &[
+            section("A", RED, "nextPage", paragraphs("a", 35), ""),
+            section(
+                "B",
+                BLUE,
+                "continuous",
+                b_body,
+                r#"<w:titlePg/><w:pgNumType w:start="7"/>"#,
+            ),
+        ],
+        "",
+    ));
+    assert!(!pages[0].body.contains("word"), "{:?}", pages[0]);
+    assert!(pages[1].body.starts_with("word"), "{:?}", pages[1]);
+    assert_eq!(
+        chrome(&pages)[..2],
+        [(RED, "HA1", "FA1"), (BLUE, "HB-first7", "")]
+    );
+}
+
+/// A bitmap rerender of page 1 alone stops its walk after that page. The
+/// later pages keep the sections and numbers the full render gave them.
+#[test]
+fn a_pixel_rerender_of_page_one_keeps_later_pages_sections() {
+    let data = package(
+        &[
+            section("A", RED, "nextPage", paragraphs("a", 90), ""),
+            section(
+                "B",
+                BLUE,
+                "continuous",
+                paragraphs("b", 80),
+                r#"<w:pgNumType w:start="7"/>"#,
+            ),
+        ],
+        "",
+    );
+    let word_doc =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let document = word_doc.document.as_ref().expect("document");
+    let mut renderer = recording_renderer();
+    renderer.sync_document_header_footer_stories(&word_doc);
+    renderer
+        .render(document, &Options::default())
+        .expect("full render");
+    let snapshot = |renderer: &CanvasRenderer<RecordingPainter>| {
+        (1..=5)
+            .map(|page| {
+                (
+                    renderer.section_index_for_page(page),
+                    renderer.numbering_section_for_page(page),
+                    renderer.page_number_value(page),
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let before = snapshot(&renderer);
+    assert_eq!(renderer.page_section_indices.len(), 5);
+    assert_eq!(renderer.mid_page_start(1).map(|start| start.page), Some(3));
+    assert_eq!(before[2], (0, 1, 7), "page 3 is shared");
+
+    renderer.set_visible_page_range(Some(1..=1));
+    renderer.set_layout_page_limit(Some(1));
+    renderer.prepare_rerender_for_page(0);
+    renderer.freeze_selection_for_pixel_rerender();
+    renderer
+        .render(document, &Options::default())
+        .expect("bitmap rerender");
+    assert_eq!(snapshot(&renderer), before);
+}

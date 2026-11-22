@@ -15430,6 +15430,8 @@ where
         } else {
             None
         };
+        let authoritative_mid_page_section_starts =
+            snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
         let previous_page_origins = self.page_origins.clone();
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
@@ -15925,14 +15927,11 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
-        // Mid-page section starts are re-recorded by the sections this walk
-        // lays out; a seek keeps those of the sections it skips.
-        match seek_snapshot.as_ref() {
-            Some(seek) => self
-                .mid_page_section_starts
-                .truncate(seek.section_index + 1),
-            None => self.mid_page_section_starts.clear(),
-        }
+        // Mid-page section starts are not cleared here: each section the walk
+        // reaches re-records its own entry at its transition, a seek keeps
+        // those of the sections it skips, and a walk that stops early keeps
+        // those of the sections it does not reach, matching the retained
+        // `page_section_indices`.
         if let Some(seek) = seek_snapshot.as_ref() {
             let keep = seek.table_counter;
             let (tables, handles, row_handles) = if snapshot_authoritative_pagination {
@@ -16579,6 +16578,9 @@ where
                 if let Some(page_sections) = authoritative_page_sections.as_ref() {
                     self.page_section_indices.clone_from(page_sections);
                 }
+                if let Some(starts) = authoritative_mid_page_section_starts.as_ref() {
+                    self.mid_page_section_starts.clone_from(starts);
+                }
                 self.page_origins.clone_from(&previous_page_origins);
                 self.last_completed_pagination_edit_preserved =
                     preserve_stable_edit_pagination && self.last_fast_replay_stable;
@@ -16588,6 +16590,9 @@ where
                 self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
                     self.page_section_indices.truncate(self.current_page_number);
+                    // Sections past the last one laid out no longer exist.
+                    self.mid_page_section_starts
+                        .truncate(self.active_section_index + 1);
                 }
             }
         }
@@ -17161,6 +17166,9 @@ where
             Some(after) => after,
             None => return false,
         };
+        // A skippable paragraph lies on one page: its lines are committed
+        // on the page it starts on.
+        self.note_mid_page_section_line(section_index);
         self.current_y = after.current_y;
         self.page_offset_y = after.page_offset_y;
         self.current_page_number = after.current_page_1idx;
@@ -17560,6 +17568,7 @@ where
             vertical_reversed: false,
         };
         self.selection.record_line(paragraph_index, line_layout);
+        self.note_mid_page_section_line(self.active_section_index);
     }
 
     fn advance_past_math_block(&mut self, line_height: f64, baseline: f64, after: f64) {
@@ -21950,6 +21959,7 @@ where
                 cache_selection_lines.push(line_layout.clone());
             }
             self.selection.record_line(paragraph_index, line_layout);
+            self.note_mid_page_section_line(self.active_section_index);
             self.last_line_baseline = baseline;
         }
 
@@ -25752,6 +25762,7 @@ where
                     out.push(line_layout.clone());
                 }
                 self.selection.record_line(paragraph_index, line_layout);
+                self.note_mid_page_section_line(self.active_section_index);
                 self.last_line_baseline = baseline;
                 // A page-break-only line has no prepared text and exits via
                 // this branch. It must still advance the physical page;
@@ -27032,6 +27043,7 @@ where
                 out.push(line_layout.clone());
             }
             self.selection.record_line(paragraph_index, line_layout);
+            self.note_mid_page_section_line(self.active_section_index);
             self.last_line_baseline = baseline;
             self.last_line_box = Some((baseline, top));
 
@@ -31460,6 +31472,7 @@ where
             };
             self.draw_selection_highlight(paragraph_index, &line)?;
             self.selection.record_line(paragraph_index, line);
+            self.note_mid_page_section_line(self.active_section_index);
             if self.should_draw_current_page_for_render() {
                 plan.paint(&painter, x, baseline)
                     .map_err(PainterError::into_js_value)?;
@@ -32090,6 +32103,7 @@ where
                 }
                 if record_layout {
                     self.selection.record_line(paragraph_index, line_layout);
+                    self.note_mid_page_section_line(self.active_section_index);
                 }
 
                 *cursor_y += line_pitch;
@@ -32164,6 +32178,7 @@ where
                 if record_layout {
                     self.draw_selection_highlight(paragraph_index, &line_layout)?;
                     self.selection.record_line(paragraph_index, line_layout);
+                    self.note_mid_page_section_line(self.active_section_index);
                 }
             }
             *cursor_y += TEXT_BOX_LINE_HEIGHT;
@@ -40153,7 +40168,7 @@ where
     /// `page_section_indices` records it; the page being laid out reads the
     /// active section.
     fn body_section_for_page(&self, page: usize) -> usize {
-        if page == 0 || page >= self.current_page_number {
+        if page == 0 || page == self.current_page_number {
             return self.active_section_index;
         }
         self.page_section_indices
@@ -40186,63 +40201,73 @@ where
             let start = MidPageSectionStart {
                 page,
                 page_top_section,
-                top_y: self.current_y,
-                column: self.column_index,
-                content_on_page: None,
+                content: MidPageContent::Pending,
             };
             self.set_mid_page_section_start(self.active_section_index, Some(start));
         }
     }
 
     /// Whether a mid-page section placed body content on the page it started
-    /// on. Until that page is finished, the body position so far decides;
-    /// a header, footer or note story being laid out moves `current_y` off
-    /// the body, so only a recorded paragraph counts then.
+    /// on. A started paragraph counts only while the body itself is being
+    /// laid out: a header or footer painted then must not take the number of
+    /// a paragraph that may still move on to the next page.
     fn mid_page_start_has_content(&self, start: MidPageSectionStart) -> bool {
-        start.content_on_page.unwrap_or_else(|| {
-            if self.current_page_number != start.page {
-                return true;
+        match start.content {
+            MidPageContent::Placed => true,
+            MidPageContent::Absent | MidPageContent::Pending => false,
+            MidPageContent::ParagraphStarted => {
+                self.current_page_number == start.page
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story
             }
-            !self.rendering_header_footer_story
-                && !self.rendering_note_story
-                && (self.column_index > start.column || self.current_y > start.top_y + 0.5)
-        })
+        }
     }
 
-    /// A body paragraph of `section` starts on the current page: a mid-page
-    /// start of that section on this page has content here.
-    fn note_mid_page_section_content(&mut self, section: usize) {
-        if let Some(start) = self.mid_page_start(section).filter(|start| {
-            start.content_on_page.is_none() && start.page == self.current_page_number
-        }) {
+    fn update_mid_page_content(&mut self, section: usize, content: MidPageContent) {
+        if let Some(start) = self.mid_page_start(section) {
             self.set_mid_page_section_start(
                 section,
-                Some(MidPageSectionStart {
-                    content_on_page: Some(true),
-                    ..start
-                }),
+                Some(MidPageSectionStart { content, ..start }),
             );
         }
     }
 
-    /// Fixes whether `section`, if it started mid-page on the page being left
-    /// or the section being ended, placed content on that page.
-    fn settle_mid_page_section_content(&mut self, section: usize) {
-        let Some(start) = self.mid_page_start(section) else {
-            return;
-        };
-        if start.content_on_page.is_some() || self.current_page_number != start.page {
+    /// A body paragraph of `section` starts on the current page.
+    fn note_mid_page_section_content(&mut self, section: usize) {
+        if self.mid_page_start(section).is_some_and(|start| {
+            start.content == MidPageContent::Pending && start.page == self.current_page_number
+        }) {
+            self.update_mid_page_content(section, MidPageContent::ParagraphStarted);
+        }
+    }
+
+    /// A body line (or a cached paragraph) of `section` is committed on the
+    /// current page.
+    fn note_mid_page_section_line(&mut self, section: usize) {
+        if self.rendering_header_footer_story || self.rendering_note_story {
             return;
         }
-        let content_on_page =
-            self.column_index > start.column || self.current_y > start.top_y + 0.5;
-        self.set_mid_page_section_start(
-            section,
-            Some(MidPageSectionStart {
-                content_on_page: Some(content_on_page),
-                ..start
-            }),
-        );
+        if self.mid_page_start(section).is_some_and(|start| {
+            matches!(
+                start.content,
+                MidPageContent::Pending | MidPageContent::ParagraphStarted
+            ) && start.page == self.current_page_number
+        }) {
+            self.update_mid_page_content(section, MidPageContent::Placed);
+        }
+    }
+
+    /// Fixes `section`'s content on its start page when that page is left or
+    /// the section ends: anything short of a committed line is absent.
+    fn settle_mid_page_section_content(&mut self, section: usize) {
+        if self.mid_page_start(section).is_some_and(|start| {
+            matches!(
+                start.content,
+                MidPageContent::Pending | MidPageContent::ParagraphStarted
+            )
+        }) {
+            self.update_mid_page_content(section, MidPageContent::Absent);
+        }
     }
 
     /// The section whose page numbering a physical (1-based) page follows:
@@ -40250,11 +40275,7 @@ where
     /// placed content there restarts the page's number although the page
     /// shows the chrome of the section at its top.
     fn numbering_section_for_page(&self, page: usize) -> usize {
-        let mut section = if page == self.current_page_number.saturating_add(1) {
-            self.active_section_index
-        } else {
-            self.body_section_for_page(page)
-        };
+        let mut section = self.body_section_for_page(page);
         while section > 0
             && self
                 .mid_page_start(section)
@@ -41797,20 +41818,12 @@ where
             return;
         }
         // Leaving the page a mid-page section started on fixes whether it
-        // placed content there; `current_y` still reads that page here.
-        if let Some(start) = self
+        // placed content there.
+        if self
             .mid_page_start(self.active_section_index)
-            .filter(|start| start.content_on_page.is_none() && physical_page > start.page)
+            .is_some_and(|start| physical_page > start.page)
         {
-            let content_on_page =
-                self.column_index > start.column || self.current_y > start.top_y + 0.5;
-            self.set_mid_page_section_start(
-                self.active_section_index,
-                Some(MidPageSectionStart {
-                    content_on_page: Some(content_on_page),
-                    ..start
-                }),
-            );
+            self.settle_mid_page_section_content(self.active_section_index);
         }
         self.page_section_indices
             .resize(physical_page, self.active_section_index);
@@ -42687,10 +42700,6 @@ fn substitute_header_footer_fields(
         )
 }
 
-/// Counts the physical pages assigned to the section containing
-/// `physical_page`. The vector is populated by the layout walk and retained for
-/// the next repaint, because a section's final page count is unknown while its
-/// first header is being drawn.
 /// Where a section started partway down a page (see
 /// `CanvasRenderer::mid_page_section_starts`).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -42699,14 +42708,29 @@ struct MidPageSectionStart {
     page: usize,
     /// The section at the top of that page, whose chrome the page shows.
     page_top_section: usize,
-    /// Page-local Y and column where the section's body began.
-    top_y: f64,
-    column: usize,
-    /// Whether the section placed body content on `page`; `None` while that
-    /// page is still being laid out.
-    content_on_page: Option<bool>,
+    /// Whether the section placed body content on `page`.
+    content: MidPageContent,
 }
 
+/// What a mid-page section has placed on the page it started on.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum MidPageContent {
+    /// Nothing yet; the page is still being laid out.
+    Pending,
+    /// A body paragraph has started there but no line is committed yet. It
+    /// counts for the paragraph's own fields, not for the page's footer, as
+    /// the paragraph may still move on to the next page.
+    ParagraphStarted,
+    /// A body line is committed on the page.
+    Placed,
+    /// The page was left (or the section ended) with nothing committed.
+    Absent,
+}
+
+/// Counts the physical pages assigned to the section containing
+/// `physical_page`. The vector is populated by the layout walk and retained for
+/// the next repaint, because a section's final page count is unknown while its
+/// first header is being drawn.
 fn section_page_count(page_section_indices: &[usize], physical_page: usize) -> Option<usize> {
     let section = *page_section_indices.get(physical_page.checked_sub(1)?)?;
     Some(
