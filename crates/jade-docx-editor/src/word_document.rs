@@ -2193,6 +2193,9 @@ pub(crate) fn document_wide_hf_reference(
 /// or not ([`document_wide_hf_reference`]). A first-page or even-page story
 /// is mirrored only when the last section declares it: an earlier
 /// section's variant stays that section's, and those fields stay absent.
+/// So headless snapshots (which read those fields) omit a first/even story
+/// the last section only inherits, although edits reach it through
+/// [`document_wide_hf_reference`].
 pub(crate) fn document_wide_lines_hf_reference(
     document: &crate::document::Document,
     role: HeaderFooterRole,
@@ -23941,6 +23944,8 @@ impl WordDocument {
         let mut references = Vec::new();
         if let Some(document) = self.document.as_deref() {
             for (role, variant) in slots {
+                // The last section's own reference is enough here: the loop
+                // below also walks every section's own references.
                 if let Some(reference) = pick_hf_reference(document, role, variant) {
                     references.push((role, reference));
                 }
