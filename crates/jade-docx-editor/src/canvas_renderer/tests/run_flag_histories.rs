@@ -1212,6 +1212,7 @@ fn applied_style_cache_confirms_inputs_on_a_hash_match() {
         let cache = renderer.applied_run_style_cache.borrow();
         let entry = cache
             .values()
+            .flatten()
             .find(|entry| entry.properties.as_ref() == Some(&bold));
         let entry = entry.expect("bold entry");
         AppliedRunStyleEntry {
@@ -1223,7 +1224,7 @@ fn applied_style_cache_confirms_inputs_on_a_hash_match() {
     renderer
         .applied_run_style_cache
         .borrow_mut()
-        .insert(italic_key, planted);
+        .insert(italic_key, vec![planted]);
     let italic_style = renderer.resolve_applied_run_style_cached(Some(&italic));
     assert!(!Rc::ptr_eq(&italic_style, &bold_style));
     assert_eq!(
@@ -1237,6 +1238,116 @@ fn applied_style_cache_confirms_inputs_on_a_hash_match() {
         &renderer.resolve_applied_run_style_cached(Some(&italic)),
         &italic_style
     ));
+}
+
+// The applied-style key leaves out fields that do not change the applied
+// style, such as the highlight. Runs that differ only there share a key and
+// must share its bucket, not evict each other on every lookup.
+#[test]
+fn applied_style_cache_keeps_runs_that_differ_outside_the_key() {
+    for windows in [false, true] {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let _restore = RestoreWordPlatform::mac();
+        if windows {
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+        }
+        let (renderer, _) = renderer_with_painter();
+        let plain = RunProperties {
+            bold: Some(true),
+            ..Default::default()
+        };
+        let highlighted = RunProperties {
+            highlight: Some("yellow".into()),
+            ..plain.clone()
+        };
+        assert_eq!(
+            <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&plain), None),
+            <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&highlighted), None),
+            "the test needs runs that share a key"
+        );
+        let first_plain = renderer.resolve_applied_run_style_cached(Some(&plain));
+        let first_highlighted = renderer.resolve_applied_run_style_cached(Some(&highlighted));
+        let entries = || {
+            renderer
+                .applied_run_style_cache
+                .borrow()
+                .values()
+                .map(Vec::len)
+                .sum::<usize>()
+        };
+        let before = entries();
+        for _ in 0..100 {
+            assert!(Rc::ptr_eq(
+                &renderer.resolve_applied_run_style_cached(Some(&plain)),
+                &first_plain
+            ));
+            assert!(Rc::ptr_eq(
+                &renderer.resolve_applied_run_style_cached(Some(&highlighted)),
+                &first_highlighted
+            ));
+        }
+        assert_eq!(entries(), before, "no replacements, windows={windows}");
+    }
+}
+
+// Word for Mac picks the East Asian fallback face from the language, so the
+// wrap cache must not hand a ja-JP paragraph's wrap to a zh-CN one. Render
+// each language first (a fresh wrap) and second (after the other language's
+// wrap of the same text) and compare its line boxes.
+#[test]
+fn mac_wrap_cache_separates_east_asian_languages() {
+    let _restore = RestoreWordPlatform::mac();
+    let options = Options {
+        show_formatting_marks: false,
+        show_crop_marks: false,
+        ..Default::default()
+    };
+    let lines = |first: &str, second: &str| {
+        let mut document = doc_with_paragraph_texts(&["税あ e", "税あ e", "UNCHANGED"]);
+        for (index, language) in [first, second].into_iter().enumerate() {
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[index]
+            else {
+                unreachable!()
+            };
+            paragraph.runs[0].properties = Some(RunProperties {
+                fonts: Some(RunFonts {
+                    ascii: Some("Arial".into()),
+                    east_asia: Some("Arial".into()),
+                    ..Default::default()
+                }),
+                east_asia_language: Some(language.into()),
+                ..Default::default()
+            });
+        }
+        let (mut renderer, _) = renderer_with_painter();
+        renderer.render(&document, &options).unwrap();
+        renderer.layout_debug_lines()
+    };
+    let boxes = |lines: &[LayoutLineDebug], paragraph: usize| {
+        lines
+            .iter()
+            .filter(|line| line.paragraph == paragraph)
+            .map(|line| (line.height, line.baseline - line.top))
+            .collect::<Vec<_>>()
+    };
+    let japanese_first = lines("ja-JP", "zh-CN");
+    let chinese_first = lines("zh-CN", "ja-JP");
+    assert_ne!(
+        boxes(&japanese_first, 0),
+        boxes(&chinese_first, 0),
+        "the languages must lay out differently"
+    );
+    assert_eq!(
+        boxes(&chinese_first, 1),
+        boxes(&japanese_first, 0),
+        "ja-JP second"
+    );
+    assert_eq!(
+        boxes(&japanese_first, 1),
+        boxes(&chinese_first, 0),
+        "zh-CN second"
+    );
 }
 
 // The paragraph render cache is keyed by a hash of the run formatting. A

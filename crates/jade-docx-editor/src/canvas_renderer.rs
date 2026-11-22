@@ -4000,9 +4000,9 @@ struct TextBoxInlines<'p> {
     maths: InlineMaths,
     pictures: HashMap<usize, (usize, &'p RunImage)>,
 }
-/// An applied-style cache entry keeps the inputs its key was computed from.
-/// The key is a 64-bit hash, which is only 32 bits on wasm32, so a hit is
-/// confirmed against them instead of trusting the hash.
+/// An applied-style cache entry keeps the inputs it was resolved from. The
+/// key is a hash, only 32 bits on wasm32, and covers only the fields that
+/// change the applied style, so a hit is confirmed against the inputs.
 struct AppliedRunStyleEntry {
     doc_grid_char_spacing_bits: Option<u64>,
     properties: Option<RunProperties>,
@@ -4841,7 +4841,9 @@ where
     last_render_body_element_count: u64,
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
-    applied_run_style_cache: RefCell<FxHashMap<u64, AppliedRunStyleEntry>>,
+    /// Runs that differ only outside the key (highlight, shading, ...) share a
+    /// bucket, so several entries per key are kept.
+    applied_run_style_cache: RefCell<FxHashMap<u64, Vec<AppliedRunStyleEntry>>>,
     /// Windows font-line summaries, validated against owned run inputs.
     paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
     /// See [`CanvasRenderer::effective_run_properties_rc`].
@@ -11330,7 +11332,7 @@ where
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
-                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                    hasher = run_style_key::hash_languages(props, hasher);
                 }
                 props.bold.hash(&mut hasher);
                 props.italic.hash(&mut hasher);
@@ -35375,25 +35377,35 @@ where
             self.current_doc_grid_char_spacing_px,
         );
         let grid_bits = self.current_doc_grid_char_spacing_px.map(f64::to_bits);
-        if let Some(entry) = self.applied_run_style_cache.borrow().get(&cache_key) {
-            // Equal hashes are not equal inputs; a collision is a miss and
-            // replaces the entry below.
-            if entry.doc_grid_char_spacing_bits == grid_bits
-                && entry.properties.as_ref() == properties
-            {
-                return Rc::clone(&entry.style);
-            }
+        // Equal keys are not equal inputs: the key omits fields that do not
+        // change the applied style, and hashes can collide.
+        if let Some(style) = self
+            .applied_run_style_cache
+            .borrow()
+            .get(&cache_key)
+            .and_then(|bucket| {
+                bucket.iter().find(|entry| {
+                    entry.doc_grid_char_spacing_bits == grid_bits
+                        && entry.properties.as_ref() == properties
+                })
+            })
+            .map(|entry| Rc::clone(&entry.style))
+        {
+            return style;
         }
 
         let style = Rc::new(self.resolve_applied_run_style_uncached(properties));
-        self.applied_run_style_cache.borrow_mut().insert(
-            cache_key,
-            AppliedRunStyleEntry {
-                doc_grid_char_spacing_bits: grid_bits,
-                properties: properties.cloned(),
-                style: Rc::clone(&style),
-            },
-        );
+        let mut cache = self.applied_run_style_cache.borrow_mut();
+        let bucket = cache.entry(cache_key).or_default();
+        // Bound what adversarial variants of one key can retain.
+        if bucket.len() >= 64 {
+            bucket.clear();
+        }
+        bucket.push(AppliedRunStyleEntry {
+            doc_grid_char_spacing_bits: grid_bits,
+            properties: properties.cloned(),
+            style: Rc::clone(&style),
+        });
         style
     }
 

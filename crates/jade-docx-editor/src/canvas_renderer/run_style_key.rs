@@ -153,20 +153,9 @@ pub(super) fn windows_key_impl<const INCLUDE_LANGUAGES: bool>(
 
 // Keep optional language hashing out of the large repaint loops. Passing the
 // hasher by value also avoids making the hot loop's accumulator escape.
-#[cold]
-#[inline(never)]
-pub(super) fn hash_windows_languages(props: &RunProperties, mut hasher: FxHasher) -> FxHasher {
-    if jade_docx_layout::line_metrics::word_layout_platform()
-        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-    {
-        hash_language(props.language.as_deref(), &mut hasher);
-        hash_language(props.east_asia_language.as_deref(), &mut hasher);
-    }
-    hasher
-}
-
-/// [`hash_windows_languages`] on both platforms, for caches whose output also
-/// depends on the language on Mac, where it picks the East Asian fallback face.
+//
+// Both platforms hash the languages: Word for Mac also picks the East Asian
+// fallback face from them (`font_resolver`), not only Word for Windows.
 #[cold]
 #[inline(never)]
 pub(super) fn hash_languages(props: &RunProperties, mut hasher: FxHasher) -> FxHasher {
@@ -243,31 +232,27 @@ mod tests {
             Some("日本"),
             Some("日本語"),
         ];
-        set_word_layout_platform(WordLayoutPlatform::Windows);
-        let mut keys = std::collections::HashSet::new();
-        for language in tags {
-            for east_asia_language in tags {
-                let properties = RunProperties {
-                    language: language.map(Into::into),
-                    east_asia_language: east_asia_language.map(Into::into),
-                    ..Default::default()
-                };
-                let mut seed = FxHasher::default();
-                0x1234_u64.hash(&mut seed);
-                let key = hash_windows_languages(&properties, seed).finish();
-                assert!(keys.insert(key), "{language:?}/{east_asia_language:?}");
+        // Both platforms: Word for Mac picks the East Asian fallback face from
+        // the language too, so the keys must stay distinct there as well.
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let mut keys = std::collections::HashSet::new();
+            for language in tags {
+                for east_asia_language in tags {
+                    let properties = RunProperties {
+                        language: language.map(Into::into),
+                        east_asia_language: east_asia_language.map(Into::into),
+                        ..Default::default()
+                    };
+                    let mut seed = FxHasher::default();
+                    0x1234_u64.hash(&mut seed);
+                    let key = hash_languages(&properties, seed).finish();
+                    assert!(
+                        keys.insert(key),
+                        "{platform:?}: {language:?}/{east_asia_language:?}"
+                    );
+                }
             }
-        }
-        set_word_layout_platform(WordLayoutPlatform::Mac);
-        for tag in tags {
-            let properties = RunProperties {
-                language: tag.map(Into::into),
-                ..Default::default()
-            };
-            let mut seed = FxHasher::default();
-            0x1234_u64.hash(&mut seed);
-            let expected = seed.finish();
-            assert_eq!(hash_windows_languages(&properties, seed).finish(), expected);
         }
         set_word_layout_platform(previous);
     }
