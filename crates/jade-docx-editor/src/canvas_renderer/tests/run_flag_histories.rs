@@ -1119,6 +1119,39 @@ fn courier_color_after_highlight_preserves_the_following_baseline() {
     }
 }
 
+// A run's family and its East Asian slot name the same font, every other
+// field unset. The applied-style cache is keyed by hash alone, so the two must
+// not share a key, or the second run reuses the first run's line metrics.
+#[test]
+fn cleared_east_asia_font_then_family_preserves_fresh_baseline() {
+    let _restore = RestoreWordPlatform::mac();
+    let family = RunProperties {
+        font_family: Some("游明朝".into()),
+        ..Default::default()
+    };
+    let east_asia = RunProperties {
+        fonts: Some(RunFonts {
+            east_asia: Some("游明朝".into()),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    assert_ne!(
+        <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&family), None),
+        <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&east_asia), None),
+    );
+    for windows in [false, true] {
+        check_history(
+            &[
+                Edit::RunText(7, Some(3)),
+                Edit::ClearFonts,
+                Edit::RunText(4, Some(3)),
+            ],
+            windows,
+        );
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
     #[test]

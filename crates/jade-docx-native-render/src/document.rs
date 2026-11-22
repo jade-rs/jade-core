@@ -3021,7 +3021,10 @@ impl NativeDocument {
         let old_height = local_text_edit
             .then(|| self.renderer.cached_paragraph_height(paragraph))
             .flatten();
-        let text_edit_cache = local_text_edit.then(|| self.renderer.local_text_edit_cache());
+        let text_edit_cache = local_text_edit.then(|| {
+            self.renderer
+                .local_text_edit_cache_for_paragraph(&self.word_document, paragraph)
+        });
         let recorded = self.executor.history_revision();
         let before = self.selection;
         let group_commands = executor_steps > 1;
