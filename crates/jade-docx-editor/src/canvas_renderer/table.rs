@@ -3407,9 +3407,22 @@ where
             table.bidi_visual,
         );
         let contained_row_heights = has_merge_owners.then(|| {
-            let mut rows = prepared_rows.clone();
             let mut heights = contained_row_heights;
-            add_border_extents(table, &mut rows, &hidden_rows, &mut heights, false);
+            // Reference only: the old copying path, kept for the differential tests.
+            #[cfg(test)]
+            if prepared_row_moves::force_copies() {
+                let mut rows = prepared_rows.clone();
+                add_border_extents(table, &mut rows, &hidden_rows, &mut heights, false);
+                return heights;
+            }
+            add_border_extents_with(
+                table,
+                &mut prepared_rows,
+                &hidden_rows,
+                &mut heights,
+                false,
+                false,
+            );
             heights
         });
         let last_row_bottom_border = add_border_extents(
@@ -3732,7 +3745,7 @@ where
         let last_visible_row = hidden_rows.iter().rposition(|hidden| !hidden);
         let mut last_visible_row_index = None;
         let mut previous_spaced_frame: Option<(usize, usize, f64)> = None;
-        for (row_index, prepared_row) in prepared_rows.iter().enumerate() {
+        for row_index in 0..prepared_rows.len() {
             let row = &table.rows[row_index];
             if let Some(contained) = contained_row_heights
                 .as_ref()
@@ -3767,7 +3780,8 @@ where
             }
             last_visible_row_index = Some(row_index);
 
-            let mut pending_cells = prepared_row.clone();
+            // Later rows never read this row's text again, so move it out.
+            let mut pending_cells = take_prepared_row(&mut prepared_rows, row_index);
             let mut pending_height = original_row_height;
             let mut row_start = true;
             let mut fresh_page_segment = None;
@@ -4548,19 +4562,6 @@ where
             }
         }
 
-        #[cfg(test)]
-        {
-            for cell in row_layout.iter() {
-                println!(
-                    "table_debug: col {} span {} blocks {} skip {}",
-                    cell.column_index,
-                    cell.span,
-                    cell.blocks.len(),
-                    cell.skip_render
-                );
-            }
-        }
-
         if self.should_draw_current_page_for_render() {
             let painter = self.host.painter();
             paint_spacing_tail(
@@ -4638,9 +4639,8 @@ where
                         })
                     });
                     let border_sides = vertical_merge_continuation_border_sides(
-                        all_rows,
-                        row_index,
-                        cell_index,
+                        cell,
+                        all_rows.get(row_index + 1).map(Vec::as_slice),
                         page_segment_top,
                         page_segment_bottom,
                     );
@@ -12435,18 +12435,11 @@ fn grow_rows_for_vertical_merges(row_heights: &mut [f64], owners: &[(usize, usiz
 /// cell appears at the top of a new page segment, and suppress inner bottoms
 /// until the final continuation row.
 fn vertical_merge_continuation_border_sides(
-    rows: &[Vec<PreparedCell>],
-    row_index: usize,
-    cell_index: usize,
+    cell: &PreparedCell,
+    next_row: Option<&[PreparedCell]>,
     page_segment_top: bool,
     page_segment_bottom: bool,
 ) -> VerticalMergeContinuationBorderSides {
-    let Some(cell) = rows.get(row_index).and_then(|row| row.get(cell_index)) else {
-        return VerticalMergeContinuationBorderSides {
-            top: false,
-            bottom: true,
-        };
-    };
     if !matches!(cell.vertical_merge.as_deref(), Some("continue")) {
         return VerticalMergeContinuationBorderSides {
             top: false,
@@ -12454,7 +12447,7 @@ fn vertical_merge_continuation_border_sides(
         };
     }
 
-    let continues_below = rows.get(row_index + 1).is_some_and(|next_row| {
+    let continues_below = next_row.is_some_and(|next_row| {
         next_row.iter().any(|candidate| {
             candidate.column_index == cell.column_index
                 && candidate.span == cell.span
@@ -12825,6 +12818,26 @@ fn add_border_extents(
     row_heights: &mut [f64],
     exclude_merge_owners: bool,
 ) -> f64 {
+    add_border_extents_with(
+        table,
+        prepared_rows,
+        hidden_rows,
+        row_heights,
+        exclude_merge_owners,
+        true,
+    )
+}
+
+/// [`add_border_extents`]; without `write_insets` only the row heights
+/// change and the cells keep their insets.
+fn add_border_extents_with(
+    table: &Table,
+    prepared_rows: &mut [Vec<PreparedCell>],
+    hidden_rows: &[bool],
+    row_heights: &mut [f64],
+    exclude_merge_owners: bool,
+    write_insets: bool,
+) -> f64 {
     let mut last_visible = 0.0;
     let mut first_visible = true;
     let mut previous_row_grows = false;
@@ -12885,10 +12898,42 @@ fn add_border_extents(
                 .as_ref()
                 .and_then(|rows| rows.get(index))
                 .map(Vec::as_slice),
+            write_insets,
         );
         previous = Some((index, last_visible, row_grows_for_borders(row)));
     }
     last_visible
+}
+
+/// Moves a row out of the prepared table for drawing: later rows never read
+/// its cells again, and the drawn row passes its own cells to the border
+/// lookups.
+fn take_prepared_row(rows: &mut [Vec<PreparedCell>], index: usize) -> Vec<PreparedCell> {
+    // Reference only: the old copying path, kept for the differential tests.
+    #[cfg(test)]
+    if prepared_row_moves::force_copies() {
+        return rows[index].clone();
+    }
+    std::mem::take(&mut rows[index])
+}
+
+/// Test-only switch back to the old copying path. It exists solely as the
+/// reference for the differential tests in `table_row_clone_tests`.
+#[cfg(test)]
+pub(super) mod prepared_row_moves {
+    use std::cell::Cell;
+
+    thread_local! {
+        static FORCE_COPIES: Cell<bool> = const { Cell::new(false) };
+    }
+
+    pub(in crate::canvas_renderer) fn force_copies() -> bool {
+        FORCE_COPIES.with(Cell::get)
+    }
+
+    pub(in crate::canvas_renderer) fn set_force_copies(force: bool) {
+        FORCE_COPIES.with(|cell| cell.set(force));
+    }
 }
 
 /// Whether `table` is laid out as a floating table (`w:tblpPr`). Word for
@@ -13004,6 +13049,7 @@ fn add_row_border_extents(
     previous_row_grows: &mut bool,
     row_spans: Option<&[usize]>,
     merge_edges: Option<&[Option<bool>]>,
+    write_insets: bool,
 ) -> f64 {
     let grows = row_grows_for_borders(row);
     let windows_collapsed_minimum = row.height_rule == Some(TableRowHeightRule::AtLeast)
@@ -13045,7 +13091,7 @@ fn add_row_border_extents(
             .fold(0.0_f64, f64::max);
         let outer_top = spacing_frame_width(row, table, TableBorderSide::Top);
         *height += spacing + row_top;
-        for cell in cells.iter_mut() {
+        for cell in cells.iter_mut().filter(|_| write_insets) {
             let inset = cell.top_border_extent()
                 + if *first_visible {
                     spacing + outer_top
@@ -13105,7 +13151,7 @@ fn add_row_border_extents(
                 .map(PreparedCell::top_border_extent)
                 .fold(0.0_f64, f64::max);
             *height = height.max(content + bottom) + row_top + opening;
-            for cell in cells.iter_mut() {
+            for cell in cells.iter_mut().filter(|_| write_insets) {
                 let inset = cell.top_border_extent() + opening;
                 cell.padding.top += inset;
                 cell.height += inset;
@@ -13142,7 +13188,7 @@ fn add_row_border_extents(
                 .max(content + top + bottom);
             }
         }
-        if top > 0.0 {
+        if top > 0.0 && write_insets {
             for cell in cells.iter_mut() {
                 cell.padding.top += top;
                 cell.height += top;
@@ -13152,7 +13198,7 @@ fn add_row_border_extents(
     } else if !*previous_row_grows {
         // Auto rows already reserve the shared border below their content.
         // Exact rows keep their height and reserve it inside the next row.
-        for cell in cells.iter_mut() {
+        for cell in cells.iter_mut().filter(|_| write_insets) {
             let inset = cell.top_border_extent();
             cell.padding.top += inset;
             cell.height += inset;
@@ -16358,6 +16404,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
                 &mut previous_row_grows,
                 None,
                 None,
+                true,
             );
             total_height += upper.height - previous_height;
         }
@@ -16373,6 +16420,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             &mut previous_row_grows,
             None,
             None,
+            true,
         );
         total_height += last.height - previous_height;
     }
@@ -23412,6 +23460,7 @@ mod tests {
             &mut false,
             None,
             None,
+            true,
         );
         assert_eq!(height, 40.0);
         assert_eq!(exact_cells[0].page_top_inset, 4.0);
@@ -23765,13 +23814,14 @@ mod tests {
 
     #[test]
     fn vertical_merge_continuation_borders_resume_at_page_top_without_inner_bottom() {
-        let rows = vec![
+        let rows = [
             vec![make_prepared_cell(0, 1, Some("restart"), false)],
             vec![make_prepared_cell(0, 1, Some("continue"), true)],
             vec![make_prepared_cell(0, 1, Some("continue"), true)],
         ];
 
-        let first_continuation = vertical_merge_continuation_border_sides(&rows, 1, 0, true, false);
+        let first_continuation =
+            vertical_merge_continuation_border_sides(&rows[1][0], Some(&rows[2]), true, false);
         assert_eq!(
             first_continuation,
             VerticalMergeContinuationBorderSides {
@@ -23781,7 +23831,7 @@ mod tests {
         );
 
         let final_continuation =
-            vertical_merge_continuation_border_sides(&rows, 2, 0, false, false);
+            vertical_merge_continuation_border_sides(&rows[2][0], None, false, false);
         assert_eq!(
             final_continuation,
             VerticalMergeContinuationBorderSides {
@@ -23791,7 +23841,7 @@ mod tests {
         );
 
         let page_bottom_continuation =
-            vertical_merge_continuation_border_sides(&rows, 1, 0, false, true);
+            vertical_merge_continuation_border_sides(&rows[1][0], Some(&rows[2]), false, true);
         assert_eq!(
             page_bottom_continuation,
             VerticalMergeContinuationBorderSides {
