@@ -500,6 +500,75 @@ fn cell_inline_picture(run: &Run, run_index: usize) -> Option<CellPicture> {
     })
 }
 
+/// A floating (`wp:anchor`) picture or text box anchored in a table cell
+/// paragraph. It takes no room in the cell's lines: Word paints it relative
+/// to the cell (`layoutInCell`) or the page, at the paragraph's anchor.
+#[derive(Clone, Debug)]
+pub(super) struct CellFloatingObject {
+    run_index: usize,
+    /// Byte offset of the anchor in the paragraph's layout text, which picks
+    /// the line (and so the page fragment) the object belongs to.
+    offset: usize,
+    /// Text-box paragraph surfaces of the paragraph's earlier runs: the
+    /// model numbers a text box's paragraphs right after its host's, run by
+    /// run, so this object's first surface is host + 1 + this.
+    surface_offset: usize,
+    kind: CellFloatingKind,
+}
+
+#[derive(Clone, Debug)]
+enum CellFloatingKind {
+    Picture(Rc<RunImage>),
+    TextBox(Rc<RunTextBox>),
+}
+
+impl CellFloatingObject {
+    fn layout(&self) -> &RunImageLayout {
+        match &self.kind {
+            CellFloatingKind::Picture(image) => &image.layout,
+            CellFloatingKind::TextBox(text_box) => &text_box.layout,
+        }
+    }
+}
+
+/// The floating object a run anchors in a table cell, if any.
+fn cell_floating_object(
+    run: &Run,
+    run_index: usize,
+    offset: usize,
+    surface_offset: usize,
+) -> Option<CellFloatingObject> {
+    let kind = if let Some(image) = run
+        .image
+        .as_ref()
+        .filter(|image| matches!(image.layout.kind, RunImageKind::Floating))
+    {
+        CellFloatingKind::Picture(Rc::new(image.clone()))
+    } else {
+        let text_box = run
+            .text_box
+            .as_ref()
+            .filter(|text_box| matches!(text_box.layout.kind, RunImageKind::Floating))?;
+        CellFloatingKind::TextBox(Rc::new(text_box.clone()))
+    };
+    let object = CellFloatingObject {
+        run_index,
+        offset,
+        surface_offset,
+        kind,
+    };
+    (!object.layout().hidden()).then_some(object)
+}
+
+/// The line of `lines` that holds byte `offset`: the first line ending past
+/// it, or the last line for an anchor at the paragraph's end.
+fn cell_anchor_line_index(lines: &[LineLayout], offset: usize) -> Option<usize> {
+    lines
+        .iter()
+        .position(|line| offset < line.end)
+        .or_else(|| lines.len().checked_sub(1))
+}
+
 /// Paragraph representation within a table cell along with its line layouts.
 #[derive(Clone, Debug, Default)]
 pub(super) struct CellParagraph {
@@ -529,8 +598,45 @@ pub(super) struct CellParagraph {
     segment_start: usize,
     keep_lines: bool,
     widow_control: bool,
-    note_anchors: Vec<TableNoteAnchor>,
+    /// Note references and floating objects anchored in the paragraph;
+    /// boxed so the common paragraph without any stays small.
+    anchors: Option<Box<CellParagraphAnchors>>,
     numbering: Option<Rc<CellNumbering>>,
+}
+
+/// What a cell paragraph anchors at points in its text.
+#[derive(Clone, Debug, Default)]
+struct CellParagraphAnchors {
+    notes: Vec<TableNoteAnchor>,
+    /// Kept by the page fragment that holds each anchor's line.
+    floating: Vec<CellFloatingObject>,
+    /// Paragraph surfaces of the paragraph's text boxes, numbered by the
+    /// model right after the paragraph's own.
+    text_box_surfaces: usize,
+}
+
+impl CellParagraphAnchors {
+    fn boxed(notes: Vec<TableNoteAnchor>, floats: CollectedCellFloats) -> Option<Box<Self>> {
+        let CollectedCellFloats {
+            objects: floating,
+            text_box_surfaces,
+        } = floats;
+        (!notes.is_empty() || !floating.is_empty() || text_box_surfaces > 0).then(|| {
+            Box::new(Self {
+                notes,
+                floating,
+                text_box_surfaces,
+            })
+        })
+    }
+}
+
+/// The floating objects of a cell paragraph, and the text-box surfaces it
+/// holds, as collected with its text.
+#[derive(Debug, Default)]
+struct CollectedCellFloats {
+    objects: Vec<CellFloatingObject>,
+    text_box_surfaces: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -563,7 +669,7 @@ impl CellParagraph {
     }
 
     fn fragment(&self, range: Range<usize>, segment_start: usize) -> Self {
-        let lines = self.lines[range].to_vec();
+        let lines = self.lines[range.clone()].to_vec();
         let height = self.lines_height(&lines);
         Self {
             text: self.text.clone(),
@@ -593,8 +699,52 @@ impl CellParagraph {
             keep_lines: self.keep_lines,
             widow_control: self.widow_control,
             numbering: self.numbering.clone(),
-            note_anchors: self.note_anchors.clone(),
+            anchors: self.anchors.as_ref().and_then(|anchors| {
+                // Each floating object paints with the page fragment holding
+                // its anchor, so a split row draws it once.
+                let floating = anchors
+                    .floating
+                    .iter()
+                    .filter(|object| {
+                        cell_anchor_line_index(&self.lines, object.offset)
+                            .map_or(segment_start == self.segment_start, |line| {
+                                range.contains(&line)
+                            })
+                    })
+                    .cloned()
+                    .collect::<Vec<_>>();
+                CellParagraphAnchors::boxed(
+                    anchors.notes.clone(),
+                    CollectedCellFloats {
+                        objects: floating,
+                        text_box_surfaces: anchors.text_box_surfaces,
+                    },
+                )
+            }),
         }
+    }
+
+    fn note_anchors(&self) -> &[TableNoteAnchor] {
+        self.anchors
+            .as_ref()
+            .map_or(&[], |anchors| anchors.notes.as_slice())
+    }
+
+    #[cfg(test)]
+    fn note_anchors_mut(&mut self) -> &mut Vec<TableNoteAnchor> {
+        &mut self.anchors.get_or_insert_with(Box::default).notes
+    }
+
+    fn text_box_surfaces(&self) -> usize {
+        self.anchors
+            .as_ref()
+            .map_or(0, |anchors| anchors.text_box_surfaces)
+    }
+
+    fn floating_objects(&self) -> &[CellFloatingObject] {
+        self.anchors
+            .as_ref()
+            .map_or(&[], |anchors| anchors.floating.as_slice())
     }
 
     /// The number of columns a vertically laid paragraph takes.
@@ -4812,7 +4962,7 @@ where
         // Named so the painter outlives the guard that borrows it, and owning so
         // the borrow is not of `self`.
         let clip_painter = self.host.painter();
-        let _clip_guard = if draw_enabled {
+        let clip_guard = if draw_enabled {
             if clip_content && clip_height <= 0.0 {
                 Some(ClipGuard::empty(&clip_painter))
             } else {
@@ -4852,6 +5002,23 @@ where
         let mut consumed_height = 0.0;
 
         let content_top = block_top;
+        // Floating objects in front of the text paint once the cell's text is
+        // down, outside its clip; those behind it paint before their paragraph.
+        let mut front_floats = Vec::new();
+        let float_frame = CellAnchorFrame {
+            cell_left: x_start,
+            cell_width,
+            cell_top: y_top,
+            cell_height: row_height,
+            content_left: x_start + pad_left,
+            content_width: (cell_width - pad_horizontal).max(0.0),
+            content_top: y_top + cell.cell_spacing + padding.top + text_top_border,
+            content_height: inner_height,
+            paragraph_top: 0.0,
+            paragraph_height: 0.0,
+            line_top: 0.0,
+            line_height: 0.0,
+        };
         let placements = vertical_block_placements(
             &cell.blocks,
             cell.text_direction,
@@ -4885,8 +5052,11 @@ where
                         Some(index) => *index,
                         None => {
                             let index = self.paragraph_counter;
-                            self.paragraph_counter =
-                                self.advance_counter_with_note_surfaces(index, 1);
+                            self.paragraph_counter = advance_past_cell_paragraph(
+                                index,
+                                paragraph.text_box_surfaces(),
+                                &self.footnote_surface_extras,
+                            );
                             block.paragraph_indices.push(index);
                             index
                         }
@@ -5012,6 +5182,20 @@ where
                     } else {
                         block_top + paragraph.spacing_before
                     };
+                    if !paragraph.floating_objects().is_empty() {
+                        for placement in Self::cell_float_placements(
+                            paragraph,
+                            paragraph_index,
+                            float_frame,
+                            block_top + paragraph.spacing_before,
+                        ) {
+                            if placement.object.layout().behind_doc {
+                                self.paint_cell_floating_object(&placement, true)?;
+                            } else {
+                                front_floats.push(placement);
+                            }
+                        }
+                    }
                     if paragraph.lines.is_empty() {
                         let line_top = text_y;
                         let baseline = line_top + line_height;
@@ -5315,6 +5499,11 @@ where
                     consumed_height += consumed;
                 }
             }
+        }
+
+        drop(clip_guard);
+        for placement in &front_floats {
+            self.paint_cell_floating_object(placement, true)?;
         }
 
         Ok(consumed_height)
@@ -6024,7 +6213,7 @@ where
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
         let clip_painter = self.host.painter();
-        let _clip_guard = ClipGuard::new(&clip_painter, x_start, y_top, cell_width, row_height);
+        let clip_guard = ClipGuard::new(&clip_painter, x_start, y_top, cell_width, row_height);
         let text_color = cell.text_color.as_deref().unwrap_or("auto");
         #[allow(deprecated)]
         clip_painter.set_fill_style_str(self.resolve_text_fill_color(text_color).as_ref());
@@ -6038,6 +6227,22 @@ where
         let mut block_top = y_top + cell.cell_spacing + padding.top + vertical_align_offset;
 
         let content_top = block_top;
+        // The repeated row carries the pictures laid out in its cells along.
+        let mut front_floats = Vec::new();
+        let float_frame = CellAnchorFrame {
+            cell_left: x_start,
+            cell_width,
+            cell_top: y_top,
+            cell_height: row_height,
+            content_left: x_start + pad_left,
+            content_width: (cell_width - pad_horizontal).max(0.0),
+            content_top: y_top + cell.cell_spacing + padding.top,
+            content_height: inner_height,
+            paragraph_top: 0.0,
+            paragraph_height: 0.0,
+            line_top: 0.0,
+            line_height: 0.0,
+        };
         let placements = vertical_block_placements(
             &cell.blocks,
             cell.text_direction,
@@ -6132,6 +6337,18 @@ where
                     continue;
                 }
                 let mut text_y = block_top + paragraph.spacing_before;
+                if !paragraph.floating_objects().is_empty() {
+                    let host = block.paragraph_indices.first().copied().unwrap_or(0);
+                    for placement in
+                        Self::cell_float_placements(paragraph, host, float_frame, text_y)
+                    {
+                        if placement.object.layout().behind_doc {
+                            self.paint_cell_floating_object(&placement, false)?;
+                        } else {
+                            front_floats.push(placement);
+                        }
+                    }
+                }
                 // Repeated copies have a capture-local identity, never a body
                 // selection index. The template remains the editable paragraph.
                 let capture_paragraph = self.auxiliary_story_debug_lines.len();
@@ -6277,6 +6494,10 @@ where
                 }
             }
             block_top += block.height;
+        }
+        drop(clip_guard);
+        for placement in &front_floats {
+            self.paint_cell_floating_object(placement, false)?;
         }
         Ok(())
     }
@@ -13120,7 +13341,7 @@ fn prepared_row_note_anchors(cells: &[PreparedCell]) -> Vec<&TableNoteAnchor> {
     for cell in cells.iter().filter(|cell| !cell.skip_render) {
         for block in &cell.blocks {
             if let CellBlockKind::Paragraph(paragraph) = &block.kind {
-                anchors.extend(paragraph.note_anchors.iter().filter(|anchor| {
+                anchors.extend(paragraph.note_anchors().iter().filter(|anchor| {
                     paragraph.lines.iter().any(|line| {
                         anchor.offset >= line.start
                             && (anchor.offset < line.end.max(line.start.saturating_add(1))
@@ -13622,6 +13843,19 @@ fn assign_nested_table_orders(cells: &mut [PreparedCell], next: &mut usize) {
 /// partitions block lists and nested rows. Returns the next free paragraph index.
 /// `skip_render` continuation cells reserve `logical_paragraph_count` indices
 /// without storing per-block indices, mirroring the render counter's skip path.
+/// The index after a cell paragraph at `index`: past the paragraph, its
+/// `text_box_surfaces` text-box paragraphs and the footnote surfaces the
+/// model reserves after the last of those.
+fn advance_past_cell_paragraph(
+    index: usize,
+    text_box_surfaces: usize,
+    footnote_surface_extras: &HashMap<usize, usize>,
+) -> usize {
+    let next = index.saturating_add(1).saturating_add(text_box_surfaces);
+    let last = next - 1;
+    next.saturating_add(footnote_surface_extras.get(&last).copied().unwrap_or(0))
+}
+
 fn assign_row_paragraph_indices(
     cells: &mut [PreparedCell],
     base: usize,
@@ -13648,7 +13882,16 @@ fn assign_row_paragraph_indices(
         for block in &mut cell.blocks {
             match &mut block.kind {
                 CellBlockKind::Spacing => {}
-                CellBlockKind::Paragraph(_) | CellBlockKind::Math(_) => {
+                CellBlockKind::Paragraph(paragraph) => {
+                    block.paragraph_indices.clear();
+                    block.paragraph_indices.push(next);
+                    next = advance_past_cell_paragraph(
+                        next,
+                        paragraph.text_box_surfaces(),
+                        footnote_surface_extras,
+                    );
+                }
+                CellBlockKind::Math(_) => {
                     block.paragraph_indices.clear();
                     block.paragraph_indices.push(next);
                     advance(&mut next, 1);
@@ -15475,14 +15718,16 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                                 .text_direction
                                 .is_some_and(direction_requires_vertical_stack)
                         });
-                        let (text, mut styled_runs, note_anchors) = collect_paragraph_text(
-                            paragraph,
-                            config.render_changes,
-                            config.render_original,
-                            &config.note_markers,
-                            field_value_for,
-                            math_context.is_some(),
-                        );
+                        let (text, mut styled_runs, note_anchors, floats) =
+                            collect_paragraph_text_and_floats(
+                                paragraph,
+                                config.render_changes,
+                                config.render_original,
+                                &config.note_markers,
+                                field_value_for,
+                                math_context.is_some(),
+                                true,
+                            );
                         resolve_cell_join_control_sizing(
                             &mut paragraph_style,
                             paragraph,
@@ -15725,7 +15970,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             .and_then(|shading| shading.resolved_background_color())
                             .map(Rc::from);
                         cell_paragraph.styled_runs = styled_runs;
-                        cell_paragraph.note_anchors = note_anchors;
+                        cell_paragraph.anchors = CellParagraphAnchors::boxed(note_anchors, floats);
                         cell_paragraph.keep_lines = paragraph
                             .properties
                             .as_ref()
@@ -16213,10 +16458,47 @@ fn collect_paragraph_text(
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
     include_inline_math: bool,
 ) -> (String, Vec<StyledRunRange>, Vec<TableNoteAnchor>) {
+    let (text, styled_runs, note_anchors, _) = collect_paragraph_text_and_floats(
+        paragraph,
+        render_changes,
+        render_original,
+        note_markers,
+        field_value_for,
+        include_inline_math,
+        false,
+    );
+    (text, styled_runs, note_anchors)
+}
+
+/// [`collect_paragraph_text`], plus the floating objects the paragraph
+/// anchors: zero-width, so the text and its runs are the same either way.
+fn collect_paragraph_text_and_floats(
+    paragraph: &Paragraph,
+    render_changes: bool,
+    render_original: bool,
+    note_markers: &NoteMarkers,
+    field_value_for: &dyn Fn(&RunField) -> Option<String>,
+    include_inline_math: bool,
+    collect_floats: bool,
+) -> (
+    String,
+    Vec<StyledRunRange>,
+    Vec<TableNoteAnchor>,
+    CollectedCellFloats,
+) {
     let mut note_anchors = Vec::new();
     let mut text = String::new();
     let mut styled_runs = Vec::new();
+    let mut floats = CollectedCellFloats::default();
     for (run_index, run) in paragraph.runs.iter().enumerate() {
+        // The model numbers every text box's paragraphs, shown or not.
+        let surface_offset = floats.text_box_surfaces;
+        if collect_floats {
+            if let Some(text_box) = run.text_box.as_ref() {
+                floats.text_box_surfaces +=
+                    <CanvasRenderer>::body_element_paragraph_surface_count(&text_box.blocks);
+            }
+        }
         if !render_changes {
             let hidden = match run.revision.as_ref().map(|mark| &mark.kind) {
                 Some(RevisionKind::Inserted | RevisionKind::MovedTo) => render_original,
@@ -16226,6 +16508,14 @@ fn collect_paragraph_text(
             if hidden {
                 continue;
             }
+        }
+        if collect_floats {
+            floats.objects.extend(cell_floating_object(
+                run,
+                run_index,
+                text.len(),
+                surface_offset,
+            ));
         }
         if let Some(picture) = cell_inline_picture(run, run_index) {
             let start = text.len();
@@ -16328,7 +16618,7 @@ fn collect_paragraph_text(
             });
         }
     }
-    (text, styled_runs, note_anchors)
+    (text, styled_runs, note_anchors, floats)
 }
 
 /// Inline objects occupy one placeholder in layout text. Math keeps the
@@ -17902,6 +18192,397 @@ fn parse_length_to_px(value: &str) -> Option<f64> {
         return Some(v);
     }
     None
+}
+
+/// The boxes a floating object in a table cell is positioned from, in page
+/// coordinates: Word lays an object with `layoutInCell` out in its cell, so
+/// `page` is the cell, `margin`/`column` its content box, and `paragraph`/
+/// `line` the anchor paragraph and line in the cell.
+#[derive(Clone, Copy, Debug)]
+struct CellAnchorFrame {
+    cell_left: f64,
+    cell_width: f64,
+    cell_top: f64,
+    cell_height: f64,
+    content_left: f64,
+    content_width: f64,
+    content_top: f64,
+    content_height: f64,
+    paragraph_top: f64,
+    paragraph_height: f64,
+    line_top: f64,
+    line_height: f64,
+}
+
+/// Where an object in a cell was placed, and the page point its stored
+/// offsets count from, so committing a move can keep its frame.
+#[derive(Clone, Copy, Debug)]
+pub(super) struct CellFloatFrameRecord {
+    target: FloatingObjectTarget,
+    page: usize,
+    x: f64,
+    y: f64,
+    origin_x: f64,
+    origin_y: f64,
+}
+
+/// How far into a box of `extent` an object of `size` sits for `wp:align`.
+/// `inside`/`outside` mirror on even pages, as in the body.
+fn cell_anchor_align(align: Option<&str>, extent: f64, size: f64, page_number: usize) -> f64 {
+    let free = extent - size;
+    let odd_page = !page_number.is_multiple_of(2);
+    match align {
+        Some("center") => free / 2.0,
+        Some("right" | "bottom") => free,
+        Some("inside") if !odd_page => free,
+        Some("outside") if odd_page => free,
+        _ => 0.0,
+    }
+}
+
+/// `start` plus the offset, or the alignment of `size` in `extent`; an
+/// object with neither sits at the box's start.
+fn cell_anchor_place(
+    position: Option<&ImagePosition>,
+    start: f64,
+    extent: f64,
+    size: f64,
+    page_number: usize,
+) -> f64 {
+    let Some(position) = position else {
+        return start;
+    };
+    if let Some(offset) = position.offset_px.filter(|offset| offset.is_finite()) {
+        return start + offset;
+    }
+    start + cell_anchor_align(position.align.as_deref(), extent, size, page_number)
+}
+
+/// A `width`x`height` object laid out in its cell, as Word positions it with
+/// `layoutInCell`: its page-coordinate top-left, and the start of the box
+/// each of its offsets counts from.
+fn cell_floating_origin(
+    layout: &RunImageLayout,
+    frame: &CellAnchorFrame,
+    width: f64,
+    height: f64,
+    page_number: usize,
+) -> ((f64, f64), (f64, f64)) {
+    if let Some(simple) = layout.simple_position.as_ref() {
+        let origin = (frame.cell_left, frame.cell_top);
+        return ((origin.0 + simple.x_px, origin.1 + simple.y_px), origin);
+    }
+    let horizontal = layout.position_h.as_ref();
+    let (x_start, x_extent) = match horizontal.and_then(|p| p.relative_from.as_deref()) {
+        Some("page") => (frame.cell_left, frame.cell_width),
+        _ => (frame.content_left, frame.content_width),
+    };
+    let vertical = layout.position_v.as_ref();
+    let (y_start, y_extent) = match vertical.and_then(|p| p.relative_from.as_deref()) {
+        Some("page") => (frame.cell_top, frame.cell_height),
+        Some("line") => (frame.line_top, frame.line_height),
+        Some("paragraph") | None => (frame.paragraph_top, frame.paragraph_height),
+        _ => (frame.content_top, frame.content_height),
+    };
+    (
+        (
+            cell_anchor_place(horizontal, x_start, x_extent, width, page_number),
+            cell_anchor_place(vertical, y_start, y_extent, height, page_number),
+        ),
+        (x_start, y_start),
+    )
+}
+
+/// The extent `render_floating_text_box` gives a text box: at least a line
+/// tall, except for a line shape.
+fn cell_floating_text_box_size(text_box: &RunTextBox, line_height: f64) -> (f64, f64) {
+    if text_box.shape.is_line() {
+        (
+            text_box.width_px.unwrap_or(0.0).max(0.0),
+            text_box.height_px.unwrap_or(0.0).max(0.0),
+        )
+    } else {
+        (
+            text_box.width_px.unwrap_or(200.0).max(1.0),
+            text_box
+                .height_px
+                .unwrap_or(line_height * 2.0)
+                .max(line_height),
+        )
+    }
+}
+
+/// A floating object of a cell paragraph, placed and waiting to be painted.
+struct CellFloatPlacement {
+    object: CellFloatingObject,
+    paragraph_index: usize,
+    frame: CellAnchorFrame,
+}
+
+impl<HostPainter> CanvasRenderer<HostPainter>
+where
+    HostPainter: Painter,
+    HostPainter::Error: PainterError,
+{
+    /// The floating objects `paragraph` anchors, each with the boxes it is
+    /// positioned from. `text_top` is the top of the paragraph's first line.
+    fn cell_float_placements(
+        paragraph: &CellParagraph,
+        paragraph_index: usize,
+        frame: CellAnchorFrame,
+        text_top: f64,
+    ) -> Vec<CellFloatPlacement> {
+        paragraph
+            .floating_objects()
+            .iter()
+            .map(|object| {
+                let mut frame = frame;
+                frame.paragraph_top = text_top;
+                frame.paragraph_height = paragraph.height;
+                frame.line_top = text_top;
+                frame.line_height = paragraph.line_height;
+                if let Some(index) = cell_anchor_line_index(&paragraph.lines, object.offset) {
+                    frame.line_top = text_top + paragraph.lines_height(&paragraph.lines[..index]);
+                    frame.line_height = paragraph.line_advance(&paragraph.lines[index]);
+                }
+                CellFloatPlacement {
+                    object: object.clone(),
+                    paragraph_index,
+                    frame,
+                }
+            })
+            .collect()
+    }
+
+    /// Whether Word lays `layout` out in its cell: with `layoutInCell`, and
+    /// always from compatibility mode 15 (Word 2013) on.
+    fn cell_float_laid_out_in_cell(&self, layout: &RunImageLayout) -> bool {
+        layout.options().layout_in_cell != Some(false)
+            || self
+                .document_east_asian_rules
+                .compatibility_mode
+                .is_some_and(|mode| mode >= 15)
+    }
+
+    /// The page point the stored offsets of the object at `target` count
+    /// from, when it is laid out in a table cell as last painted. A commit
+    /// that moves it keeps its frame by storing offsets from here.
+    pub fn cell_float_frame_origin(&self, target: FloatingObjectTarget) -> Option<(f64, f64)> {
+        let region = self.object_region(target)?;
+        self.cell_float_frames
+            .borrow()
+            .iter()
+            .find(|record| {
+                record.target == target
+                    && record.page == region.page
+                    && (record.x - region.x).abs() < 0.01
+                    && (record.y - region.y).abs() < 0.01
+            })
+            .map(|record| (record.origin_x, record.origin_y))
+    }
+
+    fn record_cell_float_frame(&self, record: CellFloatFrameRecord) {
+        let mut records = self.cell_float_frames.borrow_mut();
+        records.retain(|existing| existing.target != record.target);
+        records.push(record);
+    }
+
+    /// Paints a floating object anchored in a table cell, on its page layer.
+    /// With `register` it is also hit-testable; a repeated header row's copy
+    /// is not.
+    fn paint_cell_floating_object(
+        &mut self,
+        placement: &CellFloatPlacement,
+        register: bool,
+    ) -> Result<(), JsValue> {
+        if self.measuring_notes {
+            return Ok(());
+        }
+        let in_cell = self.cell_float_laid_out_in_cell(placement.object.layout());
+        if !register && (!in_cell || matches!(placement.object.kind, CellFloatingKind::TextBox(_)))
+        {
+            // A repeated header paints only pictures that move with it.
+            return Ok(());
+        }
+        let layer = self.begin_float_layer(placement.object.layout());
+        let result = self.paint_cell_floating_object_unlayered(placement, register, in_cell);
+        self.end_float_layer(layer);
+        result
+    }
+
+    fn paint_cell_floating_object_unlayered(
+        &mut self,
+        placement: &CellFloatPlacement,
+        register: bool,
+        in_cell: bool,
+    ) -> Result<(), JsValue> {
+        let CellFloatPlacement {
+            object,
+            paragraph_index,
+            frame,
+        } = placement;
+        let paragraph_index = *paragraph_index;
+        let layout = object.layout();
+        let page_number = self.current_page_number;
+        match &object.kind {
+            CellFloatingKind::Picture(image) if !in_cell => {
+                self.render_floating_image(
+                    image,
+                    paragraph_index,
+                    object.run_index,
+                    frame.paragraph_top,
+                    frame.line_height,
+                    None,
+                    None,
+                )?;
+            }
+            CellFloatingKind::Picture(image) => {
+                let target = FloatingObjectTarget {
+                    paragraph_index,
+                    run_index: object.run_index,
+                    kind: FloatingObjectKind::Image,
+                };
+                let width = image.width_px.unwrap_or(frame.line_height).max(1.0);
+                let height = image.height_px.unwrap_or(frame.line_height).max(1.0);
+                let ((x, y), (origin_x, origin_y)) =
+                    cell_floating_origin(layout, frame, width, height, page_number);
+                let transform = self
+                    .object_transform_preview
+                    .filter(|preview| register && preview.target == target)
+                    .map_or(
+                        FloatingObjectTransform {
+                            x,
+                            y,
+                            width,
+                            height,
+                            rotation_deg: layout.rotation_deg.unwrap_or(0.0),
+                        },
+                        |preview| preview.transform,
+                    );
+                let draw_spec = ImageDrawSpec {
+                    x: transform.x,
+                    y: transform.y,
+                    width: transform.width,
+                    height: transform.height,
+                    rotation_deg: transform.rotation_deg,
+                    flip_horizontal: layout.flip_horizontal,
+                    flip_vertical: layout.flip_vertical,
+                    crop: image.crop,
+                    paragraph_index,
+                    run_index: object.run_index,
+                };
+                if register {
+                    self.object_debug_regions
+                        .borrow_mut()
+                        .push(RegisteredObjectRegion {
+                            inline_picture: false,
+                            region: ObjectDebugInfo {
+                                kind: FloatingObjectKind::Image,
+                                paragraph_index,
+                                run_index: object.run_index,
+                                page: page_number,
+                                x: transform.x,
+                                y: transform.y,
+                                width: transform.width,
+                                height: transform.height,
+                                rotation_deg: transform.rotation_deg,
+                            },
+                        });
+                    self.record_cell_float_frame(CellFloatFrameRecord {
+                        target,
+                        page: page_number,
+                        x: transform.x,
+                        y: transform.y,
+                        origin_x,
+                        origin_y,
+                    });
+                    if let Some(group) = image.shape_group.as_ref() {
+                        self.record_shape_group_hyperlinks(
+                            group,
+                            draw_spec,
+                            object.run_index,
+                            object.run_index,
+                            None,
+                        );
+                    }
+                }
+                if !self.should_draw_current_page_for_render() {
+                    return Ok(());
+                }
+                if image.data_uri.is_some() || super::has_ink_strokes(image) {
+                    self.draw_image_element(image, draw_spec)?;
+                } else if let Some(group) = image.shape_group.as_ref() {
+                    self.draw_shape_group(group, draw_spec)?;
+                } else if let Some(label) = image.placeholder_label.as_deref() {
+                    self.draw_image_placeholder(
+                        label,
+                        draw_spec.x,
+                        draw_spec.y,
+                        draw_spec.width,
+                        draw_spec.height,
+                        draw_spec.rotation_deg,
+                    )?;
+                }
+            }
+            CellFloatingKind::TextBox(text_box) => {
+                // The box's own paragraphs follow its host's in the model.
+                let saved_counter = self.paragraph_counter;
+                self.paragraph_counter = paragraph_index + 1 + object.surface_offset;
+                let result = if in_cell {
+                    let target = FloatingObjectTarget {
+                        paragraph_index,
+                        run_index: object.run_index,
+                        kind: FloatingObjectKind::TextBox,
+                    };
+                    let (width, height) = cell_floating_text_box_size(text_box, frame.line_height);
+                    let ((x, y), (origin_x, origin_y)) =
+                        cell_floating_origin(layout, frame, width, height, page_number);
+                    let transform = self
+                        .object_transform_preview
+                        .filter(|preview| preview.target == target)
+                        .map_or(
+                            FloatingObjectTransform {
+                                x,
+                                y,
+                                width,
+                                height,
+                                rotation_deg: layout.rotation_deg.unwrap_or(0.0),
+                            },
+                            |preview| preview.transform,
+                        );
+                    self.record_cell_float_frame(CellFloatFrameRecord {
+                        target,
+                        page: page_number,
+                        x: transform.x,
+                        y: transform.y,
+                        origin_x,
+                        origin_y,
+                    });
+                    self.render_inline_text_box(
+                        text_box,
+                        paragraph_index,
+                        object.run_index,
+                        transform,
+                        true,
+                    )
+                } else {
+                    self.render_floating_text_box_in_column(
+                        text_box,
+                        paragraph_index,
+                        object.run_index,
+                        frame.paragraph_top,
+                        frame.line_height,
+                        true,
+                        None,
+                    )
+                    .map(|_| ())
+                };
+                self.paragraph_counter = saved_counter;
+                result?;
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -27534,7 +28215,7 @@ mod tests {
         let source_cell = |id: &str, ordinal, footnote| {
             let mut paragraph =
                 layout_horizontal_paragraph_with_context(&context, "x", 20.0, 12.0).unwrap();
-            paragraph.note_anchors.push(TableNoteAnchor {
+            paragraph.note_anchors_mut().push(TableNoteAnchor {
                 id: id.to_string(),
                 footnote,
                 offset: 0,
@@ -27641,7 +28322,7 @@ mod tests {
             layout_horizontal_paragraph_with_context(&context, "あいうえおかきく", 20.0, 12.0)
                 .unwrap();
         assert_eq!(paragraph.lines.len(), 4);
-        paragraph.note_anchors.push(TableNoteAnchor {
+        paragraph.note_anchors_mut().push(TableNoteAnchor {
             id: "7".into(),
             footnote: true,
             offset: 21,
@@ -27655,10 +28336,11 @@ mod tests {
         let measured = context.measure_calls();
         // A textbox anchored after the visible text contributes notes at
         // the source paragraph end, without a marker in the parent's text.
-        paragraph.note_anchors.push(TableNoteAnchor {
+        let offset = paragraph.text.len();
+        paragraph.note_anchors_mut().push(TableNoteAnchor {
             id: "8".to_string(),
             footnote: true,
-            offset: paragraph.text.len(),
+            offset,
             ordinal: Some(8),
         });
         let mut cell = make_prepared_cell(0, 1, None, false);
@@ -29189,5 +29871,514 @@ mod tests {
         let resolved = resolve_row_height(60.0, 20.0, &row, &[cell]);
 
         assert!((resolved - (points_to_px(24.0) + 3.0)).abs() < 0.01);
+    }
+
+    const CELL_ANCHOR_NS: &str = r#"xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture" xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape""#;
+
+    /// A `wp:anchor` picture 40x20px, `relative_h`/`relative_v` relative at
+    /// 5px offsets (47625 EMU), in front of the text.
+    fn cell_anchor_run(relative_h: &str, relative_v: &str, behind: bool) -> String {
+        let behind = u8::from(behind);
+        format!(
+            r#"<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="1" behindDoc="{behind}" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="{relative_h}"><wp:posOffset>47625</wp:posOffset></wp:positionH><wp:positionV relativeFrom="{relative_v}"><wp:posOffset>47625</wp:posOffset></wp:positionV><wp:extent cx="381000" cy="190500"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="1" name="Picture 1"/><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:nvPicPr><pic:cNvPr id="1" name="Picture 1"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId9"/></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="381000" cy="190500"/></a:xfrm><a:prstGeom prst="rect"/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>"#
+        )
+    }
+
+    /// A 1x1 table whose cell holds `paragraphs`, on a page `page_height`
+    /// twips tall; every picture gets image data.
+    fn cell_anchor_document(paragraphs: &str, page_height: u32) -> Document {
+        let xml = format!(
+            r#"<w:document {CELL_ANCHOR_NS}><w:body>
+                <w:tbl><w:tblPr><w:tblW w:w="3000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr>
+                    <w:tblGrid><w:gridCol w:w="3000"/></w:tblGrid>
+                    <w:tr><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr>{paragraphs}</w:tc></w:tr>
+                </w:tbl><w:p/>
+                <w:sectPr><w:pgSz w:w="6000" w:h="{page_height}"/><w:pgMar w:top="720" w:bottom="720" w:left="720" w:right="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>
+            </w:body></w:document>"#
+        );
+        let mut document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(&xml)
+            .unwrap();
+        for element in &mut document.body.as_mut().unwrap().elements {
+            let BodyElement::Table(table) = element else {
+                continue;
+            };
+            for cell in table.rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
+                for block in &mut cell.blocks {
+                    let BodyElement::Paragraph(paragraph) = block else {
+                        continue;
+                    };
+                    for image in paragraph
+                        .runs
+                        .iter_mut()
+                        .filter_map(|run| run.image.as_mut())
+                    {
+                        image.data_uri = Some("data:image/png;base64,AA==".into());
+                    }
+                }
+            }
+        }
+        document
+    }
+
+    fn render_cell_anchor_document(
+        document: &Document,
+    ) -> (CanvasRenderer<RecordingPainter>, Vec<Op>) {
+        let painter = RecordingPainter::with_width_per_char(10.0);
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(super::super::recording_host::RecordingHost {
+                painter: painter.clone(),
+            }),
+            false,
+        )
+        .unwrap();
+        renderer
+            .render(document, &crate::Options::default())
+            .unwrap();
+        let ops = painter.ops();
+        (renderer, ops)
+    }
+
+    fn floating_image_draws(renderer: &CanvasRenderer<RecordingPainter>) -> Vec<ImageDebugInfo> {
+        renderer
+            .image_debug_regions()
+            .into_iter()
+            .filter(|region| region.kind == "floating")
+            .collect()
+    }
+
+    fn cell_line_positions(renderer: &CanvasRenderer<RecordingPainter>) -> Vec<String> {
+        renderer
+            .layout_debug_lines()
+            .iter()
+            .map(|line| {
+                format!(
+                    "{}|{}|{}|{}|{}",
+                    line.text, line.paragraph, line.page, line.absolute_top, line.start_x
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn anchored_pictures_in_table_cells_paint_relative_to_the_cell() {
+        let with_anchor = cell_anchor_document(
+            &format!(
+                "<w:p>{}<w:r><w:t>Hello</w:t></w:r></w:p>",
+                cell_anchor_run("column", "paragraph", false)
+            ),
+            4000,
+        );
+        let without_anchor = cell_anchor_document("<w:p><w:r><w:t>Hello</w:t></w:r></w:p>", 4000);
+        let (renderer, ops) = render_cell_anchor_document(&with_anchor);
+        let (plain, _) = render_cell_anchor_document(&without_anchor);
+
+        let draws = floating_image_draws(&renderer);
+        let [image] = &draws[..] else {
+            panic!(
+                "expected one floating picture draw, got {:?}",
+                renderer.image_debug_regions()
+            );
+        };
+        let text_x = ops
+            .iter()
+            .find_map(|op| match op {
+                Op::FillText(text, x, _) if text.starts_with('H') => Some(*x),
+                _ => None,
+            })
+            .expect("the cell text is drawn");
+        assert!(
+            (image.x - (text_x + 5.0)).abs() < 0.01,
+            "picture x {} against cell content x {text_x}",
+            image.x
+        );
+        let line = renderer
+            .layout_debug_lines()
+            .into_iter()
+            .find(|line| line.text == "Hello")
+            .unwrap();
+        assert!(
+            (image.y - (line.top + 5.0)).abs() < 0.01,
+            "picture y {} against paragraph top {}",
+            image.y,
+            line.top
+        );
+        assert_eq!((image.width, image.height), (40.0, 20.0));
+        assert_eq!(cell_line_positions(&renderer), cell_line_positions(&plain));
+        assert!(renderer.object_debug_regions.borrow().iter().any(|object| {
+            object.kind == FloatingObjectKind::Image
+                && object.paragraph_index == image.paragraph_index
+                && (object.x - image.x).abs() < 0.01
+                && (object.y - image.y).abs() < 0.01
+        }));
+    }
+
+    #[test]
+    fn anchored_pictures_in_split_table_rows_paint_once() {
+        let mut paragraphs = format!(
+            "<w:p>{}<w:r><w:t>First</w:t></w:r></w:p>",
+            cell_anchor_run("margin", "line", false)
+        );
+        for index in 0..40 {
+            paragraphs.push_str(&format!("<w:p><w:r><w:t>Row {index}</w:t></w:r></w:p>"));
+        }
+        let document = cell_anchor_document(&paragraphs, 3000);
+        let (renderer, _) = render_cell_anchor_document(&document);
+        let pages: std::collections::BTreeSet<usize> = renderer
+            .layout_debug_lines()
+            .iter()
+            .filter(|line| line.text.starts_with("Row"))
+            .map(|line| line.page)
+            .collect();
+        assert!(pages.len() > 1, "the row splits across pages: {pages:?}");
+        let draws = floating_image_draws(&renderer);
+        assert_eq!(draws.len(), 1, "{draws:?}");
+        let first = renderer
+            .layout_debug_lines()
+            .into_iter()
+            .find(|line| line.text == "First")
+            .unwrap();
+        // Picture regions count pages from 1, layout lines from 0.
+        assert_eq!(draws[0].page, first.page + 1);
+        assert!(
+            (draws[0].y - (first.top + 5.0)).abs() < 0.01,
+            "{draws:?} {first:?}"
+        );
+    }
+
+    #[test]
+    fn anchored_pictures_in_split_cell_paragraphs_paint_with_their_anchor_line() {
+        let words = (0..60)
+            .map(|index| format!("word{index}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        let document = cell_anchor_document(
+            &format!(
+                "<w:p><w:r><w:t>{words}</w:t></w:r>{}</w:p>",
+                cell_anchor_run("column", "line", false)
+            ),
+            3000,
+        );
+        let (renderer, _) = render_cell_anchor_document(&document);
+        let lines = renderer.layout_debug_lines();
+        let last = lines
+            .iter()
+            .rfind(|line| line.text.starts_with("word"))
+            .unwrap();
+        assert!(
+            last.page > 0,
+            "the paragraph splits across pages: {lines:?}"
+        );
+        let draws = floating_image_draws(&renderer);
+        assert_eq!(draws.len(), 1, "{draws:?}");
+        assert_eq!(draws[0].page, last.page + 1);
+        assert!(
+            (draws[0].y - (last.top + 5.0)).abs() < 0.01,
+            "{draws:?} {last:?}"
+        );
+    }
+
+    #[test]
+    fn floating_text_boxes_in_table_cells_paint_relative_to_the_cell() {
+        let text_box = r#"<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="2" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:posOffset>47625</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>47625</wp:posOffset></wp:positionV><wp:extent cx="571500" cy="285750"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="2" name="Text Box 2"/><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="571500" cy="285750"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>Box</w:t></w:r></w:p></w:txbxContent></wps:txbx><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>"#;
+        let document = cell_anchor_document(
+            &format!("<w:p>{text_box}<w:r><w:t>Hello</w:t></w:r></w:p>"),
+            4000,
+        );
+        let (renderer, ops) = render_cell_anchor_document(&document);
+        let text_x = ops
+            .iter()
+            .find_map(|op| match op {
+                Op::FillText(text, x, _) if text.starts_with('H') => Some(*x),
+                _ => None,
+            })
+            .expect("the cell text is drawn");
+        let line = renderer
+            .layout_debug_lines()
+            .into_iter()
+            .find(|line| line.text == "Hello")
+            .unwrap();
+        let regions = renderer.text_box_debug_regions();
+        let [region] = &regions[..] else {
+            panic!("expected one text box, got {regions:?}");
+        };
+        assert!(
+            (region.x - (text_x + 5.0)).abs() < 0.01,
+            "{region:?} {text_x}"
+        );
+        assert!(
+            (region.y - (line.top + 5.0)).abs() < 0.01,
+            "{region:?} {line:?}"
+        );
+        assert!(ops
+            .iter()
+            .any(|op| matches!(op, Op::FillText(text, _, _) if text.starts_with('B'))));
+    }
+
+    const CELL_ANCHOR_TEXT_BOX: &str = r#"<w:r><w:drawing><wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="2" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:posOffset>47625</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>47625</wp:posOffset></wp:positionV><wp:extent cx="571500" cy="285750"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:wrapNone/><wp:docPr id="2" name="Text Box 2"/><a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"><wps:wsp><wps:cNvSpPr txBox="1"/><wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="571500" cy="285750"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></wps:spPr><wps:txbx><w:txbxContent><w:p><w:r><w:t>Box</w:t></w:r></w:p></w:txbxContent></wps:txbx><wps:bodyPr/></wps:wsp></a:graphicData></a:graphic></wp:anchor></w:drawing></w:r>"#;
+
+    /// `body` in a 3000-twip-wide section; every table picture gets data.
+    fn cell_anchor_body_document(body: &str, page_height: u32) -> Document {
+        let xml = format!(
+            r#"<w:document {CELL_ANCHOR_NS}><w:body>{body}
+                <w:sectPr><w:pgSz w:w="6000" w:h="{page_height}"/><w:pgMar w:top="720" w:bottom="720" w:left="720" w:right="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>
+            </w:body></w:document>"#
+        );
+        let mut document = jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(&xml)
+            .unwrap();
+        for_each_cell_picture(&mut document, |image| {
+            image.data_uri = Some("data:image/png;base64,AA==".into());
+        });
+        document
+    }
+
+    fn for_each_cell_picture(document: &mut Document, mut apply: impl FnMut(&mut RunImage)) {
+        for element in &mut document.body.as_mut().unwrap().elements {
+            let BodyElement::Table(table) = element else {
+                continue;
+            };
+            for cell in table.rows.iter_mut().flat_map(|row| row.cells.iter_mut()) {
+                for block in &mut cell.blocks {
+                    let BodyElement::Paragraph(paragraph) = block else {
+                        continue;
+                    };
+                    for image in paragraph
+                        .runs
+                        .iter_mut()
+                        .filter_map(|run| run.image.as_mut())
+                    {
+                        apply(image);
+                    }
+                }
+            }
+        }
+    }
+
+    fn two_cell_table(left: &str, right: &str) -> String {
+        format!(
+            r#"<w:tbl><w:tblPr><w:tblW w:w="3000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="1500"/><w:gridCol w:w="1500"/></w:tblGrid>
+            <w:tr><w:tc><w:tcPr><w:tcW w:w="1500" w:type="dxa"/></w:tcPr>{left}</w:tc><w:tc><w:tcPr><w:tcW w:w="1500" w:type="dxa"/></w:tcPr>{right}</w:tc></w:tr></w:tbl><w:p/>"#
+        )
+    }
+
+    #[test]
+    fn text_boxes_in_table_cells_keep_the_models_paragraph_order() {
+        let body = format!(
+            r#"<w:tbl><w:tblPr><w:tblW w:w="3000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="1500"/><w:gridCol w:w="1500"/></w:tblGrid>
+            <w:tr><w:tc><w:tcPr><w:tcW w:w="1500" w:type="dxa"/></w:tcPr><w:p>{CELL_ANCHOR_TEXT_BOX}<w:r><w:t>Hello</w:t></w:r></w:p><w:p><w:r><w:t>After</w:t></w:r></w:p></w:tc>
+            <w:tc><w:tcPr><w:tcW w:w="1500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>Right</w:t></w:r></w:p></w:tc></w:tr>
+            <w:tr><w:tc><w:tcPr><w:tcW w:w="1500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>Rowtwo</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="1500" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>Last</w:t></w:r></w:p></w:tc></w:tr>
+            </w:tbl><w:p><w:r><w:t>Tail</w:t></w:r></w:p>"#
+        );
+        let document = cell_anchor_body_document(&body, 6000);
+        let (renderer, _) = render_cell_anchor_document(&document);
+        let model = crate::word_document::WordDocument::from_document(document.clone());
+        let lines = renderer.layout_debug_lines();
+        for text in ["Hello", "Box", "After", "Right", "Rowtwo", "Last", "Tail"] {
+            let line = lines
+                .iter()
+                .find(|line| line.text == text)
+                .unwrap_or_else(|| panic!("no line {text}: {lines:?}"));
+            let model_text: String = model
+                .paragraph(line.paragraph)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default();
+            assert_eq!(model_text, text, "surface {}", line.paragraph);
+        }
+        let [region] = &renderer.text_box_debug_regions()[..] else {
+            panic!("one text box");
+        };
+        assert_eq!(region.paragraph_index, 0);
+        assert_eq!(
+            (region.content_paragraph_start, region.content_paragraph_end),
+            (1, 2)
+        );
+    }
+
+    #[test]
+    fn committing_an_unchanged_transform_keeps_a_cell_picture_in_place() {
+        let picture = cell_anchor_run("column", "paragraph", false);
+        for (relative_h, relative_v) in [("column", "paragraph"), ("page", "line")] {
+            let picture = picture
+                .replace(
+                    r#"positionH relativeFrom="column""#,
+                    &format!(r#"positionH relativeFrom="{relative_h}""#),
+                )
+                .replace(
+                    r#"positionV relativeFrom="paragraph""#,
+                    &format!(r#"positionV relativeFrom="{relative_v}""#),
+                );
+            let body = format!(
+                "<w:p><w:r><w:t>Intro</w:t></w:r></w:p>{}",
+                two_cell_table(
+                    "<w:p><w:r><w:t>A</w:t></w:r></w:p>",
+                    &format!("<w:p>{picture}<w:r><w:t>Hello</w:t></w:r></w:p>")
+                )
+            );
+            let mut document = cell_anchor_body_document(&body, 6000);
+            let (renderer, _) = render_cell_anchor_document(&document);
+            let region = renderer.object_debug_regions.borrow()[0].region.clone();
+            let target = FloatingObjectTarget {
+                paragraph_index: region.paragraph_index,
+                run_index: region.run_index,
+                kind: region.kind,
+            };
+            let origin = renderer
+                .cell_float_frame_origin(target)
+                .expect("the cell frame is recorded");
+            let transform = FloatingObjectTransform {
+                x: region.x,
+                y: region.y,
+                width: region.width,
+                height: region.height,
+                rotation_deg: region.rotation_deg,
+            };
+            for_each_cell_picture(&mut document, |image| {
+                crate::commands::transform_object::TransformObjectCommand::apply_layout_transform(
+                    &mut image.layout,
+                    transform,
+                    None,
+                    None,
+                    Some(origin),
+                );
+                assert_eq!(
+                    image
+                        .layout
+                        .position_h
+                        .as_ref()
+                        .unwrap()
+                        .relative_from
+                        .as_deref(),
+                    Some(relative_h)
+                );
+            });
+            let (renderer, _) = render_cell_anchor_document(&document);
+            let after = renderer.object_debug_regions.borrow()[0].region.clone();
+            assert!(
+                (after.x - region.x).abs() < 0.01 && (after.y - region.y).abs() < 0.01,
+                "{relative_h}/{relative_v}: {region:?} became {after:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_drag_preview_moves_a_cell_picture() {
+        let document = cell_anchor_document(
+            &format!(
+                "<w:p>{}<w:r><w:t>Hello</w:t></w:r></w:p>",
+                cell_anchor_run("column", "paragraph", false)
+            ),
+            4000,
+        );
+        let (mut renderer, _) = render_cell_anchor_document(&document);
+        let region = renderer.object_debug_regions.borrow()[0].region.clone();
+        let target = FloatingObjectTarget {
+            paragraph_index: region.paragraph_index,
+            run_index: region.run_index,
+            kind: region.kind,
+        };
+        let moved = FloatingObjectTransform {
+            x: region.x + 30.0,
+            y: region.y + 10.0,
+            width: region.width,
+            height: region.height,
+            rotation_deg: 0.0,
+        };
+        renderer.set_object_transform_preview(target, moved, None);
+        renderer
+            .render(&document, &crate::Options::default())
+            .unwrap();
+        let region = renderer.object_region(target).unwrap();
+        assert_eq!((region.x, region.y), (moved.x, moved.y));
+    }
+
+    #[test]
+    fn layout_in_cell_off_follows_the_page_before_word_2013_only() {
+        let run = cell_anchor_run("column", "paragraph", false)
+            .replace(r#"layoutInCell="1""#, r#"layoutInCell="0""#);
+        let body = two_cell_table(
+            "<w:p><w:r><w:t>A</w:t></w:r></w:p>",
+            &format!("<w:p>{run}<w:r><w:t>Hello</w:t></w:r></w:p>"),
+        );
+        for (mode, in_cell) in [(Some(14), false), (Some(15), true)] {
+            let mut document = cell_anchor_body_document(&body, 6000);
+            document.east_asian_line_breaking.compatibility_mode = mode;
+            let (renderer, ops) = render_cell_anchor_document(&document);
+            let text_x = ops
+                .iter()
+                .find_map(|op| match op {
+                    Op::FillText(text, x, _) if text.starts_with('H') => Some(*x),
+                    _ => None,
+                })
+                .unwrap();
+            let draws = floating_image_draws(&renderer);
+            let [image] = &draws[..] else {
+                panic!("one picture: {draws:?}");
+            };
+            // The page's column is its margin, 48px from the edge.
+            let expected = if in_cell { text_x + 5.0 } else { 48.0 + 5.0 };
+            assert!(
+                (image.x - expected).abs() < 0.01,
+                "mode {mode:?}: x {} against {expected}",
+                image.x
+            );
+        }
+    }
+
+    #[test]
+    fn repeated_header_rows_repeat_their_cell_pictures() {
+        let picture = cell_anchor_run("column", "paragraph", false);
+        let mut rows = format!(
+            r#"<w:tr><w:trPr><w:tblHeader/></w:trPr><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p>{picture}<w:r><w:t>Head</w:t></w:r></w:p></w:tc></w:tr>"#
+        );
+        for index in 0..40 {
+            rows.push_str(&format!(
+                r#"<w:tr><w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>Row{index}</w:t></w:r></w:p></w:tc></w:tr>"#
+            ));
+        }
+        let body = format!(
+            r#"<w:tbl><w:tblPr><w:tblW w:w="3000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="3000"/></w:tblGrid>{rows}</w:tbl><w:p/>"#
+        );
+        let document = cell_anchor_body_document(&body, 3000);
+        let (renderer, _) = render_cell_anchor_document(&document);
+        let pages: std::collections::BTreeSet<usize> = renderer
+            .layout_debug_lines()
+            .iter()
+            .filter(|line| line.text.starts_with("Row"))
+            .map(|line| line.page + 1)
+            .collect();
+        assert!(pages.len() > 1);
+        let drawn: std::collections::BTreeSet<usize> = floating_image_draws(&renderer)
+            .iter()
+            .map(|draw| draw.page)
+            .collect();
+        assert_eq!(drawn, pages, "the picture repeats with its header row");
+        assert_eq!(
+            renderer.object_debug_regions.borrow().len(),
+            1,
+            "only the editable copy is hit-tested"
+        );
+    }
+
+    #[test]
+    fn behind_text_pictures_in_table_cells_paint_before_the_text() {
+        let document = cell_anchor_document(
+            &format!(
+                "<w:p>{}<w:r><w:t>Hello</w:t></w:r></w:p>",
+                cell_anchor_run("column", "paragraph", true)
+            ),
+            4000,
+        );
+        let (_, ops) = render_cell_anchor_document(&document);
+        let text = ops
+            .iter()
+            .position(|op| matches!(op, Op::FillText(text, _, _) if text.starts_with('H')))
+            .unwrap();
+        let picture = ops
+            .iter()
+            .position(|op| matches!(op, Op::FillRect(_, _, width, height) if *width == 40.0 && *height == 20.0))
+            .expect("the picture is drawn");
+        assert!(picture < text);
     }
 }
