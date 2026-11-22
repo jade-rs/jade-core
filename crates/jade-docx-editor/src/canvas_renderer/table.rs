@@ -18977,10 +18977,17 @@ mod tests {
                     windows_x
                 };
                 for saved_grid in [2000, 2400] {
+                    // Spaceless captured originals have no borders; the spaced
+                    // original has all six. Keep authored geometry source-faithful.
+                    let borders = if spacing > 0 {
+                        r#"<w:tblBorders><w:top w:val="single" w:sz="8"/><w:left w:val="single" w:sz="8"/><w:bottom w:val="single" w:sz="8"/><w:right w:val="single" w:sz="8"/><w:insideH w:val="single" w:sz="8"/><w:insideV w:val="single" w:sz="8"/></w:tblBorders>"#
+                    } else {
+                        ""
+                    };
                     let xml = format!(
                         r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
                         <w:tbl><w:tblPr><w:tblW w:w="{percentage}" w:type="pct"/><w:jc w:val="center"/><w:tblCellSpacing w:w="{spacing}" w:type="dxa"/>
-                        <w:tblBorders><w:top w:val="single" w:sz="8"/><w:left w:val="single" w:sz="8"/><w:bottom w:val="single" w:sz="8"/><w:right w:val="single" w:sz="8"/><w:insideH w:val="single" w:sz="8"/><w:insideV w:val="single" w:sz="8"/></w:tblBorders>
+                        {borders}
                         <w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="{saved_grid}"/></w:tblGrid>
                         <w:tr><w:trPr><w:trHeight w:val="620" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
                         <w:p><w:r><w:t>H</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr><w:pgSz w:w="11906" w:h="8000"/>
