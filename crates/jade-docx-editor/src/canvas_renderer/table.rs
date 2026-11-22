@@ -2817,6 +2817,45 @@ where
                         .any(|cell| matches!(cell.vertical_merge.as_deref(), Some("continue")))
             });
         let column_count = compute_column_count(table);
+        // Word uses the same shared percentage grid and repeated-header
+        // alignment for this legacy unequal RTL column layout on Windows.
+        // Keep its geometry separate from platform font and line metrics.
+        let windows_legacy_rtl_percentage_header_grid = use_column_frame
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.document_east_asian_rules.compatibility_mode == Some(14)
+            && !self.measuring_keep_next
+            && self.footnote_reserve_px == 0.0
+            && percentage_width
+            && !table.bidi_visual
+            && column_count == 1
+            && table.columns.is_empty()
+            && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
+            && self.column_layout.start_x(0) > self.column_layout.start_x(1)
+            && self
+                .column_layout
+                .widths
+                .iter()
+                .any(|&width| width != available_width)
+            && table.style.get("text-align").is_some_and(|alignment| {
+                alignment.eq_ignore_ascii_case("right") || alignment.eq_ignore_ascii_case("end")
+            })
+            && leading_header_row_count(&table.rows) > 0
+            && table.rows.iter().all(|row| {
+                resolve_cell_spacing_px(row, table) == 0.0
+                    && !table_row_has_note_references(row)
+                    && row.cells.iter().all(|cell| {
+                        !cell_has_absolute_preferred_width(cell)
+                            && cell
+                                .blocks
+                                .iter()
+                                .all(|block| matches!(block, BodyElement::Paragraph(_)))
+                    })
+            })
+            && table
+                .rows
+                .iter()
+                .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
         let rtl_spaced_auto_grid = (word_mac_column_table
             && percentage_width
             && self.column_layout.start_x(0) > self.column_layout.start_x(1)
@@ -2831,13 +2870,15 @@ where
                 let frame = spacing_frame_width(row, table, TableBorderSide::Left);
                 (spacing, frame)
             });
-        let rtl_repeated_header_auto_grid = word_mac_column_table
+        let rtl_repeated_header_auto_grid = (word_mac_column_table
+            || windows_legacy_rtl_percentage_header_grid)
             && !self.measuring_keep_next
             && percentage_width
             && matches!(self.document_east_asian_rules.compatibility_mode, Some(14))
             && self.column_layout.start_x(0) > self.column_layout.start_x(1)
             && column_count == 1
-            && word_mac_sizes_without_grid(table, column_count)
+            && (word_mac_sizes_without_grid(table, column_count)
+                || windows_legacy_rtl_percentage_header_grid)
             && table.style.get("text-align").is_some_and(|alignment| {
                 alignment.eq_ignore_ascii_case("right") || alignment.eq_ignore_ascii_case("end")
             })
@@ -2886,7 +2927,9 @@ where
         // column; the usual percentage grid uses the narrowest column.
         let width_for_sizing = if rtl_spaced_auto_grid.is_some() {
             last_column_width
-        } else if word_mac_column_table && percentage_width {
+        } else if (word_mac_column_table || windows_legacy_rtl_percentage_header_grid)
+            && percentage_width
+        {
             self.column_layout
                 .widths
                 .iter()
@@ -2895,17 +2938,29 @@ where
         } else {
             available_width
         };
-        let sizing_width = word_pre_2013_table_sizing_width_px(
-            table,
-            width_for_sizing,
-            self.document_east_asian_rules.compatibility_mode,
-        );
+        let sizing_compatibility_mode = self.document_east_asian_rules.compatibility_mode;
+        let section_frame_width = |width| {
+            if windows_legacy_rtl_percentage_header_grid {
+                let leading = pre_2013_table_text_inset_px(table, sizing_compatibility_mode);
+                if leading > 0.0 {
+                    width + leading + pre_2013_table_trailing_text_inset_px(table)
+                } else {
+                    width
+                }
+            } else {
+                word_pre_2013_table_sizing_width_px(table, width, sizing_compatibility_mode)
+            }
+        };
+        let sizing_width = section_frame_width(width_for_sizing);
         let mut column_widths = compute_column_widths(table, column_count, sizing_width);
         let windows_fixed_preferred_width = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && !percentage_width
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
-        if word_mac_column_table || windows_fixed_preferred_width {
+        if word_mac_column_table
+            || windows_fixed_preferred_width
+            || windows_legacy_rtl_percentage_header_grid
+        {
             // Word uses the preferred total for fixed tables in columns and
             // resolves percentage totals against the column frame. Preserve
             // the proportions of the saved grid.
@@ -2965,9 +3020,6 @@ where
         } else {
             None
         };
-        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
-        let section_frame_width =
-            |width| word_pre_2013_table_sizing_width_px(table, width, compatibility_mode);
         if unequal_auto_percentage.is_some() {
             column_widths[0] = section_frame_width(available_width);
             table_width = column_widths[0];

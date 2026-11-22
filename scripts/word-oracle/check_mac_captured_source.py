@@ -51,6 +51,66 @@ SHARED_ORIGINALS = {
         '036d1a09b7eca1f005fd00fa800c6342951c0ff9fa32574606719d67f2f8c648',
         'ab464ad7e5e0893d4cd29a0ad55d0e083cf5cbd933d674d7fed76fe7fff66012',
         '1c8f463d72dcafad2635cca5c14e8575da8447ea1d8fb0edc4ed2006d6db576d', 1, 242),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1': (
+        'b0656953e16a6b5ebe488dfcc588e1f84f1ea1c0cea116832a9e9b7a2e3cbd06',
+        '9b2573c47db38b50d404ddb5316127eda1303c759f2b9df2653bcd811afd3945',
+        '9912015a19baf8ce41cc72029c85928c47628ce86fcdb17e135546675d543f7b', 8, 1014),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2': (
+        'eca02091b6b3faa96fd2f247dbbb4d3f5b8b609c9871d2a5f01b31c2223fcf0c',
+        'f77d146d0cb47096eca983cbf22cbb907a4fa681f6d6936248e554e680053918',
+        'b706f77852872b3296247a1ad5053d8aeff048484cddd82c380584fe3ed438d6', 8, 1011),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3': (
+        '08637e628e39e2b1172d45327d0b1275fa2ea8fb67316be49a4520a0a1e9f401',
+        '1bdb9fdb483ee80dc038eb6fa9bfb1a466e07afa2a8f25527ee74ca87352342e',
+        'eaa65938597042ea3949ad276fd01fbccde3043d56d17307b252c128d88b80e8', 8, 1011),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1': (
+        '53d1c76343ca732fb20e04d0c3a03086b9e8f7e2865c9a9fbd983c94eb546b7f',
+        'b0a86a767ebf25ec7ddb41964a73599b8b1bced5b4f813d9df0c02b0715d9f72',
+        '7588e47a75fb0e63a40738744694ae650630e25df66e594e055cd8a5dcf8cfb6', 9, 1023),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2': (
+        '1c9e71b0420b4f2b250a7343f62e129fceca8e9021ff6afc31936f69e107a2ba',
+        'eaa6c983da8ddceabddb6ceee0c249b354205ecdb1512241af923294299efdde',
+        '48b68add3efca03ad611ee276bb42b8561186a4699a060d16a1ba4acdb32a400', 9, 1020),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3': (
+        '6e8247c12a218ddf0e56c0cd7db669a7aa3e5d17cf96ffb1bedf2e58fe25c11e',
+        'f05ca5d9e001eed87ec444b82d7555544d232f1f6a581ad499a0250ede25c3f5',
+        'dc63ceca066d4ee001b00f659561763196d00545bd378e111b196283e86b0ca9', 9, 1020),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1': (
+        'cab1e89ef0cb109481dcac0f75f177215c3328eb2abb20b1fe20f86ee04d7791',
+        'b2daaef79e146772f56e363dd2535bba6f44536f0e87639393d453a06636e391',
+        'ed6b0f6043f2648aca44e28916467e11e4ef8854b992a6274ad0855328c2b395', 10, 1035),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2': (
+        '451e0512b957693bb77e6b529a5f915b4da5b048a15ad8c867a3f74d5d5d3b28',
+        '472c82e406d96c64f7e398e855184bca80a782d7e1ed5e807cb39eb1c4e67eaf',
+        'fb5600a150dc90413f2639c3c98cf799639d964f749b914c33bb64c21c02847d', 10, 1032),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3': (
+        'f2e3d8e8dc3045b45ca7d6c626554c769f8faf1a382c51828f139450d80b21ec',
+        '21ec0c533aeab78fd8ce355824217ea687da5dd136d071983137346a74478743',
+        '22652b26374b18c269457e992f05a63ae653671dc9dca10fb1441cc176ec9f98', 10, 1029),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1': (
+        'db45dbc9ca43ba222e6e56da73a368603ed4960875b025204c04fe054409132a',
+        '902578ce2fb7212f75e4643d64fc34b4db4115f57f722b4eb87e337114d4276d',
+        '8df64b90a35328cad5fa891e708736d040d10b2d589dd2d75e60962fccfb3feb', 6, 1002),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2': (
+        '94136fa4c50691a4266f40bf15d84d080999210c8fb18e1bb91625b2b49dc12c',
+        '25597147aac3e15215bd9f63849c17902bd8402654c0c842d3c2d561b81554b8',
+        '7d701b6c02574184ee241f760beba96eff8ff4655c4332caeee67948b052f149', 6, 999),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3': (
+        '31b20a177813df009a6b1745ad8cfd425781e5e7652939b059c77e3e892909ae',
+        '81e5aac0c19e661dd056453c5c7bb3170918e12f1cc65d7a3c6af14ca0d63d0f',
+        'c96ce48e94adcac630300bdb159517c203f4b60390b151a0d7dc2e5bc9bc6522', 7, 999),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1': (
+        '16f73bae7e7e6cfedcc9913c9025a85d507b894e6bb35521086fc769339c0c6a',
+        '1bbe47750aa9f0c54f6fece685fa1de3885a9fca08a372aef263e880185e02c4',
+        '047c9cae4ab889ee0c18818a4e53752f067e75bd58562ec7fc85731a298c2149', 12, 1047),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2': (
+        '3cbd2ac87bf90fed62071dd17462ae30888b6737f34440a8ae5d9d129734db67',
+        'c066fe63f8a9eae9e9d3b554e53ba622aa374df5242e49bcbbbd173f984a9647',
+        'f895721387dbfd0d5d49ea81b1f2f101fe161aa42344ce729e0c8cd2875b143b', 12, 1047),
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3': (
+        '6886271736c086c2510908223f58f967c9c4579f126bd2cb7e039c94131385b8',
+        '1dcfb94d52ce40b73e164aeee12e9376ca173e6ab046fef1ee9e53df0a51b911',
+        '03e9c64dd5aea1add4addf76eddbe90a34a719e8a7a494111ed41d851063d209', 12, 1044),
 }
 
 
@@ -120,9 +180,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_Windows_Word=capture['word'],
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count']))
-    require(len(results) == 6 and sum(r['glyphs'] for r in results) == 1439,
+    require(len(results) == 21 and sum(r['glyphs'] for r in results) == 16772,
             'Shared Mac original coverage changed')
-    print('Six shared Mac originals1439: layout and painted-PDF PASS', flush=True)
+    print('21 shared Mac originals16772: layout and painted-PDF PASS', flush=True)
     return results
 
 

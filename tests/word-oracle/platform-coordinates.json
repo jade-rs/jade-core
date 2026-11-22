@@ -3048,6 +3048,381 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1/source.docx",
+        "sha256": "b0656953e16a6b5ebe488dfcc588e1f84f1ea1c0cea116832a9e9b7a2e3cbd06"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1/manifest.json",
+        "sha256": "9b2573c47db38b50d404ddb5316127eda1303c759f2b9df2653bcd811afd3945"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-b0656953",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2/source.docx",
+        "sha256": "eca02091b6b3faa96fd2f247dbbb4d3f5b8b609c9871d2a5f01b31c2223fcf0c"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2/manifest.json",
+        "sha256": "f77d146d0cb47096eca983cbf22cbb907a4fa681f6d6936248e554e680053918"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-eca02091",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3/source.docx",
+        "sha256": "08637e628e39e2b1172d45327d0b1275fa2ea8fb67316be49a4520a0a1e9f401"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3/manifest.json",
+        "sha256": "1bdb9fdb483ee80dc038eb6fa9bfb1a466e07afa2a8f25527ee74ca87352342e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-08637e62",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1/source.docx",
+        "sha256": "53d1c76343ca732fb20e04d0c3a03086b9e8f7e2865c9a9fbd983c94eb546b7f"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1/manifest.json",
+        "sha256": "b0a86a767ebf25ec7ddb41964a73599b8b1bced5b4f813d9df0c02b0715d9f72"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-53d1c763",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2/source.docx",
+        "sha256": "1c9e71b0420b4f2b250a7343f62e129fceca8e9021ff6afc31936f69e107a2ba"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2/manifest.json",
+        "sha256": "eaa6c983da8ddceabddb6ceee0c249b354205ecdb1512241af923294299efdde"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-1c9e71b0",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3/source.docx",
+        "sha256": "6e8247c12a218ddf0e56c0cd7db669a7aa3e5d17cf96ffb1bedf2e58fe25c11e"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3/manifest.json",
+        "sha256": "f05ca5d9e001eed87ec444b82d7555544d232f1f6a581ad499a0250ede25c3f5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-6e8247c1",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1/source.docx",
+        "sha256": "cab1e89ef0cb109481dcac0f75f177215c3328eb2abb20b1fe20f86ee04d7791"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1/manifest.json",
+        "sha256": "b2daaef79e146772f56e363dd2535bba6f44536f0e87639393d453a06636e391"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-cab1e89e",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2/source.docx",
+        "sha256": "451e0512b957693bb77e6b529a5f915b4da5b048a15ad8c867a3f74d5d5d3b28"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2/manifest.json",
+        "sha256": "472c82e406d96c64f7e398e855184bca80a782d7e1ed5e807cb39eb1c4e67eaf"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-451e0512",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3/source.docx",
+        "sha256": "f2e3d8e8dc3045b45ca7d6c626554c769f8faf1a382c51828f139450d80b21ec"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3/manifest.json",
+        "sha256": "21ec0c533aeab78fd8ce355824217ea687da5dd136d071983137346a74478743"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-f2e3d8e8",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1/source.docx",
+        "sha256": "db45dbc9ca43ba222e6e56da73a368603ed4960875b025204c04fe054409132a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1/manifest.json",
+        "sha256": "902578ce2fb7212f75e4643d64fc34b4db4115f57f722b4eb87e337114d4276d"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-db45dbc9",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2/source.docx",
+        "sha256": "94136fa4c50691a4266f40bf15d84d080999210c8fb18e1bb91625b2b49dc12c"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2/manifest.json",
+        "sha256": "25597147aac3e15215bd9f63849c17902bd8402654c0c842d3c2d561b81554b8"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-94136fa4",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3/source.docx",
+        "sha256": "31b20a177813df009a6b1745ad8cfd425781e5e7652939b059c77e3e892909ae"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3/manifest.json",
+        "sha256": "81e5aac0c19e661dd056453c5c7bb3170918e12f1cc65d7a3c6af14ca0d63d0f"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-31b20a17",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1/source.docx",
+        "sha256": "16f73bae7e7e6cfedcc9913c9025a85d507b894e6bb35521086fc769339c0c6a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1/manifest.json",
+        "sha256": "1bbe47750aa9f0c54f6fece685fa1de3885a9fca08a372aef263e880185e02c4"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-16f73bae",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2/source.docx",
+        "sha256": "3cbd2ac87bf90fed62071dd17462ae30888b6737f34440a8ae5d9d129734db67"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2/manifest.json",
+        "sha256": "c066fe63f8a9eae9e9d3b554e53ba622aa374df5242e49bcbbbd173f984a9647"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-3cbd2ac8",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3/source.docx",
+        "sha256": "6886271736c086c2510908223f58f967c9c4579f126bd2cb7e039c94131385b8"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3/manifest.json",
+        "sha256": "1dcfb94d52ce40b73e164aeee12e9376ca173e6ab046fef1ee9e53df0a51b911"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-split-ro-68862717",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
