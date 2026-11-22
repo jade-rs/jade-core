@@ -188,6 +188,18 @@ fn a_document_with_footnotes_still_draws_its_stale_pages() {
     assert_same("footnotes", &windowed, &full);
 }
 
+/// Mirrored margins are outside the options a forward seek supports, so
+/// these pages are laid out from the start; a seek drew page 1 wrong.
+#[test]
+fn mirrored_margins_draw_their_stale_pages() {
+    let (full, mut windowed) = open_both(&fixture("mirror-margins.docx"), 0..1);
+    let pages = full.page_count();
+    assert!(pages > 1, "{pages} pages");
+    paint_one_by_one(&mut windowed);
+    assert!(!windowed.has_stale_pages());
+    assert_same("mirror margins", &windowed, &full);
+}
+
 /// A bounded edit leaves the layout after its bound out of date, with the
 /// page-start snapshots, line registry and regions there. The stale pages
 /// are then laid out from the start, as the edited document now flows.

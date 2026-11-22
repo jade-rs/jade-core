@@ -5604,7 +5604,8 @@ where
             // spanning branch: a stale prefix must fall back to a full walk.
             Some(snapshot) if !snapshot.spanning => (self.seek_anchor_is_body_paragraph(&snapshot)
                 && self.last_options.as_ref().is_none_or(|options| {
-                    self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
+                    self.is_forward_window_seek_compatible_options(options)
+                        && self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
                 }))
             .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
