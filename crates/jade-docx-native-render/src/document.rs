@@ -1484,11 +1484,59 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        // A moved object can re-wrap text past the bound; a selection changes
+        // no layout, so the pages after it keep pixels that are still right.
+        if only_the_bound_page {
+            self.mark_pages_past_bound_stale(visible_end_page_1idx);
+        }
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
         self.renderer.clear_dirty_regions();
         Ok(started.elapsed())
+    }
+
+    /// After a bounded pass that changed content: unless it reached the end
+    /// of the document, or proved the pagination after the edit unchanged
+    /// (the edited paragraph kept its height), the pages after
+    /// `bound_1idx` still show — and their lines still answer hit-testing
+    /// with — the layout from before the edit. They are marked stale, so
+    /// [`Self::paint_stale_pages`] lays the document out again when a shell
+    /// draws them. Costs nothing on a keystroke whose paragraph kept its
+    /// height.
+    fn mark_pages_past_bound_stale(&mut self, bound_1idx: usize) {
+        if self.renderer.last_layout_complete()
+            || self.renderer.last_completed_pagination_edit_preserved()
+        {
+            return;
+        }
+        let count = self.page_count();
+        if bound_1idx < count {
+            self.stale_pages.extend(bound_1idx..count);
+        }
+    }
+
+    /// Lays the document out again when a bounded pass since the last whole
+    /// layout stopped before `paragraph`: such a pass registers lines only up
+    /// to its bound, and a caret query past it would land on the last line it
+    /// registered. Draws only the last page; the rest stay as they are, stale
+    /// or not.
+    fn ensure_layout_reaches(&mut self, paragraph: usize) -> Result<(), String> {
+        if !self.bounded_pass_since_full_layout
+            || paragraph < self.renderer.selection_manager().paragraphs().len()
+        {
+            return Ok(());
+        }
+        let last = self.page_count().saturating_sub(1);
+        // Drawn: the last page, or the effective layout limit would end the
+        // walk at the drawn window.
+        let was_stale = self.stale_pages.contains(&last);
+        self.repaint_all_drawing(Some(last..last + 1), false)?;
+        if !was_stale {
+            self.stale_pages.remove(&last);
+        }
+        self.bounded_pass_since_full_layout = false;
+        Ok(())
     }
 
     /// The floating object under a point, in document coordinates.
@@ -2675,6 +2723,9 @@ impl NativeDocument {
         offset: usize,
         affinity: CaretAffinity,
     ) -> Option<CaretRect> {
+        // A query has no error to report; on failure it answers from the
+        // layout there is.
+        let _ = self.ensure_layout_reaches(paragraph);
         self.renderer.set_caret_affinity(affinity);
         let range = SelectionRange::collapsed(TextPosition::new(paragraph, offset));
         self.selection = Some(range);
@@ -2691,6 +2742,7 @@ impl NativeDocument {
     /// caret or the selection there — for an overlay that marks a place,
     /// such as the box around a master document's subdocument.
     pub fn position_rect(&mut self, paragraph: usize, offset: usize) -> Option<CaretRect> {
+        let _ = self.ensure_layout_reaches(paragraph);
         let selection = self.renderer.selection_range();
         self.renderer
             .set_selection_range(Some(SelectionRange::collapsed(TextPosition::new(
@@ -3330,6 +3382,7 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        self.mark_pages_past_bound_stale(visible_end_page_1idx);
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
