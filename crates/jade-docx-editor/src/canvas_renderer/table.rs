@@ -2967,10 +2967,10 @@ where
                         .any(|cell| matches!(cell.vertical_merge.as_deref(), Some("continue")))
             });
         let column_count = compute_column_count(table);
-        // Legacy Windows centered, exact-height tables use the same section
+        // Legacy Windows exact-height autofit tables use the same section
         // sizing/alignment frames as their independent Mac originals. Only
         // geometry is shared here; Windows fonts and line metrics stay intact.
-        let windows_centered_legacy_column_table = use_column_frame
+        let windows_legacy_autofit_column_table = use_column_frame
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && self.document_east_asian_rules.compatibility_mode == Some(14)
@@ -2978,7 +2978,6 @@ where
             && self.footnote_reserve_px == 0.0
             && !table.bidi_visual
             && column_count == 1
-            && centered_table
             && (preferred_width.is_none() || percentage_width)
             && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
             && self.column_layout.count() > 1
@@ -3078,7 +3077,7 @@ where
                 .iter()
                 .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
         let unequal_auto_percentage = ((word_mac_column_table
-            || windows_centered_legacy_column_table)
+            || windows_legacy_autofit_column_table)
             && !self.measuring_keep_next
             && self.footnote_reserve_px == 0.0
             && !table.bidi_visual
@@ -3116,7 +3115,7 @@ where
             last_column_width
         } else if (word_mac_column_table
             || windows_legacy_rtl_percentage_header_grid
-            || windows_centered_legacy_column_table)
+            || windows_legacy_autofit_column_table)
             && percentage_width
         {
             self.column_layout
@@ -3129,7 +3128,7 @@ where
         };
         let sizing_compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let section_frame_width = |width| {
-            if windows_legacy_rtl_percentage_header_grid || windows_centered_legacy_column_table {
+            if windows_legacy_rtl_percentage_header_grid || windows_legacy_autofit_column_table {
                 let leading = pre_2013_table_text_inset_px(table, sizing_compatibility_mode);
                 if leading > 0.0 {
                     width + leading + pre_2013_table_trailing_text_inset_px(table)
@@ -3149,7 +3148,7 @@ where
         if word_mac_column_table
             || windows_fixed_preferred_width
             || windows_legacy_rtl_percentage_header_grid
-            || windows_centered_legacy_column_table
+            || windows_legacy_autofit_column_table
         {
             // Word uses the preferred total for fixed tables in columns and
             // resolves percentage totals against the column frame. Preserve
@@ -3645,7 +3644,7 @@ where
             && compatibility_mode.is_some_and(|mode| mode < 15);
         let alignment_widths = ((word_mac_column_table
             || windows_legacy_print_alignment
-            || windows_centered_legacy_column_table)
+            || windows_legacy_autofit_column_table)
             && !self.pageless_mode
             && self.paragraph_frame_column.is_none()
             && !self.measuring_keep_next
