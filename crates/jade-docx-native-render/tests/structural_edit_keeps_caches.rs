@@ -155,13 +155,16 @@ fn a_paragraph_split_in_a_long_document_rewraps_only_what_it_touched() {
     }
 }
 
+/// A named edit that builds its commands from the paragraph it starts at.
+type NamedEdit = (&'static str, fn(usize) -> Vec<HeadlessCommand>);
+
 /// Edits that change only formatting or geometry keep every paragraph's text,
 /// so the kept wrap cache must not stand in for layout or paint: the
 /// paragraph layout and paint caches replay on hashes that miss them.
 #[test]
 fn formatting_and_geometry_edits_and_their_undo_match_a_fresh_open() {
     let bytes = repeated_contract(3);
-    let edits: [(&str, fn(usize) -> Vec<HeadlessCommand>); 5] = [
+    let edits: [NamedEdit; 5] = [
         ("font size", |paragraph| {
             vec![HeadlessCommand::SetFontSize {
                 start_paragraph: paragraph,
