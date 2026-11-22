@@ -351,6 +351,27 @@ fn full_and_frozen_passes_paint_the_same_selection() {
     )));
     assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "in cell");
 
+    // Ending inside the split cell's last paragraph, which sits wholly on the
+    // second page: neither fragment is wholly selected. A full pass used to
+    // fill the first page's fragment, since that paragraph had no length yet.
+    let split = renderer.cell_layouts_debug()[cell_id(&renderer, 1, 0)].clone();
+    let last = *split.paragraphs.last().unwrap();
+    assert_eq!(
+        renderer.page_for_y(renderer.selection.paragraphs()[last].lines[0].absolute_top),
+        1
+    );
+    renderer.set_selection_range(Some(SelectionRange::new(
+        TextPosition::new(0, 3),
+        TextPosition::new(last, 4),
+    )));
+    assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "split end");
+    let (page, rect) = split_cell_fragments(&renderer)[0];
+    assert_eq!(page, 0);
+    assert!(
+        !selection_fills(&pages[0]).contains(&rect),
+        "the head fragment is not wholly selected"
+    );
+
     let (from, to) = (cell_id(&renderer, 0, 0), cell_id(&renderer, 1, 0));
     select_cells(&mut renderer, from, to);
     assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "cells");
@@ -525,4 +546,117 @@ fn vertically_merged_cell_is_filled_on_every_page_it_reaches() {
         }
     }
     assert_full_and_frozen_passes_agree(&document, &options, &mut renderer, &pages, "vmerge");
+}
+
+/// One cell holding a nested 2x2 table between two paragraphs.
+fn nested_table_document() -> Document {
+    let nested = Table {
+        rows: (0..2)
+            .map(|row| TableRow {
+                cells: (0..2)
+                    .map(|column| TableCell {
+                        blocks: paragraphs(&[&format!("n{row}{column}")]),
+                        ..Default::default()
+                    })
+                    .collect(),
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    };
+    let mut blocks = paragraphs(&["outer before"]);
+    blocks.push(BodyElement::Table(Box::new(nested)));
+    blocks.extend(paragraphs(&["outer after"]));
+    let mut elements = paragraphs(&["Before the table"]);
+    elements.push(BodyElement::Table(Box::new(Table {
+        rows: vec![TableRow {
+            cells: vec![TableCell {
+                blocks,
+                ..Default::default()
+            }],
+            ..Default::default()
+        }],
+        ..Default::default()
+    })));
+    elements.extend(paragraphs(&["After the table"]));
+    Document {
+        body: Some(Body { elements }),
+        ..Default::default()
+    }
+}
+
+#[test]
+fn nested_cells_inside_a_filled_cell_are_not_filled_again() {
+    let document = Rc::new(nested_table_document());
+    let options = options_for_seek_tests();
+    let (mut renderer, pages) = selected_renderer(&document, &options);
+    let outer_paragraph = renderer
+        .selection
+        .paragraphs()
+        .iter()
+        .position(|paragraph| paragraph.text.starts_with("outer before"))
+        .unwrap();
+    let outer_end = renderer
+        .selection
+        .paragraphs()
+        .iter()
+        .position(|paragraph| paragraph.text.starts_with("outer after"))
+        .unwrap();
+    let selections = [
+        // Past the cell: decided before its content.
+        None,
+        // Ending at the cell's end: decided after its content.
+        Some(SelectionRange::new(
+            TextPosition::new(outer_paragraph, 0),
+            TextPosition::new(outer_end, renderer.selection.paragraph_text_len(outer_end)),
+        )),
+    ];
+    for (case, selection) in selections.into_iter().enumerate() {
+        if let Some(selection) = selection {
+            renderer.set_selection_range(Some(selection));
+        }
+        for page in &pages {
+            page.clear();
+        }
+        renderer.set_visible_page_range(None);
+        renderer.mark_full_repaint();
+        renderer
+            .render_with_numbering_rc(Rc::clone(&document), &options, None, None, None, None)
+            .unwrap();
+        let fills = selection_fills(&pages[0]);
+        let outer = renderer
+            .cell_layouts_debug()
+            .into_iter()
+            .find(|cell| cell.paragraphs.contains(&outer_paragraph))
+            .unwrap();
+        let inside = fills
+            .iter()
+            .filter(|&&(x, y, width, height)| {
+                x >= outer.left
+                    && x + width <= outer.right
+                    && y > outer.top
+                    && y + height <= outer.bottom
+            })
+            .count();
+        assert!(
+            fills.contains(&(
+                outer.left,
+                outer.top,
+                outer.right - outer.left,
+                outer.bottom - outer.top
+            )),
+            "case {case}: the outer cell is filled: {fills:?}"
+        );
+        assert_eq!(
+            inside, 0,
+            "case {case}: nested cells filled again: {fills:?}"
+        );
+        assert_full_and_frozen_passes_agree(
+            &document,
+            &options,
+            &mut renderer,
+            &pages,
+            &format!("nested {case}"),
+        );
+    }
 }
