@@ -274,9 +274,13 @@ mod border_styles;
 mod compat_tests;
 #[cfg(test)]
 mod control_mark_font_tests;
+#[cfg(test)]
+mod float_anchor_tests;
 mod float_lookahead;
 #[cfg(test)]
 mod font_state_tests;
+#[cfg(test)]
+mod header_footer_story_cost_tests;
 #[cfg(test)]
 mod hyphenation_tests;
 mod ink;
@@ -4019,12 +4023,30 @@ where
     /// Relationship-resolved block stories. These are rendered through the
     /// same paragraph/table/math/drawing path as body content; HeaderLine is a
     /// compatibility/editing fallback only.
-    header_body: Option<Body>,
-    footer_body: Option<Body>,
-    header_body_first: Option<Body>,
-    footer_body_first: Option<Body>,
-    header_body_even: Option<Body>,
-    footer_body_even: Option<Body>,
+    /// Shared so a page selecting its story clones a pointer, not the
+    /// story's paragraphs, tables and pictures.
+    header_body: Option<Rc<Body>>,
+    footer_body: Option<Rc<Body>>,
+    header_body_first: Option<Rc<Body>>,
+    footer_body_first: Option<Rc<Body>>,
+    header_body_even: Option<Rc<Body>>,
+    footer_body_even: Option<Rc<Body>>,
+    /// Laid-out height of an installed header/footer story, keyed by the
+    /// story and every input its layout reads (see `HfStoryMeasureKey`).
+    /// Only page-independent stories are recorded, so a page that does not
+    /// draw its story reuses the height instead of laying the story out.
+    /// Cleared with the stories and at the start of every render, since
+    /// fonts, styles and options can change between renders.
+    hf_story_heights: HashMap<HfStoryMeasureKey, f64>,
+    /// Whether an installed story (by pointer) lays out the same on every
+    /// page; see `hf_story_is_page_independent`.
+    hf_story_page_independent: HashMap<usize, (Rc<Body>, bool)>,
+    /// Header/footer story layouts run, for tests bounding the per-page cost.
+    #[cfg(test)]
+    hf_story_layout_count: usize,
+    /// Turns the story-height memo off, for tests comparing against layout.
+    #[cfg(test)]
+    hf_story_memo_disabled: bool,
     /// Measured rich-story height for each physical page (0-based). Header
     /// edit chrome and hit testing must consume the same block-layout result
     /// as normal rendering; reconstructing this from flattened HeaderLine
@@ -4275,6 +4297,8 @@ where
     /// Linked text box chains, by id, for the document last rendered.
     linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
     object_transform_preview: Option<ObjectTransformPreview>,
+    /// Frames of the floating objects last painted in table cells, by target.
+    cell_float_frames: RefCell<Vec<table::CellFloatFrameRecord>>,
     revision_debug_regions: RefCell<Vec<RevisionDebugInfo>>,
     numbering_debug_regions: RefCell<Vec<NumberingDebugInfo>>,
     line_overflow_debug_regions: RefCell<Vec<LineOverflowDebugInfo>>,
@@ -9286,6 +9310,7 @@ where
             ]
             .into_iter()
             .flatten()
+            .map(Rc::as_ref)
             .any(has_anchors)
             || self.section_header_footers.iter().any(|section| {
                 [
@@ -9298,6 +9323,7 @@ where
                 ]
                 .into_iter()
                 .flatten()
+                .map(Rc::as_ref)
                 .any(has_anchors)
             })
     }
@@ -9579,6 +9605,12 @@ where
             footer_body_first: None,
             header_body_even: None,
             footer_body_even: None,
+            hf_story_heights: HashMap::new(),
+            hf_story_page_independent: HashMap::new(),
+            #[cfg(test)]
+            hf_story_layout_count: 0,
+            #[cfg(test)]
+            hf_story_memo_disabled: false,
             header_content_heights: Vec::new(),
             footer_content_heights: Vec::new(),
             hf_story_layouts: HashMap::new(),
@@ -9687,6 +9719,7 @@ where
             table_picture_debug_regions: Vec::new(),
             linked_stories: RefCell::new(HashMap::new()),
             object_transform_preview: None,
+            cell_float_frames: RefCell::new(Vec::new()),
             revision_debug_regions: RefCell::new(Vec::new()),
             numbering_debug_regions: RefCell::new(Vec::new()),
             line_overflow_debug_regions: RefCell::new(Vec::new()),
@@ -15210,6 +15243,9 @@ where
         footer_lines: Option<&[HeaderLine]>,
         comments: Option<&HashMap<String, DocumentComment>>,
     ) -> Result<(), JsValue> {
+        // Fonts, styles and options can change between renders; a story
+        // height is only reused within one.
+        self.clear_hf_story_memo();
         // last_options is also the current pass's drawing configuration. Keep
         // its previous-frame comparison before that snapshot is replaced.
         let compatible = self.last_options_match_for_replay(options);
@@ -15506,6 +15542,14 @@ where
         self.image_debug_regions.borrow_mut().clear();
         self.text_box_debug_regions.borrow_mut().clear();
         self.grouped_shape_text_regions.borrow_mut().clear();
+        // Cell float frames are rebuilt with every object region; a render
+        // that keeps some regions keeps their frames too.
+        if !preserve_pixel_pagination
+            && stable_edit_metadata.is_none()
+            && incremental_dirty_from.is_none()
+        {
+            self.cell_float_frames.borrow_mut().clear();
+        }
         // Pixel-only walks skip other pages without changing their geometry.
         // Move the authoritative regions aside rather than cloning every
         // object in a long document for each bitmap request.
@@ -20986,6 +21030,10 @@ where
         // floats anchored by this paragraph as well as still-active floats
         // from earlier body elements on the same page.
         let float_anchor_top = self.float_anchor_top(body_element_index, paragraph_top_y);
+        // Word places a `relativeFrom="column"` object from the column its
+        // anchor is in: the one this paragraph starts in, even when its lines
+        // flow on into the next column before the objects are painted.
+        let float_anchor_column = Some((self.current_column_x(), self.current_column_width()));
         let mut paragraph_float_exclusions = Vec::new();
         for (run_index, image) in &floating_images {
             let target = FloatingObjectTarget {
@@ -20993,13 +21041,14 @@ where
                 run_index: *run_index,
                 kind: FloatingObjectKind::Image,
             };
-            if let Some(bounds) = self.floating_object_wrap_exclusion(
+            if let Some(bounds) = self.floating_object_wrap_exclusion_in_column(
                 target,
                 image.width_px.unwrap_or(line_height).max(1.0),
                 image.height_px.unwrap_or(line_height).max(1.0),
                 &image.layout,
                 float_anchor_top,
                 line_height,
+                float_anchor_column,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&image.layout)));
             }
@@ -21010,13 +21059,14 @@ where
                 run_index: *run_index,
                 kind: FloatingObjectKind::TextBox,
             };
-            if let Some(bounds) = self.floating_object_wrap_exclusion(
+            if let Some(bounds) = self.floating_object_wrap_exclusion_in_column(
                 target,
                 text_box.width_px.unwrap_or(line_height).max(1.0),
                 text_box.height_px.unwrap_or(line_height).max(1.0),
                 &text_box.layout,
                 float_anchor_top,
                 line_height,
+                float_anchor_column,
             ) {
                 paragraph_float_exclusions.push((bounds, anchored_to_line(&text_box.layout)));
             }
@@ -21371,19 +21421,21 @@ where
                         float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
+                        float_anchor_column,
                     )?;
                 }
                 FloatingPaintObject::TextBox {
                     run_index,
                     text_box,
                 } => {
-                    let _ = self.render_floating_text_box(
+                    let _ = self.render_floating_text_box_in_column(
                         text_box,
                         paragraph_index,
                         *run_index,
                         float_anchor_top,
                         line_height,
                         render_changes,
+                        float_anchor_column,
                     )?;
                 }
             }
@@ -21809,19 +21861,21 @@ where
                         float_anchor_top,
                         line_height,
                         Some(&mut cache_hyperlink_regions),
+                        float_anchor_column,
                     )?;
                 }
                 FloatingPaintObject::TextBox {
                     run_index,
                     text_box,
                 } => {
-                    let _ = self.render_floating_text_box(
+                    let _ = self.render_floating_text_box_in_column(
                         text_box,
                         paragraph_index,
                         run_index,
                         float_anchor_top,
                         line_height,
                         render_changes,
+                        float_anchor_column,
                     )?;
                 }
             }
@@ -26901,6 +26955,7 @@ where
     /// Paints a floating image (anchored via `wp:anchor`) at an absolute
     /// position relative to margins, page, paragraph, or line as specified in
     /// the DOCX. Unlike inline images it does not advance the text cursor.
+    #[allow(clippy::too_many_arguments)]
     fn render_floating_image(
         &mut self,
         image: &RunImage,
@@ -26909,6 +26964,7 @@ where
         paragraph_start_y: f64,
         line_height: f64,
         hyperlink_regions_out: Option<&mut Vec<CachedHyperlinkRegion>>,
+        anchor_column: Option<(f64, f64)>,
     ) -> Result<Option<f64>, JsValue> {
         if !matches!(image.layout.kind, RunImageKind::Floating) {
             return Ok(None);
@@ -26926,6 +26982,7 @@ where
             &image.layout,
             paragraph_start_y,
             line_height,
+            anchor_column,
         );
 
         // Always record the object region for hit-testing and selection
@@ -29718,6 +29775,7 @@ where
         true
     }
 
+    #[cfg(test)]
     fn render_floating_text_box(
         &mut self,
         text_box: &RunTextBox,
@@ -29726,6 +29784,31 @@ where
         paragraph_start_y: f64,
         line_height: f64,
         render_changes: bool,
+    ) -> Result<Option<f64>, JsValue> {
+        self.render_floating_text_box_in_column(
+            text_box,
+            paragraph_index,
+            run_index,
+            paragraph_start_y,
+            line_height,
+            render_changes,
+            None,
+        )
+    }
+
+    /// [`Self::render_floating_text_box`] with the anchor paragraph's column
+    /// `(x, width)`, the frame of `relativeFrom="column"`; `None` is the
+    /// current column.
+    #[allow(clippy::too_many_arguments)]
+    fn render_floating_text_box_in_column(
+        &mut self,
+        text_box: &RunTextBox,
+        paragraph_index: usize,
+        run_index: usize,
+        paragraph_start_y: f64,
+        line_height: f64,
+        render_changes: bool,
+        anchor_column: Option<(f64, f64)>,
     ) -> Result<Option<f64>, JsValue> {
         if !matches!(text_box.layout.kind, RunImageKind::Floating) || text_box.layout.hidden() {
             return Ok(None);
@@ -29780,6 +29863,7 @@ where
             &text_box.layout,
             paragraph_start_y,
             line_height,
+            anchor_column,
         );
         let result = self.render_floating_text_box_inner(
             text_box,
@@ -39232,6 +39316,7 @@ where
         self.selection.clamp_position(position)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn resolve_floating_object_transform(
         &self,
         target: FloatingObjectTarget,
@@ -39240,6 +39325,7 @@ where
         layout: &RunImageLayout,
         paragraph_start_y: f64,
         line_height: f64,
+        anchor_column: Option<(f64, f64)>,
     ) -> FloatingObjectTransform {
         if let Some(preview) = self.object_transform_preview.as_ref() {
             if preview.target == target {
@@ -39257,7 +39343,7 @@ where
                 layout
                     .position_h
                     .as_ref()
-                    .map(|pos| self.resolve_horizontal_position(pos, width))
+                    .map(|pos| self.resolve_horizontal_position(pos, width, anchor_column))
                     .unwrap_or(self.margin_left),
                 layout
                     .position_v
@@ -39291,6 +39377,30 @@ where
         paragraph_start_y: f64,
         line_height: f64,
     ) -> Option<FloatExclusion> {
+        self.floating_object_wrap_exclusion_in_column(
+            target,
+            width,
+            height,
+            layout,
+            paragraph_start_y,
+            line_height,
+            None,
+        )
+    }
+
+    /// [`Self::floating_object_wrap_exclusion`] with the anchor paragraph's
+    /// column `(x, width)`; `None` is the current column.
+    #[allow(clippy::too_many_arguments)]
+    fn floating_object_wrap_exclusion_in_column(
+        &self,
+        target: FloatingObjectTarget,
+        width: f64,
+        height: f64,
+        layout: &RunImageLayout,
+        paragraph_start_y: f64,
+        line_height: f64,
+        anchor_column: Option<(f64, f64)>,
+    ) -> Option<FloatExclusion> {
         if !matches!(
             layout.wrap,
             WrapMode::Square | WrapMode::Tight | WrapMode::Through | WrapMode::TopAndBottom
@@ -39304,6 +39414,7 @@ where
             layout,
             paragraph_start_y,
             line_height,
+            anchor_column,
         );
         let radians = transform.rotation_deg.to_radians();
         let rotated_width =
@@ -39537,12 +39648,24 @@ where
     /// position descriptor.  `wp:posOffset` (absolute) takes precedence; when
     /// only `wp:align` is present the object is aligned within the reference
     /// box implied by `relativeFrom`.
-    fn resolve_horizontal_position(&self, pos: &ImagePosition, width: f64) -> f64 {
+    ///
+    /// `anchor_column` is the anchor paragraph's column `(x, width)`, the
+    /// `column` frame; `None` uses the current column.
+    fn resolve_horizontal_position(
+        &self,
+        pos: &ImagePosition,
+        width: f64,
+        anchor_column: Option<(f64, f64)>,
+    ) -> f64 {
         if pos.offset_px.is_some() || pos.align.is_none() {
-            return self.resolve_horizontal_base(pos.relative_from.as_deref(), width)
-                + pos.offset_px.unwrap_or(0.0);
+            return self.resolve_horizontal_base(
+                pos.relative_from.as_deref(),
+                width,
+                anchor_column,
+            ) + pos.offset_px.unwrap_or(0.0);
         }
-        let (box_start, box_extent) = self.horizontal_reference_box(pos.relative_from.as_deref());
+        let (box_start, box_extent) =
+            self.horizontal_reference_box(pos.relative_from.as_deref(), anchor_column);
         box_start
             + horizontal_align_offset_within(
                 pos.align.as_deref(),
@@ -39573,15 +39696,49 @@ where
     }
 
     /// Returns the `(start, extent)` of the horizontal reference box used for
-    /// `wp:align` positioning, keyed by the `relativeFrom` attribute.  Page-
-    /// local coordinates (page left edge = 0).
-    fn horizontal_reference_box(&self, relative: Option<&str>) -> (f64, f64) {
+    /// `wp:align` positioning and as the origin of `wp:posOffset`, keyed by the
+    /// `relativeFrom` attribute.  Page-local coordinates (page left edge = 0).
+    ///
+    /// `column` is the anchor paragraph's column, not the whole text body.
+    /// `insideMargin` / `outsideMargin` are the left or right margin area by
+    /// page parity (inside = left on odd pages, right on even pages), the same
+    /// book-page convention [`horizontal_align_offset_within`] uses for
+    /// `inside` / `outside` alignment.  The margin widths are this page's, so
+    /// mirrored margins are already swapped on even pages.  The parity rule
+    /// is ECMA-376's (§20.4.3.4) and applies with or without mirror margins.
+    fn horizontal_reference_box(
+        &self,
+        relative: Option<&str>,
+        anchor_column: Option<(f64, f64)>,
+    ) -> (f64, f64) {
+        let left_margin_area = (0.0, self.margin_left);
+        let right_margin_area = (self.page_width - self.margin_right, self.margin_right);
+        let odd_page = !self.current_page_number.is_multiple_of(2);
         match relative {
             Some("page") => (0.0, self.page_width),
-            Some("leftMargin") => (0.0, self.margin_left),
-            Some("rightMargin") => (self.page_width - self.margin_right, self.margin_right),
-            // margin / column / text / character / line / insideMargin /
-            // outsideMargin / None all resolve to the body content box.
+            Some("leftMargin") => left_margin_area,
+            Some("rightMargin") => right_margin_area,
+            Some("insideMargin") => {
+                if odd_page {
+                    left_margin_area
+                } else {
+                    right_margin_area
+                }
+            }
+            Some("outsideMargin") => {
+                if odd_page {
+                    right_margin_area
+                } else {
+                    left_margin_area
+                }
+            }
+            Some("column") => {
+                let (x, width) = anchor_column
+                    .unwrap_or_else(|| (self.current_column_x(), self.current_column_width()));
+                (x, width.max(0.0))
+            }
+            // margin / text / character / line / None resolve to the body
+            // content box.
             _ => (
                 self.margin_left,
                 (self.page_width - self.margin_left - self.margin_right).max(0.0),
@@ -39590,13 +39747,17 @@ where
     }
 
     /// Returns the `(start, extent)` of the vertical reference box used for
-    /// `wp:align` positioning, keyed by the `relativeFrom` attribute.  Page-
-    /// local coordinates (page top edge = 0).
+    /// `wp:align` positioning and as the origin of `wp:posOffset` for the
+    /// margin areas, keyed by the `relativeFrom` attribute.  Page-local
+    /// coordinates (page top edge = 0).  Vertically the inside margin is the
+    /// top margin area and the outside margin the bottom one.
     fn vertical_reference_box(&self, relative: Option<&str>) -> (f64, f64) {
         match relative {
             Some("page") => (0.0, self.page_height),
-            Some("topMargin") => (0.0, self.margin_top),
-            Some("bottomMargin") => (self.page_height - self.margin_bottom, self.margin_bottom),
+            Some("topMargin" | "insideMargin") => (0.0, self.margin_top),
+            Some("bottomMargin" | "outsideMargin") => {
+                (self.page_height - self.margin_bottom, self.margin_bottom)
+            }
             // margin / text / paragraph / line / None resolve to the body box.
             _ => (
                 self.margin_top,
@@ -39606,13 +39767,22 @@ where
     }
 
     /// Resolves the base X coordinate for floating images based on the
-    /// `relativeFrom` attribute (page, margin, etc.).
-    fn resolve_horizontal_base(&self, relative: Option<&str>, image_width: f64) -> f64 {
+    /// `relativeFrom` attribute (page, margin, etc.).  Word measures
+    /// `wp:posOffset` from the leading edge of the reference area: the page,
+    /// the left / right / inside / outside margin area, or the anchor's column.
+    fn resolve_horizontal_base(
+        &self,
+        relative: Option<&str>,
+        image_width: f64,
+        anchor_column: Option<(f64, f64)>,
+    ) -> f64 {
         match relative {
             Some("page") => 0.0,
-            Some("margin") | Some("column") | Some("line") | Some("character")
-            | Some("leftMargin") => self.margin_left,
-            Some("rightMargin") => self.page_width - self.margin_right - image_width,
+            Some(
+                frame
+                @ ("leftMargin" | "rightMargin" | "insideMargin" | "outsideMargin" | "column"),
+            ) => self.horizontal_reference_box(Some(frame), anchor_column).0,
+            Some("margin") | Some("line") | Some("character") => self.margin_left,
             Some("pageCenter") => (self.page_width - image_width) / 2.0,
             _ => self.margin_left,
         }
@@ -39629,8 +39799,13 @@ where
     ) -> f64 {
         match relative {
             Some("page") => 0.0,
-            Some("margin") | Some("topMargin") => self.margin_top,
-            Some("bottomMargin") => self.page_height - self.margin_bottom - line_height,
+            Some("margin") => self.margin_top,
+            // The top / bottom (inside / outside) margin areas start at the
+            // page top and at the bottom margin's top edge; Word offsets
+            // from there.
+            Some(frame @ ("topMargin" | "bottomMargin" | "insideMargin" | "outsideMargin")) => {
+                self.vertical_reference_box(Some(frame)).0
+            }
             Some("paragraph") => paragraph_start_y,
             Some("line") => {
                 // Word for Mac measures from the top of the line (`textbox`:
@@ -39767,12 +39942,13 @@ where
     ) {
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
-        self.header_body = header_body;
-        self.footer_body = footer_body;
-        self.header_body_first = header_body_first;
-        self.footer_body_first = footer_body_first;
-        self.header_body_even = header_body_even;
-        self.footer_body_even = footer_body_even;
+        self.header_body = header_body.map(Rc::new);
+        self.footer_body = footer_body.map(Rc::new);
+        self.header_body_first = header_body_first.map(Rc::new);
+        self.footer_body_first = footer_body_first.map(Rc::new);
+        self.header_body_even = header_body_even.map(Rc::new);
+        self.footer_body_even = footer_body_even.map(Rc::new);
+        self.clear_hf_story_memo();
         self.header_content_heights.clear();
         self.footer_content_heights.clear();
     }
@@ -39789,6 +39965,14 @@ where
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
         self.section_header_footers = sections;
+        self.clear_hf_story_memo();
+    }
+
+    /// Forgets every memoised story height. A memo is keyed by story
+    /// pointer, so it must not outlive the stories it was measured from.
+    fn clear_hf_story_memo(&mut self) {
+        self.hf_story_heights.clear();
+        self.hf_story_page_independent.clear();
     }
 
     /// The section owning a physical (1-based) page. Pages laid out so far
@@ -39874,7 +40058,7 @@ where
         )
     }
 
-    fn section_hf_body_for_page(&self, page: usize, role: HeaderFooterRole) -> Option<&Body> {
+    fn section_hf_body_for_page(&self, page: usize, role: HeaderFooterRole) -> Option<&Rc<Body>> {
         let section = self
             .section_header_footers
             .get(self.section_index_for_page(page))?;
@@ -39936,7 +40120,7 @@ where
         )
     }
 
-    fn active_header_body(&self) -> Option<&Body> {
+    fn active_header_body(&self) -> Option<&Rc<Body>> {
         if !self.section_header_footers.is_empty() {
             return self
                 .section_hf_body_for_page(self.current_page_number, HeaderFooterRole::Header);
@@ -39951,7 +40135,7 @@ where
         )
     }
 
-    fn active_footer_body(&self) -> Option<&Body> {
+    fn active_footer_body(&self) -> Option<&Rc<Body>> {
         if !self.section_header_footers.is_empty() {
             return self
                 .section_hf_body_for_page(self.current_page_number, HeaderFooterRole::Footer);
@@ -40056,12 +40240,12 @@ where
         let Some(body) = self
             .active_footer_body()
             .filter(|body| !body.elements.is_empty())
-            .cloned()
+            .map(Rc::clone)
         else {
             return Ok(());
         };
         let (_, measure_base) = self.footer_story_paragraph_bases(&body);
-        let height = self.render_header_footer_body_at(&body, 0.0, measure_base, false, None)?;
+        let height = self.measure_header_footer_story(&body, 0.0, measure_base)?;
         self.record_footer_content_height(height);
         Ok(())
     }
@@ -40407,6 +40591,10 @@ where
         draw: bool,
         capture_story: Option<&'static str>,
     ) -> Result<f64, JsValue> {
+        #[cfg(test)]
+        {
+            self.hf_story_layout_count += 1;
+        }
         // Headers and footers are the page's furniture in a tagged PDF.
         self.suppress_structure(true);
         let result = self.render_header_footer_body_at_untagged(
@@ -40418,6 +40606,72 @@ where
         );
         self.suppress_structure(false);
         result
+    }
+
+    /// The memo key for measuring an installed story, or `None` when the
+    /// story depends on the page it is laid out on.
+    fn hf_story_measure_key(
+        &mut self,
+        story: &Rc<Body>,
+        start_y: f64,
+        paragraph_base: usize,
+    ) -> Option<HfStoryMeasureKey> {
+        #[cfg(test)]
+        if self.hf_story_memo_disabled {
+            return None;
+        }
+        let pointer = Rc::as_ptr(story) as usize;
+        // The entry holds the story alive, so its address cannot be reused
+        // by another story while any height keyed by it is remembered.
+        let (_, independent) = self
+            .hf_story_page_independent
+            .entry(pointer)
+            .or_insert_with(|| {
+                (
+                    Rc::clone(story),
+                    hf_story_is_page_independent(&story.elements),
+                )
+            });
+        if !*independent {
+            return None;
+        }
+        Some(HfStoryMeasureKey {
+            story: pointer,
+            page_width: self.page_width.to_bits(),
+            page_height: self.page_height.to_bits(),
+            margin_left: self.margin_left.to_bits(),
+            margin_right: self.margin_right.to_bits(),
+            margin_top: self.margin_top.to_bits(),
+            margin_bottom: self.margin_bottom.to_bits(),
+            start_y: start_y.to_bits(),
+            paragraph_base,
+            section: self.active_section_index,
+            html_auto_spacing: self.document_html_auto_spacing,
+        })
+    }
+
+    /// Lays out an installed header/footer story without drawing it and
+    /// returns its height. A page-independent story is laid out once per
+    /// page box and section; later pages reuse that height.
+    fn measure_header_footer_story(
+        &mut self,
+        story: &Rc<Body>,
+        start_y: f64,
+        paragraph_base: usize,
+    ) -> Result<f64, JsValue> {
+        let key = self.hf_story_measure_key(story, start_y, paragraph_base);
+        if let Some(height) = key.and_then(|key| self.hf_story_heights.get(&key).copied()) {
+            // A layout ends by forgetting the painter state it may have
+            // set; do the same so the next drawn page emits identical ops.
+            self.invalidate_context_state_tracking();
+            return Ok(height);
+        }
+        let height =
+            self.render_header_footer_body_at(story, start_y, paragraph_base, false, None)?;
+        if let Some(key) = key {
+            self.hf_story_heights.insert(key, height);
+        }
+        Ok(height)
     }
 
     fn render_header_footer_body_at_untagged(
@@ -40652,16 +40906,24 @@ where
         }
         self.measure_page_footer()?;
         let draw_enabled = self.should_draw_current_page_for_render();
-        if let Some(body) = self.active_header_body().cloned() {
+        if let Some(body) = self.active_header_body().map(Rc::clone) {
             if !body.elements.is_empty() {
                 let paragraph_base = self.auxiliary_story_paragraph_base();
-                let content_height = self.render_header_footer_body_at(
-                    &body,
-                    self.header_edit_content_top(),
-                    paragraph_base,
-                    draw_enabled,
-                    Some("header"),
-                )?;
+                let start_y = self.header_edit_content_top();
+                // An undrawn page only needs the header's height, unless its
+                // lines are being captured.
+                let content_height = if draw_enabled || self.auxiliary_story_capture_mode.enabled()
+                {
+                    self.render_header_footer_body_at(
+                        &body,
+                        start_y,
+                        paragraph_base,
+                        draw_enabled,
+                        Some("header"),
+                    )?
+                } else {
+                    self.measure_header_footer_story(&body, start_y, paragraph_base)?
+                };
                 self.record_header_content_height(content_height);
 
                 if draw_enabled && self.editing_mode == crate::canvas_view::EditingMode::Header {
@@ -40798,14 +41060,12 @@ where
             self.footer_drawn = true;
             return Ok(());
         }
-        if let Some(body) = self.active_footer_body().cloned() {
+        if let Some(body) = self.active_footer_body().map(Rc::clone) {
             if !body.elements.is_empty() {
                 let (paragraph_base, measure_base) = self.footer_story_paragraph_bases(&body);
                 let height = match self.current_page_footer_content_height() {
                     Some(height) => height,
-                    None => {
-                        self.render_header_footer_body_at(&body, 0.0, measure_base, false, None)?
-                    }
+                    None => self.measure_header_footer_story(&body, 0.0, measure_base)?,
                 };
                 let footer_top = (self.footer_edit_content_bottom() - height).max(0.0);
                 self.render_header_footer_body_at(
@@ -42757,6 +43017,66 @@ fn select_header_footer_variant<'a, T: ?Sized>(
     )
 }
 
+/// Everything a header/footer story's measuring layout reads besides the
+/// story itself: the page box its single column is cut from, where the story
+/// starts, the paragraph indices it is numbered from and the section whose
+/// properties it resolves against. Floats are kept as their bit patterns.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct HfStoryMeasureKey {
+    story: usize,
+    page_width: u64,
+    page_height: u64,
+    margin_left: u64,
+    margin_right: u64,
+    margin_top: u64,
+    margin_bottom: u64,
+    start_y: u64,
+    paragraph_base: usize,
+    section: usize,
+    html_auto_spacing: bool,
+}
+
+/// Whether a header/footer story lays out the same on every page with the
+/// same page box. Conservative: any field (PAGE, NUMPAGES, STYLEREF, ... all
+/// change with the page), anchored picture, text box, positioned frame or
+/// table, and note or comment reference makes the story page-dependent, so
+/// every page lays it out as before.
+fn hf_story_is_page_independent(elements: &[BodyElement]) -> bool {
+    elements.iter().all(|element| match element {
+        BodyElement::Paragraph(paragraph) => {
+            paragraph
+                .properties
+                .as_ref()
+                .is_none_or(|properties| properties.frame.is_none())
+                && paragraph.comment_ranges.is_empty()
+                && paragraph.comment_markers.is_empty()
+                && paragraph.runs.iter().all(|run| {
+                    run.field.is_none()
+                        && run.text_box.is_none()
+                        && run.note_separator.is_none()
+                        && !run.has_footnote_ref
+                        && !run.has_endnote_ref
+                        && run.footnote_reference_ids.is_empty()
+                        && run.endnote_reference_ids.is_empty()
+                        && run.comment_reference_ids.is_empty()
+                        && run
+                            .image
+                            .as_ref()
+                            .is_none_or(|image| image.layout.kind == RunImageKind::Inline)
+                })
+        }
+        BodyElement::Table(table) => {
+            !table.style.contains_key("table-position")
+                && table.rows.iter().all(|row| {
+                    row.cells
+                        .iter()
+                        .all(|cell| hf_story_is_page_independent(&cell.blocks))
+                })
+        }
+        BodyElement::Math(_) => true,
+    })
+}
+
 /// Whether run `index` holds more of the same identified field as the prior
 /// relevant run. Missing XML identities do not establish a shared field. Word
 /// saves a result formatted two ways as two runs, and an edit splits one
@@ -44551,12 +44871,12 @@ mod tests {
     fn auxiliary_story_base_is_shared_by_layout_and_paint() {
         let (mut renderer, _) = recording_renderer();
         let document = Rc::new(doc_with_paragraph_texts(&["body one", "body two"]));
-        renderer.header_body = Some(Body {
+        renderer.header_body = Some(Rc::new(Body {
             elements: vec![auxiliary_count_test_block(0)],
-        });
-        renderer.footer_body = Some(Body {
+        }));
+        renderer.footer_body = Some(Rc::new(Body {
             elements: vec![auxiliary_count_test_block(0)],
-        });
+        }));
         let options = options_for_seek_tests();
         for _ in 0..3 {
             renderer
@@ -54155,9 +54475,9 @@ mod tests {
 
         document.footnotes.clear();
         renderer.last_document = Some(Rc::new(document.clone()));
-        renderer.header_body = Some(Body {
+        renderer.header_body = Some(Rc::new(Body {
             elements: vec![note_paragraph],
-        });
+        }));
         assert!(!renderer.text_box_source_inventory_complete());
 
         renderer.header_body = None;
@@ -62231,12 +62551,12 @@ mod tests {
         if spanning {
             renderer.set_comment_colors(None, Some(Rc::from("#112233")), None);
             // Auxiliary-story comments must also be rebuilt on every visible page.
-            renderer.header_body = Some(Body {
+            renderer.header_body = Some(Rc::new(Body {
                 elements: vec![BodyElement::from_paragraph(comment_test_paragraph(0))],
-            });
-            renderer.footer_body = Some(Body {
+            }));
+            renderer.footer_body = Some(Rc::new(Body {
                 elements: vec![BodyElement::from_paragraph(comment_test_paragraph(1))],
-            });
+            }));
         }
         renderer
             .render_with_numbering(&document, &options, None, None, None, Some(&comments))
@@ -62550,7 +62870,7 @@ mod tests {
                     }
                     12 => {
                         renderer.set_section_header_footers(vec![SectionHeaderFooters {
-                            footer_body_even: Some(Body { elements: vec![block] }), ..Default::default()
+                            footer_body_even: Some(Rc::new(Body { elements: vec![block] })), ..Default::default()
                         }]);
                         auxiliary[2] = kind < 3;
                     }
@@ -62603,18 +62923,18 @@ mod tests {
                         2 => {
                             document.endnotes.insert("1".into(), note);
                         }
-                        3 => renderer.header_body = Some(body),
-                        4 => renderer.footer_body = Some(body),
-                        5 => renderer.header_body_first = Some(body),
-                        6 => renderer.footer_body_first = Some(body),
-                        7 => renderer.header_body_even = Some(body),
-                        8 => renderer.footer_body_even = Some(body),
-                        9 => section.header_body = Some(body),
-                        10 => section.footer_body = Some(body),
-                        11 => section.header_body_first = Some(body),
-                        12 => section.footer_body_first = Some(body),
-                        13 => section.header_body_even = Some(body),
-                        14 => section.footer_body_even = Some(body),
+                        3 => renderer.header_body = Some(Rc::new(body)),
+                        4 => renderer.footer_body = Some(Rc::new(body)),
+                        5 => renderer.header_body_first = Some(Rc::new(body)),
+                        6 => renderer.footer_body_first = Some(Rc::new(body)),
+                        7 => renderer.header_body_even = Some(Rc::new(body)),
+                        8 => renderer.footer_body_even = Some(Rc::new(body)),
+                        9 => section.header_body = Some(Rc::new(body)),
+                        10 => section.footer_body = Some(Rc::new(body)),
+                        11 => section.header_body_first = Some(Rc::new(body)),
+                        12 => section.footer_body_first = Some(Rc::new(body)),
+                        13 => section.header_body_even = Some(Rc::new(body)),
+                        14 => section.footer_body_even = Some(Rc::new(body)),
                         _ => unreachable!(),
                     }
                     renderer.section_header_footers.push(section);
@@ -62732,7 +63052,7 @@ mod tests {
             // anchor. It does not scan or clone production document state.
             let mut anchored = [false; 15];
             let mut headers: [Option<Body>; 6] = Default::default();
-            let mut section_headers: [Option<Body>; 6] = Default::default();
+            let mut section_headers: [Option<Rc<Body>>; 6] = Default::default();
             let comments = HashMap::from([("1".into(), DocumentComment {
                 id: "1".into(), text: "preserved".into(), ..Default::default()
             })]);
@@ -62760,7 +63080,7 @@ mod tests {
                     }
                     2 => {
                         let index = usize::from(story % 6);
-                        section_headers[index] = Some(body);
+                        section_headers[index] = Some(Rc::new(body));
                         anchored[index + 9] = kind < 3;
                         renderer.set_section_header_footers(vec![SectionHeaderFooters {
                             header_body: section_headers[0].clone(), footer_body: section_headers[1].clone(),
@@ -68351,8 +68671,8 @@ mod tests {
                 "story", None,
             ))],
         };
-        renderer.header_body = Some(story_body.clone());
-        renderer.footer_body = Some(story_body);
+        renderer.header_body = Some(Rc::new(story_body.clone()));
+        renderer.footer_body = Some(Rc::new(story_body));
         renderer
             .render(&document, &Options::default())
             .expect("full layout");
@@ -69136,9 +69456,9 @@ mod tests {
         .expect("paged recording renderer");
         renderer.current_page_number = 2;
         renderer.visible_page_range = Some(1..=1);
-        renderer.footer_body = Some(Body {
+        renderer.footer_body = Some(Rc::new(Body {
             elements: vec![BodyElement::from_paragraph(note_test_paragraph("FF", None))],
-        });
+        }));
         renderer.set_auxiliary_story_capture_enabled(true);
 
         renderer
@@ -75300,6 +75620,7 @@ mod tests {
             &layout,
             120.0,
             20.0,
+            None,
         );
 
         assert_eq!(transform.x, 24.0);

@@ -7931,6 +7931,15 @@ impl DocumentParser {
         })
     }
 
+    /// Builds a floating position from VML's `mso-position-*-relative` and
+    /// `margin-left` / `margin-top`, naming the frame as DrawingML's
+    /// `relativeFrom` does so the renderer resolves both alike.  VML calls the
+    /// column and paragraph `text` (its default when the property is absent),
+    /// the character `char`, and the margin areas `*-margin-area`; values are
+    /// matched case-insensitively.  A margin area that does not exist on the
+    /// axis (a left or right margin vertically, a top or bottom one
+    /// horizontally) is the body box, `margin`; vertical `char` is the line,
+    /// and any other unknown value is the axis default, `text`.
     fn build_position(
         relative: Option<String>,
         offset: Option<f64>,
@@ -7940,32 +7949,34 @@ impl DocumentParser {
             return None;
         }
 
-        let mut position = ImagePosition::default();
-        if let Some(relative) = relative {
-            position.relative_from = Some(match relative.as_str() {
-                "margin" => "margin".to_string(),
-                "page" => "page".to_string(),
-                "leftMargin" => {
-                    if horizontal {
-                        "leftMargin".to_string()
-                    } else {
-                        "margin".to_string()
-                    }
-                }
-                "rightMargin" => {
-                    if horizontal {
-                        "rightMargin".to_string()
-                    } else {
-                        "margin".to_string()
-                    }
-                }
-                "line" => "line".to_string(),
-                "paragraph" => "paragraph".to_string(),
-                _ => relative,
-            });
-        }
-        position.offset_px = offset;
-        Some(position)
+        let relative = relative
+            .map(|relative| relative.trim().to_ascii_lowercase())
+            .unwrap_or_else(|| "text".to_string());
+        let frame = match (relative.as_str(), horizontal) {
+            ("margin", _) => "margin",
+            ("page", _) => "page",
+            ("text", true) => "column",
+            ("text", false) => "paragraph",
+            ("char", true) => "character",
+            ("char" | "line", false) => "line",
+            ("left-margin-area" | "leftmargin", true) => "leftMargin",
+            ("right-margin-area" | "rightmargin", true) => "rightMargin",
+            ("inner-margin-area" | "insidemargin", _) => "insideMargin",
+            ("outer-margin-area" | "outsidemargin", _) => "outsideMargin",
+            ("top-margin-area" | "topmargin", false) => "topMargin",
+            ("bottom-margin-area" | "bottommargin", false) => "bottomMargin",
+            ("left-margin-area" | "leftmargin" | "right-margin-area" | "rightmargin", false)
+            | ("top-margin-area" | "topmargin" | "bottom-margin-area" | "bottommargin", true) => {
+                "margin"
+            }
+            (_, true) => "column",
+            (_, false) => "paragraph",
+        };
+        Some(ImagePosition {
+            relative_from: Some(frame.to_string()),
+            offset_px: offset,
+            ..ImagePosition::default()
+        })
     }
 
     /// Normalises colour strings from DrawingML / VML into canonical `#RRGGBB`
