@@ -198,20 +198,58 @@ fn vml_vertical_bottom_aligns_within_the_page() {
     assert_eq!(v.and_then(|v| v.relative_from).as_deref(), Some("page"));
 }
 
-/// Without a `-relative` property the keyword still aligns, within `text`.
+/// Without a `-relative` property the keyword aligns within the `text` column
+/// horizontally.  Vertically `text` is the paragraph, which the renderer has
+/// no extent for, so the offset is kept there.
 #[test]
-fn vml_alignment_without_a_frame_uses_the_text_frame() {
+fn vml_alignment_without_a_frame_aligns_only_in_the_column() {
     let (h, v, _, _) = shape(
-        "position:absolute;width:30pt;height:15pt;mso-position-horizontal:Outside;mso-position-vertical:inside",
+        "position:absolute;margin-top:6pt;width:30pt;height:15pt;mso-position-horizontal:Outside;mso-position-vertical:center",
         false,
     );
     assert_eq!(align(&h), Some("outside"));
-    assert_eq!(align(&v), Some("inside"));
     assert_eq!(h.and_then(|h| h.relative_from).as_deref(), Some("column"));
+    assert_eq!(align(&v), None);
+    assert_eq!(offset(&v), Some(8.0));
     assert_eq!(
         v.and_then(|v| v.relative_from).as_deref(),
         Some("paragraph")
     );
+}
+
+/// The line, paragraph and character frames have no extent to align within,
+/// so their keywords keep the offsets.
+#[test]
+fn vml_alignment_to_a_line_paragraph_or_character_keeps_the_offsets() {
+    for (horizontal, vertical) in [("char", "line"), ("char", "text"), ("char", "char")] {
+        let (h, v, _, _) = shape(
+            &format!(
+                "position:absolute;margin-left:12pt;margin-top:24pt;width:30pt;height:15pt;mso-position-horizontal:center;mso-position-horizontal-relative:{horizontal};mso-position-vertical:top;mso-position-vertical-relative:{vertical}"
+            ),
+            true,
+        );
+        assert_eq!(align(&h), None, "{horizontal}");
+        assert_eq!(align(&v), None, "{vertical}");
+        assert_eq!(offset(&h), Some(16.0), "{horizontal}");
+        assert_eq!(offset(&v), Some(32.0), "{vertical}");
+    }
+}
+
+/// Only an absolutely positioned shape is aligned by keyword.
+#[test]
+fn vml_alignment_needs_absolute_positioning() {
+    let (h, _, _, _) = shape(
+        "margin-left:12pt;width:30pt;height:15pt;mso-position-horizontal:center;mso-position-horizontal-relative:margin",
+        false,
+    );
+    assert_eq!(align(&h), None);
+    assert_eq!(offset(&h), Some(16.0));
+}
+
+#[test]
+fn vml_negative_sizes_are_ignored() {
+    let (_, _, width, height) = shape("position:absolute;width:-30pt;height:-2", false);
+    assert_eq!((width, height), (None, None));
 }
 
 /// `absolute`, a keyword from the other axis and unknown keywords keep the
@@ -256,4 +294,43 @@ fn vml_style_lengths_accept_css_units() {
     assert!(close(height, 40.0), "{height:?}");
     assert!(close(offset(&h), -12.0), "{h:?}");
     assert!(close(offset(&v), 7.0), "{v:?}");
+}
+
+/// A `v:group` child sizes and places itself in the group's coordinate
+/// space, so its bare numbers are not CSS px and its keywords do not apply.
+#[test]
+fn vml_group_children_do_not_read_bare_numbers_as_px() {
+    let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml"><w:body><w:p><w:r><w:pict><v:group style="position:absolute;width:216pt;height:135pt" coordorigin="1800,1440" coordsize="8640,5400"><v:shape style="position:absolute;left:1800;top:1440;width:4320;height:2700;margin-left:100;mso-position-horizontal:center;mso-position-horizontal-relative:margin"><v:textbox><w:txbxContent><w:p><w:r><w:t>box</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></v:group></w:pict></w:r></w:p></w:body></w:document>"#;
+    let document = DocumentParser::new().parse_document_xml(xml).unwrap();
+    let BodyElement::Paragraph(paragraph) = &document.body.unwrap().elements[0] else {
+        panic!("paragraph")
+    };
+    let text_box = paragraph
+        .runs
+        .iter()
+        .find_map(|run| run.text_box.as_ref())
+        .expect("text box");
+    assert_eq!(text_box.width_px, None);
+    assert_eq!(text_box.height_px, None);
+    assert_eq!(align(&text_box.layout.position_h), None);
+    assert_eq!(offset(&text_box.layout.position_h), None);
+}
+
+/// A bare `0` inset needs no unit, so the other insets are kept.
+#[test]
+fn vml_inset_accepts_a_bare_zero() {
+    let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml"><w:body><w:p><w:r><w:pict><v:shape style="position:absolute;width:100pt;height:50pt"><v:textbox inset="3.6pt,0,7.2pt,0"><w:txbxContent><w:p><w:r><w:t>box</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r></w:p></w:body></w:document>"#;
+    let document = DocumentParser::new().parse_document_xml(xml).unwrap();
+    let BodyElement::Paragraph(paragraph) = &document.body.unwrap().elements[0] else {
+        panic!("paragraph")
+    };
+    let insets = &paragraph
+        .runs
+        .iter()
+        .find_map(|run| run.text_box.as_ref())
+        .expect("text box")
+        .insets;
+    assert!(close(Some(insets.left_px), 4.8), "{insets:?}");
+    assert!(close(Some(insets.right_px), 9.6), "{insets:?}");
+    assert_eq!((insets.top_px, insets.bottom_px), (0.0, 0.0));
 }
