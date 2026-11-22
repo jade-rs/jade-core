@@ -271,24 +271,30 @@ struct SweepOutcome {
 }
 
 /// How far the lowest body line on the page at `offset` reaches below
-/// `bottom` (lines starting at or below `bottom`, such as footnotes, are
-/// not body lines). Empty paragraphs are left out: the one that can sit
-/// past the bottom is Word for Mac's empty section mark, which Word leaves
-/// out of page vAlign by design (as for `center`/`bottom`); an ordinary
-/// empty paragraph counts in the used height and cannot overshoot.
-/// `None` when the page has no such line.
+/// `bottom`. Footnote surfaces are not body lines, and Word for Mac's empty
+/// section mark stays out of page vAlign by design (as for `center` and
+/// `bottom`), so its line may sit past the bottom. `None` when the page has
+/// no body line.
 fn page_line_excess(
     renderer: &CanvasRenderer<RecordingPainter>,
     offset: f64,
     bottom: f64,
 ) -> Option<f64> {
+    let excluded = |surface: usize| {
+        renderer.valign_section_mark_surfaces.contains(&surface)
+            || renderer
+                .footnote_surface_ranges
+                .iter()
+                .any(|(start, end)| (*start..*end).contains(&surface))
+    };
     renderer
         .selection
         .paragraphs()
         .iter()
-        .filter(|paragraph| !paragraph.text.is_empty())
-        .flat_map(|paragraph| paragraph.lines.iter())
-        .filter(|line| ((line.absolute_top - line.top) - offset).abs() < 0.5 && line.top < bottom)
+        .enumerate()
+        .filter(|(surface, _)| !excluded(*surface))
+        .flat_map(|(_, paragraph)| paragraph.lines.iter())
+        .filter(|line| ((line.absolute_top - line.top) - offset).abs() < 0.5)
         .map(|line| line.top + line.height - bottom)
         .reduce(f64::max)
 }
@@ -709,7 +715,6 @@ fn justified_gap_is_applied_absolutely_on_resume() {
     ] {
         renderer.current_page_number = gap.page;
         renderer.valign_gap_applied = (0, 0.0);
-        renderer.valign_hook_seen = true;
         renderer.current_y = start;
         renderer.begin_justified_valign_element(element);
         assert!(
@@ -724,6 +729,16 @@ fn justified_gap_is_applied_absolutely_on_resume() {
             "{label}"
         );
     }
+    // Where a seek snapshot is restored, the hook adopts its position (taken
+    // after the gap and any space-before) as is.
+    let resumed_at = natural + gap.shift + 16.0;
+    renderer.valign_gap_applied = (0, 0.0);
+    renderer.valign_seek_resume = true;
+    renderer.current_y = resumed_at;
+    renderer.begin_justified_valign_element(element);
+    assert_eq!(renderer.current_y, resumed_at);
+    assert_eq!(renderer.valign_gap_applied, (gap.page, gap.shift));
+    assert!(!renderer.valign_seek_resume, "the resume flag is consumed");
 }
 
 /// A bounded re-measure (layout page limit) keeps the gaps of the pages
@@ -844,4 +859,48 @@ fn valign_typing_timing() {
             renderer.last_render_body_element_count
         );
     }
+}
+
+/// A justified page ending after a paragraph replayed from a cache: the
+/// cached layouts record what each space-after really took (the one
+/// clamped at the page foot less than its nominal amount), which the replay
+/// paths restore, so a re-measure that replays the page's last paragraph
+/// sees the same used height as a live layout.
+#[test]
+fn justified_cached_layouts_keep_the_consumed_space_after() {
+    let mut body = String::new();
+    for index in 0..40 {
+        body.push_str(&format!(
+            r#"<w:p><w:pPr><w:spacing w:before="0" w:after="240"/></w:pPr><w:r><w:t>Line {index}</w:t></w:r></w:p>"#
+        ));
+    }
+    body.push_str(&format!(
+        r#"<w:sectPr>{MARGINS}<w:vAlign w:val="both"/></w:sectPr>"#
+    ));
+    let document = load(&body);
+    let mut renderer = rendered(&document, &Options::default());
+    let mut clamped = 0;
+    {
+        let cache = renderer.paragraph_layout_cache.borrow();
+        for index in 0..40 {
+            let entry = cache.get_entry(index).expect("cached layout");
+            let nominal = entry.trailing_spacing_after.expect("space-after");
+            let consumed = entry
+                .trailing_spacing_after_consumed
+                .expect("consumed space-after");
+            assert!(consumed <= nominal + 1e-9, "paragraph {index}");
+            if consumed + 0.01 < nominal {
+                clamped += 1;
+            }
+        }
+    }
+    assert!(clamped > 0, "a space-after is clamped at a page foot");
+
+    // Replaying a paragraph restores its consumed amount at its end.
+    renderer.current_page_number = 1;
+    renderer.current_y = 500.0;
+    renderer.note_replayed_spacing_after(Some(3.0));
+    assert_eq!(renderer.current_spacing_after_consumed(), Some(3.0));
+    renderer.current_y = 520.0;
+    assert_eq!(renderer.current_spacing_after_consumed(), None);
 }

@@ -3465,6 +3465,9 @@ struct CachedParagraphRender {
     end_last_line_baseline: f64,
     start_spacing_after_input: f64,
     end_spacing_after: Option<f64>,
+    /// What `end_spacing_after` actually took (see
+    /// `ParagraphLayoutResult::trailing_spacing_after_consumed`).
+    end_spacing_after_consumed: Option<f64>,
     start_line_number_state: Option<LineNumberState>,
     end_line_number_state: Option<LineNumberState>,
     /// Cached numbering counter increment needed to keep numbering state in sync when replaying.
@@ -4083,10 +4086,12 @@ where
     valign_element_space_after: Option<(usize, f64, f64)>,
     /// `(page, y, px)` the latest body paragraph's space-after really took.
     valign_spacing_after_consumed: Option<(usize, f64, f64)>,
-    /// Whether a top-level element hook already ran in this pass. The first
-    /// one to carry a gap is a seek resume (a pass from the body start
-    /// begins at a page top, which is never a gap slot).
-    valign_hook_seen: bool,
+    /// Set where a seek snapshot is restored: the next top-level element
+    /// hook resumes from a position a painted pass already shifted.
+    valign_seek_resume: bool,
+    /// Paragraph surfaces laid out as Word for Mac's empty section mark,
+    /// which stays out of page vAlign (diagnostics for the overflow checks).
+    valign_section_mark_surfaces: Vec<usize>,
     /// `(page offset y, real body bottom)` of each page measured in the last
     /// full repaint (diagnostics for the overflow checks).
     valign_page_bounds: Vec<(f64, f64)>,
@@ -9791,7 +9796,8 @@ where
             valign_flow_fallback_pages: Vec::new(),
             valign_element_space_after: None,
             valign_spacing_after_consumed: None,
-            valign_hook_seen: false,
+            valign_seek_resume: false,
+            valign_section_mark_surfaces: Vec::new(),
             valign_page_bounds: Vec::new(),
             valign_pending_gap_slot: None,
             valign_gap_applied: (0, 0.0),
@@ -15813,7 +15819,8 @@ where
         self.valign_element_pages.clear();
         self.valign_element_space_after = None;
         self.valign_spacing_after_consumed = None;
-        self.valign_hook_seen = false;
+        self.valign_seek_resume = false;
+        self.valign_section_mark_surfaces.clear();
         self.valign_page_bounds.clear();
         self.valign_pending_gap_slot = None;
         self.valign_gap_applied = (0, 0.0);
@@ -16342,6 +16349,8 @@ where
                 self.current_y = seek.current_y;
                 self.last_line_baseline = seek.last_line_baseline;
                 self.trailing_spacing_after = seek.trailing_spacing_after;
+                // The next top-level element hook resumes from this snapshot.
+                self.valign_seek_resume = true;
             } else {
                 let initial_section = sections
                     .first()
@@ -16575,6 +16584,8 @@ where
                     let flow_before = (self.current_page_number, self.column_index);
                     let y_before = self.current_y;
                     if empty_section_mark {
+                        self.valign_section_mark_surfaces
+                            .push(self.paragraph_counter);
                         let next_break = SectionBreakType::from_word_value(
                             sections[index + 1]
                                 .properties
@@ -17401,6 +17412,7 @@ where
                 amount,
             )
         });
+        self.note_replayed_spacing_after(layout.trailing_spacing_after_consumed);
         self.last_render_prefix_skips += 1;
         true
     }
@@ -19230,6 +19242,10 @@ where
                                             amount,
                                         )
                                     });
+                                self.valign_spacing_after_consumed =
+                                    entry.end_spacing_after_consumed.map(|consumed| {
+                                        (self.current_page_number, self.current_y, consumed)
+                                    });
                                 return Ok(());
                             }
                         } else {
@@ -19328,6 +19344,10 @@ where
                                     amount,
                                 )
                             });
+                            self.valign_spacing_after_consumed =
+                                entry.end_spacing_after_consumed.map(|consumed| {
+                                    (self.current_page_number, self.current_y, consumed)
+                                });
                             return Ok(());
                         }
                     } else {
@@ -19416,6 +19436,9 @@ where
                             amount,
                         )
                     });
+                    self.valign_spacing_after_consumed = entry
+                        .end_spacing_after_consumed
+                        .map(|consumed| (self.current_page_number, self.current_y, consumed));
                     return Ok(());
                 }
             } else if shift_replay {
@@ -19611,6 +19634,9 @@ where
                             amount,
                         )
                     });
+                    self.valign_spacing_after_consumed = entry
+                        .end_spacing_after_consumed
+                        .map(|consumed| (self.current_page_number, self.current_y, consumed));
                     return Ok(());
                 }
             }
@@ -19759,6 +19785,10 @@ where
                                             amount,
                                         )
                                     });
+                                self.valign_spacing_after_consumed =
+                                    entry.end_spacing_after_consumed.map(|consumed| {
+                                        (self.current_page_number, self.current_y, consumed)
+                                    });
                                 return Ok(());
                             }
                         } else {
@@ -19858,6 +19888,10 @@ where
                                     amount,
                                 )
                             });
+                            self.valign_spacing_after_consumed =
+                                entry.end_spacing_after_consumed.map(|consumed| {
+                                    (self.current_page_number, self.current_y, consumed)
+                                });
                             return Ok(());
                         }
                     }
@@ -20024,6 +20058,9 @@ where
                                 amount,
                             )
                         });
+                        self.valign_spacing_after_consumed = entry
+                            .end_spacing_after_consumed
+                            .map(|consumed| (self.current_page_number, self.current_y, consumed));
                         return Ok(());
                     }
                 } else {
@@ -20120,6 +20157,9 @@ where
                             amount,
                         )
                     });
+                    self.valign_spacing_after_consumed = entry
+                        .end_spacing_after_consumed
+                        .map(|consumed| (self.current_page_number, self.current_y, consumed));
                     return Ok(());
                 }
             }
@@ -22332,6 +22372,7 @@ where
                         end_spacing_after: self
                             .trailing_spacing_after
                             .map(|(_, _, _, amount)| amount),
+                        end_spacing_after_consumed: self.current_spacing_after_consumed(),
                         numbering_increment,
                         start_numbering_state: cache_numbering_state,
                         commands: cache_commands.into(),
@@ -22630,6 +22671,7 @@ where
             );
             result.trailing_spacing_after =
                 self.trailing_spacing_after.map(|(_, _, _, amount)| amount);
+            result.trailing_spacing_after_consumed = self.current_spacing_after_consumed();
             self.paragraph_layout_cache
                 .borrow_mut()
                 .insert(paragraph_index, result);
@@ -39471,6 +39513,23 @@ where
             .unwrap_or(0.0)
     }
 
+    /// The space-after the paragraph that just ended at `current_y` really
+    /// took, when the latest record is for that spot.
+    fn current_spacing_after_consumed(&self) -> Option<f64> {
+        self.valign_spacing_after_consumed
+            .filter(|(page, y, _)| {
+                *page == self.current_page_number && (y - self.current_y).abs() < 0.01
+            })
+            .map(|(_, _, consumed)| consumed)
+    }
+
+    /// A cached paragraph was replayed to `current_y`: restore what its
+    /// space-after took, as its live layout recorded.
+    fn note_replayed_spacing_after(&mut self, consumed: Option<f64>) {
+        self.valign_spacing_after_consumed =
+            consumed.map(|consumed| (self.current_page_number, self.current_y, consumed));
+    }
+
     /// Justified gap already added to `current_y` on the current page.
     fn current_page_valign_gap_applied(&self) -> f64 {
         if self.valign_gap_applied.0 == self.current_page_number {
@@ -39526,7 +39585,7 @@ where
         if self.measuring_keep_next {
             return;
         }
-        let resumed = !std::mem::replace(&mut self.valign_hook_seen, true);
+        let resumed = std::mem::take(&mut self.valign_seek_resume);
         if self.pageless_mode || self.active_section_vertical_align() != SectionVerticalAlign::Both
         {
             return;
@@ -67914,6 +67973,7 @@ mod tests {
             start_line_number_state: None,
             end_line_number_state: None,
             end_spacing_after: None,
+            end_spacing_after_consumed: None,
             numbering_increment: None,
             start_numbering_state: None,
             commands: Vec::new().into(),
@@ -68901,6 +68961,7 @@ mod tests {
             start_line_number_state: None,
             end_line_number_state: None,
             end_spacing_after: None,
+            end_spacing_after_consumed: None,
             numbering_increment: None,
             start_numbering_state: None,
             commands: Vec::new().into(),
@@ -74545,6 +74606,7 @@ mod tests {
                 start_line_number_state: None,
                 end_line_number_state: None,
                 end_spacing_after: None,
+                end_spacing_after_consumed: None,
                 numbering_increment: None,
                 start_numbering_state: None,
                 commands: Vec::new().into(),
@@ -74616,6 +74678,7 @@ mod tests {
                 start_line_number_state: None,
                 end_line_number_state: None,
                 end_spacing_after: None,
+                end_spacing_after_consumed: None,
                 numbering_increment: None,
                 start_numbering_state: None,
                 commands: Vec::new().into(),
@@ -74636,6 +74699,7 @@ mod tests {
                 start_line_number_state: None,
                 end_line_number_state: None,
                 end_spacing_after: None,
+                end_spacing_after_consumed: None,
                 numbering_increment: None,
                 start_numbering_state: None,
                 commands: Vec::new().into(),
@@ -74765,6 +74829,7 @@ mod tests {
                     start_line_number_state: None,
                     end_line_number_state: None,
                     end_spacing_after: None,
+                    end_spacing_after_consumed: None,
                     numbering_increment: None,
                     start_numbering_state: None,
                     commands: Vec::new().into(),
