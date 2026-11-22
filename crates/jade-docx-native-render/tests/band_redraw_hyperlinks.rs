@@ -43,6 +43,11 @@ fn docx(links: bool) -> Vec<u8> {
             "<w:p><w:r><w:t xml:space=\"preserve\">{text}</w:t></w:r>{tail}</w:p>"
         ));
     }
+    zip_docx(&body)
+}
+
+/// A Letter-sized package around `body`, ending with the links' bookmark.
+fn zip_docx(body: &str) -> Vec<u8> {
     let document = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}"><w:body>{body}<w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>Target</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p><w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
     );
@@ -173,4 +178,184 @@ fn keystroke_cost_with_and_without_hyperlinks() {
             durations.len()
         );
     }
+}
+
+fn run(text: &str) -> String {
+    format!(r#"<w:r><w:t xml:space="preserve">{text}</w:t></w:r>"#)
+}
+
+fn para(inner: &str) -> String {
+    format!("<w:p>{inner}</w:p>")
+}
+
+/// `count` filler paragraphs, every `link_every`-th ending in a link.
+fn filler_paras(count: usize, link_every: usize) -> String {
+    (0..count)
+        .map(|i| {
+            let tail = if i % link_every == 0 {
+                link("target", "linked words")
+            } else {
+                run(" plain words")
+            };
+            para(&format!("{}{tail}", run(&format!("F{i} {FILLER}"))))
+        })
+        .collect()
+}
+
+fn find(document: &NativeDocument, prefix: &str) -> usize {
+    (0..3000)
+        .find(|&i| {
+            document
+                .paragraph_text(i)
+                .is_some_and(|text| text.starts_with(prefix))
+        })
+        .unwrap_or_else(|| panic!("no paragraph starting {prefix:?}"))
+}
+
+fn page_of(document: &mut NativeDocument, paragraph: usize) -> usize {
+    let caret = document.place_caret(paragraph, 0).expect("caret");
+    document.page_and_offset(caret.document_y).0
+}
+
+/// Compares the registry and every painted page with a fresh full render,
+/// collecting what differs.
+fn check(document: &NativeDocument, label: &str, problems: &mut Vec<String>) {
+    let fresh = open_bytes(&document.export_docx().expect("export"));
+    let typed = normalized(document.renderer().hyperlink_regions());
+    let expected = normalized(fresh.renderer().hyperlink_regions());
+    if typed != expected {
+        let extra: Vec<_> = typed.iter().filter(|r| !expected.contains(r)).collect();
+        let missing: Vec<_> = expected.iter().filter(|r| !typed.contains(r)).collect();
+        problems.push(format!(
+            "{label}: regions differ: extra {extra:#?} missing {missing:#?}"
+        ));
+    }
+    if document.page_count() != fresh.page_count() {
+        problems.push(format!(
+            "{label}: page count {} vs {}",
+            document.page_count(),
+            fresh.page_count()
+        ));
+        return;
+    }
+    for page in 0..document.page_count() {
+        if document.is_page_stale(page) {
+            continue;
+        }
+        let a = document.page_pixels(page).expect("pixels").0;
+        let b = fresh.page_pixels(page).expect("fresh pixels").0;
+        let differing = a
+            .chunks_exact(4)
+            .zip(b.chunks_exact(4))
+            .filter(|(a, b)| a != b)
+            .count();
+        if differing != 0 {
+            problems.push(format!(
+                "{label}: page {page} differs in {differing} pixels"
+            ));
+        }
+    }
+}
+
+/// Typing before, inside and after a link in the edited paragraph, then
+/// `replace_range` shrinking the link and removing it.
+#[test]
+fn typing_inside_a_link_and_removing_it_keep_the_registry() {
+    let mut body = filler_paras(40, 7);
+    body.push_str(&para(&format!(
+        "{}{}{}",
+        run("EDIT before "),
+        link("target", "linked words here"),
+        run(" after text")
+    )));
+    body.push_str(&filler_paras(40, 5));
+    let mut document = open_bytes(&zip_docx(&body));
+    let paragraph = find(&document, "EDIT");
+    let all = document.page_count();
+    let mut problems = Vec::new();
+    for (i, offset) in [2usize, 3, 15, 16, 18, 40, 12, 13].into_iter().enumerate() {
+        document
+            .insert_text(paragraph, offset, "x", all)
+            .expect("insert");
+        check(&document, &format!("insert#{i}@{offset}"), &mut problems);
+    }
+    let text = document.paragraph_text(paragraph).unwrap();
+    let words = text.find("words").unwrap();
+    document
+        .replace_range(paragraph, words + 1, words + 4, "", all)
+        .expect("replace inside the link");
+    check(&document, "replace-in-link", &mut problems);
+    let text = document.paragraph_text(paragraph).unwrap();
+    let link_start = text.find(" l").unwrap() + 1;
+    let link_end = text.find(" after").unwrap();
+    document
+        .replace_range(paragraph, link_start, link_end, "", all)
+        .expect("remove the link text");
+    check(&document, "remove-link", &mut problems);
+    document
+        .insert_text(paragraph, 1, "y", all)
+        .expect("insert");
+    check(&document, "after-remove", &mut problems);
+    document
+        .delete_text(paragraph, 3, true, 1, all)
+        .expect("delete");
+    check(&document, "delete", &mut problems);
+    assert!(problems.is_empty(), "{problems:#?}");
+}
+
+/// Links long enough to wrap, in paragraphs at a page boundary: typing before
+/// and inside them, in the first paragraph of a page and either side of it.
+#[test]
+fn typing_around_multi_line_links_at_page_boundaries_keeps_the_registry() {
+    let long_link = "long link text that spans across more than one line of the page so \
+         it has several regions and keeps going and going until it wraps around again";
+    let body: String = (0..70)
+        .map(|i| {
+            para(&format!(
+                "{}{}{}",
+                run(&format!("M{i} lead ")),
+                link("target", long_link),
+                run(" tail text")
+            ))
+        })
+        .collect();
+    let mut document = open_bytes(&zip_docx(&body));
+    let mut problems = Vec::new();
+    check(&document, "initial", &mut problems);
+    for target_page in [1usize, 2] {
+        let paragraphs: Vec<usize> = (0..70)
+            .map(|i| find(&document, &format!("M{i} ")))
+            .collect();
+        let first = paragraphs
+            .into_iter()
+            .find(|&p| page_of(&mut document, p) == target_page)
+            .expect("a paragraph starting the page");
+        for paragraph in [first, first - 1, first + 1] {
+            for i in 0..4 {
+                let all = document.page_count();
+                document
+                    .insert_text(paragraph, 6, "x", all)
+                    .expect("insert");
+                check(
+                    &document,
+                    &format!("para{paragraph} lead#{i}"),
+                    &mut problems,
+                );
+            }
+            for i in 0..2 {
+                let text = document.paragraph_text(paragraph).unwrap();
+                let inside = text.find("spans").unwrap();
+                let all = document.page_count();
+                document
+                    .insert_text(paragraph, inside, "y", all)
+                    .expect("insert");
+                check(
+                    &document,
+                    &format!("para{paragraph} inside#{i}"),
+                    &mut problems,
+                );
+            }
+        }
+    }
+    assert!(problems.is_empty(), "{problems:#?}");
 }

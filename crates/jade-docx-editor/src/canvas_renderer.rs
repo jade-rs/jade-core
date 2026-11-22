@@ -1495,68 +1495,100 @@ impl CachedHyperlinkRegion {
     }
 }
 
-/// The part of the hyperlink registry carried over from the previous render:
-/// regions of paragraphs before the dirty point, kept at the front of the list.
+/// The part of the hyperlink registry an incremental render carried over from
+/// the previous one: every region of a paragraph before `dirty_from`.
 ///
-/// A render may replay those paragraphs again — a page seek or band redraw
-/// draws the page from its top, including paragraphs it did not re-lay out —
-/// and registering their regions a second time would duplicate them on every
-/// keystroke. Registration is idempotent against this prefix instead.
-#[derive(Clone, Copy, Debug, Default)]
+/// A render may replay those paragraphs again: a page seek or band redraw
+/// draws the page from its top, including paragraphs it did not lay out
+/// again. Their retained regions are authoritative, so registering them a
+/// second time would duplicate them on every keystroke (and a replay drawn
+/// at a y offset would add a shifted copy). Registration skips them instead,
+/// which keeps it idempotent. The edited paragraph and everything after it
+/// were dropped by the `dirty_from` retain and register afresh.
+#[derive(Clone, Debug, Default)]
 struct RetainedHyperlinks {
-    len: usize,
-    /// Whether the prefix is ordered by paragraph, which is the usual case
-    /// (body paragraphs are drawn in order) and allows a binary search.
-    sorted_by_paragraph: bool,
+    /// `None` when the render cleared the registry and nothing was retained.
+    dirty_from: Option<usize>,
+    /// The distinct paragraphs, sorted, that still have retained regions.
+    /// A paragraph before `dirty_from` that is not listed here (one an earlier
+    /// bounded pass never reached) still registers when it is replayed.
+    paragraphs: Vec<usize>,
 }
 
 impl RetainedHyperlinks {
-    fn capture(regions: &[HyperlinkRegion]) -> Self {
+    fn capture(dirty_from: Option<usize>, regions: &[HyperlinkRegion]) -> Self {
+        let Some(dirty_from) = dirty_from else {
+            return Self::default();
+        };
+        let mut paragraphs: Vec<usize> = regions.iter().map(|region| region.paragraph).collect();
+        paragraphs.sort_unstable();
+        paragraphs.dedup();
         Self {
-            len: regions.len(),
-            sorted_by_paragraph: regions
-                .windows(2)
-                .all(|pair| pair[0].paragraph <= pair[1].paragraph),
+            dirty_from: Some(dirty_from),
+            paragraphs,
         }
     }
 
-    /// Whether `region` is already registered in the retained prefix.
-    fn contains(self, regions: &[HyperlinkRegion], region: &HyperlinkRegion) -> bool {
-        let prefix = &regions[..self.len.min(regions.len())];
-        let candidates = if self.sorted_by_paragraph {
-            let from = prefix.partition_point(|other| other.paragraph < region.paragraph);
-            let to = prefix.partition_point(|other| other.paragraph <= region.paragraph);
-            &prefix[from..to]
-        } else {
-            prefix
-        };
-        candidates
-            .iter()
-            .any(|other| same_hyperlink_region(other, region))
+    /// Whether `paragraph`'s regions were retained, so a replay adds nothing.
+    fn holds(&self, paragraph: usize) -> bool {
+        self.dirty_from.is_some_and(|from| paragraph < from)
+            && self.paragraphs.binary_search(&paragraph).is_ok()
     }
 
-    /// Appends `region` unless the retained prefix already holds it.
-    fn register(self, regions: &mut Vec<HyperlinkRegion>, region: HyperlinkRegion) {
-        if !self.contains(regions, &region) {
+    /// Appends `region` unless its paragraph's regions were retained.
+    fn register(&self, regions: &mut Vec<HyperlinkRegion>, region: HyperlinkRegion) {
+        if !self.holds(region.paragraph) {
             regions.push(region);
         }
     }
 }
 
-fn same_hyperlink_region(a: &HyperlinkRegion, b: &HyperlinkRegion) -> bool {
-    a.page == b.page
-        && a.paragraph == b.paragraph
-        && a.start == b.start
-        && a.end == b.end
-        && a.x == b.x
-        && a.y == b.y
-        && a.width == b.width
-        && a.height == b.height
-        && a.target == b.target
-        && a.target_mode == b.target_mode
-        && a.anchor == b.anchor
-        && a.tooltip == b.tooltip
-        && a.target_frame == b.target_frame
+#[cfg(test)]
+mod retained_hyperlinks_tests {
+    use super::{HyperlinkRegion, RetainedHyperlinks};
+
+    fn region(paragraph: usize, y: f64) -> HyperlinkRegion {
+        HyperlinkRegion {
+            page: 1,
+            paragraph,
+            start: 0,
+            end: 4,
+            x: 10.0,
+            y,
+            width: 40.0,
+            height: 12.0,
+            target: None,
+            target_mode: None,
+            anchor: Some("target".to_string()),
+            tooltip: None,
+            target_frame: None,
+        }
+    }
+
+    #[test]
+    fn replays_of_retained_paragraphs_register_nothing() {
+        let mut regions = vec![region(1, 10.0), region(1, 30.0), region(4, 50.0)];
+        let retained = RetainedHyperlinks::capture(Some(6), &regions);
+        // A replay of a retained paragraph, also one drawn at a y offset.
+        retained.register(&mut regions, region(1, 10.0));
+        retained.register(&mut regions, region(4, 75.0));
+        assert_eq!(regions.len(), 3);
+        // A paragraph before the dirty point with nothing retained registers.
+        retained.register(&mut regions, region(3, 40.0));
+        // The edited paragraph and later ones always register.
+        retained.register(&mut regions, region(6, 90.0));
+        retained.register(&mut regions, region(9, 120.0));
+        let paragraphs: Vec<usize> = regions.iter().map(|r| r.paragraph).collect();
+        assert_eq!(paragraphs, [1, 1, 4, 3, 6, 9]);
+    }
+
+    #[test]
+    fn a_cleared_registry_retains_nothing() {
+        let mut regions = Vec::new();
+        let retained = RetainedHyperlinks::capture(None, &[region(1, 10.0)]);
+        retained.register(&mut regions, region(1, 10.0));
+        assert_eq!(regions.len(), 1);
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -3368,7 +3400,7 @@ impl CachedParagraphRender {
     fn append_hyperlink_regions_with_y_offset(
         &self,
         offset: f64,
-        retained: RetainedHyperlinks,
+        retained: &RetainedHyperlinks,
         out: &mut Vec<HyperlinkRegion>,
     ) {
         out.reserve(self.hyperlink_regions.len());
@@ -6364,17 +6396,13 @@ where
         }
         drop(layout_cache);
 
-        // An incremental pass keeps the selection registry (and hyperlink
-        // regions) of the paragraphs before the dirty one. Replaying their
-        // cached entries on top appended the same text and lines once more per
-        // edit, so the registry grew with every keystroke and selection text
-        // taken from an untouched paragraph came back repeated.
+        // An incremental pass keeps the selection registry of the paragraphs
+        // before the dirty one. Replaying their cached entries on top appended
+        // the same text and lines once more per edit, so the registry grew with
+        // every keystroke and selection text taken from an untouched paragraph
+        // came back repeated. Hyperlink regions need no guard here:
+        // `RetainedHyperlinks` skips the paragraphs whose regions were kept.
         let preserved_selection = self.selection.preserved_prefix_len();
-        let preserved_hyperlinks = if self.render_full_repaint {
-            None
-        } else {
-            self.forced_dirty_from
-        };
         let mut font_state = FontStateTracker::new();
         for idx in indices_to_replay {
             {
@@ -6385,14 +6413,12 @@ where
                 if idx >= preserved_selection {
                     entry.append_selection_with_y_offset(idx, 0.0, &mut self.selection);
                 }
-                if preserved_hyperlinks.is_none_or(|from| idx >= from) {
-                    self.invalidate_hyperlink_regions_js_cache();
-                    entry.append_hyperlink_regions_with_y_offset(
-                        0.0,
-                        self.hyperlink_retained,
-                        &mut self.hyperlink_regions,
-                    );
-                }
+                self.invalidate_hyperlink_regions_js_cache();
+                entry.append_hyperlink_regions_with_y_offset(
+                    0.0,
+                    &self.hyperlink_retained,
+                    &mut self.hyperlink_regions,
+                );
             }
 
             // Prefix reconstruction is only relevant for visible pages; draw immediately.
@@ -15575,7 +15601,8 @@ where
         }
         // Paragraphs before the dirty point keep their regions; a replay of
         // one this render must not register them a second time.
-        self.hyperlink_retained = RetainedHyperlinks::capture(&self.hyperlink_regions);
+        self.hyperlink_retained =
+            RetainedHyperlinks::capture(incremental_dirty_from, &self.hyperlink_regions);
         self.invalidate_hyperlink_regions_js_cache();
         if options.render_comments {
             self.comment_store = comments.cloned().unwrap_or_default();
@@ -18828,7 +18855,7 @@ where
                                 self.invalidate_hyperlink_regions_js_cache();
                                 entry.append_hyperlink_regions_with_y_offset(
                                     y_offset,
-                                    self.hyperlink_retained,
+                                    &self.hyperlink_retained,
                                     &mut self.hyperlink_regions,
                                 );
 
@@ -18931,7 +18958,7 @@ where
                             self.invalidate_hyperlink_regions_js_cache();
                             entry.append_hyperlink_regions_with_y_offset(
                                 y_offset,
-                                self.hyperlink_retained,
+                                &self.hyperlink_retained,
                                 &mut self.hyperlink_regions,
                             );
 
@@ -19038,7 +19065,7 @@ where
                     self.invalidate_hyperlink_regions_js_cache();
                     entry.append_hyperlink_regions_with_y_offset(
                         y_offset,
-                        self.hyperlink_retained,
+                        &self.hyperlink_retained,
                         &mut self.hyperlink_regions,
                     );
 
@@ -19233,7 +19260,7 @@ where
                     self.invalidate_hyperlink_regions_js_cache();
                     entry.append_hyperlink_regions_with_y_offset(
                         y_offset,
-                        self.hyperlink_retained,
+                        &self.hyperlink_retained,
                         &mut self.hyperlink_regions,
                     );
 
@@ -19358,7 +19385,7 @@ where
                                 self.invalidate_hyperlink_regions_js_cache();
                                 entry.append_hyperlink_regions_with_y_offset(
                                     y_offset,
-                                    self.hyperlink_retained,
+                                    &self.hyperlink_retained,
                                     &mut self.hyperlink_regions,
                                 );
 
@@ -19461,7 +19488,7 @@ where
                             self.invalidate_hyperlink_regions_js_cache();
                             entry.append_hyperlink_regions_with_y_offset(
                                 y_offset,
-                                self.hyperlink_retained,
+                                &self.hyperlink_retained,
                                 &mut self.hyperlink_regions,
                             );
 
@@ -19634,7 +19661,7 @@ where
                         self.invalidate_hyperlink_regions_js_cache();
                         entry.append_hyperlink_regions_with_y_offset(
                             y_offset,
-                            self.hyperlink_retained,
+                            &self.hyperlink_retained,
                             &mut self.hyperlink_regions,
                         );
 
@@ -19725,7 +19752,7 @@ where
                     self.invalidate_hyperlink_regions_js_cache();
                     entry.append_hyperlink_regions_with_y_offset(
                         y_offset,
-                        self.hyperlink_retained,
+                        &self.hyperlink_retained,
                         &mut self.hyperlink_regions,
                     );
 
