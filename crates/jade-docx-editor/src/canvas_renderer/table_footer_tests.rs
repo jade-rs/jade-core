@@ -420,3 +420,65 @@ fn keep_with_next_rows_move_together_above_a_tall_footer() {
         assert_eq!(pages_of_row(&renderer, kept), [1], "kept row {kept}");
     }
 }
+
+/// Whether a cantSplit row moves is judged against the next page's measured
+/// footer on every render, not a per-line estimate on the first one only.
+#[test]
+fn cant_split_moves_alike_on_the_first_and_later_renders() {
+    let story = |count: usize| {
+        load(&paragraphs("footer", count), LETTER_1IN)
+            .document
+            .as_ref()
+            .and_then(|document| document.body.clone())
+    };
+    let lines = |count: usize| -> Vec<HeaderLine> {
+        (0..count)
+            .map(|index| HeaderLine {
+                left: Some(format!("footer {index}")),
+                ..HeaderLine::default()
+            })
+            .collect()
+    };
+    let default_lines = lines(8);
+    for count in 26..=36usize {
+        let tall = Row {
+            cant_split: true,
+            lines: (0..count).map(|index| format!("L{index}")).collect(),
+            ..Row::default()
+        };
+        let document = load(
+            &format!("{}{}", paragraph("lead"), table(&[tall])),
+            LETTER_1IN,
+        );
+        let mut renderer = CanvasRenderer::with_host(
+            Box::new(RecordingHost {
+                painter: RecordingPainter::new(),
+            }),
+            false,
+        )
+        .expect("paged recording renderer");
+        // A 12-line first-page footer; the 8-line default footer measures
+        // taller than its 20px-per-line estimate.
+        renderer.set_header_footer_bodies(None, story(8), None, story(12), None, None);
+        renderer.set_header_footer_variants(None, Some(lines(12)), None, None, true, false);
+        let mut renders = Vec::new();
+        for _ in 0..2 {
+            renderer
+                .render_with_numbering(
+                    document.document.as_ref().expect("document"),
+                    &Options::default(),
+                    None,
+                    None,
+                    Some(&default_lines),
+                    None,
+                )
+                .expect("render");
+            let fragments: Vec<(usize, i64, i64)> = row_fragments(&renderer, 0)
+                .into_iter()
+                .map(|(page, top, bottom)| (page, top.round() as i64, bottom.round() as i64))
+                .collect();
+            renders.push(fragments);
+        }
+        assert_eq!(renders[0], renders[1], "{count} lines");
+    }
+}

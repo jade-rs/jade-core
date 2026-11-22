@@ -3852,7 +3852,7 @@ where
                             } else {
                                 0.0
                             },
-                        )
+                        )?
                         || cant_split_blocks_row_split(
                             row.cant_split,
                             pending_height,
@@ -8653,14 +8653,14 @@ where
         use_column_frame: bool,
         height: f64,
         header_height: f64,
-    ) -> bool {
+    ) -> Result<bool, JsValue> {
         if !cant_split
             || !row_start
             || fresh_frame
             || self.pageless_mode
             || self.rendering_header_footer_story
         {
-            return false;
+            return Ok(false);
         }
         let top = if use_column_frame {
             self.current_column_top()
@@ -8675,7 +8675,7 @@ where
                 + header_slack
                 + ROW_SPLIT_EPSILON
         {
-            return false;
+            return Ok(false);
         }
         let next_frame = if use_column_frame {
             self.table_full_page_content_height()
@@ -8683,8 +8683,22 @@ where
             // The next page's own header/footer variant bounds its body.
             let page = self.current_page_number;
             self.current_page_number = page + 1;
+            // Measure that page's footer now, as its page start will: a first
+            // render must not judge it by the per-line estimate and a later
+            // render by the previous layout's measurement.
+            let measured = if self
+                .footer_content_heights
+                .get(page)
+                .is_some_and(|height| height.is_some())
+            {
+                Ok(())
+            } else {
+                self.measure_page_footer()
+            };
             let height = self.table_full_page_content_height();
             self.current_page_number = page;
+            measured?;
+            self.configure_table_context();
             height
         };
         let repeated = if header_height <= next_frame {
@@ -8692,7 +8706,7 @@ where
         } else {
             0.0
         };
-        height <= next_frame - repeated + ROW_SPLIT_EPSILON
+        Ok(height <= next_frame - repeated + ROW_SPLIT_EPSILON)
     }
 
     /// The body height a fresh page offers a row: between a tall header's
