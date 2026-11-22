@@ -6880,6 +6880,21 @@ where
             return Ok(());
         }
 
+        if context.text_output_dpi().is_some()
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            let command_style = self.cmd_text_style(None, style);
+            if let Some(font) =
+                crate::draw_command::executor::windows_pdf_text::positioned_scalar_font(
+                    context,
+                    character,
+                    &command_style,
+                )
+            {
+                self.set_font_if_changed_rc(context, &font);
+            }
+        }
         let baseline_y = baseline + style.baseline_shift_px;
         for &x in segment.glyph_positions.iter() {
             context
@@ -36758,19 +36773,32 @@ where
         {
             let glyph_y = y + style.baseline_shift_px;
             self.activate_applied_run_style(style);
-            self.draw_text_with_spacing(
-                &context,
-                text,
-                *x,
-                glyph_y,
-                style.letter_spacing_px,
-                style,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )?;
+            match crate::draw_command::executor::windows_pdf_text::single_scalar_font(
+                &context, text, text_style,
+            ) {
+                Some(font) if self.should_draw_current_page_for_render() => {
+                    context.set_text_baseline("alphabetic");
+                    self.set_font_if_changed_rc(&context, &font);
+                    context
+                        .fill_text(text, *x, glyph_y)
+                        .map_err(PainterError::into_js_value)?;
+                }
+                _ => {
+                    self.draw_text_with_spacing(
+                        &context,
+                        text,
+                        *x,
+                        glyph_y,
+                        style.letter_spacing_px,
+                        style,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )?;
+                }
+            }
             if let Some(buf) = commands_out.as_deref_mut() {
                 buf.push(DrawCommand::Text {
                     text: Rc::from(text.as_str()),

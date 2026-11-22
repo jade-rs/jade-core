@@ -75,6 +75,7 @@ pub struct RecordingPainter {
     /// measured string. Real metrics are not this backend's job.
     width_per_char: f64,
     upright_vertical_advance: Option<f64>,
+    text_output_dpi: Option<f64>,
 }
 
 impl RecordingPainter {
@@ -85,6 +86,7 @@ impl RecordingPainter {
             saved_fills: Rc::new(RefCell::new(Vec::new())),
             width_per_char: 0.0,
             upright_vertical_advance: None,
+            text_output_dpi: None,
         }
     }
 
@@ -97,12 +99,19 @@ impl RecordingPainter {
             saved_fills: Rc::new(RefCell::new(Vec::new())),
             width_per_char,
             upright_vertical_advance: None,
+            text_output_dpi: None,
         }
     }
 
     /// Supplies a font vertical advance for layout and geometry tests.
     pub fn with_upright_vertical_advance(mut self, advance: f64) -> Self {
         self.upright_vertical_advance = Some(advance);
+        self
+    }
+
+    /// Supplies the physical output capability for screen/print regression tests.
+    pub fn with_text_output_dpi(mut self, dpi: f64) -> Self {
+        self.text_output_dpi = Some(dpi);
         self
     }
 
@@ -126,6 +135,10 @@ impl RecordingPainter {
 
 impl Painter for RecordingPainter {
     type Error = Infallible;
+    fn text_output_dpi(&self) -> Option<f64> {
+        self.text_output_dpi
+    }
+
     fn draw_image(
         &self,
         image: ImageSource<'_>,

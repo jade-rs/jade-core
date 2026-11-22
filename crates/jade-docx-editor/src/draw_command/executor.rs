@@ -1913,6 +1913,15 @@ fn execute_text_with_font_state<P: Painter>(
     font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     record_replay_text_run(text.graphemes(true).count() as u64);
 
+    if let Some(physical_font) = windows_pdf_text::single_scalar_font(context, text, style) {
+        let logical_font = style.font_for_grapheme(text, classify_script(text));
+        font_state.set_font_if_changed(context, logical_font);
+        let width = font_state.measure_text_cached(context, text, logical_font)?;
+        font_state.set_font_rc_if_changed(context, &physical_font);
+        context.fill_text(text, x, y)?;
+        return Ok(width);
+    }
+
     let mut width = 0.0;
     let mut cursor_x = x;
     // Group consecutive graphemes by the resolved font descriptor.
@@ -2368,8 +2377,10 @@ fn execute_tab_leader_with_font_state<P: Painter>(
     }
 
     font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
-    let font = &style.font_descriptor_latin_ascii;
-    font_state.set_font_if_changed(context, font);
+    match windows_pdf_text::positioned_scalar_font(context, character, style) {
+        Some(font) => font_state.set_font_rc_if_changed(context, &font),
+        None => font_state.set_font_if_changed(context, &style.font_descriptor_latin_ascii),
+    };
 
     for &x in glyph_positions {
         context.fill_text(character, x, baseline + style.baseline_shift_px)?;
@@ -3107,6 +3118,183 @@ mod painter_backend_tests {
             fill_color: Rc::from("#000000"),
             ..TextStyle::default()
         }
+    }
+
+    #[test]
+    fn positioned_tab_leaders_keep_origins_and_following_font_on_screen_and_print() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let descriptor: Rc<str> = Rc::from("10.50pt 'Yu Mincho'");
+        let leader_style = TextStyle {
+            font_descriptor_latin_ascii: descriptor.clone(),
+            font_size_pt: 10.5,
+            baseline_shift_px: 2.5,
+            enable_pair_kerning: true,
+            ..TextStyle::default()
+        };
+        for (platform, dpi, expected_font) in [
+            (WordLayoutPlatform::Mac, Some(600.0), descriptor.as_ref()),
+            (WordLayoutPlatform::Windows, None, descriptor.as_ref()),
+            (
+                WordLayoutPlatform::Windows,
+                Some(600.0),
+                "14.080000px 'Yu Mincho'",
+            ),
+        ] {
+            set_word_layout_platform(platform);
+            let mut painter = RecordingPainter::with_width_per_char(9.25);
+            if let Some(dpi) = dpi {
+                painter = painter.with_text_output_dpi(dpi);
+            }
+            let mut tracker = FontStateTracker::new();
+            super::execute_tab_leader_with_font_state(
+                &painter,
+                35.5,
+                TabLeaderStyle::Dot,
+                &leader_style,
+                &[8.125, 11.005, 13.885],
+                &mut tracker,
+            )
+            .unwrap();
+            assert!(!painter
+                .ops()
+                .iter()
+                .any(|op| matches!(op, Op::MeasureText(_))));
+            let following = TextStyle {
+                font_descriptor_latin_ascii: Rc::from("12pt Arial"),
+                ..TextStyle::default()
+            };
+            assert_eq!(
+                super::execute_text_with_font_state(
+                    &painter,
+                    "Z",
+                    88.0,
+                    35.5,
+                    &following,
+                    &mut tracker,
+                )
+                .unwrap(),
+                9.25
+            );
+            let mut font = String::new();
+            let mut fills = Vec::new();
+            for op in painter.ops() {
+                match op {
+                    Op::SetFont(value) => font = value,
+                    Op::FillText(text, x, y) => fills.push((text, font.clone(), x, y)),
+                    _ => {}
+                }
+            }
+            assert_eq!(
+                fills,
+                vec![
+                    (".".to_string(), expected_font.to_string(), 8.125, 38.0),
+                    (".".to_string(), expected_font.to_string(), 11.005, 38.0),
+                    (".".to_string(), expected_font.to_string(), 13.885, 38.0),
+                    ("Z".to_string(), "12pt Arial".to_string(), 88.0, 35.5),
+                ]
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn ruby_scalar_printing_keeps_logical_width_origin_and_following_font() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let descriptor: Rc<str> = Rc::from("5.50pt 'MS Mincho'");
+        let ruby = TextStyle {
+            font_size_pt: 5.5,
+            font_descriptor_latin_ascii: descriptor.clone(),
+            font_descriptor_east_asia: descriptor.clone(),
+            enable_pair_kerning: false,
+            ..TextStyle::default()
+        };
+        for (platform, dpi, expected) in [
+            (WordLayoutPlatform::Mac, Some(600.0), descriptor.as_ref()),
+            (WordLayoutPlatform::Windows, None, descriptor.as_ref()),
+            (
+                WordLayoutPlatform::Windows,
+                Some(600.0),
+                "7.360000px 'MS Mincho'",
+            ),
+        ] {
+            set_word_layout_platform(platform);
+            let mut painter = RecordingPainter::with_width_per_char(9.25);
+            if let Some(dpi) = dpi {
+                painter = painter.with_text_output_dpi(dpi);
+            }
+            let mut tracker = FontStateTracker::new();
+            assert_eq!(
+                super::execute_text_with_font_state(
+                    &painter,
+                    "か",
+                    19.25,
+                    35.5,
+                    &ruby,
+                    &mut tracker
+                )
+                .unwrap(),
+                9.25
+            );
+            let following = TextStyle {
+                font_descriptor_latin_ascii: Rc::from("12pt Arial"),
+                enable_pair_kerning: false,
+                ..TextStyle::default()
+            };
+            assert_eq!(
+                super::execute_text_with_font_state(
+                    &painter,
+                    "Z",
+                    88.0,
+                    35.5,
+                    &following,
+                    &mut tracker
+                )
+                .unwrap(),
+                9.25
+            );
+            let mut font = String::new();
+            let mut fills = Vec::new();
+            for op in painter.ops() {
+                match op {
+                    Op::SetFont(value) => font = value,
+                    Op::FillText(text, x, y) => fills.push((text, font.clone(), x, y)),
+                    _ => {}
+                }
+            }
+            assert_eq!(
+                fills,
+                vec![
+                    ("か".into(), expected.into(), 19.25, 35.5),
+                    ("Z".into(), "12pt Arial".into(), 88.0, 35.5)
+                ]
+            );
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let painter = RecordingPainter::new().with_text_output_dpi(600.0);
+        for text in ["か\u{3099}", "ab", "مرحبا", "😀"] {
+            assert!(super::windows_pdf_text::single_scalar_font(&painter, text, &ruby).is_none());
+        }
+        for guarded in [
+            TextStyle {
+                outline: true,
+                ..ruby.clone()
+            },
+            TextStyle {
+                enable_pair_kerning: true,
+                ..ruby.clone()
+            },
+        ] {
+            assert!(
+                super::windows_pdf_text::single_scalar_font(&painter, "か", &guarded).is_none()
+            );
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
