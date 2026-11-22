@@ -138,12 +138,12 @@ fn long_document() -> Rc<Document> {
 fn install_stories(renderer: &mut CanvasRenderer<RecordingPainter>) {
     renderer.set_header_footer_variants(None, None, None, None, true, true);
     renderer.set_header_footer_bodies(
-        Some(letterhead("Default")),
-        Some(text_story("Default footer")),
-        Some(letterhead("First")),
-        Some(text_story("First footer")),
-        Some(letterhead("Even")),
-        Some(text_story("Even footer")),
+        Some(Rc::new(letterhead("Default"))),
+        Some(Rc::new(text_story("Default footer"))),
+        Some(Rc::new(letterhead("First"))),
+        Some(Rc::new(text_story("First footer"))),
+        Some(Rc::new(letterhead("Even"))),
+        Some(Rc::new(text_story("Even footer"))),
     );
     let section = |label: &str| SectionHeaderFooters {
         header_body: Some(Rc::new(letterhead(&format!("{label} default")))),
@@ -368,9 +368,14 @@ fn a_story_depending_on_its_page_is_laid_out_on_every_page() {
     let document = long_document();
     let mut recording = recording();
     recording.renderer.set_visible_page_range(Some(1..=1));
-    recording
-        .renderer
-        .set_header_footer_bodies(Some(with_field), None, None, None, None, None);
+    recording.renderer.set_header_footer_bodies(
+        Some(Rc::new(with_field)),
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
     let outcome = render(&mut recording, &document);
     assert!(
         outcome.layouts >= PAGES,

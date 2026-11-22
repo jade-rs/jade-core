@@ -282,6 +282,8 @@ mod font_state_tests;
 #[cfg(test)]
 mod header_footer_story_cost_tests;
 #[cfg(test)]
+mod header_footer_story_package_tests;
+#[cfg(test)]
 mod hyphenation_tests;
 mod ink;
 pub(crate) mod ink_preview;
@@ -5492,7 +5494,10 @@ where
         section_index: usize,
         numbering_counter: &NumberingCounter,
     ) {
-        if self.pageless_mode || self.measuring_keep_next || self.paragraph_frame_snapshot_unsafe()
+        if self.pageless_mode
+            || self.measuring_keep_next
+            || self.rendering_header_footer_story
+            || self.paragraph_frame_snapshot_unsafe()
         {
             return;
         }
@@ -5578,7 +5583,10 @@ where
         section_index: usize,
         numbering_counter: &NumberingCounter,
     ) {
-        if self.pageless_mode || self.measuring_keep_next || self.paragraph_frame_snapshot_unsafe()
+        if self.pageless_mode
+            || self.measuring_keep_next
+            || self.rendering_header_footer_story
+            || self.paragraph_frame_snapshot_unsafe()
         {
             return;
         }
@@ -39935,21 +39943,21 @@ where
     #[allow(clippy::too_many_arguments)]
     pub fn set_header_footer_bodies(
         &mut self,
-        header_body: Option<Body>,
-        footer_body: Option<Body>,
-        header_body_first: Option<Body>,
-        footer_body_first: Option<Body>,
-        header_body_even: Option<Body>,
-        footer_body_even: Option<Body>,
+        header_body: Option<Rc<Body>>,
+        footer_body: Option<Rc<Body>>,
+        header_body_first: Option<Rc<Body>>,
+        footer_body_first: Option<Rc<Body>>,
+        header_body_even: Option<Rc<Body>>,
+        footer_body_even: Option<Rc<Body>>,
     ) {
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
-        self.header_body = header_body.map(Rc::new);
-        self.footer_body = footer_body.map(Rc::new);
-        self.header_body_first = header_body_first.map(Rc::new);
-        self.footer_body_first = footer_body_first.map(Rc::new);
-        self.header_body_even = header_body_even.map(Rc::new);
-        self.footer_body_even = footer_body_even.map(Rc::new);
+        self.header_body = header_body;
+        self.footer_body = footer_body;
+        self.header_body_first = header_body_first;
+        self.footer_body_first = footer_body_first;
+        self.header_body_even = header_body_even;
+        self.footer_body_even = footer_body_even;
         self.clear_hf_story_memo();
         self.header_content_heights.clear();
         self.footer_content_heights.clear();
@@ -46698,8 +46706,8 @@ mod tests {
         )
         .unwrap();
         renderer.set_header_footer_bodies(
-            Some(story("header")),
-            Some(story("footer")),
+            Some(Rc::new(story("header"))),
+            Some(Rc::new(story("footer"))),
             None,
             None,
             None,
@@ -62867,7 +62875,7 @@ mod tests {
                         auxiliary[0] = kind < 3;
                     }
                     11 => {
-                        renderer.set_header_footer_bodies(Some(Body { elements: vec![block] }), None, None, None, None, None);
+                        renderer.set_header_footer_bodies(Some(Rc::new(Body { elements: vec![block] })), None, None, None, None, None);
                         auxiliary[1] = kind < 3;
                     }
                     12 => {
@@ -63053,7 +63061,7 @@ mod tests {
             // The model records only whether each of the 15 stories has an
             // anchor. It does not scan or clone production document state.
             let mut anchored = [false; 15];
-            let mut headers: [Option<Body>; 6] = Default::default();
+            let mut headers: [Option<Rc<Body>>; 6] = Default::default();
             let mut section_headers: [Option<Rc<Body>>; 6] = Default::default();
             let comments = HashMap::from([("1".into(), DocumentComment {
                 id: "1".into(), text: "preserved".into(), ..Default::default()
@@ -63076,7 +63084,7 @@ mod tests {
                     }
                     1 => {
                         let index = usize::from(story % 6);
-                        headers[index] = Some(body);
+                        headers[index] = Some(Rc::new(body));
                         anchored[index + 3] = kind < 3;
                         renderer.set_header_footer_bodies(headers[0].clone(), headers[1].clone(), headers[2].clone(), headers[3].clone(), headers[4].clone(), headers[5].clone());
                     }
@@ -67527,7 +67535,14 @@ mod tests {
             false,
         )
         .unwrap();
-        renderer.set_header_footer_bodies(header_document.body, None, None, None, None, None);
+        renderer.set_header_footer_bodies(
+            header_document.body.map(Rc::new),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
         let options = options_for_seek_tests();
         renderer.render(&document, &options).unwrap();
         let pages = renderer.page_count();
@@ -70428,12 +70443,12 @@ mod tests {
         let mut renderer = CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), false)
             .expect("paged recording renderer");
         renderer.set_header_footer_bodies(
-            Some(Body {
+            Some(Rc::new(Body {
                 elements: vec![BodyElement::from_paragraph(note_test_paragraph("HH", None))],
-            }),
-            Some(Body {
+            })),
+            Some(Rc::new(Body {
                 elements: vec![BodyElement::from_paragraph(note_test_paragraph("FF", None))],
-            }),
+            })),
             None,
             None,
             None,
