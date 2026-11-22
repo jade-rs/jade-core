@@ -3257,9 +3257,14 @@ where
             table.bidi_visual,
         );
         let contained_row_heights = has_merge_owners.then(|| {
-            let mut rows = prepared_rows.clone();
             let mut heights = contained_row_heights;
-            add_border_extents(table, &mut rows, &hidden_rows, &mut heights, false);
+            #[cfg(test)]
+            if prepared_row_moves::force_copies() {
+                let mut rows = prepared_rows.clone();
+                add_border_extents(table, &mut rows, &hidden_rows, &mut heights, false);
+                return heights;
+            }
+            add_border_extent_heights(table, &mut prepared_rows, &hidden_rows, &mut heights, false);
             heights
         });
         let last_row_bottom_border = add_border_extents(
@@ -3582,7 +3587,7 @@ where
         let last_visible_row = hidden_rows.iter().rposition(|hidden| !hidden);
         let mut last_visible_row_index = None;
         let mut previous_spaced_frame: Option<(usize, usize, f64)> = None;
-        for (row_index, prepared_row) in prepared_rows.iter().enumerate() {
+        for row_index in 0..prepared_rows.len() {
             let row = &table.rows[row_index];
             if let Some(contained) = contained_row_heights
                 .as_ref()
@@ -3617,7 +3622,8 @@ where
             }
             last_visible_row_index = Some(row_index);
 
-            let mut pending_cells = prepared_row.clone();
+            // Later rows never read this row's text again, so move it out.
+            let mut pending_cells = take_prepared_row(&mut prepared_rows, row_index);
             let mut pending_height = original_row_height;
             let mut row_start = true;
             let mut fresh_page_segment = None;
@@ -12668,6 +12674,88 @@ fn add_border_extents(
         previous = Some((index, last_visible, row_grows_for_borders(row)));
     }
     last_visible
+}
+
+/// [`add_border_extents`] for the row heights alone: the cells keep their
+/// insets. The pass changes only each cell's `padding.top`, `height` and
+/// `page_top_inset`, after that row's height is known, so restoring them
+/// gives the same heights as running it on a copy of the table.
+fn add_border_extent_heights(
+    table: &Table,
+    prepared_rows: &mut [Vec<PreparedCell>],
+    hidden_rows: &[bool],
+    row_heights: &mut [f64],
+    exclude_merge_owners: bool,
+) -> f64 {
+    let insets: Vec<(f64, f64, f64)> = prepared_rows
+        .iter()
+        .flatten()
+        .map(|cell| (cell.padding.top, cell.height, cell.page_top_inset))
+        .collect();
+    let last_visible = add_border_extents(
+        table,
+        prepared_rows,
+        hidden_rows,
+        row_heights,
+        exclude_merge_owners,
+    );
+    for (cell, (padding_top, height, page_top_inset)) in
+        prepared_rows.iter_mut().flatten().zip(insets)
+    {
+        cell.padding.top = padding_top;
+        cell.height = height;
+        cell.page_top_inset = page_top_inset;
+    }
+    last_visible
+}
+
+/// Moves a row out of the prepared table for drawing. The table stays
+/// readable for [`vertical_merge_continuation_border_sides`], which looks at
+/// the drawn row's merge cells: a row holding a `w:vMerge` continuation keeps
+/// a copy of its cell geometry without the text.
+fn take_prepared_row(rows: &mut [Vec<PreparedCell>], index: usize) -> Vec<PreparedCell> {
+    #[cfg(test)]
+    if prepared_row_moves::force_copies() {
+        prepared_row_moves::count_copy();
+        return rows[index].clone();
+    }
+    let cells = std::mem::take(&mut rows[index]);
+    if cells
+        .iter()
+        .any(|cell| matches!(cell.vertical_merge.as_deref(), Some("continue")))
+    {
+        rows[index] = cells.iter().map(|cell| cell.fragment(Vec::new())).collect();
+    }
+    cells
+}
+
+/// Test hooks: count deep row copies, and draw through the copying path so
+/// its output can be compared with the moving one.
+#[cfg(test)]
+pub(super) mod prepared_row_moves {
+    use std::cell::Cell;
+
+    thread_local! {
+        static FORCE_COPIES: Cell<bool> = const { Cell::new(false) };
+        static COPIES: Cell<usize> = const { Cell::new(0) };
+    }
+
+    pub(in crate::canvas_renderer) fn force_copies() -> bool {
+        FORCE_COPIES.with(Cell::get)
+    }
+
+    pub(in crate::canvas_renderer) fn set_force_copies(force: bool) {
+        FORCE_COPIES.with(|cell| cell.set(force));
+    }
+
+    pub(super) fn count_copy() {
+        COPIES.with(|cell| cell.set(cell.get() + 1));
+    }
+
+    /// Deep row copies since the last call.
+    pub(in crate::canvas_renderer) fn take_copies() -> usize {
+        COPIES.with(|cell| cell.replace(0))
+    }
 }
 
 /// Whether `table` is laid out as a floating table (`w:tblpPr`). Word for

@@ -305,6 +305,8 @@ mod run_style_key;
 mod section_tests;
 mod structure;
 mod table;
+#[cfg(test)]
+mod table_row_clone_tests;
 
 // Word for Mac treats left and right as leading and trailing in bidi paragraphs.
 fn word_bidi_alignment(alignment: &str, bidi: bool, mac: bool) -> &str {
