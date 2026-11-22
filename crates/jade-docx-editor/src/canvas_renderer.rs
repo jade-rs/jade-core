@@ -5892,6 +5892,29 @@ where
         if body_element_index == usize::MAX || section_index == usize::MAX {
             return;
         }
+        // This walk places the paragraph afresh, so a snapshot an earlier
+        // layout recorded for it is stale. Drop it, and the page and column
+        // lookups that point at it: left in place, a later seek to that page
+        // would resume at a paragraph that no longer starts it, skipping
+        // everything before.
+        let previous = self
+            .page_start_seek_cache
+            .borrow_mut()
+            .remove(&paragraph_index);
+        if let Some(previous) = previous {
+            let page = previous.page_number;
+            let column = previous.column_index;
+            let points_here =
+                |snapshot: &PageStartSeekSnapshot| snapshot.paragraph_index == paragraph_index;
+            let mut by_page = self.page_start_seek_cache_by_page.borrow_mut();
+            if by_page.get(&page).is_some_and(points_here) {
+                by_page.remove(&page);
+            }
+            let mut by_column = self.page_column_seek_cache.borrow_mut();
+            if by_column.get(&(page, column)).is_some_and(points_here) {
+                by_column.remove(&(page, column));
+            }
+        }
         // Only record at the top of a column (which is also page-start when column_index==0).
         // A tall header can move the body below the section's top margin.
         // Use the same body edge as page advancement when identifying that top.

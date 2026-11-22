@@ -544,3 +544,176 @@ fn a_pixel_rerender_of_page_one_keeps_later_pages_sections() {
         .expect("bitmap rerender");
     assert_eq!(snapshot(&renderer), before);
 }
+
+/// One renderer lays out a 3-paragraph section A, then a 120-paragraph A,
+/// then a 40-paragraph A, each followed by section B. Every pass paints
+/// what a fresh renderer paints for that document.
+#[test]
+fn a_reused_renderer_paints_every_page_after_the_document_grows_and_shrinks() {
+    let load = |data: &[u8]| {
+        futures::executor::block_on(WordDocument::load(data, &Options::default())).expect("load")
+    };
+    for break_type in ["nextPage", "continuous"] {
+        let mut renderer = recording_renderer();
+        for count in [3, 120, 40] {
+            let data = package(
+                &[
+                    section("A", RED, "nextPage", paragraphs("a", count), ""),
+                    section(
+                        "B",
+                        BLUE,
+                        break_type,
+                        paragraphs("b", 50),
+                        r#"<w:pgNumType w:start="7"/>"#,
+                    ),
+                ],
+                "",
+            );
+            let word_doc = load(&data);
+            let document = word_doc.document.as_ref().expect("document");
+            renderer.sync_document_header_footer_stories(&word_doc);
+            renderer.host.painter().inner().clear();
+            renderer
+                .render(document, &Options::default())
+                .expect("render");
+            let painted = pages(&renderer.host.painter().inner().ops());
+            let (fresh_renderer, fresh) = render(&data);
+            assert_eq!(painted, fresh, "{break_type} with {count} paragraphs in A");
+            assert_eq!(
+                renderer.page_section_indices,
+                fresh_renderer.page_section_indices
+            );
+        }
+    }
+}
+
+/// B opens with `cantSplit` rows that do not fit below A on page 1, so the
+/// table moves to page 2. The page's header is drawn once.
+#[test]
+fn a_table_moved_to_the_next_page_draws_its_header_once() {
+    let mut table = String::from("<w:tbl>");
+    for row in 0..2 {
+        table.push_str(&format!(
+            "<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:p><w:r><w:t>bt{row}</w:t></w:r></w:p><w:p><w:r><w:t>x</w:t></w:r></w:p><w:p><w:r><w:t>y</w:t></w:r></w:p></w:tc></w:tr>"
+        ));
+    }
+    table.push_str("</w:tbl>");
+    for break_type in ["continuous", "nextPage"] {
+        let (_, pages) = render(&package(
+            &[
+                section("A", RED, "nextPage", paragraphs("a", 35), ""),
+                section(
+                    "B",
+                    BLUE,
+                    break_type,
+                    format!("{table}{}", paragraphs("b", 50)),
+                    r#"<w:titlePg/><w:pgNumType w:start="7"/>"#,
+                ),
+            ],
+            "",
+        ));
+        assert!(
+            pages[1].body.starts_with("bt0"),
+            "{break_type}: {:?}",
+            pages[1]
+        );
+        assert_eq!(
+            chrome(&pages)[..3],
+            [
+                (RED, "HA1", "FA1"),
+                (BLUE, "HB-first7", ""),
+                (BLUE, "HB8", "FB8")
+            ],
+            "{break_type}"
+        );
+    }
+}
+
+/// The same grow-then-shrink sequence through editor commands: typing 117
+/// paragraph breaks into A, then deleting 60 of them, with each render
+/// told only where the edit starts. Every pass lays the pages out as a
+/// fresh renderer does.
+#[test]
+fn editing_section_a_longer_then_shorter_keeps_its_pages() {
+    use crate::headless_api::apply_headless_commands_to_document;
+    use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+
+    let data = package(
+        &[
+            section("A", RED, "nextPage", paragraphs("a", 3), ""),
+            section(
+                "B",
+                BLUE,
+                "nextPage",
+                paragraphs("b", 50),
+                r#"<w:pgNumType w:start="7"/>"#,
+            ),
+        ],
+        "",
+    );
+    let mut word_doc =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let mut renderer = recording_renderer();
+    let layout = |renderer: &CanvasRenderer<RecordingPainter>, paragraphs: usize| {
+        (
+            renderer.page_section_indices.clone(),
+            (0..paragraphs)
+                .map(|index| renderer.cached_paragraph_start_page(index))
+                .collect::<Vec<_>>(),
+        )
+    };
+    let render = |renderer: &mut CanvasRenderer<RecordingPainter>,
+                  word_doc: &WordDocument,
+                  dirty_from: Option<usize>| {
+        renderer.sync_document_header_footer_stories(word_doc);
+        if let Some(dirty_from) = dirty_from {
+            renderer.set_incremental_dirty_from(dirty_from);
+            renderer.mark_dirty_from_paragraph_to_end(dirty_from);
+        }
+        let document = Rc::clone(word_doc.document.as_ref().expect("document"));
+        renderer
+            .render_with_numbering_rc(document, &Options::default(), None, None, None, None)
+            .expect("render");
+    };
+    render(&mut renderer, &word_doc, None);
+
+    let edits = [
+        (
+            2,
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 2,
+                offset: 2,
+                count: 117,
+            },
+        ),
+        (
+            59,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: 59,
+                start_offset: 0,
+                end_paragraph: 119,
+                end_offset: 0,
+                text: String::new(),
+            },
+        ),
+    ];
+    for (dirty_from, command) in edits {
+        renderer.drop_document_cache();
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![command],
+            },
+        )
+        .expect("edit");
+        render(&mut renderer, &word_doc, Some(dirty_from));
+        let paragraph_count = word_doc.body_paragraph_count();
+        let mut fresh = recording_renderer();
+        render(&mut fresh, &word_doc, None);
+        assert_eq!(
+            layout(&renderer, paragraph_count),
+            layout(&fresh, paragraph_count),
+            "after the edit from paragraph {dirty_from}"
+        );
+    }
+}

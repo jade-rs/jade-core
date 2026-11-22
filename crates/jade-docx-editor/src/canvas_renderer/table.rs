@@ -8719,9 +8719,6 @@ where
         self.draw_content_crop_marks_for_page(next_page);
         self.current_page_number += 1;
         self.current_page_started_this_pass = true;
-        // Ensure the new page is marked dirty so table content that continues
-        // after the page break is actually drawn during incremental rendering.
-        self.promote_page_to_dirty_for_current_render(self.current_page_number)?;
         self.deferred_cached_draw_page = self.current_page_number;
         self.deferred_cached_draw_commands.clear();
         self.current_y = self.margin_top;
@@ -8729,6 +8726,12 @@ where
         self.header_drawn = false;
         self.footer_drawn = false;
         self.render_header_simple()?;
+        // Ensure the new page is marked dirty so table content that continues
+        // after the page break is actually drawn during incremental rendering.
+        // Promoting a page that was not drawable clears it and draws its
+        // header, so it runs after the header above: run before it, the
+        // header was drawn twice.
+        self.promote_page_to_dirty_for_current_render(self.current_page_number)?;
         self.column_index = 0;
         Ok(true)
     }
