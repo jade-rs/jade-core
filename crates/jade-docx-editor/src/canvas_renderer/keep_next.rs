@@ -175,6 +175,7 @@ where
         measurer
             .section_page_numbering
             .clone_from(&self.section_page_numbering);
+        measurer.invalidate_page_number_table();
         measurer.page_number_start = self.page_number_start;
         measurer
             .page_number_format
