@@ -6492,8 +6492,9 @@ where
                         // The repeated copy is clipped by its physical header
                         // cell too. Keep its visible capture separate from the
                         // complete logical copy and from editable body indices.
-                        if jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                        if self.capture_painted_table_headers
+                            || jade_docx_layout::line_metrics::word_layout_platform()
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
                         {
                             let selection_line = SelectionLineLayout {
                                 top: line_top,
@@ -21093,6 +21094,82 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn mac_painted_header_capture_is_opt_in_and_preserves_painted_text() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        let mut run = picture_run(0.0, 0.0);
+        run.image = None;
+        run.text = "AB".into();
+        let paragraph = cell_paragraph_with_runs_and_style(vec![run], ParagraphStyle::default());
+        let mut cell = make_prepared_cell(0, 1, None, false);
+        cell.padding = Default::default();
+        cell.height = paragraph.height;
+        cell.blocks.push(CellBlock {
+            height: paragraph.height,
+            kind: CellBlockKind::Paragraph(paragraph),
+            paragraph_indices: vec![0],
+            source_index: 0,
+        });
+        let mut drawings = Vec::new();
+        for painted in [false, true, false] {
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
+            renderer.auxiliary_story_capture_mode = AuxiliaryStoryCaptureMode::Full;
+            assert!(!renderer.capture_painted_table_headers);
+            renderer.capture_painted_table_headers = painted;
+            renderer
+                .draw_cell_text_visual_only(
+                    &cell,
+                    50.0,
+                    80.0,
+                    1.0,
+                    40.0,
+                    16.0,
+                    HorizontalBorderBands::default(),
+                )
+                .unwrap();
+            let original = renderer
+                .auxiliary_story_debug_lines
+                .iter()
+                .find(|line| line.story == "table_header")
+                .unwrap();
+            assert_eq!(original.line.text, "AB");
+            let projection = renderer
+                .auxiliary_story_debug_lines
+                .iter()
+                .find(|line| line.story == "table_header_clip_projection");
+            if painted {
+                let text = projection
+                    .expect("explicit painted projection")
+                    .line
+                    .fragments
+                    .iter()
+                    .flat_map(|fragment| fragment.glyphs.iter())
+                    .map(|glyph| glyph.text.as_str())
+                    .collect::<String>();
+                assert_eq!(text, "A", "the second glyph is beyond the cell clip");
+            } else {
+                assert!(projection.is_none(), "ordinary Mac capture is unchanged");
+            }
+            drawings.push(
+                painter
+                    .ops()
+                    .into_iter()
+                    .filter(|op| matches!(op, Op::FillText(..)))
+                    .collect::<Vec<_>>(),
+            );
+            assert!(renderer.selection.paragraphs().is_empty());
+        }
+        set_word_layout_platform(previous);
+        assert!(!drawings[0].is_empty());
+        assert_eq!(drawings[0], drawings[1]);
+        assert_eq!(drawings[0], drawings[2]);
     }
 
     #[test]

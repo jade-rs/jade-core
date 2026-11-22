@@ -2708,6 +2708,16 @@ impl NativeDocument {
             .map_err(|_| "full layout capture failed".to_owned())
     }
 
+    /// Capture painted repeated-table-header glyphs without changing ordinary
+    /// diagnostic capture or the rendered document.
+    pub fn capture_full_layout_debug_painted_table_headers(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, String> {
+        self.renderer
+            .capture_full_layout_debug_painted_table_headers()
+            .map_err(|_| "painted table header capture failed".to_owned())
+    }
+
     /// Capture original table glyph origins even when painter clipping hides
     /// them, for comparison with Word's complete EMF text records.
     pub fn capture_full_layout_debug_unclipped_tables(

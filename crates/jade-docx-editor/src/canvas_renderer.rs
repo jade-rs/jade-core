@@ -4066,6 +4066,7 @@ where
     /// unusually tall header/footer exceeds the body boundary.
     rendering_header_footer_story: bool,
     auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode,
+    capture_painted_table_headers: bool,
     auxiliary_story_debug_lines: Vec<AuxiliaryStoryLineDebug>,
     /// Mirrors `SectionProperties::title_page` from the default section.
     title_page: bool,
@@ -9618,6 +9619,7 @@ where
             hf_story_layouts: HashMap::new(),
             rendering_header_footer_story: false,
             auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode::Disabled,
+            capture_painted_table_headers: false,
             auxiliary_story_debug_lines: Vec::new(),
             title_page: false,
             even_and_odd_headers: false,
@@ -38123,7 +38125,7 @@ where
     /// Rebuilds diagnostics from page one with no lazy limit or seek replay.
     /// This is deliberately expensive and should only run for release captures.
     pub fn capture_full_layout_debug(&mut self) -> Result<FullLayoutDebugSnapshot, JsValue> {
-        self.capture_full_layout_debug_with_table_projection(true)
+        self.capture_full_layout_debug_with_table_projection(true, false)
     }
 
     /// Include table glyph origins hidden by an exact row's clipping region.
@@ -38132,12 +38134,22 @@ where
     pub fn capture_full_layout_debug_unclipped_tables(
         &mut self,
     ) -> Result<FullLayoutDebugSnapshot, JsValue> {
-        self.capture_full_layout_debug_with_table_projection(false)
+        self.capture_full_layout_debug_with_table_projection(false, false)
+    }
+
+    /// Capture the visible glyphs of repeated table headers as well as body
+    /// cells. This opt-in diagnostic projection matches painted-PDF captures;
+    /// ordinary captures, editing geometry and painter commands are unchanged.
+    pub fn capture_full_layout_debug_painted_table_headers(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(true, true)
     }
 
     fn capture_full_layout_debug_with_table_projection(
         &mut self,
         clip_table_glyphs: bool,
+        painted_table_headers: bool,
     ) -> Result<FullLayoutDebugSnapshot, JsValue> {
         if self.last_document.is_none() {
             return Err(JsValue::from_str("Document not loaded"));
@@ -38145,12 +38157,14 @@ where
         let saved_limit = self.layout_page_limit;
         let saved_visible = self.visible_page_range.clone();
         let saved_capture = self.auxiliary_story_capture_mode;
+        let saved_header_projection = self.capture_painted_table_headers;
         let saved_force_full_repaint = self.force_full_repaint_once;
         let saved_disable_seek_replay = self.disable_seek_replay_once;
         let saved_hf_story_layouts = std::mem::take(&mut self.hf_story_layouts);
         self.layout_page_limit = None;
         self.visible_page_range = None;
         self.auxiliary_story_capture_mode = AuxiliaryStoryCaptureMode::Full;
+        self.capture_painted_table_headers = painted_table_headers;
         self.force_full_repaint_once = true;
         self.disable_seek_replay_once = true;
 
@@ -38279,6 +38293,7 @@ where
         self.layout_page_limit = saved_limit;
         self.visible_page_range = saved_visible;
         self.auxiliary_story_capture_mode = saved_capture;
+        self.capture_painted_table_headers = saved_header_projection;
         self.auxiliary_story_debug_lines.retain(|entry| {
             !matches!(
                 entry.story,
