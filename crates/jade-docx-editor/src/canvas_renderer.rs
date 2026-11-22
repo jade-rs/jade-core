@@ -328,6 +328,8 @@ mod section_tests;
 mod structure;
 mod table;
 #[cfg(test)]
+mod table_footer_tests;
+#[cfg(test)]
 mod table_row_clone_tests;
 #[cfg(test)]
 mod valign_justified_tests;

@@ -3458,7 +3458,7 @@ where
             // Move the leading rows together before painting any of them.
             // Otherwise a heading can appear alone at the foot of a page and
             // be repeated above the first body row on the following page.
-            let page_content_height = self.page_height - self.margin_top - self.margin_bottom;
+            let page_content_height = self.table_full_page_content_height();
             if height <= page_content_height
                 && self.ensure_table_row_space(height, use_column_frame)?
             {
@@ -3824,8 +3824,7 @@ where
                         available_height =
                             available_height.min(pending_height - 2.0 * ROW_SPLIT_EPSILON);
                     }
-                    let full_page_content_height =
-                        (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
+                    let full_page_content_height = self.table_full_page_content_height();
                     let header_height =
                         repeated_header_height(&header_heights_snapshot, header_row_count);
                     let full_page_content_height =
@@ -4055,8 +4054,7 @@ where
                                     row_index,
                                     true,
                                 ) && header_height
-                                    <= (self.page_height - self.margin_top - self.margin_bottom)
-                                        .max(0.0);
+                                    <= self.table_full_page_content_height();
                                 if repeat_header {
                                     advance_past_short_header_frames(self, &split.tail_cells)?;
                                 }
@@ -4123,9 +4121,7 @@ where
                 if can_advance && self.ensure_table_row_space(required_height, use_column_frame)? {
                     let repeat_header =
                         should_repeat_header_before_row(header_row_count, row_index, true)
-                            && header_height
-                                <= (self.page_height - self.margin_top - self.margin_bottom)
-                                    .max(0.0);
+                            && header_height <= self.table_full_page_content_height();
                     if repeat_header {
                         advance_past_short_header_frames(self, &pending_cells)?;
                     }
@@ -8619,16 +8615,24 @@ where
         Ok(total_height.max(layout.line_height))
     }
 
-    /// Lowest point a table row may reach. With a footnote area on the page
-    /// it is the area's top, taken from the same footer-aware body bottom the
-    /// area is reserved and drawn against (#294); without one, the margin
-    /// edge rows have always used.
+    /// Lowest point a table row may reach: the footer-aware body bottom
+    /// paragraphs use, above the page's footnote area (#294) and above a
+    /// footer story taller than the bottom margin.
     fn table_row_bottom_limit(&self) -> f64 {
-        if self.footnote_reserve_px > 0.0 {
-            self.effective_body_bottom()
-        } else {
+        if self.pageless_mode || self.rendering_header_footer_story {
             self.page_height - self.margin_bottom
+        } else {
+            self.effective_body_bottom()
         }
+    }
+
+    /// The body height a fresh page offers a row: between a tall header's
+    /// content and a tall footer's top, before any footnote area.
+    fn table_full_page_content_height(&self) -> f64 {
+        if self.pageless_mode || self.rendering_header_footer_story {
+            return (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
+        }
+        (self.unreserved_body_bottom() - self.effective_body_top()).max(0.0)
     }
 
     fn table_row_needs_page_break(&self, height: f64) -> bool {
@@ -18648,7 +18652,7 @@ mod tests {
                     <w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="1000" w:hRule="exact"/></w:trPr>
                         <w:tc><w:p><w:r><w:t>Second body row</w:t></w:r></w:p></w:tc></w:tr>
                 </w:tbl>
-                <w:sectPr><w:pgSz w:w="6000" w:h="2700"/><w:pgMar w:top="240" w:bottom="240" w:left="240" w:right="240"/></w:sectPr>
+                <w:sectPr><w:pgSz w:w="6000" w:h="2700"/><w:pgMar w:top="240" w:bottom="240" w:left="240" w:right="240" w:header="0" w:footer="0"/></w:sectPr>
             </w:body></w:document>"#;
         let document = jade_docx_reader::DocumentParser::new()
             .parse_document_xml(xml)
