@@ -380,16 +380,25 @@ SHARED_ORIGINALS = {
 
 def shared_originals(root=ROOT):
     registry = read_json(root/'tests/word-oracle/platform-coordinates.json')
+    cases_by_name = {}
+    for case in registry['fixtures']:
+        cases_by_name.setdefault(case['mac_case'], []).append(case)
+    # Reject missing/duplicate required cases before reading any original files.
+    for name in SHARED_ORIGINALS:
+        require(len(cases_by_name.get(name, ())) == 1,
+                name + ': missing or duplicate shared Mac original')
     results = []
     for name, (source_sha, manifest_sha, coordinates_sha, pages, glyphs) in SHARED_ORIGINALS.items():
-        cases = [c for c in registry['fixtures'] if c['mac_case'] == name]
-        require(len(cases) == 1, name + ': missing or duplicate shared Mac original')
-        case = cases[0]
+        case = cases_by_name[name][0]
+        require(source_sha != CONTROL_SHA256,
+                name + ': normalized control must remain separate from captured originals')
         require(case['source']['sha256'] == source_sha
                 and case['mac_manifest']['sha256'] == manifest_sha,
                 name + ': shared Mac source or manifest identity changed')
         source = checked_file(root, case['source'])
         manifest = read_json(checked_file(root, case['mac_manifest']))
+        require(manifest['reference'].get('capturedDocxSha256', source_sha) == source_sha,
+                name + ': captured Mac input differs from shared rendered input')
         raw = source.with_name('pages.json.gz').read_bytes()
         require(hashlib.sha256(raw).hexdigest() == coordinates_sha
                 == manifest['coordinatesSha256'], name + ': shared Mac coordinates changed')

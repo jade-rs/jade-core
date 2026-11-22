@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import unittest
 from unittest.mock import patch
 import check_mac_captured_source as check
@@ -52,6 +53,50 @@ class CapturedMacOriginalTests(unittest.TestCase):
             for actual in invalid:
                 with self.subTest(case=name), self.assertRaises(ValueError):
                     check.assert_layout(expected, actual, case['source']['sha256'], name)
+
+    def test_missing_shared_names_are_rejected_before_reading_original_files(self):
+        registry = copy.deepcopy(check.read_json(
+            check.ROOT/'tests/word-oracle/platform-coordinates.json'))
+        missing = list(check.SHARED_ORIGINALS)[-1]
+        registry['fixtures'] = [r for r in registry['fixtures'] if r['mac_case'] != missing]
+        with patch.object(check, 'read_json', return_value=registry), patch.object(
+                check, 'checked_file', side_effect=AssertionError('unexpected original read')):
+            with self.assertRaisesRegex(ValueError, 'missing or duplicate shared Mac original'):
+                check.shared_originals()
+
+    def test_shared_original_rejects_a_different_captured_mac_input(self):
+        read = check.read_json
+        registry = read(check.ROOT/'tests/word-oracle/platform-coordinates.json')
+        name = next(iter(check.SHARED_ORIGINALS))
+        case = next(r for r in registry['fixtures'] if r['mac_case'] == name)
+        target = check.checked_file(check.ROOT, case['mac_manifest'])
+        changed = copy.deepcopy(read(target))
+        changed['reference']['capturedDocxSha256'] = '0' * 64
+        with patch.object(check, 'read_json', side_effect=lambda p: changed if p == target else read(p)):
+            with self.assertRaisesRegex(ValueError, 'captured Mac input differs'):
+                check.shared_originals()
+
+    def test_normalized_control_cannot_be_promoted_to_a_shared_original(self):
+        name = 'word-mac-probe-floating-order'
+        prefix = 'tests/word-oracle/mac-elsa-synthetic/' + name + '/'
+        source = check.ROOT/prefix/'source.docx'
+        manifest_path = check.ROOT/prefix/'manifest.json'
+        read = check.read_json
+        manifest = read(manifest_path)
+        source_sha = hashlib.sha256(source.read_bytes()).hexdigest()
+        self.assertEqual(source_sha, check.CONTROL_SHA256)
+        manifest_sha = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+        case = dict(mac_case=name,
+                    source=dict(file=prefix+'source.docx', sha256=source_sha),
+                    mac_manifest=dict(file=prefix+'manifest.json', sha256=manifest_sha),
+                    windows=[dict(font_source='original-word-pdf')])
+        registry_path = check.ROOT/'tests/word-oracle/platform-coordinates.json'
+        spec = (source_sha, manifest_sha, manifest['coordinatesSha256'], 1, 1070)
+        with patch.object(check, 'SHARED_ORIGINALS', {name: spec}), patch.object(
+                check, 'read_json', side_effect=lambda p: dict(fixtures=[case])
+                if p == registry_path else read(p)):
+            with self.assertRaisesRegex(ValueError, 'normalized control must remain separate'):
+                check.shared_originals()
 
     def test_exact_original_and_distinct_normalized_input_are_retained(self):
         original, control, raw, expected = check.originals()
