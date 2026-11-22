@@ -1419,6 +1419,11 @@ pub struct WordDocument {
     /// callers can change `parts` directly as well as through editing commands.
     #[serde(skip)]
     settings_protection_mention_cache: RefCell<Option<(Vec<u8>, bool)>>,
+    /// One shared story per header/footer part path, handed out to every
+    /// section and every repaint instead of a deep copy of the part's body
+    /// (pictures' data URIs included). See [`HfStoryCacheEntry`].
+    #[serde(skip)]
+    hf_story_cache: RefCell<HashMap<String, HfStoryCacheEntry>>,
     /// Retain one compressed source archive to copy untouched members during
     /// export. Clones and undo snapshots share these bytes rather than copying
     /// large embedded media or recompressing it on every save.
@@ -2084,6 +2089,18 @@ impl HeaderFooterVariant {
 /// `footer_reference` track the `default` variant; first/even variants live on
 /// the default section. Returns `None` when the requested variant isn't wired
 /// up in the source docx (caller must surface a user-facing error).
+/// A header/footer part's story as last handed out. Holding the parsed part
+/// keeps it shared, so any edit (every one goes through `Rc::make_mut` or
+/// installs a new parse) leaves the part with a different `Rc`, and the
+/// entry is rebuilt; an unchanged part keeps handing out the same story.
+#[derive(Debug, Clone)]
+struct HfStoryCacheEntry {
+    source: Rc<Document>,
+    body: Rc<Body>,
+    /// The story flattened to `HeaderLine`s, built on first use.
+    lines: Option<Vec<HeaderLine>>,
+}
+
 /// Header/footer stories of one section after Word's "link to previous"
 /// inheritance: a section that declares no reference of a given type shows
 /// the previous section's story. `title_page` is that section's own
@@ -2271,7 +2288,7 @@ impl WordDocument {
         &self,
         role: HeaderFooterRole,
         variant: HeaderFooterVariant,
-    ) -> Option<Body> {
+    ) -> Option<Rc<Body>> {
         let document = self.document.as_deref()?;
         let relationship_id = pick_hf_reference(document, role, variant)?;
         self.header_footer_body_for_reference(&relationship_id)
@@ -2292,14 +2309,47 @@ impl WordDocument {
         }
     }
 
-    fn header_footer_body_for_reference(&self, relationship_id: &str) -> Option<Body> {
+    fn header_footer_body_for_reference(&self, relationship_id: &str) -> Option<Rc<Body>> {
+        self.header_footer_story_for_reference(relationship_id, false)
+            .map(|(body, _)| body)
+    }
+
+    /// The shared story of the part `relationship_id` names, and with
+    /// `with_lines` its `HeaderLine`s. The story is copied out of the parsed
+    /// part once per version of that part.
+    fn header_footer_story_for_reference(
+        &self,
+        relationship_id: &str,
+        with_lines: bool,
+    ) -> Option<(Rc<Body>, Option<Vec<HeaderLine>>)> {
         let target_path = self.hf_part_path_for_reference(relationship_id)?;
-        self.parts
-            .get(&target_path)?
-            .parsed_document
-            .as_deref()?
-            .body
-            .clone()
+        let source = self.parts.get(&target_path)?.parsed_document.as_ref()?;
+        let mut cache = self.hf_story_cache.borrow_mut();
+        let current = cache
+            .get(&target_path)
+            .is_some_and(|entry| Rc::ptr_eq(&entry.source, source));
+        if !current {
+            let Some(body) = source.body.clone() else {
+                cache.remove(&target_path);
+                return None;
+            };
+            cache.insert(
+                target_path.clone(),
+                HfStoryCacheEntry {
+                    source: Rc::clone(source),
+                    body: Rc::new(body),
+                    lines: None,
+                },
+            );
+        }
+        let entry = cache.get_mut(&target_path)?;
+        let lines = with_lines.then(|| {
+            entry
+                .lines
+                .get_or_insert_with(|| Self::extract_text_lines_from_body(&entry.body, true))
+                .clone()
+        });
+        Some((Rc::clone(&entry.body), lines))
     }
 
     /// The package path of the header/footer part a main-document
@@ -2395,15 +2445,15 @@ impl WordDocument {
         let section_count = document.sections.len().max(1);
         let mut resolved: Vec<SectionHeaderFooters> = Vec::with_capacity(section_count);
         for index in 0..section_count {
-            let story = |role, variant| -> (Option<Vec<HeaderLine>>, Option<Body>) {
+            let story = |role, variant| -> (Option<Vec<HeaderLine>>, Option<Rc<Body>>) {
                 let Some(reference) = hf_reference_for_section(document, index, role, variant)
                 else {
                     return (None, None);
                 };
-                let body = self.header_footer_body_for_reference(&reference);
-                let lines = body
-                    .as_ref()
-                    .map(|body| Self::extract_text_lines_from_body(body, true));
+                let (body, lines) = match self.header_footer_story_for_reference(&reference, true) {
+                    Some((body, lines)) => (Some(body), lines),
+                    None => (None, None),
+                };
                 if lines.is_some() {
                     return (lines, body);
                 }
@@ -2463,12 +2513,12 @@ impl WordDocument {
                 footer_first,
                 header_even,
                 footer_even,
-                header_body: header_body.map(Rc::new),
-                footer_body: footer_body.map(Rc::new),
-                header_body_first: header_body_first.map(Rc::new),
-                footer_body_first: footer_body_first.map(Rc::new),
-                header_body_even: header_body_even.map(Rc::new),
-                footer_body_even: footer_body_even.map(Rc::new),
+                header_body,
+                footer_body,
+                header_body_first,
+                footer_body_first,
+                header_body_even,
+                footer_body_even,
                 title_page,
             });
         }
@@ -2505,6 +2555,7 @@ impl WordDocument {
         let mut document = WordDocument {
             package: Some(package),
             settings_protection_mention_cache: RefCell::new(None),
+            hf_story_cache: RefCell::default(),
             source_archive: Some(Rc::from(data)),
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
@@ -5384,6 +5435,7 @@ impl WordDocument {
         let mut doc = Self {
             package: None,
             settings_protection_mention_cache: RefCell::new(None),
+            hf_story_cache: RefCell::default(),
             source_archive: None,
             binary_parts: HashMap::new(),
             removed_parts: HashSet::new(),
@@ -21158,7 +21210,8 @@ impl WordDocument {
         xml: &DocxXmlDocument,
     ) -> Option<Paragraph> {
         let reference = self.active_hf_reference(role, variant)?;
-        let mut body = self.header_footer_body_for_reference(&reference)?;
+        // Ids are attached to a private copy; the shared story stays as is.
+        let mut body = (*self.header_footer_body_for_reference(&reference)?).clone();
         if body
             .elements
             .iter()
