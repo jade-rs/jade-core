@@ -291,6 +291,8 @@ mod numbering_snapshot;
 #[cfg(test)]
 mod opentype_features_tests;
 mod page_layers;
+#[cfg(test)]
+mod page_number_tests;
 mod paragraph_font_cache;
 mod paragraph_hash;
 mod paragraph_join;
@@ -41289,7 +41291,10 @@ where
         }
         let page = physical_page.max(1);
         let section = self.section_index_for_page(page);
-        let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
+        // Numbering starts at 1 unless a section's own `w:start` restarts it.
+        // `page_number_start` is the default (last) section's start, which
+        // must not renumber the sections before it.
+        let mut number_at_section_start = 1usize;
         let mut first_page_of_section = 1usize;
         for index in 0..=section {
             let first_page = self.first_page_of_section_index(index).unwrap_or(page);
