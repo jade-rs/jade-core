@@ -3482,6 +3482,8 @@ where
             // Move the leading rows together before painting any of them.
             // Otherwise a heading can appear alone at the foot of a page and
             // be repeated above the first body row on the following page.
+            // The group moves to the next page, whose body this page's footer
+            // does not bound: no fresh page offers more than the margins.
             let page_content_height = self.page_height - self.margin_top - self.margin_bottom;
             if height <= page_content_height
                 && self.ensure_table_row_space(height, use_column_frame)?
@@ -3848,8 +3850,7 @@ where
                         available_height =
                             available_height.min(pending_height - 2.0 * ROW_SPLIT_EPSILON);
                     }
-                    let full_page_content_height =
-                        (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
+                    let full_page_content_height = self.table_full_page_content_height();
                     let header_height =
                         repeated_header_height(&header_heights_snapshot, header_row_count);
                     let full_page_content_height =
@@ -3864,6 +3865,18 @@ where
                     // fragments retain restart/span metadata; continuation
                     // cells remain non-rendering and must not block content.
                     let disallow_split = row_height_blocks_content_split(row, &pending_cells)
+                        || self.cant_split_row_moves_first(
+                            row.cant_split,
+                            row_start,
+                            fresh_page_segment.is_some(),
+                            use_column_frame,
+                            pending_height,
+                            if should_repeat_header_before_row(header_row_count, row_index, true) {
+                                header_height
+                            } else {
+                                0.0
+                            },
+                        )?
                         || cant_split_blocks_row_split(
                             row.cant_split,
                             pending_height,
@@ -4079,8 +4092,7 @@ where
                                     row_index,
                                     true,
                                 ) && header_height
-                                    <= (self.page_height - self.margin_top - self.margin_bottom)
-                                        .max(0.0);
+                                    <= self.table_full_page_content_height();
                                 if repeat_header {
                                     advance_past_short_header_frames(self, &split.tail_cells)?;
                                 }
@@ -4147,9 +4159,7 @@ where
                 if can_advance && self.ensure_table_row_space(required_height, use_column_frame)? {
                     let repeat_header =
                         should_repeat_header_before_row(header_row_count, row_index, true)
-                            && header_height
-                                <= (self.page_height - self.margin_top - self.margin_bottom)
-                                    .max(0.0);
+                            && header_height <= self.table_full_page_content_height();
                     if repeat_header {
                         advance_past_short_header_frames(self, &pending_cells)?;
                     }
@@ -8643,16 +8653,97 @@ where
         Ok(total_height.max(layout.line_height))
     }
 
-    /// Lowest point a table row may reach. With a footnote area on the page
-    /// it is the area's top, taken from the same footer-aware body bottom the
-    /// area is reserved and drawn against (#294); without one, the margin
-    /// edge rows have always used.
+    /// Lowest point a table row may reach: the footer-aware body bottom
+    /// paragraphs use, above the page's footnote area (#294) and above a
+    /// footer story taller than the bottom margin.
     fn table_row_bottom_limit(&self) -> f64 {
-        if self.footnote_reserve_px > 0.0 {
-            self.effective_body_bottom()
-        } else {
+        if self.pageless_mode || self.rendering_header_footer_story {
             self.page_height - self.margin_bottom
+        } else {
+            self.effective_body_bottom()
         }
+    }
+
+    /// A cantSplit row that does not fit below earlier content moves on when
+    /// the next page takes it whole; it is then judged on that page. Rows
+    /// that fit no page split where they are, and a row directly below the
+    /// table's header block (or its repeat) counts as starting the frame, so
+    /// the header is never stranded alone.
+    fn cant_split_row_moves_first(
+        &mut self,
+        cant_split: bool,
+        row_start: bool,
+        fresh_frame: bool,
+        use_column_frame: bool,
+        height: f64,
+        header_height: f64,
+    ) -> Result<bool, JsValue> {
+        if !cant_split
+            || !row_start
+            || fresh_frame
+            || self.pageless_mode
+            || self.rendering_header_footer_story
+        {
+            return Ok(false);
+        }
+        let top = if use_column_frame {
+            self.current_column_top()
+        } else {
+            self.effective_body_top()
+        };
+        let header_slack = if header_height > 0.0 { 1.0 } else { 0.0 };
+        if self.current_y
+            <= top
+                + self.current_page_valign_offset()
+                + header_height
+                + header_slack
+                + ROW_SPLIT_EPSILON
+        {
+            return Ok(false);
+        }
+        let next_frame = if use_column_frame {
+            self.table_full_page_content_height()
+        } else {
+            // The next page's own header/footer variant bounds its body.
+            let page = self.current_page_number;
+            self.current_page_number = page + 1;
+            // Measure that page's footer now, as its page start will: a first
+            // render must not judge it by the per-line estimate and a later
+            // render by the previous layout's measurement.
+            let measured = if self
+                .footer_content_heights
+                .get(page)
+                .is_some_and(|height| height.is_some())
+            {
+                Ok(())
+            } else {
+                self.measure_page_footer()
+            };
+            let height = self.table_full_page_content_height();
+            self.current_page_number = page;
+            measured?;
+            self.configure_table_context();
+            height
+        };
+        let repeated = if header_height <= next_frame {
+            header_height
+        } else {
+            0.0
+        };
+        Ok(height <= next_frame - repeated + ROW_SPLIT_EPSILON)
+    }
+
+    /// The body height a fresh page offers a row: between a tall header's
+    /// content and a tall footer's top, before any footnote area.
+    fn table_full_page_content_height(&self) -> f64 {
+        if self.pageless_mode || self.rendering_header_footer_story {
+            return (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
+        }
+        // A fresh page has no justified (`w:vAlign="both"`) gap of its own.
+        (self.unreserved_body_bottom()
+            - self.valign_gap_bottom_allowance()
+            - self.effective_body_top())
+        .max(0.0)
     }
 
     fn table_row_needs_page_break(&self, height: f64) -> bool {
