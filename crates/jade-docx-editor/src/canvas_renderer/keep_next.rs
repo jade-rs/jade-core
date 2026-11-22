@@ -170,6 +170,9 @@ where
             .page_section_indices
             .clone_from(&self.page_section_indices);
         measurer
+            .mid_page_section_starts
+            .clone_from(&self.mid_page_section_starts);
+        measurer
             .section_page_numbering
             .clone_from(&self.section_page_numbering);
         measurer.page_number_start = self.page_number_start;
