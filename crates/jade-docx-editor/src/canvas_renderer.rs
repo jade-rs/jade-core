@@ -12037,7 +12037,9 @@ where
     /// later pages would hit-test to the wrong paragraph until the next full
     /// render. Those registries describe the unchanged layout, so the ones
     /// the last render built are put back afterwards, and pagination is kept
-    /// as a page-bitmap fetch keeps it. The selection registry is not frozen
+    /// as a page-bitmap fetch keeps it. A document with vertically aligned
+    /// sections cannot take this pass (see
+    /// [`Self::any_section_valign_enabled`]); its caller lays it all out. The selection registry is not frozen
     /// for the walk, as it is for a bitmap fetch: a frozen one already holds
     /// the table cells after the one being drawn, and a selection over a
     /// table then paints whole cells where a full render paints lines.
@@ -12052,7 +12054,11 @@ where
         comments: Option<&HashMap<String, DocumentComment>>,
         pages: std::ops::RangeInclusive<usize>,
     ) -> Result<(), JsValue> {
-        let selection = self.selection.clone();
+        // Moved, not copied: a drag selects on every move.
+        let selection = self.selection.take_registry();
+        let (current_page_number, active_section_index) =
+            (self.current_page_number, self.active_section_index);
+        let word_oracle_report_x_offsets = self.word_oracle_report_x_offsets.take();
         let comment_annotations = std::mem::take(&mut self.comment_annotations);
         let hyperlink_regions = std::mem::take(&mut self.hyperlink_regions);
         let image_debug_regions = self.image_debug_regions.take();
@@ -12082,7 +12088,12 @@ where
         );
         self.clear_visible_page_range();
         self.layout_page_limit = previous_limit;
-        self.selection = selection;
+        self.selection.restore_registry(selection);
+        // The walk stops at the bound; the page and section cursors that
+        // page labels read stay where the last full layout ended.
+        self.current_page_number = current_page_number;
+        self.active_section_index = active_section_index;
+        *self.word_oracle_report_x_offsets.get_mut() = word_oracle_report_x_offsets;
         self.comment_annotations = comment_annotations;
         self.hyperlink_regions = hyperlink_regions;
         self.invalidate_hyperlink_regions_js_cache();
@@ -17252,7 +17263,12 @@ where
         // Turn this full repaint's per-page measurements into section-owned
         // `w:vAlign` offsets. The public full-render entry performs this as its
         // layout-only first pass, then immediately paints with the result.
-        if self.any_section_valign_enabled() && self.render_full_repaint {
+        // A pixel-only walk measures only the pages it covers; the offsets of
+        // the last full layout still hold for an unchanged document.
+        if self.any_section_valign_enabled()
+            && self.render_full_repaint
+            && !preserve_pixel_pagination
+        {
             let measured = page_valign_offsets_from_sections(
                 self.section_vertical_align,
                 &self.section_vertical_alignments,
@@ -40000,7 +40016,10 @@ where
         !self.pageless_mode && self.active_section_vertical_align() != SectionVerticalAlign::Top
     }
 
-    fn any_section_valign_enabled(&self) -> bool {
+    /// Whether any section is vertically aligned (`w:vAlign` other than
+    /// top). Its offsets depend on the used height of every page, so a pass
+    /// that walks only some pages cannot repaint such a document alone.
+    pub fn any_section_valign_enabled(&self) -> bool {
         !self.pageless_mode
             && if self.section_vertical_alignments.is_empty() {
                 self.section_vertical_align != SectionVerticalAlign::Top

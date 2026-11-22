@@ -1068,18 +1068,26 @@ impl NativeDocument {
         self.selection = Some(range);
         self.renderer.set_selection_range(Some(range));
         let visible_end = visible_end_page_1idx.max(1);
-        // An end of a selection the last pass did not lay out (one bounded
-        // to the pages on screen): lay every page out again, drawing the
-        // pages on screen.
-        let (first, last) = pages.unwrap_or((0, self.page_count().max(1) - 1));
+        let Some((first, last)) = pages else {
+            // An end of a selection the last pass did not lay out (one
+            // bounded to the pages on screen): the layout is not whole. Lay
+            // every page out again, draw the pages on screen, and leave every
+            // other page stale, since the pages may have moved.
+            self.repaint_all_drawing(Some(0..visible_end), true)?;
+            return Ok(());
+        };
         let drawn = first..(last + 1).min(visible_end);
         if !drawn.is_empty() {
-            if pages.is_some() {
-                self.repaint_unchanged_layout(drawn)?;
-            } else {
+            if self.renderer.any_section_valign_enabled() {
+                // A vertically aligned section's offsets come from the used
+                // height of every page, which a pass over a few pages does
+                // not measure: lay every page out, drawing the same pages.
                 self.repaint_all_drawing(Some(drawn), false)?;
+            } else {
+                self.repaint_unchanged_layout(drawn)?;
             }
         }
+        // The layout did not change, so the pages read before it still hold.
         let count = self.page_count();
         self.stale_pages
             .extend((first.max(visible_end)..=last).filter(|&page| page < count));

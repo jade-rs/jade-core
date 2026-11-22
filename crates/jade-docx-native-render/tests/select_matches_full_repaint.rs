@@ -8,7 +8,8 @@
 //! what a freshly opened document reports.
 
 mod common;
-use common::{open_fixture, Doc};
+use common::{open_bytes, open_fixture, repo_path, Doc};
+use std::io::{Read, Write};
 
 const FIXTURES: &[&str] = &[
     "contract.docx",
@@ -18,7 +19,62 @@ const FIXTURES: &[&str] = &[
     "footnote-long-continuation.docx",
     "review-kinds.docx",
     "noto-jp-yokohama_page6.docx",
+    "footnote-table-each-page.docx",
 ];
+
+/// `fixture` with `<w:vAlign w:val="{align}"/>` in every section: no fixture
+/// has a vertically aligned section.
+fn with_valign(fixture: &str, align: &str) -> Vec<u8> {
+    let bytes = std::fs::read(repo_path(&format!("public/fixtures/{fixture}"))).expect("read");
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).expect("zip");
+    let mut out = Vec::new();
+    {
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(&mut out));
+        let options = zip::write::SimpleFileOptions::default();
+        for index in 0..archive.len() {
+            let mut entry = archive.by_index(index).expect("entry");
+            let name = entry.name().expect("entry name").to_string();
+            let mut content = Vec::new();
+            entry.read_to_end(&mut content).expect("read entry");
+            if name == "word/document.xml" {
+                let xml = String::from_utf8(content).expect("utf-8");
+                assert!(xml.contains("</w:sectPr>"), "{fixture}: no sectPr");
+                content = xml
+                    .replace(
+                        "</w:sectPr>",
+                        &format!(r#"<w:vAlign w:val="{align}"/></w:sectPr>"#),
+                    )
+                    .into_bytes();
+            }
+            writer.start_file(name, options).expect("zip entry");
+            writer.write_all(&content).expect("zip write");
+        }
+        writer.finish().expect("zip");
+    }
+    out
+}
+
+/// Every document the select test runs over: the fixtures, and one of them
+/// with each vertical alignment.
+fn documents() -> Vec<(String, Vec<u8>)> {
+    let mut documents: Vec<(String, Vec<u8>)> = FIXTURES
+        .iter()
+        .map(|fixture| {
+            let path = repo_path(&format!("public/fixtures/{fixture}"));
+            (
+                fixture.to_string(),
+                std::fs::read(path).expect("read fixture"),
+            )
+        })
+        .collect();
+    for align in ["center", "bottom", "both"] {
+        documents.push((
+            format!("contract.docx (vAlign {align})"),
+            with_valign("contract.docx", align),
+        ));
+    }
+    documents
+}
 
 type Pages = Vec<Option<(Vec<u8>, i32, i32)>>;
 
@@ -151,15 +207,16 @@ fn cases(paragraphs: &[(usize, usize)], last_page: usize) -> Vec<Case> {
 #[test]
 fn a_bounded_select_matches_a_full_repaint_and_a_fresh_open() {
     let mut failures = Vec::new();
-    for fixture in FIXTURES {
-        let path = format!("public/fixtures/{fixture}");
-        let mut fresh = open_fixture(&path);
+    for (fixture, bytes) in documents() {
+        let mut fresh = open_bytes(&bytes);
         let paragraphs = text_paragraphs(&mut fresh);
         let page_count = fresh.page_count();
         assert!(page_count >= 2, "{fixture}: needs more than one page");
         let last_page = page_count - 1;
         let fresh_hits = hits(&fresh);
         let fresh_registries = registries(&fresh);
+        let fresh_pages = pages(&fresh);
+        let fresh_labels = fresh.page_labels();
         // One paragraph per page, the last pages first: the ones past a bound.
         let mut far: Vec<usize> = Vec::new();
         for page in (1..page_count).rev() {
@@ -171,8 +228,8 @@ fn a_bounded_select_matches_a_full_repaint_and_a_fresh_open() {
         for case in cases(&paragraphs, last_page) {
             for bound in [1, 2] {
                 let label = format!("{fixture} / {} / bound {bound}", case.name);
-                let mut document = open_fixture(&path);
-                let mut reference = open_fixture(&path);
+                let mut document = open_bytes(&bytes);
+                let mut reference = open_bytes(&bytes);
                 for &(anchor, focus) in &case.selections {
                     document.select(anchor, focus, bound).expect("select");
                     reference.select(anchor, focus, usize::MAX).expect("select");
@@ -203,6 +260,12 @@ fn a_bounded_select_matches_a_full_repaint_and_a_fresh_open() {
                             "{label}: {name} registry differs from a fresh open"
                         ));
                     }
+                }
+                if document.page_labels() != fresh_labels {
+                    failures.push(format!(
+                        "{label}: page labels {:?}, {fresh_labels:?} at open",
+                        document.page_labels()
+                    ));
                 }
                 if hits(&document) != fresh_hits {
                     failures.push(format!("{label}: hit tests differ from a fresh open"));
@@ -237,6 +300,13 @@ fn a_bounded_select_matches_a_full_repaint_and_a_fresh_open() {
                 document.repaint_all().expect("repaint");
                 for line in differing(&drawn, &pages(&document)) {
                     failures.push(format!("{label}: against its own repaint: {line}"));
+                }
+                // A caret is drawn by the shell, so with the selection
+                // collapsed the pages are the ones the document opened with.
+                if document.selection().is_none() {
+                    for line in differing(&pages(&document), &fresh_pages) {
+                        failures.push(format!("{label}: collapsed, against a fresh open: {line}"));
+                    }
                 }
             }
         }
@@ -302,5 +372,48 @@ fn a_select_deep_in_a_long_document_matches_a_full_repaint() {
         .paint_stale_pages(0..document.page_count())
         .expect("paint stale pages");
     let lines = differing(&pages(&document), &pages(&reference));
+    assert!(lines.is_empty(), "{}", lines.join("\n"));
+}
+
+/// After an edit bounded to the first page grows the document, a select into
+/// its last paragraph lays the document out again; every page it does not
+/// draw then may have moved, and must say so.
+#[test]
+fn a_select_after_a_bounded_edit_leaves_no_page_unpainted() {
+    let path = "public/fixtures/contract.docx";
+    let filler = "A clause long enough to wrap over several lines of the page. ".repeat(60);
+    let mut document = open_fixture(path);
+    let mut reference = open_fixture(path);
+    let paragraph = common::paragraph_on_first_page(&mut document);
+    let before = document.page_count();
+    document
+        .insert_text(paragraph, 0, &filler, 1)
+        .expect("insert");
+    reference
+        .insert_text(paragraph, 0, &filler, usize::MAX)
+        .expect("insert");
+    let last = document.paragraph_count() - 1;
+    document.select((last, 0), (last, 0), 1).expect("select");
+    reference
+        .select((last, 0), (last, 0), usize::MAX)
+        .expect("select");
+    reference.repaint_all().expect("repaint");
+    assert!(
+        reference.page_count() > before,
+        "the edit did not add pages"
+    );
+    assert_eq!(document.page_count(), reference.page_count());
+    let ours = pages(&document);
+    let theirs = pages(&reference);
+    for page in 0..ours.len() {
+        assert!(
+            ours[page] == theirs[page] || document.is_page_stale(page),
+            "page {page} differs from a full repaint and is not stale"
+        );
+    }
+    document
+        .paint_stale_pages(0..document.page_count())
+        .expect("paint stale pages");
+    let lines = differing(&pages(&document), &theirs);
     assert!(lines.is_empty(), "{}", lines.join("\n"));
 }
