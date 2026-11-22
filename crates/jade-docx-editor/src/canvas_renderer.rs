@@ -15479,6 +15479,9 @@ where
                         let width = (cell.right - cell.left).abs().max(1.0);
                         let height = (cell.bottom - cell.top).abs().max(1.0);
                         let page = self.page_for_y(y);
+                        // Cell layouts are document-space; overlay rects, like
+                        // the text rects below, are relative to their page.
+                        let y = y - self.page_top_y(page);
                         cell_rects.push(SelectionRect::new(x, y, width, height, page));
                     }
                 }
@@ -35327,26 +35330,20 @@ where
             return Ok(());
         }
 
-        if self.selection.paragraph_in_selected_cell(paragraph_index) {
-            if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-                let mut drawn = self.cell_highlighted.borrow_mut();
-                if drawn.insert(cell_id) {
-                    if let Some(cell) = self.selection.cell_layout(cell_id) {
-                        self.draw_cell_highlight(cell)?;
-                    }
-                }
-            }
-            return Ok(());
-        }
         if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-            if self.selection.is_cell_fully_selected(cell_id, &range) {
-                let mut drawn = self.cell_highlighted.borrow_mut();
-                if drawn.insert(cell_id) {
-                    if let Some(cell) = self.selection.cell_layout(cell_id) {
-                        self.draw_cell_highlight(cell)?;
+            if self.selection.paragraph_in_selected_cell(paragraph_index)
+                || self.selection.is_cell_fully_selected(cell_id, &range)
+            {
+                // Fill this page's fragment of the cell once. A fragment that
+                // is not registered yet (the cell is still being painted, or
+                // this is the part continued from the previous page in a pass
+                // that rebuilds the registry) falls back to line highlights.
+                if let Some((fragment_id, rect)) = self.cell_fragment_on_current_page(cell_id) {
+                    if self.cell_highlighted.borrow_mut().insert(fragment_id) {
+                        self.draw_cell_highlight(rect)?;
                     }
+                    return Ok(());
                 }
-                return Ok(());
             }
         }
 
@@ -35364,18 +35361,8 @@ where
         context.set_fill_style_str(SELECTION_FILL_STYLE);
         context.set_stroke_style_str(SELECTION_EDGE_STYLE);
         context.set_line_width(1.0);
-        let mut top = line.content_top;
-        let mut height = line.content_height.max(1.0);
-        if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-            if self.selection.is_cell_fully_selected(cell_id, &range) {
-                if let Some(cell) = self.selection.cell_layout(cell_id) {
-                    // When the selection covers the entire table cell we extend the highlight to
-                    // the cell bounds so there is no vertical gap between the fill and the borders.
-                    top = cell.top.min(cell.bottom);
-                    height = (cell.bottom - cell.top).abs().max(1.0);
-                }
-            }
-        }
+        let top = line.content_top;
+        let height = line.content_height.max(1.0);
         for (x, width) in rects {
             context.fill_rect(x, top, width, height);
             Self::stroke_selection_edges(&context, x, top, width, height);
@@ -35479,14 +35466,60 @@ where
         rects
     }
 
-    fn draw_cell_highlight(&self, cell: &CellLayout) -> Result<(), JsValue> {
+    /// The registered fragment of `cell_id`'s logical cell that lies on the
+    /// page being painted, with its bounds converted to that page's surface
+    /// and clipped to it, as `(fragment id, (x, y, width, height))`.
+    ///
+    /// Cell layouts are recorded in document space (each page's offset
+    /// included), while the page surface starts at zero. A cell split over a
+    /// page break has one fragment per page, and the paragraph-to-cell map
+    /// points at only one of them, so the other pages search the registry for
+    /// their own fragment.
+    fn cell_fragment_on_current_page(
+        &self,
+        cell_id: usize,
+    ) -> Option<(usize, (f64, f64, f64, f64))> {
+        let cells = self.selection.cell_layouts();
+        let cell = cells.get(cell_id)?;
+        let (page_top, page_bottom) = if self.pageless_mode {
+            (0.0, f64::INFINITY)
+        } else {
+            (self.page_offset_y, self.page_offset_y + self.page_height)
+        };
+        let clipped = |fragment: &CellLayout| {
+            let top = fragment.top.min(fragment.bottom).max(page_top);
+            let bottom = fragment.top.max(fragment.bottom).min(page_bottom);
+            (bottom > top).then(|| {
+                (
+                    fragment.left.min(fragment.right),
+                    top - page_top,
+                    (fragment.right - fragment.left).abs().max(1.0),
+                    (bottom - top).max(1.0),
+                )
+            })
+        };
+        if let Some(rect) = clipped(cell) {
+            return Some((cell_id, rect));
+        }
+        cells.iter().enumerate().find_map(|(id, fragment)| {
+            (fragment.table_id == cell.table_id
+                && fragment.row == cell.row
+                && fragment.column == cell.column
+                && fragment.column_span == cell.column_span)
+                .then(|| clipped(fragment))
+                .flatten()
+                .map(|rect| (id, rect))
+        })
+    }
+
+    /// Fills a selected cell fragment, given in page-surface coordinates.
+    fn draw_cell_highlight(
+        &self,
+        (x, y, width, height): (f64, f64, f64, f64),
+    ) -> Result<(), JsValue> {
         if !self.should_draw_current_page_for_render() {
             return Ok(());
         }
-        let width = (cell.right - cell.left).abs().max(1.0);
-        let height = (cell.bottom - cell.top).abs().max(1.0);
-        let x = cell.left.min(cell.right);
-        let y = cell.top.min(cell.bottom);
         let context = self.host.painter();
         context.save();
         context.set_fill_style_str(SELECTION_FILL_STYLE);
@@ -44908,6 +44941,7 @@ mod tests {
         assert_eq!(actual, "見出し 😀ABCDx\u{a0}é\u{200d}終");
     }
 
+    mod cell_highlight_tests;
     mod decoration_histories;
     mod float_seek_tests;
     mod float_wrap_witness_tests;
