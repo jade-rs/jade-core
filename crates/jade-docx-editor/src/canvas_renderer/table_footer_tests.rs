@@ -104,6 +104,7 @@ fn render(body: &str, sect_pr: &str, footer: Footer) -> (Renderer, RecordingPain
             .document
             .as_ref()
             .and_then(|document| document.body.clone())
+            .map(Rc::new)
     };
     // Hosts pass the footer's text lines with its story.
     let lines: Vec<HeaderLine> = (0..8)
@@ -430,6 +431,7 @@ fn cant_split_moves_alike_on_the_first_and_later_renders() {
             .document
             .as_ref()
             .and_then(|document| document.body.clone())
+            .map(Rc::new)
     };
     let lines = |count: usize| -> Vec<HeaderLine> {
         (0..count)
