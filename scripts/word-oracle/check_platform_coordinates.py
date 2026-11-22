@@ -39,6 +39,8 @@ PHYSICAL_FONT_CASES = {
     'column-break-mac',
     'column-table-fixed-preferred-width-mac',
     'column-table-fixed-preferred-width-smaller-mac',
+    'courier-new-line-metrics',
+    'courier-new-regular-adjacent',
     'decimal-tabs-mac',
     'direction-with-selection-mac',
     'endnote-mac',
@@ -88,6 +90,7 @@ PHYSICAL_FONT_CASES = {
     'numbering-restart-mac',
     'odd-even-stories-mac',
     'paragraph-spacing-mac',
+    'probe-column-fixed-dxa-4400',
     'probe-contextual-paragraph-spacing-mode14',
     'probe-contextual-paragraph-spacing-mode15',
     'probe-hyphenation-split-word-sweep-off',
@@ -141,6 +144,9 @@ PHYSICAL_FONT_CASES = {
     'wrong-num-mac',
 }
 REQUIRED_CAPTURES = {
+    'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
+    'courier-new-regular-adjacent': '20261114T004252975Z-a999e8fb',
+    'probe-column-fixed-dxa-4400': '20261114T004402030Z-30b8d3b5',
     'tabs-geometry-mac': '20261114T130556208Z-6d6ad7b2',
     '2col-mac': '20261114T231659226Z-87aed8b1',
     'char-spacing-mac': '20261114T231718277Z-f02fe908',

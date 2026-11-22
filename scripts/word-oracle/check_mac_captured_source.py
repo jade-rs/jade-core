@@ -5,6 +5,7 @@ Keep both; compare each Mac render with the unchanged Word-for-Mac capture.
 Original Windows Word PDF fonts supply deterministic font programs, not positions.
 """
 import argparse
+import gzip
 import hashlib
 import json
 import subprocess
@@ -21,6 +22,96 @@ CONTROL = 'public/fixtures/word-mac-probe-floating-order.docx'
 CONTROL_SHA256 = '32e7c583bddf915d4a036bc87222064b835993347fc52b0f9eabc8c912c6db96'
 REFERENCE = 'tests/word-oracle/mac-probes-20261019/word-mac-probe-floating-order.json'
 REFERENCE_SHA256 = 'cb175d41ea402a4d627322a067593deb8a62a9a11b079e75dbb8aded5c045504'
+
+# Immutable imported Word-for-Mac captures. Windows PDFs supply font programs
+# only; their coordinates never become Mac expectations. Missing version fields
+# in the historical Mac manifests remain missing.
+SHARED_ORIGINALS = {
+    'courier-new-line-metrics': (
+        'a17e0c561725568bcb95b5549cf1fd247af6e34ef34aeba411a38f9b32a08f27',
+        'cefeb9d78d82d84607f634f545fcb86c0275a72d3cea4c493ab16ef39cd3b4fe',
+        '3da277d5d09f772980616c41dc666a248176ee202cdbb4e01ef47944bfe3f21f', 4, 486),
+    'courier-new-regular-adjacent': (
+        '89ef3a72d6322925150d96932f407e839cbb1667052966442c76a0407a211465',
+        'ec16d63256e3db4cbbd33a8cb982f41d28e6a00d4bbb93ae0a46648182a25032',
+        '9e8f3e65417b9425a7d95cdb5e0c0f02f610ca357ea64332c53c34db6961fd14', 4, 390),
+    'probe-column-fixed-dxa-4400': (
+        '4ea5548ae2e68907aba9b8dc43e834ec07f293f0bb0c04de70a81fe567085b23',
+        '96702526e1b4a5eba635d86473921d23c86fcbc87c1621b81029c16a296f54f3',
+        'e59ebb510ceefa817f313a79cde0ffd50b5e6af9320165404d3b1bc12ac20deb', 2, 107),
+}
+
+
+def shared_originals(root=ROOT):
+    registry = read_json(root/'tests/word-oracle/platform-coordinates.json')
+    results = []
+    for name, (source_sha, manifest_sha, coordinates_sha, pages, glyphs) in SHARED_ORIGINALS.items():
+        cases = [c for c in registry['fixtures'] if c['mac_case'] == name]
+        require(len(cases) == 1, name + ': missing or duplicate shared Mac original')
+        case = cases[0]
+        require(case['source']['sha256'] == source_sha
+                and case['mac_manifest']['sha256'] == manifest_sha,
+                name + ': shared Mac source or manifest identity changed')
+        source = checked_file(root, case['source'])
+        manifest = read_json(checked_file(root, case['mac_manifest']))
+        raw = source.with_name('pages.json.gz').read_bytes()
+        require(hashlib.sha256(raw).hexdigest() == coordinates_sha
+                == manifest['coordinatesSha256'], name + ': shared Mac coordinates changed')
+        require(manifest['sourceSha256'] == source_sha
+                and manifest['reference']['platform'] == 'mac'
+                and manifest['reference']['application'] == 'Microsoft Word',
+                name + ': wrong Mac reference')
+        captured = json.loads(gzip.decompress(raw))
+        expected = dict(page_count=len(captured), glyphs=[
+            [i + 1, *g[:3]] for i, page in enumerate(captured) for g in page['body']])
+        require(len(captured) == manifest['pages'] == pages
+                and sum(not g[1].isspace() for g in expected['glyphs']) == glyphs,
+                name + ': shared Mac glyph/page coverage changed')
+        require(len(case['windows']) == 1
+                and case['windows'][0]['font_source'] == 'original-word-pdf',
+                name + ': missing original font-program provider')
+        results.append((name, case, source, manifest, expected, glyphs))
+    return results
+
+
+def check_shared_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(root):
+        provider = case['windows'][0]
+        archive, capture, document, _ = archive_reference(root, case, provider)
+        target = output/name
+        target.mkdir()
+        font_pdf = target/'original-Windows-font-provider.pdf'
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': font provider PDF changed')
+        font_pdf.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(font_pdf, fonts)
+        actual_file = target/'native.json'
+        painted = target/'native.pdf'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac', str(painted),
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': shared Mac glyph coverage removed')
+        for unclipped in (False, True):
+            require(compare(expected, pdf_origins(painted, unclipped),
+                            name + '/original-Mac-painted-PDF') == glyphs,
+                    name + ': shared Mac PDF glyph coverage removed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=provider['archive'],
+                            glyphs=glyphs, page_count=expected['page_count']))
+    require(len(results) == 3 and sum(r['glyphs'] for r in results) == 983,
+            'Shared Mac original coverage changed')
+    print('Three shared Mac originals983: layout and painted-PDF PASS', flush=True)
+    return results
 
 
 def require_mac_host(required):
@@ -91,10 +182,12 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
             'Schema normalization changed Mac origins/pages')
     require((output/'captured-original.png').read_bytes() ==
             (output/'normalized-control.png').read_bytes(), 'Schema normalization changed Mac pixels')
+    shared_results = check_shared_originals(executable, output/'shared-originals', root)
     result = dict(host=sys.platform,require_macos=require_macos,Mac_Word_version=raw['word_version'],
                   Mac_Word_build=raw['word_build'],Mac_capture_reference_sha256=REFERENCE_SHA256,
                   font_program_provider_Windows_Word=capture['word'],font_program_provider_archive=provider['capture'],
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
+                  shared_originals=shared_results,
                   scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
