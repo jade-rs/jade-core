@@ -145,3 +145,127 @@ fn a_keystroke_that_keeps_the_height_leaves_no_page_stale() {
     );
     assert!(!document.has_stale_pages());
 }
+
+/// Backspace and Delete keep no pagination proof of their own; the edited
+/// paragraph's lines staying in place is enough.
+#[test]
+fn a_backspace_that_keeps_the_lines_leaves_no_page_stale() {
+    let mut document = open_fixture("public/fixtures/yokohama.docx");
+    let paragraph = paragraph_on_page(&mut document, 0).unwrap();
+    for _ in 0..3 {
+        document.insert_text(paragraph, 0, "a", 1).unwrap();
+    }
+    assert!(!document.has_stale_pages());
+    document.delete_text(paragraph, 1, true, 1, 1).unwrap();
+    assert!(!document.has_stale_pages(), "Backspace");
+    document.delete_text(paragraph, 0, false, 1, 1).unwrap();
+    assert!(!document.has_stale_pages(), "Delete");
+
+    let mut fresh = open_bytes(&document.export_docx().unwrap());
+    for page in 0..fresh.page_count() {
+        assert_eq!(
+            document.page_pixels(page),
+            fresh.page_pixels(page),
+            "page {page}"
+        );
+    }
+    let paragraphs = sample_paragraphs(&mut fresh);
+    assert_eq!(
+        geometry(&mut document, &paragraphs),
+        geometry(&mut fresh, &paragraphs)
+    );
+}
+
+/// Typing in a table cell, bounded to the cell's page, without changing the
+/// cell's lines.
+#[test]
+fn a_keystroke_in_a_table_cell_leaves_no_page_stale() {
+    let mut document = open_fixture("public/fixtures/yokohama.docx");
+    let cell = (0..document.paragraph_count())
+        .find(|&paragraph| {
+            document
+                .renderer()
+                .selection_manager()
+                .cell_id_for_paragraph(paragraph)
+                .is_some()
+                && document
+                    .paragraph_text(paragraph)
+                    .is_some_and(|text| text.len() > 2)
+        })
+        .expect("a table cell with text");
+    let rect = document.position_rect(cell, 0).unwrap();
+    let page = document.page_and_offset(rect.document_y).0;
+    document.insert_text(cell, 0, "a", page + 1).unwrap();
+    assert_eq!(document.position_rect(cell, 0).unwrap().height, rect.height);
+    assert!(!document.has_stale_pages());
+    let fresh = open_bytes(&document.export_docx().unwrap());
+    for page in 0..fresh.page_count() {
+        assert_eq!(
+            document.page_pixels(page),
+            fresh.page_pixels(page),
+            "page {page}"
+        );
+    }
+}
+
+/// An edit that lengthens the document by a page: the page it adds is drawn
+/// with the rest.
+#[test]
+fn a_page_the_edit_adds_is_drawn_too() {
+    let mut document = open_fixture("public/fixtures/yokohama.docx");
+    let pages = document.page_count();
+    let paragraph = paragraph_on_page(&mut document, 0).unwrap();
+    document
+        .insert_text(paragraph, 0, &"あいうえおかきくけこ".repeat(250), 1)
+        .unwrap();
+    let fresh = open_bytes(&document.export_docx().unwrap());
+    assert!(fresh.page_count() > pages, "the document grew");
+    assert!(document.paint_stale_pages(0..usize::MAX).unwrap());
+    assert!(!document.has_stale_pages());
+    assert_eq!(document.page_count(), fresh.page_count());
+    for page in 0..fresh.page_count() {
+        assert_eq!(
+            document.page_pixels(page),
+            fresh.page_pixels(page),
+            "page {page}"
+        );
+    }
+
+    // The same through a caret query, which lays the document out first.
+    let mut document = open_fixture("public/fixtures/yokohama.docx");
+    document
+        .insert_text(paragraph, 0, &"あいうえおかきくけこ".repeat(250), 1)
+        .unwrap();
+    let last = document.paragraph_count() - 1;
+    document.place_caret(last, 0);
+    assert!(document.paint_stale_pages(0..usize::MAX).unwrap());
+    assert_eq!(document.page_count(), fresh.page_count());
+    for page in 0..fresh.page_count() {
+        assert_eq!(
+            document.page_pixels(page),
+            fresh.page_pixels(page),
+            "caret first: page {page}"
+        );
+    }
+}
+
+/// With footnotes the registry holds entries past the bound that have no
+/// lines; caret queries for them still answer from the new layout.
+#[test]
+fn a_wrapping_keystroke_in_a_document_with_footnotes_keeps_caret_queries_right() {
+    let mut document = open_fixture("public/fixtures/footnote-long-continuation.docx");
+    type_until_it_wraps(&mut document);
+    let mut fresh = open_bytes(&document.export_docx().unwrap());
+    let paragraphs: Vec<usize> = (0..fresh.paragraph_count()).collect();
+    let rects = |document: &mut Doc| -> Vec<_> {
+        paragraphs
+            .iter()
+            .map(|&paragraph| {
+                document
+                    .position_rect(paragraph, 0)
+                    .map(|rect| ((rect.x * 100.0) as i64, (rect.document_y * 100.0) as i64))
+            })
+            .collect()
+    };
+    assert_eq!(rects(&mut document), rects(&mut fresh));
+}
