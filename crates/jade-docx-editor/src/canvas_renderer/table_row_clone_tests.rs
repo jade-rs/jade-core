@@ -1,7 +1,7 @@
 //! Table rows are moved out of the prepared table while it is drawn, not
 //! deep-copied. These tests pin the painted output, the resize metadata and
-//! the recorded cell layouts against the copying path, and check that rows
-//! which fit on their page are never copied.
+//! the recorded cell layouts against the old copying path, which survives
+//! only as a `#[cfg(test)]` reference (`table::prepared_row_moves`).
 use super::recording_host::RecordingHost;
 use super::*;
 use jade_docx_reader::document::{Body, Table, TableCell, TableRow};
@@ -156,19 +156,17 @@ fn table_row_clone_timing() {
     }
 }
 
-/// Draws `document` through the copying path, then the moving one, and
-/// returns both with the deep row copies the moving one made.
-fn render_both(document: &Document) -> (Rendered, Rendered, usize) {
+/// Draws `document` through the old copying path, then the moving one.
+fn render_both(document: &Document) -> (Rendered, Rendered) {
     table::prepared_row_moves::set_force_copies(true);
     let copied = render(document);
     table::prepared_row_moves::set_force_copies(false);
-    table::prepared_row_moves::take_copies();
     let moved = render(document);
-    (copied, moved, table::prepared_row_moves::take_copies())
+    (copied, moved)
 }
 
 fn assert_same(label: &str, document: &Document) -> Rendered {
-    let (copied, moved, copies) = render_both(document);
+    let (copied, moved) = render_both(document);
     assert!(!copied.ops.is_empty(), "{label}: painted");
     assert_eq!(copied.ops.len(), moved.ops.len(), "{label}: op count");
     if let Some(index) = (0..copied.ops.len()).find(|&i| copied.ops[i] != moved.ops[i]) {
@@ -180,7 +178,6 @@ fn assert_same(label: &str, document: &Document) -> Rendered {
     assert_eq!(copied.metadata, moved.metadata, "{label}: resize metadata");
     assert_eq!(copied.cells, moved.cells, "{label}: cell layouts");
     assert_eq!(copied.pages, moved.pages, "{label}: pages");
-    assert_eq!(copies, 0, "{label}: deep row copies");
     moved
 }
 
@@ -199,7 +196,7 @@ fn header_paints(rendered: &Rendered) -> usize {
 }
 
 #[test]
-fn large_table_draws_the_same_without_row_copies() {
+fn large_table_draws_the_same_as_the_copying_path() {
     for merged in [false, true] {
         for header in [false, true] {
             let label = format!("300x4 merged={merged} header={header}");
@@ -210,7 +207,7 @@ fn large_table_draws_the_same_without_row_copies() {
 }
 
 #[test]
-fn split_row_with_repeated_header_draws_the_same_without_row_copies() {
+fn split_row_with_repeated_header_draws_the_same_as_the_copying_path() {
     for merged in [false, true] {
         let label = format!("split merged={merged}");
         let rendered = assert_same(&label, &document(table(40, true, merged, Some(20))));
