@@ -167,6 +167,9 @@ PHYSICAL_FONT_CASES = {
     'probe-unequal-variant-narrow-first-2-9-dxa',
     'probe-width-equal-auto-0-pct-2500',
     'probe-width-single-auto-0-pct-2500',
+    'probe-unequal-autofit-wrapped-header',
+    'probe-unequal-center-narrow-first-2-9',
+    'probe-unequal-center-three-10',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -312,6 +315,9 @@ REQUIRED_CAPTURES = {
     'probe-unequal-variant-narrow-first-2-9-dxa': '20261114T004559814Z-c5e13cee',
     'probe-width-equal-auto-0-pct-2500': '20261114T004559814Z-c5e13cee',
     'probe-width-single-auto-0-pct-2500': '20261114T004612020Z-5d981186',
+    'probe-unequal-autofit-wrapped-header': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-center-narrow-first-2-9': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-center-three-10': '20261114T004519313Z-65bdf3a6',
 }
 
 # These original inputs have distinct screen and print origins in Windows

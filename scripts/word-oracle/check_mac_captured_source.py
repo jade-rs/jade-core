@@ -139,6 +139,18 @@ SHARED_ORIGINALS = {
         '507021382dc70224b5842454c13b3a28c4685824e65feb02bbf5257c7c52cfea',
         '919a01910562695afa8d76c491ea0364dcc2f116743c42f27b67f84529f08d97',
         'd6606df22b93edfd37faedda873a7b175152228e2e715aea49cc8a29e16cbbd6', 3, 59),
+    'probe-unequal-autofit-wrapped-header': (
+        'bfd024d72540b3dcc0be838e37713438e17502e9b83e70c990efadafb96ee597',
+        '84641c8a20c2ab6b87dcb2863d7c3083716268c0e8bf36f2200587c81dd042ff',
+        'e257cf3ee6c0c3c99601b3cb99244cd32a9854d91e29d8dbf3844662924a7101', 8, 1709),
+    'probe-unequal-center-narrow-first-2-9': (
+        '095b0e6682e3dadcd39d03a610e1fd23c0a384574db01145882a1266c704c561',
+        'f49db3f04a8c32081ad0cfc3b553ce7f36037bdc07e31183ef2b39a2471abf71',
+        'd6bdef4bc1aaf164d25ad63d5eedd19a503fcb9e0c4bca70d180a59a311090f5', 2, 152),
+    'probe-unequal-center-three-10': (
+        '357abec2fde6a5121d936be7e9cdc07e2aeb5b0846ccf358a51d766c97fb38c1',
+        '3bbb637c143cc3cd9678e0c4b3b54ff762f07b495a4e3fc8559a17202072a6d5',
+        '8b3d72dbd72fcdebf464605a95d75798d7e5237dc529dbd082efc1cf4cb374c0', 1, 115),
 }
 
 
@@ -212,9 +224,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 28 and sum(r['glyphs'] for r in results) == 17267,
+    require(len(results) == 31 and sum(r['glyphs'] for r in results) == 19243,
             'Shared Mac original coverage changed')
-    print('28 shared Mac originals17267: layout and painted-PDF PASS', flush=True)
+    print('31 shared Mac originals19243: layout and painted-PDF PASS', flush=True)
     return results
 
 
