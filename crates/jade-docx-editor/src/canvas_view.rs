@@ -7759,7 +7759,7 @@ impl OffscreenDocumentView {
         }
 
         let anchor_paragraph = reanchor
-            .then(|| self.object_anchor_paragraph_for_transform(transform))
+            .then(|| self.object_reanchor_paragraph(target, transform).0)
             .flatten();
         self.renderer.borrow_mut().set_object_transform_preview(
             target,
@@ -7797,9 +7797,12 @@ impl OffscreenDocumentView {
             .borrow()
             .object_selection
             .ok_or_else(|| JsValue::from_str("No object selected"))?;
-        let anchor_paragraph = reanchor
-            .then(|| self.object_anchor_paragraph_for_transform(transform))
-            .flatten();
+        let (anchor_paragraph, kept_for_table) = if reanchor {
+            self.object_reanchor_paragraph(target, transform)
+        } else {
+            (None, false)
+        };
+        let reanchor = reanchor && !kept_for_table;
         let anchor_paragraph_top = if target.kind == FloatingObjectKind::TextBox && reanchor {
             let paragraph_index = anchor_paragraph.unwrap_or(target.paragraph_index);
             self.renderer
@@ -7891,6 +7894,30 @@ impl OffscreenDocumentView {
             None,
         )
         .await
+    }
+
+    /// The paragraph a drag re-anchors the object to. An object whose anchor
+    /// is in a table cell, or that would move into one, keeps its anchor:
+    /// re-anchoring there would store body frames for an object Word lays
+    /// out in its cell, and it would jump.
+    ///
+    /// Returns the paragraph, and whether a table cell kept the anchor.
+    fn object_reanchor_paragraph(
+        &self,
+        target: FloatingObjectTarget,
+        transform: FloatingObjectTransform,
+    ) -> (Option<usize>, bool) {
+        let destination = self.object_anchor_paragraph_for_transform(transform);
+        let state = self.state.borrow();
+        let Some(document) = state.word_doc.as_ref() else {
+            return (destination, false);
+        };
+        let anchor = reanchor_outside_tables(target.paragraph_index, destination, |index| {
+            document.paragraph_is_in_table(index)
+        });
+        let kept = document.paragraph_is_in_table(target.paragraph_index)
+            || (destination.is_some() && anchor.is_none());
+        (anchor, kept)
     }
 
     fn object_anchor_paragraph_for_transform(
@@ -22505,10 +22532,36 @@ impl OffscreenDocumentView {
     }
 }
 
+/// `destination`, unless it or the object's `source` anchor paragraph is in
+/// a table cell: such an object keeps its anchor (and its cell frames).
+fn reanchor_outside_tables(
+    source: usize,
+    destination: Option<usize>,
+    in_table: impl Fn(usize) -> bool,
+) -> Option<usize> {
+    destination.filter(|&destination| !in_table(source) && !in_table(destination))
+}
+
 include!("crdt_live_view.rs");
 
 #[cfg(test)]
 mod tests {
+    /// A drag keeps a cell object's anchor, and does not move a body object
+    /// into a cell: either would store body frames for a cell layout.
+    #[test]
+    fn drags_do_not_reanchor_into_out_of_or_within_table_cells() {
+        // Paragraphs 2 and 3 are in table cells.
+        let in_table = |index: usize| matches!(index, 2 | 3);
+        assert_eq!(
+            super::reanchor_outside_tables(0, Some(1), in_table),
+            Some(1)
+        );
+        assert_eq!(super::reanchor_outside_tables(0, None, in_table), None);
+        assert_eq!(super::reanchor_outside_tables(0, Some(2), in_table), None);
+        assert_eq!(super::reanchor_outside_tables(2, Some(0), in_table), None);
+        assert_eq!(super::reanchor_outside_tables(2, Some(3), in_table), None);
+    }
+
     /// No Markup and Original drop one side of each revision from layout, so
     /// a selection's display offsets have to skip those runs before they can
     /// be compared with revision offsets. A boundary next to a hidden run

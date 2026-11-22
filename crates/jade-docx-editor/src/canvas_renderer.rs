@@ -15542,6 +15542,14 @@ where
         self.image_debug_regions.borrow_mut().clear();
         self.text_box_debug_regions.borrow_mut().clear();
         self.grouped_shape_text_regions.borrow_mut().clear();
+        // Cell float frames are rebuilt with every object region; a render
+        // that keeps some regions keeps their frames too.
+        if !preserve_pixel_pagination
+            && stable_edit_metadata.is_none()
+            && incremental_dirty_from.is_none()
+        {
+            self.cell_float_frames.borrow_mut().clear();
+        }
         // Pixel-only walks skip other pages without changing their geometry.
         // Move the authoritative regions aside rather than cloning every
         // object in a long document for each bitmap request.

@@ -560,31 +560,6 @@ fn cell_floating_object(
     (!object.layout().hidden()).then_some(object)
 }
 
-/// Paragraph surfaces the model enumerates for a text box's `blocks` (as
-/// `CanvasRenderer::body_element_paragraph_surface_count`).
-fn text_box_surface_count(elements: &[BodyElement]) -> usize {
-    elements
-        .iter()
-        .map(|element| match element {
-            BodyElement::Paragraph(paragraph) => {
-                1 + paragraph
-                    .runs
-                    .iter()
-                    .filter_map(|run| run.text_box.as_ref())
-                    .map(|text_box| text_box_surface_count(&text_box.blocks))
-                    .sum::<usize>()
-            }
-            BodyElement::Table(table) => table
-                .rows
-                .iter()
-                .flat_map(|row| &row.cells)
-                .map(|cell| text_box_surface_count(&cell.blocks))
-                .sum(),
-            BodyElement::Math(_) => 1,
-        })
-        .sum()
-}
-
 /// The line of `lines` that holds byte `offset`: the first line ending past
 /// it, or the last line for an anchor at the paragraph's end.
 fn cell_anchor_line_index(lines: &[LineLayout], offset: usize) -> Option<usize> {
@@ -16468,7 +16443,8 @@ fn collect_paragraph_text_and_floats(
         let surface_offset = floats.text_box_surfaces;
         if collect_floats {
             if let Some(text_box) = run.text_box.as_ref() {
-                floats.text_box_surfaces += text_box_surface_count(&text_box.blocks);
+                floats.text_box_surfaces +=
+                    <CanvasRenderer>::body_element_paragraph_surface_count(&text_box.blocks);
             }
         }
         if !render_changes {
@@ -18496,40 +18472,31 @@ where
                 }
             }
             CellFloatingKind::TextBox(text_box) => {
-                let target = FloatingObjectTarget {
-                    paragraph_index,
-                    run_index: object.run_index,
-                    kind: FloatingObjectKind::TextBox,
-                };
                 // The box's own paragraphs follow its host's in the model.
                 let saved_counter = self.paragraph_counter;
                 self.paragraph_counter = paragraph_index + 1 + object.surface_offset;
-                // Laid out in the cell, the box is placed through the
-                // preview slot (a drag preview of it still wins), so the
-                // body's resolution puts it at the cell-relative point.
-                let saved_preview = self.object_transform_preview;
-                if in_cell {
+                let result = if in_cell {
+                    let target = FloatingObjectTarget {
+                        paragraph_index,
+                        run_index: object.run_index,
+                        kind: FloatingObjectKind::TextBox,
+                    };
                     let (width, height) = cell_floating_text_box_size(text_box, frame.line_height);
                     let ((x, y), (origin_x, origin_y)) =
                         cell_floating_origin(layout, frame, width, height, page_number);
-                    let transform = match saved_preview.filter(|p| p.target == target) {
-                        Some(preview) => preview.transform,
-                        None => {
-                            let transform = FloatingObjectTransform {
+                    let transform = self
+                        .object_transform_preview
+                        .filter(|preview| preview.target == target)
+                        .map_or(
+                            FloatingObjectTransform {
                                 x,
                                 y,
                                 width,
                                 height,
                                 rotation_deg: layout.rotation_deg.unwrap_or(0.0),
-                            };
-                            self.object_transform_preview = Some(ObjectTransformPreview {
-                                target,
-                                transform,
-                                anchor_paragraph_index: None,
-                            });
-                            transform
-                        }
-                    };
+                            },
+                            |preview| preview.transform,
+                        );
                     self.record_cell_float_frame(CellFloatFrameRecord {
                         target,
                         page: page_number,
@@ -18538,16 +18505,24 @@ where
                         origin_x,
                         origin_y,
                     });
-                }
-                let result = self.render_floating_text_box(
-                    text_box,
-                    paragraph_index,
-                    object.run_index,
-                    frame.paragraph_top,
-                    frame.line_height,
-                    true,
-                );
-                self.object_transform_preview = saved_preview;
+                    self.render_inline_text_box(
+                        text_box,
+                        paragraph_index,
+                        object.run_index,
+                        transform,
+                        true,
+                    )
+                } else {
+                    self.render_floating_text_box(
+                        text_box,
+                        paragraph_index,
+                        object.run_index,
+                        frame.paragraph_top,
+                        frame.line_height,
+                        true,
+                    )
+                    .map(|_| ())
+                };
                 self.paragraph_counter = saved_counter;
                 result?;
             }
