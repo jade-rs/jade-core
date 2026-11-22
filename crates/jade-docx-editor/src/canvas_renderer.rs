@@ -35734,7 +35734,14 @@ where
                 run_style_key::windows_key_impl::<false>(properties, doc_grid_char_spacing_px)
             };
         }
+        // FxHasher's state starts at zero and folds each word as
+        // `(state + word) * K`, so while the state is zero every `None` field
+        // (a zero word) is a no-op and the position of the first `Some` is
+        // lost. `font_family: Some(x)` then hashed like `fonts.east_asia:
+        // Some(x)`, and the cache returned the other run's style and line
+        // metrics. An odd seed keeps the state nonzero, so field positions count.
         let mut hasher = FxHasher::default();
+        0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {
             props.style.hash(&mut hasher);
