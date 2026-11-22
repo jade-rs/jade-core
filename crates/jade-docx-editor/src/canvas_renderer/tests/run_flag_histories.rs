@@ -1152,6 +1152,253 @@ fn cleared_east_asia_font_then_family_preserves_fresh_baseline() {
     }
 }
 
+// Word for Mac picks the East Asian fallback face from the language, so the
+// applied-style cache must not hand a ja-JP run's face to a zh-CN run.
+#[test]
+fn mac_applied_style_key_separates_east_asian_languages() {
+    let _restore = RestoreWordPlatform::mac();
+    let props = |language: &str| RunProperties {
+        fonts: Some(RunFonts {
+            ascii: Some("Arial".into()),
+            east_asia: Some("Arial".into()),
+            ..Default::default()
+        }),
+        east_asia_language: Some(language.into()),
+        ..Default::default()
+    };
+    let (japanese, chinese) = (props("ja-JP"), props("zh-CN"));
+    assert_ne!(
+        <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&japanese), None),
+        <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&chinese), None),
+    );
+    let east_asia = |renderer: &CanvasRenderer<RecordingPainter>, props: &RunProperties| {
+        renderer
+            .resolve_applied_run_style_cached(Some(props))
+            .descriptor_for_rc(ScriptCategory::EastAsia)
+            .to_string()
+    };
+    let (fresh_japanese, _) = renderer_with_painter();
+    let (fresh_chinese, _) = renderer_with_painter();
+    let expected = (
+        east_asia(&fresh_japanese, &japanese),
+        east_asia(&fresh_chinese, &chinese),
+    );
+    assert_ne!(
+        expected.0, expected.1,
+        "the languages must pick different faces"
+    );
+    let (warm, _) = renderer_with_painter();
+    assert_eq!(east_asia(&warm, &japanese), expected.0);
+    assert_eq!(east_asia(&warm, &chinese), expected.1);
+}
+
+// The applied-style key leaves out fields that do not change the applied
+// style, such as the highlight. Runs that differ only there share the cached
+// style; alternating them must not re-resolve or replace it.
+#[test]
+fn applied_style_cache_keeps_runs_that_differ_outside_the_key() {
+    for windows in [false, true] {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let _restore = RestoreWordPlatform::mac();
+        if windows {
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+        }
+        let (renderer, _) = renderer_with_painter();
+        let plain = RunProperties {
+            bold: Some(true),
+            ..Default::default()
+        };
+        let highlighted = RunProperties {
+            highlight: Some("yellow".into()),
+            ..plain.clone()
+        };
+        assert_eq!(
+            <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&plain), None),
+            <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&highlighted), None),
+            "the test needs runs that share a key"
+        );
+        let first_plain = renderer.resolve_applied_run_style_cached(Some(&plain));
+        let first_highlighted = renderer.resolve_applied_run_style_cached(Some(&highlighted));
+        let entries = || renderer.applied_run_style_cache.borrow().len();
+        let before = entries();
+        for _ in 0..100 {
+            assert!(Rc::ptr_eq(
+                &renderer.resolve_applied_run_style_cached(Some(&plain)),
+                &first_plain
+            ));
+            assert!(Rc::ptr_eq(
+                &renderer.resolve_applied_run_style_cached(Some(&highlighted)),
+                &first_highlighted
+            ));
+        }
+        assert_eq!(entries(), before, "no replacements, windows={windows}");
+    }
+}
+
+// Word for Mac picks the East Asian fallback face from the language, so the
+// wrap cache must not hand a ja-JP paragraph's wrap to a zh-CN one. Render
+// each language first (a fresh wrap) and second (after the other language's
+// wrap of the same text) and compare its line boxes.
+#[test]
+fn mac_wrap_cache_separates_east_asian_languages() {
+    let _restore = RestoreWordPlatform::mac();
+    let options = Options {
+        show_formatting_marks: false,
+        show_crop_marks: false,
+        ..Default::default()
+    };
+    let lines = |first: &str, second: &str| {
+        let mut document = doc_with_paragraph_texts(&["税あ e", "税あ e", "UNCHANGED"]);
+        for (index, language) in [first, second].into_iter().enumerate() {
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[index]
+            else {
+                unreachable!()
+            };
+            paragraph.runs[0].properties = Some(RunProperties {
+                fonts: Some(RunFonts {
+                    ascii: Some("Arial".into()),
+                    east_asia: Some("Arial".into()),
+                    ..Default::default()
+                }),
+                east_asia_language: Some(language.into()),
+                ..Default::default()
+            });
+        }
+        let (mut renderer, _) = renderer_with_painter();
+        renderer.render(&document, &options).unwrap();
+        renderer.layout_debug_lines()
+    };
+    let boxes = |lines: &[LayoutLineDebug], paragraph: usize| {
+        lines
+            .iter()
+            .filter(|line| line.paragraph == paragraph)
+            .map(|line| (line.height, line.baseline - line.top))
+            .collect::<Vec<_>>()
+    };
+    let japanese_first = lines("ja-JP", "zh-CN");
+    let chinese_first = lines("zh-CN", "ja-JP");
+    assert_ne!(
+        boxes(&japanese_first, 0),
+        boxes(&chinese_first, 0),
+        "the languages must lay out differently"
+    );
+    assert_eq!(
+        boxes(&chinese_first, 1),
+        boxes(&japanese_first, 0),
+        "ja-JP second"
+    );
+    assert_eq!(
+        boxes(&japanese_first, 1),
+        boxes(&chinese_first, 0),
+        "zh-CN second"
+    );
+}
+
+// The paragraph render cache is keyed by a hash of the run formatting. A
+// change to only the character style, the fit-text width or the complex-script
+// size must not replay the previous draw commands.
+#[test]
+fn render_cache_observes_run_style_fit_text_and_complex_size() {
+    type RunEdit = fn(&mut RunProperties);
+    let edits: [(&str, RunEdit); 3] = [
+        ("style", |p| p.style = Some("Emphatic".into())),
+        ("fit_text", |p| {
+            p.fit_text = Some(RunFitText {
+                val: 2400,
+                id: Some(7),
+            })
+        }),
+        ("font_size_complex", |p| p.font_size_complex = Some(28.0)),
+    ];
+    let styles = || {
+        Rc::new(
+            StylesPart::from_xml(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                  <w:style w:type="character" w:styleId="Emphatic"><w:rPr>
+                    <w:sz w:val="40"/><w:szCs w:val="40"/><w:color w:val="C00000"/></w:rPr></w:style>
+                </w:styles>"#,
+            )
+            .unwrap(),
+        )
+    };
+    let options = Options {
+        show_formatting_marks: false,
+        show_crop_marks: false,
+        ..Default::default()
+    };
+    let base_props = RunProperties {
+        bold: Some(true),
+        ..Default::default()
+    };
+    for windows in [false, true] {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        let _restore = RestoreWordPlatform::mac();
+        if windows {
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+        }
+        for (name, edit) in edits {
+            let (keys, _) = renderer_with_painter();
+            let mut changed = base_props.clone();
+            edit(&mut changed);
+            let key = |props: &RunProperties| {
+                let mut run = build_run(Some(props.clone()));
+                run.text = TEXTS[1].into();
+                let paragraph = Paragraph {
+                    properties: None,
+                    runs: vec![run],
+                    node_id: None,
+                    comment_ranges: Vec::new(),
+                    comment_markers: Vec::new(),
+                };
+                keys.compute_paragraph_render_hash(&paragraph, &options, None)
+            };
+            assert_ne!(key(&base_props), key(&changed), "{name}, windows={windows}");
+            let mut document = doc_with_paragraph_texts(&[TEXTS[1], "UNCHANGED"]);
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            paragraph.runs[0].properties = Some(base_props.clone());
+            let (mut warm, painter) = renderer_with_painter();
+            warm.set_style_context(Some(styles()), None);
+            warm.render(&document, &options).unwrap();
+            let BodyElement::Paragraph(paragraph) =
+                &mut document.body.as_mut().unwrap().elements[0]
+            else {
+                unreachable!()
+            };
+            edit(paragraph.runs[0].properties.as_mut().unwrap());
+            // Relayout the edited paragraph as the inline-style path does, but
+            // keep its render cache entry, so only the render hash decides
+            // whether the old draw commands are replayed.
+            warm.disable_seek_replay_once();
+            warm.set_incremental_dirty_from(0);
+            warm.mark_paragraph_dirty(0);
+            warm.mark_full_repaint();
+            painter.clear();
+            warm.render(&document, &options).unwrap();
+            let (mut fresh, fresh_painter) = renderer_with_painter();
+            fresh.set_style_context(Some(styles()), None);
+            fresh.render(&document, &options).unwrap();
+            let context = format!("{name}, windows={windows}");
+            let warm_layout = serde_json::to_value(warm.layout_debug_lines()).unwrap();
+            let fresh_layout = serde_json::to_value(fresh.layout_debug_lines()).unwrap();
+            assert_eq!(
+                layout_difference(&warm_layout, &fresh_layout),
+                None,
+                "{context}"
+            );
+            assert_eq!(
+                ink(&painter, &mut PaintState::new()),
+                ink(&fresh_painter, &mut PaintState::new()),
+                "{context}"
+            );
+        }
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
     #[test]

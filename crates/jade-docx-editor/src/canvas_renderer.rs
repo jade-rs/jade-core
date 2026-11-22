@@ -5033,6 +5033,8 @@ where
     last_render_body_element_count: u64,
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
+    /// The key is trusted on a hit, so it is 64 bits wide on every target
+    /// (see [`run_style_key::RunStyleKeyHasher`]).
     applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
     /// Windows font-line summaries, validated against owned run inputs.
     paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
@@ -11641,7 +11643,7 @@ where
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
-                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                    hasher = run_style_key::hash_languages(props, hasher);
                 }
                 props.bold.hash(&mut hasher);
                 props.italic.hash(&mut hasher);
@@ -13333,8 +13335,9 @@ where
                     border.color.hash(&mut hasher);
                 }
                 props.baseline.as_deref().hash(&mut hasher);
-                // Encode the five Option tags once; keep field order and all
-                // float bits, including signed zero and NaN payloads.
+                // Encode the Option tags once in a presence mask; keep field
+                // order and all float bits, including signed zero and NaN
+                // payloads. Unset fields then cost a branch, not a hash write.
                 let mut metric_presence = 0_u8;
                 macro_rules! hash_metric {
                     ($field:ident, $bit:expr) => {
@@ -13349,10 +13352,21 @@ where
                 hash_metric!(kerning, 2);
                 hash_metric!(text_scale, 3);
                 hash_metric!(font_size, 4);
+                hash_metric!(font_size_complex, 5);
+                // The character style and fit-text width change the resolved
+                // style and glyph positions as much as direct formatting does.
+                if let Some(style) = props.style.as_deref() {
+                    metric_presence |= 1 << 6;
+                    style.hash(&mut hasher);
+                }
+                if let Some(fit) = props.fit_text.as_ref() {
+                    metric_presence |= 1 << 7;
+                    (fit.val, fit.id).hash(&mut hasher);
+                }
                 metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
-                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                    hasher = run_style_key::hash_languages(props, hasher);
                 }
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
@@ -36240,7 +36254,7 @@ where
         // lost. `font_family: Some(x)` then hashed like `fonts.east_asia:
         // Some(x)`, and the cache returned the other run's style and line
         // metrics. An odd seed keeps the state nonzero, so field positions count.
-        let mut hasher = FxHasher::default();
+        let mut hasher = run_style_key::RunStyleKeyHasher::default();
         0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {
@@ -36316,6 +36330,13 @@ where
                 hint_tag.hash(&mut hasher);
             } else {
                 Option::<String>::None.hash(&mut hasher);
+            }
+            // Word for Mac picks the East Asian fallback face from the
+            // language (`font_resolver`), so ja-JP and zh-CN runs with the
+            // same fonts resolve to different faces and metrics.
+            if INCLUDE_LANGUAGES && (props.language.is_some() || props.east_asia_language.is_some())
+            {
+                hasher = run_style_key::hash_languages(props, hasher);
             }
         } else {
             0_u8.hash(&mut hasher);
