@@ -12982,6 +12982,11 @@ where
         }
 
         let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
+        // Fx64Hasher starts at zero like FxHasher. Seed it so an empty
+        // paragraph's leading zero writes are not no-ops. Native keys stay
+        // exactly as they were.
+        #[cfg(not(target_pointer_width = "64"))]
+        0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
 
         // Hash paragraph text as one contiguous byte stream to avoid allocating
         // a temporary concatenated String on every render.

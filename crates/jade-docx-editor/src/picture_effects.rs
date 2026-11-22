@@ -41,7 +41,7 @@ pub fn effective_data_uri(image: &RunImage) -> Option<Cow<'_, str>> {
     if image.format().blip_effects.is_empty() && soft_edge.is_none() {
         return Some(Cow::Borrowed(data_uri));
     }
-    let mut hasher = rustc_hash::FxHasher::default();
+    let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
     data_uri.hash(&mut hasher);
     format!("{:?}{:?}", image.format().blip_effects, soft_edge).hash(&mut hasher);
     let key = hasher.finish();

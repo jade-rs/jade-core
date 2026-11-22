@@ -2170,7 +2170,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
 }
 
 // Hash serialized inputs directly into the key without building a JSON buffer.
-struct TableWrapHashWriter(FxHasher);
+struct TableWrapHashWriter(jade_docx_layout::key_hasher::CacheKeyHasher);
 
 impl std::io::Write for TableWrapHashWriter {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
@@ -2198,7 +2198,8 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
             .as_ref()
             .filter(|_| paragraph_style.oracle_advance_px_by_text_offset.is_none());
         let key = cache.and_then(|_| {
-            let mut writer = TableWrapHashWriter(FxHasher::default());
+            let mut writer =
+                TableWrapHashWriter(jade_docx_layout::key_hasher::CacheKeyHasher::default());
             text.hash(&mut writer.0);
             for run in run_styles {
                 if ciborium::ser::into_writer(
@@ -2225,7 +2226,7 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
                     })
                     .hash(&mut writer.0);
             }
-            let mut style_hasher = FxHasher::default();
+            let mut style_hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
             CanvasRenderer::<P>::compute_wrap_style_hash(paragraph_style).hash(&mut style_hasher);
             // Preserve exact widths/indents instead of the body's centipixel
             // key quantization; even tiny changes can cross a wrap boundary.
@@ -2449,7 +2450,7 @@ where
         text: &str,
         font_descriptor: &str,
     ) -> Result<f64, Self::Error> {
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         font_descriptor.hash(&mut hasher);
         text.hash(&mut hasher);
         let key = hasher.finish();
