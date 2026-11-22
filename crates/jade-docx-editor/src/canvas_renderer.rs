@@ -5099,6 +5099,9 @@ where
     /// The page-start, page and column seek keys this layout pass recorded,
     /// so a complete pass can drop what earlier layouts left behind.
     seek_pass_record: RefCell<SeekPassRecord>,
+    /// `page_section_indices` as the current pass found it, kept in one
+    /// buffer across passes.
+    page_sections_before_pass: Vec<usize>,
     /// Same snapshots indexed by 1-indexed page number.
     page_start_seek_cache_by_page: RefCell<FxHashMap<usize, PageStartSeekSnapshot>>,
     /// Seek snapshots indexed by (1-indexed page number, 0-indexed column index).
@@ -6764,17 +6767,9 @@ where
         // A snapshot an earlier layout left behind would otherwise skip
         // everything before it.
         let anchor = snapshot.paragraph_index;
-        let checks_layout = anchor == dirty_from
-            || self
-                .paragraph_layout_cache
-                .borrow()
-                .get_entry(anchor)
-                .is_some();
         if anchor > dirty_from
             || !self.seek_anchor_is_body_paragraph(&snapshot)
-            || (checks_layout
-                && !self
-                    .paragraph_seek_snapshot_matches_layout(anchor, &snapshot, "selected", options))
+            || !self.paragraph_seek_snapshot_matches_layout(anchor, &snapshot, "selected", options)
         {
             return None;
         }
@@ -10556,6 +10551,7 @@ where
             page_export_mode: false,
             page_start_seek_cache: RefCell::new(BTreeMap::new()),
             seek_pass_record: RefCell::new(SeekPassRecord::default()),
+            page_sections_before_pass: Vec::new(),
             page_start_seek_cache_by_page: RefCell::new(FxHashMap::default()),
             page_column_seek_cache: RefCell::new(FxHashMap::default()),
             paragraph_seek_cache: RefCell::new(BTreeMap::new()),
@@ -11557,6 +11553,13 @@ where
     #[allow(dead_code)]
     pub fn clear_paragraph_layout_cache(&mut self) {
         self.paragraph_layout_cache.borrow_mut().clear();
+        // Seek snapshots are validated against the layout cache; without it
+        // they cannot be checked.
+        self.page_start_seek_cache.borrow_mut().clear();
+        self.page_start_seek_cache_by_page.borrow_mut().clear();
+        self.page_column_seek_cache.borrow_mut().clear();
+        self.paragraph_seek_cache.borrow_mut().clear();
+        self.forced_seek_snapshot = None;
     }
 
     // ==================================================================    // Paragraph Wrap Cache (Line Wrapping Results)
@@ -13754,7 +13757,7 @@ where
     /// column, or the document no longer has them, so resuming from one would
     /// skip whatever now comes before it.
     fn drop_seek_snapshots_not_recorded_this_pass(&self) {
-        let record = std::mem::take(&mut *self.seek_pass_record.borrow_mut());
+        let record = self.seek_pass_record.borrow();
         let from = record.from;
         self.page_start_seek_cache
             .borrow_mut()
@@ -13783,13 +13786,21 @@ where
         self.paragraph_layout_cache
             .borrow_mut()
             .remove_range(range.clone());
+        let mut dropped_any = false;
         for cache in [&self.page_start_seek_cache, &self.paragraph_seek_cache] {
             let mut cache = cache.borrow_mut();
             if cache.range(range.clone()).next().is_some() {
                 let mut tail = cache.split_off(&range.start);
                 let mut after = tail.split_off(&range.end);
                 cache.append(&mut after);
+                dropped_any = true;
             }
+        }
+        // Page and column snapshots are recorded with a page-start or
+        // paragraph snapshot of the same paragraph, so with neither in
+        // `range` none of them points into it.
+        if !dropped_any {
+            return;
         }
         let outside = |snapshot: &PageStartSeekSnapshot| !range.contains(&snapshot.paragraph_index);
         self.page_start_seek_cache_by_page
@@ -16360,7 +16371,9 @@ where
         let authoritative_mid_page_section_starts =
             snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
         let previous_page_origins = self.page_origins.clone();
-        let previous_page_sections = self.page_section_indices.clone();
+        // One buffer across passes: a seek restores the skipped pages from it.
+        let mut previous_page_sections = std::mem::take(&mut self.page_sections_before_pass);
+        previous_page_sections.clone_from(&self.page_section_indices);
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
@@ -16874,12 +16887,15 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
-        *self.seek_pass_record.borrow_mut() = SeekPassRecord {
-            from: seek_snapshot
+        {
+            let mut record = self.seek_pass_record.borrow_mut();
+            record.from = seek_snapshot
                 .as_ref()
-                .map_or(0, |seek| seek.paragraph_index),
-            ..SeekPassRecord::default()
-        };
+                .map_or(0, |seek| seek.paragraph_index);
+            record.paragraphs.clear();
+            record.pages.clear();
+            record.columns.clear();
+        }
         // Mid-page section starts are not cleared here: each section the walk
         // reaches re-records its own entry at its transition, a seek keeps
         // those of the sections it skips, and a walk that stops early keeps
@@ -17133,6 +17149,11 @@ where
                     }
                 }
 
+                // Advancing to the resume page put the flow in its first
+                // column. A snapshot from a later column resumes there: left
+                // in column 0, the walk had a whole column too many on that
+                // page and laid the rest of the section out a page early.
+                self.column_index = seek.column_index;
                 self.page_offset_y = seek.page_offset_y;
                 self.current_y = seek.current_y;
                 self.last_line_baseline = seek.last_line_baseline;
@@ -17150,6 +17171,7 @@ where
                     Self::resolve_section_text_direction(initial_section, document);
                 self.vertical_flow = None;
             }
+            self.page_sections_before_pass = std::mem::take(&mut previous_page_sections);
 
             self.record_page_section(self.current_page_number);
 
@@ -65805,6 +65827,34 @@ mod tests {
         );
     }
 
+    /// The layout entry of a paragraph at the top of `page_1idx`'s
+    /// `column`, which a page or column seek snapshot of it must agree with.
+    fn insert_seek_anchor_layout(
+        renderer: &CanvasRenderer,
+        paragraph: usize,
+        page_1idx: usize,
+        column: usize,
+        page_offset_y: f64,
+    ) {
+        let top = page_offset_y + renderer.margin_top;
+        renderer.paragraph_layout_cache.borrow_mut().insert(
+            paragraph,
+            jade_docx_layout::layout_cache::ParagraphLayoutResult::new(
+                ContentHash::new(paragraph as u64),
+                top,
+                top + 20.0,
+                page_1idx - 1,
+                page_1idx - 1,
+                page_offset_y,
+                page_offset_y,
+                column,
+                column,
+                top,
+                top + 20.0,
+            ),
+        );
+    }
+
     fn options_for_seek_tests() -> crate::Options {
         let mut options = crate::Options {
             render_footnotes: false,
@@ -69504,6 +69554,7 @@ mod tests {
             ),
         );
 
+        insert_seek_anchor_layout(&renderer, 6, 3, 2, 0.0);
         let options = options_for_seek_tests();
 
         let seek = renderer
@@ -69648,6 +69699,7 @@ mod tests {
             },
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, page_offset_y);
         let options = options_for_seek_tests();
         let seek = renderer
             .try_prepare_seek_start(dirty_from, &options)
@@ -69744,6 +69796,7 @@ mod tests {
             },
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, page_offset_y);
         let options = options_for_seek_tests();
         let seek = renderer
             .try_prepare_seek_start(dirty_from, &options)
@@ -69904,6 +69957,7 @@ mod tests {
             ),
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, 0.0);
         let options = options_for_seek_tests();
 
         let seek = renderer
@@ -70160,6 +70214,7 @@ mod tests {
             ),
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, 0.0);
         let options = options_for_seek_tests();
 
         let seek = renderer

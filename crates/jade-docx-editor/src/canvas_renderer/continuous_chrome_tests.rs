@@ -899,4 +899,102 @@ mod edits {
         assert_edits_match_fresh(&data, &[delete(61, 66), delete(133, 140)], true);
         assert_edits_match_fresh(&data, &[type_at(146, "x")], true);
     }
+
+    /// A lazy edit, as `canvas_view` runs one: seek to the first visible
+    /// page, drop the layout from the edited paragraph on, and lay out only
+    /// through the last visible page.
+    fn lazy_edit(
+        renderer: &mut CanvasRenderer<RecordingPainter>,
+        word_doc: &WordDocument,
+        dirty_from: usize,
+        visible: std::ops::RangeInclusive<usize>,
+    ) {
+        let last = *visible.end();
+        renderer.set_visible_page_range(Some(visible));
+        renderer.prefer_visible_window_seek_once();
+        renderer.set_incremental_dirty_from(dirty_from);
+        renderer.invalidate_layout_from(dirty_from);
+        renderer.invalidate_paragraph_wrap_cache_from(dirty_from);
+        renderer.mark_dirty_from_paragraph_to_end_bounded(dirty_from, last);
+        renderer.set_layout_page_limit(Some(last));
+        render_into(renderer, word_doc, None);
+    }
+
+    /// Page `page` repainted alone, as a page bitmap request does.
+    fn repaint_page(
+        renderer: &mut CanvasRenderer<RecordingPainter>,
+        word_doc: &WordDocument,
+        page: usize,
+    ) -> Vec<Page> {
+        renderer.set_visible_page_range(Some(page..=page));
+        renderer.set_layout_page_limit(Some(page));
+        renderer.prepare_rerender_for_page(page - 1);
+        renderer.freeze_selection_for_pixel_rerender();
+        render_into(renderer, word_doc, None)
+    }
+
+    /// In a two-column section, page 3 begins with a paragraph that starts
+    /// at the foot of page 2's second column. Repainting page 3 resumes
+    /// there, in that column: resumed in the first column, the rest of the
+    /// section fitted on page 2 and page 3 showed the next section.
+    #[test]
+    fn a_page_resumed_from_a_later_column_keeps_its_column() {
+        let data = package(
+            &[
+                section(
+                    "A",
+                    RED,
+                    "nextPage",
+                    paragraphs("a", 150),
+                    r#"<w:cols w:num="2" w:space="720"/>"#,
+                ),
+                section("B", BLUE, "nextPage", paragraphs("b", 70), ""),
+            ],
+            "",
+        );
+        let mut word_doc = load(&data);
+        let mut renderer = recording_renderer();
+        render_into(&mut renderer, &word_doc, None);
+        renderer.drop_document_cache();
+        apply_headless_commands_to_document(
+            &mut word_doc,
+            &HeadlessEditRequest {
+                commands: vec![HeadlessCommand::InsertParagraphBreak {
+                    paragraph: 79,
+                    offset: 0,
+                    count: 19,
+                }],
+            },
+        )
+        .expect("edit");
+        lazy_edit(&mut renderer, &word_doc, 79, 2..=3);
+        let mut fresh = recording_renderer();
+        let fresh_pages = render_into(&mut fresh, &word_doc, None);
+        let resume = renderer
+            .page_start_seek_cache_by_page
+            .borrow()
+            .get(&3)
+            .map(|snapshot| (snapshot.page_number, snapshot.column_index));
+        assert_eq!(
+            resume,
+            Some((2, 1)),
+            "page 3 resumes in page 2's second column"
+        );
+
+        let painted = repaint_page(&mut renderer, &word_doc, 3);
+        assert_eq!(fresh_pages[2].header, "HA3");
+        assert!(
+            painted.contains(&fresh_pages[2]),
+            "{painted:?} lacks {:?}",
+            fresh_pages[2]
+        );
+        renderer.set_visible_page_range(None);
+        renderer.set_layout_page_limit(None);
+        render_into(&mut renderer, &word_doc, None);
+        let paragraph_count = word_doc.body_paragraph_count();
+        assert_eq!(
+            layout(&renderer, paragraph_count),
+            layout(&fresh, paragraph_count)
+        );
+    }
 }
