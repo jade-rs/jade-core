@@ -3002,10 +3002,10 @@ impl NativeDocument {
             // Native pages retain their pixels between edits. Let the renderer
             // redraw only this paragraph's band when its geometry is stable;
             // unsupported layouts and height changes fall back to a full page.
-            // The incremental hyperlink registry retains prefix regions while
-            // native replay may visit them again. Keep the full-page path for
-            // linked documents until that registry supports retained bands.
-            let band_safe = local_text_edit && self.renderer.hyperlink_regions().is_empty();
+            // Hyperlink registration replaces a paragraph's earlier regions, so
+            // a band that replays or skips linked paragraphs keeps the registry
+            // exact.
+            let band_safe = local_text_edit;
             self.renderer.set_band_redraw_enabled(band_safe);
             if let Some(cache) = text_edit_cache {
                 self.renderer
