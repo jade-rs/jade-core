@@ -368,7 +368,9 @@ fn linked_sections_share_one_story_until_it_is_edited() {
     assert!(Rc::ptr_eq(&document_wide(), &document_wide()));
     assert!(Rc::ptr_eq(&document_wide(), &section_story));
 
-    // The edit goes to the part the last section shows.
+    // An edit session on the first section edits the part every section
+    // links to, as Word does.
+    word_doc.hf_edit_section = Some(0);
     word_doc
         .replace_header_paragraph_text(0, "Edited letterhead")
         .expect("edit header");
@@ -382,7 +384,7 @@ fn linked_sections_share_one_story_until_it_is_edited() {
             .collect()
     };
     let edited = word_doc.section_header_footers();
-    let edited_header = edited[3].header_body.as_ref().expect("header");
+    let edited_header = edited[0].header_body.as_ref().expect("header");
     assert!(
         !Rc::ptr_eq(shared, edited_header),
         "an edit hands out a new story"
@@ -392,15 +394,13 @@ fn linked_sections_share_one_story_until_it_is_edited() {
     for (section, (after_edit, again)) in edited.iter().zip(&repaint).enumerate() {
         let after_edit = after_edit.header_body.as_ref().expect("header");
         assert!(
+            Rc::ptr_eq(after_edit, edited_header),
+            "section {section} still shares the edited story"
+        );
+        assert!(
             Rc::ptr_eq(after_edit, again.header_body.as_ref().expect("header")),
             "section {section} keeps its story across repaints"
         );
-        if first_text(after_edit) == "Letterhead" {
-            assert!(
-                Rc::ptr_eq(after_edit, shared),
-                "section {section}'s unedited part keeps its story"
-            );
-        }
     }
 }
 
@@ -481,8 +481,9 @@ fn edit_modes_paint_and_hit_test_the_same() {
             with_memo
                 .painted
                 .iter()
-                .any(|(op, _)| matches!(op, Op::SetLineDash(_) | Op::Stroke)),
-            "{mode:?} draws the story boundary"
+                .any(|(op, state)| matches!(op, Op::Stroke)
+                    && state.contains("SetLineDash([4.0, 4.0])")),
+            "{mode:?} strokes the dashed story boundary"
         );
         assert!(with_memo == without, "{mode:?}");
         // Only an all-paragraph story keeps an editable layout; the
@@ -492,6 +493,40 @@ fn edit_modes_paint_and_hit_test_the_same() {
             "a drawn page keeps its editable footer layout"
         );
     }
+}
+
+/// Seek snapshots resume the body. A story's paragraphs are numbered past
+/// the body's and laid out at body positions, so recording them would hand
+/// a seek a resume point inside a header or footer.
+#[test]
+fn a_story_layout_records_no_seek_snapshot() {
+    let word_doc = load(1, 4);
+    let mut recording = recording(false);
+    rerender(&mut recording.renderer, &word_doc);
+    let renderer = &mut recording.renderer;
+    let caches = |renderer: &CanvasRenderer<RecordingPainter>| {
+        (
+            format!("{:?}", renderer.paragraph_seek_cache.borrow()),
+            format!("{:?}", renderer.page_start_seek_cache_by_page.borrow()),
+            format!("{:?}", renderer.page_start_seek_cache.borrow()),
+            format!("{:?}", renderer.page_column_seek_cache.borrow()),
+        )
+    };
+    let before = caches(renderer);
+    assert!(
+        !renderer.paragraph_seek_cache.borrow().is_empty(),
+        "the body recorded snapshots"
+    );
+    let footer = renderer.footer_body.clone().expect("footer story");
+    let base = renderer.auxiliary_story_paragraph_base();
+    // At the body's top edge, where a page-start snapshot would be taken.
+    let top = renderer.effective_body_top();
+    for draw in [false, true] {
+        renderer
+            .render_header_footer_body_at(&footer, top, base, draw, Some("footer"))
+            .expect("story layout");
+    }
+    assert_eq!(caches(renderer), before, "seek caches are untouched");
 }
 
 /// Repaint cost of the linked-section document: the stories are installed

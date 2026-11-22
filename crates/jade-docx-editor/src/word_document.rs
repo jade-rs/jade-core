@@ -2325,6 +2325,11 @@ impl WordDocument {
         let target_path = self.hf_part_path_for_reference(relationship_id)?;
         let source = self.parts.get(&target_path)?.parsed_document.as_ref()?;
         let mut cache = self.hf_story_cache.borrow_mut();
+        // A removed or renamed part must not keep its story (and the whole
+        // parsed part it holds) alive.
+        if cache.keys().any(|path| !self.parts.contains_key(path)) {
+            cache.retain(|path, _| self.parts.contains_key(path));
+        }
         let current = cache
             .get(&target_path)
             .is_some_and(|entry| Rc::ptr_eq(&entry.source, source));
@@ -2430,8 +2435,7 @@ impl WordDocument {
                 return Some(lines.clone());
             }
         }
-        let body = self.header_footer_body_for_reference(&reference)?;
-        Some(Self::extract_text_lines_from_body(&body, true))
+        self.header_footer_story_for_reference(&reference, true)?.1
     }
 
     /// Header/footer stories per section (see [`SectionHeaderFooters`]).
