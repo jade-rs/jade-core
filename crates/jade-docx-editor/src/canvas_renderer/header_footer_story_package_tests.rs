@@ -495,6 +495,131 @@ fn edit_modes_paint_and_hit_test_the_same() {
     }
 }
 
+/// Text of a story's paragraphs, a field shown by its kind.
+fn story_text(body: &Body) -> String {
+    fn blocks(elements: &[BodyElement], out: &mut String) {
+        for element in elements {
+            match element {
+                BodyElement::Paragraph(paragraph) => {
+                    for run in &paragraph.runs {
+                        match &run.field {
+                            Some(field) => out.push_str(&format!("{{{:?}}}", field.kind)),
+                            None => out.push_str(&run.text),
+                        }
+                    }
+                    out.push('\n');
+                }
+                BodyElement::Table(table) => {
+                    for cell in table.rows.iter().flat_map(|row| &row.cells) {
+                        blocks(&cell.blocks, out);
+                    }
+                }
+                BodyElement::Math(_) => {}
+            }
+        }
+    }
+    let mut out = String::new();
+    blocks(&body.elements, &mut out);
+    out
+}
+
+/// Every section still links to the first one and shows `expected` in
+/// `role`, from one shared part; no part was added.
+fn assert_linked_and_shared(word_doc: &WordDocument, header: bool, expected: &str) {
+    let role = if header { "header" } else { "footer" };
+    let stories = word_doc.section_header_footers();
+    let story = |section: &SectionHeaderFooters| {
+        if header {
+            section.header_body.clone()
+        } else {
+            section.footer_body.clone()
+        }
+        .expect("story")
+    };
+    let shared = story(&stories[0]);
+    assert!(
+        story_text(&shared).contains(expected),
+        "{}",
+        story_text(&shared)
+    );
+    for (index, section) in stories.iter().enumerate() {
+        assert!(
+            Rc::ptr_eq(&shared, &story(section)),
+            "section {index} shares the {role}"
+        );
+        if index > 0 {
+            assert_eq!(
+                word_doc.header_footer_linked(index, role, "default"),
+                Ok(true),
+                "section {index} stays linked"
+            );
+        }
+    }
+    let parts = word_doc
+        .parts
+        .keys()
+        .filter(|path| path.starts_with(&format!("word/{role}")))
+        .count();
+    assert_eq!(parts, 1, "no {role} part is added");
+
+    let reloaded = futures::executor::block_on(WordDocument::load(
+        &word_doc.export_docx().expect("export"),
+        &Options::default(),
+    ))
+    .expect("reload");
+    for (index, section) in reloaded.section_header_footers().iter().enumerate() {
+        assert!(
+            story_text(&story(section)).contains(expected),
+            "section {index} shows the edit after a reload"
+        );
+    }
+}
+
+/// Without an edit session (headless commands, `insert_page_number`), an
+/// edit of the story a linked last section shows goes to the shared part,
+/// as Word does; it used to create a blank part for the last section and
+/// unlink it, losing the letterhead there.
+#[test]
+fn sessionless_edits_change_the_shared_linked_part() {
+    let mut word_doc = load(4, 1);
+    assert_eq!(word_doc.hf_edit_section, None);
+    let document_wide = word_doc
+        .header_footer_body(
+            HeaderFooterRole::Header,
+            crate::word_document::HeaderFooterVariant::Default,
+        )
+        .expect("the last section shows the inherited header");
+    assert!(Rc::ptr_eq(
+        &document_wide,
+        word_doc.section_header_footers()[3]
+            .header_body
+            .as_ref()
+            .expect("header")
+    ));
+
+    word_doc
+        .replace_header_paragraph_text(0, "Edited letterhead")
+        .expect("edit header");
+    assert_linked_and_shared(&word_doc, true, "Edited letterhead");
+    assert!(
+        story_text(
+            &word_doc.section_header_footers()[3]
+                .header_body
+                .clone()
+                .expect("header")
+        )
+        .contains("Ref"),
+        "the letterhead's table is kept"
+    );
+
+    word_doc
+        .insert_page_number(true, "center")
+        .expect("insert page number");
+    // Like Word's page-number gallery, this replaces the footer's
+    // content, in the one part every section shows.
+    assert_linked_and_shared(&word_doc, false, "{PageNumber}");
+}
+
 /// Seek snapshots resume the body. A story's paragraphs are numbered past
 /// the body's and laid out at body positions, so recording them would hand
 /// a seek a resume point inside a header or footer.

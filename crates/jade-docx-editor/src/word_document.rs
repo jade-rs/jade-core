@@ -2174,6 +2174,20 @@ pub(crate) fn hf_reference_for_section(
     })
 }
 
+/// The relationship id of the story the document shows outside a
+/// section-scoped edit: the last section's, with link-to-previous
+/// inheritance. A last section linked to the previous one declares no
+/// reference of its own (`pick_hf_reference` is `None`), yet shows, and
+/// Word edits, the story it inherits.
+pub(crate) fn document_wide_hf_reference(
+    document: &crate::document::Document,
+    role: HeaderFooterRole,
+    variant: HeaderFooterVariant,
+) -> Option<String> {
+    let last_section = document.sections.len().saturating_sub(1);
+    hf_reference_for_section(document, last_section, role, variant)
+}
+
 pub(crate) fn pick_hf_reference(
     document: &crate::document::Document,
     role: HeaderFooterRole,
@@ -2290,13 +2304,14 @@ impl WordDocument {
         variant: HeaderFooterVariant,
     ) -> Option<Rc<Body>> {
         let document = self.document.as_deref()?;
-        let relationship_id = pick_hf_reference(document, role, variant)?;
+        let relationship_id = document_wide_hf_reference(document, role, variant)?;
         self.header_footer_body_for_reference(&relationship_id)
     }
 
     /// The reference an edit should target: the editing section's story
-    /// (with link-to-previous inheritance) when a header/footer edit session
-    /// is active, otherwise the document-wide reference.
+    /// when a header/footer edit session is active, otherwise the last
+    /// section's; both with link-to-previous inheritance, so an edit of a
+    /// linked story changes the shared part instead of unlinking a section.
     pub(crate) fn active_hf_reference(
         &self,
         role: HeaderFooterRole,
@@ -2305,7 +2320,7 @@ impl WordDocument {
         let document = self.document.as_deref()?;
         match self.hf_edit_section {
             Some(section) => hf_reference_for_section(document, section, role, variant),
-            None => pick_hf_reference(document, role, variant),
+            None => document_wide_hf_reference(document, role, variant),
         }
     }
 
