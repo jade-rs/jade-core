@@ -22853,12 +22853,18 @@ mod tests {
         let caret = line.horizontal_metrics(center).cursor_end_x;
         set_word_layout_platform(WordLayoutPlatform::Windows);
         let windows_center = line.aligned_start_x(5.0, 100.0, TextAlign::Center);
+        let windows_right = line.aligned_start_x(5.0, 100.0, TextAlign::Right);
+        let windows_caret = line.horizontal_metrics(windows_center).cursor_end_x;
         set_word_layout_platform(previous);
         assert_eq!(center, 45.0);
         assert_eq!(right, 85.0);
         assert_eq!(left, 5.0);
         assert_eq!(caret, 68.0);
-        assert_eq!(windows_center, 43.5);
+        // Retained Windows Word wraps exclude the separator from alignment,
+        // while its glyph and caret advance remain present, as on Mac.
+        assert_eq!(windows_center, 45.0);
+        assert_eq!(windows_right, 85.0);
+        assert_eq!(windows_caret, 68.0);
         assert_eq!(line.visual_width, 23.0);
         assert_eq!(line.glyphs[2].width, 3.0);
     }
