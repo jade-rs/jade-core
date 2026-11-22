@@ -544,3 +544,359 @@ fn a_pixel_rerender_of_page_one_keeps_later_pages_sections() {
         .expect("bitmap rerender");
     assert_eq!(snapshot(&renderer), before);
 }
+
+/// One renderer lays out a 3-paragraph section A, then a 120-paragraph A,
+/// then a 40-paragraph A, each followed by section B. Every pass paints
+/// what a fresh renderer paints for that document.
+#[test]
+fn a_reused_renderer_paints_every_page_after_the_document_grows_and_shrinks() {
+    let load = |data: &[u8]| {
+        futures::executor::block_on(WordDocument::load(data, &Options::default())).expect("load")
+    };
+    for break_type in ["nextPage", "continuous"] {
+        let mut renderer = recording_renderer();
+        for count in [3, 120, 40] {
+            let data = package(
+                &[
+                    section("A", RED, "nextPage", paragraphs("a", count), ""),
+                    section(
+                        "B",
+                        BLUE,
+                        break_type,
+                        paragraphs("b", 50),
+                        r#"<w:pgNumType w:start="7"/>"#,
+                    ),
+                ],
+                "",
+            );
+            let word_doc = load(&data);
+            let document = word_doc.document.as_ref().expect("document");
+            renderer.sync_document_header_footer_stories(&word_doc);
+            renderer.host.painter().inner().clear();
+            renderer
+                .render(document, &Options::default())
+                .expect("render");
+            let painted = pages(&renderer.host.painter().inner().ops());
+            let (fresh_renderer, fresh) = render(&data);
+            assert_eq!(painted, fresh, "{break_type} with {count} paragraphs in A");
+            assert_eq!(
+                renderer.page_section_indices,
+                fresh_renderer.page_section_indices
+            );
+        }
+    }
+}
+
+/// B opens with `cantSplit` rows that do not fit below A on page 1, so the
+/// table moves to page 2. The page's header is drawn once.
+#[test]
+fn a_table_moved_to_the_next_page_draws_its_header_once() {
+    let mut table = String::from("<w:tbl>");
+    for row in 0..2 {
+        table.push_str(&format!(
+            "<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:p><w:r><w:t>bt{row}</w:t></w:r></w:p><w:p><w:r><w:t>x</w:t></w:r></w:p><w:p><w:r><w:t>y</w:t></w:r></w:p></w:tc></w:tr>"
+        ));
+    }
+    table.push_str("</w:tbl>");
+    for break_type in ["continuous", "nextPage"] {
+        let (_, pages) = render(&package(
+            &[
+                section("A", RED, "nextPage", paragraphs("a", 35), ""),
+                section(
+                    "B",
+                    BLUE,
+                    break_type,
+                    format!("{table}{}", paragraphs("b", 50)),
+                    r#"<w:titlePg/><w:pgNumType w:start="7"/>"#,
+                ),
+            ],
+            "",
+        ));
+        assert!(
+            pages[1].body.starts_with("bt0"),
+            "{break_type}: {:?}",
+            pages[1]
+        );
+        assert_eq!(
+            pages[..3]
+                .iter()
+                .map(|page| (page.header.as_str(), page.footer.as_str()))
+                .collect::<Vec<_>>(),
+            [("HA1", "FA1"), ("HB-first7", ""), ("HB8", "FB8")],
+            "{break_type}"
+        );
+    }
+}
+
+mod edits {
+    //! Editor edits rendered by one renderer, each told only where the edit
+    //! starts, as the editor does. After every edit the renderer lays out
+    //! and paints what a fresh renderer does for the edited document.
+
+    use super::*;
+    use crate::headless_api::apply_headless_commands_to_document;
+    use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+
+    fn load(data: &[u8]) -> WordDocument {
+        futures::executor::block_on(WordDocument::load(data, &Options::default())).expect("load")
+    }
+
+    fn render_into(
+        renderer: &mut CanvasRenderer<RecordingPainter>,
+        word_doc: &WordDocument,
+        dirty_from: Option<usize>,
+    ) -> Vec<Page> {
+        renderer.sync_document_header_footer_stories(word_doc);
+        if let Some(dirty_from) = dirty_from {
+            renderer.set_incremental_dirty_from(dirty_from);
+            renderer.mark_dirty_from_paragraph_to_end(dirty_from);
+        }
+        renderer.host.painter().inner().clear();
+        let document = Rc::clone(word_doc.document.as_ref().expect("document"));
+        renderer
+            .render_with_numbering_rc(document, &Options::default(), None, None, None, None)
+            .expect("render");
+        pages(&renderer.host.painter().inner().ops())
+    }
+
+    /// Page sections and every paragraph's start page.
+    fn layout(
+        renderer: &CanvasRenderer<RecordingPainter>,
+        paragraphs: usize,
+    ) -> (Vec<usize>, Vec<Option<usize>>) {
+        (
+            renderer.page_section_indices.clone(),
+            (0..paragraphs)
+                .map(|index| renderer.cached_paragraph_start_page(index))
+                .collect(),
+        )
+    }
+
+    /// Applies `edits` (each with the paragraph it dirties) and checks the
+    /// renderer against a fresh one after each. With `rerender_pages`, then
+    /// repaints each page alone, as a page bitmap request does.
+    fn assert_edits_match_fresh(
+        data: &[u8],
+        edits: &[(usize, HeadlessCommand)],
+        rerender_pages: bool,
+    ) {
+        let mut word_doc = load(data);
+        let mut renderer = recording_renderer();
+        render_into(&mut renderer, &word_doc, None);
+        for (dirty_from, command) in edits {
+            renderer.drop_document_cache();
+            apply_headless_commands_to_document(
+                &mut word_doc,
+                &HeadlessEditRequest {
+                    commands: vec![command.clone()],
+                },
+            )
+            .expect("edit");
+            let painted = render_into(&mut renderer, &word_doc, Some(*dirty_from));
+            let mut fresh = recording_renderer();
+            let fresh_pages = render_into(&mut fresh, &word_doc, None);
+            let paragraph_count = word_doc.body_paragraph_count();
+            assert_eq!(
+                layout(&renderer, paragraph_count),
+                layout(&fresh, paragraph_count),
+                "after {command:?}"
+            );
+            // An edit repaints its pages from the edited one on.
+            for page in painted.iter().filter(|page| !page.body.is_empty()) {
+                assert!(
+                    fresh_pages.contains(page),
+                    "after {command:?}: {page:?} is not a page of {fresh_pages:?}"
+                );
+            }
+        }
+        if rerender_pages {
+            let mut fresh = recording_renderer();
+            let fresh_pages = render_into(&mut fresh, &word_doc, None);
+            for page in 1..=fresh_pages.len() {
+                renderer.set_visible_page_range(Some(page..=page));
+                renderer.set_layout_page_limit(Some(page));
+                renderer.prepare_rerender_for_page(page - 1);
+                renderer.freeze_selection_for_pixel_rerender();
+                let painted = render_into(&mut renderer, &word_doc, None);
+                let wanted = &fresh_pages[page - 1];
+                assert!(
+                    painted
+                        .iter()
+                        .any(|painted| painted.body == wanted.body
+                            && painted.header == wanted.header),
+                    "page {page} alone painted {painted:?}, not {wanted:?}"
+                );
+            }
+        }
+    }
+
+    fn delete(start: usize, end: usize) -> (usize, HeadlessCommand) {
+        (
+            start,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph: start,
+                start_offset: 0,
+                end_paragraph: end,
+                end_offset: 0,
+                text: String::new(),
+            },
+        )
+    }
+
+    fn type_at(paragraph: usize, text: &str) -> (usize, HeadlessCommand) {
+        (
+            paragraph,
+            HeadlessCommand::InsertText {
+                paragraph,
+                offset: 0,
+                text: text.to_string(),
+            },
+        )
+    }
+
+    fn table(prefix: &str, rows: usize) -> String {
+        let rows: String = (0..rows)
+            .map(|row| {
+                format!("<w:tr><w:tc><w:p><w:r><w:t>{prefix}{row}</w:t></w:r></w:p></w:tc></w:tr>")
+            })
+            .collect();
+        format!("<w:tbl>{rows}</w:tbl>")
+    }
+
+    /// Typing 117 paragraph breaks into a 3-paragraph section A, then
+    /// deleting 60 of them, before a next-page section B.
+    #[test]
+    fn section_a_grows_then_shrinks() {
+        let data = package(
+            &[
+                section("A", RED, "nextPage", paragraphs("a", 3), ""),
+                section(
+                    "B",
+                    BLUE,
+                    "nextPage",
+                    paragraphs("b", 50),
+                    r#"<w:pgNumType w:start="7"/>"#,
+                ),
+            ],
+            "",
+        );
+        let grow = (
+            2,
+            HeadlessCommand::InsertParagraphBreak {
+                paragraph: 2,
+                offset: 2,
+                count: 117,
+            },
+        );
+        assert_edits_match_fresh(&data, &[grow, delete(59, 119)], false);
+    }
+
+    /// Deleting paragraphs before a table moves the table up: indices that
+    /// started pages are now its cells, then typing after it.
+    #[test]
+    fn page_starting_paragraphs_that_become_table_cells() {
+        let data = package(
+            &[
+                section("A", RED, "nextPage", paragraphs("a", 80), ""),
+                section(
+                    "B",
+                    BLUE,
+                    "nextPage",
+                    format!(
+                        "{}{}{}",
+                        paragraphs("b", 5),
+                        table("t", 50),
+                        paragraphs("z", 20)
+                    ),
+                    "",
+                ),
+            ],
+            "",
+        );
+        assert_edits_match_fresh(
+            &data,
+            &[
+                delete(5, 42),
+                type_at(101, "X"),
+                type_at(104, "Y"),
+                type_at(100, "Z"),
+            ],
+            true,
+        );
+    }
+
+    /// The same in one section, then each page repainted alone: page 2,
+    /// inside the table, still paints.
+    #[test]
+    fn a_page_inside_a_table_that_moved_up_repaints_alone() {
+        let data = package(
+            &[section(
+                "A",
+                RED,
+                "nextPage",
+                format!(
+                    "{}{}{}",
+                    paragraphs("a", 80),
+                    table("t", 40),
+                    paragraphs("z", 5)
+                ),
+                "",
+            )],
+            "",
+        );
+        assert_edits_match_fresh(
+            &data,
+            &[delete(10, 70), type_at(62, "X"), type_at(61, "Y")],
+            true,
+        );
+    }
+
+    /// An edit on B's second page seeks past section A's pages, which keep
+    /// their section.
+    #[test]
+    fn a_seek_into_a_later_section_keeps_the_skipped_pages_sections() {
+        let data = package(
+            &[
+                section("A", RED, "nextPage", paragraphs("a", 60), ""),
+                section("B", BLUE, "nextPage", paragraphs("b", 60), ""),
+            ],
+            "",
+        );
+        assert_edits_match_fresh(
+            &data,
+            &[type_at(95, &"word ".repeat(60)), type_at(50, "y")],
+            false,
+        );
+    }
+
+    /// Two-column section A, continuous B with a table, next-page C: a
+    /// deletion in B, then a deletion in C.
+    #[test]
+    fn edits_after_a_two_column_section() {
+        let rows: String = (0..10)
+            .map(|row| format!("<w:tr><w:trPr><w:cantSplit/></w:trPr><w:tc><w:p><w:r><w:t>t{row}</w:t></w:r></w:p></w:tc></w:tr>"))
+            .collect();
+        let data = package(
+            &[
+                section(
+                    "A",
+                    RED,
+                    "nextPage",
+                    paragraphs("a", 90),
+                    r#"<w:cols w:num="2" w:space="720"/>"#,
+                ),
+                section(
+                    "B",
+                    BLUE,
+                    "continuous",
+                    format!("{}<w:tbl>{rows}</w:tbl>", paragraphs("b", 30)),
+                    "",
+                ),
+                section("C", GREEN, "nextPage", paragraphs("c", 40), ""),
+            ],
+            "",
+        );
+        assert_edits_match_fresh(&data, &[delete(61, 66), delete(133, 140)], true);
+        assert_edits_match_fresh(&data, &[type_at(146, "x")], true);
+    }
+}
