@@ -6489,6 +6489,69 @@ where
                                     tab_stops: Vec::new(),
                                 },
                             });
+                        // The repeated copy is clipped by its physical header
+                        // cell too. Keep its visible capture separate from the
+                        // complete logical copy and from editable body indices.
+                        if jade_docx_layout::line_metrics::word_layout_platform()
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                        {
+                            let selection_line = SelectionLineLayout {
+                                top: line_top,
+                                absolute_top: self.page_offset_y + line_top,
+                                height: line_height,
+                                baseline,
+                                start_x: text_x,
+                                cursor_end_x: line.visual_end_x(text_x),
+                                allowed_trailing_overflow_width: 0.0,
+                                content_top: line_top,
+                                absolute_content_top: self.page_offset_y + line_top,
+                                content_height: line_height,
+                                fragments: fragments.into(),
+                                break_range: line.break_range,
+                                tab_leaders: Rc::from([]),
+                                tab_stops: Rc::from([]),
+                                column_index: self.column_index,
+                                vertical: false,
+                                vertical_reversed: false,
+                            };
+                            if let Some(projection) = self.clipped_table_line_projection(
+                                paragraph,
+                                line,
+                                &selection_line,
+                                TableLineClip {
+                                    vertical: (y_top, y_top + row_height),
+                                    ancestor_right: None,
+                                    cell_right: x_start + cell_width,
+                                },
+                            )? {
+                                let mut clipped = self
+                                    .auxiliary_story_debug_lines
+                                    .last()
+                                    .expect("recorded repeated header")
+                                    .line
+                                    .clone();
+                                for (fragment, mask) in clipped.fragments.iter_mut().zip(projection)
+                                {
+                                    let mut visible = mask.glyphs.iter().peekable();
+                                    fragment.glyphs.retain(|glyph| {
+                                        if visible.peek().is_some_and(|next| {
+                                            next.start == glyph.start && next.end == glyph.end
+                                        }) {
+                                            visible.next();
+                                            true
+                                        } else {
+                                            false
+                                        }
+                                    });
+                                }
+                                self.auxiliary_story_debug_lines
+                                    .push(AuxiliaryStoryLineDebug {
+                                        story: "table_header_clip_projection",
+                                        page,
+                                        line: clipped,
+                                    });
+                            }
+                        }
                     }
                     text_y += line_height;
                 }
@@ -6814,6 +6877,26 @@ where
         selection_line: &SelectionLineLayout,
         clip: TableLineClip,
     ) -> Result<(), JsValue> {
+        if let Some(fragments) =
+            self.clipped_table_line_projection(paragraph, line, selection_line, clip)?
+        {
+            self.record_table_line_projection(
+                paragraph_index,
+                selection_line,
+                "table_clip_projection",
+                fragments,
+            );
+        }
+        Ok(())
+    }
+
+    fn clipped_table_line_projection(
+        &mut self,
+        paragraph: &CellParagraph,
+        line: &LineLayout,
+        selection_line: &SelectionLineLayout,
+        clip: TableLineClip,
+    ) -> Result<Option<Vec<LayoutFragmentDebug>>, JsValue> {
         let (clip_top, clip_bottom) = clip.vertical;
         let empty_clip = clip_bottom <= clip_top;
         let check_vertical = empty_clip
@@ -6831,7 +6914,7 @@ where
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
             && reaches_right(clip.cell_right);
         if line.text.is_empty() || (!check_vertical && clip_right.is_none() && !check_cell_right) {
-            return Ok(());
+            return Ok(None);
         }
         let spans = if empty_clip {
             Vec::new()
@@ -6851,7 +6934,7 @@ where
                         || p.imprint == Some(true)
                 })
         }) {
-            return Ok(());
+            return Ok(None);
         }
         let painter = self.host.painter();
         let _state = StateGuard::new(&painter);
@@ -6934,13 +7017,7 @@ where
                 glyphs,
             });
         }
-        self.record_table_line_projection(
-            paragraph_index,
-            selection_line,
-            "table_clip_projection",
-            fragments,
-        );
-        Ok(())
+        Ok(Some(fragments))
     }
 
     fn capture_lr_tbv_paint_line(
@@ -11015,6 +11092,57 @@ fn word_constrained_fixed_grid(
     if jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
     {
+        // With automatic tblW, a uniform percentage tcW describes an
+        // inverse minimum frame, not a percentage of a stale saved grid.
+        // Resolve the Windows minimum from the actual margins and collapsed
+        // half-border extents. Mac keeps its existing independent rule.
+        if column_count == 1 && !table.style.contains_key("width") {
+            if let Some(fraction) = uniform_single_column_cell_percentage(table) {
+                let mut minimum = 0.0_f64;
+                for (row_index, row) in table.rows.iter().enumerate() {
+                    if resolve_cell_spacing_px(row, table) != 0.0 {
+                        return None;
+                    }
+                    let cell = &row.cells[0];
+                    let padding = resolve_cell_padding(
+                        cell.margins.as_ref(),
+                        row.cell_margins.as_ref(),
+                        table.effective_cell_margins(),
+                        table.bidi_visual,
+                        table_default_horizontal_padding_px(
+                            table,
+                            jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
+                        ),
+                        0.0,
+                    );
+                    let format = table.table_style_cell_format(table_style_cell_position(
+                        row,
+                        row_index,
+                        table.rows.len(),
+                        0,
+                    ));
+                    let edges = [
+                        row_index == 0,
+                        row_index + 1 == table.rows.len(),
+                        true,
+                        true,
+                    ];
+                    let border = |name, side| {
+                        visible_border_width(&resolve_cell_border_side(
+                            cell, row, table, &format, name, side, edges, 0.0,
+                        )) * 0.5
+                    };
+                    minimum = minimum.max(
+                        padding.horizontal()
+                            + border("left", TableBorderSide::Left)
+                            + border("right", TableBorderSide::Right),
+                    );
+                }
+                if minimum > 0.0 {
+                    return Some(vec![minimum / fraction]);
+                }
+            }
+        }
         // The original Windows two-row controls distribute conflicting
         // preferred cell widths within tblW, with either a narrow or a wide
         // serialized grid. Keep the single-row/column Windows rules intact.

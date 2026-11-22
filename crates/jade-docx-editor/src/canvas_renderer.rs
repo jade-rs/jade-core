@@ -38164,8 +38164,15 @@ where
             let mut auxiliary_lines = self.auxiliary_story_debug_lines.clone();
             let mut clipped_table_lines = HashMap::new();
             let mut painted_table_lines = HashMap::new();
+            let mut clipped_header_lines = HashMap::new();
             auxiliary_lines.retain(|entry| {
-                if entry.story == "table_clip_projection" {
+                if entry.story == "table_header_clip_projection" {
+                    clipped_header_lines.insert(
+                        (entry.line.paragraph, entry.line.line, entry.line.page),
+                        entry.line.clone(),
+                    );
+                    false
+                } else if entry.story == "table_clip_projection" {
                     clipped_table_lines.insert(
                         (entry.line.paragraph, entry.line.line, entry.line.page),
                         entry.line.clone(),
@@ -38181,6 +38188,20 @@ where
                     true
                 }
             });
+            if clip_table_glyphs {
+                for entry in auxiliary_lines
+                    .iter_mut()
+                    .filter(|entry| entry.story == "table_header")
+                {
+                    if let Some(clipped) = clipped_header_lines.remove(&(
+                        entry.line.paragraph,
+                        entry.line.line,
+                        entry.line.page,
+                    )) {
+                        entry.line.fragments = clipped.fragments;
+                    }
+                }
+            }
             let auxiliary_line_keys = auxiliary_lines
                 .iter()
                 .filter(|entry| matches!(entry.story, "text_box" | "endnote"))
@@ -38261,7 +38282,7 @@ where
         self.auxiliary_story_debug_lines.retain(|entry| {
             !matches!(
                 entry.story,
-                "table_clip_projection" | "table_paint_projection"
+                "table_clip_projection" | "table_paint_projection" | "table_header_clip_projection"
             )
         });
         self.force_full_repaint_once = saved_force_full_repaint;
