@@ -2973,6 +2973,56 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-column-fixed-dxa-6800",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-column-fixed-dxa-6800/source.docx",
+        "sha256": "be054cef36e47288907da7f29e4c135bf4bcd40adec5ddb6432790cbc4b0a861"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-column-fixed-dxa-6800/manifest.json",
+        "sha256": "33193bf919586aba58541ceb9462e48c5f46c5e497dc32c1ae918f02d6e36ee5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-column-fixed-dxa-6800-be054cef",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-width-single-dxa-2400-dxa-2000",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-single-dxa-2400-dxa-2000/source.docx",
+        "sha256": "a611a63890935fcc6a2a831fc50c19b2641846a8f7fda4a286ba4c033860a358"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-single-dxa-2400-dxa-2000/manifest.json",
+        "sha256": "265bb130473d95a71125d824cc15069f6276d02283d8af1be770cecca45b5475"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004612020Z-5d981186",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004612020Z-5d981186.zip",
+            "sha256": "800ee159b38e02e76caca0bbbedcd2dc6f7a0222a71d62c9385725433c0c1f02"
+          },
+          "capture_sha256": "bafc3b1f6e9a31c6c73cf05efe6af653ac873c51ff7693ed19dd4bc7d8f143e0",
+          "fixture": "ww14-probe-width-single-dxa-2400-dxa-2000-a611a638",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

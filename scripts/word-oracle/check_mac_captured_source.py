@@ -39,6 +39,14 @@ SHARED_ORIGINALS = {
         '4ea5548ae2e68907aba9b8dc43e834ec07f293f0bb0c04de70a81fe567085b23',
         '96702526e1b4a5eba635d86473921d23c86fcbc87c1621b81029c16a296f54f3',
         'e59ebb510ceefa817f313a79cde0ffd50b5e6af9320165404d3b1bc12ac20deb', 2, 107),
+    'probe-column-fixed-dxa-6800': (
+        'be054cef36e47288907da7f29e4c135bf4bcd40adec5ddb6432790cbc4b0a861',
+        '33193bf919586aba58541ceb9462e48c5f46c5e497dc32c1ae918f02d6e36ee5',
+        '3e98f1772071be15003acb84ff297aac762245ab8e55d9f395748d41f6bb3c4e', 2, 107),
+    'probe-width-single-dxa-2400-dxa-2000': (
+        'a611a63890935fcc6a2a831fc50c19b2641846a8f7fda4a286ba4c033860a358',
+        '265bb130473d95a71125d824cc15069f6276d02283d8af1be770cecca45b5475',
+        'c150979819c2f84b61e629b95435559e8170b2d9920d757bc2aa97d41ecd8cb9', 3, 107),
 }
 
 
@@ -108,9 +116,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_Windows_Word=capture['word'],
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count']))
-    require(len(results) == 3 and sum(r['glyphs'] for r in results) == 983,
+    require(len(results) == 5 and sum(r['glyphs'] for r in results) == 1197,
             'Shared Mac original coverage changed')
-    print('Three shared Mac originals983: layout and painted-PDF PASS', flush=True)
+    print('Five shared Mac originals1197: layout and painted-PDF PASS', flush=True)
     return results
 
 

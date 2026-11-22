@@ -142,6 +142,8 @@ PHYSICAL_FONT_CASES = {
     'word-mac-probe-squeeze-plain',
     'word-mac-probe-vert-align-sweep-2',
     'wrong-num-mac',
+    'probe-column-fixed-dxa-6800',
+    'probe-width-single-dxa-2400-dxa-2000',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -262,6 +264,8 @@ REQUIRED_CAPTURES = {
     'floating-through-concave-mac': '20261114T004143028Z-b4cb9887',
     'floating-z-order-mac': '20261114T004143028Z-b4cb9887',
     'floating-top-bottom-offset-mac': '20261114T004143028Z-b4cb9887',
+    'probe-column-fixed-dxa-6800': '20261114T004402030Z-30b8d3b5',
+    'probe-width-single-dxa-2400-dxa-2000': '20261114T004612020Z-5d981186',
 }
 
 # These original inputs have distinct screen and print origins in Windows
