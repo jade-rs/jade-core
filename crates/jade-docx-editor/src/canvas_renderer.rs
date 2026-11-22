@@ -3034,6 +3034,9 @@ pub struct LocalTextEditCache {
     horizontal_float_wrap_witness: Option<usize>,
 }
 
+/// Measured header and footer content heights per physical page.
+type ChromeHeights = (Vec<Option<f64>>, Vec<Option<f64>>);
+
 /// Cache both answers for an immutable snapshot without retaining it. Release
 /// the weak key before editing so `Rc::make_mut` can preserve its allocation.
 #[derive(Default)]
@@ -4182,6 +4185,9 @@ where
     /// when the page starts so the body's bottom edge sees the footer Word
     /// lays out rather than a per-line estimate.
     footer_content_heights: Vec<Option<f64>>,
+    /// Header and footer heights measured before a header/footer edit, until
+    /// the next render compares them (`settle_header_footer_edit`).
+    header_footer_height_baseline: Option<ChromeHeights>,
     /// Visible paragraph stories retain the geometry produced by the shared
     /// layout path for editing. Keys are (physical page, is_header); auxiliary
     /// paragraph indices are rebased to the story's own paragraph indices.
@@ -9802,6 +9808,7 @@ where
             hf_story_memo_disabled: false,
             header_content_heights: Vec::new(),
             footer_content_heights: Vec::new(),
+            header_footer_height_baseline: None,
             hf_story_layouts: HashMap::new(),
             rendering_header_footer_story: false,
             auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode::Disabled,
@@ -13121,9 +13128,6 @@ where
         );
     }
 
-    /// Invalidates the paragraph layout cache from the given index onwards.
-    /// This should be called when editing a paragraph to ensure all subsequent
-    /// paragraphs are re-laid out.
     /// Drops layout derived from a floating object's old or new anchor before
     /// an object command (move, resize, wrap change) repaints. The object
     /// reflows text after its anchor and, through the float look-ahead, the
@@ -13135,6 +13139,44 @@ where
         }
     }
 
+    /// Header/footer content is about to change. Keeps the measured chrome
+    /// heights of the last render so the next render can tell whether the
+    /// body area moved (see `settle_header_footer_edit`). The first call
+    /// since the last render wins.
+    pub fn begin_header_footer_edit(&mut self) {
+        if self.header_footer_height_baseline.is_none() {
+            self.header_footer_height_baseline = Some((
+                self.header_content_heights.clone(),
+                self.footer_content_heights.clone(),
+            ));
+        }
+    }
+
+    /// After the first render following a header/footer edit: if a page it
+    /// measured has a different header or footer height, the body top or
+    /// bottom moved on every page sharing that story. A header/footer edit
+    /// repaints only a bounded window, so layout entries and seek snapshots
+    /// past it would keep the old body area; drop them all. Edits that leave
+    /// the heights alone keep every cache.
+    fn settle_header_footer_edit(&mut self) {
+        let Some((headers, footers)) = self.header_footer_height_baseline.take() else {
+            return;
+        };
+        let moved = |old: &[Option<f64>], new: &[Option<f64>]| {
+            old.iter().zip(new).any(|(old, new)| {
+                matches!((old, new), (Some(old), Some(new)) if (old - new).abs() > 0.01)
+            })
+        };
+        if moved(&headers, &self.header_content_heights)
+            || moved(&footers, &self.footer_content_heights)
+        {
+            self.invalidate_layout_from(0);
+        }
+    }
+
+    /// Invalidates the paragraph layout cache from the given index onwards.
+    /// This should be called when editing a paragraph to ensure all subsequent
+    /// paragraphs are re-laid out.
     pub fn invalidate_layout_from(&mut self, paragraph_index: usize) {
         let paragraph_index = self.layout_group_owner(paragraph_index);
         self.keep_next_group_surfaces
@@ -15464,6 +15506,9 @@ where
         );
         // An early rendering error must not leak a pass's decision to callers.
         self.render_replay_options_compatible = previous;
+        if result.is_ok() {
+            self.settle_header_footer_edit();
+        }
         if result.is_err() {
             // The failed pass may have replaced last_options without rebuilding
             // every cached paragraph. Require hash checks on the next render.
@@ -40178,6 +40223,7 @@ where
     ) {
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
+        self.begin_header_footer_edit();
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;

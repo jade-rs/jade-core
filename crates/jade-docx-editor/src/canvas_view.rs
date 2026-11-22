@@ -1732,6 +1732,9 @@ impl OffscreenDocumentView {
         };
         let anchor_page = anchor_page_index.saturating_add(1).max(1);
         let mut renderer = self.renderer.borrow_mut();
+        // The edit may change the story's height, moving the body area on
+        // pages past the bounded repaint below; the render checks that.
+        renderer.begin_header_footer_edit();
         renderer.set_editing_mode(mode);
         Self::ensure_visible_page_range_for_edit(&mut renderer, lazy_mode, anchor_page);
         if lazy_mode {

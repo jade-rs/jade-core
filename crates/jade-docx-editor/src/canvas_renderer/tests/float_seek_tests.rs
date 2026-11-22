@@ -599,3 +599,89 @@ fn the_seek_guard_covers_the_render_that_removes_the_last_float() {
         .unwrap();
     assert!(!renderer.horizontal_float_wrap_cache.seek_guard);
 }
+
+/// A header edit that grows the header from one line to `lines`, repainted
+/// like `prepare_hf_edit_rerender` does: full repaint of a bounded window.
+fn header_edit(
+    anchors: &[(usize, f64)],
+    lines: usize,
+) -> (
+    CanvasRenderer<RecordingPainter>,
+    Vec<RecordingPainter>,
+    Document,
+    Body,
+) {
+    let options = options_for_seek_tests();
+    let document = float_document(12, anchors, None);
+    let short = doc_with_paragraph_texts(&["Header"]).body.unwrap();
+    let texts = vec!["Tall header"; lines];
+    let tall = doc_with_paragraph_texts(&texts).body.unwrap();
+    let (mut renderer, pages) = renderer_with_pages();
+    renderer.set_header_footer_bodies(Some(Rc::new(short)), None, None, None, None, None);
+    renderer
+        .render_with_numbering(&document, &options, None, None, None, None)
+        .unwrap();
+    let previous = renderer.layout_page_limit();
+    renderer.set_header_footer_bodies(Some(Rc::new(tall.clone())), None, None, None, None, None);
+    renderer.begin_header_footer_edit();
+    renderer.set_visible_page_range(Some(1..=3));
+    renderer.set_layout_page_limit(Some(3));
+    renderer.mark_full_repaint();
+    renderer
+        .render_with_numbering(&document, &options, None, None, None, None)
+        .unwrap();
+    renderer.set_layout_page_limit(previous);
+    renderer.clear_dirty_regions();
+    for painter in &pages {
+        painter.clear();
+    }
+    (renderer, pages, document, tall)
+}
+
+#[test]
+fn header_height_edits_then_seek_match_a_from_start_render() {
+    let options = options_for_seek_tests();
+    for anchors in [vec![(2, 60.0)], vec![]] {
+        for path in ["window", "bitmap"] {
+            let (mut renderer, pages, document, tall) = header_edit(&anchors, 8);
+            renderer.set_visible_page_range(Some(5..=5));
+            if path == "window" {
+                renderer.set_layout_page_limit(Some(6));
+                renderer.skip_change_detection_once();
+                renderer.prefer_visible_window_seek_once();
+            } else {
+                renderer.set_layout_page_limit(Some(5));
+                renderer.prepare_rerender_for_page(4);
+            }
+            renderer
+                .render_with_numbering(&document, &options, None, None, None, None)
+                .unwrap();
+            let (mut reference, reference_pages) = renderer_with_pages();
+            reference.set_header_footer_bodies(Some(Rc::new(tall)), None, None, None, None, None);
+            reference.set_visible_page_range(Some(5..=5));
+            reference.set_layout_page_limit(Some(6));
+            reference
+                .render_with_numbering(&document, &options, None, None, None, None)
+                .unwrap();
+            let ours = painted(&pages[4]);
+            assert!(!ours.is_empty(), "{path} floats={}", anchors.len());
+            assert!(
+                ours == painted(&reference_pages[4]),
+                "{path} floats={}: page 5 differs from a from-start render",
+                anchors.len()
+            );
+        }
+    }
+}
+
+#[test]
+fn header_edits_that_keep_the_height_keep_the_layout_cache() {
+    let (renderer, _, _, _) = header_edit(&[(2, 60.0)], 1);
+    assert!(renderer
+        .cached_paragraph_start_page(PARAGRAPHS - 1)
+        .is_some());
+    let (renderer, _, _, _) = header_edit(&[(2, 60.0)], 8);
+    assert!(renderer
+        .cached_paragraph_start_page(PARAGRAPHS - 1)
+        .is_none());
+}
