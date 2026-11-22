@@ -47,6 +47,10 @@ SHARED_ORIGINALS = {
         'a611a63890935fcc6a2a831fc50c19b2641846a8f7fda4a286ba4c033860a358',
         '265bb130473d95a71125d824cc15069f6276d02283d8af1be770cecca45b5475',
         'c150979819c2f84b61e629b95435559e8170b2d9920d757bc2aa97d41ecd8cb9', 3, 107),
+    'probe-continuous-column-explicit-break': (
+        '036d1a09b7eca1f005fd00fa800c6342951c0ff9fa32574606719d67f2f8c648',
+        'ab464ad7e5e0893d4cd29a0ad55d0e083cf5cbd933d674d7fed76fe7fff66012',
+        '1c8f463d72dcafad2635cca5c14e8575da8447ea1d8fb0edc4ed2006d6db576d', 1, 242),
 }
 
 
@@ -116,9 +120,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_Windows_Word=capture['word'],
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count']))
-    require(len(results) == 5 and sum(r['glyphs'] for r in results) == 1197,
+    require(len(results) == 6 and sum(r['glyphs'] for r in results) == 1439,
             'Shared Mac original coverage changed')
-    print('Five shared Mac originals1197: layout and painted-PDF PASS', flush=True)
+    print('Six shared Mac originals1439: layout and painted-PDF PASS', flush=True)
     return results
 
 

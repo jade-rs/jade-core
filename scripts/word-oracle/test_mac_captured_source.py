@@ -5,12 +5,12 @@ import check_mac_captured_source as check
 
 
 class CapturedMacOriginalTests(unittest.TestCase):
-    def test_five_shared_mac_originals_keep_independent_sources_and_coverage(self):
+    def test_six_shared_mac_originals_keep_independent_sources_and_coverage(self):
         rows = check.shared_originals()
         self.assertEqual({r[0] for r in rows}, set(check.SHARED_ORIGINALS))
-        self.assertEqual(len(rows), 5)
-        self.assertEqual(sum(r[5] for r in rows), 1197)
-        self.assertEqual([r[4]['page_count'] for r in rows], [4, 4, 2, 2, 3])
+        self.assertEqual(len(rows), 6)
+        self.assertEqual(sum(r[5] for r in rows), 1439)
+        self.assertEqual([r[4]['page_count'] for r in rows], [4, 4, 2, 2, 3, 1])
         for name, case, source, manifest, expected, count in rows:
             with self.subTest(case=name):
                 self.assertEqual(manifest['reference']['platform'], 'mac')

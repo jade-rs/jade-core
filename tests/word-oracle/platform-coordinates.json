@@ -3023,6 +3023,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-continuous-column-explicit-break",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-continuous-column-explicit-break/source.docx",
+        "sha256": "036d1a09b7eca1f005fd00fa800c6342951c0ff9fa32574606719d67f2f8c648"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-continuous-column-explicit-break/manifest.json",
+        "sha256": "ab464ad7e5e0893d4cd29a0ad55d0e083cf5cbd933d674d7fed76fe7fff66012"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004252975Z-a999e8fb",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004252975Z-a999e8fb.zip",
+            "sha256": "189d77201e3bdd409173c1d4ff5f70941b25c4bc44b9fdc46c9dd9cba53914aa"
+          },
+          "capture_sha256": "56c509f2195fefaa9e8ccea7fce283832d222a52fbc09a408303060348efa10d",
+          "fixture": "ww14-continuous-column-explicit-break-mac-036d1a09",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

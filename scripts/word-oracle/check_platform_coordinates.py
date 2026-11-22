@@ -144,6 +144,7 @@ PHYSICAL_FONT_CASES = {
     'wrong-num-mac',
     'probe-column-fixed-dxa-6800',
     'probe-width-single-dxa-2400-dxa-2000',
+    'probe-continuous-column-explicit-break',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -266,6 +267,7 @@ REQUIRED_CAPTURES = {
     'floating-top-bottom-offset-mac': '20261114T004143028Z-b4cb9887',
     'probe-column-fixed-dxa-6800': '20261114T004402030Z-30b8d3b5',
     'probe-width-single-dxa-2400-dxa-2000': '20261114T004612020Z-5d981186',
+    'probe-continuous-column-explicit-break': '20261114T004252975Z-a999e8fb',
 }
 
 # These original inputs have distinct screen and print origins in Windows

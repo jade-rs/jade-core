@@ -16192,20 +16192,19 @@ where
                         0,
                         options,
                     );
-                    // Word for Mac omits the empty section mark from page
-                    // vAlign and from the vertical flow at a continuous column
-                    // change. Keep its layout available for editing.
+                    // Word omits empty continuous section marks from vertical
+                    // flow on both platforms. Mac also excludes them from page
+                    // vAlign. Keep their layout available for editing.
                     let empty_section_mark = body_element_index + 1 == end
                         && sections.get(index + 1).is_some_and(|next| {
-                            self.section_valign_enabled()
-                                || next
-                                    .properties
-                                    .as_ref()
-                                    .and_then(|props| props.section_type.as_deref())
-                                    == Some("continuous")
+                            next.properties
+                                .as_ref()
+                                .and_then(|props| props.section_type.as_deref())
+                                == Some("continuous")
+                                || (self.section_valign_enabled()
+                                    && jade_docx_layout::line_metrics::word_layout_platform()
+                                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
                         })
-                        && jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         && matches!(element, BodyElement::Paragraph(paragraph)
                             if paragraph.runs.is_empty()
                                 && paragraph.properties.as_ref().is_some_and(|props|
@@ -76552,6 +76551,96 @@ mod tests {
             assert_eq!(page(2, 0), heading_page, "{case}");
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
+        }
+    }
+
+    #[test]
+    fn empty_continuous_section_marks_keep_the_next_section_at_the_flow_top() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::{PageSettings, SectionColumns};
+        let settings = PageSettings {
+            width: Some(400.0),
+            height: Some(792.0),
+            margin_top: Some(72.0),
+            margin_bottom: Some(72.0),
+            margin_left: Some(40.0),
+            margin_right: Some(40.0),
+            ..Default::default()
+        };
+        let section = |count: u32, continuous: bool| SectionProperties {
+            page_settings: Some(settings.clone()),
+            section_type: continuous.then(|| "continuous".to_string()),
+            columns: Some(SectionColumns {
+                count: Some(count),
+                space: Some(20.0),
+                equal_width: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let document = |empty: Option<bool>| {
+            let texts = if empty.is_some() {
+                vec!["before", "", "after"]
+            } else {
+                vec!["before", "after"]
+            };
+            let mut document = doc_with_paragraph_texts(&texts);
+            let split = if empty.is_some() { 2 } else { 1 };
+            let end = texts.len();
+            if let Some(is_section_mark) = empty {
+                let paragraph = document.body.as_mut().unwrap().elements[1]
+                    .as_paragraph_mut()
+                    .unwrap();
+                paragraph.runs.clear();
+                paragraph.properties = Some(ParagraphProperties {
+                    section: is_section_mark.then(|| section(1, false)),
+                    spacing: Some(Spacing {
+                        after: Some(13.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+            }
+            document.page_settings = Some(settings.clone());
+            document.default_section = Some(section(2, true));
+            document.sections = vec![
+                SectionRange {
+                    start: 0,
+                    end: split,
+                    properties: Some(section(1, false)),
+                },
+                SectionRange {
+                    start: split,
+                    end,
+                    properties: Some(section(2, true)),
+                },
+            ];
+            document
+        };
+        let top = |document: &Document, platform| {
+            set_word_layout_platform(platform);
+            let (mut renderer, _) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(document, &options).unwrap();
+            let top = renderer.selection.paragraphs().last().unwrap().lines[0].absolute_top;
+            (top, renderer.current_page_number)
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            let control = top(&document(None), platform);
+            let section_mark = top(&document(Some(true)), platform);
+            let ordinary_empty = top(&document(Some(false)), platform);
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            assert_eq!(section_mark.1, control.1, "{platform:?}");
+            assert!(
+                (section_mark.0 - control.0).abs() < 1e-6,
+                "{platform:?}: {control:?} {section_mark:?}"
+            );
+            assert!(
+                ordinary_empty.0 > control.0 + 1.0,
+                "{platform:?}: ordinary empty paragraph lost its line"
+            );
         }
     }
 
