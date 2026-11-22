@@ -2174,6 +2174,41 @@ pub(crate) fn hf_reference_for_section(
     })
 }
 
+/// The relationship id of the story the document shows outside a
+/// section-scoped edit: the last section's, with link-to-previous
+/// inheritance. A last section linked to the previous one declares no
+/// reference of its own (`pick_hf_reference` is `None`), yet shows, and
+/// Word edits, the story it inherits.
+pub(crate) fn document_wide_hf_reference(
+    document: &crate::document::Document,
+    role: HeaderFooterRole,
+    variant: HeaderFooterVariant,
+) -> Option<String> {
+    let last_section = document.sections.len().saturating_sub(1);
+    hf_reference_for_section(document, last_section, role, variant)
+}
+
+/// The story the document-wide `header_lines*` / `footer_lines*` fields
+/// mirror. The default story is the one the last section shows, inherited
+/// or not ([`document_wide_hf_reference`]). A first-page or even-page story
+/// is mirrored only when the last section declares it: an earlier
+/// section's variant stays that section's, and those fields stay absent.
+/// So headless snapshots (which read those fields) omit a first/even story
+/// the last section only inherits, although edits reach it through
+/// [`document_wide_hf_reference`].
+pub(crate) fn document_wide_lines_hf_reference(
+    document: &crate::document::Document,
+    role: HeaderFooterRole,
+    variant: HeaderFooterVariant,
+) -> Option<String> {
+    match variant {
+        HeaderFooterVariant::Default => document_wide_hf_reference(document, role, variant),
+        HeaderFooterVariant::First | HeaderFooterVariant::Even => {
+            pick_hf_reference(document, role, variant)
+        }
+    }
+}
+
 pub(crate) fn pick_hf_reference(
     document: &crate::document::Document,
     role: HeaderFooterRole,
@@ -2290,13 +2325,14 @@ impl WordDocument {
         variant: HeaderFooterVariant,
     ) -> Option<Rc<Body>> {
         let document = self.document.as_deref()?;
-        let relationship_id = pick_hf_reference(document, role, variant)?;
+        let relationship_id = document_wide_hf_reference(document, role, variant)?;
         self.header_footer_body_for_reference(&relationship_id)
     }
 
     /// The reference an edit should target: the editing section's story
-    /// (with link-to-previous inheritance) when a header/footer edit session
-    /// is active, otherwise the document-wide reference.
+    /// when a header/footer edit session is active, otherwise the last
+    /// section's; both with link-to-previous inheritance, so an edit of a
+    /// linked story changes the shared part instead of unlinking a section.
     pub(crate) fn active_hf_reference(
         &self,
         role: HeaderFooterRole,
@@ -2305,7 +2341,7 @@ impl WordDocument {
         let document = self.document.as_deref()?;
         match self.hf_edit_section {
             Some(section) => hf_reference_for_section(document, section, role, variant),
-            None => pick_hf_reference(document, role, variant),
+            None => document_wide_hf_reference(document, role, variant),
         }
     }
 
@@ -2372,9 +2408,10 @@ impl WordDocument {
     }
 
     /// `true` when `part_path` is the part the document-wide `header_lines*`
-    /// / `footer_lines*` fields describe: the story the body-level `sectPr`
-    /// (or a part created while editing) references. Earlier sections may own
-    /// other parts, which those fields never mirror.
+    /// / `footer_lines*` fields describe (see
+    /// [`document_wide_lines_hf_reference`]), or a part created while
+    /// editing. Earlier sections may own other parts, which those fields
+    /// never mirror.
     fn hf_part_is_document_wide(
         &self,
         role: HeaderFooterRole,
@@ -2384,7 +2421,7 @@ impl WordDocument {
         let Some(document) = self.document.as_deref() else {
             return true;
         };
-        match pick_hf_reference(document, role, variant)
+        match document_wide_lines_hf_reference(document, role, variant)
             .and_then(|reference| self.hf_part_path_for_reference(&reference))
         {
             Some(path) => path == part_path,
@@ -2466,7 +2503,8 @@ impl WordDocument {
                 // section resolves to that same document-wide reference, use
                 // those lines so the fresh story renders (and pushes the body)
                 // immediately.
-                if pick_hf_reference(document, role, variant).as_deref() == Some(reference.as_str())
+                if document_wide_lines_hf_reference(document, role, variant).as_deref()
+                    == Some(reference.as_str())
                 {
                     let seeded = match (role, variant) {
                         (HeaderFooterRole::Header, HeaderFooterVariant::Default) => {
@@ -2684,14 +2722,18 @@ impl WordDocument {
             let theme_part = reading_theme.clone();
             let mut font_table_part: Option<jade_docx_reader::FontTablePart> = None;
 
-            // `parsed_doc.header_reference` / `footer_reference` only track the
-            // default variant. First-page and even-page variants live on the
-            // document's default section; resolve them from there.
+            // The document-wide lines mirror the stories named by
+            // `document_wide_lines_hf_reference`: the default story the last
+            // section shows (a linked last section declares none of its
+            // own), and the first-page/even-page variants it declares.
             let default_section = parsed_doc.default_section.as_ref();
-            let header_first_ref = default_section.and_then(|s| s.header_reference_first.clone());
-            let footer_first_ref = default_section.and_then(|s| s.footer_reference_first.clone());
-            let header_even_ref = default_section.and_then(|s| s.header_reference_even.clone());
-            let footer_even_ref = default_section.and_then(|s| s.footer_reference_even.clone());
+            let wide = |role, variant| document_wide_lines_hf_reference(&parsed_doc, role, variant);
+            let header_ref = wide(HeaderFooterRole::Header, HeaderFooterVariant::Default);
+            let footer_ref = wide(HeaderFooterRole::Footer, HeaderFooterVariant::Default);
+            let header_first_ref = wide(HeaderFooterRole::Header, HeaderFooterVariant::First);
+            let footer_first_ref = wide(HeaderFooterRole::Footer, HeaderFooterVariant::First);
+            let header_even_ref = wide(HeaderFooterRole::Header, HeaderFooterVariant::Even);
+            let footer_even_ref = wide(HeaderFooterRole::Footer, HeaderFooterVariant::Even);
             let doc_title_page = default_section.map(|s| s.title_page).unwrap_or(false);
 
             let load_header_lines =
@@ -2936,13 +2978,13 @@ impl WordDocument {
             // results from leaking through outside the main body.
             let header_lines = load_header_lines(
                 &mut document,
-                parsed_doc.header_reference.clone(),
+                header_ref,
                 &doc_settings.document_variables,
                 theme_part.as_ref(),
             )?;
             let footer_lines = load_header_lines(
                 &mut document,
-                parsed_doc.footer_reference.clone(),
+                footer_ref,
                 &doc_settings.document_variables,
                 theme_part.as_ref(),
             )?;
@@ -10396,7 +10438,9 @@ impl WordDocument {
             let present = self
                 .document
                 .as_deref()
-                .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
+                .and_then(|document| {
+                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
+                })
                 .is_some();
             if present {
                 self.sync_watermark_to_header_variant(variant, normalized.as_ref())?;
@@ -10510,7 +10554,9 @@ impl WordDocument {
             let present = self
                 .document
                 .as_deref()
-                .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
+                .and_then(|document| {
+                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
+                })
                 .is_some();
             if !present {
                 continue;
@@ -10549,7 +10595,7 @@ impl WordDocument {
             HeaderFooterVariant::Even,
         ] {
             let Some(reference_id) =
-                pick_hf_reference(parsed_document, HeaderFooterRole::Header, variant)
+                document_wide_hf_reference(parsed_document, HeaderFooterRole::Header, variant)
             else {
                 continue;
             };
@@ -23898,6 +23944,8 @@ impl WordDocument {
         let mut references = Vec::new();
         if let Some(document) = self.document.as_deref() {
             for (role, variant) in slots {
+                // The last section's own reference is enough here: the loop
+                // below also walks every section's own references.
                 if let Some(reference) = pick_hf_reference(document, role, variant) {
                     references.push((role, reference));
                 }
