@@ -4000,6 +4000,14 @@ struct TextBoxInlines<'p> {
     maths: InlineMaths,
     pictures: HashMap<usize, (usize, &'p RunImage)>,
 }
+/// An applied-style cache entry keeps the inputs its key was computed from.
+/// The key is a 64-bit hash, which is only 32 bits on wasm32, so a hit is
+/// confirmed against them instead of trusting the hash.
+struct AppliedRunStyleEntry {
+    doc_grid_char_spacing_bits: Option<u64>,
+    properties: Option<RunProperties>,
+    style: Rc<AppliedRunStyle>,
+}
 type AppliedRunStyleIdentityKey = (usize, Option<u64>);
 type AppliedRunStyleIdentityCache =
     FxHashMap<AppliedRunStyleIdentityKey, (Rc<RunProperties>, Rc<AppliedRunStyle>)>;
@@ -4833,7 +4841,7 @@ where
     last_render_body_element_count: u64,
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
-    applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
+    applied_run_style_cache: RefCell<FxHashMap<u64, AppliedRunStyleEntry>>,
     /// Windows font-line summaries, validated against owned run inputs.
     paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
     /// See [`CanvasRenderer::effective_run_properties_rc`].
@@ -13014,7 +13022,7 @@ where
                     border.color.hash(&mut hasher);
                 }
                 props.baseline.as_deref().hash(&mut hasher);
-                // Encode the five Option tags once; keep field order and all
+                // Encode the six Option tags once; keep field order and all
                 // float bits, including signed zero and NaN payloads.
                 let mut metric_presence = 0_u8;
                 macro_rules! hash_metric {
@@ -13030,10 +13038,19 @@ where
                 hash_metric!(kerning, 2);
                 hash_metric!(text_scale, 3);
                 hash_metric!(font_size, 4);
+                hash_metric!(font_size_complex, 5);
                 metric_presence.hash(&mut hasher);
+                // The character style and fit-text width change the resolved
+                // style and glyph positions as much as direct formatting does.
+                props.style.as_deref().hash(&mut hasher);
+                props
+                    .fit_text
+                    .as_ref()
+                    .map(|fit| (fit.val, fit.id))
+                    .hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
-                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                    hasher = run_style_key::hash_languages(props, hasher);
                 }
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
@@ -35357,19 +35374,26 @@ where
             properties,
             self.current_doc_grid_char_spacing_px,
         );
-        if let Some(cached) = self
-            .applied_run_style_cache
-            .borrow()
-            .get(&cache_key)
-            .cloned()
-        {
-            return cached;
+        let grid_bits = self.current_doc_grid_char_spacing_px.map(f64::to_bits);
+        if let Some(entry) = self.applied_run_style_cache.borrow().get(&cache_key) {
+            // Equal hashes are not equal inputs; a collision is a miss and
+            // replaces the entry below.
+            if entry.doc_grid_char_spacing_bits == grid_bits
+                && entry.properties.as_ref() == properties
+            {
+                return Rc::clone(&entry.style);
+            }
         }
 
         let style = Rc::new(self.resolve_applied_run_style_uncached(properties));
-        self.applied_run_style_cache
-            .borrow_mut()
-            .insert(cache_key, style.clone());
+        self.applied_run_style_cache.borrow_mut().insert(
+            cache_key,
+            AppliedRunStyleEntry {
+                doc_grid_char_spacing_bits: grid_bits,
+                properties: properties.cloned(),
+                style: Rc::clone(&style),
+            },
+        );
         style
     }
 
@@ -35791,6 +35815,13 @@ where
                 hint_tag.hash(&mut hasher);
             } else {
                 Option::<String>::None.hash(&mut hasher);
+            }
+            // Word for Mac picks the East Asian fallback face from the
+            // language (`font_resolver`), so ja-JP and zh-CN runs with the
+            // same fonts resolve to different faces and metrics.
+            if INCLUDE_LANGUAGES && (props.language.is_some() || props.east_asia_language.is_some())
+            {
+                hasher = run_style_key::hash_languages(props, hasher);
             }
         } else {
             0_u8.hash(&mut hasher);

@@ -165,6 +165,16 @@ pub(super) fn hash_windows_languages(props: &RunProperties, mut hasher: FxHasher
     hasher
 }
 
+/// [`hash_windows_languages`] on both platforms, for caches whose output also
+/// depends on the language on Mac, where it picks the East Asian fallback face.
+#[cold]
+#[inline(never)]
+pub(super) fn hash_languages(props: &RunProperties, mut hasher: FxHasher) -> FxHasher {
+    hash_language(props.language.as_deref(), &mut hasher);
+    hash_language(props.east_asia_language.as_deref(), &mut hasher);
+    hasher
+}
+
 #[inline]
 fn hash_language(language: Option<&str>, hasher: &mut FxHasher) {
     let Some(language) = language else {
