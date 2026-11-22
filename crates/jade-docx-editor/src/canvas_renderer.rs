@@ -163,6 +163,48 @@ impl SyncedDocumentSettings {
     }
 }
 
+impl SyncedDocumentSettings {
+    /// Whether `document` still carries these settings, read in place.
+    fn matches(&self, document: &Document) -> bool {
+        let Self {
+            snap_to_grid_default,
+            display_content_revisions,
+            default_tab_stop,
+            math_properties,
+            no_tab_hanging_indent,
+            adjust_line_height_in_table,
+            compat,
+            default_font_size,
+            east_asian_line_breaking,
+            gutter_at_top,
+            mirror_margins,
+            book_fold_printing,
+            print_two_on_one,
+            hyphenation,
+            footnote_properties,
+            endnote_properties,
+            endnote_position,
+        } = self;
+        *snap_to_grid_default == document.snap_to_grid_default
+            && *display_content_revisions == document.display_content_revisions
+            && *default_tab_stop == document.default_tab_stop
+            && *math_properties == document.math_properties
+            && *no_tab_hanging_indent == document.no_tab_hanging_indent
+            && *adjust_line_height_in_table == document.adjust_line_height_in_table
+            && *compat == document.compat
+            && *default_font_size == document.default_font_size
+            && *east_asian_line_breaking == document.east_asian_line_breaking
+            && *gutter_at_top == document.gutter_at_top
+            && *mirror_margins == document.mirror_margins
+            && *book_fold_printing == document.book_fold_printing
+            && *print_two_on_one == document.print_two_on_one
+            && *hyphenation == document.hyphenation
+            && *footnote_properties == document.footnote_properties
+            && *endnote_properties == document.endnote_properties
+            && *endnote_position == document.endnote_position
+    }
+}
+
 impl SyncedLayoutInputs {
     fn of(document: &WordDocument) -> Self {
         Self {
@@ -172,12 +214,13 @@ impl SyncedLayoutInputs {
         }
     }
 
-    /// Compares in place, so an unchanged document clones nothing.
+    /// Compares against the document's own parts and fields, so an
+    /// unchanged document clones nothing.
     fn matches(&self, document: &WordDocument) -> bool {
         self.font_table == document.font_table_part
             && self.numbering == document.numbering_part
             && match (&self.settings, document.document.as_deref()) {
-                (Some(settings), Some(current)) => *settings == SyncedDocumentSettings::of(current),
+                (Some(settings), Some(current)) => settings.matches(current),
                 (None, None) => true,
                 _ => false,
             }
@@ -41047,9 +41090,11 @@ where
     /// layout and paint. A host calls this after every structural edit and
     /// undo, which mostly leave the styles, theme, font table, numbering and
     /// settings as they were: those are compared by value with what the last
-    /// call installed, and while all match, the installed parts and every
-    /// cache are kept, so the following render re-wraps only the paragraphs
-    /// the edit touched.
+    /// call installed, and while all match, the installed parts, the
+    /// resolved run properties, the text measurements and the wrapped lines
+    /// are kept, so the following render re-wraps only the paragraphs the
+    /// edit touched. The paragraph layout and paint caches are still dropped
+    /// and the next render lays every page out again.
     pub fn sync_word_document(&mut self, document: &WordDocument) {
         crate::canvas_view::install_document_font_substitutes(document);
         self.rendered_field_lengths = Some(document.rendered_field_lengths());
@@ -41066,6 +41111,16 @@ where
                 theme_part.map(Rc::new),
             );
             self.synced_layout_inputs = Some(SyncedLayoutInputs::of(document));
+        } else {
+            // Only the caches keyed on what was compared above survive. The
+            // paragraph layout and paint caches replay on a content hash
+            // that leaves out run and paragraph formatting and section and
+            // table geometry, and change detection compares against the
+            // previous layout: an edit that changes only those would replay
+            // stale pages.
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+            self.skip_change_detection_once();
         }
         self.sync_document_header_footer_stories(document);
         self.set_bookmark_paragraphs(document.bookmark_render_map());
@@ -46695,7 +46750,7 @@ mod tests {
     }
 
     #[test]
-    fn resyncing_unchanged_styles_keeps_the_installed_parts_and_every_cache() {
+    fn resyncing_unchanged_styles_keeps_the_parts_measurements_and_wrapped_lines() {
         let (mut renderer, _) = recording_renderer();
         let model = styled_word_document(24);
         render_synced(&mut renderer, &model);
@@ -46716,6 +46771,11 @@ mod tests {
             renderer.effective_run_properties_cache.borrow().len(),
             resolved
         );
+        // Layout and paint replay on hashes that miss formatting-only edits:
+        // those still go, and the next render detects nothing as unchanged.
+        assert_eq!(renderer.paragraph_layout_cache_stats().cached_entries, 0);
+        assert_eq!(renderer.paragraph_render_cache_stats().cached_entries, 0);
+        assert!(renderer.skip_change_detection);
 
         let lines = layout_extent(&renderer);
         let before = renderer.paragraph_wrap_cache_stats();
