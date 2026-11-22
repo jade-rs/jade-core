@@ -695,6 +695,118 @@ fn document_wide_lines_follow_a_sessionless_linked_edit() {
     assert!(text.contains("Edited footer"), "{text}");
 }
 
+fn reload(word_doc: &WordDocument) -> WordDocument {
+    futures::executor::block_on(WordDocument::load(
+        &word_doc.export_docx().expect("export"),
+        &Options::default(),
+    ))
+    .expect("reload")
+}
+
+/// Each section's own default header reference, as the model holds it.
+fn own_header_references(word_doc: &WordDocument) -> Vec<Option<String>> {
+    word_doc
+        .document
+        .as_deref()
+        .expect("document")
+        .sections
+        .iter()
+        .map(|section| {
+            section
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.header_reference.clone())
+        })
+        .collect()
+}
+
+/// The first line of the default header each section shows.
+fn shown_headers(word_doc: &WordDocument) -> Vec<String> {
+    word_doc
+        .section_header_footers()
+        .iter()
+        .map(|section| {
+            section
+                .header_body
+                .as_deref()
+                .and_then(|body| body.elements.first())
+                .and_then(BodyElement::as_paragraph)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
+/// A middle section given a header of its own keeps it through a section
+/// break inserted before, in or after it, and with it relinked: the model
+/// the editor shows and edits matches what a reload of the saved file
+/// reads, and an edit of any section reaches the part that section shows.
+/// The unlink used to write the new reference into the section range only,
+/// so the break's rebuild of the ranges from the body dropped it while the
+/// saved `w:sectPr` kept it.
+#[test]
+fn an_unlinked_middle_section_keeps_its_header_through_a_section_break() {
+    for relink in [false, true] {
+        for at in 0..3 {
+            let label = format!("relink {relink}, break in section {at}");
+            let mut word_doc = load(3, 1);
+            word_doc
+                .set_header_footer_link(1, "header", "default", false)
+                .expect("unlink");
+            word_doc.hf_edit_section = Some(1);
+            word_doc
+                .replace_header_paragraph_text(0, "Own header")
+                .expect("edit the unlinked header");
+            word_doc.hf_edit_section = None;
+            if relink {
+                word_doc
+                    .set_header_footer_link(1, "header", "default", true)
+                    .expect("relink");
+            }
+            let before = shown_headers(&word_doc);
+            word_doc
+                .insert_section_break_at(at, 4, crate::word_document::SectionBreakType::NextPage)
+                .expect("section break");
+
+            let reloaded = reload(&word_doc);
+            assert_eq!(
+                own_header_references(&word_doc),
+                own_header_references(&reloaded),
+                "{label}: model references match the saved file"
+            );
+            let shown = shown_headers(&word_doc);
+            assert_eq!(shown, shown_headers(&reloaded), "{label}: shown headers");
+            // The break splits section `at` in two, each showing its header.
+            let mut expected = before.clone();
+            expected.insert(at, before[at].clone());
+            assert_eq!(shown, expected, "{label}");
+            if !relink {
+                assert!(before[1] == "Own header", "{label}: {before:?}");
+            }
+
+            for section in 0..shown.len() {
+                let mut edited = word_doc.clone();
+                edited.hf_edit_section = Some(section);
+                let text = format!("Edit {section}");
+                edited
+                    .replace_header_paragraph_text(0, &text)
+                    .expect("edit");
+                edited.hf_edit_section = None;
+                let shown = shown_headers(&edited);
+                assert_eq!(
+                    shown[section], text,
+                    "{label}: section {section} shows its edit"
+                );
+                assert_eq!(
+                    shown,
+                    shown_headers(&reload(&edited)),
+                    "{label}: the edit of section {section} reaches the part it shows"
+                );
+            }
+        }
+    }
+}
+
 /// Seek snapshots resume the body. A story's paragraphs are numbered past
 /// the body's and laid out at body positions, so recording them would hand
 /// a seek a resume point inside a header or footer.

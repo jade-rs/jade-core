@@ -30240,6 +30240,15 @@ impl WordDocument {
     ) {
         let edit_section = self.hf_edit_section;
         let targets_default = self.section_targets_default_sect_pr(edit_section);
+        if let Some(section) = edit_section.filter(|_| !targets_default) {
+            // An earlier section's properties live on the paragraph that ends
+            // it, and section ranges are rebuilt from there (a section break
+            // does). Written only into the range, the reference was dropped by
+            // the next rebuild while the exported `w:sectPr` kept it.
+            self.edit_section_properties(Some(section), |properties| {
+                Self::set_section_hf_reference(properties, role, variant, rel_id.clone())
+            });
+        }
         let Some(document) = self.document_mut() else {
             return;
         };
