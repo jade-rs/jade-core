@@ -11599,7 +11599,7 @@ where
     fn compute_wrap_content_hash(text: &str, run_styles: &[RunStyle]) -> u64 {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         text.hash(&mut hasher);
         for style in run_styles {
             style.start.hash(&mut hasher);
@@ -11742,7 +11742,7 @@ where
     fn compute_wrap_style_hash(paragraph_style: &ParagraphStyle) -> u64 {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
 
         paragraph_style.bidi.hash(&mut hasher);
         let word_metric_policy = u8::from(paragraph_style.word_east_asian_font_line_box)
@@ -12981,7 +12981,7 @@ where
             value.map(|v| (v * 100.0) as i32)
         }
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
 
         // Hash paragraph text as one contiguous byte stream to avoid allocating
         // a temporary concatenated String on every render.
@@ -13064,7 +13064,10 @@ where
         options: &Options,
         content_hash: Option<ContentHash>,
     ) -> ContentHash {
-        fn hash_shape_shadow(shadow: &ShapeShadow, hasher: &mut FxHasher) {
+        fn hash_shape_shadow(
+            shadow: &ShapeShadow,
+            hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+        ) {
             shadow.color.as_deref().hash(hasher);
             shadow.theme_color.as_deref().hash(hasher);
             for transform in &shadow.theme_transforms {
@@ -13082,7 +13085,10 @@ where
             shadow.direction_deg.to_bits().hash(hasher);
         }
 
-        fn hash_shape_glow(glow: &ShapeGlow, hasher: &mut FxHasher) {
+        fn hash_shape_glow(
+            glow: &ShapeGlow,
+            hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+        ) {
             glow.color.as_deref().hash(hasher);
             glow.theme_color.as_deref().hash(hasher);
             for transform in &glow.theme_transforms {
@@ -13098,7 +13104,10 @@ where
             glow.radius_px.to_bits().hash(hasher);
         }
 
-        fn hash_shape_group(group: &RunShapeGroup, hasher: &mut FxHasher) {
+        fn hash_shape_group(
+            group: &RunShapeGroup,
+            hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+        ) {
             group.x.to_bits().hash(hasher);
             group.y.to_bits().hash(hasher);
             group.width.to_bits().hash(hasher);
@@ -13188,7 +13197,7 @@ where
             }
         }
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
 
         // Incremental layout already hashes the paragraph text. Reuse that
         // digest when available, while retaining per-run lengths below so
@@ -43817,7 +43826,7 @@ where
         text: &str,
         font_descriptor: &str,
     ) -> Result<f64, Self::Error> {
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         font_descriptor.hash(&mut hasher);
         text.hash(&mut hasher);
         let key = hasher.finish();
