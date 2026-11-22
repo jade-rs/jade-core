@@ -272,7 +272,7 @@ fn a_next_page_section_shows_its_chrome_on_its_first_page() {
 fn a_continuous_sections_restart_numbers_the_shared_page() {
     let (_, pages) = render(&two_sections(
         "continuous",
-        r#"<w:pgNumType w:start="1"/>"#,
+        "",
         paragraphs("b", 80),
         r#"<w:titlePg/><w:pgNumType w:start="7"/>"#,
     ));
@@ -297,7 +297,7 @@ fn b_starts_on_the_page_holding_its_first_content() {
     );
     let (renderer, pages) = render(&two_sections(
         "continuous",
-        r#"<w:pgNumType w:start="1"/>"#,
+        "",
         b_body,
         r#"<w:titlePg/><w:pgNumType w:start="7"/>"#,
     ));
@@ -320,7 +320,7 @@ fn a_body_page_field_in_b_on_the_shared_page_shows_bs_number() {
     let b_body = format!("{PAGE_FIELD}{}", paragraphs("b", 60));
     let (_, pages) = render(&two_sections(
         "continuous",
-        r#"<w:pgNumType w:start="1"/>"#,
+        "",
         b_body,
         r#"<w:pgNumType w:start="7"/>"#,
     ));
