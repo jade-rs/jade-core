@@ -273,6 +273,8 @@ mod border_styles;
 #[cfg(test)]
 mod compat_tests;
 #[cfg(test)]
+mod continuous_chrome_tests;
+#[cfg(test)]
 mod control_mark_font_tests;
 #[cfg(test)]
 mod float_anchor_tests;
@@ -4234,6 +4236,14 @@ where
     section_seek_geometry: Vec<SectionSeekGeometry>,
     /// `page_section_indices[n]` is the section owning physical page `n + 1`.
     page_section_indices: Vec<usize>,
+    /// `mid_page_section_starts[s]` is the physical page section `s` started
+    /// on partway down, after a continuous or next-column break; `None` when
+    /// it started on a page of its own. Word takes a page's header, footer
+    /// and page borders from the section at the top of the page, so a section
+    /// starting mid-page supplies its chrome from the following page on.
+    /// Indexed by section rather than page so a seek that skips the prefix
+    /// keeps the entries of the sections it skips.
+    mid_page_section_starts: Vec<Option<usize>>,
     /// Absolute document Y of each physical page, captured during pagination.
     /// Section transitions can change height, so the current height cannot
     /// reconstruct origins belonging to earlier sections.
@@ -9752,6 +9762,7 @@ where
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
+            mid_page_section_starts: Vec::new(),
             page_origins: Vec::new(),
             rendered_field_lengths: None,
             footnote_number_format: None,
@@ -18187,6 +18198,8 @@ where
             has_next_column,
         );
 
+        let page_top_section = self.section_index_for_page(self.current_page_number);
+        self.set_mid_page_section_start(target_section_index, None);
         match transition {
             SectionTransition::Stay => {
                 // A continuous section keeps the current Y. Applying the new
@@ -18222,7 +18235,7 @@ where
                 self.odd_page_margin_right_pt = odd_page_margins.right;
                 self.mirror_margins = document.mirror_margins || document.book_fold_printing;
                 self.active_section_index = target_section_index;
-                self.record_page_section(self.current_page_number);
+                self.record_mid_page_section_start(page_top_section);
                 return Ok(());
             }
             SectionTransition::NextColumn => {
@@ -18246,7 +18259,7 @@ where
                 self.odd_page_margin_left_pt = odd_page_margins.left;
                 self.odd_page_margin_right_pt = odd_page_margins.right;
                 self.mirror_margins = document.mirror_margins || document.book_fold_printing;
-                self.record_page_section(self.current_page_number);
+                self.record_mid_page_section_start(page_top_section);
                 return Ok(());
             }
             SectionTransition::NextPage { .. } => {}
@@ -40109,20 +40122,52 @@ where
         self.hf_story_page_independent.clear();
     }
 
-    /// The section owning a physical (1-based) page. Pages laid out so far
-    /// are recorded in `page_section_indices`; the page being laid out right
-    /// now reads the active section.
+    /// The section supplying a physical (1-based) page's header, footer,
+    /// page borders and page number: the section at the top of the page, as
+    /// in Word. Pages laid out so far record their last section in
+    /// `page_section_indices`, the page being laid out right now reads the
+    /// active section, and sections that started partway down the page are
+    /// stepped back over.
     fn section_index_for_page(&self, page: usize) -> usize {
-        if page == 0
-            || page == self.current_page_number
-            || page == self.current_page_number.saturating_add(1)
-        {
+        if page == 0 || page == self.current_page_number.saturating_add(1) {
             return self.active_section_index;
         }
-        self.page_section_indices
-            .get(page.saturating_sub(1))
-            .copied()
-            .unwrap_or(self.active_section_index)
+        let last_section = if page == self.current_page_number {
+            self.active_section_index
+        } else {
+            self.page_section_indices
+                .get(page - 1)
+                .copied()
+                .unwrap_or(self.active_section_index)
+        };
+        let mut section = last_section;
+        while section > 0
+            && self.mid_page_section_starts.get(section).copied().flatten() == Some(page)
+        {
+            section -= 1;
+        }
+        section
+    }
+
+    fn set_mid_page_section_start(&mut self, section: usize, page: Option<usize>) {
+        if self.mid_page_section_starts.len() <= section {
+            if page.is_none() {
+                return;
+            }
+            self.mid_page_section_starts.resize(section + 1, None);
+        }
+        self.mid_page_section_starts[section] = page;
+    }
+
+    /// Records the active section as owning the current page after a
+    /// continuous or next-column break. The page keeps the chrome of
+    /// `page_top_section`, the section it started with.
+    fn record_mid_page_section_start(&mut self, page_top_section: usize) {
+        let page = self.current_page_number;
+        self.record_page_section(page);
+        if page > 0 && self.active_section_index > page_top_section {
+            self.set_mid_page_section_start(self.active_section_index, Some(page));
+        }
     }
 
     fn page_borders_for_page(&self, page: usize) -> Option<&ResolvedPageBorders> {
@@ -41827,16 +41872,35 @@ where
         self.section_page_numbering = numbering;
     }
 
-    /// The first physical page owned by a section, from the pages laid out so
-    /// far (the page being laid out counts as the active section's).
+    /// The first physical page whose chrome a section supplies, from the
+    /// pages laid out so far (the page being laid out counts as the active
+    /// section's unless that section started partway down it). A section
+    /// that starts and ends partway down one page tops no page; it gets the
+    /// first page a later section tops.
     fn first_page_of_section_index(&self, section: usize) -> Option<usize> {
         let laid_out = self
             .page_section_indices
-            .iter()
-            .position(|owner| *owner == section)
-            .map(|index| index + 1);
-        laid_out.or_else(|| {
-            (section == self.active_section_index).then_some(self.current_page_number.max(1))
+            .len()
+            .max(self.current_page_number);
+        let mut later = None;
+        for page in 1..=laid_out {
+            let owner = self.section_index_for_page(page);
+            if owner == section {
+                return Some(page);
+            }
+            if owner > section && later.is_none() {
+                later = Some(page);
+            }
+        }
+        later.or_else(|| {
+            (section == self.active_section_index).then(|| {
+                let page = self.current_page_number.max(1);
+                if self.mid_page_section_starts.get(section).copied().flatten() == Some(page) {
+                    page + 1
+                } else {
+                    page
+                }
+            })
         })
     }
 
