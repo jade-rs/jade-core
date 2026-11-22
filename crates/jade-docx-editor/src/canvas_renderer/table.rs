@@ -28628,6 +28628,93 @@ mod tests {
     }
 
     #[test]
+    fn table_cell_paragraphs_honor_their_tab_stops() {
+        // A cell paragraph's `w:tabs` place text exactly as in the body, from
+        // the cell's content box: `label<TAB>1.061` with a right stop at 10cm
+        // ends at 10cm instead of after the next default (36pt) stop.
+        let config = LayoutConfig {
+            padding_x: 0.0,
+            padding_y: 0.0,
+            line_height: 16.0,
+            paragraph_line_heights: FxHashMap::default(),
+            paragraph_east_asian_rules: FxHashMap::default(),
+            document_uses_east_asian_layout: false,
+            word_modern_border_insets: false,
+            word_mac_bidi_alignment: false,
+            html_auto_spacing: true,
+            override_table_style_font_size: false,
+            hyphenation: Default::default(),
+            available_width: 453.5,
+            render_changes: false,
+            render_original: false,
+            note_markers: NoteMarkers::default(),
+            paragraph_numbering: FxHashMap::default(),
+            doc_grid: None,
+            spacing_grid_pitch_pt: None,
+            styles_part: None,
+            theme_part: None,
+            document_snap_to_grid_default: false,
+        };
+        let context = FixedWidthWrapContext::new();
+        // The fixed-width context measures 10px per glyph and 5px per space.
+        // Center and decimal stops follow Word's centring of the measured
+        // run, a couple of px off the plain arithmetic, hence the tolerance;
+        // the default-stop fallback would land ~200px earlier.
+        let cases: [(&str, f32, &str, f64, f64); 4] = [
+            // (kind, position pt, text, expected x after the tab, tolerance)
+            (
+                "right",
+                283.45,
+                "label\t1.061",
+                points_to_px(283.45) - 50.0,
+                0.01,
+            ),
+            ("left", 144.0, "a\tb", points_to_px(144.0), 0.01),
+            ("center", 216.0, "a\tabcd", points_to_px(216.0) - 20.0, 3.0),
+            ("decimal", 216.0, "a\t12.5", points_to_px(216.0) - 20.0, 3.0),
+        ];
+        for (kind, position, text, expected_x, tolerance) in cases {
+            let paragraph = Paragraph {
+                runs: Vec::new(),
+                node_id: None,
+                comment_ranges: Vec::new(),
+                comment_markers: Vec::new(),
+                properties: Some(ParagraphProperties {
+                    tabs: vec![jade_docx_reader::TabStop {
+                        kind: Some(kind.into()),
+                        position: Some(position),
+                        leader: None,
+                    }],
+                    ..Default::default()
+                }),
+            };
+            let (left, style) = config.paragraph_style(&paragraph);
+            assert_eq!(left, 0.0);
+            let layout = layout_horizontal_paragraph_with_run_styles_context(
+                &context,
+                text,
+                config.available_width,
+                16.0,
+                &styled_run_styles(text, &[]),
+                &style,
+            )
+            .unwrap();
+            assert_eq!(layout.lines.len(), 1, "{kind}");
+            let after_tab = text.find('\t').unwrap() + 1;
+            let glyph = layout.lines[0]
+                .glyphs
+                .iter()
+                .find(|glyph| glyph.start == after_tab)
+                .unwrap();
+            assert!(
+                (glyph.x - expected_x).abs() < tolerance,
+                "{kind} tab: text after the tab starts at {}, expected {expected_x}",
+                glyph.x
+            );
+        }
+    }
+
+    #[test]
     fn table_paragraph_indents_use_shared_wrap_and_line_origins() {
         let config = LayoutConfig {
             padding_x: 0.0,
