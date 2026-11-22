@@ -18381,6 +18381,7 @@ where
                     frame.paragraph_top,
                     frame.line_height,
                     None,
+                    None,
                 )?;
             }
             CellFloatingKind::Picture(image) => {
@@ -18513,13 +18514,14 @@ where
                         true,
                     )
                 } else {
-                    self.render_floating_text_box(
+                    self.render_floating_text_box_in_column(
                         text_box,
                         paragraph_index,
                         object.run_index,
                         frame.paragraph_top,
                         frame.line_height,
                         true,
+                        None,
                     )
                     .map(|_| ())
                 };
