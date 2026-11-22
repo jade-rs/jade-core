@@ -274,6 +274,24 @@ pub struct NativeDocument {
     stale_pages: std::collections::BTreeSet<usize>,
 }
 
+thread_local! {
+    static SURFACE_DOCUMENT_RENDERS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn count_surface_document_render() {
+    SURFACE_DOCUMENT_RENDERS.with(|renders| renders.set(renders.get() + 1));
+}
+
+/// How many whole-document renders into a [`NativeDocument`]'s page surfaces
+/// have run on this thread: the one at open, every full repaint and every
+/// rebuild for a new page box. Bounded edit repaints, PDF export and print
+/// are not counted. A diagnostic for tests that pin how much work an
+/// operation does.
+#[doc(hidden)]
+pub fn surface_document_renders() -> usize {
+    SURFACE_DOCUMENT_RENDERS.with(std::cell::Cell::get)
+}
+
 /// Binds only the selected math faces, so each family uses its own MATH
 /// table and outlines instead of the renderer's fallback constants.
 fn register_math_faces(renderer: &mut CanvasRenderer<SkiaPainter>, faces: &[FontFace]) {
@@ -322,6 +340,54 @@ impl NativeDocument {
         page_height: f64,
         faces: &[FontFace],
     ) -> Result<Self, String> {
+        Self::open_drawing(docx_bytes, page_width, page_height, faces, None)
+    }
+
+    /// [`Self::open`] for a shell that shows `window` (0-based pages) first:
+    /// every page is laid out, but only those are drawn before this returns.
+    /// The rest are left stale for [`Self::paint_stale_pages`], and later
+    /// whole-document repaints keep to the same window (see
+    /// [`Self::set_paint_window`]). An empty window draws every page, as
+    /// [`Self::open`] does.
+    pub fn open_with_paint_window(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FaceSpec<'_>],
+        window: std::ops::Range<usize>,
+    ) -> Result<Self, String> {
+        let faces: Vec<FontFace> = faces.iter().map(FontFace::from).collect();
+        Self::open_with_font_faces_and_paint_window(
+            docx_bytes,
+            page_width,
+            page_height,
+            &faces,
+            window,
+        )
+    }
+
+    /// [`Self::open_with_paint_window`] with faces that may be italic or in a
+    /// collection.
+    pub fn open_with_font_faces_and_paint_window(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FontFace],
+        window: std::ops::Range<usize>,
+    ) -> Result<Self, String> {
+        Self::open_drawing(docx_bytes, page_width, page_height, faces, Some(window))
+    }
+
+    /// Opens the document, lays every page out once and draws those in
+    /// `window` (every page when `None` or empty).
+    fn open_drawing(
+        docx_bytes: &[u8],
+        page_width: f64,
+        page_height: f64,
+        faces: &[FontFace],
+        window: Option<std::ops::Range<usize>>,
+    ) -> Result<Self, String> {
+        let window = window.filter(|window| !window.is_empty());
         let mut options = Options::default();
 
         let word_document = block_on(WordDocument::load(docx_bytes, &options))
@@ -333,34 +399,33 @@ impl NativeDocument {
         // coloured and underlined, deletions struck through — unless the
         // document was saved with a view that leaves them out.
         options.set_render_changes(document.display_content_revisions.unwrap_or(true));
+        // The model's own snapshot, shared rather than copied: the renderer
+        // keeps it as its last document, and identity-keyed caches then hit.
+        let document = Rc::clone(document);
 
         // Section properties decide the page box, and it is not necessarily the
         // one the caller asked for — this fixture is A4 while the shell asks
         // for Letter. A host sized to the wrong box draws each page short and
-        // maps every page after the first to the wrong place, so find out
-        // first and build to what the document wants.
+        // maps every page after the first to the wrong place, so build to
+        // what the document wants. Layout ends on the last section's box, read
+        // here from the section properties without laying anything out.
         let (page_width, page_height) =
-            Self::layout_page_size_of(&word_document, &options, faces, page_width, page_height)?;
+            Self::layout_page_size_of(&document).unwrap_or((page_width, page_height));
 
         let mut host = SkiaRenderHost::new(page_width, page_height)
             .ok_or_else(|| "could not allocate the raster surface".to_string())?;
         register_faces(&mut host, faces)?;
         let fonts = host.font_environment();
+        let math_faces = math_faces_of(faces, &word_document);
         let pages = host.pages();
         let rendered_pages = host.rendered_pages();
         let pass_covers_whole_document = host.pass_covers_whole_document();
         let dark_paper = host.dark_paper();
         let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
             .map_err(|_| "renderer setup failed".to_string())?;
-        let math_faces = math_faces_of(faces, &word_document);
         register_math_faces(&mut renderer, &math_faces);
         renderer.sync_word_document(&word_document);
 
-        let document = word_document
-            .document
-            .as_ref()
-            .expect("checked above")
-            .clone();
         // The renderer defaults to letting a JS overlay draw the selection,
         // which leaves a native host with no highlight at all. There is no
         // overlay here; the renderer paints it.
@@ -370,23 +435,33 @@ impl NativeDocument {
         // a later full repaint draws it, so the content is laid out, just not
         // drawn. Costs nothing here because everything is dirty anyway.
         renderer.mark_full_repaint();
-        renderer
-            .render_with_numbering(
-                &document,
-                &options,
-                word_document.numbering_part.as_ref(),
-                word_document.header_lines.as_deref(),
-                word_document.footer_lines.as_deref(),
-                Some(&word_document.comments),
-            )
-            .map_err(|_| "render failed".to_string())?;
+        if let Some(window) = &window {
+            renderer.set_visible_page_range(Some(window.start + 1..=window.end));
+        }
+        count_surface_document_render();
+        let result = renderer.render_with_numbering_rc(
+            document,
+            &options,
+            word_document.numbering_part.as_ref(),
+            word_document.header_lines.as_deref(),
+            word_document.footer_lines.as_deref(),
+            Some(&word_document.comments),
+        );
+        renderer.clear_visible_page_range();
+        result.map_err(|_| "render failed".to_string())?;
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
         renderer.clear_dirty_regions();
-        drop(document);
+        let page_count = rendered_pages.get();
+        let stale_pages = match &window {
+            Some(window) => (0..page_count)
+                .filter(|page| !window.contains(page))
+                .collect(),
+            None => std::collections::BTreeSet::new(),
+        };
 
-        Ok(Self {
+        let mut opened = Self {
             // The box the document asked for, not the one the caller guessed.
             page_width,
             page_height,
@@ -410,9 +485,14 @@ impl NativeDocument {
             math_faces,
             view_geometry: None,
             outline_indents: None,
-            paint_window: None,
-            stale_pages: std::collections::BTreeSet::new(),
-        })
+            paint_window: window,
+            stale_pages,
+        };
+        // Should layout end on a box the section properties did not predict,
+        // the host is built again to it, drawing the same window.
+        let window = opened.paint_window.clone();
+        opened.follow_page_box(window)?;
+        Ok(opened)
     }
 
     /// Limits what a whole-document repaint draws to `window` (0-based
@@ -425,8 +505,10 @@ impl NativeDocument {
         self.paint_window = window.filter(|window| !window.is_empty());
     }
 
-    /// Whether page `page_index` was laid out again since it was last drawn,
-    /// so its pixels are out of date.
+    /// Whether page `page_index` was laid out since it was last drawn, so its
+    /// pixels are out of date: the old pixels after a re-flow, or blank for a
+    /// page that has never been drawn (outside the window at open, or after
+    /// the surfaces were built again for a new page box).
     pub fn is_page_stale(&self, page_index: usize) -> bool {
         self.stale_pages.contains(&page_index)
     }
@@ -759,12 +841,14 @@ impl NativeDocument {
         drawn: Option<std::ops::Range<usize>>,
         others_changed: bool,
     ) -> Result<Duration, String> {
-        let document = self
-            .word_document
-            .document
-            .as_ref()
-            .ok_or_else(|| "document went missing".to_string())?
-            .clone();
+        // The model's own snapshot, shared: a copy would cost a deep clone of
+        // the document and leave the renderer's identity caches missing.
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
         let started = Instant::now();
         self.renderer.sync_word_document(&self.word_document);
         self.renderer.set_selection_range_for_render(self.selection);
@@ -779,8 +863,9 @@ impl NativeDocument {
             self.renderer
                 .set_visible_page_range(Some(drawn.start + 1..=drawn.end));
         }
-        let result = self.renderer.render_with_numbering(
-            &document,
+        count_surface_document_render();
+        let result = self.renderer.render_with_numbering_rc(
+            document,
             &self.options,
             self.word_document.numbering_part.as_ref(),
             self.word_document.header_lines.as_deref(),
@@ -809,7 +894,7 @@ impl NativeDocument {
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
         self.renderer.clear_dirty_regions();
-        self.follow_page_box()?;
+        self.follow_page_box(drawn)?;
         Ok(started.elapsed())
     }
 
@@ -819,7 +904,10 @@ impl NativeDocument {
     /// wrapping lines to its width: turned to landscape, the text kept its
     /// portrait width, the pages their portrait pitch, and lines ran over
     /// each other.
-    fn follow_page_box(&mut self) -> Result<(), String> {
+    ///
+    /// The new surfaces draw `drawn` (0-based; every page when `None`), and
+    /// the pages outside it are left stale: they start blank.
+    fn follow_page_box(&mut self, drawn: Option<std::ops::Range<usize>>) -> Result<(), String> {
         let (width, height) = self.renderer.layout_page_size();
         if (width, height) == (self.page_width, self.page_height) || width <= 1.0 || height <= 1.0 {
             return Ok(());
@@ -857,26 +945,37 @@ impl NativeDocument {
             )));
         }
         renderer.mark_full_repaint();
-        let document = self
-            .word_document
-            .document
-            .as_ref()
-            .ok_or_else(|| "document went missing".to_string())?
-            .clone();
-        renderer
-            .render_with_numbering(
-                &document,
-                &self.options,
-                self.word_document.numbering_part.as_ref(),
-                self.word_document.header_lines.as_deref(),
-                self.word_document.footer_lines.as_deref(),
-                Some(&self.word_document.comments),
-            )
-            .map_err(|_| "repaint failed".to_string())?;
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
+        if let Some(drawn) = &drawn {
+            renderer.set_visible_page_range(Some(drawn.start + 1..=drawn.end));
+        }
+        count_surface_document_render();
+        let result = renderer.render_with_numbering_rc(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+        );
+        renderer.clear_visible_page_range();
+        result.map_err(|_| "repaint failed".to_string())?;
         if let Some(error) = renderer.take_render_error() {
             return Err(error);
         }
         renderer.clear_dirty_regions();
+        let page_count = rendered_pages.get();
+        self.stale_pages = match &drawn {
+            Some(drawn) => (0..page_count)
+                .filter(|page| !drawn.contains(page))
+                .collect(),
+            None => std::collections::BTreeSet::new(),
+        };
         self.renderer = renderer;
         self.pages = pages;
         self.rendered_pages = rendered_pages;
@@ -2475,49 +2574,41 @@ impl NativeDocument {
         (page, document_y - self.renderer.page_top_y(page))
     }
 
-    /// The page box the document asks for, found by laying it out once.
-    ///
-    /// Costs a render, which is why it happens only at open. The page size is
-    /// only known after layout has read the section properties, and everything
-    /// that maps between screen and document depends on it.
-    fn layout_page_size_of(
-        word_document: &WordDocument,
-        options: &Options,
-        faces: &[FontFace],
-        fallback_width: f64,
-        fallback_height: f64,
-    ) -> Result<(f64, f64), String> {
-        let mut host = SkiaRenderHost::new(fallback_width, fallback_height)
-            .ok_or_else(|| "could not allocate the probe surface".to_string())?;
-        register_faces(&mut host, faces)?;
-        let mut renderer = CanvasRenderer::<SkiaPainter>::with_host(Box::new(host), false)
-            .map_err(|_| "renderer setup failed".to_string())?;
-        register_math_faces(&mut renderer, &math_faces_of(faces, word_document));
-        renderer.sync_word_document(word_document);
-        let document = word_document
-            .document
-            .as_ref()
-            .ok_or_else(|| "no main document part".to_string())?
-            .clone();
-        renderer
-            .render_with_numbering(
-                &document,
-                options,
-                word_document.numbering_part.as_ref(),
-                word_document.header_lines.as_deref(),
-                word_document.footer_lines.as_deref(),
-                Some(&word_document.comments),
-            )
-            .map_err(|_| "probe render failed".to_string())?;
-        if let Some(error) = renderer.take_render_error() {
-            return Err(error);
-        }
-        let (width, height) = renderer.layout_page_size();
-        Ok(if width > 1.0 && height > 1.0 {
-            (width, height)
-        } else {
-            (fallback_width, fallback_height)
-        })
+    /// The page box layout ends on: the last section's, resolved as the
+    /// renderer resolves it (the section's own page settings, then the
+    /// document default section's, then the document's), folded for two
+    /// pages per sheet or a booklet. `None` when the properties give no
+    /// usable box; [`Self::follow_page_box`] still catches any box layout
+    /// ends on that this did not predict.
+    fn layout_page_size_of(document: &jade_docx_reader::Document) -> Option<(f64, f64)> {
+        use jade_docx_layout::section_transition::{
+            folded_page_size, DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
+        };
+        let settings = document
+            .sections
+            .last()
+            .and_then(|section| section.properties.as_ref())
+            .and_then(|properties| properties.page_settings.as_ref())
+            .or_else(|| {
+                document
+                    .default_section
+                    .as_ref()
+                    .and_then(|properties| properties.page_settings.as_ref())
+            })
+            .or(document.page_settings.as_ref());
+        let (width_pt, height_pt) = folded_page_size(
+            settings
+                .and_then(|settings| settings.width)
+                .unwrap_or(DEFAULT_PAGE_WIDTH_PT),
+            settings
+                .and_then(|settings| settings.height)
+                .unwrap_or(DEFAULT_PAGE_HEIGHT_PT),
+            document.print_two_on_one,
+            document.book_fold_printing,
+        );
+        let to_px = |points: f32| f64::from(points) * 96.0 / 72.0;
+        let (width, height) = (to_px(width_pt), to_px(height_pt));
+        (width > 1.0 && height > 1.0).then_some((width, height))
     }
 
     pub fn page_count(&self) -> usize {
@@ -3012,10 +3103,12 @@ impl NativeDocument {
             // Native pages retain their pixels between edits. Let the renderer
             // redraw only this paragraph's band when its geometry is stable;
             // unsupported layouts and height changes fall back to a full page.
-            // The incremental hyperlink registry retains prefix regions while
-            // native replay may visit them again. Keep the full-page path for
-            // linked documents until that registry supports retained bands.
-            let band_safe = local_text_edit && self.renderer.hyperlink_regions().is_empty();
+            // Hyperlink registration is idempotent against the regions the
+            // render retained for paragraphs before the edit, so replaying them
+            // adds nothing, and the edited paragraph's regions were dropped by
+            // the `dirty_from` retain and register afresh. Linked documents can
+            // take the band too.
+            let band_safe = local_text_edit;
             self.renderer.set_band_redraw_enabled(band_safe);
             if let Some(cache) = text_edit_cache {
                 self.renderer
