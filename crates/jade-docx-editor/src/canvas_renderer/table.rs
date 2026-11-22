@@ -3458,7 +3458,9 @@ where
             // Move the leading rows together before painting any of them.
             // Otherwise a heading can appear alone at the foot of a page and
             // be repeated above the first body row on the following page.
-            let page_content_height = self.table_full_page_content_height();
+            // The group moves to the next page, whose body this page's footer
+            // does not bound: no fresh page offers more than the margins.
+            let page_content_height = self.page_height - self.margin_top - self.margin_bottom;
             if height <= page_content_height
                 && self.ensure_table_row_space(height, use_column_frame)?
             {
@@ -3839,6 +3841,12 @@ where
                     // fragments retain restart/span metadata; continuation
                     // cells remain non-rendering and must not block content.
                     let disallow_split = row_height_blocks_content_split(row, &pending_cells)
+                        || self.cant_split_row_moves_first(
+                            row.cant_split,
+                            row_start,
+                            fresh_page_segment.is_some(),
+                            use_column_frame,
+                        )
                         || cant_split_blocks_row_split(
                             row.cant_split,
                             pending_height,
@@ -8624,6 +8632,32 @@ where
         } else {
             self.effective_body_bottom()
         }
+    }
+
+    /// A cantSplit row that does not fit below earlier content moves to a
+    /// fresh frame before it is judged against that frame's height: it splits
+    /// only where it starts a page (or column) and still does not fit.
+    fn cant_split_row_moves_first(
+        &self,
+        cant_split: bool,
+        row_start: bool,
+        fresh_frame: bool,
+        use_column_frame: bool,
+    ) -> bool {
+        if !cant_split
+            || !row_start
+            || fresh_frame
+            || self.pageless_mode
+            || self.rendering_header_footer_story
+        {
+            return false;
+        }
+        let top = if use_column_frame {
+            self.current_column_top()
+        } else {
+            self.effective_body_top()
+        };
+        self.current_y > top + self.current_page_valign_offset() + ROW_SPLIT_EPSILON
     }
 
     /// The body height a fresh page offers a row: between a tall header's
@@ -18652,7 +18686,7 @@ mod tests {
                     <w:tr><w:trPr><w:cantSplit/><w:trHeight w:val="1000" w:hRule="exact"/></w:trPr>
                         <w:tc><w:p><w:r><w:t>Second body row</w:t></w:r></w:p></w:tc></w:tr>
                 </w:tbl>
-                <w:sectPr><w:pgSz w:w="6000" w:h="2700"/><w:pgMar w:top="240" w:bottom="240" w:left="240" w:right="240" w:header="0" w:footer="0"/></w:sectPr>
+                <w:sectPr><w:pgSz w:w="6000" w:h="2700"/><w:pgMar w:top="240" w:bottom="240" w:left="240" w:right="240"/></w:sectPr>
             </w:body></w:document>"#;
         let document = jade_docx_reader::DocumentParser::new()
             .parse_document_xml(xml)

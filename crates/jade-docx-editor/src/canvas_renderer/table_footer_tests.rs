@@ -1,33 +1,73 @@
 //! Table rows paginate against the same body area as paragraphs when the
-//! footer story is taller than the bottom margin.
+//! footer story is taller than the bottom margin, and keep the full bottom
+//! margin when there is no footer at all.
 
-use super::recording_host::recording_renderer;
+use super::recording_host::RecordingHost;
 use super::section_tests::build_docx_with_body;
 use super::*;
 use crate::word_document::WordDocument;
-use jade_painter::recording::RecordingPainter;
+use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+use jade_painter::recording::{Op, RecordingPainter};
 
-const SECT_PR: &str = r#"<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>"#;
+type Renderer = CanvasRenderer<RecordingPainter>;
+
+const LETTER_1IN: &str = r#"<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>"#;
+/// A footer distance (720) below a 240-twip bottom margin, with no footer.
+const SHORT_BOTTOM: &str = r#"<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="240" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>"#;
 const TIGHT: &str =
     r#"<w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>"#;
+const KEEP_NEXT: &str = r#"<w:pPr><w:keepNext/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/></w:pPr>"#;
 const ROWS: usize = 60;
 
 fn paragraph(text: &str) -> String {
     format!("<w:p>{TIGHT}<w:r><w:t>{text}</w:t></w:r></w:p>")
 }
 
-fn table(rows: &[(bool, Vec<String>)]) -> String {
+fn paragraphs(prefix: &str, count: usize) -> String {
+    (0..count)
+        .map(|index| paragraph(&format!("{prefix} {index}")))
+        .collect()
+}
+
+#[derive(Default)]
+struct Row {
+    cant_split: bool,
+    header: bool,
+    keep_next: bool,
+    lines: Vec<String>,
+}
+
+fn row(text: &str) -> Row {
+    Row {
+        lines: vec![text.to_string()],
+        ..Row::default()
+    }
+}
+
+fn plain_rows(count: usize) -> Vec<Row> {
+    (0..count)
+        .map(|index| row(&format!("Row {index}")))
+        .collect()
+}
+
+fn table(rows: &[Row]) -> String {
     let mut xml = String::from(
         r#"<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="5000"/></w:tblGrid>"#,
     );
-    for (cant_split, texts) in rows {
-        xml.push_str("<w:tr>");
-        if *cant_split {
-            xml.push_str("<w:trPr><w:cantSplit/></w:trPr>");
+    for row in rows {
+        xml.push_str("<w:tr><w:trPr>");
+        if row.cant_split {
+            xml.push_str("<w:cantSplit/>");
         }
-        xml.push_str(r#"<w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>"#);
-        for text in texts {
-            xml.push_str(&paragraph(text));
+        if row.header {
+            xml.push_str("<w:tblHeader/>");
+        }
+        xml.push_str(r#"</w:trPr><w:tc><w:tcPr><w:tcW w:w="5000" w:type="dxa"/></w:tcPr>"#);
+        let properties = if row.keep_next { KEEP_NEXT } else { TIGHT };
+        for text in &row.lines {
+            xml.push_str(&format!(
+                "<w:p>{properties}<w:r><w:t>{text}</w:t></w:r></w:p>"
+            ));
         }
         xml.push_str("</w:tc></w:tr>");
     }
@@ -35,61 +75,94 @@ fn table(rows: &[(bool, Vec<String>)]) -> String {
     xml
 }
 
-fn load(body: &str) -> WordDocument {
-    let data = build_docx_with_body(&format!("{body}{SECT_PR}"));
+fn load(body: &str, sect_pr: &str) -> WordDocument {
+    let data = build_docx_with_body(&format!("{body}{sect_pr}"));
     futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load")
 }
 
-/// Renders `body` under an eight-paragraph footer.
-fn render_with_tall_footer(body: &str) -> CanvasRenderer<RecordingPainter> {
-    let footer_xml: String = (0..8)
-        .map(|index| paragraph(&format!("footer {index}")))
-        .collect();
-    let footer = load(&footer_xml);
-    let document = load(body);
-    let mut renderer = recording_renderer();
-    renderer.set_header_footer_bodies(
-        None,
-        footer.document.as_ref().and_then(|d| d.body.clone()),
-        None,
-        None,
-        None,
-        None,
-    );
-    // Hosts pass the footer's text lines too; they gate measuring the story.
+#[derive(Clone, Copy, PartialEq)]
+enum Footer {
+    None,
+    /// Eight paragraphs on every page.
+    Tall,
+    /// Eight paragraphs on the first page only (`w:titlePg`).
+    TallFirstPage,
+}
+
+fn render(body: &str, sect_pr: &str, footer: Footer) -> (Renderer, RecordingPainter) {
+    let document = load(body, sect_pr);
+    let painter = RecordingPainter::new();
+    let mut renderer = CanvasRenderer::with_host(
+        Box::new(RecordingHost {
+            painter: painter.clone(),
+        }),
+        false,
+    )
+    .expect("paged recording renderer");
+    let story = || {
+        load(&paragraphs("footer", 8), sect_pr)
+            .document
+            .as_ref()
+            .and_then(|document| document.body.clone())
+    };
+    // Hosts pass the footer's text lines with its story.
     let lines: Vec<HeaderLine> = (0..8)
         .map(|index| HeaderLine {
             left: Some(format!("footer {index}")),
             ..HeaderLine::default()
         })
         .collect();
+    let mut default_lines = None;
+    match footer {
+        Footer::None => {}
+        Footer::Tall => {
+            renderer.set_header_footer_bodies(None, story(), None, None, None, None);
+            default_lines = Some(lines.as_slice());
+        }
+        Footer::TallFirstPage => {
+            renderer.set_header_footer_bodies(None, None, None, story(), None, None);
+            renderer.set_header_footer_variants(None, Some(lines.clone()), None, None, true, false);
+        }
+    }
     renderer
         .render_with_numbering(
             document.document.as_ref().expect("document"),
             &Options::default(),
             None,
             None,
-            Some(&lines),
+            default_lines,
             None,
         )
         .expect("render");
-    renderer
+    (renderer, painter)
 }
 
-/// The footer story's first line on page 1, page-local.
-fn footer_top(renderer: &CanvasRenderer<RecordingPainter>) -> f64 {
-    let boundary = renderer
-        .footer_edit_boundary_for_page(0)
-        .expect("footer laid out");
+fn render_tall(body: &str) -> Renderer {
+    render(body, LETTER_1IN, Footer::Tall).0
+}
+
+/// Page-local top of the footer story's first line on `page`.
+fn footer_top(renderer: &Renderer, page: usize) -> f64 {
+    let top = renderer
+        .hf_story_layouts
+        .get(&(page, false))
+        .expect("footer laid out")
+        .borrow()
+        .paragraphs()
+        .iter()
+        .flat_map(|paragraph| &paragraph.lines)
+        .map(|line| line.top)
+        .reduce(f64::min)
+        .expect("footer lines");
     assert!(
-        boundary < renderer.page_height - renderer.margin_bottom - 1.0,
+        top < renderer.page_height - renderer.margin_bottom - 1.0,
         "the footer must reach above the bottom margin"
     );
-    boundary
+    top
 }
 
-/// Page index and page-local bottom of each painted cell fragment of row `row`.
-fn row_fragments(renderer: &CanvasRenderer<RecordingPainter>, row: usize) -> Vec<(usize, f64)> {
+/// Page index and page-local (top, bottom) of each cell fragment of `row`.
+fn row_fragments(renderer: &Renderer, row: usize) -> Vec<(usize, f64, f64)> {
     renderer
         .selection
         .cell_layouts()
@@ -97,12 +170,22 @@ fn row_fragments(renderer: &CanvasRenderer<RecordingPainter>, row: usize) -> Vec
         .filter(|cell| cell.row == row)
         .map(|cell| {
             let page = renderer.page_for_y(cell.top + 0.5);
-            (page, cell.bottom - renderer.page_top_y(page))
+            let origin = renderer.page_top_y(page);
+            (page, cell.top - origin, cell.bottom - origin)
         })
         .collect()
 }
 
-fn first_row_on_page(renderer: &CanvasRenderer<RecordingPainter>, page: usize) -> usize {
+fn pages_of_row(renderer: &Renderer, row: usize) -> Vec<usize> {
+    let mut pages: Vec<_> = row_fragments(renderer, row)
+        .into_iter()
+        .map(|(page, _, _)| page)
+        .collect();
+    pages.dedup();
+    pages
+}
+
+fn first_row_on_page(renderer: &Renderer, page: usize) -> usize {
     renderer
         .selection
         .cell_layouts()
@@ -113,33 +196,8 @@ fn first_row_on_page(renderer: &CanvasRenderer<RecordingPainter>, page: usize) -
         .expect("a row on the page")
 }
 
-#[test]
-fn table_rows_stop_above_a_footer_taller_than_the_bottom_margin() {
-    let rows: Vec<_> = (0..ROWS)
-        .map(|index| (false, vec![format!("Row {index}")]))
-        .collect();
-    let renderer = render_with_tall_footer(&table(&rows));
-    let boundary = footer_top(&renderer);
-    let mut on_first_page = 0;
-    for row in 0..ROWS {
-        for (page, bottom) in row_fragments(&renderer, row) {
-            if page == 0 {
-                on_first_page += 1;
-                assert!(
-                    bottom <= boundary + 0.5,
-                    "row {row} ends at {bottom}, the footer starts at {boundary}"
-                );
-            }
-        }
-    }
-    assert!(on_first_page > 10, "rows fill the first page");
-
-    // Equal-height paragraphs break at the same place.
-    let paragraphs: String = (0..ROWS)
-        .map(|index| paragraph(&format!("Row {index}")))
-        .collect();
-    let flow = render_with_tall_footer(&paragraphs);
-    let first_on_second_page = flow
+fn first_paragraph_on_page(renderer: &Renderer, page: usize) -> usize {
+    renderer
         .selection
         .paragraphs()
         .iter()
@@ -147,35 +205,192 @@ fn table_rows_stop_above_a_footer_taller_than_the_bottom_margin() {
             surface
                 .lines
                 .first()
-                .is_some_and(|line| flow.page_for_y(line.absolute_top) == 1)
+                .is_some_and(|line| renderer.page_for_y(line.absolute_top) == page)
         })
-        .expect("paragraphs reach page 2");
-    assert_eq!(first_row_on_page(&renderer, 1), first_on_second_page);
+        .expect("a paragraph on the page")
+}
+
+/// No cell fragment on `page` reaches below `limit`.
+fn assert_rows_end_above(renderer: &Renderer, rows: usize, page: usize, limit: f64) -> usize {
+    let mut fragments = 0;
+    for row in 0..rows {
+        for (fragment_page, _, bottom) in row_fragments(renderer, row) {
+            if fragment_page == page {
+                fragments += 1;
+                assert!(
+                    bottom <= limit + 0.5,
+                    "row {row} ends at {bottom} on page {page}, below {limit}"
+                );
+            }
+        }
+    }
+    fragments
+}
+
+/// The line height of a one-paragraph row, the same as a body paragraph's.
+fn row_height(renderer: &Renderer) -> f64 {
+    let (_, top, bottom) = row_fragments(renderer, 0)[0];
+    bottom - top
+}
+
+#[test]
+fn table_rows_stop_above_a_footer_taller_than_the_bottom_margin() {
+    let renderer = render_tall(&table(&plain_rows(ROWS)));
+    let footer = footer_top(&renderer, 0);
+    assert!(renderer.unreserved_body_bottom() <= footer + 0.5);
+    let placed = assert_rows_end_above(&renderer, ROWS, 0, footer);
+    assert!(placed > 10, "rows fill the first page");
+    assert_rows_end_above(&renderer, ROWS, 1, footer_top(&renderer, 1));
+
+    // Equal-height paragraphs break at the same place.
+    let flow = render_tall(&paragraphs("Row", ROWS));
+    assert_eq!(
+        first_row_on_page(&renderer, 1),
+        first_paragraph_on_page(&flow, 1)
+    );
+}
+
+/// Without a footer the footer distance reserves nothing, even when it is
+/// larger than the bottom margin: rows and paragraphs both reach the margin.
+#[test]
+fn rows_and_paragraphs_reach_a_short_bottom_margin_without_a_footer() {
+    let (renderer, _) = render(&table(&plain_rows(ROWS)), SHORT_BOTTOM, Footer::None);
+    let (flow, _) = render(&paragraphs("Row", ROWS), SHORT_BOTTOM, Footer::None);
+    let margin_edge = renderer.page_height - renderer.margin_bottom;
+    let footer_distance_edge = renderer.page_height - 48.0;
+    assert!(margin_edge > footer_distance_edge + 20.0);
+    let height = row_height(&renderer);
+
+    let last_row = first_row_on_page(&renderer, 1) - 1;
+    let (_, _, row_bottom) = *row_fragments(&renderer, last_row).last().unwrap();
+    assert!(
+        row_bottom <= margin_edge + 0.5 && row_bottom > margin_edge - height,
+        "the last row on page 1 ends at {row_bottom}, the margin is at {margin_edge}"
+    );
+    let last_paragraph = first_paragraph_on_page(&flow, 1) - 1;
+    let line = flow.selection.paragraphs()[last_paragraph]
+        .lines
+        .last()
+        .unwrap();
+    let paragraph_bottom = line.top + line.height;
+    assert!(
+        paragraph_bottom <= margin_edge + 0.5 && paragraph_bottom > margin_edge - height,
+        "the last paragraph on page 1 ends at {paragraph_bottom}, the margin is at {margin_edge}"
+    );
+    assert_eq!(last_row, last_paragraph);
 }
 
 /// A cantSplit row taller than the body between the margin and the tall
-/// footer cannot fit any page, so Word splits it.
+/// footer fits no page. Like Word it starts on a fresh page, then splits.
 #[test]
-fn cant_split_row_taller_than_the_footer_aware_body_splits() {
-    let probe = render_with_tall_footer(&table(&[(false, vec!["probe".into()])]));
-    let line = probe.selection.cell_layouts()[0].bottom - probe.selection.cell_layouts()[0].top;
+fn cant_split_row_taller_than_the_footer_aware_body_starts_a_page_then_splits() {
+    let probe = render_tall(&table(&plain_rows(1)));
+    let line = row_height(&probe);
     let nominal = probe.page_height - probe.margin_top - probe.margin_bottom;
-    let effective = footer_top(&probe) - probe.margin_top;
+    let effective = footer_top(&probe, 0) - probe.margin_top;
     let lines = ((effective + nominal) / 2.0 / line).round() as usize;
+    let height = lines as f64 * line;
     assert!(
-        (lines as f64) * line > effective + 1.0 && (lines as f64) * line < nominal - 1.0,
+        height > effective + 1.0 && height < nominal - 1.0,
         "the row is between the effective and nominal body heights"
     );
-    let tall: Vec<String> = (0..lines).map(|index| format!("line {index}")).collect();
-    let renderer =
-        render_with_tall_footer(&format!("{}{}", paragraph("lead"), table(&[(true, tall)])));
-    let boundary = footer_top(&renderer);
+    let tall = Row {
+        cant_split: true,
+        lines: (0..lines).map(|index| format!("line {index}")).collect(),
+        ..Row::default()
+    };
+    let renderer = render_tall(&format!("{}{}", paragraph("lead"), table(&[tall])));
     let fragments = row_fragments(&renderer, 0);
-    let pages: std::collections::BTreeSet<_> = fragments.iter().map(|(page, _)| *page).collect();
-    assert_eq!(pages.len(), 2, "the row splits: {fragments:?}");
-    for (page, bottom) in fragments {
-        if page == 0 {
-            assert!(bottom <= boundary + 0.5, "the head runs into the footer");
-        }
+    assert_eq!(pages_of_row(&renderer, 0), [1, 2], "{fragments:?}");
+    let (_, head_top, head_bottom) = fragments[0];
+    assert!(
+        (head_top - renderer.margin_top).abs() < 0.5,
+        "the head starts the page"
+    );
+    assert!(head_bottom <= footer_top(&renderer, 1) + 0.5);
+}
+
+/// A tall first-page footer does not shrink the page a cantSplit row moves
+/// to: a row that fits page 2 whole moves there unsplit.
+#[test]
+fn cant_split_row_moves_whole_past_a_tall_first_page_footer() {
+    let (probe, _) = render(&table(&plain_rows(1)), LETTER_1IN, Footer::TallFirstPage);
+    let line = row_height(&probe);
+    let nominal = probe.page_height - probe.margin_top - probe.margin_bottom;
+    let first_page = footer_top(&probe, 0) - probe.margin_top;
+    let lines = ((first_page + nominal) / 2.0 / line).round() as usize;
+    let height = lines as f64 * line;
+    assert!(height > first_page + 1.0 && height < nominal - 1.0);
+    let tall = Row {
+        cant_split: true,
+        lines: (0..lines).map(|index| format!("line {index}")).collect(),
+        ..Row::default()
+    };
+    let (renderer, _) = render(
+        &format!("{}{}", paragraph("lead"), table(&[tall])),
+        LETTER_1IN,
+        Footer::TallFirstPage,
+    );
+    let fragments = row_fragments(&renderer, 0);
+    assert_eq!(fragments.len(), 1, "the row stays whole: {fragments:?}");
+    assert_eq!(fragments[0].0, 1, "on page 2");
+}
+
+/// Repeated header rows count against the footer-aware body too.
+#[test]
+fn repeated_header_rows_paginate_above_a_tall_footer() {
+    let mut rows = vec![Row {
+        header: true,
+        ..row("Heading")
+    }];
+    rows.extend(plain_rows(ROWS));
+    let (renderer, painter) = render(&table(&rows), LETTER_1IN, Footer::Tall);
+    for page in 0..2 {
+        assert_rows_end_above(&renderer, rows.len(), page, footer_top(&renderer, page));
+    }
+    // Glyphs are painted one by one; only the heading has a capital H.
+    let headings = painter
+        .ops()
+        .iter()
+        .filter(|op| matches!(op, Op::FillText(text, _, _) if text == "H"))
+        .count();
+    assert_eq!(headings, 3, "the header row repeats on pages 2 and 3");
+
+    // Paragraph i of the flow stands for row i (the heading is row 0).
+    let mut flow_body = paragraph("Heading");
+    flow_body.push_str(&paragraphs("Row", ROWS));
+    let flow = render_tall(&flow_body);
+    assert_eq!(
+        first_row_on_page(&renderer, 1),
+        first_paragraph_on_page(&flow, 1)
+    );
+}
+
+/// Word for Mac moves leading keep-with-next rows together; whether they fit
+/// is judged above the tall footer, not above the bottom margin.
+#[test]
+fn keep_with_next_rows_move_together_above_a_tall_footer() {
+    set_word_layout_platform(WordLayoutPlatform::Mac);
+    let flow = render_tall(&paragraphs("lead", ROWS));
+    let per_page = first_paragraph_on_page(&flow, 1);
+    // Two lines remain above the footer; the bottom margin would leave more.
+    let lead = paragraphs("lead", per_page - 2);
+    let mut rows: Vec<Row> = (0..3)
+        .map(|index| Row {
+            keep_next: true,
+            ..row(&format!("Kept {index}"))
+        })
+        .collect();
+    rows.extend(plain_rows(5));
+    let renderer = render_tall(&format!("{lead}{}", table(&rows)));
+    let footer = footer_top(&renderer, 0);
+    let margin_room = renderer.page_height - renderer.margin_bottom - footer;
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    assert!(
+        margin_room > 3.0 * row_height(&renderer),
+        "the margin alone would fit them"
+    );
+    for kept in 0..3 {
+        assert_eq!(pages_of_row(&renderer, kept), [1], "kept row {kept}");
     }
 }
