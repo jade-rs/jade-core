@@ -410,7 +410,7 @@ impl WordDocument {
             .bookmarks
             .iter()
             .find(|bookmark| bookmark.name == name)?;
-        self.bookmark_end(bookmark)
+        self.bookmark_end(bookmark, self.live_bookmark_markers().as_ref())
     }
 
     // ---- note separators ----------------------------------------------------
