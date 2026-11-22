@@ -221,7 +221,7 @@ impl WordDocument {
                 self.document
                     .as_deref()
                     .and_then(|document| {
-                        pick_hf_reference(document, HeaderFooterRole::Header, variant)
+                        document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
                     })
                     .is_some()
                     && self
@@ -243,7 +243,9 @@ impl WordDocument {
             let present = self
                 .document
                 .as_deref()
-                .and_then(|document| pick_hf_reference(document, HeaderFooterRole::Header, variant))
+                .and_then(|document| {
+                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
+                })
                 .is_some();
             if present {
                 self.sync_manuscript_to_header_variant(variant, grid.as_ref(), &body)?;
@@ -301,7 +303,7 @@ impl WordDocument {
             HeaderFooterVariant::Even,
         ] {
             let Some(reference_id) =
-                pick_hf_reference(parsed_document, HeaderFooterRole::Header, variant)
+                document_wide_hf_reference(parsed_document, HeaderFooterRole::Header, variant)
             else {
                 continue;
             };

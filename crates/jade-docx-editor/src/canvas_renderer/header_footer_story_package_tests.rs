@@ -620,6 +620,81 @@ fn sessionless_edits_change_the_shared_linked_part() {
     assert_linked_and_shared(&word_doc, false, "{PageNumber}");
 }
 
+/// A watermark and a manuscript grid set on a document whose sections all
+/// link to the first section's header are written into that shared header,
+/// as Word does, and a reload reads them back from it.
+#[test]
+fn watermark_and_manuscript_grid_go_into_the_shared_linked_header() {
+    let mut word_doc = load(4, 1);
+    word_doc
+        .set_watermark_text(Some("DRAFT"))
+        .expect("set watermark");
+    word_doc
+        .set_manuscript_grid(Some(jade_docx_reader::document::ManuscriptGrid {
+            style: jade_docx_reader::document::ManuscriptStyle::Squares,
+            chars: 20,
+            lines: 20,
+            color: "#00AA00".into(),
+        }))
+        .expect("set manuscript grid");
+
+    let headers: Vec<&String> = word_doc
+        .parts
+        .keys()
+        .filter(|path| path.starts_with("word/header") && path.ends_with(".xml"))
+        .collect();
+    assert_eq!(headers, vec!["word/header1.xml"], "no header part is added");
+    let shared = &word_doc.parts["word/header1.xml"].content;
+    assert!(
+        shared.contains("WaterMark"),
+        "the shared header holds the watermark"
+    );
+    assert!(
+        shared.contains("Genko:"),
+        "the shared header holds the grid"
+    );
+    for section in 1..4 {
+        assert_eq!(
+            word_doc.header_footer_linked(section, "header", "default"),
+            Ok(true),
+            "section {section} stays linked"
+        );
+    }
+
+    let reloaded = futures::executor::block_on(WordDocument::load(
+        &word_doc.export_docx().expect("export"),
+        &Options::default(),
+    ))
+    .expect("reload");
+    let document = reloaded.document.as_deref().expect("document");
+    assert_eq!(document.watermark_text.as_deref(), Some("DRAFT"));
+    assert!(
+        document.manuscript_grid.is_some(),
+        "the grid survives a reload"
+    );
+    // The document-wide lines mirror the story the last section shows.
+    assert!(
+        reloaded.header_lines.is_some(),
+        "document-wide header lines load"
+    );
+}
+
+/// After a session-less edit of a linked story, the document-wide lines
+/// (which headless snapshots report) follow the shared part.
+#[test]
+fn document_wide_lines_follow_a_sessionless_linked_edit() {
+    let mut word_doc = load(4, 1);
+    word_doc
+        .replace_footer_paragraph_text(0, "Edited footer")
+        .expect("edit footer");
+    let lines = word_doc.footer_lines.as_ref().expect("footer lines");
+    let text: String = lines
+        .iter()
+        .map(|line| line.left.clone().unwrap_or_default())
+        .collect();
+    assert!(text.contains("Edited footer"), "{text}");
+}
+
 /// Seek snapshots resume the body. A story's paragraphs are numbered past
 /// the body's and laid out at body positions, so recording them would hand
 /// a seek a resume point inside a header or footer.
