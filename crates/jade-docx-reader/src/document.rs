@@ -2323,7 +2323,7 @@ pub const COLUMN_BREAK_CHAR: char = '\u{000E}';
 pub const COLUMN_BREAK_STR: &str = "\u{000E}";
 
 /// Metadata describing a hyperlink applied to a run.
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct RunHyperlink {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -5188,7 +5188,7 @@ pub enum FrameAlign {
 }
 
 /// Paragraph-level properties that influence layout and alignment.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ParagraphProperties {
     /// The paragraph's `w14:paraId` attribute (a stable, document-unique
     /// identifier on `<w:p>`), surfaced here as a read-side convenience so a
@@ -5957,7 +5957,7 @@ pub struct TabStop {
     pub leader: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct EastAsianLineBreakingSettings {
     pub use_east_asian_layout: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -6004,7 +6004,7 @@ pub struct EastAsianLineBreakingSettings {
 }
 
 /// Numbering metadata that associates a paragraph with a numbering definition.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Numbering {
     pub id: Option<String>,
     pub level: Option<u32>,
@@ -7018,7 +7018,7 @@ pub struct Spacing {
 }
 
 /// Page size and margin information derived from the section properties.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct PageSettings {
     pub width: Option<f32>,
     pub height: Option<f32>,
@@ -7078,7 +7078,7 @@ impl SectionProperties {
 }
 
 /// Section-level properties that may affect page layout or header/footer links.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct SectionProperties {
     pub page_settings: Option<PageSettings>,
     pub header_reference: Option<String>,
@@ -7256,7 +7256,7 @@ pub struct SectionRange {
 }
 
 /// Column layout settings derived from `<w:cols>`.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct SectionColumns {
     /// Number of columns defined by the section (Word defaults to 1).
     pub count: Option<u32>,
@@ -7271,7 +7271,7 @@ pub struct SectionColumns {
 }
 
 /// Individual column overrides when a section specifies custom widths.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct ColumnDefinition {
     /// Column width in points when specified.
     pub width: Option<f32>,
@@ -7280,7 +7280,7 @@ pub struct ColumnDefinition {
 }
 
 /// Simplified representation of the WordprocessingML `w:docGrid` element.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct DocGrid {
     /// Grid behaviour (`default`, `lines`, `linesAndChars`, `snapToChars`, ...).
     pub grid_type: Option<String>,

@@ -102,6 +102,88 @@ fn append_style_reference_text(text: &mut String, run_text: &str) {
     }
 }
 
+/// The document-wide inputs, besides the style cascade and theme, that the
+/// caches `set_style_context` drops were laid out under: the font table's
+/// substitutes (text measurement), the numbering definitions (list labels
+/// and indents), and the settings-part options a render reads into its wrap
+/// style. `sync_word_document` keeps every cache only while all of them, the
+/// styles and the theme compare equal to what it last installed.
+#[derive(Clone, Debug, PartialEq)]
+struct SyncedLayoutInputs {
+    font_table: Option<jade_docx_reader::FontTablePart>,
+    numbering: Option<NumberingPart>,
+    settings: Option<SyncedDocumentSettings>,
+}
+
+/// The `settings.xml`-derived `Document` fields: the compatibility options,
+/// grid and tab defaults, hyphenation, East Asian line breaking, margins
+/// and note numbering every page and paragraph is laid out under.
+#[derive(Clone, Debug, PartialEq)]
+struct SyncedDocumentSettings {
+    snap_to_grid_default: bool,
+    display_content_revisions: Option<bool>,
+    default_tab_stop: Option<f32>,
+    math_properties: jade_docx_reader::settings::MathProperties,
+    no_tab_hanging_indent: bool,
+    adjust_line_height_in_table: bool,
+    compat: jade_docx_reader::settings::CompatOptions,
+    default_font_size: Option<f32>,
+    east_asian_line_breaking: EastAsianLineBreakingSettings,
+    gutter_at_top: bool,
+    mirror_margins: bool,
+    book_fold_printing: bool,
+    print_two_on_one: bool,
+    hyphenation: HyphenationSettings,
+    footnote_properties: Option<NoteNumbering>,
+    endnote_properties: Option<NoteNumbering>,
+    endnote_position: Option<EndnotePosition>,
+}
+
+impl SyncedDocumentSettings {
+    fn of(document: &Document) -> Self {
+        Self {
+            snap_to_grid_default: document.snap_to_grid_default,
+            display_content_revisions: document.display_content_revisions,
+            default_tab_stop: document.default_tab_stop,
+            math_properties: document.math_properties.clone(),
+            no_tab_hanging_indent: document.no_tab_hanging_indent,
+            adjust_line_height_in_table: document.adjust_line_height_in_table,
+            compat: document.compat.clone(),
+            default_font_size: document.default_font_size,
+            east_asian_line_breaking: document.east_asian_line_breaking.clone(),
+            gutter_at_top: document.gutter_at_top,
+            mirror_margins: document.mirror_margins,
+            book_fold_printing: document.book_fold_printing,
+            print_two_on_one: document.print_two_on_one,
+            hyphenation: document.hyphenation,
+            footnote_properties: document.footnote_properties.clone(),
+            endnote_properties: document.endnote_properties.clone(),
+            endnote_position: document.endnote_position,
+        }
+    }
+}
+
+impl SyncedLayoutInputs {
+    fn of(document: &WordDocument) -> Self {
+        Self {
+            font_table: document.font_table_part.clone(),
+            numbering: document.numbering_part.clone(),
+            settings: document.document.as_deref().map(SyncedDocumentSettings::of),
+        }
+    }
+
+    /// Compares in place, so an unchanged document clones nothing.
+    fn matches(&self, document: &WordDocument) -> bool {
+        self.font_table == document.font_table_part
+            && self.numbering == document.numbering_part
+            && match (&self.settings, document.document.as_deref()) {
+                (Some(settings), Some(current)) => *settings == SyncedDocumentSettings::of(current),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct SectionSeekGeometry {
     size_and_top: (f64, f64, f64),
@@ -4349,6 +4431,10 @@ where
     styles_part: Option<Rc<StylesPart>>,
     /// Theme fonts for numbering properties inherited from the paragraph style.
     theme_part: Option<Rc<ThemePart>>,
+    /// What `sync_word_document` last installed alongside the styles and
+    /// theme; `None` until it runs, or after `set_style_context` installs a
+    /// context of its own.
+    synced_layout_inputs: Option<SyncedLayoutInputs>,
     /// Tracks the baseline of the last rendered text line for positioning
     /// floating images that are anchored relative to a line.
     last_line_baseline: f64,
@@ -5334,6 +5420,7 @@ where
     ) {
         self.styles_part = styles_part;
         self.theme_part = theme_part;
+        self.synced_layout_inputs = None;
         self.effective_run_properties_cache.borrow_mut().clear();
         self.line_number_run_properties = None;
         self.clear_text_measure_cache();
@@ -10046,6 +10133,7 @@ where
             last_numbering_part: None,
             styles_part: None,
             theme_part: None,
+            synced_layout_inputs: None,
             last_line_baseline: margin,
             last_line_box: None,
             trailing_spacing_after: None,
@@ -11328,6 +11416,25 @@ where
                 .inline_object
                 .map(|object| (object.width.to_bits(), object.height.to_bits()))
                 .hash(&mut hasher);
+            // The cached segments carry the run's revision mark and link,
+            // which drawing reads: rejecting a deletion while the original
+            // is shown keeps the text and properties but drops the mark.
+            fn hash_revision(mark: &RevisionMark, hasher: &mut FxHasher) {
+                std::mem::discriminant(&mark.kind).hash(hasher);
+                mark.id.hash(hasher);
+                mark.author.hash(hasher);
+                mark.date.hash(hasher);
+                mark.date_utc.hash(hasher);
+                mark.insertion.is_some().hash(hasher);
+                if let Some(insertion) = &mark.insertion {
+                    hash_revision(insertion, hasher);
+                }
+            }
+            style.revision.is_some().hash(&mut hasher);
+            if let Some(mark) = &style.revision {
+                hash_revision(mark, &mut hasher);
+            }
+            style.hyperlink.hash(&mut hasher);
             style.properties.is_some().hash(&mut hasher);
             // Hash relevant run properties that affect text measurement
             if let Some(props) = &style.properties {
@@ -40934,16 +41041,32 @@ where
     ///
     /// Without the style context a run reads only its own and its
     /// paragraph's direct formatting: a style's character spacing, for one,
-    /// is lost, and lines break where the browser's do not. It also drops
-    /// every cached layout, so an edit that keeps the styles should resync
-    /// only what it changed.
+    /// is lost, and lines break where the browser's do not.
+    ///
+    /// Installing a different context drops every cached measurement, wrap,
+    /// layout and paint. A host calls this after every structural edit and
+    /// undo, which mostly leave the styles, theme, font table, numbering and
+    /// settings as they were: those are compared by value with what the last
+    /// call installed, and while all match, the installed parts and every
+    /// cache are kept, so the following render re-wraps only the paragraphs
+    /// the edit touched.
     pub fn sync_word_document(&mut self, document: &WordDocument) {
         crate::canvas_view::install_document_font_substitutes(document);
         self.rendered_field_lengths = Some(document.rendered_field_lengths());
-        self.set_style_context(
-            document.styles_part.clone().map(Rc::new),
-            document.loaded_theme_part().map(Rc::new),
-        );
+        let theme_part = document.loaded_theme_part();
+        let unchanged = self
+            .synced_layout_inputs
+            .as_ref()
+            .is_some_and(|inputs| inputs.matches(document))
+            && self.styles_part.as_deref() == document.styles_part.as_ref()
+            && self.theme_part.as_deref() == theme_part.as_ref();
+        if !unchanged {
+            self.set_style_context(
+                document.styles_part.clone().map(Rc::new),
+                theme_part.map(Rc::new),
+            );
+            self.synced_layout_inputs = Some(SyncedLayoutInputs::of(document));
+        }
         self.sync_document_header_footer_stories(document);
         self.set_bookmark_paragraphs(document.bookmark_render_map());
         self.set_bookmark_note_targets(document.bookmark_note_targets());
@@ -46518,6 +46641,136 @@ mod tests {
         assert_eq!(Rc::as_ptr(&document), pointer);
         assert!(renderer.horizontal_float_wrap_cache.get(&document));
         assert_eq!(renderer.horizontal_float_wrap_cache.scans, 1);
+    }
+
+    /// A document whose Normal style sets `half_points` and whose body is
+    /// enough text to wrap.
+    fn styled_word_document(half_points: u32) -> WordDocument {
+        let mut model = WordDocument::from_document(doc_with_paragraph_texts(&vec![
+            "The quick brown fox jumps over the lazy dog again and again until the line wraps";
+            40
+        ]));
+        model.styles_part = Some(
+            StylesPart::from_xml(&format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:sz w:val="{half_points}"/></w:rPr></w:style>
+                </w:styles>"#
+            ))
+            .unwrap(),
+        );
+        model
+    }
+
+    fn render_synced(
+        renderer: &mut CanvasRenderer<jade_painter::recording::RecordingPainter>,
+        model: &WordDocument,
+    ) {
+        renderer.sync_word_document(model);
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(model.document.as_ref().unwrap()),
+                &Options::default(),
+                model.numbering_part.as_ref(),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+    }
+
+    fn layout_extent(
+        renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
+    ) -> Vec<(usize, u64, u64)> {
+        renderer
+            .layout_debug_lines()
+            .iter()
+            .map(|line| {
+                (
+                    line.end - line.start,
+                    line.height.to_bits(),
+                    line.top.to_bits(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn resyncing_unchanged_styles_keeps_the_installed_parts_and_every_cache() {
+        let (mut renderer, _) = recording_renderer();
+        let model = styled_word_document(24);
+        render_synced(&mut renderer, &model);
+        let styles = Rc::clone(renderer.styles_part.as_ref().unwrap());
+        let wrapped = renderer.paragraph_wrap_cache_stats();
+        let measured = renderer.text_measure_cache.borrow().len();
+        let resolved = renderer.effective_run_properties_cache.borrow().len();
+        assert!(wrapped.size > 0 && measured > 0 && resolved > 0);
+
+        // A host's later sync of the same document, as after a structural
+        // edit: an equal copy of the styles, not the installed one.
+        let copy = model.clone();
+        renderer.sync_word_document(&copy);
+        assert!(Rc::ptr_eq(renderer.styles_part.as_ref().unwrap(), &styles));
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, wrapped.size);
+        assert_eq!(renderer.text_measure_cache.borrow().len(), measured);
+        assert_eq!(
+            renderer.effective_run_properties_cache.borrow().len(),
+            resolved
+        );
+
+        let lines = layout_extent(&renderer);
+        let before = renderer.paragraph_wrap_cache_stats();
+        render_synced(&mut renderer, &copy);
+        let after = renderer.paragraph_wrap_cache_stats();
+        assert_eq!(
+            after.misses, before.misses,
+            "an unchanged resync re-wrapped"
+        );
+        assert!(after.hits > before.hits);
+        assert_eq!(layout_extent(&renderer), lines);
+    }
+
+    #[test]
+    fn resyncing_a_changed_style_font_size_drops_the_caches_and_relays_out() {
+        let (mut renderer, _) = recording_renderer();
+        render_synced(&mut renderer, &styled_word_document(24));
+        let small = layout_extent(&renderer);
+        let styles = Rc::clone(renderer.styles_part.as_ref().unwrap());
+
+        let larger = styled_word_document(48);
+        renderer.sync_word_document(&larger);
+        assert!(!Rc::ptr_eq(renderer.styles_part.as_ref().unwrap(), &styles));
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
+        assert_eq!(renderer.text_measure_cache.borrow().len(), 0);
+        assert!(renderer.effective_run_properties_cache.borrow().is_empty());
+        render_synced(&mut renderer, &larger);
+        let large = layout_extent(&renderer);
+        assert_ne!(large, small);
+
+        let mut fresh = recording_renderer().0;
+        render_synced(&mut fresh, &larger);
+        assert_eq!(large, layout_extent(&fresh));
+    }
+
+    #[test]
+    fn resyncing_changed_numbering_or_settings_drops_the_caches() {
+        let (mut renderer, _) = recording_renderer();
+        let mut model = styled_word_document(24);
+        render_synced(&mut renderer, &model);
+
+        model.numbering_part = Some(NumberingPart::new());
+        renderer.sync_word_document(&model);
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
+        render_synced(&mut renderer, &model);
+        assert!(renderer.paragraph_wrap_cache_stats().size > 0);
+
+        Rc::make_mut(model.document.as_mut().unwrap()).default_tab_stop = Some(18.0);
+        renderer.sync_word_document(&model);
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
+        render_synced(&mut renderer, &model);
+
+        model.font_table_part = Some(jade_docx_reader::FontTablePart::default());
+        renderer.sync_word_document(&model);
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
     }
 
     #[test]
@@ -60674,6 +60927,57 @@ mod tests {
                 "identical inputs must still reuse wrapping"
             );
         }
+    }
+
+    #[test]
+    fn wrap_content_hash_differs_on_revision_and_link_changes() {
+        // Rejecting a deletion while the original is shown keeps the text and
+        // properties; only the mark, which drawing reads from the cached
+        // segments, goes.
+        let text = "deleted";
+        let runs_with = |revision: Option<RevisionMark>, hyperlink: Option<RunHyperlink>| {
+            [RunStyle {
+                start: 0,
+                end: text.len(),
+                properties: None,
+                revision,
+                hyperlink,
+                inline_object: None,
+            }]
+        };
+        let hash = |revision, hyperlink| {
+            <CanvasRenderer>::compute_wrap_content_hash(text, &runs_with(revision, hyperlink))
+        };
+        let deletion = RevisionMark {
+            kind: RevisionKind::Deleted,
+            id: Some("1".into()),
+            author: Some("reviewer".into()),
+            date: None,
+            date_utc: None,
+            insertion: None,
+        };
+        let plain = hash(None, None);
+        assert_ne!(plain, hash(Some(deletion.clone()), None));
+        assert_ne!(
+            hash(Some(deletion.clone()), None),
+            hash(
+                Some(RevisionMark {
+                    author: Some("another".into()),
+                    ..deletion.clone()
+                }),
+                None
+            )
+        );
+        assert_ne!(
+            plain,
+            hash(
+                None,
+                Some(RunHyperlink {
+                    target: Some("https://example.com".into()),
+                    ..RunHyperlink::default()
+                })
+            )
+        );
     }
 
     #[test]
