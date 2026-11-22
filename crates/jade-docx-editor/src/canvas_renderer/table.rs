@@ -8715,7 +8715,11 @@ where
         if self.pageless_mode || self.rendering_header_footer_story {
             return (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
         }
-        (self.unreserved_body_bottom() - self.effective_body_top()).max(0.0)
+        // A fresh page has no justified (`w:vAlign="both"`) gap of its own.
+        (self.unreserved_body_bottom()
+            - self.valign_gap_bottom_allowance()
+            - self.effective_body_top())
+        .max(0.0)
     }
 
     fn table_row_needs_page_break(&self, height: f64) -> bool {

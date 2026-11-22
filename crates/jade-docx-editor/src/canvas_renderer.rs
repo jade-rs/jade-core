@@ -39716,7 +39716,7 @@ where
                         .sum::<f64>()
                 })
         }) else {
-            return margin_edge;
+            return margin_edge + self.valign_gap_bottom_allowance();
         };
         let footer_top = self.footer_edit_content_bottom() - footer_height;
         footer_top.min(margin_edge) + self.valign_gap_bottom_allowance()
