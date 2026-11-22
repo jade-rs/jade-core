@@ -221,6 +221,7 @@ mod rendering {
                 left: Some(art.clone()),
                 right: Some(art),
                 offset_from: Some("page".into()),
+                ..PageBorders::default()
             }),
         ));
         let hearts = ops
@@ -242,6 +243,7 @@ mod rendering {
                 left: None,
                 right: None,
                 offset_from: None,
+                ..PageBorders::default()
             }),
         ));
         let strokes: Vec<String> = ops
@@ -255,5 +257,301 @@ mod rendering {
         let dark = strokes.iter().rposition(|color| color == "#000000");
         assert!(light.is_some() && dark.is_some(), "{strokes:?}");
         assert!(light < dark, "top (light) is drawn before bottom (dark)");
+    }
+
+    /// A `#ff00aa` single frame with every edge `space` points from its
+    /// reference.
+    fn frame(
+        space: u32,
+        offset_from: &str,
+        display: Option<&str>,
+        z_order: Option<&str>,
+    ) -> PageBorders {
+        let edge = BorderEdge {
+            space: Some(space),
+            ..edge("single", 8, "#ff00aa")
+        };
+        PageBorders {
+            top: Some(edge.clone()),
+            bottom: Some(edge.clone()),
+            left: Some(edge.clone()),
+            right: Some(edge),
+            offset_from: Some(offset_from.into()),
+            display: display.map(Into::into),
+            z_order: z_order.map(Into::into),
+        }
+    }
+
+    /// One section of two pages: the second paragraph starts page 2.
+    fn two_page_document(page: PageBorders) -> Document {
+        let mut document = document(None, Some(page));
+        let body = document.body.as_mut().unwrap();
+        let mut second = body.elements[0].as_paragraph().unwrap().clone();
+        second.runs[0].text = "Second".into();
+        second.properties = Some(ParagraphProperties {
+            page_break_before: Some(true),
+            ..ParagraphProperties::default()
+        });
+        body.elements.push(BodyElement::from_paragraph(second));
+        document
+    }
+
+    fn render_with(
+        document: &Document,
+    ) -> (
+        CanvasRenderer<jade_painter::recording::RecordingPainter>,
+        Vec<Op>,
+    ) {
+        let mut renderer = recording_renderer();
+        renderer.render(document, &Options::default()).unwrap();
+        let ops = renderer.host.painter().inner().ops();
+        (renderer, ops)
+    }
+
+    /// The ops of each page, split where a page is cleared whole.
+    fn split_pages(ops: &[Op]) -> Vec<&[Op]> {
+        let starts: Vec<usize> = ops
+            .iter()
+            .enumerate()
+            .filter(|(_, op)| matches!(op, Op::ClearRect(x, y, w, h) if *x == 0.0 && *y == 0.0 && *w > 100.0 && *h > 100.0))
+            .map(|(index, _)| index)
+            .collect();
+        starts
+            .iter()
+            .enumerate()
+            .map(|(n, start)| &ops[*start..starts.get(n + 1).copied().unwrap_or(ops.len())])
+            .collect()
+    }
+
+    fn frame_strokes(ops: &[Op]) -> usize {
+        ops.iter()
+            .filter(|op| matches!(op, Op::SetStrokeStyle(color) if color.eq_ignore_ascii_case("#ff00aa")))
+            .count()
+    }
+
+    /// The frame's segments, as (x0, y0, x1, y1).
+    fn frame_segments(ops: &[Op]) -> Vec<(f64, f64, f64, f64)> {
+        let mut segments = Vec::new();
+        let mut in_frame = false;
+        let mut from = None;
+        for op in ops {
+            match op {
+                Op::SetStrokeStyle(color) => in_frame = color.eq_ignore_ascii_case("#ff00aa"),
+                Op::MoveTo(x, y) if in_frame => from = Some((*x, *y)),
+                Op::LineTo(x, y) if in_frame => {
+                    if let Some((x0, y0)) = from.replace((*x, *y)) {
+                        segments.push((x0, y0, *x, *y));
+                    }
+                }
+                _ => {}
+            }
+        }
+        segments
+    }
+
+    #[test]
+    fn a_first_page_frame_is_drawn_on_the_sections_first_page_only() {
+        let (_, ops) = render_with(&two_page_document(frame(
+            24,
+            "page",
+            Some("firstPage"),
+            None,
+        )));
+        let pages = split_pages(&ops);
+        assert_eq!(pages.len(), 2, "two pages");
+        assert!(frame_strokes(pages[0]) > 0, "the cover page is framed");
+        assert_eq!(frame_strokes(pages[1]), 0, "page 2 is not");
+    }
+
+    #[test]
+    fn a_not_first_page_frame_skips_the_sections_first_page() {
+        let (_, ops) = render_with(&two_page_document(frame(
+            24,
+            "page",
+            Some("notFirstPage"),
+            None,
+        )));
+        let pages = split_pages(&ops);
+        assert_eq!(pages.len(), 2, "two pages");
+        assert_eq!(frame_strokes(pages[0]), 0, "the first page is not framed");
+        assert!(frame_strokes(pages[1]) > 0, "page 2 is");
+        let (_, every) = render_with(&two_page_document(frame(24, "page", None, None)));
+        let every = split_pages(&every);
+        assert!(
+            frame_strokes(every[0]) > 0 && frame_strokes(every[1]) > 0,
+            "allPages is the default"
+        );
+    }
+
+    #[test]
+    fn a_page_anchored_frame_sits_its_space_from_the_page_edge() {
+        let (renderer, ops) = render_with(&document(None, Some(frame(10, "page", None, None))));
+        // The 1pt rule's near side is 10pt in: its line is half a rule on.
+        let ten = points_to_px(10.0) + points_to_px(1.0) / 2.0;
+        let segments = frame_segments(&ops);
+        let top = segments
+            .iter()
+            .filter(|(_, y0, _, y1)| (y0 - y1).abs() < f64::EPSILON)
+            .map(|(_, y, _, _)| *y)
+            .fold(f64::MAX, f64::min);
+        assert!(
+            (top - ten).abs() <= 0.75,
+            "top edge at 10pt ({ten}px), not {top}px"
+        );
+        let right = segments
+            .iter()
+            .filter(|(x0, _, x1, _)| (x0 - x1).abs() < f64::EPSILON)
+            .map(|(x, _, _, _)| *x)
+            .fold(f64::MIN, f64::max);
+        assert!(
+            (right - (renderer.page_width - ten)).abs() <= 0.75,
+            "right edge 10pt in from the page's right ({right}px)"
+        );
+    }
+
+    #[test]
+    fn a_text_anchored_frame_sits_its_space_outside_the_margins() {
+        let (renderer, ops) = render_with(&document(None, Some(frame(4, "text", None, None))));
+        let expected = renderer.margin_left - points_to_px(4.0) - points_to_px(1.0) / 2.0;
+        let left = frame_segments(&ops)
+            .iter()
+            .filter(|(x0, _, x1, _)| (x0 - x1).abs() < f64::EPSILON)
+            .map(|(x, _, _, _)| *x)
+            .fold(f64::MAX, f64::min);
+        assert!(
+            (left - expected).abs() <= 0.75,
+            "left edge 4pt outside the {}px margin: expected {expected}px, got {left}px",
+            renderer.margin_left
+        );
+    }
+
+    #[test]
+    fn a_back_frame_is_painted_before_the_text_and_a_front_one_after() {
+        let first_text = |ops: &[Op]| {
+            ops.iter()
+                .position(|op| matches!(op, Op::FillText(..) | Op::FillShapedText(..)))
+                .expect("body text")
+        };
+        let first_frame = |ops: &[Op]| {
+            ops.iter()
+                .position(|op| matches!(op, Op::SetStrokeStyle(color) if color.eq_ignore_ascii_case("#ff00aa")))
+                .expect("the frame")
+        };
+        let (_, back) = render_with(&document(None, Some(frame(24, "page", None, Some("back")))));
+        assert!(
+            first_frame(&back) < first_text(&back),
+            "zOrder=back goes under the text"
+        );
+        let (_, front) = render_with(&document(None, Some(frame(24, "page", None, None))));
+        assert!(
+            first_frame(&front) > first_text(&front),
+            "front (the default) goes over it"
+        );
+        assert_eq!(
+            frame_strokes(&front),
+            frame_strokes(&back),
+            "each is drawn once"
+        );
+    }
+
+    /// Renders a package whose body is `body_xml`.
+    fn render_package(
+        body_xml: &str,
+    ) -> (
+        CanvasRenderer<jade_painter::recording::RecordingPainter>,
+        Vec<Op>,
+    ) {
+        let bytes = super::super::section_tests::build_docx_with_body(body_xml);
+        let word = futures::executor::block_on(crate::word_document::WordDocument::load(
+            &bytes,
+            &Options::default(),
+        ))
+        .expect("load package");
+        render_with(word.document.as_ref().expect("document"))
+    }
+
+    fn paragraph_xml(text: &str) -> String {
+        format!("<w:p><w:r><w:t>{text}</w:t></w:r></w:p>")
+    }
+
+    /// A `#ff00aa` page frame 4pt outside the text, with the given
+    /// container attributes.
+    fn frame_xml(attributes: &str) -> String {
+        let edge = |name: &str| {
+            format!(r#"<w:{name} w:val="single" w:sz="8" w:space="4" w:color="FF00AA"/>"#)
+        };
+        format!(
+            "<w:pgBorders {attributes}>{}{}{}{}</w:pgBorders>",
+            edge("top"),
+            edge("left"),
+            edge("bottom"),
+            edge("right")
+        )
+    }
+
+    const SECTION_MARGINS_A: &str = r#"<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>"#;
+
+    /// One page: section A carries the frame, then a continuous break starts
+    /// section B, which has none. (A change of margins would start a new
+    /// page, so B shares A's.)
+    fn continuous_break_after_framed_section(attributes: &str) -> String {
+        format!(
+            r#"{}<w:p><w:pPr><w:sectPr>{}{SECTION_MARGINS_A}</w:sectPr></w:pPr><w:r><w:t>A end</w:t></w:r></w:p>{}<w:sectPr><w:type w:val="continuous"/>{SECTION_MARGINS_A}</w:sectPr>"#,
+            paragraph_xml("A"),
+            frame_xml(attributes),
+            paragraph_xml("B"),
+        )
+    }
+
+    /// The frame's leftmost vertical line, in px.
+    fn frame_left_line(ops: &[Op]) -> f64 {
+        frame_segments(ops)
+            .iter()
+            .filter(|(x0, _, x1, _)| (x0 - x1).abs() < f64::EPSILON)
+            .map(|(x, _, _, _)| *x)
+            .fold(f64::MAX, f64::min)
+    }
+
+    #[test]
+    fn a_page_shared_by_two_sections_draws_the_top_sections_frame_in_either_layer() {
+        // Section A's 1in margin, 4pt space and half the 1pt rule.
+        let expected_left = points_to_px(72.0 - 4.0 - 0.5);
+        for z_order in ["", r#"w:zOrder="back""#] {
+            let (_, ops) = render_package(&continuous_break_after_framed_section(z_order));
+            let pages = split_pages(&ops);
+            assert_eq!(pages.len(), 1, "{z_order:?}: both sections share one page");
+            assert!(
+                frame_strokes(pages[0]) > 0,
+                "{z_order:?}: the page shows section A's frame"
+            );
+            let left = frame_left_line(pages[0]);
+            assert!(
+                (left - expected_left).abs() <= 0.75,
+                "{z_order:?}: placed 4pt outside A's margin ({expected_left}px), not {left}px"
+            );
+        }
+    }
+
+    #[test]
+    fn a_first_page_frame_of_a_later_section_shows_on_that_sections_first_page() {
+        for z_order in ["", r#"w:zOrder="back""#] {
+            // Page 1 is section A; section B starts on page 2 and runs onto
+            // page 3.
+            let body = format!(
+                r#"{}<w:p><w:pPr><w:sectPr>{SECTION_MARGINS_A}</w:sectPr></w:pPr><w:r><w:t>A end</w:t></w:r></w:p>{}<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>B 2</w:t></w:r></w:p><w:sectPr>{}{SECTION_MARGINS_A}</w:sectPr>"#,
+                paragraph_xml("A"),
+                paragraph_xml("B 1"),
+                frame_xml(&format!(r#"w:display="firstPage" {z_order}"#)),
+            );
+            let (_, ops) = render_package(&body);
+            let pages = split_pages(&ops);
+            assert_eq!(pages.len(), 3, "{z_order:?}: three pages");
+            let framed: Vec<bool> = pages.iter().map(|page| frame_strokes(page) > 0).collect();
+            assert_eq!(
+                framed,
+                [false, true, false],
+                "{z_order:?}: only section B's first page is framed"
+            );
+        }
     }
 }

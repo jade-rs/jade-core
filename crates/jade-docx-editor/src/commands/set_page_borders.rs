@@ -269,7 +269,13 @@ mod tests {
             prop_assert!(frame_xml.contains(expected_offset));
             prop_assert_eq!(frame_xml.matches(&format!("w:sz=\"{width_eighths}\"")).count(), mask.count_ones() as usize);
             prop_assert_eq!(frame_xml.matches(&format!("w:color=\"{}\"", &color[1..])).count(), mask.count_ones() as usize);
-            prop_assert_eq!(frame_xml.matches(if page_offset { "w:space=\"24\"" } else { "w:space=\"0\"" }).count(), mask.count_ones() as usize);
+            if page_offset {
+                prop_assert_eq!(frame_xml.matches("w:space=\"24\"").count(), mask.count_ones() as usize);
+            } else {
+                // Word's text-anchored defaults: 1pt above and below, 4pt beside.
+                prop_assert_eq!(frame_xml.matches("w:space=\"1\"").count(), (mask & 0b0011).count_ones() as usize);
+                prop_assert_eq!(frame_xml.matches("w:space=\"4\"").count(), (mask & 0b1100).count_ones() as usize);
+            }
 
             let reopened = executor::block_on(WordDocument::load(&applied, &Options::default()))
                 .expect("reopen page borders");
@@ -311,6 +317,108 @@ mod tests {
             }
             prop_assert_eq!(document.export_docx().expect("redo export"), applied);
         }
+    }
+
+    /// `bytes` with `edit` applied to its `word/document.xml`.
+    fn with_document_xml(bytes: &[u8], edit: impl FnOnce(String) -> String) -> Vec<u8> {
+        use std::io::Write;
+        let mut archive = ZipArchive::new(std::io::Cursor::new(bytes)).expect("open package");
+        let mut cursor = std::io::Cursor::new(Vec::new());
+        {
+            let mut zip = zip::ZipWriter::new(&mut cursor);
+            let options = zip::write::SimpleFileOptions::default();
+            let mut edit = Some(edit);
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index).expect("entry");
+                let name = entry.name().expect("entry name").to_string();
+                let mut content = Vec::new();
+                entry.read_to_end(&mut content).expect("read entry");
+                if name == "word/document.xml" {
+                    let edit = edit.take().expect("one document part");
+                    content = edit(String::from_utf8(content).expect("utf-8")).into_bytes();
+                }
+                zip.start_file(name, options).expect("start entry");
+                zip.write_all(&content).expect("write entry");
+            }
+            zip.finish().expect("finish package");
+        }
+        cursor.into_inner()
+    }
+
+    #[test]
+    fn display_space_and_z_order_round_trip_through_a_frame_edit() {
+        let mut document = load_fixture();
+        let frame = PageBorderSpec {
+            top: Some(edge("single", 1.0, "#336699")),
+            offset_from: Some("page".to_string()),
+            ..PageBorderSpec::default()
+        };
+        document.set_page_borders(Some(&frame)).expect("set frame");
+        // A cover-page frame behind text, as Word writes it.
+        let authored = with_document_xml(&document.export_docx().unwrap(), |xml| {
+            xml.replacen(
+                "<w:pgBorders",
+                r#"<w:pgBorders w:zOrder="back" w:display="firstPage""#,
+                1,
+            )
+            .replacen(r#"w:space="24""#, r#"w:space="10""#, 1)
+        });
+        let mut document = executor::block_on(WordDocument::load(&authored, &Options::default()))
+            .expect("load authored frame");
+        let borders = document.page_borders(None).expect("frame").clone();
+        assert_eq!(borders.display.as_deref(), Some("firstPage"));
+        assert_eq!(borders.z_order.as_deref(), Some("back"));
+        assert_eq!(borders.top.as_ref().unwrap().space, Some(10));
+        let untouched = document_xml(&document.export_docx().unwrap());
+        assert_eq!(
+            page_borders_xml(&untouched),
+            page_borders_xml(&document_xml(&authored)),
+            "an untouched frame exports as it was read"
+        );
+
+        // Restyling the frame keeps which pages carry it and its stacking.
+        let restyled = PageBorderSpec {
+            bottom: Some(edge("double", 1.5, "#C00000")),
+            ..frame
+        };
+        assert!(document.set_page_borders(Some(&restyled)).unwrap());
+        let applied = document.export_docx().unwrap();
+        let xml = document_xml(&applied);
+        let frame_xml = page_borders_xml(&xml);
+        assert!(frame_xml.contains(r#"w:zOrder="back""#), "{frame_xml}");
+        assert!(
+            frame_xml.contains(r#"w:display="firstPage""#),
+            "{frame_xml}"
+        );
+        let reopened = executor::block_on(WordDocument::load(&applied, &Options::default()))
+            .expect("reopen restyled frame");
+        assert_eq!(reopened.page_borders(None), document.page_borders(None));
+        let reopened = reopened.page_borders(None).unwrap();
+        assert_eq!(reopened.display.as_deref(), Some("firstPage"));
+        assert_eq!(reopened.z_order.as_deref(), Some("back"));
+        // The kept edge keeps its authored space; the new one takes the
+        // page default.
+        assert_eq!(reopened.top.as_ref().unwrap().space, Some(10));
+        assert_eq!(reopened.bottom.as_ref().unwrap().space, Some(24));
+
+        // Moving the frame to the text resets every edge to Word's text
+        // defaults; restyling it there keeps them.
+        let on_text = PageBorderSpec {
+            offset_from: Some("text".to_string()),
+            ..restyled
+        };
+        assert!(document.set_page_borders(Some(&on_text)).unwrap());
+        let spaces = |document: &WordDocument| {
+            let borders = document.page_borders(None).unwrap();
+            [&borders.top, &borders.bottom].map(|edge| edge.as_ref().and_then(|edge| edge.space))
+        };
+        assert_eq!(spaces(&document), [Some(1), Some(1)]);
+        let recolored = PageBorderSpec {
+            top: Some(edge("single", 1.0, "#000000")),
+            ..on_text
+        };
+        assert!(document.set_page_borders(Some(&recolored)).unwrap());
+        assert_eq!(spaces(&document), [Some(1), Some(1)]);
     }
 
     #[test]

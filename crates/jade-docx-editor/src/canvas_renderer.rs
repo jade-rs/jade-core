@@ -334,7 +334,7 @@ mod text_regions;
 use self::table::{
     border_edge_to_spec, layout_paragraph as table_layout_paragraph,
     layout_vertical_paragraph_with_wrap_context as table_layout_vertical_paragraph,
-    parse_border_kind, BorderKind, TextAlign as TableTextAlign,
+    parse_border_kind, BorderKind, CellBorderSpec, TextAlign as TableTextAlign,
 };
 pub use structure::{StructureEntry, StructureKind};
 pub use text_regions::TextRegion;
@@ -2860,6 +2860,38 @@ enum PageBorderOffsetFrom {
     Text,
 }
 
+/// Which pages of a section carry its page borders (`w:pgBorders/@w:display`,
+/// ECMA-376 Part 1 §17.6.10).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PageBorderDisplay {
+    /// Every page of the section (`allPages`, the default).
+    AllPages,
+    /// Only the section's first page (`firstPage`), as a cover page frame.
+    FirstPage,
+    /// Every page but the section's first (`notFirstPage`).
+    NotFirstPage,
+}
+
+impl PageBorderDisplay {
+    fn shows(self, first_page_of_section: bool) -> bool {
+        match self {
+            Self::AllPages => true,
+            Self::FirstPage => first_page_of_section,
+            Self::NotFirstPage => !first_page_of_section,
+        }
+    }
+}
+
+/// When page borders are painted relative to the page's content.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PageBorderLayer {
+    /// Before the page's content, so text covers the border
+    /// (`w:zOrder="back"`).
+    Back,
+    /// After the page's content (`w:zOrder="front"`, the default).
+    Front,
+}
+
 /// Renderer-ready page borders: four optional visible edges plus the anchor
 /// reference. Built from a [`jade_docx_reader::document::PageBorders`]. The raw
 /// [`BorderEdge`] is retained per side so the draw seam can reuse
@@ -2872,6 +2904,8 @@ struct ResolvedPageBorders {
     left: Option<jade_docx_reader::document::BorderEdge>,
     right: Option<jade_docx_reader::document::BorderEdge>,
     offset_from: PageBorderOffsetFrom,
+    display: PageBorderDisplay,
+    layer: PageBorderLayer,
 }
 
 impl ResolvedPageBorders {
@@ -2900,12 +2934,25 @@ fn resolve_page_borders(
         Some("page") => PageBorderOffsetFrom::Page,
         _ => PageBorderOffsetFrom::Text,
     };
+    let display = match borders.display.as_deref() {
+        Some(value) if value.eq_ignore_ascii_case("firstPage") => PageBorderDisplay::FirstPage,
+        Some(value) if value.eq_ignore_ascii_case("notFirstPage") => {
+            PageBorderDisplay::NotFirstPage
+        }
+        _ => PageBorderDisplay::AllPages,
+    };
+    let layer = match borders.z_order.as_deref() {
+        Some(value) if value.eq_ignore_ascii_case("back") => PageBorderLayer::Back,
+        _ => PageBorderLayer::Front,
+    };
     let resolved = ResolvedPageBorders {
         top: resolve(&borders.top),
         bottom: resolve(&borders.bottom),
         left: resolve(&borders.left),
         right: resolve(&borders.right),
         offset_from,
+        display,
+        layer,
     };
     if resolved.is_empty() {
         None
@@ -2913,10 +2960,6 @@ fn resolve_page_borders(
         Some(resolved)
     }
 }
-
-/// Default inset (in points) from the physical page edge used when
-/// `w:offsetFrom="page"`. Word's default page-border space is 24pt.
-const PAGE_BORDER_PAGE_INSET_PT: f32 = 24.0;
 
 /// Document-order paragraph and table membership, independent of rendered pages.
 struct TopLevelParagraphWindow<'a, const N: usize> {
@@ -3171,13 +3214,20 @@ impl AuxiliaryStoryBaseCache {
     }
 }
 
-/// Computes the `(left, top, right, bottom)` rectangle (in px) for a page
-/// border given its anchor reference and the page geometry. For `Text` the
-/// rectangle hugs the text body box; for `Page` it is inset from the physical
-/// page edge by [`PAGE_BORDER_PAGE_INSET_PT`].
+/// Word's largest `w:space` for a page border edge (ECMA-376 Part 1
+/// §17.18.2, `ST_PointMeasure` bounded to 31pt for borders).
+const PAGE_BORDER_MAX_SPACE_PT: u32 = 31;
+
+/// Computes the `(left, top, right, bottom)` lines (in px) along which a page
+/// border's edges are stroked. Each edge is `w:space` points (at most 31pt)
+/// from its reference (ECMA-376 Part 1 §17.6.10): in from the physical page
+/// edge for `offsetFrom="page"`, out from the text body box for
+/// `offsetFrom="text"`. The space reaches the border's near side, so its
+/// painted band grows away from the reference: each line sits half that
+/// band further on. An absent edge or `w:space` counts as 0pt.
 #[allow(clippy::too_many_arguments)]
 fn page_border_rect(
-    offset_from: PageBorderOffsetFrom,
+    borders: &ResolvedPageBorders,
     page_width: f64,
     page_height: f64,
     margin_left: f64,
@@ -3185,18 +3235,42 @@ fn page_border_rect(
     margin_top: f64,
     margin_bottom: f64,
 ) -> (f64, f64, f64, f64) {
-    match offset_from {
+    let reach = |edge: &Option<jade_docx_reader::document::BorderEdge>| {
+        edge.as_ref().map_or(0.0, |edge| {
+            let space = edge.space.unwrap_or(0).min(PAGE_BORDER_MAX_SPACE_PT);
+            points_to_px(space as f32) + border_edge_to_spec(edge).painted_band_px() / 2.0
+        })
+    };
+    let (left, top, right, bottom) = (
+        reach(&borders.left),
+        reach(&borders.top),
+        reach(&borders.right),
+        reach(&borders.bottom),
+    );
+    match borders.offset_from {
         PageBorderOffsetFrom::Text => (
-            margin_left,
-            margin_top,
-            page_width - margin_right,
-            page_height - margin_bottom,
+            margin_left - left,
+            margin_top - top,
+            page_width - margin_right + right,
+            page_height - margin_bottom + bottom,
         ),
-        PageBorderOffsetFrom::Page => {
-            let inset = points_to_px(PAGE_BORDER_PAGE_INSET_PT);
-            (inset, inset, page_width - inset, page_height - inset)
-        }
+        PageBorderOffsetFrom::Page => (left, top, page_width - right, page_height - bottom),
     }
+}
+
+/// A page's page borders as settled when the page starts: the section at
+/// its top supplies them, and the margins it started with place them, so
+/// the back and front layers draw the same frame even when a continuous
+/// section break later changes the active section or its margins.
+#[derive(Clone, Debug, PartialEq)]
+struct PageBorderFrame {
+    layer: PageBorderLayer,
+    /// `(left, top, right, bottom)` lines from [`page_border_rect`].
+    rect: (f64, f64, f64, f64),
+    top: Option<CellBorderSpec>,
+    bottom: Option<CellBorderSpec>,
+    left: Option<CellBorderSpec>,
+    right: Option<CellBorderSpec>,
 }
 
 /// Where margin line numbering restarts (`w:lnNumType/@w:restart`).
@@ -4184,6 +4258,10 @@ where
     /// only a band of it. Nothing after a stable fast-replay stop is drawn,
     /// so that stop is only safe while the rest of the page kept its pixels.
     current_page_cleared_whole: bool,
+    /// The page borders the current page shows, settled by
+    /// `clear_current_page_for_render`; `None` on a page without them or one
+    /// this pass did not clear.
+    current_page_border_frame: Option<PageBorderFrame>,
     /// The last page a stable fast replay that kept painting may draw: the
     /// rest of a wholly cleared page, but nothing of the page after it.
     fast_replay_draw_through_page: Option<usize>,
@@ -9846,6 +9924,7 @@ where
             preserve_pagination_for_pixel_rerender: false,
             preserve_completed_pagination_on_stable_edit: false,
             current_page_cleared_whole: false,
+            current_page_border_frame: None,
             fast_replay_draw_through_page: None,
             last_completed_pagination_edit_candidate: false,
             last_completed_pagination_edit_preserved: false,
@@ -11942,19 +12021,24 @@ where
         // A page drawn afresh draws its column rules afresh.
         self.column_separators_drawn = None;
         self.current_page_cleared_whole = false;
+        self.current_page_border_frame = None;
         if self.pageless_mode {
             return Ok(());
         }
         if !self.should_draw_page_for_current_render(page) {
             return Ok(());
         }
+        self.current_page_border_frame = self.page_border_frame_for_page(page);
         // Band redraw: on the caret page, clear ONLY the edited paragraph's band
         // rect and install a page-wide clip to the band, then return. The rest of
         // the page canvas is preserved (PR #693 keeps worker page pixels between
         // keystrokes), and the clip is the containment guarantee — any draw op
-        // outside the band is physically unable to write pixels. Page borders /
-        // column separators / crop marks are intentionally NOT redrawn: they live
+        // outside the band is physically unable to write pixels. Column
+        // separators / crop marks are intentionally NOT redrawn: they live
         // outside the band and their pixels are already correct on the canvas.
+        // Page borders cross the band, whose full-width clear erases their
+        // slice, so they are redrawn under the clip: the back layer here, the
+        // front one when the page is finished.
         if let Some(plan) = self.band_redraw_plan {
             if page == plan.page {
                 self.host.mark_page_rendered(page.saturating_sub(1));
@@ -11983,6 +12067,7 @@ where
                 self.draw_page_fill()?;
                 self.draw_watermark()?;
                 self.draw_manuscript_grid();
+                self.draw_page_border_frame(PageBorderLayer::Back);
                 self.invalidate_context_state_tracking();
                 self.band_redraw_clip_active = true;
                 return Ok(());
@@ -12010,9 +12095,7 @@ where
         self.draw_page_fill()?;
         self.draw_watermark()?;
         self.draw_manuscript_grid();
-        if !self.hides_page_chrome() {
-            self.draw_page_borders(page);
-        }
+        self.draw_page_border_frame(PageBorderLayer::Back);
         Ok(())
     }
 
@@ -12323,19 +12406,30 @@ where
         context.restore();
     }
 
-    /// Draws the document's page borders (`w:pgBorders`) around the freshly
-    /// cleared current page. Each visible edge is stroked independently so it
-    /// can carry its own width and color. No-op in pageless mode or when the
-    /// document has no page borders.
-    fn draw_page_borders(&self, page: usize) {
-        if self.pageless_mode {
-            return;
+    /// Settles the page borders (`w:pgBorders`) `page` shows: those of the
+    /// section at its top, unless `w:display` keeps them off the page
+    /// (`firstPage` shows them on the section's first page only,
+    /// `notFirstPage` everywhere else), placed against the margins the page
+    /// starts with. `None` in pageless mode, with page chrome hidden, or when
+    /// the page has no visible frame.
+    fn page_border_frame_for_page(&self, page: usize) -> Option<PageBorderFrame> {
+        if self.pageless_mode || self.hides_page_chrome() {
+            return None;
         }
-        let Some(borders) = self.page_borders_for_page(page) else {
-            return;
+        let (borders, section) = if self.section_page_borders.is_empty() {
+            (self.page_borders.as_ref()?, 0)
+        } else {
+            let section = self.section_index_for_page(page);
+            (self.section_page_borders.get(section)?.as_ref()?, section)
         };
-        let (left, top, right, bottom) = page_border_rect(
-            borders.offset_from,
+        if !borders
+            .display
+            .shows(self.page_starts_border_section(page, section))
+        {
+            return None;
+        }
+        let rect = page_border_rect(
+            borders,
             self.page_width,
             self.page_height,
             self.margin_left,
@@ -12343,33 +12437,91 @@ where
             self.margin_top,
             self.margin_bottom,
         );
+        let (left, top, right, bottom) = rect;
         if right <= left || bottom <= top {
+            return None;
+        }
+        let spec = |edge: &Option<jade_docx_reader::document::BorderEdge>| {
+            edge.as_ref().map(border_edge_to_spec)
+        };
+        Some(PageBorderFrame {
+            layer: borders.layer,
+            rect,
+            top: spec(&borders.top),
+            bottom: spec(&borders.bottom),
+            left: spec(&borders.left),
+            right: spec(&borders.right),
+        })
+    }
+
+    /// Whether `page` is the first page of `section`, the section at its
+    /// top, for `w:display`: the page before it starts with another section,
+    /// and `section` placed no content on an earlier page.
+    ///
+    /// Back borders are settled while the next page's backing is created,
+    /// before `current_page_number` advances and after the incoming section
+    /// is activated, so the current page's sections are read from what it
+    /// recorded rather than from the active section.
+    fn page_starts_border_section(&self, page: usize, section: usize) -> bool {
+        if page <= 1 {
+            return true;
+        }
+        let previous = page - 1;
+        let previous_last = if previous == self.current_page_number {
+            self.page_section_indices
+                .get(previous - 1)
+                .copied()
+                .unwrap_or(self.active_section_index)
+        } else {
+            self.body_section_for_page(previous)
+        };
+        let previous_top = match self.mid_page_start(previous_last) {
+            Some(start) if start.page == previous => start.page_top_section,
+            _ => previous_last,
+        };
+        previous_top != section
+            && !self
+                .mid_page_start(section)
+                .is_some_and(|start| start.page < page && self.mid_page_start_has_content(start))
+    }
+
+    /// Strokes the current page's settled page borders when they belong to
+    /// `layer`: behind text (`w:zOrder="back"`) as the cleared page is
+    /// prepared, in front of it (the default) once the page's content is
+    /// painted. Each visible edge is stroked independently so it can carry
+    /// its own width, color and line style.
+    fn draw_page_border_frame(&self, layer: PageBorderLayer) {
+        let Some(frame) = self.current_page_border_frame.as_ref() else {
+            return;
+        };
+        if frame.layer != layer {
             return;
         }
-
+        let (left, top, right, bottom) = frame.rect;
         let context = self.host.painter();
         context.save();
         // Reuse the table-cell border drawing pipeline so page borders honor
         // line styles (single/double/dashed/dotted/…), not just solid.
         use border_styles::BorderSide;
-        let draw_edge = |edge: &jade_docx_reader::document::BorderEdge,
-                         side: BorderSide,
-                         (x0, y0): (f64, f64),
-                         (x1, y1): (f64, f64)| {
-            let spec = border_edge_to_spec(edge);
-            let _ = self.draw_border_side(&context, x0, y0, x1, y1, &spec, side);
-        };
-        if let Some(edge) = borders.top.as_ref() {
-            draw_edge(edge, BorderSide::Top, (left, top), (right, top));
-        }
-        if let Some(edge) = borders.bottom.as_ref() {
-            draw_edge(edge, BorderSide::Bottom, (left, bottom), (right, bottom));
-        }
-        if let Some(edge) = borders.left.as_ref() {
-            draw_edge(edge, BorderSide::Left, (left, top), (left, bottom));
-        }
-        if let Some(edge) = borders.right.as_ref() {
-            draw_edge(edge, BorderSide::Right, (right, top), (right, bottom));
+        for (spec, side, start, end) in [
+            (&frame.top, BorderSide::Top, (left, top), (right, top)),
+            (
+                &frame.bottom,
+                BorderSide::Bottom,
+                (left, bottom),
+                (right, bottom),
+            ),
+            (&frame.left, BorderSide::Left, (left, top), (left, bottom)),
+            (
+                &frame.right,
+                BorderSide::Right,
+                (right, top),
+                (right, bottom),
+            ),
+        ] {
+            if let Some(spec) = spec {
+                let _ = self.draw_border_side(&context, start.0, start.1, end.0, end.1, spec, side);
+            }
         }
         // `context.restore()` resets the line-dash / stroke state mutated by
         // `draw_cell_border_side`, keeping subsequent page chrome (crop marks)
@@ -16354,6 +16506,8 @@ where
                         && self.switch_host_page(|host| host.jump_to_page_without_touch(jump_page))
                     {
                         self.current_page_number = jump_page;
+                        self.current_page_cleared_whole = false;
+                        self.current_page_border_frame = None;
                         self.apply_mirrored_margins_for_page(jump_page);
                         self.deferred_cached_draw_page = jump_page;
                         self.deferred_cached_draw_commands.clear();
@@ -38159,6 +38313,11 @@ where
     }
 
     fn begin_next_page_backing(&mut self, next_page: usize) -> Result<(), JsValue> {
+        // The next page has neither been cleared nor settled its page
+        // borders until `clear_current_page_for_render` says so: a skipped
+        // page must not inherit this page's answers.
+        self.current_page_cleared_whole = false;
+        self.current_page_border_frame = None;
         self.apply_mirrored_margins_for_page(next_page);
         self.current_page_started_this_pass = true;
         if self.drawing_uncached_paragraph {
@@ -40859,6 +41018,7 @@ where
         self.is_first_page_of_section(zero_based_page.saturating_add(1))
     }
 
+    #[cfg(test)]
     fn page_borders_for_page(&self, page: usize) -> Option<&ResolvedPageBorders> {
         if self.section_page_borders.is_empty() {
             return self.page_borders.as_ref();
@@ -41904,10 +42064,31 @@ where
     }
 
     fn render_footer_simple(&mut self) -> Result<(), JsValue> {
+        let finishing_page = !self.footer_drawn;
         let footer = self.render_page_footer_and_notes();
         // Footnotes and footer are on the page: paint what it held back.
         let layers = self.composite_page_layers();
+        if finishing_page {
+            self.draw_front_page_borders();
+        }
         footer.and(layers)
+    }
+
+    /// Paints the finished page's `w:zOrder="front"` page borders over its
+    /// content. Only a page this pass painted afresh — cleared whole, or the
+    /// band a band redraw cleared, inside its clip — takes them; a page that
+    /// kept its pixels already shows them.
+    ///
+    /// The page-level gate is used, not the line-level one: a band redraw
+    /// culls lines below its band, which is where the walk is at page end.
+    fn draw_front_page_borders(&self) {
+        if self.rendering_header_footer_story
+            || !(self.current_page_cleared_whole || self.band_redraw_clip_active)
+            || !self.should_draw_page_for_current_render(self.current_page_number)
+        {
+            return;
+        }
+        self.draw_page_border_frame(PageBorderLayer::Front);
     }
 
     fn render_page_footer_and_notes(&mut self) -> Result<(), JsValue> {
@@ -44988,6 +45169,94 @@ mod tests {
         (renderer, pages)
     }
 
+    /// A keystroke's band clear spans the page width, so it erases its slice
+    /// of a page frame's side lines: the band pass repaints them inside its
+    /// clip, the back layer with the clear and the front one when the page
+    /// is finished, although the walk is then below the band.
+    #[test]
+    fn a_band_redraw_repaints_page_border_layers_inside_its_clip() {
+        use jade_docx_reader::document::{BorderEdge, PageBorders};
+        use jade_painter::recording::Op;
+        let side = Some(BorderEdge {
+            val: Some("single".to_string()),
+            size_eighths: Some(8),
+            space: Some(4),
+            color: Some("#ff00aa".to_string()),
+            theme_color: None,
+        });
+        for z_order in [Some("back"), None] {
+            let (host, pages) = PerPageRecordingHost::new(2);
+            let mut renderer =
+                CanvasRenderer::with_host(Box::new(host), false).expect("paged recording renderer");
+            renderer.page_width = 600.0;
+            renderer.page_height = 800.0;
+            renderer.margin_left = 72.0;
+            renderer.margin_right = 72.0;
+            renderer.margin_top = 72.0;
+            renderer.margin_bottom = 72.0;
+            renderer.page_borders = resolve_page_borders(&PageBorders {
+                left: side.clone(),
+                right: side.clone(),
+                z_order: z_order.map(str::to_string),
+                ..Default::default()
+            });
+            renderer.render_full_repaint = false;
+            renderer.render_dirty_pages = Some(std::collections::BTreeSet::from([1]));
+            renderer.visible_page_range = Some(1..=1);
+            renderer.current_page_number = 1;
+            renderer.band_redraw_plan = Some(BandRedrawPlan {
+                page: 1,
+                local_top: 100.0,
+                local_bottom: 140.0,
+                paint_bottom: 140.0,
+            });
+            renderer
+                .clear_current_page_for_render(1)
+                .expect("band clear on page 1");
+            assert!(renderer.band_redraw_clip_active, "{z_order:?}: a band pass");
+            assert!(!renderer.current_page_cleared_whole);
+            let frame = |ops: &[Op]| {
+                ops.iter()
+                    .filter(|op| matches!(op, Op::SetStrokeStyle(color) if color.eq_ignore_ascii_case("#ff00aa")))
+                    .count()
+            };
+            let after_clear = pages[0].ops();
+            let clip = after_clear
+                .iter()
+                .position(|op| matches!(op, Op::Clip))
+                .expect("the band clip");
+            assert_eq!(
+                frame(&after_clear[..clip]),
+                0,
+                "{z_order:?}: nothing reaches outside the band"
+            );
+
+            // The walk has passed the band by the time the page is finished.
+            renderer.current_y = 700.0;
+            assert!(!renderer.should_draw_current_page_for_render());
+            renderer.footer_drawn = false;
+            renderer
+                .render_footer_simple()
+                .expect("finish the band page");
+            let finished = pages[0].ops();
+            let (back, front) = (frame(&after_clear), frame(&finished[after_clear.len()..]));
+            if z_order == Some("back") {
+                assert_eq!(
+                    (back, front),
+                    (2, 0),
+                    "the back layer is repainted with the clear"
+                );
+            } else {
+                assert_eq!(
+                    (back, front),
+                    (0, 2),
+                    "the front layer is repainted at page end"
+                );
+            }
+            assert_eq!(frame(&finished[..clip]), 0);
+        }
+    }
+
     fn assert_band_clip_released_on_page_one(
         renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
         pages: &[jade_painter::recording::RecordingPainter],
@@ -46601,9 +46870,13 @@ mod tests {
             }),
             right: None,
             offset_from: Some("page".to_string()),
+            display: Some("notFirstPage".to_string()),
+            z_order: Some("back".to_string()),
         };
         let resolved = resolve_page_borders(&borders).expect("visible borders");
         assert_eq!(resolved.offset_from, PageBorderOffsetFrom::Page);
+        assert_eq!(resolved.display, PageBorderDisplay::NotFirstPage);
+        assert_eq!(resolved.layer, PageBorderLayer::Back);
         let top = resolved.top.expect("top");
         assert_eq!(top.val.as_deref(), Some("single"));
         assert_eq!(top.size_eighths, Some(24));
@@ -46638,6 +46911,8 @@ mod tests {
         };
         let resolved = resolve_page_borders(&text_anchored).expect("visible");
         assert_eq!(resolved.offset_from, PageBorderOffsetFrom::Text);
+        assert_eq!(resolved.display, PageBorderDisplay::AllPages);
+        assert_eq!(resolved.layer, PageBorderLayer::Front);
 
         // All-invisible -> None.
         let invisible = PageBorders {
@@ -46651,31 +46926,103 @@ mod tests {
     }
 
     #[test]
-    fn page_border_rect_uses_text_margins_or_page_inset() {
-        // Text anchor hugs the body box defined by the margins.
-        let (l, t, r, b) = page_border_rect(
-            PageBorderOffsetFrom::Text,
-            800.0,
-            1000.0,
-            96.0,
-            96.0,
-            72.0,
-            72.0,
+    fn page_border_rect_places_each_edge_its_own_space_from_its_reference() {
+        use jade_docx_reader::document::{BorderEdge, PageBorders};
+        let spaced = |offset_from: &str, spaces: [Option<u32>; 4]| {
+            let edge = |space| {
+                Some(BorderEdge {
+                    val: Some("single".to_string()),
+                    space,
+                    ..Default::default()
+                })
+            };
+            resolve_page_borders(&PageBorders {
+                top: edge(spaces[0]),
+                right: edge(spaces[1]),
+                bottom: edge(spaces[2]),
+                left: edge(spaces[3]),
+                offset_from: Some(offset_from.to_string()),
+                ..Default::default()
+            })
+            .expect("visible")
+        };
+        let rect = |borders: &ResolvedPageBorders| {
+            page_border_rect(borders, 800.0, 1000.0, 96.0, 96.0, 72.0, 72.0)
+        };
+        // The edges carry no `w:sz`, so each paints a 1px band, centred
+        // half a pixel beyond its space.
+        let half = 0.5;
+        // Text anchor: each edge `w:space` outside the body box.
+        let (l, t, r, b) = rect(&spaced("text", [Some(3), Some(6), Some(9), Some(12)]));
+        assert_eq!(
+            (l, t, r, b),
+            (
+                96.0 - 16.0 - half,
+                72.0 - 4.0 - half,
+                704.0 + 8.0 + half,
+                928.0 + 12.0 + half
+            )
         );
-        assert_eq!((l, t, r, b), (96.0, 72.0, 704.0, 928.0));
+        // Absent space touches the body box.
+        assert_eq!(
+            rect(&spaced("text", [None; 4])),
+            (96.0 - half, 72.0 - half, 704.0 + half, 928.0 + half)
+        );
+        // Page anchor: each edge `w:space` in from the paper edge, so a 0pt
+        // frame stays on the paper.
+        let (l, t, r, b) = rect(&spaced("page", [Some(24), Some(6), Some(9), Some(12)]));
+        assert_eq!(
+            (l, t, r, b),
+            (
+                16.0 + half,
+                32.0 + half,
+                800.0 - 8.0 - half,
+                1000.0 - 12.0 - half
+            )
+        );
+        assert_eq!(
+            rect(&spaced("page", [Some(0); 4])),
+            (half, half, 800.0 - half, 1000.0 - half)
+        );
+        // A space past Word's 31pt maximum is clamped, not allowed to
+        // invert the frame.
+        assert_eq!(
+            rect(&spaced("page", [Some(5000); 4])),
+            rect(&spaced("page", [Some(31); 4]))
+        );
+    }
 
-        // Page anchor insets symmetrically from the physical page edge.
-        let inset = points_to_px(PAGE_BORDER_PAGE_INSET_PT);
-        let (l, t, r, b) = page_border_rect(
-            PageBorderOffsetFrom::Page,
-            800.0,
-            1000.0,
-            96.0,
-            96.0,
-            72.0,
-            72.0,
+    #[test]
+    fn a_page_border_band_grows_away_from_its_reference() {
+        use jade_docx_reader::document::{BorderEdge, PageBorders};
+        // A 6pt thin-thick band 10pt from its reference.
+        let edge = Some(BorderEdge {
+            val: Some("thinThickSmallGap".to_string()),
+            size_eighths: Some(48),
+            space: Some(10),
+            ..Default::default()
+        });
+        let band = border_edge_to_spec(edge.as_ref().unwrap()).painted_band_px();
+        assert!(
+            band > points_to_px(6.0),
+            "a banded style spans several widths"
         );
-        assert_eq!((l, t, r, b), (inset, inset, 800.0 - inset, 1000.0 - inset));
+        for (offset_from, expected) in [
+            ("page", points_to_px(10.0) + band / 2.0),
+            ("text", 72.0 - points_to_px(10.0) - band / 2.0),
+        ] {
+            let borders = resolve_page_borders(&PageBorders {
+                top: edge.clone(),
+                offset_from: Some(offset_from.to_string()),
+                ..Default::default()
+            })
+            .expect("visible");
+            let (_, top, _, _) = page_border_rect(&borders, 800.0, 1000.0, 96.0, 96.0, 72.0, 72.0);
+            assert!(
+                (top - expected).abs() < 1e-9,
+                "{offset_from}: {top} vs {expected}"
+            );
+        }
     }
 
     #[test]

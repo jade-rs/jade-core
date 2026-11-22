@@ -944,19 +944,29 @@ impl DocumentParser {
                         }
                         b"w:pgBorders" => {
                             if parsing_section_props {
-                                // Capture `w:offsetFrom` from the container before
-                                // reading the child edge elements.
-                                let offset_from = e
-                                    .attributes()
-                                    .flatten()
-                                    .find(|a| a.key.as_ref() == b"w:offsetFrom")
-                                    .map(|a| {
-                                        String::from_utf8_lossy(&a.value)
-                                            .trim()
-                                            .to_ascii_lowercase()
-                                    });
+                                // Capture the container attributes
+                                // (`w:offsetFrom`, `w:display`, `w:zOrder`)
+                                // before reading the child edge elements.
+                                let mut offset_from = None;
+                                let mut display = None;
+                                let mut z_order = None;
+                                for attribute in e.attributes().flatten() {
+                                    let value = || {
+                                        String::from_utf8_lossy(&attribute.value).trim().to_string()
+                                    };
+                                    match attribute.key.as_ref() {
+                                        b"w:offsetFrom" => {
+                                            offset_from = Some(value().to_ascii_lowercase())
+                                        }
+                                        b"w:display" => display = Some(value()),
+                                        b"w:zOrder" => z_order = Some(value()),
+                                        _ => {}
+                                    }
+                                }
                                 if let Ok(mut borders) = Self::parse_page_borders(reader) {
                                     borders.offset_from = offset_from;
+                                    borders.display = display;
+                                    borders.z_order = z_order;
                                     if !borders.is_empty() {
                                         if let Some(section) = current_section_props.as_mut() {
                                             section.page_borders = Some(borders);
@@ -18332,6 +18342,54 @@ mod tests {
             borders.right.as_ref().unwrap().val.as_deref(),
             Some("dashed")
         );
+    }
+
+    #[test]
+    fn parses_page_border_display_space_and_z_order() {
+        // `w:display` picks the section pages that carry the frame, each
+        // edge's `w:space` places it, and `w:zOrder` stacks it against text
+        // (§17.6.10).
+        let body = r#"
+    <w:p><w:r><w:t>Cover</w:t></w:r></w:p>
+    <w:sectPr>
+      <w:pgBorders w:zOrder="back" w:display="firstPage" w:offsetFrom="text">
+        <w:top w:val="single" w:sz="4" w:space="1" w:color="auto"/>
+        <w:left w:val="single" w:sz="4" w:space="4" w:color="auto"/>
+        <w:bottom w:val="single" w:sz="4" w:space="10" w:color="auto"/>
+        <w:right w:val="single" w:sz="4" w:space="31" w:color="auto"/>
+      </w:pgBorders>
+    </w:sectPr>
+"#;
+        let document = parse_document_from_body(body);
+        let borders = document
+            .default_section
+            .as_ref()
+            .and_then(|props| props.page_borders.as_ref())
+            .expect("page borders");
+        assert_eq!(borders.display.as_deref(), Some("firstPage"));
+        assert_eq!(borders.z_order.as_deref(), Some("back"));
+        assert_eq!(borders.offset_from.as_deref(), Some("text"));
+        let spaces = [&borders.top, &borders.left, &borders.bottom, &borders.right]
+            .map(|edge| edge.as_ref().and_then(|edge| edge.space));
+        assert_eq!(spaces, [Some(1), Some(4), Some(10), Some(31)]);
+
+        // The model survives serialization, and absent attributes stay absent.
+        let json = serde_json::to_string(borders).expect("serialize");
+        let back: crate::document::PageBorders = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(&back, borders);
+        let plain = parse_document_from_body(
+            r#"<w:sectPr><w:pgBorders><w:top w:val="single" w:sz="4"/></w:pgBorders></w:sectPr>"#,
+        );
+        let plain = plain
+            .default_section
+            .as_ref()
+            .and_then(|props| props.page_borders.as_ref())
+            .expect("plain page borders");
+        assert_eq!(
+            (plain.display.as_deref(), plain.z_order.as_deref()),
+            (None, None)
+        );
+        assert!(!serde_json::to_string(plain).unwrap().contains("display"));
     }
 
     #[test]
