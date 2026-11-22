@@ -297,6 +297,8 @@ mod numbering_snapshot;
 #[cfg(test)]
 mod opentype_features_tests;
 mod page_layers;
+#[cfg(test)]
+mod page_number_tests;
 mod paragraph_font_cache;
 mod paragraph_hash;
 mod paragraph_join;
@@ -4206,7 +4208,10 @@ where
     /// fields. `None` = decimal. ECMA-376 Part 1 §17.6.12. MVP: the default
     /// section's value is applied document-wide.
     page_number_format: Option<String>,
-    /// First displayed page number (`w:pgNumType/@w:start`). `None` = 1.
+    /// First displayed page number (`w:pgNumType/@w:start`) of the default
+    /// (last) section. `None` = 1. Read only when no per-section numbering is
+    /// installed (`section_page_numbering` empty); with sections, each
+    /// section's own start applies instead.
     page_number_start: Option<u32>,
     /// `w:pgNumType` per section (`document.sections` order). A section with
     /// `w:start` restarts the displayed page number; one without continues
@@ -17717,7 +17722,8 @@ where
         self.default_font_size_pt = document.default_font_size;
 
         // Resolve `w:pgNumType` (numeral format + start offset) for PAGE fields
-        // from the default section. MVP: a single document-wide value.
+        // from the default section. The start is read only on the path without
+        // per-section numbering below.
         let page_number_type = document
             .default_section
             .as_ref()
@@ -41677,7 +41683,10 @@ where
         }
         let page = physical_page.max(1);
         let section = self.section_index_for_page(page);
-        let mut number_at_section_start = self.page_number_start.unwrap_or(1) as usize;
+        // Numbering starts at 1 unless a section's own `w:start` restarts it.
+        // `page_number_start` is the default (last) section's start, which
+        // must not renumber the sections before it.
+        let mut number_at_section_start = 1usize;
         let mut first_page_of_section = 1usize;
         for index in 0..=section {
             let first_page = self.first_page_of_section_index(index).unwrap_or(page);
