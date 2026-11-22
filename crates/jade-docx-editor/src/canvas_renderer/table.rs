@@ -3846,6 +3846,12 @@ where
                             row_start,
                             fresh_page_segment.is_some(),
                             use_column_frame,
+                            pending_height,
+                            if should_repeat_header_before_row(header_row_count, row_index, true) {
+                                header_height
+                            } else {
+                                0.0
+                            },
                         )
                         || cant_split_blocks_row_split(
                             row.cant_split,
@@ -8634,15 +8640,19 @@ where
         }
     }
 
-    /// A cantSplit row that does not fit below earlier content moves to a
-    /// fresh frame before it is judged against that frame's height: it splits
-    /// only where it starts a page (or column) and still does not fit.
+    /// A cantSplit row that does not fit below earlier content moves on when
+    /// the next page takes it whole; it is then judged on that page. Rows
+    /// that fit no page split where they are, and a row directly below the
+    /// table's header block (or its repeat) counts as starting the frame, so
+    /// the header is never stranded alone.
     fn cant_split_row_moves_first(
-        &self,
+        &mut self,
         cant_split: bool,
         row_start: bool,
         fresh_frame: bool,
         use_column_frame: bool,
+        height: f64,
+        header_height: f64,
     ) -> bool {
         if !cant_split
             || !row_start
@@ -8657,7 +8667,32 @@ where
         } else {
             self.effective_body_top()
         };
-        self.current_y > top + self.current_page_valign_offset() + ROW_SPLIT_EPSILON
+        let header_slack = if header_height > 0.0 { 1.0 } else { 0.0 };
+        if self.current_y
+            <= top
+                + self.current_page_valign_offset()
+                + header_height
+                + header_slack
+                + ROW_SPLIT_EPSILON
+        {
+            return false;
+        }
+        let next_frame = if use_column_frame {
+            self.table_full_page_content_height()
+        } else {
+            // The next page's own header/footer variant bounds its body.
+            let page = self.current_page_number;
+            self.current_page_number = page + 1;
+            let height = self.table_full_page_content_height();
+            self.current_page_number = page;
+            height
+        };
+        let repeated = if header_height <= next_frame {
+            header_height
+        } else {
+            0.0
+        };
+        height <= next_frame - repeated + ROW_SPLIT_EPSILON
     }
 
     /// The body height a fresh page offers a row: between a tall header's

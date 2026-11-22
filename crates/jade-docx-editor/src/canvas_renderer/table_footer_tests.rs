@@ -281,9 +281,10 @@ fn rows_and_paragraphs_reach_a_short_bottom_margin_without_a_footer() {
 }
 
 /// A cantSplit row taller than the body between the margin and the tall
-/// footer fits no page. Like Word it starts on a fresh page, then splits.
+/// footer fits no page here (every page has that footer), so it splits where
+/// it is, above the footer, as an over-tall row does on main.
 #[test]
-fn cant_split_row_taller_than_the_footer_aware_body_starts_a_page_then_splits() {
+fn cant_split_row_that_fits_no_footer_aware_page_splits_in_place() {
     let probe = render_tall(&table(&plain_rows(1)));
     let line = row_height(&probe);
     let nominal = probe.page_height - probe.margin_top - probe.margin_bottom;
@@ -301,13 +302,38 @@ fn cant_split_row_taller_than_the_footer_aware_body_starts_a_page_then_splits() 
     };
     let renderer = render_tall(&format!("{}{}", paragraph("lead"), table(&[tall])));
     let fragments = row_fragments(&renderer, 0);
-    assert_eq!(pages_of_row(&renderer, 0), [1, 2], "{fragments:?}");
+    assert_eq!(pages_of_row(&renderer, 0), [0, 1], "{fragments:?}");
     let (_, head_top, head_bottom) = fragments[0];
     assert!(
-        (head_top - renderer.margin_top).abs() < 0.5,
-        "the head starts the page"
+        head_top > renderer.margin_top + 1.0,
+        "the head follows the lead"
     );
-    assert!(head_bottom <= footer_top(&renderer, 1) + 0.5);
+    assert!(head_bottom <= footer_top(&renderer, 0) + 0.5);
+}
+
+/// A cantSplit row directly below the table's header row starts the frame:
+/// it splits there rather than leaving the header alone on the page.
+#[test]
+fn cant_split_row_below_a_header_row_does_not_strand_the_header() {
+    let rows = [
+        Row {
+            header: true,
+            ..row("Heading")
+        },
+        Row {
+            cant_split: true,
+            lines: (0..40).map(|index| format!("line {index}")).collect(),
+            ..Row::default()
+        },
+    ];
+    let (renderer, _) = render(&table(&rows), LETTER_1IN, Footer::None);
+    let header_pages = pages_of_row(&renderer, 0);
+    assert_eq!(header_pages.first(), Some(&0));
+    assert_eq!(
+        pages_of_row(&renderer, 1).first(),
+        Some(&0),
+        "body lines share the header's page"
+    );
 }
 
 /// A tall first-page footer does not shrink the page a cantSplit row moves
