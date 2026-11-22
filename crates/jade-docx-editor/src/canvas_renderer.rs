@@ -75639,6 +75639,93 @@ mod tests {
         assert_eq!(align_offset_within(Some("right"), 40.0, 100.0), 0.0);
     }
 
+    /// The floating layout of the VML text box in `<w:pict><v:shape style=...>`.
+    fn vml_text_box_document(style: &str) -> Document {
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:v="urn:schemas-microsoft-com:vml"><w:body><w:p><w:r><w:pict><v:shape style="{style}"><v:textbox><w:txbxContent><w:p><w:r><w:t>BOX</w:t></w:r></w:p></w:txbxContent></v:textbox></v:shape></w:pict></w:r><w:r><w:t>body</w:t></w:r></w:p></w:body></w:document>"#
+        );
+        jade_docx_reader::DocumentParser::new()
+            .parse_document_xml(&xml)
+            .unwrap()
+    }
+
+    fn vml_text_box_layout(document: &Document) -> RunImageLayout {
+        let BodyElement::Paragraph(paragraph) = &document.body.as_ref().unwrap().elements[0] else {
+            panic!("paragraph")
+        };
+        paragraph
+            .runs
+            .iter()
+            .find_map(|run| run.text_box.as_ref())
+            .expect("text box")
+            .layout
+            .clone()
+    }
+
+    /// `mso-position-horizontal:center` centres a legacy text box in the
+    /// margin box, overriding `margin-left`, where it used to land at the
+    /// margin plus the offset.
+    #[test]
+    fn centred_vml_text_box_is_centred_in_the_margin_box() {
+        let document = vml_text_box_document(
+            "position:absolute;margin-left:30pt;margin-top:0;width:144pt;height:36pt;z-index:1;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical-relative:text",
+        );
+        let (mut renderer, _) = recording_renderer();
+        renderer
+            .render(&document, &Options::default())
+            .expect("render text box");
+        let region = renderer
+            .text_box_debug_regions()
+            .into_iter()
+            .next()
+            .expect("rendered text box");
+        let box_width = 144.0 * 96.0 / 72.0;
+        let content_width = renderer.page_width - renderer.margin_left - renderer.margin_right;
+        assert!((region.width - box_width).abs() < 1e-6, "{}", region.width);
+        let expected = renderer.margin_left + (content_width - box_width) / 2.0;
+        assert!(
+            (region.x - expected).abs() < 1e-6,
+            "box at {} instead of {expected}",
+            region.x
+        );
+    }
+
+    /// VML `inside` / `outside` resolve like DrawingML's: the leading edge of
+    /// the margin box on odd pages and the trailing edge on even pages.
+    #[test]
+    fn vml_inside_and_outside_follow_page_parity_like_drawingml() {
+        let width = 96.0;
+        for (keyword, odd_at_start) in [("inside", true), ("outside", false)] {
+            let document = vml_text_box_document(&format!(
+                "position:absolute;margin-left:30pt;width:1in;height:36pt;mso-position-horizontal:{keyword};mso-position-horizontal-relative:margin"
+            ));
+            let vml = vml_text_box_layout(&document).position_h.expect("position");
+            let drawingml = ImagePosition {
+                relative_from: Some("margin".to_string()),
+                offset_px: None,
+                align: Some(keyword.to_string()),
+            };
+            let mut renderer = test_renderer();
+            let start = renderer.margin_left;
+            let end = renderer.page_width - renderer.margin_right - width;
+            for page in [1, 2] {
+                renderer.current_page_number = page;
+                let x = renderer.resolve_horizontal_position(&vml, width, None);
+                assert_eq!(
+                    x,
+                    renderer.resolve_horizontal_position(&drawingml, width, None),
+                    "{keyword} page {page}"
+                );
+                let expected = if (page % 2 == 1) == odd_at_start {
+                    start
+                } else {
+                    end
+                };
+                assert!((x - expected).abs() < 1e-9, "{keyword} page {page}: {x}");
+            }
+        }
+    }
+
     #[test]
     fn horizontal_inside_and_outside_alignment_follow_page_parity() {
         assert_eq!(

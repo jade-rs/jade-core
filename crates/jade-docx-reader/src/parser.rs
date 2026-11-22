@@ -7209,7 +7209,12 @@ impl DocumentParser {
         };
         let values: Vec<f64> = value
             .split(',')
-            .filter_map(|part| Self::points_str_to_px(part.trim()))
+            .filter_map(|part| {
+                let part = part.trim();
+                // A bare `0` needs no unit.
+                Self::points_str_to_px(part)
+                    .or_else(|| (part.parse::<f64>().ok() == Some(0.0)).then_some(0.0))
+            })
             .collect();
         if let [left, top, right, bottom] = values.as_slice() {
             insets.left_px = left.max(0.0);
@@ -7250,6 +7255,9 @@ impl DocumentParser {
         let mut dist_bottom = None;
         let mut dist_left = None;
         let mut dist_right = None;
+        // Children of a `v:group` size and place themselves in the group's
+        // coordinate space (`coordsize` / `coordorigin`), not CSS px.
+        let mut group_depth = 0usize;
 
         loop {
             match reader.next_event(&mut buf) {
@@ -7259,6 +7267,7 @@ impl DocumentParser {
                         Self::apply_ole_object_attributes(&mut image, e);
                     }
                     match e.name().as_ref() {
+                        b"v:group" => group_depth += 1,
                         b"v:shape" => {
                             let mut style_value: Option<String> = None;
                             for attr in e.attributes().flatten() {
@@ -7313,7 +7322,7 @@ impl DocumentParser {
                                 }
                             }
                             if let Some(style_str) = style_value {
-                                let parsed = Self::parse_vml_style(&style_str);
+                                let parsed = Self::parse_vml_style(&style_str, group_depth > 0);
                                 is_absolute |= parsed.is_absolute;
                                 width_px = parsed.width_px.or(width_px);
                                 height_px = parsed.height_px.or(height_px);
@@ -7486,7 +7495,7 @@ impl DocumentParser {
                                 }
                             }
                             if let Some(style_str) = style_value {
-                                let parsed = Self::parse_vml_style(&style_str);
+                                let parsed = Self::parse_vml_style(&style_str, group_depth > 0);
                                 is_absolute |= parsed.is_absolute;
                                 width_px = parsed.width_px.or(width_px);
                                 height_px = parsed.height_px.or(height_px);
@@ -7588,6 +7597,9 @@ impl DocumentParser {
                 }
                 Ok(Event::End(ref e)) => {
                     depth = depth.saturating_sub(1);
+                    if e.name().as_ref() == b"v:group" {
+                        group_depth = group_depth.saturating_sub(1);
+                    }
                     if depth == 0 && e.name().as_ref() == b"w:pict" {
                         break;
                     }
@@ -7686,11 +7698,15 @@ impl DocumentParser {
         image.layout.kind = RunImageKind::Inline;
         image.width_px = width_hint_px;
         image.height_px = height_hint_px;
+        let mut group_depth = 0usize;
 
         loop {
             match reader.next_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
-                    Self::apply_vml_shape_style_to_image(&mut image, e);
+                    Self::apply_vml_shape_style_to_image(&mut image, e, group_depth > 0);
+                    if e.name().as_ref() == b"v:group" {
+                        group_depth += 1;
+                    }
                     Self::apply_vml_imagedata_attributes(&mut image, e);
                     if e.name().as_ref() == b"o:OLEObject" {
                         Self::apply_ole_object_attributes(&mut image, e);
@@ -7698,14 +7714,17 @@ impl DocumentParser {
                     depth = depth.saturating_add(1);
                 }
                 Ok(Event::Empty(ref e)) => {
-                    Self::apply_vml_shape_style_to_image(&mut image, e);
+                    Self::apply_vml_shape_style_to_image(&mut image, e, group_depth > 0);
                     Self::apply_vml_imagedata_attributes(&mut image, e);
                     if e.name().as_ref() == b"o:OLEObject" {
                         Self::apply_ole_object_attributes(&mut image, e);
                     }
                 }
-                Ok(Event::End(_)) => {
+                Ok(Event::End(ref e)) => {
                     depth = depth.saturating_sub(1);
+                    if e.name().as_ref() == b"v:group" {
+                        group_depth = group_depth.saturating_sub(1);
+                    }
                     if depth == 0 {
                         break;
                     }
@@ -7767,7 +7786,11 @@ impl DocumentParser {
         }
     }
 
-    fn apply_vml_shape_style_to_image(image: &mut RunImage, element: &BytesStart<'_>) {
+    fn apply_vml_shape_style_to_image(
+        image: &mut RunImage,
+        element: &BytesStart<'_>,
+        in_group: bool,
+    ) {
         let mut style_value: Option<String> = None;
         for attr in element.attributes().flatten() {
             if attr.key.as_ref() == b"style" {
@@ -7776,7 +7799,7 @@ impl DocumentParser {
         }
 
         if let Some(style_str) = style_value {
-            let parsed = Self::parse_vml_style(&style_str);
+            let parsed = Self::parse_vml_style(&style_str, in_group);
             if parsed.is_absolute {
                 image.layout.kind = RunImageKind::Floating;
             }
@@ -7846,7 +7869,17 @@ impl DocumentParser {
         }
     }
 
-    fn parse_vml_style(style: &str) -> ParsedVmlStyle {
+    /// Reads a VML `style`.  `in_group` marks a `v:group` child, whose bare
+    /// numbers are group coordinate units rather than CSS px and whose
+    /// alignment keywords are not applied.
+    fn parse_vml_style(style: &str, in_group: bool) -> ParsedVmlStyle {
+        let length = |value: &str| {
+            if in_group {
+                Self::points_str_to_px(value)
+            } else {
+                Self::vml_css_length_to_px(value)
+            }
+        };
         let mut is_absolute = false;
         let mut width_px = None;
         let mut height_px = None;
@@ -7854,6 +7887,8 @@ impl DocumentParser {
         let mut offset_y = None;
         let mut relative_from_h = None;
         let mut relative_from_v = None;
+        let mut align_h = None;
+        let mut align_v = None;
         let mut rotation_deg = None;
         let mut text_vertical_alignment = None;
         let mut dist_top = None;
@@ -7869,17 +7904,21 @@ impl DocumentParser {
             if let Some(rest) = part.strip_prefix("position:") {
                 is_absolute = rest.trim().eq_ignore_ascii_case("absolute");
             } else if let Some(rest) = part.strip_prefix("width:") {
-                width_px = Self::points_str_to_px(rest.trim());
+                width_px = length(rest).filter(|width| *width >= 0.0);
             } else if let Some(rest) = part.strip_prefix("height:") {
-                height_px = Self::points_str_to_px(rest.trim());
+                height_px = length(rest).filter(|height| *height >= 0.0);
             } else if let Some(rest) = part.strip_prefix("margin-left:") {
-                offset_x = Self::points_str_to_px(rest.trim());
+                offset_x = length(rest);
             } else if let Some(rest) = part.strip_prefix("margin-top:") {
-                offset_y = Self::points_str_to_px(rest.trim());
+                offset_y = length(rest);
             } else if let Some(rest) = part.strip_prefix("mso-position-horizontal-relative:") {
                 relative_from_h = Some(rest.trim().to_string());
             } else if let Some(rest) = part.strip_prefix("mso-position-vertical-relative:") {
                 relative_from_v = Some(rest.trim().to_string());
+            } else if let Some(rest) = part.strip_prefix("mso-position-horizontal:") {
+                align_h = Self::vml_position_align(rest, true);
+            } else if let Some(rest) = part.strip_prefix("mso-position-vertical:") {
+                align_v = Self::vml_position_align(rest, false);
             } else if let Some(rest) = part.strip_prefix("rotation:") {
                 rotation_deg = rest.trim().parse::<f64>().ok();
             } else if let Some(rest) = part.strip_prefix("v-text-anchor:") {
@@ -7899,12 +7938,25 @@ impl DocumentParser {
             }
         }
 
+        // Word aligns only an absolutely positioned shape by keyword; a group
+        // child is placed by the group.
+        let aligns = is_absolute && !in_group;
         ParsedVmlStyle {
             is_absolute,
             width_px,
             height_px,
-            position_h: Self::build_position(relative_from_h, offset_x, true),
-            position_v: Self::build_position(relative_from_v, offset_y, false),
+            position_h: Self::vml_position(
+                relative_from_h,
+                offset_x,
+                align_h.filter(|_| aligns),
+                true,
+            ),
+            position_v: Self::vml_position(
+                relative_from_v,
+                offset_y,
+                align_v.filter(|_| aligns),
+                false,
+            ),
             rotation_deg,
             text_vertical_alignment,
             dist_top,
@@ -7912,6 +7964,62 @@ impl DocumentParser {
             dist_left,
             dist_right,
         }
+    }
+
+    /// Maps VML's `mso-position-horizontal` / `mso-position-vertical` keyword
+    /// to the lowercased `wp:align` value it corresponds to.  `absolute` (the
+    /// default) and any unknown keyword yield `None`, so the object keeps its
+    /// `margin-left` / `margin-top` offset.
+    fn vml_position_align(value: &str, horizontal: bool) -> Option<&'static str> {
+        let value = value.trim();
+        let keywords: &[&'static str] = if horizontal {
+            &["left", "center", "right", "inside", "outside"]
+        } else {
+            &["top", "center", "bottom", "inside", "outside"]
+        };
+        keywords
+            .iter()
+            .copied()
+            .find(|keyword| value.eq_ignore_ascii_case(keyword))
+    }
+
+    /// The floating position from a VML frame, offset and alignment keyword.
+    /// The keyword overrides the `margin-left` / `margin-top` offset in Word:
+    /// the object is aligned within its relative frame, as DrawingML's
+    /// `wp:align` is.  The renderer has a real extent only for the page, the
+    /// margin box and margin areas and (horizontally) the column, so for the
+    /// paragraph, line and character frames the offset is kept instead.
+    fn vml_position(
+        relative: Option<String>,
+        offset: Option<f64>,
+        align: Option<&'static str>,
+        horizontal: bool,
+    ) -> Option<ImagePosition> {
+        let Some(align) = align else {
+            return Self::build_position(relative, offset, horizontal);
+        };
+        let aligned = Self::build_position(relative.clone(), Some(0.0), horizontal)?;
+        let has_extent = matches!(
+            aligned.relative_from.as_deref(),
+            Some(
+                "page"
+                    | "margin"
+                    | "leftMargin"
+                    | "rightMargin"
+                    | "insideMargin"
+                    | "outsideMargin"
+                    | "topMargin"
+                    | "bottomMargin"
+            )
+        ) || (horizontal && aligned.relative_from.as_deref() == Some("column"));
+        if !has_extent {
+            return Self::build_position(relative, offset, horizontal);
+        }
+        Some(ImagePosition {
+            offset_px: None,
+            align: Some(align.to_string()),
+            ..aligned
+        })
     }
 
     fn parse_vml_wrap_mode(element: &BytesStart<'_>) -> Option<WrapMode> {
@@ -7990,14 +8098,40 @@ impl DocumentParser {
         }
     }
 
+    /// Converts a VML length with a CSS unit (`pt`, `in`, `cm`, `mm`, `pc`,
+    /// `px`) to CSS pixels.  A unitless number yields `None` here; VML
+    /// attributes such as `strokeweight` and `inset` give it different default
+    /// units, and style properties use [`Self::vml_css_length_to_px`].
     fn points_str_to_px(value: &str) -> Option<f64> {
         let trimmed = value.trim_end_matches(';').trim();
-        if let Some(points) = trimmed.strip_suffix("pt") {
-            if let Ok(val) = points.trim().parse::<f64>() {
-                return Some(val * 96.0 / 72.0);
-            }
-        }
-        None
+        let (number, px_per_unit) = [
+            ("pt", 96.0 / 72.0),
+            ("in", 96.0),
+            ("cm", 96.0 / 2.54),
+            ("mm", 96.0 / 25.4),
+            ("pc", 16.0),
+            ("px", 1.0),
+        ]
+        .into_iter()
+        .find_map(|(unit, scale)| {
+            let len = trimmed.len().checked_sub(unit.len())?;
+            (trimmed.is_char_boundary(len) && trimmed[len..].eq_ignore_ascii_case(unit))
+                .then(|| (&trimmed[..len], scale))
+        })?;
+        let value = number.trim().parse::<f64>().ok()?;
+        value.is_finite().then_some(value * px_per_unit)
+    }
+
+    /// A length in a VML `style` attribute: a unit as [`Self::points_str_to_px`]
+    /// accepts, or a bare number, which CSS (and so VML's style) reads as px.
+    fn vml_css_length_to_px(value: &str) -> Option<f64> {
+        let trimmed = value.trim_end_matches(';').trim();
+        Self::points_str_to_px(trimmed).or_else(|| {
+            trimmed
+                .parse::<f64>()
+                .ok()
+                .filter(|value| value.is_finite())
+        })
     }
 
     /// Populates `RunImage` fields for width, height, relationship id, and
