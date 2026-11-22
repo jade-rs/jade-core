@@ -21108,7 +21108,12 @@ mod tests {
         run.text = "AB".into();
         let paragraph = cell_paragraph_with_runs_and_style(vec![run], ParagraphStyle::default());
         let mut cell = make_prepared_cell(0, 1, None, false);
-        cell.padding = Default::default();
+        cell.padding = CellPadding {
+            left: 0.0,
+            right: 0.0,
+            top: 0.0,
+            bottom: 0.0,
+        };
         cell.height = paragraph.height;
         cell.blocks.push(CellBlock {
             height: paragraph.height,
