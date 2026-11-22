@@ -18,6 +18,24 @@ class NativeMacosWorkflowTest < Minitest::Test
     @steps = @job.fetch("steps")
   end
 
+  def test_captured_mac_original_assertions_are_required
+    job = @workflow.fetch("jobs").fetch("word-mac-coordinates")
+    assert_equal "macos-latest", job.fetch("runs-on")
+    refute job.key?("if")
+    refute job.key?("needs")
+    refute job.fetch("continue-on-error", false)
+    step = job.fetch("steps").find { |s| s["name"] == "Assert actual captured Mac source with original Word font programs" }
+    refute_nil step
+    refute step.key?("if")
+    refute step.fetch("continue-on-error", false)
+    command = step.fetch("run")
+    assert_includes command, "cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates"
+    assert_includes command, "python3 scripts/word-oracle/check_mac_captured_source.py --require-macos"
+    assert_includes command, "--native-executable target/word-mac-coordinates/debug/examples/word_coordinates"
+    assert_includes command, "--output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original"
+    refute_includes command, "JADE_UPDATE_"
+  end
+
   def test_native_job_runs_for_every_pull_request
     triggers = @workflow["on"] || @workflow.fetch(true)
     assert triggers.key?("pull_request")

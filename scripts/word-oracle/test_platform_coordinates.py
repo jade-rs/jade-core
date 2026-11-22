@@ -12,6 +12,62 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_three_originals_retain_actual_mac_pdf_and_versioned_windows_input(self):
+        import hashlib
+        from collections import Counter
+        facts = [{'name': 'tabs-geometry-mac', 'source_sha256': '4b2ab628789bfb0502aa779951fe4f94358a782b5e8f1fdf9b2e8d90deb358de', 'capture_id': '20261114T130556208Z-6d6ad7b2', 'Mac_pages': 1, 'Windows_pages': 1, 'Mac_pdf': {'file': 'tests/word-oracle/mac-glyph-corpus-20261019/pdf/tabs.pdf', 'sha256': 'f2d3ff3dceea7c9fd34195ae2d93d2e1947579099daab3d22d7f825d1c3814ba'}, 'Windows_pdf_sha256': '0b6b2f0f6f55481793599ebf37ec82a34b5b7bd426cf4b154c5a04e409e85e0e'}, {'name': '2col-mac', 'source_sha256': '02e7f6a0da7e08ab377c854bb0fc1b1085298900266c063a473bcab134e20ff8', 'capture_id': '20261114T231659226Z-87aed8b1', 'Mac_pages': 1, 'Windows_pages': 2, 'Mac_pdf': {'file': 'tests/word-oracle/mac-glyph-corpus-20261019/pdf/2col.pdf', 'sha256': 'd46d124de6b33cc3204a79d7ab4cd3d6d473963d7ebc7c8b8424ce53c7d9f7dc'}, 'Windows_pdf_sha256': '044f5f10e4984d17f9f02843c8a67a8f9b7e1de04c55e114dc6c027fe5092d1e'}, {'name': 'char-spacing-mac', 'source_sha256': '6064f2d4aa131ac92bc583e1e0c119e955b3d32af49222cf640801ab3a04e2c1', 'capture_id': '20261114T231718277Z-f02fe908', 'Mac_pages': 1, 'Windows_pages': 1, 'Mac_pdf': {'file': 'tests/word-oracle/mac-glyph-corpus-20261019/pdf/char-spacing.pdf', 'sha256': 'db73aabac2e3e75e58fa91411046627cbea7d49705d0d30dbde2232a585d2501'}, 'Windows_pdf_sha256': 'bcb285d6c8c4afb22787dead9411c48f604e67e5bf5fc87309a3860097a1c5e8'}]
+        rows = check.verify()
+        for fact in facts:
+            name = fact['name']
+            with self.subTest(case=name):
+                self.assertEqual(check.REQUIRED_CAPTURES[name], fact['capture_id'])
+                row, = [r for r in rows if r[0] == name and r[2].parent.name == fact['capture_id']]
+                _, source, capture_file, document, _, font_source = row
+                capture = check.read_json(capture_file)
+                self.assertEqual(hashlib.sha256(source.read_bytes()).hexdigest(), fact['source_sha256'])
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['application_build'], '16.0.19127')
+                self.assertEqual(capture['word']['executable_sha256'], '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(capture['capture_id'], fact['capture_id'])
+                self.assertEqual(document['pages'], fact['Windows_pages'])
+                self.assertEqual(document['pdf_sha256'], fact['Windows_pdf_sha256'])
+                self.assertEqual(font_source, 'original-word-pdf')
+                self.assertEqual((capture_file.parent/'inputs'/(document['name']+'.docx')).read_bytes(), source.read_bytes())
+                manifest = check.read_json(source.parent/'manifest.json')
+                pdf = check.checked_file(check.ROOT, fact['Mac_pdf'])
+                raw = check.read_json(pdf.parent.parent/(pdf.stem+'.json'))
+                self.assertEqual(raw['docx_sha256'], fact['source_sha256'])
+                self.assertEqual(raw['word_version'], '16.114')
+                self.assertEqual(raw['word_build'], '16.114.26101123')
+                self.assertEqual(raw['pdf_sha256'], fact['Mac_pdf']['sha256'])
+                self.assertEqual(manifest['reference']['pdfSha256'], raw['pdf_sha256'])
+                self.assertEqual(manifest['pages'], fact['Mac_pages'])
+                pages = json.loads(gzip.decompress((source.parent/'pages.json.gz').read_bytes()))
+                expected = Counter((i,*g) for i,p in enumerate(pages,1) for story in ('header','body','footer') for g in p[story])
+                observed = Counter((g[0],g[1],round(g[2],3),round(g[3],3)) for g in check.pdf_origins(pdf)['glyphs'] if not g[1].isspace())
+                self.assertEqual(expected, observed)
+                if name == '2col-mac':
+                    self.assertEqual((manifest['pages'], document['pages']), (1,2))
+
+    def test_three_original_captures_cannot_be_removed(self):
+        original = check.read_json
+        for name in ['2col-mac', 'char-spacing-mac', 'tabs-geometry-mac']:
+            index = copy.deepcopy(original(check.ROOT/check.INDEX))
+            index['fixtures'] = [x for x in index['fixtures'] if x['mac_case'] != name]
+            with self.subTest(case=name), patch.object(check, 'read_json', side_effect=lambda path: index if path == check.ROOT/check.INDEX else original(path)):
+                with self.assertRaisesRegex(ValueError, 'Shared fixture coverage removed'):
+                    check.verify()
+
+    def test_three_original_captures_reject_wrong_word_version(self):
+        original = check.read_json
+        for name in ['2col-mac', 'char-spacing-mac', 'tabs-geometry-mac']:
+            index = copy.deepcopy(original(check.ROOT/check.INDEX))
+            case = next(x for x in index['fixtures'] if x['mac_case'] == name)
+            case['windows'][0]['word_product_version'] = '16.0.19127.20860'
+            with self.subTest(case=name), patch.object(check, 'read_json', side_effect=lambda path: index if path == check.ROOT/check.INDEX else original(path)):
+                with self.assertRaisesRegex(ValueError, 'Windows Word version changed'):
+                    check.verify()
+
     def test_physical_font_metrics_reject_size_or_face_changes_at_same_origin(self):
         word = dict(page_count=1, glyphs=[[1, 'A', 50., 80., 'ArialMT', 10.56]])
         self.assertEqual(check.compare(word, copy.deepcopy(word), 'font', font_metrics=True), 1)
@@ -208,7 +264,7 @@ class PlatformCoordinates(unittest.TestCase):
 
     def test_registered_originals_and_both_platform_references(self):
         cases = check.verify()
-        self.assertGreaterEqual(len(cases), 112)
+        self.assertGreaterEqual(len(cases), 115)
         self.assertGreaterEqual(sum(case[2].suffix == '.zip' for case in cases), 91)
 
     def test_section_start_spacing_preserves_versioned_original_outputs(self):

@@ -246,6 +246,10 @@ jobs:
           python3 scripts/word-oracle/check_platform_coordinates.py
       - name: Compare Mac drawing coordinates with committed Word references
         run: cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test word_mac_coordinates -- --test-threads=1
+      - name: Assert actual captured Mac source with original Word font programs
+        run: |
+          cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
+          python3 scripts/word-oracle/check_mac_captured_source.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original
       - name: Upload coordinate differences
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
