@@ -3040,6 +3040,13 @@ pub struct LocalTextEditCache {
 struct HorizontalFloatWrapCache {
     document: std::rc::Weak<Document>,
     witness: Option<usize>,
+    /// Whether the last body render saw a wrapping float. Survives
+    /// `drop_document_cache`, so an edit that removes the only float still
+    /// treats its render as a float edit.
+    last_render_wrapped: bool,
+    /// Old or new document wraps around floats: seek snapshots must then lie
+    /// strictly before the dirty paragraph (set per render).
+    seek_guard: bool,
     #[cfg(test)]
     scans: usize,
 }
@@ -5257,7 +5264,15 @@ where
                 .cloned()
         };
         let snapshot = match candidate {
-            Some(snapshot) if !snapshot.spanning => Some(snapshot),
+            // Validate a page-top snapshot against the layout cache like the
+            // spanning branch: a stale prefix must fall back to a full walk.
+            Some(snapshot) if !snapshot.spanning => self
+                .last_options
+                .as_ref()
+                .is_none_or(|options| {
+                    self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
+                })
+                .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
                 // A spanning snapshot keyed at requested page K resumes at the
                 // crossing paragraph's start on P < K. The one-page visible
@@ -5700,10 +5715,19 @@ where
     /// Float state for a seek snapshot. Recording is refused while a
     /// look-ahead pin is live, so `lookahead_pin` is `None` in practice; it is
     /// kept so a restore reproduces the walk state exactly either way.
+    /// Exclusions are kept whole (paragraphs prune them per page, and replay
+    /// gates test their emptiness); frames of earlier pages are dropped.
     fn seek_float_state(&self) -> SeekFloatState {
         SeekFloatState {
             exclusions: self.active_float_exclusions.clone(),
-            floating_table_frames: self.floating_table_frames.clone(),
+            // Overlap resolution only compares frames on the table's own page,
+            // and the resumed walk never returns to an earlier page.
+            floating_table_frames: self
+                .floating_table_frames
+                .iter()
+                .filter(|frame| frame.page_number >= self.current_page_number)
+                .copied()
+                .collect(),
             lookahead_pin: self.float_lookahead_pin,
         }
     }
@@ -6012,7 +6036,7 @@ where
     /// are kept. Without an edit (viewport/decoration repaint) the prefix is
     /// unchanged and the captured state is exact.
     fn window_seek_float_state_is_current(&self, snapshot: &PageStartSeekSnapshot) -> bool {
-        self.horizontal_float_wrap_cache.witness.is_none()
+        !self.horizontal_float_wrap_cache.seek_guard
             || self
                 .forced_dirty_from
                 .is_none_or(|dirty| snapshot.paragraph_index < dirty)
@@ -13100,6 +13124,17 @@ where
     /// Invalidates the paragraph layout cache from the given index onwards.
     /// This should be called when editing a paragraph to ensure all subsequent
     /// paragraphs are re-laid out.
+    /// Drops layout derived from a floating object's old or new anchor before
+    /// an object command (move, resize, wrap change) repaints. The object
+    /// reflows text after its anchor and, through the float look-ahead, the
+    /// paragraph above it; neither is marked dirty by the command, so later
+    /// seek snapshots and layout entries would otherwise survive stale.
+    pub fn invalidate_layout_for_object_edit(&mut self, anchors: &[usize]) {
+        if let Some(first) = anchors.iter().min() {
+            self.invalidate_layout_from(first.saturating_sub(1));
+        }
+    }
+
     pub fn invalidate_layout_from(&mut self, paragraph_index: usize) {
         let paragraph_index = self.layout_group_owner(paragraph_index);
         self.keep_next_group_surfaces
@@ -14120,7 +14155,10 @@ where
     /// the cache with the updated document.
     pub fn drop_document_cache(&mut self) {
         self.invalidate_page_layers_document();
-        self.horizontal_float_wrap_cache = HorizontalFloatWrapCache::default();
+        self.horizontal_float_wrap_cache = HorizontalFloatWrapCache {
+            last_render_wrapped: self.horizontal_float_wrap_cache.last_render_wrapped,
+            ..HorizontalFloatWrapCache::default()
+        };
         self.auxiliary_story_base_cache = RefCell::new(AuxiliaryStoryBaseCache::default());
         self.unanchored_footnote_body_count = None;
         self.keep_next_measurer = None;
@@ -15873,6 +15911,10 @@ where
 
         let explicit_disable = self.disable_seek_replay_once;
         let horizontal_float_wrap = self.horizontal_float_wrap_cache.get(&document_rc);
+        let float_seek_guard =
+            horizontal_float_wrap || self.horizontal_float_wrap_cache.last_render_wrapped;
+        self.horizontal_float_wrap_cache.seek_guard = float_seek_guard;
+        self.horizontal_float_wrap_cache.last_render_wrapped = horizontal_float_wrap;
         // Lazy-edit fast path: instead of re-rendering from the document start
         // (O(scroll depth) per keystroke), seek to the top of the first visible
         // page using a recorded page-start snapshot. Because the target is always
@@ -15924,7 +15966,7 @@ where
             self.forced_dirty_from = None;
         }
         let allow_prefix_replay = !disable_seek_replay
-            && !horizontal_float_wrap
+            && !float_seek_guard
             && !window_seek_active
             && (seek_source.is_none()
                 || self.force_prefix_replay_all

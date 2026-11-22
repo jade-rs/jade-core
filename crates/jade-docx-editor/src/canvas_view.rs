@@ -7952,7 +7952,7 @@ impl OffscreenDocumentView {
 
         // See `apply_inline_style_with_scope`.
         let _document_cache = self.drop_renderer_document_cache();
-        let (options, numbering_part, header_lines, footer_lines) = {
+        let (options, numbering_part, header_lines, footer_lines, anchors) = {
             let mut state_mut = self.state.borrow_mut();
             let mut word_doc = state_mut
                 .word_doc
@@ -8002,7 +8002,13 @@ impl OffscreenDocumentView {
             let footer_lines = word_doc.footer_lines.clone();
             state_mut.word_doc = Some(word_doc);
 
-            (options, numbering_part, header_lines, footer_lines)
+            (
+                options,
+                numbering_part,
+                header_lines,
+                footer_lines,
+                [target.paragraph_index, selected_target.paragraph_index],
+            )
         };
 
         {
@@ -8018,6 +8024,9 @@ impl OffscreenDocumentView {
             // left other visible pages to be promoted mid-walk, dropping the
             // lines that had already flowed onto them.
             renderer_mut.mark_full_repaint();
+            // The lazy repaint below stops after the visible window. Layout
+            // and seek snapshots past it must not keep the pre-edit geometry.
+            renderer_mut.invalidate_layout_for_object_edit(&anchors);
             let lazy_mode = self.state.borrow().lazy_mode;
             Self::ensure_visible_page_range_for_edit(&mut renderer_mut, lazy_mode, anchor_page);
             let prev_limit: Option<Option<usize>> = if lazy_mode {
