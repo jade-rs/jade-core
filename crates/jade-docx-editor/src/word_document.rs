@@ -16976,12 +16976,22 @@ impl WordDocument {
             .bookmarks
             .iter()
             .find(|bookmark| bookmark.name == name)?;
-        self.bookmark_start(bookmark)
+        self.bookmark_start(bookmark, self.live_bookmark_markers().as_ref())
     }
 
     /// Where `bookmark` starts, as a paragraph surface and an offset into its
     /// text. A start written between paragraphs begins the paragraph after it.
-    pub(crate) fn bookmark_start(&self, bookmark: &Bookmark) -> Option<TextPosition> {
+    ///
+    /// `live` is [`Self::live_bookmark_markers`]: where the marker sits in the
+    /// document XML now. The stored position is only used without it.
+    pub(crate) fn bookmark_start(
+        &self,
+        bookmark: &Bookmark,
+        live: Option<&LiveBookmarkMarkers>,
+    ) -> Option<TextPosition> {
+        if let Some(position) = live.and_then(|live| live.starts.get(&bookmark.id)) {
+            return Some(self.model_to_rendered_text_position(*position));
+        }
         let paragraph = self.bookmark_surface_index(bookmark.start_paragraph)?;
         let offset = if marker_between_paragraphs(bookmark.start_run, bookmark.start_offset) {
             0
@@ -16995,7 +17005,14 @@ impl WordDocument {
     /// Where `bookmark` ends (exclusive). An end written between paragraphs
     /// closes the paragraph before it, so the range never reaches into the
     /// next one.
-    pub(crate) fn bookmark_end(&self, bookmark: &Bookmark) -> Option<TextPosition> {
+    pub(crate) fn bookmark_end(
+        &self,
+        bookmark: &Bookmark,
+        live: Option<&LiveBookmarkMarkers>,
+    ) -> Option<TextPosition> {
+        if let Some(position) = live.and_then(|live| live.ends.get(&bookmark.id)) {
+            return Some(self.model_to_rendered_text_position(*position));
+        }
         let model = if marker_between_paragraphs(bookmark.end_run, bookmark.end_offset) {
             let paragraph =
                 self.bookmark_last_surface_index(bookmark.end_paragraph.checked_sub(1)?)?;
@@ -17025,6 +17042,151 @@ impl WordDocument {
         self.paragraph_surfaces.iter().rposition(|surface| matches!(surface,
             ParagraphSurface::Body { path } if path.first() == Some(&PathEntry::Element(body_element))
         ))
+    }
+
+    /// Where every bookmark's markers sit in the document XML now, keyed by
+    /// `w:id`, as model positions. `None` without the XML.
+    ///
+    /// The positions in `document.bookmarks` are the top-level body indices
+    /// read when the file was opened. Edits that add or remove paragraphs
+    /// (Enter, joining paragraphs, pasting) leave them where they were, while
+    /// the markers themselves move with the text: after Enter at the end of a
+    /// clause, the next clause's bookmark was reported on the new paragraph
+    /// and its own text fell outside every clause. Reading the markers back
+    /// gives the live position.
+    ///
+    /// A marker between paragraphs (a child of `w:body`) starts the paragraph
+    /// after it or ends the one before it, as [`Self::bookmark_start`] reads
+    /// a stored one. A marker inside a paragraph is placed after the runs
+    /// before it; it is left out when a run of its paragraph is not bound to
+    /// the XML, so the stored position is used instead.
+    pub(crate) fn live_bookmark_markers(&self) -> Option<LiveBookmarkMarkers> {
+        #[derive(Default)]
+        struct Walk {
+            order: HashMap<XmlNodeId, usize>,
+            events: Vec<Event>,
+        }
+        enum Event {
+            Paragraph(XmlNodeId),
+            Marker {
+                start: bool,
+                id: String,
+                node: XmlNodeId,
+                paragraph: Option<XmlNodeId>,
+            },
+        }
+        impl Walk {
+            fn visit(&mut self, element: &XmlElement, paragraph: Option<XmlNodeId>) {
+                self.order.insert(element.id, self.order.len());
+                let paragraph = if element.name == "w:p" {
+                    self.events.push(Event::Paragraph(element.id));
+                    Some(element.id)
+                } else {
+                    paragraph
+                };
+                let start = element.name == "w:bookmarkStart";
+                if start || element.name == "w:bookmarkEnd" {
+                    if let Some(id) = element
+                        .attributes
+                        .iter()
+                        .find(|attribute| attribute.name == "w:id")
+                    {
+                        self.events.push(Event::Marker {
+                            start,
+                            id: id.value.clone(),
+                            node: element.id,
+                            paragraph,
+                        });
+                    }
+                }
+                for child in &element.children {
+                    if let XmlNode::Element(child) = child {
+                        self.visit(child, paragraph);
+                    }
+                }
+            }
+        }
+
+        let raw = self.raw_document.as_ref()?;
+        if self
+            .document
+            .as_ref()
+            .is_none_or(|document| document.bookmarks.is_empty())
+        {
+            return Some(LiveBookmarkMarkers::default());
+        }
+        let surfaces: HashMap<XmlNodeId, usize> = (0..self.paragraph_count())
+            .filter(|index| self.is_body_paragraph_surface(*index))
+            .filter_map(|index| self.paragraph(index)?.node_id.map(|id| (id, index)))
+            .collect();
+        let mut walk = Walk::default();
+        walk.visit(raw.root(), None);
+
+        // Text before a marker: the runs of its paragraph that come before it
+        // in the XML. None when a run is not bound to the XML.
+        let offset_before = |surface: usize, marker: usize| -> Option<usize> {
+            let mut offset = 0;
+            for run in &self.paragraph(surface)?.runs {
+                if *walk.order.get(&run.node_id?)? < marker {
+                    offset += run.text.len();
+                }
+            }
+            Some(offset)
+        };
+        let mut live = LiveBookmarkMarkers::default();
+        let mut pending_starts = Vec::new();
+        let mut previous = None;
+        for event in &walk.events {
+            match event {
+                Event::Paragraph(id) => {
+                    let Some(&surface) = surfaces.get(id) else {
+                        continue;
+                    };
+                    for id in pending_starts.drain(..) {
+                        live.starts.insert(id, TextPosition::new(surface, 0));
+                    }
+                    previous = Some(surface);
+                }
+                Event::Marker {
+                    start: true,
+                    id,
+                    paragraph: None,
+                    ..
+                } => pending_starts.push(id.clone()),
+                Event::Marker {
+                    start: false,
+                    id,
+                    paragraph: None,
+                    ..
+                } => {
+                    if let Some(surface) = previous {
+                        let length = self.paragraph_text_len_at(surface).unwrap_or(0);
+                        live.ends
+                            .insert(id.clone(), TextPosition::new(surface, length));
+                    }
+                }
+                Event::Marker {
+                    start,
+                    id,
+                    node,
+                    paragraph: Some(paragraph),
+                } => {
+                    let Some(&surface) = surfaces.get(paragraph) else {
+                        continue;
+                    };
+                    let Some(offset) = offset_before(surface, walk.order[node]) else {
+                        continue;
+                    };
+                    let positions = if *start {
+                        &mut live.starts
+                    } else {
+                        &mut live.ends
+                    };
+                    positions.insert(id.clone(), TextPosition::new(surface, offset));
+                }
+            }
+        }
+        Some(live)
     }
 
     pub(crate) fn bookmark_render_map(&self) -> HashMap<String, usize> {
@@ -43832,6 +43994,14 @@ fn watermark_style_from_shape(
         }
     }
     style
+}
+
+/// Where bookmark markers sit in the document XML now, keyed by `w:id`; see
+/// [`WordDocument::live_bookmark_markers`].
+#[derive(Default)]
+pub(crate) struct LiveBookmarkMarkers {
+    starts: HashMap<String, TextPosition>,
+    ends: HashMap<String, TextPosition>,
 }
 
 /// Whether a stored bookmark marker sits between paragraphs.
