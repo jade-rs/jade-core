@@ -3,6 +3,71 @@ use jade_docx_reader::document::{FontHint, Run, RunProperties};
 use rustc_hash::FxHasher;
 use std::hash::{Hash, Hasher};
 
+/// The hasher for run-style cache keys, which are trusted without comparing
+/// the properties on a hit. `FxHasher` is `usize`-wide, so on 32-bit targets
+/// (wasm32) its `u64` keys carry only 32 bits; use a 64-bit FxHash there.
+#[cfg(target_pointer_width = "64")]
+pub(super) type RunStyleKeyHasher = FxHasher;
+#[cfg(not(target_pointer_width = "64"))]
+pub(super) type RunStyleKeyHasher = Fx64Hasher;
+
+/// FxHash with a `u64` state on every target. wasm32 has native 64-bit
+/// integer operations, so this costs about as much as `FxHasher` there.
+#[derive(Default, Clone, Copy)]
+#[cfg_attr(target_pointer_width = "64", allow(dead_code))]
+pub(super) struct Fx64Hasher {
+    hash: u64,
+}
+
+impl Fx64Hasher {
+    const K: u64 = 0xf135_7aea_2e62_a9c5;
+    #[inline]
+    fn add(&mut self, word: u64) {
+        self.hash = self.hash.wrapping_add(word).wrapping_mul(Self::K);
+    }
+}
+
+impl Hasher for Fx64Hasher {
+    #[inline]
+    fn write(&mut self, bytes: &[u8]) {
+        let mut chunks = bytes.chunks_exact(8);
+        for chunk in &mut chunks {
+            self.add(u64::from_le_bytes(chunk.try_into().unwrap()));
+        }
+        let tail = chunks.remainder();
+        let mut packed = [0_u8; 8];
+        packed[..tail.len()].copy_from_slice(tail);
+        // Length last, so a shorter input with trailing zero bytes differs.
+        self.add(u64::from_le_bytes(packed));
+        self.add(bytes.len() as u64);
+    }
+    #[inline]
+    fn write_u8(&mut self, i: u8) {
+        self.add(u64::from(i));
+    }
+    #[inline]
+    fn write_u16(&mut self, i: u16) {
+        self.add(u64::from(i));
+    }
+    #[inline]
+    fn write_u32(&mut self, i: u32) {
+        self.add(u64::from(i));
+    }
+    #[inline]
+    fn write_u64(&mut self, i: u64) {
+        self.add(i);
+    }
+    #[inline]
+    fn write_usize(&mut self, i: usize) {
+        self.add(i as u64);
+    }
+    #[inline]
+    fn finish(&self) -> u64 {
+        // As FxHasher: move the high-entropy top bits down for bucket indexes.
+        self.hash.rotate_left(26)
+    }
+}
+
 #[inline]
 pub(super) fn hash_windows_source_controls(run: &Run, start: usize, hasher: &mut FxHasher) {
     let Some(controls) = run.text_controls.as_ref() else {
@@ -66,7 +131,7 @@ pub(super) fn windows_key_impl<const INCLUDE_LANGUAGES: bool>(
     properties: Option<&RunProperties>,
     grid: Option<f64>,
 ) -> u64 {
-    let mut hasher = FxHasher::default();
+    let mut hasher = RunStyleKeyHasher::default();
     let mut present = 0_u64;
     macro_rules! optional {
         ($bit:expr, $value:expr) => {
@@ -158,14 +223,14 @@ pub(super) fn windows_key_impl<const INCLUDE_LANGUAGES: bool>(
 // fallback face from them (`font_resolver`), not only Word for Windows.
 #[cold]
 #[inline(never)]
-pub(super) fn hash_languages(props: &RunProperties, mut hasher: FxHasher) -> FxHasher {
+pub(super) fn hash_languages<H: Hasher>(props: &RunProperties, mut hasher: H) -> H {
     hash_language(props.language.as_deref(), &mut hasher);
     hash_language(props.east_asia_language.as_deref(), &mut hasher);
     hasher
 }
 
 #[inline]
-fn hash_language(language: Option<&str>, hasher: &mut FxHasher) {
+fn hash_language<H: Hasher>(language: Option<&str>, hasher: &mut H) {
     let Some(language) = language else {
         0_u64.hash(hasher);
         return;
@@ -191,6 +256,41 @@ fn hash_language(language: Option<&str>, hasher: &mut FxHasher) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // The wasm32 key hasher. Native builds use FxHasher, so test it directly.
+    #[test]
+    fn fx64_hasher_keeps_positions_lengths_and_all_64_bits() {
+        let key = |write: &dyn Fn(&mut Fx64Hasher)| {
+            let mut hasher = Fx64Hasher::default();
+            0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
+            write(&mut hasher);
+            hasher.finish()
+        };
+        // The #915 collision shape: the same value after a different number of
+        // unset fields.
+        assert_ne!(
+            key(&|h| (None::<&str>, None::<&str>, Some("游明朝")).hash(h)),
+            key(&|h| (Some("游明朝"), None::<&str>).hash(h)),
+        );
+        let mut keys = std::collections::HashSet::new();
+        for bytes in [
+            &b""[..],
+            b"\0",
+            b"\0\0",
+            b"a",
+            b"a\0",
+            b"abcdefgh",
+            b"abcdefgh\0",
+        ] {
+            assert!(keys.insert(key(&|h| h.write(bytes))), "{bytes:?}");
+        }
+        // Keys differ in the high half too, which FxHasher drops on wasm32.
+        let high = |value: u64| key(&|h| value.hash(h)) >> 32;
+        let highs = (0..64_u64)
+            .map(high)
+            .collect::<std::collections::HashSet<_>>();
+        assert!(highs.len() > 60);
+    }
 
     #[test]
     fn literal_source_slices_do_not_share_an_optional_hyphen_paint_cache_key() {

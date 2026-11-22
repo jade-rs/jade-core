@@ -4000,14 +4000,6 @@ struct TextBoxInlines<'p> {
     maths: InlineMaths,
     pictures: HashMap<usize, (usize, &'p RunImage)>,
 }
-/// An applied-style cache entry keeps the inputs it was resolved from. The
-/// key is a hash, only 32 bits on wasm32, and covers only the fields that
-/// change the applied style, so a hit is confirmed against the inputs.
-struct AppliedRunStyleEntry {
-    doc_grid_char_spacing_bits: Option<u64>,
-    properties: Option<RunProperties>,
-    style: Rc<AppliedRunStyle>,
-}
 type AppliedRunStyleIdentityKey = (usize, Option<u64>);
 type AppliedRunStyleIdentityCache =
     FxHashMap<AppliedRunStyleIdentityKey, (Rc<RunProperties>, Rc<AppliedRunStyle>)>;
@@ -4841,9 +4833,9 @@ where
     last_render_body_element_count: u64,
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
-    /// Runs that differ only outside the key (highlight, shading, ...) share a
-    /// bucket, so several entries per key are kept.
-    applied_run_style_cache: RefCell<FxHashMap<u64, Vec<AppliedRunStyleEntry>>>,
+    /// The key is trusted on a hit, so it is 64 bits wide on every target
+    /// (see [`run_style_key::RunStyleKeyHasher`]).
+    applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
     /// Windows font-line summaries, validated against owned run inputs.
     paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
     /// See [`CanvasRenderer::effective_run_properties_rc`].
@@ -13024,8 +13016,9 @@ where
                     border.color.hash(&mut hasher);
                 }
                 props.baseline.as_deref().hash(&mut hasher);
-                // Encode the six Option tags once; keep field order and all
-                // float bits, including signed zero and NaN payloads.
+                // Encode the Option tags once in a presence mask; keep field
+                // order and all float bits, including signed zero and NaN
+                // payloads. Unset fields then cost a branch, not a hash write.
                 let mut metric_presence = 0_u8;
                 macro_rules! hash_metric {
                     ($field:ident, $bit:expr) => {
@@ -13041,15 +13034,17 @@ where
                 hash_metric!(text_scale, 3);
                 hash_metric!(font_size, 4);
                 hash_metric!(font_size_complex, 5);
-                metric_presence.hash(&mut hasher);
                 // The character style and fit-text width change the resolved
                 // style and glyph positions as much as direct formatting does.
-                props.style.as_deref().hash(&mut hasher);
-                props
-                    .fit_text
-                    .as_ref()
-                    .map(|fit| (fit.val, fit.id))
-                    .hash(&mut hasher);
+                if let Some(style) = props.style.as_deref() {
+                    metric_presence |= 1 << 6;
+                    style.hash(&mut hasher);
+                }
+                if let Some(fit) = props.fit_text.as_ref() {
+                    metric_presence |= 1 << 7;
+                    (fit.val, fit.id).hash(&mut hasher);
+                }
+                metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
                     hasher = run_style_key::hash_languages(props, hasher);
@@ -35376,36 +35371,19 @@ where
             properties,
             self.current_doc_grid_char_spacing_px,
         );
-        let grid_bits = self.current_doc_grid_char_spacing_px.map(f64::to_bits);
-        // Equal keys are not equal inputs: the key omits fields that do not
-        // change the applied style, and hashes can collide.
-        if let Some(style) = self
+        if let Some(cached) = self
             .applied_run_style_cache
             .borrow()
             .get(&cache_key)
-            .and_then(|bucket| {
-                bucket.iter().find(|entry| {
-                    entry.doc_grid_char_spacing_bits == grid_bits
-                        && entry.properties.as_ref() == properties
-                })
-            })
-            .map(|entry| Rc::clone(&entry.style))
+            .cloned()
         {
-            return style;
+            return cached;
         }
 
         let style = Rc::new(self.resolve_applied_run_style_uncached(properties));
-        let mut cache = self.applied_run_style_cache.borrow_mut();
-        let bucket = cache.entry(cache_key).or_default();
-        // Bound what adversarial variants of one key can retain.
-        if bucket.len() >= 64 {
-            bucket.clear();
-        }
-        bucket.push(AppliedRunStyleEntry {
-            doc_grid_char_spacing_bits: grid_bits,
-            properties: properties.cloned(),
-            style: Rc::clone(&style),
-        });
+        self.applied_run_style_cache
+            .borrow_mut()
+            .insert(cache_key, style.clone());
         style
     }
 
@@ -35751,7 +35729,7 @@ where
         // lost. `font_family: Some(x)` then hashed like `fonts.east_asia:
         // Some(x)`, and the cache returned the other run's style and line
         // metrics. An odd seed keeps the state nonzero, so field positions count.
-        let mut hasher = FxHasher::default();
+        let mut hasher = run_style_key::RunStyleKeyHasher::default();
         0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {

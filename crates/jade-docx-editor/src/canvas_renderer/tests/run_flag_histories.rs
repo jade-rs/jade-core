@@ -1192,57 +1192,9 @@ fn mac_applied_style_key_separates_east_asian_languages() {
     assert_eq!(east_asia(&warm, &chinese), expected.1);
 }
 
-// A hash match alone does not confirm an applied-style hit (FxHasher keys are
-// 32 bits on wasm32). Force a colliding entry and check it is not reused.
-#[test]
-fn applied_style_cache_confirms_inputs_on_a_hash_match() {
-    let (renderer, _) = renderer_with_painter();
-    let bold = RunProperties {
-        bold: Some(true),
-        ..Default::default()
-    };
-    let italic = RunProperties {
-        italic: Some(true),
-        ..Default::default()
-    };
-    let bold_style = renderer.resolve_applied_run_style_cached(Some(&bold));
-    let italic_key = <CanvasRenderer>::compute_applied_run_style_cache_key(Some(&italic), None);
-    // Plant the bold entry under the italic key, as a collision would.
-    let planted = {
-        let cache = renderer.applied_run_style_cache.borrow();
-        let entry = cache
-            .values()
-            .flatten()
-            .find(|entry| entry.properties.as_ref() == Some(&bold));
-        let entry = entry.expect("bold entry");
-        AppliedRunStyleEntry {
-            doc_grid_char_spacing_bits: entry.doc_grid_char_spacing_bits,
-            properties: entry.properties.clone(),
-            style: Rc::clone(&entry.style),
-        }
-    };
-    renderer
-        .applied_run_style_cache
-        .borrow_mut()
-        .insert(italic_key, vec![planted]);
-    let italic_style = renderer.resolve_applied_run_style_cached(Some(&italic));
-    assert!(!Rc::ptr_eq(&italic_style, &bold_style));
-    assert_eq!(
-        italic_style.font_style_prefix,
-        renderer
-            .resolve_applied_run_style_uncached(Some(&italic))
-            .font_style_prefix
-    );
-    // The colliding entry was replaced, and the new one is reused.
-    assert!(Rc::ptr_eq(
-        &renderer.resolve_applied_run_style_cached(Some(&italic)),
-        &italic_style
-    ));
-}
-
 // The applied-style key leaves out fields that do not change the applied
-// style, such as the highlight. Runs that differ only there share a key and
-// must share its bucket, not evict each other on every lookup.
+// style, such as the highlight. Runs that differ only there share the cached
+// style; alternating them must not re-resolve or replace it.
 #[test]
 fn applied_style_cache_keeps_runs_that_differ_outside_the_key() {
     for windows in [false, true] {
@@ -1267,14 +1219,7 @@ fn applied_style_cache_keeps_runs_that_differ_outside_the_key() {
         );
         let first_plain = renderer.resolve_applied_run_style_cached(Some(&plain));
         let first_highlighted = renderer.resolve_applied_run_style_cached(Some(&highlighted));
-        let entries = || {
-            renderer
-                .applied_run_style_cache
-                .borrow()
-                .values()
-                .map(Vec::len)
-                .sum::<usize>()
-        };
+        let entries = || renderer.applied_run_style_cache.borrow().len();
         let before = entries();
         for _ in 0..100 {
             assert!(Rc::ptr_eq(
