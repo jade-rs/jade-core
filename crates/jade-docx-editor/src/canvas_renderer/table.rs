@@ -374,7 +374,7 @@ impl LineLayout {
         } else {
             0.0
         };
-        let alignment_width = if !matches!(align, TextAlign::Left) && mac && hanging_width == 0.0 {
+        let alignment_width = if !matches!(align, TextAlign::Left) && hanging_width == 0.0 {
             jade_docx_layout::line_wrap::soft_line_alignment_width_px(
                 self.visual_width,
                 self.break_kind,
@@ -3700,11 +3700,10 @@ where
                         && row.height.is_some()
                         && !table_row_has_note_references(row))
             });
-        let windows_legacy_print_alignment = windows_fixed_header_alignment
-            && self.page_export_mode
-            && compatibility_mode.is_some_and(|mode| mode < 15);
+        let windows_legacy_fixed_header_alignment =
+            windows_fixed_header_alignment && compatibility_mode.is_some_and(|mode| mode < 15);
         let alignment_widths = ((word_mac_column_table
-            || windows_legacy_print_alignment
+            || windows_legacy_fixed_header_alignment
             || windows_legacy_autofit_column_table)
             && !self.pageless_mode
             && self.paragraph_frame_column.is_none()
@@ -3765,10 +3764,9 @@ where
         let alignment_widths = if rtl_spaced_auto_grid.is_some() || rtl_repeated_header_auto_grid {
             Some((last_column_width, self.current_column_width()))
         } else if windows_fixed_header_alignment {
-            // Windows keeps the opening column's alignment frame through all
-            // repeated-header fragments. Legacy PDF output instead uses the
-            // last occupied opening-page column, as calculated above; screen
-            // coordinates and modern PDF output keep the opening frame.
+            // Legacy Windows uses the last occupied opening-page column for
+            // both logical and painted repeated-header alignment. Modern
+            // Windows keeps the opening column's frame.
             alignment_widths.or(Some((
                 self.current_column_width(),
                 self.current_column_width(),

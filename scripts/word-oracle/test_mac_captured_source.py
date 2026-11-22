@@ -9,9 +9,9 @@ class CapturedMacOriginalTests(unittest.TestCase):
     def test_shared_mac_originals_keep_independent_sources_and_coverage(self):
         rows = check.shared_originals()
         self.assertEqual({r[0] for r in rows}, set(check.SHARED_ORIGINALS))
-        self.assertEqual(len(rows), 108)
-        self.assertEqual(sum(r[5] for r in rows), 35230)
-        self.assertEqual([r[4]['page_count'] for r in rows], [4, 4, 2, 2, 3, 1, 8, 8, 8, 9, 9, 9, 10, 10, 10, 6, 6, 7, 12, 12, 12, 3, 3, 3, 3, 2, 2, 3, 8, 2, 1, 2, 2, 8, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 8, 2, 5, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 3, 4, 4, 4, 2, 2, 2, 3, 4])
+        self.assertEqual(len(rows), 116)
+        self.assertEqual(sum(r[5] for r in rows), 40292)
+        self.assertEqual([r[4]['page_count'] for r in rows], [4, 4, 2, 2, 3, 1, 8, 8, 8, 9, 9, 9, 10, 10, 10, 6, 6, 7, 12, 12, 12, 3, 3, 3, 3, 2, 2, 3, 8, 2, 1, 2, 2, 8, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 8, 2, 5, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 3, 4, 4, 4, 2, 2, 2, 3, 4, 2, 1, 1, 1, 1, 1, 1, 2])
         for name, case, source, manifest, expected, count in rows:
             with self.subTest(case=name):
                 self.assertEqual(manifest['reference']['platform'], 'mac')

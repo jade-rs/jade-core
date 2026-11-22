@@ -459,6 +459,38 @@ SHARED_ORIGINALS = {
         'a165ed52bb7cd7946c868e80c16938057f2328b838e1e07b3813b43adc54bac7',
         '9bef80a06b55791909f20d9dda11d78af410a6d107df9525c6e27cac2e4be8d5',
         '651dc339cb2f718b88bbf9c15930a6a9fd148f0a7e492f87fa2456b157e1ec5d', 4, 615),
+    'probe-unequal-variant-three-24-dxa': (
+        '865961e8f2411afce1f4e844d095122bd819b0fcf68d6b32383c331927785038',
+        '1dff6a00e5e1684c7f8c264143a8326f977ba3f29ea37635c70dcb6c73d9cdd8',
+        '5aad7690d4cd2e80ad035e2a86be0e28af50bcf79a61a6c763ff2137bf8a1f88', 2, 233),
+    'table-bidi-alignment-mac': (
+        '8e0727a300cf0be7049465b33e3c4419d63034f4b104877922d33b4fde6cd6fd',
+        'f6ad7501f2ea94d102334b7bcbf4672125929b7d256e24de1590aa469d17c387',
+        'fe1f35d7e54e52ac4d5eddd19a68c550eac6ac858547743b90bee1af8e729ec8', 1, 561),
+    'table-bidi-visual-mac': (
+        '34b12018a851ce7ebc39bb7661297f6460fe54005e7950c59b6fd2a2e0318091',
+        '4907f7d75d6fee91fd5d715dbad2fe49e484ea5edbe743046cd4dbf21683f46b',
+        '532625fbbb052b33551b64af007b4d091b3a942354b0835c0d7ca08d9f08538e', 1, 492),
+    'table-border-conflicts-mac': (
+        '2130dd654c2d0138577e36d17c05f6c168be860f39735151e093f6e25248a9e8',
+        '61c35516c4a8f33947bad4a7ecbe79dd9825ecfc233feb438f723be9a13c376f',
+        '0af186d89d0d504f4116e318e9cec48f2b757d965971151821479cc272524b5c', 1, 980),
+    'table-diagonal-borders-mac': (
+        '50d7a59238ccd5afe3d19f1410e5293d81a307729abfed886e1a1970f4fe4c77',
+        'cc7a2e11b2dc4110471e6ef34a5ca0d38f8974adeb833e6be68494e415424175',
+        '086456524dbf85bae3021cbeaab5f579702365c4893dc5d6e3e4dc62ed5f60b9', 1, 309),
+    'table-hidden-rows-mac': (
+        '183ccd393fd54057d2472c3dc7c2e9d5280e98f3cd6846857913922c378919a1',
+        '5b6f2be6a93ce17bf9b47ac32ef2e6b155f835866f49e63f02a71a9e61181f7a',
+        '27f27ab96c8b8b51b2c92305387d95951d6eb94b1c784cb9631aebaace5ae829', 1, 407),
+    'table-hide-mark-mac': (
+        '9b026eb37bf4e52e845e7d2805e923985e5148de47fc2138dc418185780ad71e',
+        'e72a3f538771164f49db23b5c3842ff65d836bde77947ff1f3db5cf65d5be5f1',
+        '34ddee76b982376bfa60a90c41096b98c8eca47564cf0239bfa8296b3362079a', 1, 290),
+    'table-repeating-header-mac': (
+        'b0e1d64b757da296151e869eeaee17df29a67f4d0ce8e6955b5ce45c88f8840c',
+        '28ad6548b9b20e689e51aa6e07c402d863c313f2261bb4f4c8f3ce66e8c5b276',
+        '14837b89f9d390dd4bcbe526458aa2d15cc3b8cece564c00232e0102e49e28b8', 2, 1790),
 }
 
 
@@ -541,9 +573,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 108 and sum(r['glyphs'] for r in results) == 35230,
+    require(len(results) == 116 and sum(r['glyphs'] for r in results) == 40292,
             'Shared Mac original coverage changed')
-    print('108 shared Mac originals35230: layout and painted-PDF PASS', flush=True)
+    print('116 shared Mac originals40292: layout and painted-PDF PASS', flush=True)
     return results
 
 

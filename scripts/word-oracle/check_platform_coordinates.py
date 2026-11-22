@@ -247,6 +247,14 @@ PHYSICAL_FONT_CASES = {
     'table-flow-continuous-start-column-1-mac',
     'table-flow-continuous-vertical-merge-start-column-2-mac',
     'table-flow-split-rows-start-column-1-mac',
+    'probe-unequal-variant-three-24-dxa',
+    'table-bidi-alignment-mac',
+    'table-bidi-visual-mac',
+    'table-border-conflicts-mac',
+    'table-diagonal-borders-mac',
+    'table-hidden-rows-mac',
+    'table-hide-mark-mac',
+    'table-repeating-header-mac',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -472,6 +480,14 @@ REQUIRED_CAPTURES = {
     'table-flow-continuous-start-column-1-mac': '20261114T020756625Z-d80a345e',
     'table-flow-continuous-vertical-merge-start-column-2-mac': '20261114T020800482Z-949d78a3',
     'table-flow-split-rows-start-column-1-mac': '20261114T020802205Z-aa2e15c3',
+    'probe-unequal-variant-three-24-dxa': '20261114T004559814Z-c5e13cee',
+    'table-bidi-alignment-mac': '20261114T004633221Z-54077165',
+    'table-bidi-visual-mac': '20261114T004633221Z-54077165',
+    'table-border-conflicts-mac': '20261114T004633221Z-54077165',
+    'table-diagonal-borders-mac': '20261114T004633221Z-54077165',
+    'table-hidden-rows-mac': '20261114T020336297Z-3b4ec000',
+    'table-hide-mark-mac': '20261114T020337962Z-d9270837',
+    'table-repeating-header-mac': '20261114T020853056Z-39d2496c',
 }
 
 # These original inputs have distinct screen and print origins in Windows
@@ -490,6 +506,13 @@ INDEPENDENT_OUTPUT_CASES = frozenset({
     'floating-through-concave-mac',
     'floating-z-order-mac',
     'floating-top-bottom-offset-mac',
+    'table-bidi-alignment-mac',
+    'table-bidi-visual-mac',
+    'table-border-conflicts-mac',
+    'table-diagonal-borders-mac',
+    'table-hidden-rows-mac',
+    'table-hide-mark-mac',
+    'table-repeating-header-mac',
 })
 
 
