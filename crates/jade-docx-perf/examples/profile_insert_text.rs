@@ -49,7 +49,7 @@ fn measure_insert_text(
     let started = Instant::now();
     let old_height = renderer.cached_paragraph_height(paragraph);
     let recorded = executor.history_revision();
-    let text_edit_cache = renderer.local_text_edit_cache();
+    let text_edit_cache = renderer.local_text_edit_cache_for_paragraph(context.document, paragraph);
     renderer.drop_document_cache();
     *context.selection = apply_headless_commands_with_executor_to_document(
         context.document,

@@ -3129,6 +3129,10 @@ fn horizontal_float_wrap_witness(document: &Document) -> Option<usize> {
 /// edit. Contains no document references, so it does not make `Rc::make_mut`
 /// copy or relocate the document.
 pub struct LocalTextEditCache {
+    /// `CanvasRenderer::header_footer_epoch` at capture. Negative answers
+    /// cover header/footer stories too, so they carry only if those are the
+    /// same stories at restore.
+    header_footer_epoch: u64,
     no_comment_anchors: bool,
     no_deleted_runs: bool,
     deleted_runs_witness: Option<DeletedRunsWitness>,
@@ -4255,6 +4259,8 @@ where
     /// Where the scan behind `last_document_deleted_runs == Some(true)` found
     /// its first deleted run, so a local text edit can carry the answer.
     last_document_deleted_runs_witness: Option<DeletedRunsWitness>,
+    /// Bumped whenever the header/footer stories are replaced.
+    header_footer_epoch: u64,
     #[cfg(test)]
     deleted_runs_document_scans: std::cell::Cell<usize>,
     /// The immutable snapshot the footnote surface maps were computed for.
@@ -9550,6 +9556,8 @@ where
                 })
             })
             .collect();
+        // Collected from a HashMap: sort so the order is deterministic.
+        self.footnote_surface_ranges.sort_unstable();
         self.footnote_surface_bases = bases;
         self.footnote_surface_extras = extras;
         self.unanchored_footnote_body_count =
@@ -10032,6 +10040,7 @@ where
             last_document_comment_anchors: None,
             last_document_deleted_runs: None,
             last_document_deleted_runs_witness: None,
+            header_footer_epoch: 0,
             #[cfg(test)]
             deleted_runs_document_scans: std::cell::Cell::new(0),
             footnote_surface_layout_document: std::rc::Weak::new(),
@@ -14497,6 +14506,7 @@ where
                 .then_some(&self.horizontal_float_wrap_cache)
         });
         LocalTextEditCache {
+            header_footer_epoch: self.header_footer_epoch,
             auxiliary_story_base: None,
             unanchored_footnote_body_count: self
                 .last_document
@@ -14523,7 +14533,7 @@ where
 
     /// Capture the auxiliary count only when the old body paragraph hosts no
     /// text-box paragraphs. The same check must pass after the local edit.
-    pub(crate) fn local_text_edit_cache_for_paragraph(
+    pub fn local_text_edit_cache_for_paragraph(
         &self,
         model: &WordDocument,
         index: usize,
@@ -14602,8 +14612,10 @@ where
         {
             self.footnote_surface_layout_document = Rc::downgrade(document);
         }
-        let no_comment_anchors =
-            cache.no_comment_anchors && !Self::paragraph_contains_comment_anchors(paragraph);
+        let same_header_footers = cache.header_footer_epoch == self.header_footer_epoch;
+        let no_comment_anchors = same_header_footers
+            && cache.no_comment_anchors
+            && !Self::paragraph_contains_comment_anchors(paragraph);
         // Only the edited paragraph changed: a negative answer survives if it
         // has no deleted run now. A positive one survives if its witness story
         // still holds one in the edited stories.
@@ -14611,6 +14623,7 @@ where
             .deleted_runs_witness
             .filter(|witness| self.deleted_runs_witness_holds(document, witness));
         let no_deleted_runs = deleted_runs_witness.is_none()
+            && same_header_footers
             && cache.no_deleted_runs
             && !Self::paragraph_contains_deleted_runs(paragraph);
         if no_comment_anchors || no_deleted_runs || deleted_runs_witness.is_some() {
@@ -40976,6 +40989,7 @@ where
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
         self.begin_header_footer_edit();
+        self.header_footer_epoch = self.header_footer_epoch.wrapping_add(1);
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -40998,6 +41012,7 @@ where
     pub fn set_section_header_footers(&mut self, sections: Vec<SectionHeaderFooters>) {
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
+        self.header_footer_epoch = self.header_footer_epoch.wrapping_add(1);
         self.section_header_footers = sections;
         self.clear_hf_story_memo();
     }
@@ -46730,6 +46745,33 @@ mod tests {
         *model.paragraph_mut(0).unwrap() = deleted("cut");
         renderer.restore_local_text_edit_cache(cache, &model, 0);
         assert_eq!(renderer.last_document_deleted_runs, None);
+        // Replacing the header/footer stories between capture and restore
+        // voids both negative answers, even for a clean edited paragraph.
+        *model.paragraph_mut(0).unwrap() = note_test_paragraph("clean", None);
+        model.paragraph_mut(1).unwrap().runs[0].revision = None;
+        renderer.restore_document_cache(Rc::clone(model.document.as_ref().unwrap()));
+        renderer.last_document_deleted_runs = Some(false);
+        renderer.last_document_comment_anchors = Some(false);
+        let cache = renderer.local_text_edit_cache();
+        renderer.drop_document_cache();
+        renderer.set_header_footer_bodies(
+            Some(Rc::new(Body {
+                elements: vec![BodyElement::from_paragraph(deleted("header"))],
+            })),
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        model.paragraph_mut(0).unwrap().runs[0].text.push('x');
+        renderer.restore_local_text_edit_cache(cache, &model, 0);
+        assert_eq!(renderer.last_document_deleted_runs, None);
+        assert_eq!(renderer.last_document_comment_anchors, None);
+        assert_eq!(
+            renderer.document_deleted_runs_witness(model.document.as_ref().unwrap()),
+            Some(DeletedRunsWitness::HeaderFooter(0))
+        );
     }
 
     #[test]
