@@ -68,7 +68,7 @@ pub struct StylesPart {
     normal_named_paragraph_styles: Vec<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 struct TableCellMarginStyleDefinition {
     based_on: Option<String>,
     margins: Option<TableCellMargins>,
@@ -83,7 +83,7 @@ pub struct TableStyleInfo {
     pub display: TableStyleDisplay,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 struct TableStyleDefinition {
     style_id: String,
     name: Option<String>,
@@ -116,6 +116,36 @@ fn is_word_normal_table_style(style: &TableStyleDefinition) -> bool {
 #[allow(clippy::too_many_arguments)]
 /// See [`StylesPart::word_default`].
 const WORD_DEFAULT_STYLES_XML: &str = r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="游明朝" w:eastAsia="游明朝" w:hAnsi="游明朝" w:cs="Times New Roman"/><w:kern w:val="2"/><w:sz w:val="21"/><w:szCs w:val="22"/><w:lang w:val="en-US" w:eastAsia="ja-JP" w:bidi="ar-SA"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="a"><w:name w:val="Normal"/><w:qFormat/><w:pPr><w:widowControl w:val="0"/><w:jc w:val="both"/></w:pPr></w:style><w:style w:type="character" w:default="1" w:styleId="a0"><w:name w:val="Default Paragraph Font"/><w:uiPriority w:val="1"/><w:semiHidden/><w:unhideWhenUsed/></w:style><w:style w:type="table" w:default="1" w:styleId="a1"><w:name w:val="Normal Table"/><w:uiPriority w:val="99"/><w:semiHidden/><w:unhideWhenUsed/><w:tblPr><w:tblInd w:w="0" w:type="dxa"/><w:tblCellMar><w:top w:w="0" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="0" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar></w:tblPr></w:style></w:styles>"#;
+
+/// Compares the parsed cascade. The lazily filled default-style lookup is a
+/// cache of the other fields, so it takes no part.
+impl PartialEq for StylesPart {
+    fn eq(&self, other: &Self) -> bool {
+        let Self {
+            paragraph_styles,
+            paragraph_style_order,
+            default_paragraph_style_id_cache: _,
+            character_styles,
+            table_paragraph_styles,
+            table_cell_margin_styles,
+            table_styles,
+            table_style_order,
+            doc_default_run_properties,
+            doc_default_paragraph_properties,
+            normal_named_paragraph_styles,
+        } = self;
+        *paragraph_styles == other.paragraph_styles
+            && *paragraph_style_order == other.paragraph_style_order
+            && *character_styles == other.character_styles
+            && *table_paragraph_styles == other.table_paragraph_styles
+            && *table_cell_margin_styles == other.table_cell_margin_styles
+            && *table_styles == other.table_styles
+            && *table_style_order == other.table_style_order
+            && *doc_default_run_properties == other.doc_default_run_properties
+            && *doc_default_paragraph_properties == other.doc_default_paragraph_properties
+            && *normal_named_paragraph_styles == other.normal_named_paragraph_styles
+    }
+}
 
 impl StylesPart {
     /// Creates an empty `StylesPart`. Useful when the package omits
@@ -2597,7 +2627,7 @@ fn apply_to_active_run_properties(
 }
 
 /// Minimal representation of a paragraph style used by the renderer.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct StyleDefinition {
     pub style_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]

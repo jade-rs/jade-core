@@ -102,6 +102,131 @@ fn append_style_reference_text(text: &mut String, run_text: &str) {
     }
 }
 
+/// The document-wide inputs, besides the style cascade and theme, that the
+/// caches `set_style_context` drops were laid out under: the font table's
+/// substitutes (text measurement), the numbering definitions (list labels
+/// and indents), and the settings-part options a render reads into its wrap
+/// style. `sync_word_document` keeps every cache only while all of them, the
+/// styles and the theme compare equal to what it last installed.
+#[derive(Clone, Debug, PartialEq)]
+struct SyncedLayoutInputs {
+    font_table: Option<jade_docx_reader::FontTablePart>,
+    numbering: Option<NumberingPart>,
+    settings: Option<SyncedDocumentSettings>,
+}
+
+/// The `settings.xml`-derived `Document` fields: the compatibility options,
+/// grid and tab defaults, hyphenation, East Asian line breaking, margins
+/// and note numbering every page and paragraph is laid out under.
+#[derive(Clone, Debug, PartialEq)]
+struct SyncedDocumentSettings {
+    snap_to_grid_default: bool,
+    display_content_revisions: Option<bool>,
+    default_tab_stop: Option<f32>,
+    math_properties: jade_docx_reader::settings::MathProperties,
+    no_tab_hanging_indent: bool,
+    adjust_line_height_in_table: bool,
+    compat: jade_docx_reader::settings::CompatOptions,
+    default_font_size: Option<f32>,
+    east_asian_line_breaking: EastAsianLineBreakingSettings,
+    gutter_at_top: bool,
+    mirror_margins: bool,
+    book_fold_printing: bool,
+    print_two_on_one: bool,
+    hyphenation: HyphenationSettings,
+    footnote_properties: Option<NoteNumbering>,
+    endnote_properties: Option<NoteNumbering>,
+    endnote_position: Option<EndnotePosition>,
+}
+
+impl SyncedDocumentSettings {
+    fn of(document: &Document) -> Self {
+        Self {
+            snap_to_grid_default: document.snap_to_grid_default,
+            display_content_revisions: document.display_content_revisions,
+            default_tab_stop: document.default_tab_stop,
+            math_properties: document.math_properties.clone(),
+            no_tab_hanging_indent: document.no_tab_hanging_indent,
+            adjust_line_height_in_table: document.adjust_line_height_in_table,
+            compat: document.compat.clone(),
+            default_font_size: document.default_font_size,
+            east_asian_line_breaking: document.east_asian_line_breaking.clone(),
+            gutter_at_top: document.gutter_at_top,
+            mirror_margins: document.mirror_margins,
+            book_fold_printing: document.book_fold_printing,
+            print_two_on_one: document.print_two_on_one,
+            hyphenation: document.hyphenation,
+            footnote_properties: document.footnote_properties.clone(),
+            endnote_properties: document.endnote_properties.clone(),
+            endnote_position: document.endnote_position,
+        }
+    }
+}
+
+impl SyncedDocumentSettings {
+    /// Whether `document` still carries these settings, read in place.
+    fn matches(&self, document: &Document) -> bool {
+        let Self {
+            snap_to_grid_default,
+            display_content_revisions,
+            default_tab_stop,
+            math_properties,
+            no_tab_hanging_indent,
+            adjust_line_height_in_table,
+            compat,
+            default_font_size,
+            east_asian_line_breaking,
+            gutter_at_top,
+            mirror_margins,
+            book_fold_printing,
+            print_two_on_one,
+            hyphenation,
+            footnote_properties,
+            endnote_properties,
+            endnote_position,
+        } = self;
+        *snap_to_grid_default == document.snap_to_grid_default
+            && *display_content_revisions == document.display_content_revisions
+            && *default_tab_stop == document.default_tab_stop
+            && *math_properties == document.math_properties
+            && *no_tab_hanging_indent == document.no_tab_hanging_indent
+            && *adjust_line_height_in_table == document.adjust_line_height_in_table
+            && *compat == document.compat
+            && *default_font_size == document.default_font_size
+            && *east_asian_line_breaking == document.east_asian_line_breaking
+            && *gutter_at_top == document.gutter_at_top
+            && *mirror_margins == document.mirror_margins
+            && *book_fold_printing == document.book_fold_printing
+            && *print_two_on_one == document.print_two_on_one
+            && *hyphenation == document.hyphenation
+            && *footnote_properties == document.footnote_properties
+            && *endnote_properties == document.endnote_properties
+            && *endnote_position == document.endnote_position
+    }
+}
+
+impl SyncedLayoutInputs {
+    fn of(document: &WordDocument) -> Self {
+        Self {
+            font_table: document.font_table_part.clone(),
+            numbering: document.numbering_part.clone(),
+            settings: document.document.as_deref().map(SyncedDocumentSettings::of),
+        }
+    }
+
+    /// Compares against the document's own parts and fields, so an
+    /// unchanged document clones nothing.
+    fn matches(&self, document: &WordDocument) -> bool {
+        self.font_table == document.font_table_part
+            && self.numbering == document.numbering_part
+            && match (&self.settings, document.document.as_deref()) {
+                (Some(settings), Some(current)) => settings.matches(current),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct SectionSeekGeometry {
     size_and_top: (f64, f64, f64),
@@ -152,6 +277,17 @@ struct PageStartSeekSnapshot {
     /// Wrapping-float state live at the resume point, restored on seek so the
     /// resumed walk wraps exactly like a from-start walk.
     floats: SeekFloatState,
+}
+
+/// Seek keys one layout pass recorded, from paragraph `from` on.
+#[derive(Default)]
+struct SeekPassRecord {
+    /// The first paragraph the pass laid out: it neither replayed nor
+    /// skipped anything from here on.
+    from: usize,
+    paragraphs: rustc_hash::FxHashSet<usize>,
+    pages: rustc_hash::FxHashSet<usize>,
+    columns: rustc_hash::FxHashSet<(usize, usize)>,
 }
 
 /// The float state a body walk has accumulated at a seek snapshot. Exclusions
@@ -4389,6 +4525,10 @@ where
     styles_part: Option<Rc<StylesPart>>,
     /// Theme fonts for numbering properties inherited from the paragraph style.
     theme_part: Option<Rc<ThemePart>>,
+    /// What `sync_word_document` last installed alongside the styles and
+    /// theme; `None` until it runs, or after `set_style_context` installs a
+    /// context of its own.
+    synced_layout_inputs: Option<SyncedLayoutInputs>,
     /// Tracks the baseline of the last rendered text line for positioning
     /// floating images that are anchored relative to a line.
     last_line_baseline: f64,
@@ -4889,6 +5029,8 @@ where
     last_render_body_element_count: u64,
     last_render_prefix_skips: u64,
     /// Cache for resolved run styles keyed by run properties + doc-grid spacing.
+    /// The key is trusted on a hit, so it is 64 bits wide on every target
+    /// (see [`run_style_key::RunStyleKeyHasher`]).
     applied_run_style_cache: RefCell<FxHashMap<u64, Rc<AppliedRunStyle>>>,
     /// Windows font-line summaries, validated against owned run inputs.
     paragraph_font_cache: RefCell<paragraph_font_cache::ParagraphFontCache>,
@@ -4952,6 +5094,12 @@ where
     spelling_export_mode: bool,
     page_export_mode: bool,
     page_start_seek_cache: RefCell<BTreeMap<usize, PageStartSeekSnapshot>>,
+    /// The page-start, page and column seek keys this layout pass recorded,
+    /// so a complete pass can drop what earlier layouts left behind.
+    seek_pass_record: RefCell<SeekPassRecord>,
+    /// `page_section_indices` as the current pass found it, kept in one
+    /// buffer across passes.
+    page_sections_before_pass: Vec<usize>,
     /// Same snapshots indexed by 1-indexed page number.
     page_start_seek_cache_by_page: RefCell<FxHashMap<usize, PageStartSeekSnapshot>>,
     /// Seek snapshots indexed by (1-indexed page number, 0-indexed column index).
@@ -5375,6 +5523,7 @@ where
     ) {
         self.styles_part = styles_part;
         self.theme_part = theme_part;
+        self.synced_layout_inputs = None;
         self.effective_run_properties_cache.borrow_mut().clear();
         self.line_number_run_properties = None;
         self.clear_text_measure_cache();
@@ -5558,13 +5707,11 @@ where
         let snapshot = match candidate {
             // Validate a page-top snapshot against the layout cache like the
             // spanning branch: a stale prefix must fall back to a full walk.
-            Some(snapshot) if !snapshot.spanning => self
-                .last_options
-                .as_ref()
-                .is_none_or(|options| {
+            Some(snapshot) if !snapshot.spanning => (self.seek_anchor_is_body_paragraph(&snapshot)
+                && self.last_options.as_ref().is_none_or(|options| {
                     self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
-                })
-                .then_some(snapshot),
+                }))
+            .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
                 // A spanning snapshot keyed at requested page K resumes at the
                 // crossing paragraph's start on P < K. The one-page visible
@@ -5967,6 +6114,16 @@ where
         self.page_start_seek_cache
             .borrow_mut()
             .insert(paragraph_index, snapshot.clone());
+        {
+            let mut record = self.seek_pass_record.borrow_mut();
+            record.paragraphs.insert(paragraph_index);
+            record
+                .columns
+                .insert((snapshot.page_number, snapshot.column_index));
+            if snapshot.column_index == 0 {
+                record.pages.insert(snapshot.page_number);
+            }
+        }
         // Keep a page lookup as well, but only for true page-start snapshots.
         if snapshot.column_index == 0 {
             // A paragraph-final page break can paint its floating text box
@@ -6602,15 +6759,15 @@ where
             }
         };
 
-        // Safety gate: regardless of which seek source won, if it points to the dirty paragraph
-        // itself then it must agree with the current dirty paragraph layout anchor.
-        if snapshot.paragraph_index == dirty_from
-            && !self.paragraph_seek_snapshot_matches_layout(
-                dirty_from,
-                &snapshot,
-                "selected-dirty",
-                options,
-            )
+        // Safety gate: whichever seek source won, it must resume at a body
+        // paragraph no later than the dirty one, and agree with that
+        // paragraph's current layout anchor (the dirty paragraph's must exist).
+        // A snapshot an earlier layout left behind would otherwise skip
+        // everything before it.
+        let anchor = snapshot.paragraph_index;
+        if anchor > dirty_from
+            || !self.seek_anchor_is_body_paragraph(&snapshot)
+            || !self.paragraph_seek_snapshot_matches_layout(anchor, &snapshot, "selected", options)
         {
             return None;
         }
@@ -10157,6 +10314,7 @@ where
             last_numbering_part: None,
             styles_part: None,
             theme_part: None,
+            synced_layout_inputs: None,
             last_line_baseline: margin,
             last_line_box: None,
             trailing_spacing_after: None,
@@ -10391,6 +10549,8 @@ where
             spelling_export_mode: false,
             page_export_mode: false,
             page_start_seek_cache: RefCell::new(BTreeMap::new()),
+            seek_pass_record: RefCell::new(SeekPassRecord::default()),
+            page_sections_before_pass: Vec::new(),
             page_start_seek_cache_by_page: RefCell::new(FxHashMap::default()),
             page_column_seek_cache: RefCell::new(FxHashMap::default()),
             paragraph_seek_cache: RefCell::new(BTreeMap::new()),
@@ -11392,6 +11552,13 @@ where
     #[allow(dead_code)]
     pub fn clear_paragraph_layout_cache(&mut self) {
         self.paragraph_layout_cache.borrow_mut().clear();
+        // Seek snapshots are validated against the layout cache; without it
+        // they cannot be checked.
+        self.page_start_seek_cache.borrow_mut().clear();
+        self.page_start_seek_cache_by_page.borrow_mut().clear();
+        self.page_column_seek_cache.borrow_mut().clear();
+        self.paragraph_seek_cache.borrow_mut().clear();
+        self.forced_seek_snapshot = None;
     }
 
     // ==================================================================    // Paragraph Wrap Cache (Line Wrapping Results)
@@ -11440,6 +11607,25 @@ where
                 .inline_object
                 .map(|object| (object.width.to_bits(), object.height.to_bits()))
                 .hash(&mut hasher);
+            // The cached segments carry the run's revision mark and link,
+            // which drawing reads: rejecting a deletion while the original
+            // is shown keeps the text and properties but drops the mark.
+            fn hash_revision(mark: &RevisionMark, hasher: &mut FxHasher) {
+                std::mem::discriminant(&mark.kind).hash(hasher);
+                mark.id.hash(hasher);
+                mark.author.hash(hasher);
+                mark.date.hash(hasher);
+                mark.date_utc.hash(hasher);
+                mark.insertion.is_some().hash(hasher);
+                if let Some(insertion) = &mark.insertion {
+                    hash_revision(insertion, hasher);
+                }
+            }
+            style.revision.is_some().hash(&mut hasher);
+            if let Some(mark) = &style.revision {
+                hash_revision(mark, &mut hasher);
+            }
+            style.hyperlink.hash(&mut hasher);
             style.properties.is_some().hash(&mut hasher);
             // Hash relevant run properties that affect text measurement
             if let Some(props) = &style.properties {
@@ -11454,7 +11640,7 @@ where
                 props.font_size_complex.map(f32::to_bits).hash(&mut hasher);
                 props.font_family.hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
-                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                    hasher = run_style_key::hash_languages(props, hasher);
                 }
                 props.bold.hash(&mut hasher);
                 props.italic.hash(&mut hasher);
@@ -13146,8 +13332,9 @@ where
                     border.color.hash(&mut hasher);
                 }
                 props.baseline.as_deref().hash(&mut hasher);
-                // Encode the five Option tags once; keep field order and all
-                // float bits, including signed zero and NaN payloads.
+                // Encode the Option tags once in a presence mask; keep field
+                // order and all float bits, including signed zero and NaN
+                // payloads. Unset fields then cost a branch, not a hash write.
                 let mut metric_presence = 0_u8;
                 macro_rules! hash_metric {
                     ($field:ident, $bit:expr) => {
@@ -13162,10 +13349,21 @@ where
                 hash_metric!(kerning, 2);
                 hash_metric!(text_scale, 3);
                 hash_metric!(font_size, 4);
+                hash_metric!(font_size_complex, 5);
+                // The character style and fit-text width change the resolved
+                // style and glyph positions as much as direct formatting does.
+                if let Some(style) = props.style.as_deref() {
+                    metric_presence |= 1 << 6;
+                    style.hash(&mut hasher);
+                }
+                if let Some(fit) = props.fit_text.as_ref() {
+                    metric_presence |= 1 << 7;
+                    (fit.val, fit.id).hash(&mut hasher);
+                }
                 metric_presence.hash(&mut hasher);
                 props.font_family.as_deref().hash(&mut hasher);
                 if props.language.is_some() || props.east_asia_language.is_some() {
-                    hasher = run_style_key::hash_windows_languages(props, hasher);
+                    hasher = run_style_key::hash_languages(props, hasher);
                 }
                 if let Some(fonts) = props.fonts.as_ref() {
                     fonts.ascii.as_deref().hash(&mut hasher);
@@ -13562,6 +13760,80 @@ where
         }
 
         ContentHash::new(hasher.finish())
+    }
+
+    /// Ends a complete layout pass: drops the page-start, page and column seek
+    /// snapshots of paragraphs from where the pass began laying out that it
+    /// did not record again. Their paragraphs no longer start that page or
+    /// column, or the document no longer has them, so resuming from one would
+    /// skip whatever now comes before it.
+    fn drop_seek_snapshots_not_recorded_this_pass(&self) {
+        let record = self.seek_pass_record.borrow();
+        let from = record.from;
+        self.page_start_seek_cache
+            .borrow_mut()
+            .retain(|&index, _| index < from || record.paragraphs.contains(&index));
+        self.page_start_seek_cache_by_page
+            .borrow_mut()
+            .retain(|page, snapshot| {
+                snapshot.paragraph_index < from || record.pages.contains(page)
+            });
+        self.page_column_seek_cache
+            .borrow_mut()
+            .retain(|key, snapshot| {
+                snapshot.paragraph_index < from || record.columns.contains(key)
+            });
+    }
+
+    /// Drops the layout entries and seek snapshots of paragraph indices
+    /// `range`, which a table's cells now hold. Cell paragraphs record
+    /// neither, so these come from an earlier layout in which the indices
+    /// were body paragraphs, and a seek validated against them would skip
+    /// content.
+    fn drop_seek_snapshots_in(&self, range: std::ops::Range<usize>) {
+        if range.is_empty() {
+            return;
+        }
+        self.paragraph_layout_cache
+            .borrow_mut()
+            .remove_range(range.clone());
+        let mut dropped_any = false;
+        for cache in [&self.page_start_seek_cache, &self.paragraph_seek_cache] {
+            let mut cache = cache.borrow_mut();
+            if cache.range(range.clone()).next().is_some() {
+                let mut tail = cache.split_off(&range.start);
+                let mut after = tail.split_off(&range.end);
+                cache.append(&mut after);
+                dropped_any = true;
+            }
+        }
+        // Page and column snapshots are recorded with a page-start or
+        // paragraph snapshot of the same paragraph, so with neither in
+        // `range` none of them points into it.
+        if !dropped_any {
+            return;
+        }
+        let outside = |snapshot: &PageStartSeekSnapshot| !range.contains(&snapshot.paragraph_index);
+        self.page_start_seek_cache_by_page
+            .borrow_mut()
+            .retain(|_, snapshot| outside(snapshot));
+        self.page_column_seek_cache
+            .borrow_mut()
+            .retain(|_, snapshot| outside(snapshot));
+    }
+
+    /// Whether a seek snapshot still resumes at a body paragraph: one whose
+    /// body element became a table, or is past the end, is from an earlier
+    /// layout.
+    fn seek_anchor_is_body_paragraph(&self, snapshot: &PageStartSeekSnapshot) -> bool {
+        self.last_document.as_ref().is_none_or(|document| {
+            document.body.as_ref().is_some_and(|body| {
+                matches!(
+                    body.elements.get(snapshot.body_element_index),
+                    Some(BodyElement::Paragraph(_))
+                )
+            })
+        })
     }
 
     /// Drops page-keyed resume checkpoints after the dirty paragraph and records
@@ -15379,6 +15651,9 @@ where
                         let width = (cell.right - cell.left).abs().max(1.0);
                         let height = (cell.bottom - cell.top).abs().max(1.0);
                         let page = self.page_for_y(y);
+                        // Cell layouts are document-space; overlay rects, like
+                        // the text rects below, are relative to their page.
+                        let y = y - self.page_top_y(page);
                         cell_rects.push(SelectionRect::new(x, y, width, height, page));
                     }
                 }
@@ -16107,6 +16382,9 @@ where
         let authoritative_mid_page_section_starts =
             snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
         let previous_page_origins = self.page_origins.clone();
+        // One buffer across passes: a seek restores the skipped pages from it.
+        let mut previous_page_sections = std::mem::take(&mut self.page_sections_before_pass);
+        previous_page_sections.clone_from(&self.page_section_indices);
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
@@ -16620,6 +16898,15 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
+        {
+            let mut record = self.seek_pass_record.borrow_mut();
+            record.from = seek_snapshot
+                .as_ref()
+                .map_or(0, |seek| seek.paragraph_index);
+            record.paragraphs.clear();
+            record.pages.clear();
+            record.columns.clear();
+        }
         // Mid-page section starts are not cleared here: each section the walk
         // reaches re-records its own entry at its transition, a seek keeps
         // those of the sections it skips, and a walk that stops early keeps
@@ -16761,6 +17048,16 @@ where
                 self.page_origins.clone_from(&previous_page_origins);
                 self.page_origins
                     .truncate(seek.page_number.saturating_sub(1));
+                // Likewise the skipped pages keep their sections: the render
+                // entry already cut the list to page 1, and refilling it
+                // from the resume page gave every skipped page its section.
+                let skipped = seek.page_number.saturating_sub(1);
+                if previous_page_sections.len() >= skipped {
+                    self.page_section_indices.clear();
+                    self.page_section_indices
+                        .extend_from_slice(&previous_page_sections[..skipped]);
+                    self.invalidate_page_number_table();
+                }
                 // Restore state from the snapshot.
                 self.paragraph_counter = seek.paragraph_index;
                 // Before the page advance below, so chrome laid out for the
@@ -16863,6 +17160,11 @@ where
                     }
                 }
 
+                // Advancing to the resume page put the flow in its first
+                // column. A snapshot from a later column resumes there: left
+                // in column 0, the walk had a whole column too many on that
+                // page and laid the rest of the section out a page early.
+                self.column_index = seek.column_index;
                 self.page_offset_y = seek.page_offset_y;
                 self.current_y = seek.current_y;
                 self.last_line_baseline = seek.last_line_baseline;
@@ -16880,6 +17182,7 @@ where
                     Self::resolve_section_text_direction(initial_section, document);
                 self.vertical_flow = None;
             }
+            self.page_sections_before_pass = std::mem::take(&mut previous_page_sections);
 
             self.record_page_section(self.current_page_number);
 
@@ -17310,6 +17613,7 @@ where
                     .finish_pagination(self.current_page_number, self.last_layout_complete)?;
                 self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
+                    self.drop_seek_snapshots_not_recorded_this_pass();
                     self.page_section_indices.truncate(self.current_page_number);
                     // Sections past the last one laid out no longer exist.
                     self.mid_page_section_starts
@@ -17820,13 +18124,23 @@ where
                 }
                 result
             }
-            BodyElement::Table(table) => self.render_table_with_numbering(
-                table,
-                options,
-                numbering_part,
-                numbering_counter,
-                body_element_index,
-            ),
+            BodyElement::Table(table) => {
+                let first_cell_paragraph = self.paragraph_counter;
+                let result = self.render_table_with_numbering(
+                    table,
+                    options,
+                    numbering_part,
+                    numbering_counter,
+                    body_element_index,
+                );
+                if body_element_index != usize::MAX
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story
+                {
+                    self.drop_seek_snapshots_in(first_cell_paragraph..self.paragraph_counter);
+                }
+                result
+            }
             BodyElement::Math(math) => self.render_math_block(math),
         }
     }
@@ -17947,6 +18261,11 @@ where
         self.note_replayed_spacing_after(recorded_spacing_after(
             layout.trailing_spacing_after_consumed,
         ));
+        // A skipped paragraph records no snapshot; keep the ones it has.
+        {
+            let mut record = self.seek_pass_record.borrow_mut();
+            record.from = record.from.max(paragraph_index + 1);
+        }
         self.last_render_prefix_skips += 1;
         true
     }
@@ -23323,6 +23642,10 @@ where
             let mut snapshot = anchor.clone();
             snapshot.spanning = true;
             by_page.insert(crossed_page, snapshot);
+            self.seek_pass_record
+                .borrow_mut()
+                .pages
+                .insert(crossed_page);
             self.span_seek_recorded
                 .set(self.span_seek_recorded.get() + 1);
         }
@@ -35189,26 +35512,20 @@ where
             return Ok(());
         }
 
-        if self.selection.paragraph_in_selected_cell(paragraph_index) {
-            if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-                let mut drawn = self.cell_highlighted.borrow_mut();
-                if drawn.insert(cell_id) {
-                    if let Some(cell) = self.selection.cell_layout(cell_id) {
-                        self.draw_cell_highlight(cell)?;
-                    }
-                }
-            }
-            return Ok(());
-        }
         if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-            if self.selection.is_cell_fully_selected(cell_id, &range) {
-                let mut drawn = self.cell_highlighted.borrow_mut();
-                if drawn.insert(cell_id) {
-                    if let Some(cell) = self.selection.cell_layout(cell_id) {
-                        self.draw_cell_highlight(cell)?;
+            if self.selection.paragraph_in_selected_cell(paragraph_index)
+                || self.selection.is_cell_fully_selected(cell_id, &range)
+            {
+                // Fill this page's fragment of the cell once. A fragment that
+                // is not registered yet (the cell is still being painted, or
+                // this is the part continued from the previous page in a pass
+                // that rebuilds the registry) falls back to line highlights.
+                if let Some((fragment_id, rect)) = self.cell_fragment_on_current_page(cell_id) {
+                    if self.cell_highlighted.borrow_mut().insert(fragment_id) {
+                        self.draw_cell_highlight(rect)?;
                     }
+                    return Ok(());
                 }
-                return Ok(());
             }
         }
 
@@ -35226,18 +35543,8 @@ where
         context.set_fill_style_str(SELECTION_FILL_STYLE);
         context.set_stroke_style_str(SELECTION_EDGE_STYLE);
         context.set_line_width(1.0);
-        let mut top = line.content_top;
-        let mut height = line.content_height.max(1.0);
-        if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-            if self.selection.is_cell_fully_selected(cell_id, &range) {
-                if let Some(cell) = self.selection.cell_layout(cell_id) {
-                    // When the selection covers the entire table cell we extend the highlight to
-                    // the cell bounds so there is no vertical gap between the fill and the borders.
-                    top = cell.top.min(cell.bottom);
-                    height = (cell.bottom - cell.top).abs().max(1.0);
-                }
-            }
-        }
+        let top = line.content_top;
+        let height = line.content_height.max(1.0);
         for (x, width) in rects {
             context.fill_rect(x, top, width, height);
             Self::stroke_selection_edges(&context, x, top, width, height);
@@ -35341,14 +35648,60 @@ where
         rects
     }
 
-    fn draw_cell_highlight(&self, cell: &CellLayout) -> Result<(), JsValue> {
+    /// The registered fragment of `cell_id`'s logical cell that lies on the
+    /// page being painted, with its bounds converted to that page's surface
+    /// and clipped to it, as `(fragment id, (x, y, width, height))`.
+    ///
+    /// Cell layouts are recorded in document space (each page's offset
+    /// included), while the page surface starts at zero. A cell split over a
+    /// page break has one fragment per page, and the paragraph-to-cell map
+    /// points at only one of them, so the other pages search the registry for
+    /// their own fragment.
+    fn cell_fragment_on_current_page(
+        &self,
+        cell_id: usize,
+    ) -> Option<(usize, (f64, f64, f64, f64))> {
+        let cells = self.selection.cell_layouts();
+        let cell = cells.get(cell_id)?;
+        let (page_top, page_bottom) = if self.pageless_mode {
+            (0.0, f64::INFINITY)
+        } else {
+            (self.page_offset_y, self.page_offset_y + self.page_height)
+        };
+        let clipped = |fragment: &CellLayout| {
+            let top = fragment.top.min(fragment.bottom).max(page_top);
+            let bottom = fragment.top.max(fragment.bottom).min(page_bottom);
+            (bottom > top).then(|| {
+                (
+                    fragment.left.min(fragment.right),
+                    top - page_top,
+                    (fragment.right - fragment.left).abs().max(1.0),
+                    (bottom - top).max(1.0),
+                )
+            })
+        };
+        if let Some(rect) = clipped(cell) {
+            return Some((cell_id, rect));
+        }
+        cells.iter().enumerate().find_map(|(id, fragment)| {
+            (fragment.table_id == cell.table_id
+                && fragment.row == cell.row
+                && fragment.column == cell.column
+                && fragment.column_span == cell.column_span)
+                .then(|| clipped(fragment))
+                .flatten()
+                .map(|rect| (id, rect))
+        })
+    }
+
+    /// Fills a selected cell fragment, given in page-surface coordinates.
+    fn draw_cell_highlight(
+        &self,
+        (x, y, width, height): (f64, f64, f64, f64),
+    ) -> Result<(), JsValue> {
         if !self.should_draw_current_page_for_render() {
             return Ok(());
         }
-        let width = (cell.right - cell.left).abs().max(1.0);
-        let height = (cell.bottom - cell.top).abs().max(1.0);
-        let x = cell.left.min(cell.right);
-        let y = cell.top.min(cell.bottom);
         let context = self.host.painter();
         context.save();
         context.set_fill_style_str(SELECTION_FILL_STYLE);
@@ -35897,7 +36250,7 @@ where
         // lost. `font_family: Some(x)` then hashed like `fonts.east_asia:
         // Some(x)`, and the cache returned the other run's style and line
         // metrics. An odd seed keeps the state nonzero, so field positions count.
-        let mut hasher = FxHasher::default();
+        let mut hasher = run_style_key::RunStyleKeyHasher::default();
         0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
         doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
         if let Some(props) = properties {
@@ -35973,6 +36326,13 @@ where
                 hint_tag.hash(&mut hasher);
             } else {
                 Option::<String>::None.hash(&mut hasher);
+            }
+            // Word for Mac picks the East Asian fallback face from the
+            // language (`font_resolver`), so ja-JP and zh-CN runs with the
+            // same fonts resolve to different faces and metrics.
+            if INCLUDE_LANGUAGES && (props.language.is_some() || props.east_asia_language.is_some())
+            {
+                hasher = run_style_key::hash_languages(props, hasher);
             }
         } else {
             0_u8.hash(&mut hasher);
@@ -41135,16 +41495,44 @@ where
     ///
     /// Without the style context a run reads only its own and its
     /// paragraph's direct formatting: a style's character spacing, for one,
-    /// is lost, and lines break where the browser's do not. It also drops
-    /// every cached layout, so an edit that keeps the styles should resync
-    /// only what it changed.
+    /// is lost, and lines break where the browser's do not.
+    ///
+    /// Installing a different context drops every cached measurement, wrap,
+    /// layout and paint. A host calls this after every structural edit and
+    /// undo, which mostly leave the styles, theme, font table, numbering and
+    /// settings as they were: those are compared by value with what the last
+    /// call installed, and while all match, the installed parts, the
+    /// resolved run properties, the text measurements and the wrapped lines
+    /// are kept, so the following render re-wraps only the paragraphs the
+    /// edit touched. The paragraph layout and paint caches are still dropped
+    /// and the next render lays every page out again.
     pub fn sync_word_document(&mut self, document: &WordDocument) {
         crate::canvas_view::install_document_font_substitutes(document);
         self.rendered_field_lengths = Some(document.rendered_field_lengths());
-        self.set_style_context(
-            document.styles_part.clone().map(Rc::new),
-            document.loaded_theme_part().map(Rc::new),
-        );
+        let theme_part = document.loaded_theme_part();
+        let unchanged = self
+            .synced_layout_inputs
+            .as_ref()
+            .is_some_and(|inputs| inputs.matches(document))
+            && self.styles_part.as_deref() == document.styles_part.as_ref()
+            && self.theme_part.as_deref() == theme_part.as_ref();
+        if !unchanged {
+            self.set_style_context(
+                document.styles_part.clone().map(Rc::new),
+                theme_part.map(Rc::new),
+            );
+            self.synced_layout_inputs = Some(SyncedLayoutInputs::of(document));
+        } else {
+            // Only the caches keyed on what was compared above survive. The
+            // paragraph layout and paint caches replay on a content hash
+            // that leaves out run and paragraph formatting and section and
+            // table geometry, and change detection compares against the
+            // previous layout: an edit that changes only those would replay
+            // stale pages.
+            self.clear_paragraph_layout_cache();
+            self.clear_paragraph_render_cache();
+            self.skip_change_detection_once();
+        }
         self.sync_document_header_footer_stories(document);
         self.set_bookmark_paragraphs(document.bookmark_render_map());
         self.set_bookmark_note_targets(document.bookmark_note_targets());
@@ -44804,6 +45192,7 @@ mod tests {
         assert_eq!(actual, "見出し 😀ABCDx\u{a0}é\u{200d}終");
     }
 
+    mod cell_highlight_tests;
     mod decoration_histories;
     mod float_seek_tests;
     mod float_wrap_witness_tests;
@@ -46733,6 +47122,141 @@ mod tests {
         assert_eq!(Rc::as_ptr(&document), pointer);
         assert!(renderer.horizontal_float_wrap_cache.get(&document));
         assert_eq!(renderer.horizontal_float_wrap_cache.scans, 1);
+    }
+
+    /// A document whose Normal style sets `half_points` and whose body is
+    /// enough text to wrap.
+    fn styled_word_document(half_points: u32) -> WordDocument {
+        let mut model = WordDocument::from_document(doc_with_paragraph_texts(&vec![
+            "The quick brown fox jumps over the lazy dog again and again until the line wraps";
+            40
+        ]));
+        model.styles_part = Some(
+            StylesPart::from_xml(&format!(
+                r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                  <w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:rPr><w:sz w:val="{half_points}"/></w:rPr></w:style>
+                </w:styles>"#
+            ))
+            .unwrap(),
+        );
+        model
+    }
+
+    fn render_synced(
+        renderer: &mut CanvasRenderer<jade_painter::recording::RecordingPainter>,
+        model: &WordDocument,
+    ) {
+        renderer.sync_word_document(model);
+        renderer
+            .render_with_numbering_rc(
+                Rc::clone(model.document.as_ref().unwrap()),
+                &Options::default(),
+                model.numbering_part.as_ref(),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+    }
+
+    fn layout_extent(
+        renderer: &CanvasRenderer<jade_painter::recording::RecordingPainter>,
+    ) -> Vec<(usize, u64, u64)> {
+        renderer
+            .layout_debug_lines()
+            .iter()
+            .map(|line| {
+                (
+                    line.end - line.start,
+                    line.height.to_bits(),
+                    line.top.to_bits(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn resyncing_unchanged_styles_keeps_the_parts_measurements_and_wrapped_lines() {
+        let (mut renderer, _) = recording_renderer();
+        let model = styled_word_document(24);
+        render_synced(&mut renderer, &model);
+        let styles = Rc::clone(renderer.styles_part.as_ref().unwrap());
+        let wrapped = renderer.paragraph_wrap_cache_stats();
+        let measured = renderer.text_measure_cache.borrow().len();
+        let resolved = renderer.effective_run_properties_cache.borrow().len();
+        assert!(wrapped.size > 0 && measured > 0 && resolved > 0);
+
+        // A host's later sync of the same document, as after a structural
+        // edit: an equal copy of the styles, not the installed one.
+        let copy = model.clone();
+        renderer.sync_word_document(&copy);
+        assert!(Rc::ptr_eq(renderer.styles_part.as_ref().unwrap(), &styles));
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, wrapped.size);
+        assert_eq!(renderer.text_measure_cache.borrow().len(), measured);
+        assert_eq!(
+            renderer.effective_run_properties_cache.borrow().len(),
+            resolved
+        );
+        // Layout and paint replay on hashes that miss formatting-only edits:
+        // those still go, and the next render detects nothing as unchanged.
+        assert_eq!(renderer.paragraph_layout_cache_stats().cached_entries, 0);
+        assert_eq!(renderer.paragraph_render_cache_stats().cached_entries, 0);
+        assert!(renderer.skip_change_detection);
+
+        let lines = layout_extent(&renderer);
+        let before = renderer.paragraph_wrap_cache_stats();
+        render_synced(&mut renderer, &copy);
+        let after = renderer.paragraph_wrap_cache_stats();
+        assert_eq!(
+            after.misses, before.misses,
+            "an unchanged resync re-wrapped"
+        );
+        assert!(after.hits > before.hits);
+        assert_eq!(layout_extent(&renderer), lines);
+    }
+
+    #[test]
+    fn resyncing_a_changed_style_font_size_drops_the_caches_and_relays_out() {
+        let (mut renderer, _) = recording_renderer();
+        render_synced(&mut renderer, &styled_word_document(24));
+        let small = layout_extent(&renderer);
+        let styles = Rc::clone(renderer.styles_part.as_ref().unwrap());
+
+        let larger = styled_word_document(48);
+        renderer.sync_word_document(&larger);
+        assert!(!Rc::ptr_eq(renderer.styles_part.as_ref().unwrap(), &styles));
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
+        assert_eq!(renderer.text_measure_cache.borrow().len(), 0);
+        assert!(renderer.effective_run_properties_cache.borrow().is_empty());
+        render_synced(&mut renderer, &larger);
+        let large = layout_extent(&renderer);
+        assert_ne!(large, small);
+
+        let mut fresh = recording_renderer().0;
+        render_synced(&mut fresh, &larger);
+        assert_eq!(large, layout_extent(&fresh));
+    }
+
+    #[test]
+    fn resyncing_changed_numbering_or_settings_drops_the_caches() {
+        let (mut renderer, _) = recording_renderer();
+        let mut model = styled_word_document(24);
+        render_synced(&mut renderer, &model);
+
+        model.numbering_part = Some(NumberingPart::new());
+        renderer.sync_word_document(&model);
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
+        render_synced(&mut renderer, &model);
+        assert!(renderer.paragraph_wrap_cache_stats().size > 0);
+
+        Rc::make_mut(model.document.as_mut().unwrap()).default_tab_stop = Some(18.0);
+        renderer.sync_word_document(&model);
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
+        render_synced(&mut renderer, &model);
+
+        model.font_table_part = Some(jade_docx_reader::FontTablePart::default());
+        renderer.sync_word_document(&model);
+        assert_eq!(renderer.paragraph_wrap_cache_stats().size, 0);
     }
 
     #[test]
@@ -61211,6 +61735,57 @@ mod tests {
     }
 
     #[test]
+    fn wrap_content_hash_differs_on_revision_and_link_changes() {
+        // Rejecting a deletion while the original is shown keeps the text and
+        // properties; only the mark, which drawing reads from the cached
+        // segments, goes.
+        let text = "deleted";
+        let runs_with = |revision: Option<RevisionMark>, hyperlink: Option<RunHyperlink>| {
+            [RunStyle {
+                start: 0,
+                end: text.len(),
+                properties: None,
+                revision,
+                hyperlink,
+                inline_object: None,
+            }]
+        };
+        let hash = |revision, hyperlink| {
+            <CanvasRenderer>::compute_wrap_content_hash(text, &runs_with(revision, hyperlink))
+        };
+        let deletion = RevisionMark {
+            kind: RevisionKind::Deleted,
+            id: Some("1".into()),
+            author: Some("reviewer".into()),
+            date: None,
+            date_utc: None,
+            insertion: None,
+        };
+        let plain = hash(None, None);
+        assert_ne!(plain, hash(Some(deletion.clone()), None));
+        assert_ne!(
+            hash(Some(deletion.clone()), None),
+            hash(
+                Some(RevisionMark {
+                    author: Some("another".into()),
+                    ..deletion.clone()
+                }),
+                None
+            )
+        );
+        assert_ne!(
+            plain,
+            hash(
+                None,
+                Some(RunHyperlink {
+                    target: Some("https://example.com".into()),
+                    ..RunHyperlink::default()
+                })
+            )
+        );
+    }
+
+    #[test]
     fn wrap_content_hash_differs_on_draw_only_property_changes() {
         // Regression test: a pure color/highlight/underline/strike/super-sub change
         // on a fully-selected middle paragraph leaves run boundaries unchanged, so
@@ -65303,6 +65878,34 @@ mod tests {
         );
     }
 
+    /// The layout entry of a paragraph at the top of `page_1idx`'s
+    /// `column`, which a page or column seek snapshot of it must agree with.
+    fn insert_seek_anchor_layout(
+        renderer: &CanvasRenderer,
+        paragraph: usize,
+        page_1idx: usize,
+        column: usize,
+        page_offset_y: f64,
+    ) {
+        let top = page_offset_y + renderer.margin_top;
+        renderer.paragraph_layout_cache.borrow_mut().insert(
+            paragraph,
+            jade_docx_layout::layout_cache::ParagraphLayoutResult::new(
+                ContentHash::new(paragraph as u64),
+                top,
+                top + 20.0,
+                page_1idx - 1,
+                page_1idx - 1,
+                page_offset_y,
+                page_offset_y,
+                column,
+                column,
+                top,
+                top + 20.0,
+            ),
+        );
+    }
+
     fn options_for_seek_tests() -> crate::Options {
         let mut options = crate::Options {
             render_footnotes: false,
@@ -69002,6 +69605,7 @@ mod tests {
             ),
         );
 
+        insert_seek_anchor_layout(&renderer, 6, 3, 2, 0.0);
         let options = options_for_seek_tests();
 
         let seek = renderer
@@ -69146,6 +69750,7 @@ mod tests {
             },
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, page_offset_y);
         let options = options_for_seek_tests();
         let seek = renderer
             .try_prepare_seek_start(dirty_from, &options)
@@ -69242,6 +69847,7 @@ mod tests {
             },
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, page_offset_y);
         let options = options_for_seek_tests();
         let seek = renderer
             .try_prepare_seek_start(dirty_from, &options)
@@ -69402,6 +70008,7 @@ mod tests {
             ),
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, 0.0);
         let options = options_for_seek_tests();
 
         let seek = renderer
@@ -69658,6 +70265,7 @@ mod tests {
             ),
         );
 
+        insert_seek_anchor_layout(&renderer, 5, 3, 0, 0.0);
         let options = options_for_seek_tests();
 
         let seek = renderer
