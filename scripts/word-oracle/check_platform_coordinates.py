@@ -144,6 +144,9 @@ PHYSICAL_FONT_CASES = {
     'wrong-num-mac',
 }
 REQUIRED_CAPTURES = {
+    'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
+    'courier-new-regular-adjacent': '20261114T004252975Z-a999e8fb',
+    'probe-column-fixed-dxa-4400': '20261114T004402030Z-30b8d3b5',
     'tabs-geometry-mac': '20261114T130556208Z-6d6ad7b2',
     '2col-mac': '20261114T231659226Z-87aed8b1',
     'char-spacing-mac': '20261114T231718277Z-f02fe908',

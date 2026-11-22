@@ -586,7 +586,7 @@ class PlatformCoordinates(unittest.TestCase):
             manifest = check.read_json(check.checked_file(check.ROOT, case['mac_manifest']))
             if 'version' not in manifest['reference']:
                 missing.append(case['mac_case'])
-        self.assertEqual(len(missing), 19)
+        self.assertEqual(set(missing), {'column-table-fixed-preferred-width-mac', 'column-table-fixed-preferred-width-smaller-mac', 'courier-new-line-metrics', 'courier-new-regular-adjacent', 'inline-image-rotation-table-picture-only-mac', 'latin-break-budget-620', 'latin-break-budget-638', 'latin-break-budget-645', 'latin-break-budget-652', 'latin-break-budget-659', 'nested-after-spacing-oversized-48-0', 'nested-after-spacing-repeat-header', 'nested-after-spacing-short-5pt', 'probe-column-fixed-dxa-4400', 'probe-unequal-left-narrow-first-1-1', 'probe-unequal-left-narrow-first-2-1', 'probe-unequal-left-wide-first-1-1', 'probe-unequal-left-wide-first-2-1', 'table-oversized-row-after-spacing-fresh-fit', 'table-row-after-spacing-short-5pt', 'textbox-exact-line-matrix-mac', 'vert-align-sweep-browser-mac'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word
