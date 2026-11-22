@@ -149,6 +149,18 @@ struct PageStartSeekSnapshot {
     /// `table_counter` entries of the table resize metadata, so tables laid
     /// out before the resume point keep their handles.
     table_counter: usize,
+    /// Wrapping-float state live at the resume point, restored on seek so the
+    /// resumed walk wraps exactly like a from-start walk.
+    floats: SeekFloatState,
+}
+
+/// The float state a body walk has accumulated at a seek snapshot. Exclusions
+/// are pruned per page as paragraphs plan their lines, so this stays small.
+#[derive(Clone, Debug, Default)]
+struct SeekFloatState {
+    exclusions: Vec<PageFloatExclusion>,
+    floating_table_frames: Vec<table::FloatingTableFrame>,
+    lookahead_pin: Option<float_lookahead::FloatLookaheadPin>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -5643,6 +5655,7 @@ where
             page_width: self.page_width,
             spanning: false,
             table_counter: self.table_counter,
+            floats: self.seek_float_state(),
         };
         self.page_start_seek_cache
             .borrow_mut()
@@ -5682,6 +5695,17 @@ where
         self.page_column_seek_cache
             .borrow_mut()
             .insert((snapshot.page_number, snapshot.column_index), snapshot);
+    }
+
+    /// Float state for a seek snapshot. Recording is refused while a
+    /// look-ahead pin is live, so `lookahead_pin` is `None` in practice; it is
+    /// kept so a restore reproduces the walk state exactly either way.
+    fn seek_float_state(&self) -> SeekFloatState {
+        SeekFloatState {
+            exclusions: self.active_float_exclusions.clone(),
+            floating_table_frames: self.floating_table_frames.clone(),
+            lookahead_pin: self.float_lookahead_pin,
+        }
     }
 
     fn record_paragraph_seek_snapshot(
@@ -5725,6 +5749,7 @@ where
             page_width: self.page_width,
             spanning: false,
             table_counter: self.table_counter,
+            floats: self.seek_float_state(),
         };
         self.paragraph_seek_cache
             .borrow_mut()
@@ -5794,6 +5819,7 @@ where
             let valid_retry = retry.filter(|snapshot| {
                 self.forced_dirty_from
                     .is_some_and(|dirty| snapshot.paragraph_index <= dirty)
+                    && self.window_seek_float_state_is_current(snapshot)
                     && snapshot.page_number <= start_page
                     && if snapshot.spanning {
                         self.span_seek_enabled
@@ -5834,7 +5860,9 @@ where
             .filter(|s| !s.spanning)
             .cloned()
         {
-            if self.window_seek_snapshot_is_valid(&snapshot, start_page, options) {
+            if self.window_seek_float_state_is_current(&snapshot)
+                && self.window_seek_snapshot_is_valid(&snapshot, start_page, options)
+            {
                 self.window_seek_exact_hits
                     .set(self.window_seek_exact_hits.get() + 1);
                 return Some(snapshot);
@@ -5860,7 +5888,12 @@ where
                     !snapshot.spanning && page < start_page
                 })
                 .filter(|(_, snapshot)| {
-                    self.window_seek_snapshot_is_valid(snapshot, snapshot.page_number, options)
+                    self.window_seek_float_state_is_current(snapshot)
+                        && self.window_seek_snapshot_is_valid(
+                            snapshot,
+                            snapshot.page_number,
+                            options,
+                        )
                 })
                 .max_by_key(|(&page, _)| page)
                 .map(|(_, snapshot)| snapshot.clone())
@@ -5957,7 +5990,8 @@ where
             })
             // All existing geometry/anchor gates must pass.
             .filter(|snapshot| {
-                let ok = self.span_seek_snapshot_is_valid(snapshot, options);
+                let ok = self.window_seek_float_state_is_current(snapshot)
+                    && self.span_seek_snapshot_is_valid(snapshot, options);
                 if !ok {
                     self.span_seek_rejected_geometry
                         .set(self.span_seek_rejected_geometry.get() + 1);
@@ -5967,6 +6001,21 @@ where
             // Nearest resume anchor (greatest resume page P) minimizes the walk.
             .max_by_key(|snapshot| snapshot.page_number)
             .cloned()
+    }
+
+    /// Whether a lazy-edit snapshot's float state still matches the edited
+    /// document. The snapshot's exclusions come from elements before it, plus
+    /// the resume paragraph itself: the paragraph above wraps around its
+    /// objects (`float_lookahead`). So in a document with wrapping floats an
+    /// edit at or before the resume paragraph may have moved a float the
+    /// snapshot recorded; only snapshots strictly before the dirty paragraph
+    /// are kept. Without an edit (viewport/decoration repaint) the prefix is
+    /// unchanged and the captured state is exact.
+    fn window_seek_float_state_is_current(&self, snapshot: &PageStartSeekSnapshot) -> bool {
+        self.horizontal_float_wrap_cache.witness.is_none()
+            || self
+                .forced_dirty_from
+                .is_none_or(|dirty| snapshot.paragraph_index < dirty)
     }
 
     fn seek_snapshot_geometry_is_valid(&self, snapshot: &PageStartSeekSnapshot) -> bool {
@@ -15832,10 +15881,13 @@ where
         // bug that the dirty-paragraph seek had. When no valid snapshot exists we
         // fall back to the conservative render-from-start policy below, so output
         // is always correct — just not always fast.
-        let window_seek_snapshot = if self.prefer_visible_window_seek_once
-            && !explicit_disable
-            && !horizontal_float_wrap
-        {
+        //
+        // Wrapping floats no longer block the window seek: snapshots carry the
+        // live float exclusions, floating-table frames and look-ahead pin, and
+        // the restore below reinstates them. Only the dirty-paragraph seek and
+        // prefix replay stay off for those documents (replayed paragraphs do
+        // not re-register their floats).
+        let window_seek_snapshot = if self.prefer_visible_window_seek_once && !explicit_disable {
             if let Some(snapshot) = band_retry_seek.as_ref() {
                 self.try_prepare_visible_window_page_seek_with_band_retry(options, Some(snapshot))
             } else {
@@ -15845,9 +15897,8 @@ where
             None
         };
         let window_seek_active = window_seek_snapshot.is_some();
-        let disable_seek_replay = explicit_disable
-            || horizontal_float_wrap
-            || (self.prefer_visible_window_seek_once && !window_seek_active);
+        let disable_seek_replay =
+            explicit_disable || (self.prefer_visible_window_seek_once && !window_seek_active);
 
         let forced_seek_snapshot = if disable_seek_replay {
             self.forced_seek_snapshot.take();
@@ -15873,6 +15924,7 @@ where
             self.forced_dirty_from = None;
         }
         let allow_prefix_replay = !disable_seek_replay
+            && !horizontal_float_wrap
             && !window_seek_active
             && (seek_source.is_none()
                 || self.force_prefix_replay_all
@@ -16051,6 +16103,14 @@ where
                     .truncate(seek.page_number.saturating_sub(1));
                 // Restore state from the snapshot.
                 self.paragraph_counter = seek.paragraph_index;
+                // Before the page advance below, so chrome laid out for the
+                // resume page sees the same floating-table frames as a
+                // from-start walk does.
+                self.active_float_exclusions
+                    .clone_from(&seek.floats.exclusions);
+                self.floating_table_frames
+                    .clone_from(&seek.floats.floating_table_frames);
+                self.float_lookahead_pin = seek.floats.lookahead_pin;
                 self.footnote_counter = seek.footnote_counter;
                 self.endnote_counter = seek.endnote_counter;
                 self.page_width = seek.page_width;
@@ -43263,6 +43323,7 @@ mod tests {
     }
 
     mod decoration_histories;
+    mod float_seek_tests;
     mod float_wrap_witness_tests;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
@@ -64182,6 +64243,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         let options = options_for_seek_tests();
@@ -64238,6 +64300,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         assert!(renderer
@@ -64270,6 +64333,7 @@ mod tests {
             page_width: renderer.page_width,
             spanning: false,
             table_counter: 0,
+            floats: SeekFloatState::default(),
         }
     }
 
@@ -65588,6 +65652,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -65633,6 +65698,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -65677,6 +65743,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -65719,6 +65786,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -65774,6 +65842,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66870,6 +66939,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66914,6 +66984,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66942,6 +67013,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67005,6 +67077,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67055,6 +67128,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67101,6 +67175,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67150,6 +67225,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67195,6 +67271,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67250,6 +67327,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67308,6 +67386,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         // Fallback candidates (page start) for page 3.
@@ -67335,6 +67414,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         // Old cached layout for dirty paragraph to estimate its page (page 3 is 0-indexed=2).
@@ -67404,6 +67484,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67516,6 +67597,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67561,6 +67643,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -67587,6 +67670,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         renderer.paragraph_layout_cache.borrow_mut().insert(
@@ -67944,6 +68028,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -67970,6 +68055,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
