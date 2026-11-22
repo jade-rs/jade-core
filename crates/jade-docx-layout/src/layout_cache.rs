@@ -1169,10 +1169,6 @@ impl ParagraphLayoutCache {
         self.entries[paragraph_index] = Some(result);
     }
 
-    /// Invalidates all cached entries from the given paragraph index onwards.
-    ///
-    /// This should be called when a paragraph's content or formatting changes,
-    /// as all subsequent paragraphs may need new positions.
     /// Forgets the entries of paragraphs `range`.
     pub fn remove_range(&mut self, range: std::ops::Range<usize>) {
         let end = range.end.min(self.entries.len());
@@ -1181,6 +1177,10 @@ impl ParagraphLayoutCache {
         }
     }
 
+    /// Invalidates all cached entries from the given paragraph index onwards.
+    ///
+    /// This should be called when a paragraph's content or formatting changes,
+    /// as all subsequent paragraphs may need new positions.
     pub fn invalidate_from(&mut self, paragraph_index: usize) {
         self.entries.truncate(paragraph_index);
     }
