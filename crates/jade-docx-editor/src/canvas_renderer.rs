@@ -149,6 +149,18 @@ struct PageStartSeekSnapshot {
     /// `table_counter` entries of the table resize metadata, so tables laid
     /// out before the resume point keep their handles.
     table_counter: usize,
+    /// Wrapping-float state live at the resume point, restored on seek so the
+    /// resumed walk wraps exactly like a from-start walk.
+    floats: SeekFloatState,
+}
+
+/// The float state a body walk has accumulated at a seek snapshot. Exclusions
+/// are pruned per page as paragraphs plan their lines, so this stays small.
+#[derive(Clone, Debug, Default)]
+struct SeekFloatState {
+    exclusions: Vec<PageFloatExclusion>,
+    floating_table_frames: Vec<table::FloatingTableFrame>,
+    lookahead_pin: Option<float_lookahead::FloatLookaheadPin>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -272,6 +284,8 @@ mod art_borders;
 mod border_styles;
 #[cfg(test)]
 mod compat_tests;
+#[cfg(test)]
+mod continuous_chrome_tests;
 #[cfg(test)]
 mod control_mark_font_tests;
 #[cfg(test)]
@@ -3109,12 +3123,22 @@ pub struct LocalTextEditCache {
     horizontal_float_wrap_witness: Option<usize>,
 }
 
+/// Measured header and footer content heights per physical page.
+type ChromeHeights = (Vec<Option<f64>>, Vec<Option<f64>>);
+
 /// Cache both answers for an immutable snapshot without retaining it. Release
 /// the weak key before editing so `Rc::make_mut` can preserve its allocation.
 #[derive(Default)]
 struct HorizontalFloatWrapCache {
     document: std::rc::Weak<Document>,
     witness: Option<usize>,
+    /// Whether the last body render saw a wrapping float. Survives
+    /// `drop_document_cache`, so an edit that removes the only float still
+    /// treats its render as a float edit.
+    last_render_wrapped: bool,
+    /// Old or new document wraps around floats: seek snapshots must then lie
+    /// strictly before the dirty paragraph (set per render).
+    seek_guard: bool,
     #[cfg(test)]
     scans: usize,
 }
@@ -4299,6 +4323,9 @@ where
     /// when the page starts so the body's bottom edge sees the footer Word
     /// lays out rather than a per-line estimate.
     footer_content_heights: Vec<Option<f64>>,
+    /// Header and footer heights measured before a header/footer edit, until
+    /// the next render compares them (`settle_header_footer_edit`).
+    header_footer_height_baseline: Option<ChromeHeights>,
     /// Visible paragraph stories retain the geometry produced by the shared
     /// layout path for editing. Keys are (physical page, is_header); auxiliary
     /// paragraph indices are rebased to the story's own paragraph indices.
@@ -4371,6 +4398,15 @@ where
     section_seek_geometry: Vec<SectionSeekGeometry>,
     /// `page_section_indices[n]` is the section owning physical page `n + 1`.
     page_section_indices: Vec<usize>,
+    /// `mid_page_section_starts[s]` describes where section `s` started
+    /// partway down a page, after a continuous or next-column break; `None`
+    /// when it started on a page of its own. That page keeps the header,
+    /// footer and page borders of the section at its top, while its page
+    /// number restarts with `s` when `s` placed content on it (Word 2019+,
+    /// per Aspose's documentation of `ContinuousSectionRestart.Always`).
+    /// Indexed by section rather than page so a seek that skips the prefix
+    /// keeps the entries of the sections it skips.
+    mid_page_section_starts: Vec<Option<MidPageSectionStart>>,
     /// Absolute document Y of each physical page, captured during pagination.
     /// Section transitions can change height, so the current height cannot
     /// reconstruct origins belonging to earlier sections.
@@ -5382,7 +5418,15 @@ where
                 .cloned()
         };
         let snapshot = match candidate {
-            Some(snapshot) if !snapshot.spanning => Some(snapshot),
+            // Validate a page-top snapshot against the layout cache like the
+            // spanning branch: a stale prefix must fall back to a full walk.
+            Some(snapshot) if !snapshot.spanning => self
+                .last_options
+                .as_ref()
+                .is_none_or(|options| {
+                    self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
+                })
+                .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
                 // A spanning snapshot keyed at requested page K resumes at the
                 // crossing paragraph's start on P < K. The one-page visible
@@ -5780,6 +5824,7 @@ where
             page_width: self.page_width,
             spanning: false,
             table_counter: self.table_counter,
+            floats: self.seek_float_state(),
         };
         self.page_start_seek_cache
             .borrow_mut()
@@ -5819,6 +5864,26 @@ where
         self.page_column_seek_cache
             .borrow_mut()
             .insert((snapshot.page_number, snapshot.column_index), snapshot);
+    }
+
+    /// Float state for a seek snapshot. Recording is refused while a
+    /// look-ahead pin is live, so `lookahead_pin` is `None` in practice; it is
+    /// kept so a restore reproduces the walk state exactly either way.
+    /// Exclusions are kept whole (paragraphs prune them per page, and replay
+    /// gates test their emptiness); frames of earlier pages are dropped.
+    fn seek_float_state(&self) -> SeekFloatState {
+        SeekFloatState {
+            exclusions: self.active_float_exclusions.clone(),
+            // Overlap resolution only compares frames on the table's own page,
+            // and the resumed walk never returns to an earlier page.
+            floating_table_frames: self
+                .floating_table_frames
+                .iter()
+                .filter(|frame| frame.page_number >= self.current_page_number)
+                .copied()
+                .collect(),
+            lookahead_pin: self.float_lookahead_pin,
+        }
     }
 
     fn record_paragraph_seek_snapshot(
@@ -5862,6 +5927,7 @@ where
             page_width: self.page_width,
             spanning: false,
             table_counter: self.table_counter,
+            floats: self.seek_float_state(),
         };
         self.paragraph_seek_cache
             .borrow_mut()
@@ -5931,6 +5997,7 @@ where
             let valid_retry = retry.filter(|snapshot| {
                 self.forced_dirty_from
                     .is_some_and(|dirty| snapshot.paragraph_index <= dirty)
+                    && self.window_seek_float_state_is_current(snapshot)
                     && snapshot.page_number <= start_page
                     && if snapshot.spanning {
                         self.span_seek_enabled
@@ -5971,7 +6038,9 @@ where
             .filter(|s| !s.spanning)
             .cloned()
         {
-            if self.window_seek_snapshot_is_valid(&snapshot, start_page, options) {
+            if self.window_seek_float_state_is_current(&snapshot)
+                && self.window_seek_snapshot_is_valid(&snapshot, start_page, options)
+            {
                 self.window_seek_exact_hits
                     .set(self.window_seek_exact_hits.get() + 1);
                 return Some(snapshot);
@@ -5997,7 +6066,12 @@ where
                     !snapshot.spanning && page < start_page
                 })
                 .filter(|(_, snapshot)| {
-                    self.window_seek_snapshot_is_valid(snapshot, snapshot.page_number, options)
+                    self.window_seek_float_state_is_current(snapshot)
+                        && self.window_seek_snapshot_is_valid(
+                            snapshot,
+                            snapshot.page_number,
+                            options,
+                        )
                 })
                 .max_by_key(|(&page, _)| page)
                 .map(|(_, snapshot)| snapshot.clone())
@@ -6094,7 +6168,8 @@ where
             })
             // All existing geometry/anchor gates must pass.
             .filter(|snapshot| {
-                let ok = self.span_seek_snapshot_is_valid(snapshot, options);
+                let ok = self.window_seek_float_state_is_current(snapshot)
+                    && self.span_seek_snapshot_is_valid(snapshot, options);
                 if !ok {
                     self.span_seek_rejected_geometry
                         .set(self.span_seek_rejected_geometry.get() + 1);
@@ -6104,6 +6179,21 @@ where
             // Nearest resume anchor (greatest resume page P) minimizes the walk.
             .max_by_key(|snapshot| snapshot.page_number)
             .cloned()
+    }
+
+    /// Whether a lazy-edit snapshot's float state still matches the edited
+    /// document. The snapshot's exclusions come from elements before it, plus
+    /// the resume paragraph itself: the paragraph above wraps around its
+    /// objects (`float_lookahead`). So in a document with wrapping floats an
+    /// edit at or before the resume paragraph may have moved a float the
+    /// snapshot recorded; only snapshots strictly before the dirty paragraph
+    /// are kept. Without an edit (viewport/decoration repaint) the prefix is
+    /// unchanged and the captured state is exact.
+    fn window_seek_float_state_is_current(&self, snapshot: &PageStartSeekSnapshot) -> bool {
+        !self.horizontal_float_wrap_cache.seek_guard
+            || self
+                .forced_dirty_from
+                .is_none_or(|dirty| snapshot.paragraph_index < dirty)
     }
 
     fn seek_snapshot_geometry_is_valid(&self, snapshot: &PageStartSeekSnapshot) -> bool {
@@ -9881,6 +9971,7 @@ where
             hf_story_memo_disabled: false,
             header_content_heights: Vec::new(),
             footer_content_heights: Vec::new(),
+            header_footer_height_baseline: None,
             hf_story_layouts: HashMap::new(),
             rendering_header_footer_story: false,
             auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode::Disabled,
@@ -9905,6 +9996,7 @@ where
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
+            mid_page_section_starts: Vec::new(),
             page_origins: Vec::new(),
             rendered_field_lengths: None,
             footnote_number_format: None,
@@ -13201,6 +13293,52 @@ where
         );
     }
 
+    /// Drops layout derived from a floating object's old or new anchor before
+    /// an object command (move, resize, wrap change) repaints. The object
+    /// reflows text after its anchor and, through the float look-ahead, the
+    /// paragraph above it; neither is marked dirty by the command, so later
+    /// seek snapshots and layout entries would otherwise survive stale.
+    pub fn invalidate_layout_for_object_edit(&mut self, anchors: &[usize]) {
+        if let Some(first) = anchors.iter().min() {
+            self.invalidate_layout_from(first.saturating_sub(1));
+        }
+    }
+
+    /// Header/footer content is about to change. Keeps the measured chrome
+    /// heights of the last render so the next render can tell whether the
+    /// body area moved (see `settle_header_footer_edit`). The first call
+    /// since the last render wins.
+    pub fn begin_header_footer_edit(&mut self) {
+        if self.header_footer_height_baseline.is_none() {
+            self.header_footer_height_baseline = Some((
+                self.header_content_heights.clone(),
+                self.footer_content_heights.clone(),
+            ));
+        }
+    }
+
+    /// After the first render following a header/footer edit: if a page it
+    /// measured has a different header or footer height, the body top or
+    /// bottom moved on every page sharing that story. A header/footer edit
+    /// repaints only a bounded window, so layout entries and seek snapshots
+    /// past it would keep the old body area; drop them all. Edits that leave
+    /// the heights alone keep every cache.
+    fn settle_header_footer_edit(&mut self) {
+        let Some((headers, footers)) = self.header_footer_height_baseline.take() else {
+            return;
+        };
+        let moved = |old: &[Option<f64>], new: &[Option<f64>]| {
+            old.iter().zip(new).any(|(old, new)| {
+                matches!((old, new), (Some(old), Some(new)) if (old - new).abs() > 0.01)
+            })
+        };
+        if moved(&headers, &self.header_content_heights)
+            || moved(&footers, &self.footer_content_heights)
+        {
+            self.invalidate_layout_from(0);
+        }
+    }
+
     /// Invalidates the paragraph layout cache from the given index onwards.
     /// This should be called when editing a paragraph to ensure all subsequent
     /// paragraphs are re-laid out.
@@ -14224,7 +14362,10 @@ where
     /// the cache with the updated document.
     pub fn drop_document_cache(&mut self) {
         self.invalidate_page_layers_document();
-        self.horizontal_float_wrap_cache = HorizontalFloatWrapCache::default();
+        self.horizontal_float_wrap_cache = HorizontalFloatWrapCache {
+            last_render_wrapped: self.horizontal_float_wrap_cache.last_render_wrapped,
+            ..HorizontalFloatWrapCache::default()
+        };
         self.auxiliary_story_base_cache = RefCell::new(AuxiliaryStoryBaseCache::default());
         self.unanchored_footnote_body_count = None;
         self.keep_next_measurer = None;
@@ -15584,6 +15725,9 @@ where
         );
         // An early rendering error must not leak a pass's decision to callers.
         self.render_replay_options_compatible = previous;
+        if result.is_ok() {
+            self.settle_header_footer_edit();
+        }
         if result.is_err() {
             // The failed pass may have replaced last_options without rebuilding
             // every cached paragraph. Require hash checks on the next render.
@@ -15625,6 +15769,8 @@ where
         } else {
             None
         };
+        let authoritative_mid_page_section_starts =
+            snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
         let previous_page_origins = self.page_origins.clone();
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
@@ -16043,6 +16189,10 @@ where
 
         let explicit_disable = self.disable_seek_replay_once;
         let horizontal_float_wrap = self.horizontal_float_wrap_cache.get(&document_rc);
+        let float_seek_guard =
+            horizontal_float_wrap || self.horizontal_float_wrap_cache.last_render_wrapped;
+        self.horizontal_float_wrap_cache.seek_guard = float_seek_guard;
+        self.horizontal_float_wrap_cache.last_render_wrapped = horizontal_float_wrap;
         // Lazy-edit fast path: instead of re-rendering from the document start
         // (O(scroll depth) per keystroke), seek to the top of the first visible
         // page using a recorded page-start snapshot. Because the target is always
@@ -16051,10 +16201,13 @@ where
         // bug that the dirty-paragraph seek had. When no valid snapshot exists we
         // fall back to the conservative render-from-start policy below, so output
         // is always correct — just not always fast.
-        let window_seek_snapshot = if self.prefer_visible_window_seek_once
-            && !explicit_disable
-            && !horizontal_float_wrap
-        {
+        //
+        // Wrapping floats no longer block the window seek: snapshots carry the
+        // live float exclusions, floating-table frames and look-ahead pin, and
+        // the restore below reinstates them. Only the dirty-paragraph seek and
+        // prefix replay stay off for those documents (replayed paragraphs do
+        // not re-register their floats).
+        let window_seek_snapshot = if self.prefer_visible_window_seek_once && !explicit_disable {
             if let Some(snapshot) = band_retry_seek.as_ref() {
                 self.try_prepare_visible_window_page_seek_with_band_retry(options, Some(snapshot))
             } else {
@@ -16064,9 +16217,8 @@ where
             None
         };
         let window_seek_active = window_seek_snapshot.is_some();
-        let disable_seek_replay = explicit_disable
-            || horizontal_float_wrap
-            || (self.prefer_visible_window_seek_once && !window_seek_active);
+        let disable_seek_replay =
+            explicit_disable || (self.prefer_visible_window_seek_once && !window_seek_active);
 
         let forced_seek_snapshot = if disable_seek_replay {
             self.forced_seek_snapshot.take();
@@ -16092,6 +16244,7 @@ where
             self.forced_dirty_from = None;
         }
         let allow_prefix_replay = !disable_seek_replay
+            && !float_seek_guard
             && !window_seek_active
             && (seek_source.is_none()
                 || self.force_prefix_replay_all
@@ -16132,6 +16285,11 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
+        // Mid-page section starts are not cleared here: each section the walk
+        // reaches re-records its own entry at its transition, a seek keeps
+        // those of the sections it skips, and a walk that stops early keeps
+        // those of the sections it does not reach, matching the retained
+        // `page_section_indices`.
         if let Some(seek) = seek_snapshot.as_ref() {
             let keep = seek.table_counter;
             let (tables, handles, row_handles) = if snapshot_authoritative_pagination {
@@ -16270,6 +16428,14 @@ where
                     .truncate(seek.page_number.saturating_sub(1));
                 // Restore state from the snapshot.
                 self.paragraph_counter = seek.paragraph_index;
+                // Before the page advance below, so chrome laid out for the
+                // resume page sees the same floating-table frames as a
+                // from-start walk does.
+                self.active_float_exclusions
+                    .clone_from(&seek.floats.exclusions);
+                self.floating_table_frames
+                    .clone_from(&seek.floats.floating_table_frames);
+                self.float_lookahead_pin = seek.floats.lookahead_pin;
                 self.footnote_counter = seek.footnote_counter;
                 self.endnote_counter = seek.endnote_counter;
                 self.page_width = seek.page_width;
@@ -16795,6 +16961,9 @@ where
                 if let Some(page_sections) = authoritative_page_sections.as_ref() {
                     self.page_section_indices.clone_from(page_sections);
                 }
+                if let Some(starts) = authoritative_mid_page_section_starts.as_ref() {
+                    self.mid_page_section_starts.clone_from(starts);
+                }
                 self.page_origins.clone_from(&previous_page_origins);
                 self.last_completed_pagination_edit_preserved =
                     preserve_stable_edit_pagination && self.last_fast_replay_stable;
@@ -16804,6 +16973,9 @@ where
                 self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
                     self.page_section_indices.truncate(self.current_page_number);
+                    // Sections past the last one laid out no longer exist.
+                    self.mid_page_section_starts
+                        .truncate(self.active_section_index + 1);
                 }
             }
         }
@@ -17415,6 +17587,9 @@ where
             Some(after) => after,
             None => return false,
         };
+        // A skippable paragraph lies on one page: its lines are committed
+        // on the page it starts on.
+        self.note_mid_page_section_line(section_index);
         self.current_y = after.current_y;
         self.page_offset_y = after.page_offset_y;
         self.current_page_number = after.current_page_1idx;
@@ -17817,6 +17992,7 @@ where
             vertical_reversed: false,
         };
         self.selection.record_line(paragraph_index, line_layout);
+        self.note_mid_page_section_line(self.active_section_index);
     }
 
     fn advance_past_math_block(&mut self, line_height: f64, baseline: f64, after: f64) {
@@ -18472,6 +18648,9 @@ where
             has_next_column,
         );
 
+        let page_top_section = self.section_index_for_page(self.current_page_number);
+        self.settle_mid_page_section_content(self.active_section_index);
+        self.set_mid_page_section_start(target_section_index, None);
         match transition {
             SectionTransition::Stay => {
                 // A continuous section keeps the current Y. Applying the new
@@ -18507,7 +18686,7 @@ where
                 self.odd_page_margin_right_pt = odd_page_margins.right;
                 self.mirror_margins = document.mirror_margins || document.book_fold_printing;
                 self.active_section_index = target_section_index;
-                self.record_page_section(self.current_page_number);
+                self.record_mid_page_section_start(page_top_section);
                 return Ok(());
             }
             SectionTransition::NextColumn => {
@@ -18531,7 +18710,7 @@ where
                 self.odd_page_margin_left_pt = odd_page_margins.left;
                 self.odd_page_margin_right_pt = odd_page_margins.right;
                 self.mirror_margins = document.mirror_margins || document.book_fold_printing;
-                self.record_page_section(self.current_page_number);
+                self.record_mid_page_section_start(page_top_section);
                 return Ok(());
             }
             SectionTransition::NextPage { .. } => {}
@@ -20501,6 +20680,7 @@ where
             numbering_counter,
         );
         if !self.rendering_header_footer_story && !self.rendering_note_story {
+            self.note_mid_page_section_content(section_index);
             let style = paragraph
                 .properties
                 .as_ref()
@@ -22265,6 +22445,7 @@ where
                 cache_selection_lines.push(line_layout.clone());
             }
             self.selection.record_line(paragraph_index, line_layout);
+            self.note_mid_page_section_line(self.active_section_index);
             self.last_line_baseline = baseline;
         }
 
@@ -26082,6 +26263,7 @@ where
                     out.push(line_layout.clone());
                 }
                 self.selection.record_line(paragraph_index, line_layout);
+                self.note_mid_page_section_line(self.active_section_index);
                 self.last_line_baseline = baseline;
                 // A page-break-only line has no prepared text and exits via
                 // this branch. It must still advance the physical page;
@@ -27362,6 +27544,7 @@ where
                 out.push(line_layout.clone());
             }
             self.selection.record_line(paragraph_index, line_layout);
+            self.note_mid_page_section_line(self.active_section_index);
             self.last_line_baseline = baseline;
             self.last_line_box = Some((baseline, top));
 
@@ -31790,6 +31973,7 @@ where
             };
             self.draw_selection_highlight(paragraph_index, &line)?;
             self.selection.record_line(paragraph_index, line);
+            self.note_mid_page_section_line(self.active_section_index);
             if self.should_draw_current_page_for_render() {
                 plan.paint(&painter, x, baseline)
                     .map_err(PainterError::into_js_value)?;
@@ -32420,6 +32604,7 @@ where
                 }
                 if record_layout {
                     self.selection.record_line(paragraph_index, line_layout);
+                    self.note_mid_page_section_line(self.active_section_index);
                 }
 
                 *cursor_y += line_pitch;
@@ -32494,6 +32679,7 @@ where
                 if record_layout {
                     self.draw_selection_highlight(paragraph_index, &line_layout)?;
                     self.selection.record_line(paragraph_index, line_layout);
+                    self.note_mid_page_section_line(self.active_section_index);
                 }
             }
             *cursor_y += TEXT_BOX_LINE_HEIGHT;
@@ -40671,6 +40857,7 @@ where
     ) {
         self.last_document_comment_anchors = None;
         self.last_document_deleted_runs = None;
+        self.begin_header_footer_edit();
         self.header_body = header_body;
         self.footer_body = footer_body;
         self.header_body_first = header_body_first;
@@ -40704,20 +40891,150 @@ where
         self.hf_story_page_independent.clear();
     }
 
-    /// The section owning a physical (1-based) page. Pages laid out so far
-    /// are recorded in `page_section_indices`; the page being laid out right
-    /// now reads the active section.
+    /// The section supplying a physical (1-based) page's header, footer and
+    /// page borders: the section at the top of the page (rule unconfirmed
+    /// against Word captures). A section that started partway down the page
+    /// records the section the page started with. Page numbers follow
+    /// `numbering_section_for_page` instead.
     fn section_index_for_page(&self, page: usize) -> usize {
-        if page == 0
-            || page == self.current_page_number
-            || page == self.current_page_number.saturating_add(1)
-        {
+        if page == 0 || page == self.current_page_number.saturating_add(1) {
+            return self.active_section_index;
+        }
+        let last_section = self.body_section_for_page(page);
+        match self.mid_page_start(last_section) {
+            Some(start) if start.page == page => start.page_top_section,
+            _ => last_section,
+        }
+    }
+
+    /// The last section with body content on a physical (1-based) page, as
+    /// `page_section_indices` records it; the page being laid out reads the
+    /// active section.
+    fn body_section_for_page(&self, page: usize) -> usize {
+        if page == 0 || page == self.current_page_number {
             return self.active_section_index;
         }
         self.page_section_indices
-            .get(page.saturating_sub(1))
+            .get(page - 1)
             .copied()
             .unwrap_or(self.active_section_index)
+    }
+
+    fn mid_page_start(&self, section: usize) -> Option<MidPageSectionStart> {
+        self.mid_page_section_starts.get(section).copied().flatten()
+    }
+
+    fn set_mid_page_section_start(&mut self, section: usize, start: Option<MidPageSectionStart>) {
+        if self.mid_page_section_starts.len() <= section {
+            if start.is_none() {
+                return;
+            }
+            self.mid_page_section_starts.resize(section + 1, None);
+        }
+        self.mid_page_section_starts[section] = start;
+    }
+
+    /// Records the active section as owning the current page after a
+    /// continuous or next-column break. The page keeps the chrome of
+    /// `page_top_section`, the section it started with.
+    fn record_mid_page_section_start(&mut self, page_top_section: usize) {
+        let page = self.current_page_number;
+        self.record_page_section(page);
+        if page > 0 && self.active_section_index != page_top_section {
+            let start = MidPageSectionStart {
+                page,
+                page_top_section,
+                content: MidPageContent::Pending,
+            };
+            self.set_mid_page_section_start(self.active_section_index, Some(start));
+        }
+    }
+
+    /// Whether a mid-page section placed body content on the page it started
+    /// on. A started paragraph counts only while the body itself is being
+    /// laid out: a header or footer painted then must not take the number of
+    /// a paragraph that may still move on to the next page.
+    fn mid_page_start_has_content(&self, start: MidPageSectionStart) -> bool {
+        match start.content {
+            MidPageContent::Placed => true,
+            MidPageContent::Absent | MidPageContent::Pending => false,
+            MidPageContent::ParagraphStarted => {
+                self.current_page_number == start.page
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story
+            }
+        }
+    }
+
+    fn update_mid_page_content(&mut self, section: usize, content: MidPageContent) {
+        if let Some(start) = self.mid_page_start(section) {
+            self.set_mid_page_section_start(
+                section,
+                Some(MidPageSectionStart { content, ..start }),
+            );
+        }
+    }
+
+    /// A body paragraph of `section` starts on the current page.
+    fn note_mid_page_section_content(&mut self, section: usize) {
+        if self.mid_page_start(section).is_some_and(|start| {
+            start.content == MidPageContent::Pending && start.page == self.current_page_number
+        }) {
+            self.update_mid_page_content(section, MidPageContent::ParagraphStarted);
+        }
+    }
+
+    /// A body line (or a cached paragraph) of `section` is committed on the
+    /// current page.
+    fn note_mid_page_section_line(&mut self, section: usize) {
+        if self.rendering_header_footer_story || self.rendering_note_story {
+            return;
+        }
+        if self.mid_page_start(section).is_some_and(|start| {
+            matches!(
+                start.content,
+                MidPageContent::Pending | MidPageContent::ParagraphStarted
+            ) && start.page == self.current_page_number
+        }) {
+            self.update_mid_page_content(section, MidPageContent::Placed);
+        }
+    }
+
+    /// Fixes `section`'s content on its start page when that page is left or
+    /// the section ends: anything short of a committed line is absent.
+    fn settle_mid_page_section_content(&mut self, section: usize) {
+        if self.mid_page_start(section).is_some_and(|start| {
+            matches!(
+                start.content,
+                MidPageContent::Pending | MidPageContent::ParagraphStarted
+            )
+        }) {
+            self.update_mid_page_content(section, MidPageContent::Absent);
+        }
+    }
+
+    /// The section whose page numbering a physical (1-based) page follows:
+    /// the last section with content on it, so a mid-page section that
+    /// placed content there restarts the page's number although the page
+    /// shows the chrome of the section at its top.
+    fn numbering_section_for_page(&self, page: usize) -> usize {
+        let mut section = self.body_section_for_page(page);
+        while section > 0
+            && self
+                .mid_page_start(section)
+                .is_some_and(|start| start.page == page && !self.mid_page_start_has_content(start))
+        {
+            section -= 1;
+        }
+        section
+    }
+
+    /// `w:titlePg` applies to the first page whose chrome a section
+    /// supplies, unless the section's content began on an earlier page (a
+    /// mid-page start shows the earlier section's chrome there, and the
+    /// section's first-page story is never shown).
+    pub fn is_first_page_of_section_for_zero_based_page(&self, zero_based_page: usize) -> bool {
+        self.is_first_page_of_section(zero_based_page.saturating_add(1))
     }
 
     fn page_borders_for_page(&self, page: usize) -> Option<&ResolvedPageBorders> {
@@ -40752,6 +41069,9 @@ where
         }
         let section = self.section_index_for_page(page);
         self.section_index_for_page(page - 1) != section
+            && !self
+                .mid_page_start(section)
+                .is_some_and(|start| start.page < page && self.mid_page_start_has_content(start))
     }
 
     /// Resolves the story of one role for a page: the owning section's
@@ -42240,6 +42560,14 @@ where
         if physical_page == 0 {
             return;
         }
+        // Leaving the page a mid-page section started on fixes whether it
+        // placed content there.
+        if self
+            .mid_page_start(self.active_section_index)
+            .is_some_and(|start| physical_page > start.page)
+        {
+            self.settle_mid_page_section_content(self.active_section_index);
+        }
         self.page_section_indices
             .resize(physical_page, self.active_section_index);
         self.page_section_indices[physical_page - 1] = self.active_section_index;
@@ -42277,7 +42605,7 @@ where
             return start + physical_page.saturating_sub(1);
         }
         let page = physical_page.max(1);
-        let section = self.section_index_for_page(page);
+        let section = self.numbering_section_for_page(page);
         // Numbering starts at 1 unless a section's own `w:start` restarts it.
         // `page_number_start` is the default (last) section's start, which
         // must not renumber the sections before it.
@@ -42308,7 +42636,7 @@ where
             return format_page_number(displayed, self.page_number_format.as_deref());
         }
         let page = physical_page.max(1);
-        let section = self.section_index_for_page(page);
+        let section = self.numbering_section_for_page(page);
         let displayed = self.page_number_value(page);
         self.page_number_with_format(page, section, displayed)
     }
@@ -42318,7 +42646,7 @@ where
     pub fn page_labels(&self) -> Vec<(usize, usize)> {
         (1..=self.page_count())
             .map(|page| {
-                let section = self.section_index_for_page(page);
+                let section = self.numbering_section_for_page(page);
                 (section, self.page_number_value(page))
             })
             .collect()
@@ -42422,9 +42750,19 @@ where
         self.section_page_numbering = numbering;
     }
 
-    /// The first physical page owned by a section, from the pages laid out so
-    /// far (the page being laid out counts as the active section's).
+    /// The page a section's numbering starts on: the page holding its first
+    /// body content. A mid-page section that placed content on its shared
+    /// page starts there; one whose content moved on to the next page starts
+    /// on that page. Otherwise the first page laid out for the section (the
+    /// page being laid out counts as the active section's).
     fn first_page_of_section_index(&self, section: usize) -> Option<usize> {
+        if let Some(start) = self.mid_page_start(section) {
+            return Some(if self.mid_page_start_has_content(start) {
+                start.page
+            } else {
+                start.page + 1
+            });
+        }
         let laid_out = self
             .page_section_indices
             .iter()
@@ -43103,6 +43441,33 @@ fn substitute_header_footer_fields(
             crate::document::SECTION_PAGE_COUNT_FIELD_PLACEHOLDER,
             section_pages,
         )
+}
+
+/// Where a section started partway down a page (see
+/// `CanvasRenderer::mid_page_section_starts`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct MidPageSectionStart {
+    /// The physical (1-based) page the section started on.
+    page: usize,
+    /// The section at the top of that page, whose chrome the page shows.
+    page_top_section: usize,
+    /// Whether the section placed body content on `page`.
+    content: MidPageContent,
+}
+
+/// What a mid-page section has placed on the page it started on.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum MidPageContent {
+    /// Nothing yet; the page is still being laid out.
+    Pending,
+    /// A body paragraph has started there but no line is committed yet. It
+    /// counts for the paragraph's own fields, not for the page's footer, as
+    /// the paragraph may still move on to the next page.
+    ParagraphStarted,
+    /// A body line is committed on the page.
+    Placed,
+    /// The page was left (or the section ended) with nothing committed.
+    Absent,
 }
 
 /// Counts the physical pages assigned to the section containing
@@ -43858,6 +44223,7 @@ mod tests {
     }
 
     mod decoration_histories;
+    mod float_seek_tests;
     mod float_wrap_witness_tests;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
@@ -64777,6 +65143,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         let options = options_for_seek_tests();
@@ -64833,6 +65200,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         assert!(renderer
@@ -64865,6 +65233,7 @@ mod tests {
             page_width: renderer.page_width,
             spanning: false,
             table_counter: 0,
+            floats: SeekFloatState::default(),
         }
     }
 
@@ -66183,6 +66552,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66228,6 +66598,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66272,6 +66643,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66314,6 +66686,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -66369,6 +66742,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67465,6 +67839,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67509,6 +67884,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67537,6 +67913,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67600,6 +67977,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67650,6 +68028,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67696,6 +68075,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67745,6 +68125,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67790,6 +68171,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67845,6 +68227,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -67903,6 +68286,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         // Fallback candidates (page start) for page 3.
@@ -67930,6 +68314,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         // Old cached layout for dirty paragraph to estimate its page (page 3 is 0-indexed=2).
@@ -67999,6 +68384,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -68112,6 +68498,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
@@ -68157,6 +68544,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -68183,6 +68571,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         renderer.paragraph_layout_cache.borrow_mut().insert(
@@ -68540,6 +68929,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -68566,6 +68956,7 @@ mod tests {
                 page_width: renderer.page_width,
                 spanning: false,
                 table_counter: 0,
+                floats: SeekFloatState::default(),
             },
         );
 
