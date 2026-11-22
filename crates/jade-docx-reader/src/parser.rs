@@ -7931,6 +7931,13 @@ impl DocumentParser {
         })
     }
 
+    /// Builds a floating position from VML's `mso-position-*-relative` and
+    /// `margin-left` / `margin-top`, naming the frame as DrawingML's
+    /// `relativeFrom` does so the renderer resolves both alike.  VML calls the
+    /// column and paragraph `text`, the character `char`, and the margin areas
+    /// `*-margin-area`.  A margin area that does not exist on the axis (a left
+    /// or right margin vertically, a top or bottom one horizontally) is the
+    /// body box, `margin`.
     fn build_position(
         relative: Option<String>,
         offset: Option<f64>,
@@ -7942,27 +7949,26 @@ impl DocumentParser {
 
         let mut position = ImagePosition::default();
         if let Some(relative) = relative {
-            position.relative_from = Some(match relative.as_str() {
-                "margin" => "margin".to_string(),
-                "page" => "page".to_string(),
-                "leftMargin" => {
-                    if horizontal {
-                        "leftMargin".to_string()
-                    } else {
-                        "margin".to_string()
-                    }
+            let frame = match (relative.as_str(), horizontal) {
+                ("text", true) => "column",
+                ("text", false) => "paragraph",
+                ("char", true) => "character",
+                ("left-margin-area" | "leftMargin", true) => "leftMargin",
+                ("right-margin-area" | "rightMargin", true) => "rightMargin",
+                ("inner-margin-area" | "insideMargin", _) => "insideMargin",
+                ("outer-margin-area" | "outsideMargin", _) => "outsideMargin",
+                ("top-margin-area" | "topMargin", false) => "topMargin",
+                ("bottom-margin-area" | "bottomMargin", false) => "bottomMargin",
+                (
+                    "left-margin-area" | "leftMargin" | "right-margin-area" | "rightMargin",
+                    false,
+                )
+                | ("top-margin-area" | "topMargin" | "bottom-margin-area" | "bottomMargin", true) => {
+                    "margin"
                 }
-                "rightMargin" => {
-                    if horizontal {
-                        "rightMargin".to_string()
-                    } else {
-                        "margin".to_string()
-                    }
-                }
-                "line" => "line".to_string(),
-                "paragraph" => "paragraph".to_string(),
-                _ => relative,
-            });
+                _ => relative.as_str(),
+            };
+            position.relative_from = Some(frame.to_string());
         }
         position.offset_px = offset;
         Some(position)

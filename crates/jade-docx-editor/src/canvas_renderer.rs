@@ -274,6 +274,8 @@ mod border_styles;
 mod compat_tests;
 #[cfg(test)]
 mod control_mark_font_tests;
+#[cfg(test)]
+mod float_anchor_tests;
 mod float_lookahead;
 #[cfg(test)]
 mod font_state_tests;
@@ -39573,15 +39575,43 @@ where
     }
 
     /// Returns the `(start, extent)` of the horizontal reference box used for
-    /// `wp:align` positioning, keyed by the `relativeFrom` attribute.  Page-
-    /// local coordinates (page left edge = 0).
+    /// `wp:align` positioning and as the origin of `wp:posOffset`, keyed by the
+    /// `relativeFrom` attribute.  Page-local coordinates (page left edge = 0).
+    ///
+    /// `column` is the anchor paragraph's column, not the whole text body.
+    /// `insideMargin` / `outsideMargin` are the left or right margin area by
+    /// page parity (inside = left on odd pages, right on even pages), the same
+    /// book-page convention [`horizontal_align_offset_within`] uses for
+    /// `inside` / `outside` alignment.  The margin widths are this page's, so
+    /// mirrored margins are already swapped on even pages.
     fn horizontal_reference_box(&self, relative: Option<&str>) -> (f64, f64) {
+        let left_margin_area = (0.0, self.margin_left);
+        let right_margin_area = (self.page_width - self.margin_right, self.margin_right);
+        let odd_page = !self.current_page_number.is_multiple_of(2);
         match relative {
             Some("page") => (0.0, self.page_width),
-            Some("leftMargin") => (0.0, self.margin_left),
-            Some("rightMargin") => (self.page_width - self.margin_right, self.margin_right),
-            // margin / column / text / character / line / insideMargin /
-            // outsideMargin / None all resolve to the body content box.
+            Some("leftMargin") => left_margin_area,
+            Some("rightMargin") => right_margin_area,
+            Some("insideMargin") => {
+                if odd_page {
+                    left_margin_area
+                } else {
+                    right_margin_area
+                }
+            }
+            Some("outsideMargin") => {
+                if odd_page {
+                    right_margin_area
+                } else {
+                    left_margin_area
+                }
+            }
+            Some("column") => (
+                self.current_column_x(),
+                self.current_column_width().max(0.0),
+            ),
+            // margin / text / character / line / None resolve to the body
+            // content box.
             _ => (
                 self.margin_left,
                 (self.page_width - self.margin_left - self.margin_right).max(0.0),
@@ -39606,13 +39636,17 @@ where
     }
 
     /// Resolves the base X coordinate for floating images based on the
-    /// `relativeFrom` attribute (page, margin, etc.).
+    /// `relativeFrom` attribute (page, margin, etc.).  Word measures
+    /// `wp:posOffset` from the leading edge of the reference area: the page,
+    /// the left / right / inside / outside margin area, or the anchor's column.
     fn resolve_horizontal_base(&self, relative: Option<&str>, image_width: f64) -> f64 {
         match relative {
             Some("page") => 0.0,
-            Some("margin") | Some("column") | Some("line") | Some("character")
-            | Some("leftMargin") => self.margin_left,
-            Some("rightMargin") => self.page_width - self.margin_right - image_width,
+            Some(
+                frame
+                @ ("leftMargin" | "rightMargin" | "insideMargin" | "outsideMargin" | "column"),
+            ) => self.horizontal_reference_box(Some(frame)).0,
+            Some("margin") | Some("line") | Some("character") => self.margin_left,
             Some("pageCenter") => (self.page_width - image_width) / 2.0,
             _ => self.margin_left,
         }
@@ -39629,8 +39663,11 @@ where
     ) -> f64 {
         match relative {
             Some("page") => 0.0,
-            Some("margin") | Some("topMargin") => self.margin_top,
-            Some("bottomMargin") => self.page_height - self.margin_bottom - line_height,
+            Some("margin") => self.margin_top,
+            // The top / bottom margin areas start at the page top and at the
+            // bottom margin's top edge; Word offsets from there.
+            Some("topMargin") => 0.0,
+            Some("bottomMargin") => self.page_height - self.margin_bottom,
             Some("paragraph") => paragraph_start_y,
             Some("line") => {
                 // Word for Mac measures from the top of the line (`textbox`:
