@@ -3423,6 +3423,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-fixed-auto-table-grid-2000-cell-pct-1250",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-fixed-auto-table-grid-2000-cell-pct-1250/source.docx",
+        "sha256": "be95c64a1a69e75986bf913c8f5dab2875b8522024b7c6be69b0bc09f392eb5d"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-fixed-auto-table-grid-2000-cell-pct-1250/manifest.json",
+        "sha256": "fcfede5701e593c8c0e25df865fcb3b6c310262ec2f3256061e8d816b96f54de"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-fixed-auto-table-grid-2000-cell-pct-1250-be95c64a",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

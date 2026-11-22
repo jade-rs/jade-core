@@ -160,6 +160,7 @@ PHYSICAL_FONT_CASES = {
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3',
+    'probe-fixed-auto-table-grid-2000-cell-pct-1250',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -298,6 +299,7 @@ REQUIRED_CAPTURES = {
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1': '20261114T004450252Z-ac1d5d7d',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2': '20261114T004450252Z-ac1d5d7d',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3': '20261114T004450252Z-ac1d5d7d',
+    'probe-fixed-auto-table-grid-2000-cell-pct-1250': '20261114T004402030Z-30b8d3b5',
 }
 
 # These original inputs have distinct screen and print origins in Windows
