@@ -154,6 +154,17 @@ struct PageStartSeekSnapshot {
     floats: SeekFloatState,
 }
 
+/// Seek keys one layout pass recorded, from paragraph `from` on.
+#[derive(Default)]
+struct SeekPassRecord {
+    /// The first paragraph the pass laid out: it neither replayed nor
+    /// skipped anything from here on.
+    from: usize,
+    paragraphs: rustc_hash::FxHashSet<usize>,
+    pages: rustc_hash::FxHashSet<usize>,
+    columns: rustc_hash::FxHashSet<(usize, usize)>,
+}
+
 /// The float state a body walk has accumulated at a seek snapshot. Exclusions
 /// are pruned per page as paragraphs plan their lines, so this stays small.
 #[derive(Clone, Debug, Default)]
@@ -4911,6 +4922,9 @@ where
     spelling_export_mode: bool,
     page_export_mode: bool,
     page_start_seek_cache: RefCell<BTreeMap<usize, PageStartSeekSnapshot>>,
+    /// The page-start, page and column seek keys this layout pass recorded,
+    /// so a complete pass can drop what earlier layouts left behind.
+    seek_pass_record: RefCell<SeekPassRecord>,
     /// Same snapshots indexed by 1-indexed page number.
     page_start_seek_cache_by_page: RefCell<FxHashMap<usize, PageStartSeekSnapshot>>,
     /// Seek snapshots indexed by (1-indexed page number, 0-indexed column index).
@@ -5517,13 +5531,11 @@ where
         let snapshot = match candidate {
             // Validate a page-top snapshot against the layout cache like the
             // spanning branch: a stale prefix must fall back to a full walk.
-            Some(snapshot) if !snapshot.spanning => self
-                .last_options
-                .as_ref()
-                .is_none_or(|options| {
+            Some(snapshot) if !snapshot.spanning => (self.seek_anchor_is_body_paragraph(&snapshot)
+                && self.last_options.as_ref().is_none_or(|options| {
                     self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
-                })
-                .then_some(snapshot),
+                }))
+            .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
                 // A spanning snapshot keyed at requested page K resumes at the
                 // crossing paragraph's start on P < K. The one-page visible
@@ -5892,29 +5904,6 @@ where
         if body_element_index == usize::MAX || section_index == usize::MAX {
             return;
         }
-        // This walk places the paragraph afresh, so a snapshot an earlier
-        // layout recorded for it is stale. Drop it, and the page and column
-        // lookups that point at it: left in place, a later seek to that page
-        // would resume at a paragraph that no longer starts it, skipping
-        // everything before.
-        let previous = self
-            .page_start_seek_cache
-            .borrow_mut()
-            .remove(&paragraph_index);
-        if let Some(previous) = previous {
-            let page = previous.page_number;
-            let column = previous.column_index;
-            let points_here =
-                |snapshot: &PageStartSeekSnapshot| snapshot.paragraph_index == paragraph_index;
-            let mut by_page = self.page_start_seek_cache_by_page.borrow_mut();
-            if by_page.get(&page).is_some_and(points_here) {
-                by_page.remove(&page);
-            }
-            let mut by_column = self.page_column_seek_cache.borrow_mut();
-            if by_column.get(&(page, column)).is_some_and(points_here) {
-                by_column.remove(&(page, column));
-            }
-        }
         // Only record at the top of a column (which is also page-start when column_index==0).
         // A tall header can move the body below the section's top margin.
         // Use the same body edge as page advancement when identifying that top.
@@ -5949,6 +5938,16 @@ where
         self.page_start_seek_cache
             .borrow_mut()
             .insert(paragraph_index, snapshot.clone());
+        {
+            let mut record = self.seek_pass_record.borrow_mut();
+            record.paragraphs.insert(paragraph_index);
+            record
+                .columns
+                .insert((snapshot.page_number, snapshot.column_index));
+            if snapshot.column_index == 0 {
+                record.pages.insert(snapshot.page_number);
+            }
+        }
         // Keep a page lookup as well, but only for true page-start snapshots.
         if snapshot.column_index == 0 {
             // A paragraph-final page break can paint its floating text box
@@ -6584,15 +6583,23 @@ where
             }
         };
 
-        // Safety gate: regardless of which seek source won, if it points to the dirty paragraph
-        // itself then it must agree with the current dirty paragraph layout anchor.
-        if snapshot.paragraph_index == dirty_from
-            && !self.paragraph_seek_snapshot_matches_layout(
-                dirty_from,
-                &snapshot,
-                "selected-dirty",
-                options,
-            )
+        // Safety gate: whichever seek source won, it must resume at a body
+        // paragraph no later than the dirty one, and agree with that
+        // paragraph's current layout anchor (the dirty paragraph's must exist).
+        // A snapshot an earlier layout left behind would otherwise skip
+        // everything before it.
+        let anchor = snapshot.paragraph_index;
+        let checks_layout = anchor == dirty_from
+            || self
+                .paragraph_layout_cache
+                .borrow()
+                .get_entry(anchor)
+                .is_some();
+        if anchor > dirty_from
+            || !self.seek_anchor_is_body_paragraph(&snapshot)
+            || (checks_layout
+                && !self
+                    .paragraph_seek_snapshot_matches_layout(anchor, &snapshot, "selected", options))
         {
             return None;
         }
@@ -10302,6 +10309,7 @@ where
             spelling_export_mode: false,
             page_export_mode: false,
             page_start_seek_cache: RefCell::new(BTreeMap::new()),
+            seek_pass_record: RefCell::new(SeekPassRecord::default()),
             page_start_seek_cache_by_page: RefCell::new(FxHashMap::default()),
             page_column_seek_cache: RefCell::new(FxHashMap::default()),
             paragraph_seek_cache: RefCell::new(BTreeMap::new()),
@@ -13475,6 +13483,72 @@ where
         ContentHash::new(hasher.finish())
     }
 
+    /// Ends a complete layout pass: drops the page-start, page and column seek
+    /// snapshots of paragraphs from where the pass began laying out that it
+    /// did not record again. Their paragraphs no longer start that page or
+    /// column, or the document no longer has them, so resuming from one would
+    /// skip whatever now comes before it.
+    fn drop_seek_snapshots_not_recorded_this_pass(&self) {
+        let record = std::mem::take(&mut *self.seek_pass_record.borrow_mut());
+        let from = record.from;
+        self.page_start_seek_cache
+            .borrow_mut()
+            .retain(|&index, _| index < from || record.paragraphs.contains(&index));
+        self.page_start_seek_cache_by_page
+            .borrow_mut()
+            .retain(|page, snapshot| {
+                snapshot.paragraph_index < from || record.pages.contains(page)
+            });
+        self.page_column_seek_cache
+            .borrow_mut()
+            .retain(|key, snapshot| {
+                snapshot.paragraph_index < from || record.columns.contains(key)
+            });
+    }
+
+    /// Drops the layout entries and seek snapshots of paragraph indices
+    /// `range`, which a table's cells now hold. Cell paragraphs record
+    /// neither, so these come from an earlier layout in which the indices
+    /// were body paragraphs, and a seek validated against them would skip
+    /// content.
+    fn drop_seek_snapshots_in(&self, range: std::ops::Range<usize>) {
+        if range.is_empty() {
+            return;
+        }
+        self.paragraph_layout_cache
+            .borrow_mut()
+            .remove_range(range.clone());
+        for cache in [&self.page_start_seek_cache, &self.paragraph_seek_cache] {
+            let mut cache = cache.borrow_mut();
+            if cache.range(range.clone()).next().is_some() {
+                let mut tail = cache.split_off(&range.start);
+                let mut after = tail.split_off(&range.end);
+                cache.append(&mut after);
+            }
+        }
+        let outside = |snapshot: &PageStartSeekSnapshot| !range.contains(&snapshot.paragraph_index);
+        self.page_start_seek_cache_by_page
+            .borrow_mut()
+            .retain(|_, snapshot| outside(snapshot));
+        self.page_column_seek_cache
+            .borrow_mut()
+            .retain(|_, snapshot| outside(snapshot));
+    }
+
+    /// Whether a seek snapshot still resumes at a body paragraph: one whose
+    /// body element became a table, or is past the end, is from an earlier
+    /// layout.
+    fn seek_anchor_is_body_paragraph(&self, snapshot: &PageStartSeekSnapshot) -> bool {
+        self.last_document.as_ref().is_none_or(|document| {
+            document.body.as_ref().is_some_and(|body| {
+                matches!(
+                    body.elements.get(snapshot.body_element_index),
+                    Some(BodyElement::Paragraph(_))
+                )
+            })
+        })
+    }
+
     /// Drops page-keyed resume checkpoints after the dirty paragraph and records
     /// how many were invalidated for extension-frontier diagnostics.
     fn invalidate_page_seek_checkpoints_after(&self, paragraph_index: usize) {
@@ -15970,6 +16044,7 @@ where
         let authoritative_mid_page_section_starts =
             snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
         let previous_page_origins = self.page_origins.clone();
+        let previous_page_sections = self.page_section_indices.clone();
         // Get a reference to the document for use throughout the function.
         // The Rc is stored at the end for caching.
         let document: &Document = &document_rc;
@@ -16483,6 +16558,12 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
+        *self.seek_pass_record.borrow_mut() = SeekPassRecord {
+            from: seek_snapshot
+                .as_ref()
+                .map_or(0, |seek| seek.paragraph_index),
+            ..SeekPassRecord::default()
+        };
         // Mid-page section starts are not cleared here: each section the walk
         // reaches re-records its own entry at its transition, a seek keeps
         // those of the sections it skips, and a walk that stops early keeps
@@ -16624,6 +16705,16 @@ where
                 self.page_origins.clone_from(&previous_page_origins);
                 self.page_origins
                     .truncate(seek.page_number.saturating_sub(1));
+                // Likewise the skipped pages keep their sections: the render
+                // entry already cut the list to page 1, and refilling it
+                // from the resume page gave every skipped page its section.
+                let skipped = seek.page_number.saturating_sub(1);
+                if previous_page_sections.len() >= skipped {
+                    self.page_section_indices.clear();
+                    self.page_section_indices
+                        .extend_from_slice(&previous_page_sections[..skipped]);
+                    self.invalidate_page_number_table();
+                }
                 // Restore state from the snapshot.
                 self.paragraph_counter = seek.paragraph_index;
                 // Before the page advance below, so chrome laid out for the
@@ -17174,6 +17265,7 @@ where
                     .finish_pagination(self.current_page_number, self.last_layout_complete)?;
                 self.page_origins.truncate(self.current_page_number);
                 if self.last_layout_complete {
+                    self.drop_seek_snapshots_not_recorded_this_pass();
                     self.page_section_indices.truncate(self.current_page_number);
                     // Sections past the last one laid out no longer exist.
                     self.mid_page_section_starts
@@ -17684,13 +17776,23 @@ where
                 }
                 result
             }
-            BodyElement::Table(table) => self.render_table_with_numbering(
-                table,
-                options,
-                numbering_part,
-                numbering_counter,
-                body_element_index,
-            ),
+            BodyElement::Table(table) => {
+                let first_cell_paragraph = self.paragraph_counter;
+                let result = self.render_table_with_numbering(
+                    table,
+                    options,
+                    numbering_part,
+                    numbering_counter,
+                    body_element_index,
+                );
+                if body_element_index != usize::MAX
+                    && !self.rendering_header_footer_story
+                    && !self.rendering_note_story
+                {
+                    self.drop_seek_snapshots_in(first_cell_paragraph..self.paragraph_counter);
+                }
+                result
+            }
             BodyElement::Math(math) => self.render_math_block(math),
         }
     }
@@ -17811,6 +17913,11 @@ where
         self.note_replayed_spacing_after(recorded_spacing_after(
             layout.trailing_spacing_after_consumed,
         ));
+        // A skipped paragraph records no snapshot; keep the ones it has.
+        {
+            let mut record = self.seek_pass_record.borrow_mut();
+            record.from = record.from.max(paragraph_index + 1);
+        }
         self.last_render_prefix_skips += 1;
         true
     }
@@ -23187,6 +23294,10 @@ where
             let mut snapshot = anchor.clone();
             snapshot.spanning = true;
             by_page.insert(crossed_page, snapshot);
+            self.seek_pass_record
+                .borrow_mut()
+                .pages
+                .insert(crossed_page);
             self.span_seek_recorded
                 .set(self.span_seek_recorded.get() + 1);
         }
