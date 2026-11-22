@@ -359,7 +359,7 @@ fn type_one(
 ) -> Result<(), String> {
     const VISIBLE_END_PAGE_1IDX: usize = 1;
     let revision = executor.history_revision();
-    let text_edit_cache = renderer.local_text_edit_cache_for_paragraph(model, paragraph);
+    let text_edit_cache = renderer.local_text_edit_cache();
     // As `canvas_view` does before every edit: with the renderer still
     // holding the document, the edit would deep-clone it to mutate it.
     renderer.drop_document_cache();
