@@ -695,6 +695,268 @@ fn document_wide_lines_follow_a_sessionless_linked_edit() {
     assert!(text.contains("Edited footer"), "{text}");
 }
 
+fn reload(word_doc: &WordDocument) -> WordDocument {
+    futures::executor::block_on(WordDocument::load(
+        &word_doc.export_docx().expect("export"),
+        &Options::default(),
+    ))
+    .expect("reload")
+}
+
+/// Each section's own default header reference, as the model holds it.
+fn own_header_references(word_doc: &WordDocument) -> Vec<Option<String>> {
+    word_doc
+        .document
+        .as_deref()
+        .expect("document")
+        .sections
+        .iter()
+        .map(|section| {
+            section
+                .properties
+                .as_ref()
+                .and_then(|properties| properties.header_reference.clone())
+        })
+        .collect()
+}
+
+/// The first line of the default header each section shows.
+fn shown_headers(word_doc: &WordDocument) -> Vec<String> {
+    word_doc
+        .section_header_footers()
+        .iter()
+        .map(|section| {
+            section
+                .header_body
+                .as_deref()
+                .and_then(|body| body.elements.first())
+                .and_then(BodyElement::as_paragraph)
+                .map(|paragraph| paragraph.runs.iter().map(|run| run.text.as_str()).collect())
+                .unwrap_or_default()
+        })
+        .collect()
+}
+
+/// A middle section given a header of its own keeps it through a section
+/// break inserted before, in or after it, and with it relinked: the model
+/// the editor shows and edits matches what a reload of the saved file
+/// reads, and an edit of any section reaches the part that section shows.
+/// The unlink used to write the new reference into the section range only,
+/// so the break's rebuild of the ranges from the body dropped it while the
+/// saved `w:sectPr` kept it.
+#[test]
+fn an_unlinked_middle_section_keeps_its_header_through_a_section_break() {
+    for relink in [false, true] {
+        for at in 0..3 {
+            let label = format!("relink {relink}, break in section {at}");
+            let mut word_doc = load(3, 1);
+            word_doc
+                .set_header_footer_link(1, "header", "default", false)
+                .expect("unlink");
+            word_doc.hf_edit_section = Some(1);
+            word_doc
+                .replace_header_paragraph_text(0, "Own header")
+                .expect("edit the unlinked header");
+            word_doc.hf_edit_section = None;
+            if relink {
+                word_doc
+                    .set_header_footer_link(1, "header", "default", true)
+                    .expect("relink");
+            }
+            let before = shown_headers(&word_doc);
+            word_doc
+                .insert_section_break_at(at, 4, crate::word_document::SectionBreakType::NextPage)
+                .expect("section break");
+
+            let reloaded = reload(&word_doc);
+            assert_eq!(
+                own_header_references(&word_doc),
+                own_header_references(&reloaded),
+                "{label}: model references match the saved file"
+            );
+            let shown = shown_headers(&word_doc);
+            assert_eq!(shown, shown_headers(&reloaded), "{label}: shown headers");
+            // The break splits section `at` in two, each showing its header.
+            let mut expected = before.clone();
+            expected.insert(at, before[at].clone());
+            assert_eq!(shown, expected, "{label}");
+            if !relink {
+                assert!(before[1] == "Own header", "{label}: {before:?}");
+            }
+
+            for section in 0..shown.len() {
+                let mut edited = word_doc.clone();
+                edited.hf_edit_section = Some(section);
+                let text = format!("Edit {section}");
+                edited
+                    .replace_header_paragraph_text(0, &text)
+                    .expect("edit");
+                edited.hf_edit_section = None;
+                let shown = shown_headers(&edited);
+                assert_eq!(
+                    shown[section], text,
+                    "{label}: section {section} shows its edit"
+                );
+                assert_eq!(
+                    shown,
+                    shown_headers(&reload(&edited)),
+                    "{label}: the edit of section {section} reaches the part it shows"
+                );
+            }
+        }
+    }
+}
+
+type SectionSetter = fn(&mut WordDocument, usize) -> Result<bool, String>;
+type SectionReader = fn(&jade_docx_reader::document::SectionProperties) -> String;
+
+/// Every per-section property setter, with how to read its property back.
+fn section_setters() -> Vec<(&'static str, SectionSetter, SectionReader)> {
+    vec![
+        (
+            "page borders",
+            |doc, section| {
+                let edge = crate::word_document::BorderEdgeSpec {
+                    style: Some("single".into()),
+                    width: Some(1.0),
+                    color: Some("FF0000".into()),
+                };
+                doc.set_page_borders_in_section(
+                    Some(section),
+                    Some(&crate::word_document::PageBorderSpec {
+                        top: Some(edge.clone()),
+                        bottom: Some(edge.clone()),
+                        left: Some(edge.clone()),
+                        right: Some(edge),
+                        offset_from: None,
+                    }),
+                )
+            },
+            |properties| format!("{:?}", properties.page_borders.is_some()),
+        ),
+        (
+            "page number format",
+            |doc, section| doc.set_page_number_format("upperRoman", Some(3), Some(section)),
+            // The reader keeps the format lowercased, the setter as written.
+            |properties| format!("{:?}", properties.page_number_type).to_lowercase(),
+        ),
+        (
+            "endnote position",
+            |doc, section| {
+                doc.set_endnote_position(
+                    crate::document::EndnotePosition::SectionEnd,
+                    Some(section),
+                )
+            },
+            |properties| format!("{:?}", properties.endnote_position),
+        ),
+        (
+            "footnote numbering",
+            |doc, section| doc.set_note_numbering(true, "lowerRoman", 2, "eachSect", Some(section)),
+            |properties| format!("{:?}", properties.footnote_properties),
+        ),
+        (
+            "footnote beneath text",
+            |doc, section| doc.set_footnote_beneath_text(true, Some(section)),
+            |properties| format!("{:?}", properties.footnote_beneath_text),
+        ),
+        (
+            "different first page",
+            |doc, section| doc.set_header_footer_variants(true, false, Some(section)),
+            |properties| format!("{:?}", properties.title_page),
+        ),
+        (
+            "own header",
+            |doc, section| doc.set_header_footer_link(section, "header", "default", false),
+            |properties| format!("{:?}", properties.header_reference.is_some()),
+        ),
+    ]
+}
+
+fn section_values(word_doc: &WordDocument, read: SectionReader) -> Vec<String> {
+    word_doc
+        .document
+        .as_deref()
+        .expect("document")
+        .sections
+        .iter()
+        .map(|section| section.properties.as_ref().map(read).unwrap_or_default())
+        .collect()
+}
+
+/// A property set on a middle section survives a section break inserted
+/// before or after it, in the model as in the saved file. Each setter used
+/// to write a middle section's change into the derived section range only,
+/// which the break's rebuild of the ranges dropped while the saved
+/// `w:sectPr` kept it.
+#[test]
+fn middle_section_properties_survive_a_section_break() {
+    for (name, set, read) in section_setters() {
+        for at in [0, 2] {
+            let label = format!("{name}, break in section {at}");
+            let mut word_doc = load(3, 1);
+            let before = section_values(&word_doc, read);
+            assert!(set(&mut word_doc, 1).expect(name), "{label}: changed");
+            let set_values = section_values(&word_doc, read);
+            assert_ne!(
+                set_values[1], before[1],
+                "{label}: the setter changes section 1"
+            );
+            word_doc
+                .insert_section_break_at(at, 4, crate::word_document::SectionBreakType::NextPage)
+                .expect("section break");
+            let mut expected = set_values.clone();
+            expected.insert(at, set_values[at].clone());
+            let model = section_values(&word_doc, read);
+            assert_eq!(model, expected, "{label}: the model keeps the change");
+            assert_eq!(
+                model,
+                section_values(&reload(&word_doc), read),
+                "{label}: the model matches the saved file"
+            );
+        }
+    }
+}
+
+/// Debug builds catch a section property written into a range alone when
+/// the document is saved, so the bug class above cannot come back silently.
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "section range only")]
+fn a_range_only_section_write_is_caught_on_export() {
+    let mut word_doc = load(3, 1);
+    Rc::make_mut(word_doc.document.as_mut().expect("document")).sections[1]
+        .properties
+        .get_or_insert_with(Default::default)
+        .title_page = true;
+    let _ = word_doc.export_docx();
+}
+
+/// A document saved without section properties gets Word's default
+/// section written when a section edit first needs one; the model and a
+/// reload of that file read the same columns.
+#[test]
+fn a_materialised_default_section_reads_back_as_the_model_has_it() {
+    let data = super::section_tests::build_docx_with_body("<w:p><w:r><w:t>only</w:t></w:r></w:p>");
+    let mut word_doc =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    word_doc
+        .set_page_number_format("upperRoman", Some(2), None)
+        .expect("page number format");
+    let columns = |word_doc: &WordDocument| {
+        let document = word_doc.document.as_deref().expect("document");
+        format!(
+            "{:?}",
+            document
+                .sections
+                .last()
+                .and_then(|section| section.properties.as_ref())
+                .map(|properties| &properties.columns)
+        )
+    };
+    assert_eq!(columns(&word_doc), columns(&reload(&word_doc)));
+}
+
 /// Seek snapshots resume the body. A story's paragraphs are numbered past
 /// the body's and laid out at body positions, so recording them would hand
 /// a seek a resume point inside a header or footer.
