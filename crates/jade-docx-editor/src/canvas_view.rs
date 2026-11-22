@@ -2875,8 +2875,8 @@ impl OffscreenDocumentView {
             ),
         };
         let one_based = zero_based_page.saturating_add(1);
-        let first_page_of_section = zero_based_page == 0
-            || renderer.section_index_for_zero_based_page(zero_based_page - 1) != section_index;
+        let first_page_of_section =
+            renderer.is_first_page_of_section_for_zero_based_page(zero_based_page);
         if title_page && first_page_of_section && first_present {
             HfVariant::First
         } else if word_doc.even_and_odd_headers && one_based.is_multiple_of(2) && even_present {
