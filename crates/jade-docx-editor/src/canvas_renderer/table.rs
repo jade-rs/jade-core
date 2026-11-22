@@ -21153,7 +21153,7 @@ mod tests {
                     .flat_map(|fragment| fragment.glyphs.iter())
                     .map(|glyph| glyph.text.as_str())
                     .collect::<String>();
-                assert_eq!(text, "A", "the second glyph is beyond the cell clip");
+                assert_eq!(text, "AB", "unknown ink bounds retain source glyphs");
             } else {
                 assert!(projection.is_none(), "ordinary Mac capture is unchanged");
             }
