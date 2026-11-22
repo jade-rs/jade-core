@@ -7813,6 +7813,12 @@ impl OffscreenDocumentView {
         if let Some(paragraph_index) = anchor_paragraph {
             command = command.with_anchor_paragraph(paragraph_index);
         }
+        // An object laid out in a table cell keeps its cell frames.
+        if anchor_paragraph.is_none_or(|paragraph| paragraph == target.paragraph_index) {
+            if let Some(origin) = self.renderer.borrow().cell_float_frame_origin(target) {
+                command = command.with_frame_origin(origin);
+            }
+        }
         if let Some(top) = anchor_paragraph_top {
             command = command.with_anchor_paragraph_top(top);
         }

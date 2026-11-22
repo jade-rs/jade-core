@@ -4297,6 +4297,8 @@ where
     /// Linked text box chains, by id, for the document last rendered.
     linked_stories: RefCell<HashMap<u32, Rc<LinkedStory>>>,
     object_transform_preview: Option<ObjectTransformPreview>,
+    /// Frames of the floating objects last painted in table cells, by target.
+    cell_float_frames: RefCell<Vec<table::CellFloatFrameRecord>>,
     revision_debug_regions: RefCell<Vec<RevisionDebugInfo>>,
     numbering_debug_regions: RefCell<Vec<NumberingDebugInfo>>,
     line_overflow_debug_regions: RefCell<Vec<LineOverflowDebugInfo>>,
@@ -9717,6 +9719,7 @@ where
             table_picture_debug_regions: Vec::new(),
             linked_stories: RefCell::new(HashMap::new()),
             object_transform_preview: None,
+            cell_float_frames: RefCell::new(Vec::new()),
             revision_debug_regions: RefCell::new(Vec::new()),
             numbering_debug_regions: RefCell::new(Vec::new()),
             line_overflow_debug_regions: RefCell::new(Vec::new()),
