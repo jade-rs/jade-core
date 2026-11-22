@@ -708,31 +708,47 @@ fn section_justified_gap(
     (page_content_height - used_content_height).max(0.0) / gap_count as f64
 }
 
-/// Turns the gap slots a full repaint recorded (`(page, body element)` pairs,
-/// pages 1-based) into the gap each slot's element is shifted down by, keyed
-/// by body element index. Only pages whose section is `both` get a gap.
+/// One `w:vAlign="both"` gap slot: a top-level body element shifted down on
+/// its page. Positions are absolute so that a pass resuming mid-page (a seek
+/// snapshot taken with or without the gap) lands on the same spot.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct JustifiedGap {
+    /// 1-based page the element starts on.
+    page: usize,
+    /// Natural (unshifted) used body height where the element starts.
+    start_used: f64,
+    /// Total shift on the page once this element's gap is added.
+    shift: f64,
+}
+
+/// Turns the gap slots a full repaint recorded (`(page, body element, natural
+/// start)`, pages 1-based, in flow order) into each slot element's absolute
+/// shift, keyed by body element index. Only pages whose section is `both`
+/// and that are not in `skip_pages` (floats, columns) are spread.
 fn page_valign_gaps_from_sections(
     default_align: SectionVerticalAlign,
     section_alignments: &[SectionVerticalAlign],
     page_sections: &[usize],
     available_heights: &[f64],
     used_heights: &[f64],
-    slots: &[(usize, usize)],
-) -> HashMap<usize, (usize, f64)> {
+    slots: &[(usize, usize, f64)],
+    skip_pages: &HashSet<usize>,
+) -> HashMap<usize, JustifiedGap> {
     let mut counts: HashMap<usize, usize> = HashMap::new();
-    for &(page, _) in slots {
+    for &(page, _, _) in slots {
         *counts.entry(page).or_default() += 1;
     }
+    let mut seen: HashMap<usize, usize> = HashMap::new();
     slots
         .iter()
-        .filter_map(|&(page, element)| {
+        .filter_map(|&(page, element, start_used)| {
             let index = page.checked_sub(1)?;
             let align = page_sections
                 .get(index)
                 .and_then(|section| section_alignments.get(*section))
                 .copied()
                 .unwrap_or(default_align);
-            if align != SectionVerticalAlign::Both {
+            if align != SectionVerticalAlign::Both || skip_pages.contains(&page) {
                 return None;
             }
             let gap = section_justified_gap(
@@ -740,7 +756,16 @@ fn page_valign_gaps_from_sections(
                 used_heights.get(index).copied()?,
                 counts.get(&page).copied().unwrap_or(0),
             );
-            (gap > 0.0).then_some((element, (page, gap)))
+            let ordinal = seen.entry(page).or_default();
+            *ordinal += 1;
+            (gap > 0.0).then_some((
+                element,
+                JustifiedGap {
+                    page,
+                    start_used,
+                    shift: gap * *ordinal as f64,
+                },
+            ))
         })
         .collect()
 }
@@ -4032,13 +4057,30 @@ where
     /// painted render. Full renders measure first, so the same public render
     /// call consumes fresh offsets. Empty / `0.0` for the common `top` case.
     page_valign_offsets: Vec<f64>,
-    /// `w:vAlign="both"` gaps published by the last full repaint: body element
-    /// index -> (1-based page, gap px added to `current_y` before it starts).
-    page_valign_gaps: HashMap<usize, (usize, f64)>,
-    /// `(page, body element)` gap slots recorded during the current full
-    /// repaint: top-level elements that put content on a justified page below
-    /// earlier content. Published into [`Self::page_valign_gaps`].
-    valign_gap_slots: Vec<(usize, usize)>,
+    /// `w:vAlign="both"` shifts published by the last measuring pass, keyed by
+    /// body element index (see [`JustifiedGap`]).
+    page_valign_gaps: HashMap<usize, JustifiedGap>,
+    /// True during the vAlign measuring pass: justified gaps are not applied,
+    /// so the pass sees (and publishes) the natural flow.
+    valign_gaps_suspended: bool,
+    /// `(page, body element, natural start)` gap slots recorded during the
+    /// current full repaint: top-level elements that put content on a
+    /// justified page below earlier content.
+    valign_gap_slots: Vec<(usize, usize, f64)>,
+    /// Justified pages left top-aligned: they hold floats (whose wrapping
+    /// depends on the text's position) or columns.
+    valign_gap_skip_pages: HashSet<usize>,
+    /// `(body element, page)` of every top-level element started during the
+    /// current full repaint; compared between the measuring and painted
+    /// passes to prove the gaps left pagination unchanged.
+    valign_element_pages: Vec<(usize, usize)>,
+    /// Pages whose justified gaps the last full render dropped because the
+    /// painted flow deviated from the measured one (diagnostics).
+    valign_flow_fallback_pages: Vec<usize>,
+    /// Pending space-after `(page, y, px)` seen at the latest top-level
+    /// element start, so a page ended by pushing that element can leave the
+    /// space out of its justified used height.
+    valign_element_space_after: Option<(usize, f64, f64)>,
     /// Slot candidate `(page, body element, natural used height at its start)`
     /// awaiting proof that the element placed content on that page (rather
     /// than being pushed whole to the next one).
@@ -8650,6 +8692,7 @@ where
             full += separator_height * 0.5;
         }
         let body_height = self.unreserved_body_bottom()
+            - self.valign_gap_bottom_allowance()
             - (self.effective_body_top() + self.current_page_valign_offset());
         // Keep one body line free for the text: the last body line placed,
         // or the section's empty-paragraph line before any was.
@@ -9732,7 +9775,12 @@ where
             section_vertical_alignments: Vec::new(),
             page_valign_offsets: Vec::new(),
             page_valign_gaps: HashMap::new(),
+            valign_gaps_suspended: false,
             valign_gap_slots: Vec::new(),
+            valign_gap_skip_pages: HashSet::new(),
+            valign_element_pages: Vec::new(),
+            valign_flow_fallback_pages: Vec::new(),
+            valign_element_space_after: None,
             valign_pending_gap_slot: None,
             valign_gap_applied: (0, 0.0),
             section_mark_flow_page: None,
@@ -15401,9 +15449,10 @@ where
             // A vAlign measurement must cover every preceding page. Discard a
             // one-shot seek snapshot here; the paint pass is forced full too.
             self.disable_seek_replay_once = true;
-            // Justified gaps must be measured on the natural flow, so stale
-            // gaps from an earlier layout cannot move this pass's page breaks.
-            self.page_valign_gaps.clear();
+            // Justified gaps are measured on the natural flow: suspend (not
+            // drop) the published ones, so pages past a bounded measurement
+            // keep theirs.
+            self.valign_gaps_suspended = true;
             let measured = self.render_with_numbering_rc_once(
                 Rc::clone(&document_rc),
                 options,
@@ -15412,6 +15461,7 @@ where
                 footer_lines,
                 comments,
             );
+            self.valign_gaps_suspended = false;
             self.render_skip_draw = saved_skip_draw;
             measured?;
             // The layout-only pass allocated page backings without pixels.
@@ -15419,15 +15469,62 @@ where
             // the offsets it just measured.
             self.force_full_repaint_once = true;
         }
+        if measure_first {
+            self.valign_flow_fallback_pages.clear();
+        }
+        let natural_flow = (measure_first && !self.page_valign_gaps.is_empty()).then(|| {
+            (
+                std::mem::take(&mut self.valign_element_pages),
+                self.valign_used_heights.clone(),
+                self.current_page_number,
+            )
+        });
 
-        self.render_with_numbering_rc_once(
-            document_rc,
+        let mut result = self.render_with_numbering_rc_once(
+            Rc::clone(&document_rc),
             options,
             numbering_part,
             header_lines,
             footer_lines,
             comments,
-        )
+        );
+        // Justified gaps must never move a page break. The painted pass makes
+        // every fit decision on the natural flow; should one still differ
+        // (some edge comparison not covered), drop the gaps of the first page
+        // whose flow deviated and paint again.
+        if let Some((element_pages, used_heights, page_count)) = natural_flow {
+            for attempt in 0..4 {
+                if result.is_err() {
+                    break;
+                }
+                let Some(page) =
+                    self.first_valign_flow_deviation(&element_pages, &used_heights, page_count)
+                else {
+                    break;
+                };
+                self.valign_flow_fallback_pages.push(page);
+                if attempt == 3 {
+                    self.page_valign_gaps.clear();
+                } else {
+                    let before = self.page_valign_gaps.len();
+                    self.page_valign_gaps.retain(|_, gap| gap.page != page);
+                    if self.page_valign_gaps.len() == before {
+                        break;
+                    }
+                }
+                self.force_full_repaint_once = true;
+                self.disable_seek_replay_once = true;
+                result = self.render_with_numbering_rc_once(
+                    Rc::clone(&document_rc),
+                    options,
+                    numbering_part,
+                    header_lines,
+                    footer_lines,
+                    comments,
+                );
+            }
+        }
+        result
     }
 
     fn render_with_numbering_rc_once(
@@ -15700,6 +15797,9 @@ where
         self.valign_used_heights.clear();
         self.valign_available_heights.clear();
         self.valign_gap_slots.clear();
+        self.valign_gap_skip_pages.clear();
+        self.valign_element_pages.clear();
+        self.valign_element_space_after = None;
         self.valign_pending_gap_slot = None;
         self.valign_gap_applied = (0, 0.0);
         let stable_edit_metadata = self
@@ -16557,6 +16657,17 @@ where
         // for it) so section `w:vAlign` can measure the last page too. Done
         // before notes/footer, which live outside the body content region.
         self.record_valign_used_height_for_current_page();
+        // Endnotes continue the flow after the last body line, so a justified
+        // final page that holds them stays top-aligned (unconfirmed in Word).
+        if self.document_has_notes
+            && options.render_endnotes
+            && self
+                .endnote_order
+                .iter()
+                .any(|id| !rendered_endnotes.contains(id))
+        {
+            self.valign_gap_skip_pages.insert(self.current_page_number);
+        }
 
         if self.pageless_mode
             && self.document_has_notes
@@ -16665,17 +16776,24 @@ where
                 &self.valign_available_heights,
                 &self.valign_used_heights,
             );
-            let gaps = page_valign_gaps_from_sections(
-                self.section_vertical_align,
-                &self.section_vertical_alignments,
-                &self.page_section_indices,
-                &self.valign_available_heights,
-                &self.valign_used_heights,
-                &self.valign_gap_slots,
-            );
+            // Gaps come only from the measuring pass, which saw the natural
+            // flow; a painted pass keeps the gaps it was painted with.
+            let gaps = self.valign_gaps_suspended.then(|| {
+                page_valign_gaps_from_sections(
+                    self.section_vertical_align,
+                    &self.section_vertical_alignments,
+                    &self.page_section_indices,
+                    &self.valign_available_heights,
+                    &self.valign_used_heights,
+                    &self.valign_gap_slots,
+                    &self.valign_gap_skip_pages,
+                )
+            });
             if self.last_layout_complete {
                 self.page_valign_offsets = measured;
-                self.page_valign_gaps = gaps;
+                if let Some(gaps) = gaps {
+                    self.page_valign_gaps = gaps;
+                }
             } else {
                 // A bounded layout can leave the page after the inclusive
                 // limit only partially measured. Publish only the completed
@@ -16690,12 +16808,16 @@ where
                 }
                 self.page_valign_offsets[..measured_prefix_len]
                     .copy_from_slice(&measured[..measured_prefix_len]);
-                self.page_valign_gaps
-                    .retain(|_, (page, _)| *page > measured_prefix_len);
-                self.page_valign_gaps.extend(
-                    gaps.into_iter()
-                        .filter(|(_, (page, _))| *page <= measured_prefix_len),
-                );
+                if let Some(gaps) = gaps {
+                    // Keys are element indices: a measured prefix entry
+                    // replaces any stale one for the same element.
+                    self.page_valign_gaps
+                        .retain(|_, gap| gap.page > measured_prefix_len);
+                    self.page_valign_gaps.extend(
+                        gaps.into_iter()
+                            .filter(|(_, gap)| gap.page <= measured_prefix_len),
+                    );
+                }
             }
         } else if !self.any_section_valign_enabled() {
             self.page_valign_offsets.clear();
@@ -39276,7 +39398,7 @@ where
                     .unwrap_or(0.0)
             });
         let footer_top = self.footer_edit_content_bottom() - footer_height;
-        footer_top.min(margin_edge)
+        footer_top.min(margin_edge) + self.valign_gap_bottom_allowance()
     }
 
     /// Whether section `w:vAlign` (sectPr) is measured for the active section.
@@ -39297,62 +39419,6 @@ where
                     .iter()
                     .any(|align| *align != SectionVerticalAlign::Top)
             }
-    }
-
-    /// Justified gap already added to `current_y` on the current page.
-    fn current_page_valign_gap_applied(&self) -> f64 {
-        if self.valign_gap_applied.0 == self.current_page_number {
-            self.valign_gap_applied.1
-        } else {
-            0.0
-        }
-    }
-
-    /// Natural (alignment-free) used body height at `y` on the current page.
-    fn valign_natural_used_at(&self, y: f64) -> f64 {
-        y - self.effective_body_top()
-            - self.current_page_valign_offset()
-            - self.current_page_valign_gap_applied()
-    }
-
-    /// Settles a pending `w:vAlign="both"` gap slot: it counts when its element
-    /// placed content on the slot's page (the natural used height grew past
-    /// its start), and not when the element was pushed whole to a later page.
-    fn resolve_pending_valign_gap_slot(&mut self, used: f64) {
-        if let Some((page, element, start_used)) = self.valign_pending_gap_slot.take() {
-            if page == self.current_page_number && used > start_used + 0.5 {
-                self.valign_gap_slots.push((page, element));
-            }
-        }
-    }
-
-    /// Hook at the start of every top-level body element. On a justified
-    /// (`w:vAlign="both"`) single-column page, a full repaint records the
-    /// element as a gap slot when it starts below the page's first content,
-    /// and a painted pass adds the measured gap to `current_y` before it.
-    /// Pagination is unchanged: every shifted line still ends at or above the
-    /// body bottom, because the gaps on a page sum to its natural leftover.
-    fn begin_justified_valign_element(&mut self, body_element_index: usize) {
-        if self.pageless_mode
-            || self.active_section_vertical_align() != SectionVerticalAlign::Both
-            || self.column_layout.count() > 1
-        {
-            return;
-        }
-        let used = self.valign_natural_used_at(self.current_y);
-        if self.render_full_repaint {
-            self.resolve_pending_valign_gap_slot(used);
-            if used > 0.5 {
-                self.valign_pending_gap_slot =
-                    Some((self.current_page_number, body_element_index, used));
-            }
-        }
-        if let Some(&(page, gap)) = self.page_valign_gaps.get(&body_element_index) {
-            if page == self.current_page_number && used > 0.5 {
-                self.valign_gap_applied = (page, self.current_page_valign_gap_applied() + gap);
-                self.current_y += gap;
-            }
-        }
     }
 
     fn active_section_vertical_align(&self) -> SectionVerticalAlign {
@@ -39379,6 +39445,148 @@ where
             .unwrap_or(0.0)
     }
 
+    /// Justified gap already added to `current_y` on the current page.
+    fn current_page_valign_gap_applied(&self) -> f64 {
+        if self.valign_gap_applied.0 == self.current_page_number {
+            self.valign_gap_applied.1
+        } else {
+            0.0
+        }
+    }
+
+    /// How far the body bottom is moved down so fit decisions see the natural
+    /// flow: the justified gap already added on this page. Footnote, note
+    /// and header/footer stories keep the real bottom.
+    fn valign_gap_bottom_allowance(&self) -> f64 {
+        if self.pageless_mode
+            || self.rendering_page_footnotes
+            || self.rendering_header_footer_story
+            || self.rendering_note_story
+        {
+            return 0.0;
+        }
+        self.current_page_valign_gap_applied()
+    }
+
+    /// Natural (alignment-free) used body height at `y` on the current page.
+    fn valign_natural_used_at(&self, y: f64) -> f64 {
+        y - self.effective_body_top()
+            - self.current_page_valign_offset()
+            - self.current_page_valign_gap_applied()
+    }
+
+    /// Settles a pending `w:vAlign="both"` gap slot: it counts when its element
+    /// placed content on the slot's page (the natural used height grew past
+    /// its start), and not when the element was pushed whole to a later page.
+    fn resolve_pending_valign_gap_slot(&mut self, used: f64) {
+        if let Some((page, element, start_used)) = self.valign_pending_gap_slot.take() {
+            if page == self.current_page_number && used > start_used + 0.5 {
+                self.valign_gap_slots.push((page, element, start_used));
+            }
+        }
+    }
+
+    /// Hook at the start of every top-level body element.
+    ///
+    /// On a justified (`w:vAlign="both"`) single-column page a full repaint
+    /// records the element as a gap slot when it starts below the page's
+    /// first content, and a painted pass moves `current_y` to the element's
+    /// natural start plus its published shift. The shift is absolute, so a
+    /// pass resumed from a seek snapshot (taken after this hook) is not
+    /// shifted twice. The body bottom moves down by the same amount (see
+    /// [`Self::valign_gap_bottom_allowance`]), as does the pending
+    /// space-after, so every fit decision matches the unshifted flow.
+    fn begin_justified_valign_element(&mut self, body_element_index: usize) {
+        if self.pageless_mode
+            || self.measuring_keep_next
+            || self.active_section_vertical_align() != SectionVerticalAlign::Both
+        {
+            return;
+        }
+        if self.render_full_repaint {
+            self.valign_element_pages
+                .push((body_element_index, self.current_page_number));
+            self.valign_element_space_after = self
+                .trailing_spacing_after
+                .filter(|(page, _, y, _)| {
+                    *page == self.current_page_number && (y - self.current_y).abs() < 0.01
+                })
+                .map(|(page, _, y, after)| (page, y, after));
+        }
+        if self.column_layout.count() > 1 {
+            return;
+        }
+        if !self.valign_gaps_suspended {
+            if let Some(gap) = self.page_valign_gaps.get(&body_element_index).copied() {
+                let natural_start =
+                    self.effective_body_top() + self.current_page_valign_offset() + gap.start_used;
+                let present = self.current_y - natural_start;
+                if gap.page == self.current_page_number
+                    && (-0.5..=gap.shift + 0.5).contains(&present)
+                {
+                    let delta = natural_start + gap.shift - self.current_y;
+                    self.current_y += delta;
+                    if let Some((page, _, y, _)) = self.trailing_spacing_after.as_mut() {
+                        if *page == gap.page {
+                            *y += delta;
+                        }
+                    }
+                    self.valign_gap_applied = (gap.page, gap.shift);
+                }
+            }
+        }
+        if self.render_full_repaint {
+            let used = self.valign_natural_used_at(self.current_y);
+            self.resolve_pending_valign_gap_slot(used);
+            if used > 0.5 {
+                self.valign_pending_gap_slot =
+                    Some((self.current_page_number, body_element_index, used));
+            }
+        }
+    }
+
+    /// First page whose painted flow differs from the measured natural flow:
+    /// a top-level element starting on another page, a different used
+    /// height, or a different page count.
+    fn first_valign_flow_deviation(
+        &self,
+        element_pages: &[(usize, usize)],
+        used_heights: &[f64],
+        page_count: usize,
+    ) -> Option<usize> {
+        let mut first: Option<usize> = None;
+        let mut note = |page: usize| first = Some(first.map_or(page, |known| known.min(page)));
+        for (natural, painted) in element_pages.iter().zip(&self.valign_element_pages) {
+            if natural != painted {
+                note(natural.1.min(painted.1));
+                break;
+            }
+        }
+        if element_pages.len() != self.valign_element_pages.len() {
+            let common = element_pages.len().min(self.valign_element_pages.len());
+            if let Some(&(_, page)) = element_pages
+                .get(common)
+                .or_else(|| self.valign_element_pages.get(common))
+            {
+                note(page);
+            }
+        }
+        for (index, (natural, painted)) in used_heights
+            .iter()
+            .zip(&self.valign_used_heights)
+            .enumerate()
+        {
+            if (natural - painted).abs() > 0.5 {
+                note(index + 1);
+                break;
+            }
+        }
+        if page_count != self.current_page_number {
+            note(page_count.min(self.current_page_number));
+        }
+        first
+    }
+
     /// Records the natural (offset-free) used body-content height of the page
     /// currently being laid out, keyed by `current_page_number`. Called just
     /// before a page advance and once at the end of the body so the next full
@@ -39392,9 +39600,39 @@ where
         if !self.render_full_repaint || !self.section_valign_enabled() {
             return;
         }
-        let used = self.valign_natural_used_at(y).max(0.0);
+        let mut used = self.valign_natural_used_at(y).max(0.0);
         self.resolve_pending_valign_gap_slot(used);
-        let index = self.current_page_number.saturating_sub(1);
+        let page = self.current_page_number;
+        if self.active_section_vertical_align() == SectionVerticalAlign::Both {
+            // Word spreads to the last line's bottom: the page's final
+            // space-after does not take part. A paragraph pushed to the next
+            // page may already have consumed the pending space-after, so the
+            // value seen at its start counts too.
+            let pending = self
+                .trailing_spacing_after
+                .map(|(after_page, _, after_y, after)| (after_page, after_y, after));
+            if let Some((_, _, after)) = [pending, self.valign_element_space_after]
+                .into_iter()
+                .flatten()
+                .find(|(after_page, after_y, _)| *after_page == page && (after_y - y).abs() < 0.01)
+            {
+                used = (used - after).max(0.0);
+            }
+            let has_float = self
+                .active_float_exclusions
+                .iter()
+                .any(|entry| entry.page_number == page)
+                || self
+                    .floating_table_frames
+                    .iter()
+                    .any(|frame| frame.page_number == page)
+                || self.column_layout.count() > 1
+                || self.vertical_flow.is_some();
+            if has_float {
+                self.valign_gap_skip_pages.insert(page);
+            }
+        }
+        let index = page.saturating_sub(1);
         if self.valign_used_heights.len() <= index {
             self.valign_used_heights.resize(index + 1, 0.0);
         }
@@ -39404,8 +39642,10 @@ where
         // Keep the tallest observation for the page (a page is only finalized
         // once, but guarding against double-records keeps this robust).
         self.valign_used_heights[index] = self.valign_used_heights[index].max(used);
-        self.valign_available_heights[index] =
-            (self.effective_body_bottom() - self.effective_body_top()).max(0.0);
+        self.valign_available_heights[index] = (self.effective_body_bottom()
+            - self.valign_gap_bottom_allowance()
+            - self.effective_body_top())
+        .max(0.0);
     }
 
     pub fn margin_left(&self) -> f64 {
