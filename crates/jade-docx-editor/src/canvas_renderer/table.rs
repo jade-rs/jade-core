@@ -2960,6 +2960,15 @@ where
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
         let preferred_width = table.style.get("width");
         let percentage_width = preferred_width.is_some_and(|width| width.trim().ends_with('%'));
+        // Retained Windows Word14-compatible originals resolve fixed percentage
+        // grids against the legacy column text frame, including cell margins.
+        let windows_legacy_fixed_percentage_column_table = use_column_frame
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.document_east_asian_rules.compatibility_mode == Some(14)
+            && percentage_width
+            && !table.bidi_visual
+            && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
         let centered_table = table.style.get("text-align").is_some_and(|alignment| {
             alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
         });
@@ -3138,6 +3147,7 @@ where
         let width_for_sizing = if rtl_spaced_auto_grid.is_some() {
             last_column_width
         } else if (word_mac_column_table
+            || windows_legacy_fixed_percentage_column_table
             || windows_legacy_rtl_percentage_header_grid
             || windows_legacy_autofit_column_table)
             && percentage_width
@@ -3152,7 +3162,10 @@ where
         };
         let sizing_compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let section_frame_width = |width| {
-            if windows_legacy_rtl_percentage_header_grid || windows_legacy_autofit_column_table {
+            if windows_legacy_rtl_percentage_header_grid
+                || windows_legacy_autofit_column_table
+                || windows_legacy_fixed_percentage_column_table
+            {
                 let leading = pre_2013_table_text_inset_px(table, sizing_compatibility_mode);
                 if leading > 0.0 {
                     width + leading + pre_2013_table_trailing_text_inset_px(table)
@@ -3170,6 +3183,7 @@ where
             && !percentage_width
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
         if word_mac_column_table
+            || windows_legacy_fixed_percentage_column_table
             || windows_fixed_preferred_width
             || windows_legacy_rtl_percentage_header_grid
             || windows_legacy_autofit_column_table
@@ -3186,6 +3200,27 @@ where
                 .and_then(|value| preferred_width_px(value, sizing_width))
                 .filter(|width| *width > 0.0)
             {
+                // Word's legacy percentage grid includes the exposed spacing
+                // slot and outer frame edge. Resize the grid before centering,
+                // keeping text and all four perimeter rules on the same frame.
+                let width = if windows_legacy_fixed_percentage_column_table {
+                    table
+                        .rows
+                        .iter()
+                        .find(|row| !table_row_is_hidden(row))
+                        .map_or(width, |row| {
+                            let spacing = resolve_cell_spacing_px(row, table);
+                            if spacing > f64::EPSILON {
+                                width
+                                    + spacing
+                                    + spacing_frame_width(row, table, TableBorderSide::Left)
+                            } else {
+                                width
+                            }
+                        })
+                } else {
+                    width
+                };
                 let width = rtl_spaced_auto_grid.map_or(width, |(spacing, frame)| {
                     (width - (spacing - frame).max(0.0) * 0.5).max(1.0)
                 });
@@ -18920,6 +18955,100 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn legacy_fixed_column_percentages_match_retained_word_origins() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // Retained Windows Word16.0.19127.20936 origins: 50%=128.06pt,
+        // 100%=72.024pt. Independent Mac originals are128.16pt and72.0pt.
+        // The authored grid does not determine the percentage.
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (percentage, spacing, windows_x, mac_x) in [
+                (2500, 0, 128.06, 128.16),
+                (5000, 0, 72.024, 72.0),
+                (2500, 120, 134.66, 134.64),
+            ] {
+                let expected_x = if platform == WordLayoutPlatform::Mac {
+                    mac_x
+                } else {
+                    windows_x
+                };
+                for saved_grid in [2000, 2400] {
+                    let xml = format!(
+                        r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+                        <w:tbl><w:tblPr><w:tblW w:w="{percentage}" w:type="pct"/><w:jc w:val="center"/><w:tblCellSpacing w:w="{spacing}" w:type="dxa"/>
+                        <w:tblBorders><w:top w:val="single" w:sz="8"/><w:left w:val="single" w:sz="8"/><w:bottom w:val="single" w:sz="8"/><w:right w:val="single" w:sz="8"/><w:insideH w:val="single" w:sz="8"/><w:insideV w:val="single" w:sz="8"/></w:tblBorders>
+                        <w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="{saved_grid}"/></w:tblGrid>
+                        <w:tr><w:trPr><w:trHeight w:val="620" w:hRule="exact"/></w:trPr><w:tc><w:tcPr><w:tcW w:w="0" w:type="auto"/></w:tcPr>
+                        <w:p><w:r><w:t>H</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:sectPr><w:pgSz w:w="11906" w:h="8000"/>
+                        <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/><w:cols w:num="2" w:space="480"/>
+                        </w:sectPr></w:body></w:document>"#
+                    );
+                    let mut document = jade_docx_reader::DocumentParser::new()
+                        .parse_document_xml(&xml)
+                        .unwrap();
+                    document.east_asian_line_breaking.compatibility_mode = Some(14);
+                    let painter = RecordingPainter::with_width_per_char(7.0);
+                    let mut renderer = CanvasRenderer::with_host(
+                        Box::new(super::super::recording_host::RecordingHost {
+                            painter: painter.clone(),
+                        }),
+                        false,
+                    )
+                    .unwrap();
+                    renderer
+                        .render(&document, &crate::Options::default())
+                        .unwrap();
+                    let x = painter
+                        .ops()
+                        .iter()
+                        .find_map(|op| match op {
+                            Op::FillText(text, x, _) if text == "H" => Some(*x * 0.75),
+                            _ => None,
+                        })
+                        .expect("table H is painted");
+                    assert!(
+                        (x - expected_x).abs() <= 0.375,
+                        "{platform:?}/{percentage}/{saved_grid}: x={x}, Word={expected_x}"
+                    );
+                    if platform == WordLayoutPlatform::Windows && spacing > 0 {
+                        // Independent Word PDF outer/cell vertical-rule centers;
+                        // moving only text must not satisfy this regression.
+                        let mut pen: Option<(f64, f64)> = None;
+                        let mut vertical_x = Vec::new();
+                        for op in painter.ops() {
+                            match op {
+                                Op::MoveTo(x, y) => pen = Some((x, y)),
+                                Op::LineTo(x, y) => {
+                                    if let Some((start_x, start_y)) = pen {
+                                        if (start_x - x).abs() < 1e-6 && (start_y - y).abs() > 1.0 {
+                                            vertical_x.push(x * 0.75);
+                                        }
+                                    }
+                                    pen = Some((x, y));
+                                }
+                                Op::StrokeRect(x, _, width, height) if height > 1.0 => {
+                                    vertical_x.extend([x * 0.75, (x + width) * 0.75]);
+                                }
+                                _ => {}
+                            }
+                        }
+                        for expected in [116.18, 128.78, 229.01, 241.49] {
+                            assert!(
+                                vertical_x.iter().any(|x| (*x - expected).abs() <= 0.375),
+                                "grid={saved_grid}: Word rule={expected}, native={vertical_x:?}"
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn vertical_geometry_keeps_the_cached_paragraph_memory_budget() {
         // Frozen column-layout parent: native 168 bytes, wasm32 112 bytes.

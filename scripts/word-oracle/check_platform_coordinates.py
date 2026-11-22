@@ -228,6 +228,15 @@ PHYSICAL_FONT_CASES = {
     'probe-width-unequal-pct-5000-pct-2500',
     'probe-unequal-variant-three-24-left',
     'probe-unequal-variant-three-24-right',
+    'probe-second-column-centered-table',
+    'probe-table-flow-cell-spacing-start-column-1',
+    'probe-table-flow-continuous-start-column-1',
+    'probe-table-flow-continuous-start-column-2',
+    'probe-width-equal-pct-2500-auto-0',
+    'probe-width-equal-pct-2500-dxa-2000',
+    'probe-width-equal-pct-2500-pct-2500',
+    'probe-width-equal-pct-2500-pct-5000',
+    'probe-width-equal-pct-5000-pct-2500',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -434,6 +443,15 @@ REQUIRED_CAPTURES = {
     'probe-width-unequal-pct-5000-pct-2500': '20261114T020709734Z-0f2de737',
     'probe-unequal-variant-three-24-left': '20261114T004559814Z-c5e13cee',
     'probe-unequal-variant-three-24-right': '20261114T004559814Z-c5e13cee',
+    'probe-second-column-centered-table': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-cell-spacing-start-column-1': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-continuous-start-column-1': '20261114T020756625Z-d80a345e',
+    'probe-table-flow-continuous-start-column-2': '20261114T004434269Z-e27596ca',
+    'probe-width-equal-pct-2500-auto-0': '20261114T004559814Z-c5e13cee',
+    'probe-width-equal-pct-2500-dxa-2000': '20261114T004559814Z-c5e13cee',
+    'probe-width-equal-pct-2500-pct-2500': '20261114T004559814Z-c5e13cee',
+    'probe-width-equal-pct-2500-pct-5000': '20261114T004559814Z-c5e13cee',
+    'probe-width-equal-pct-5000-pct-2500': '20261114T004559814Z-c5e13cee',
 }
 
 # These original inputs have distinct screen and print origins in Windows
