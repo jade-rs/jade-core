@@ -25,7 +25,7 @@ const BODY_BOTTOM: f64 = 960.0;
 /// "H{name}", first-page header "H{name}-first", even header
 /// "H{name}-even", footer "F{name}" (each followed by a PAGE field) and a
 /// page border in `color`.
-struct Section<'a> {
+pub(super) struct Section<'a> {
     name: &'a str,
     color: &'a str,
     break_type: &'a str,
@@ -33,7 +33,7 @@ struct Section<'a> {
     extra: &'a str,
 }
 
-fn section<'a>(
+pub(super) fn section<'a>(
     name: &'a str,
     color: &'a str,
     break_type: &'a str,
@@ -55,7 +55,7 @@ fn story(tag: &str, text: &str) -> String {
     )
 }
 
-fn package(sections: &[Section], settings: &str) -> Vec<u8> {
+pub(super) fn package(sections: &[Section], settings: &str) -> Vec<u8> {
     use zip::write::SimpleFileOptions;
     let geometry = r#"<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>"#;
     let header = "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml";
@@ -139,14 +139,14 @@ fn package(sections: &[Section], settings: &str) -> Vec<u8> {
     cursor.into_inner()
 }
 
-fn paragraphs(prefix: &str, count: usize) -> String {
+pub(super) fn paragraphs(prefix: &str, count: usize) -> String {
     (0..count)
         .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
         .collect()
 }
 
 /// A paragraph showing "P" and its page number.
-const PAGE_FIELD: &str = r#"<w:p><w:r><w:t>P</w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p>"#;
+pub(super) const PAGE_FIELD: &str = r#"<w:p><w:r><w:t>P</w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p>"#;
 
 /// What one page painted: its page border colour, and the text painted
 /// above, within and below the body margins (paragraph marks dropped).

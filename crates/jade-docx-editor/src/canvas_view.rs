@@ -2896,6 +2896,10 @@ impl OffscreenDocumentView {
             return EditingMode::Body;
         }
         let page_index = renderer.page_for_y(y);
+        // The blank parity page shows no header or footer to edit.
+        if renderer.is_parity_filler_page_index(page_index) {
+            return EditingMode::Body;
+        }
         let page_height = renderer.page_height_for_page(page_index);
         let local_y = y - renderer.page_top_y(page_index);
         let margin_bottom = renderer.margin_bottom();
@@ -3944,6 +3948,22 @@ impl OffscreenDocumentView {
         Ok(())
     }
 
+    /// Header/footer editing entry also refuses the blank page an
+    /// oddPage/evenPage break inserted: it shows no header or footer.
+    fn validate_hf_edit_page_index(&self, page_index: usize) -> Result<(), JsValue> {
+        self.validate_hf_page_index(page_index)?;
+        if self
+            .renderer
+            .borrow()
+            .is_parity_filler_page_index(page_index)
+        {
+            return Err(JsValue::from_str(&format!(
+                "page index {page_index} is a blank page inserted by a section break and has no header or footer"
+            )));
+        }
+        Ok(())
+    }
+
     fn hf_cursor_at_segment_end(
         &self,
         page_index: usize,
@@ -4355,7 +4375,7 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let mode = Self::parse_hf_role(&role)?;
         let (segment, _) = Self::parse_hf_alignment(&alignment)?;
-        self.validate_hf_page_index(page_index)?;
+        self.validate_hf_edit_page_index(page_index)?;
         let variant = self.variant_for_page_index(page_index, mode == EditingMode::Header);
         let (hf_role, hf_variant) = Self::hf_role_variant(mode, variant)
             .ok_or_else(|| JsValue::from_str("body is not a header/footer editing role"))?;
@@ -4423,7 +4443,7 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let mode = Self::parse_hf_role(&role)?;
         let (segment, hf_alignment) = Self::parse_hf_alignment(&alignment)?;
-        self.validate_hf_page_index(page_index)?;
+        self.validate_hf_edit_page_index(page_index)?;
         let variant = self.variant_for_page_index(page_index, mode == EditingMode::Header);
         let (hf_role, hf_variant) = Self::hf_role_variant(mode, variant)
             .ok_or_else(|| JsValue::from_str("body is not a header/footer editing role"))?;
