@@ -489,10 +489,19 @@ mod parity_filler_numbering {
 
     #[test]
     fn a_section_restarting_its_numbers_settles_parity_by_its_start() {
+        // An odd-numbered page is a right-hand page: a restarting section
+        // needs a blank first when its start shares the parity of the page
+        // before the break, whichever parity the break names.
         let start = |n: u32| format!(r#"<w:pgNumType w:start="{n}"/>"#);
-        assert_eq!(layout(&render("", "oddPage", &start(1))), (2, vec![], 1));
-        assert_eq!(layout(&render("", "oddPage", &start(2))), (3, vec![2], 2));
+        // Front matter on page 1, then chapter 1 restarting at 1: 1, blank, 1.
+        assert_eq!(layout(&render("", "oddPage", &start(1))), (3, vec![2], 1));
+        assert_eq!(layout(&render("", "oddPage", &start(2))), (2, vec![], 2));
         assert_eq!(layout(&render("", "evenPage", &start(1))), (3, vec![2], 1));
         assert_eq!(layout(&render("", "evenPage", &start(2))), (2, vec![], 2));
+        // Page 1 shows 2, so a section restarting at 2 needs the blank.
+        assert_eq!(
+            layout(&render(&start(2), "evenPage", &start(2))),
+            (3, vec![2], 2)
+        );
     }
 }

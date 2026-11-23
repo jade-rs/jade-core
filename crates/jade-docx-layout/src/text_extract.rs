@@ -14,8 +14,8 @@ use crate::line_wrap::{
     ParagraphStyle, RunStyle, DEFAULT_INDENT_CHAR_UNIT_PT,
 };
 use crate::section_transition::{
-    resolve_page_margins, resolve_section_transition, word_section_text_direction,
-    SectionBreakType, SectionTransition,
+    parity_page_advances, resolve_page_margins, resolve_section_transition,
+    word_section_text_direction, SectionBreakType, SectionTransition,
 };
 use crate::units::points_to_px;
 use jade_docx_reader::PAGE_BREAK_CHAR;
@@ -2168,6 +2168,16 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
 
     let mut lines = Vec::new();
     let mut current_page_0 = 0usize;
+    // `w:pgNumType w:start` of a section, the number its first page shows.
+    let restart = |properties: Option<&SectionProperties>| {
+        properties
+            .and_then(|properties| properties.page_number_type.as_ref())
+            .and_then(|numbering| numbering.start)
+            .map(|start| start as usize)
+    };
+    // The number page `current_page_0` displays is `current_page_0` plus
+    // this offset: oddPage/evenPage parity follows displayed numbers.
+    let mut page_number_offset = restart(initial_section).map_or(1, |start| start as i64);
     let mut current_column = 0usize;
     // See `CanvasRenderer::trailing_spacing_after`: where the previous
     // paragraph's spacing-after ended, and how much it added.
@@ -2196,17 +2206,36 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     target_section.properties.as_ref(),
                     current_page_0 + 1,
                 );
-                let transition = resolve_section_transition(
-                    SectionBreakType::from_word_value(
-                        target_section
-                            .properties
-                            .as_ref()
-                            .and_then(|properties| properties.section_type.as_deref()),
-                    ),
-                    current_page_0 + 1,
+                let section_type = SectionBreakType::from_word_value(
+                    target_section
+                        .properties
+                        .as_ref()
+                        .and_then(|properties| properties.section_type.as_deref()),
+                );
+                let target_restart = restart(target_section.properties.as_ref());
+                let displayed = (current_page_0 as i64 + page_number_offset).max(0) as usize;
+                let transition = match resolve_section_transition(
+                    section_type,
+                    displayed,
                     !geometry.same_page_geometry(&target_geometry),
                     current_column + 1 < geometry.column_layout.len(),
-                );
+                ) {
+                    SectionTransition::NextPage { .. }
+                        if matches!(
+                            section_type,
+                            SectionBreakType::OddPage | SectionBreakType::EvenPage
+                        ) =>
+                    {
+                        SectionTransition::NextPage {
+                            page_advances: parity_page_advances(
+                                section_type,
+                                displayed,
+                                target_restart,
+                            ),
+                        }
+                    }
+                    transition => transition,
+                };
                 match transition {
                     SectionTransition::Stay => {
                         current_column = 0;
@@ -2220,6 +2249,9 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         current_page_0 += page_advances;
                         current_column = 0;
                         current_y = target_geometry.content_top_y;
+                        if let Some(start) = target_restart {
+                            page_number_offset = start as i64 - current_page_0 as i64;
+                        }
                     }
                 }
                 geometry = target_geometry;

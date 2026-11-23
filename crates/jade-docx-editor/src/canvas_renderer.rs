@@ -58,9 +58,9 @@ use jade_docx_layout::note_area::{
     note_line_overflows, reserve_note_area, NoteAreaReserve, MIN_NOTE_LINE_PT,
 };
 use jade_docx_layout::section_transition::{
-    resolve_page_margins, resolve_section_transition, word_section_text_direction,
-    SectionBreakType, SectionTransition, DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT,
-    DEFAULT_PAGE_WIDTH_PT,
+    parity_page_advances, resolve_page_margins, resolve_section_transition,
+    word_section_text_direction, SectionBreakType, SectionTransition, DEFAULT_MARGIN_PT,
+    DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
 };
 pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
@@ -19324,11 +19324,15 @@ where
         let section_break = SectionBreakType::from_word_value(section_break_type);
         let previous_column_index = self.column_index;
         let has_next_column = previous_column_index + 1 < self.column_layout.count();
-        let transition = resolve_section_transition(
+        let transition = self.settle_parity_transition(
             section_break,
-            self.parity_page_number_before_section(target_section_index),
-            !same_layout,
-            has_next_column,
+            target_section_index,
+            resolve_section_transition(
+                section_break,
+                self.current_page_number,
+                !same_layout,
+                has_next_column,
+            ),
         );
 
         let page_top_section = self.section_index_for_page(self.current_page_number);
@@ -19418,11 +19422,15 @@ where
                 self.render_footer_simple()?;
                 section_mark_top = None;
             }
-            page_transition = resolve_section_transition(
+            page_transition = self.settle_parity_transition(
                 section_break,
-                self.parity_page_number_before_section(target_section_index),
-                !same_layout,
-                has_next_column,
+                target_section_index,
+                resolve_section_transition(
+                    section_break,
+                    self.current_page_number,
+                    !same_layout,
+                    has_next_column,
+                ),
             );
         }
         let SectionTransition::NextPage { page_advances } = page_transition else {
@@ -19718,18 +19726,35 @@ where
         Ok(())
     }
 
-    /// The page number an oddPage/evenPage break into `target_section` tests
-    /// parity against, in the `current_page` sense of
-    /// `resolve_section_transition` (the page before the section's first
-    /// page). Word goes by the number the page displays, not its physical
-    /// position: the section's own `w:pgNumType w:start` when it restarts
-    /// numbering, else the number after the current page's (§17.6.12).
-    fn parity_page_number_before_section(&self, target_section: usize) -> usize {
-        match self.section_page_number_start(target_section) {
-            // Any number of the same parity as `start - 1`, without
-            // underflowing at `w:start="0"`.
-            Some(start) => start + 1,
-            None => self.page_number_value(self.current_page_number),
+    /// Settles how many pages an oddPage/evenPage break into
+    /// `target_section` advances by displayed page numbers, as Word does:
+    /// the number the current page shows against the section's own
+    /// `w:pgNumType w:start` when it restarts numbering, else against the
+    /// next number (§17.6.12). `transition` was resolved from the physical
+    /// page, which only settles whether the break starts a page; other break
+    /// types keep it, and never look up a page number.
+    fn settle_parity_transition(
+        &self,
+        section_break: SectionBreakType,
+        target_section: usize,
+        transition: SectionTransition,
+    ) -> SectionTransition {
+        match transition {
+            SectionTransition::NextPage { .. }
+                if matches!(
+                    section_break,
+                    SectionBreakType::OddPage | SectionBreakType::EvenPage
+                ) =>
+            {
+                SectionTransition::NextPage {
+                    page_advances: parity_page_advances(
+                        section_break,
+                        self.page_number_value(self.current_page_number),
+                        self.section_page_number_start(target_section),
+                    ),
+                }
+            }
+            transition => transition,
         }
     }
 
@@ -42088,9 +42113,6 @@ where
         self.header_content_heights[page_index] = Some(content_height.max(0.0));
     }
 
-    /// Returns the header editing boundary for a physical page. A measured
-    /// rich-body height wins; the HeaderLine fallback remains for synthetic or
-    /// not-yet-rendered documents that do not carry a parsed block story.
     /// Whether the page at `zero_based_page` is the blank page an
     /// oddPage/evenPage section break inserted to reach the required parity.
     /// It shows no header or footer, so none can be edited there.
@@ -42099,6 +42121,9 @@ where
             .contains(&zero_based_page.saturating_add(1))
     }
 
+    /// Returns the header editing boundary for a physical page. A measured
+    /// rich-body height wins; the HeaderLine fallback remains for synthetic or
+    /// not-yet-rendered documents that do not carry a parsed block story.
     pub fn header_edit_boundary_for_page(&self, zero_based_page: usize) -> f64 {
         let measured = self
             .header_content_heights
