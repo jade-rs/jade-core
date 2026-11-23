@@ -6406,6 +6406,32 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "table-cell-fit-text-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-cell-fit-text-mac/source.docx",
+        "sha256": "2f11b93894009a6aae32f06f831718f53924afe225860dd87d17acde14ec0ec1"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-cell-fit-text-mac/manifest.json",
+        "sha256": "2904aa83d1ae4b57d28f8533f9979050efeb46d4516db9249cff0e4236bb0368"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004633221Z-54077165",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004633221Z-54077165.zip",
+            "sha256": "4e5f70191a447531f25749c3c2338b1bf5fc4bf8641786882160d57bdd84e3fa"
+          },
+          "capture_sha256": "c1b5281066525e78180c58e850c0d1271b4b81a9efbb45c9d4c96324ce9d76bb",
+          "fixture": "ww14-table-cell-fit-text-mac-2f11b938",
+          "font_source": "original-word-pdf",
+          "output_context": "independent-screen-print"
+        }
+      ]
     }
   ]
 }

@@ -105,6 +105,7 @@ const ROW_SPLIT_EPSILON: f64 = 0.001;
 /// measurement can accumulate a few millionths of a pixel across mixed runs;
 /// without this tolerance an exactly fitted final word may wrap by itself.
 const CELL_FIT_TEXT_EPSILON_PX: f64 = 0.01;
+const WINDOWS_CELL_FIT_TEXT_DPI: f64 = 600.0;
 // Preserve origins at the edge when font rasterizers disagree on subpixel bearings.
 const CELL_CAPTURE_INK_EDGE_TOLERANCE_PX: f64 = 0.25;
 // Keep enough entries for a full layout walk of long, table-heavy documents.
@@ -16243,12 +16244,64 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                             } else {
                                 let trailing_overhang =
                                     paragraph_trailing_overhang(wrap_context, &text, &styled_runs)?;
-                                fit_text_run_ranges(
+                                let natural_width = natural.max_line_width + trailing_overhang;
+                                let border_width = if separated {
+                                    0.0
+                                } else {
+                                    visible_border_width(&border_left)
+                                        + visible_border_width(&border_right)
+                                };
+                                let fitted_target = (target_width - border_width).max(1.0);
+                                // Condensed Windows font cells and their occupied width
+                                // use the same print-device grid. Expansion retains the
+                                // natural glyphs and distributes only the remaining gaps.
+                                let fitted_target = if fitted_target < natural_width {
+                                    (fitted_target * WINDOWS_CELL_FIT_TEXT_DPI / 96.0)
+                                        .floor()
+                                        .max(1.0)
+                                        * 96.0
+                                        / WINDOWS_CELL_FIT_TEXT_DPI
+                                } else {
+                                    fitted_target
+                                };
+                                if let Some(fitted) = windows_cell_fit_text_run_ranges(
+                                    wrap_context,
                                     &text,
                                     &styled_runs,
-                                    natural.max_line_width + trailing_overhang,
-                                    target_width,
-                                )
+                                    natural_width,
+                                    fitted_target,
+                                )? {
+                                    let realized = layout_paragraph_with_table_context(
+                                        wrap_context,
+                                        &text,
+                                        1_000_000_000.0,
+                                        paragraph_line_height,
+                                        cell.text_direction,
+                                        text_direction_available_height,
+                                        &fitted,
+                                        &paragraph_style,
+                                        left_inset,
+                                    )?;
+                                    let realized_width = realized.max_line_width
+                                        + paragraph_trailing_overhang(
+                                            wrap_context,
+                                            &text,
+                                            &fitted,
+                                        )?;
+                                    windows_distribute_cell_fit_width(
+                                        &text,
+                                        &fitted,
+                                        realized_width,
+                                        fitted_target,
+                                    )
+                                } else {
+                                    fit_text_run_ranges(
+                                        &text,
+                                        &styled_runs,
+                                        natural_width,
+                                        target_width,
+                                    )
+                                }
                             };
                         } else if let (Some(direction), Some(target_height)) =
                             (cell.text_direction, vertical_fit_target)
@@ -17144,6 +17197,147 @@ fn fit_text_run_ranges(
             run
         })
         .collect()
+}
+
+// Keep source tracking, source scaling, inline objects, complex clusters and
+// noncontiguous ranges on the established fitting path. A derived gap must not
+// replace an existing source property or fit the same source a second time.
+fn windows_cell_fit_text_source_is_simple(text: &str, runs: &[StyledRunRange]) -> bool {
+    if text.len() < 2
+        || !text.is_ascii()
+        || text.bytes().any(|c| c.is_ascii_control())
+        || text.as_bytes().first().is_some_and(u8::is_ascii_whitespace)
+        || text.as_bytes().last().is_some_and(u8::is_ascii_whitespace)
+    {
+        return false;
+    }
+    let mut end = 0;
+    for run in runs {
+        if run.start != end
+            || run.end <= run.start
+            || run.end > text.len()
+            || run.inline_object.is_some()
+            || run.properties.as_ref().is_some_and(|p| {
+                p.fit_text.is_some()
+                    || p.char_spacing.is_some_and(|v| v != 0.0)
+                    || p.text_scale.is_some_and(|v| v != 100.0)
+            })
+        {
+            return false;
+        }
+        end = run.end;
+    }
+    runs.is_empty() || end == text.len()
+}
+
+// Original Word 16.0.19127.20936 uses separate integer font cells for the
+// condensed bold/italic faces. Re-measure these realized fonts before spreading
+// their remaining width, rather than stretching every face by one float ratio.
+fn windows_cell_fit_text_run_ranges<C: LineWrapContext>(
+    context: &C,
+    text: &str,
+    styled_runs: &[StyledRunRange],
+    measured_width: f64,
+    target_width: f64,
+) -> Result<Option<Vec<StyledRunRange>>, C::Error> {
+    if !windows_cell_fit_text_source_is_simple(text, styled_runs)
+        || !measured_width.is_finite()
+        || measured_width <= f64::EPSILON
+        || !target_width.is_finite()
+        || target_width <= f64::EPSILON
+    {
+        return Ok(None);
+    }
+    if target_width >= measured_width {
+        return Ok(Some(styled_runs.to_vec()));
+    }
+    let mut fitted = fit_text_run_ranges(text, styled_runs, measured_width, target_width);
+    for run in &mut fitted {
+        let style = context.resolve_run_style(run.properties.as_ref())?;
+        let descriptor = style.descriptor_for_grapheme("A", classify_script("A"));
+        let Some(average) =
+            jade_docx_layout::line_metrics::word_windows_legacy_justification_average_width_px(
+                descriptor,
+            )
+        else {
+            return Ok(None);
+        };
+        let Some(em) = jade_docx_layout::line_metrics::font_em_px(descriptor) else {
+            return Ok(None);
+        };
+        if !em.is_finite()
+            || em <= 0.0
+            || !average.is_finite()
+            || average <= 0.0
+            || !style.text_scale_x.is_finite()
+        {
+            return Ok(None);
+        }
+        let height = (em * WINDOWS_CELL_FIT_TEXT_DPI / 96.0).round().max(1.0);
+        let average = (average / em * height).round().max(1.0);
+        let width = (average * style.text_scale_x).floor().max(1.0);
+        let properties = run.properties.get_or_insert_with(Default::default);
+        properties.font_size = Some((height * 72.0 / WINDOWS_CELL_FIT_TEXT_DPI) as f32);
+        properties.text_scale = Some((100.0 * width / average) as f32);
+    }
+    Ok(Some(fitted))
+}
+
+// Preserve the realized font and place the additional width only between
+// characters. The final character keeps its natural advance and source style.
+fn windows_distribute_cell_fit_width(
+    text: &str,
+    styled_runs: &[StyledRunRange],
+    measured_width: f64,
+    target_width: f64,
+) -> Vec<StyledRunRange> {
+    if !text.is_ascii()
+        || text.bytes().any(|c| c.is_ascii_control())
+        || text.len() < 2
+        || !measured_width.is_finite()
+        || !target_width.is_finite()
+        || target_width <= measured_width
+        || measured_width <= f64::EPSILON
+        || styled_runs.iter().any(|run| {
+            run.inline_object.is_some()
+                || run.properties.as_ref().is_some_and(|p| {
+                    p.fit_text.is_some() || p.char_spacing.is_some_and(|v| v != 0.0)
+                })
+        })
+    {
+        return styled_runs.to_vec();
+    }
+    let gap_pt = ((target_width - measured_width) / (text.len() - 1) as f64 * 72.0 / 96.0) as f32;
+    let source = if styled_runs.is_empty() {
+        vec![StyledRunRange {
+            inline_object: None,
+            start: 0,
+            end: text.len(),
+            properties: None,
+            revision: None,
+        }]
+    } else {
+        styled_runs.to_vec()
+    };
+    let last = text.len() - 1;
+    let mut result = Vec::new();
+    for run in source {
+        if run.start < last {
+            let mut spaced = run.clone();
+            spaced.end = run.end.min(last);
+            spaced
+                .properties
+                .get_or_insert_with(Default::default)
+                .char_spacing = Some(gap_pt);
+            result.push(spaced);
+        }
+        if run.end > last {
+            let mut final_character = run;
+            final_character.start = final_character.start.max(last);
+            result.push(final_character);
+        }
+    }
+    result
 }
 
 /// Word for Mac fits a `w:tcFitText` cell as one run-level `w:fitText` group
@@ -22649,6 +22843,96 @@ mod tests {
                 .val,
             2160
         );
+    }
+
+    #[test]
+    fn windows_cell_fit_preserves_existing_source_properties_and_range_boundaries() {
+        let mut run = StyledRunRange {
+            inline_object: None,
+            start: 0,
+            end: 4,
+            properties: None,
+            revision: None,
+        };
+        assert!(windows_cell_fit_text_source_is_simple(
+            "WIDE",
+            &[run.clone()]
+        ));
+        for properties in [
+            crate::document::RunProperties {
+                char_spacing: Some(1.0),
+                ..Default::default()
+            },
+            crate::document::RunProperties {
+                text_scale: Some(80.0),
+                ..Default::default()
+            },
+            crate::document::RunProperties {
+                fit_text: Some(crate::document::RunFitText { val: 100, id: None }),
+                ..Default::default()
+            },
+        ] {
+            run.properties = Some(properties);
+            assert!(!windows_cell_fit_text_source_is_simple(
+                "WIDE",
+                &[run.clone()]
+            ));
+        }
+        run.properties = None;
+        run.start = 1;
+        assert!(!windows_cell_fit_text_source_is_simple("WIDE", &[run]));
+        for text in ["a", "a\tb", "日本語", " WIDE", "WIDE "] {
+            assert!(!windows_cell_fit_text_source_is_simple(text, &[]));
+        }
+    }
+
+    #[test]
+    fn windows_cell_fit_gaps_keep_realized_glyph_scale_and_final_advance() {
+        let run = StyledRunRange {
+            inline_object: None,
+            start: 0,
+            end: 4,
+            properties: Some(crate::document::RunProperties {
+                font_size: Some(10.56),
+                text_scale: Some(60.0),
+                ..Default::default()
+            }),
+            revision: None,
+        };
+        let fitted = windows_distribute_cell_fit_width("WIDE", &[run], 40.0, 160.0);
+        assert_eq!(fitted.len(), 2);
+        assert_eq!((fitted[0].start, fitted[0].end), (0, 3));
+        assert_eq!((fitted[1].start, fitted[1].end), (3, 4));
+        assert_eq!(
+            fitted[0].properties.as_ref().unwrap().char_spacing,
+            Some(30.0)
+        );
+        assert_eq!(fitted[1].properties.as_ref().unwrap().char_spacing, None);
+        for run in fitted {
+            let properties = run.properties.unwrap();
+            assert_eq!(properties.font_size, Some(10.56));
+            assert_eq!(properties.text_scale, Some(60.0));
+        }
+    }
+
+    #[test]
+    fn windows_cell_fit_gap_fallback_does_not_fit_source_tracking_twice() {
+        let run = StyledRunRange {
+            inline_object: None,
+            start: 0,
+            end: 4,
+            properties: Some(crate::document::RunProperties {
+                char_spacing: Some(2.0),
+                text_scale: Some(60.0),
+                ..Default::default()
+            }),
+            revision: None,
+        };
+        let fitted = windows_distribute_cell_fit_width("WIDE", &[run], 40.0, 160.0);
+        assert_eq!(fitted.len(), 1);
+        let properties = fitted[0].properties.as_ref().unwrap();
+        assert_eq!(properties.char_spacing, Some(2.0));
+        assert_eq!(properties.text_scale, Some(60.0));
     }
 
     #[test]
