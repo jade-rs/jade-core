@@ -2567,7 +2567,7 @@ impl ColumnLayout {
         let available_for_columns = (total_body_width - gaps.iter().sum::<f64>()).max(1.0);
 
         let widths = if use_custom_widths {
-            let mut collected: Vec<f64> = columns
+            let collected: Vec<f64> = columns
                 .columns
                 .iter()
                 .take(count)
@@ -2575,14 +2575,9 @@ impl ColumnLayout {
                 .collect();
             let total_declared: f64 = collected.iter().sum();
             if total_declared > 0.0 {
-                // Word for Mac uses the authored column widths even when
-                // their sum differs from the available body width.
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                {
-                    let scale = available_for_columns / total_declared;
-                    collected.iter_mut().for_each(|w| *w *= scale);
-                }
+                // Both Word platforms retain explicitly authored unequal widths,
+                // even when their sum and gutters exceed the page body. Scaling
+                // them shifts later columns and changes table wrapping.
                 collected
             } else {
                 vec![available_for_columns / count.max(1) as f64; count]
@@ -4635,6 +4630,7 @@ where
     /// unusually tall header/footer exceeds the body boundary.
     rendering_header_footer_story: bool,
     auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode,
+    capture_painted_table_headers: bool,
     auxiliary_story_debug_lines: Vec<AuxiliaryStoryLineDebug>,
     /// Mirrors `SectionProperties::title_page` from the default section.
     title_page: bool,
@@ -10420,6 +10416,7 @@ where
             hf_story_layouts: HashMap::new(),
             rendering_header_footer_story: false,
             auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode::Disabled,
+            capture_painted_table_headers: false,
             auxiliary_story_debug_lines: Vec::new(),
             title_page: false,
             even_and_odd_headers: false,
@@ -17606,20 +17603,19 @@ where
                         0,
                         options,
                     );
-                    // Word for Mac omits the empty section mark from page
-                    // vAlign and from the vertical flow at a continuous column
-                    // change. Keep its layout available for editing.
+                    // Word omits empty continuous section marks from vertical
+                    // flow on both platforms. Mac also excludes them from page
+                    // vAlign. Keep their layout available for editing.
                     let empty_section_mark = body_element_index + 1 == end
                         && sections.get(index + 1).is_some_and(|next| {
-                            self.section_valign_enabled()
-                                || next
-                                    .properties
-                                    .as_ref()
-                                    .and_then(|props| props.section_type.as_deref())
-                                    == Some("continuous")
+                            next.properties
+                                .as_ref()
+                                .and_then(|props| props.section_type.as_deref())
+                                == Some("continuous")
+                                || (self.section_valign_enabled()
+                                    && jade_docx_layout::line_metrics::word_layout_platform()
+                                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
                         })
-                        && jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         && matches!(element, BodyElement::Paragraph(paragraph)
                             if paragraph.runs.is_empty()
                                 && paragraph.properties.as_ref().is_some_and(|props|
@@ -39996,7 +39992,7 @@ where
     /// Rebuilds diagnostics from page one with no lazy limit or seek replay.
     /// This is deliberately expensive and should only run for release captures.
     pub fn capture_full_layout_debug(&mut self) -> Result<FullLayoutDebugSnapshot, JsValue> {
-        self.capture_full_layout_debug_with_table_projection(true)
+        self.capture_full_layout_debug_with_table_projection(true, false)
     }
 
     /// Include table glyph origins hidden by an exact row's clipping region.
@@ -40005,12 +40001,22 @@ where
     pub fn capture_full_layout_debug_unclipped_tables(
         &mut self,
     ) -> Result<FullLayoutDebugSnapshot, JsValue> {
-        self.capture_full_layout_debug_with_table_projection(false)
+        self.capture_full_layout_debug_with_table_projection(false, false)
+    }
+
+    /// Capture the visible glyphs of repeated table headers as well as body
+    /// cells. This opt-in diagnostic projection matches painted-PDF captures;
+    /// ordinary captures, editing geometry and painter commands are unchanged.
+    pub fn capture_full_layout_debug_painted_table_headers(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(true, true)
     }
 
     fn capture_full_layout_debug_with_table_projection(
         &mut self,
         clip_table_glyphs: bool,
+        painted_table_headers: bool,
     ) -> Result<FullLayoutDebugSnapshot, JsValue> {
         if self.last_document.is_none() {
             return Err(JsValue::from_str("Document not loaded"));
@@ -40018,12 +40024,14 @@ where
         let saved_limit = self.layout_page_limit;
         let saved_visible = self.visible_page_range.clone();
         let saved_capture = self.auxiliary_story_capture_mode;
+        let saved_header_projection = self.capture_painted_table_headers;
         let saved_force_full_repaint = self.force_full_repaint_once;
         let saved_disable_seek_replay = self.disable_seek_replay_once;
         let saved_hf_story_layouts = std::mem::take(&mut self.hf_story_layouts);
         self.layout_page_limit = None;
         self.visible_page_range = None;
         self.auxiliary_story_capture_mode = AuxiliaryStoryCaptureMode::Full;
+        self.capture_painted_table_headers = painted_table_headers;
         self.force_full_repaint_once = true;
         self.disable_seek_replay_once = true;
 
@@ -40037,8 +40045,15 @@ where
             let mut auxiliary_lines = self.auxiliary_story_debug_lines.clone();
             let mut clipped_table_lines = HashMap::new();
             let mut painted_table_lines = HashMap::new();
+            let mut clipped_header_lines = HashMap::new();
             auxiliary_lines.retain(|entry| {
-                if entry.story == "table_clip_projection" {
+                if entry.story == "table_header_clip_projection" {
+                    clipped_header_lines.insert(
+                        (entry.line.paragraph, entry.line.line, entry.line.page),
+                        entry.line.clone(),
+                    );
+                    false
+                } else if entry.story == "table_clip_projection" {
                     clipped_table_lines.insert(
                         (entry.line.paragraph, entry.line.line, entry.line.page),
                         entry.line.clone(),
@@ -40054,6 +40069,20 @@ where
                     true
                 }
             });
+            if clip_table_glyphs {
+                for entry in auxiliary_lines
+                    .iter_mut()
+                    .filter(|entry| entry.story == "table_header")
+                {
+                    if let Some(clipped) = clipped_header_lines.remove(&(
+                        entry.line.paragraph,
+                        entry.line.line,
+                        entry.line.page,
+                    )) {
+                        entry.line.fragments = clipped.fragments;
+                    }
+                }
+            }
             let auxiliary_line_keys = auxiliary_lines
                 .iter()
                 .filter(|entry| matches!(entry.story, "text_box" | "endnote"))
@@ -40131,10 +40160,11 @@ where
         self.layout_page_limit = saved_limit;
         self.visible_page_range = saved_visible;
         self.auxiliary_story_capture_mode = saved_capture;
+        self.capture_painted_table_headers = saved_header_projection;
         self.auxiliary_story_debug_lines.retain(|entry| {
             !matches!(
                 entry.story,
-                "table_clip_projection" | "table_paint_projection"
+                "table_clip_projection" | "table_paint_projection" | "table_header_clip_projection"
             )
         });
         self.force_full_repaint_once = saved_force_full_repaint;
@@ -75499,6 +75529,40 @@ mod tests {
     }
 
     #[test]
+    fn authored_unequal_column_widths_are_not_scaled_to_the_page_body() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        // Retained probe-unequal-center-three-10: 9,026 twips of body,
+        // but 8,116 twips of explicit columns plus two 480-twip gutters.
+        // Windows and Mac Word both keep those explicit widths.
+        let columns = SectionColumns {
+            count: Some(3),
+            equal_width: Some(false),
+            columns: [(92.5, 24.0), (135.0, 24.0), (178.3, 0.0)]
+                .into_iter()
+                .map(|(width, space)| jade_docx_reader::ColumnDefinition {
+                    width: Some(width),
+                    space: Some(space),
+                })
+                .collect(),
+            ..SectionColumns::default()
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let layout = ColumnLayout::from_section(&columns, points_to_px(451.3), 96.0);
+            for (index, expected) in [92.5, 135.0, 178.3].into_iter().enumerate() {
+                assert!((layout.width(index) - points_to_px(expected)).abs() < 0.0001);
+            }
+            assert!((layout.start_x(0) - 96.0).abs() < 0.0001);
+            assert!((layout.start_x(1) - (96.0 + points_to_px(116.5))).abs() < 0.0001);
+            assert!((layout.start_x(2) - (96.0 + points_to_px(275.5))).abs() < 0.0001);
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
     fn column_layout_splits_width_equally_for_two_columns() {
         let columns = SectionColumns {
             count: Some(2),
@@ -80572,6 +80636,96 @@ mod tests {
             assert_eq!(page(2, 0), heading_page, "{case}");
             assert_eq!(page(4, 0), heading_page, "{case}");
             assert_eq!(page(4, 1), 1, "{case}");
+        }
+    }
+
+    #[test]
+    fn empty_continuous_section_marks_keep_the_next_section_at_the_flow_top() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::{PageSettings, SectionColumns};
+        let settings = PageSettings {
+            width: Some(400.0),
+            height: Some(792.0),
+            margin_top: Some(72.0),
+            margin_bottom: Some(72.0),
+            margin_left: Some(40.0),
+            margin_right: Some(40.0),
+            ..Default::default()
+        };
+        let section = |count: u32, continuous: bool| SectionProperties {
+            page_settings: Some(settings.clone()),
+            section_type: continuous.then(|| "continuous".to_string()),
+            columns: Some(SectionColumns {
+                count: Some(count),
+                space: Some(20.0),
+                equal_width: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let document = |empty: Option<bool>| {
+            let texts = if empty.is_some() {
+                vec!["before", "", "after"]
+            } else {
+                vec!["before", "after"]
+            };
+            let mut document = doc_with_paragraph_texts(&texts);
+            let split = if empty.is_some() { 2 } else { 1 };
+            let end = texts.len();
+            if let Some(is_section_mark) = empty {
+                let paragraph = document.body.as_mut().unwrap().elements[1]
+                    .as_paragraph_mut()
+                    .unwrap();
+                paragraph.runs.clear();
+                paragraph.properties = Some(ParagraphProperties {
+                    section: is_section_mark.then(|| section(1, false)),
+                    spacing: Some(Spacing {
+                        after: Some(13.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+            }
+            document.page_settings = Some(settings.clone());
+            document.default_section = Some(section(2, true));
+            document.sections = vec![
+                SectionRange {
+                    start: 0,
+                    end: split,
+                    properties: Some(section(1, false)),
+                },
+                SectionRange {
+                    start: split,
+                    end,
+                    properties: Some(section(2, true)),
+                },
+            ];
+            document
+        };
+        let top = |document: &Document, platform| {
+            set_word_layout_platform(platform);
+            let (mut renderer, _) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(document, &options).unwrap();
+            let top = renderer.selection.paragraphs().last().unwrap().lines[0].absolute_top;
+            (top, renderer.current_page_number)
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            let control = top(&document(None), platform);
+            let section_mark = top(&document(Some(true)), platform);
+            let ordinary_empty = top(&document(Some(false)), platform);
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            assert_eq!(section_mark.1, control.1, "{platform:?}");
+            assert!(
+                (section_mark.0 - control.0).abs() < 1e-6,
+                "{platform:?}: {control:?} {section_mark:?}"
+            );
+            assert!(
+                ordinary_empty.0 > control.0 + 1.0,
+                "{platform:?}: ordinary empty paragraph lost its line"
+            );
         }
     }
 

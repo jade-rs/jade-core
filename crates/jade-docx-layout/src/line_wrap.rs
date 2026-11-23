@@ -11380,6 +11380,18 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
             .map(|line| line.clusters.iter().map(|c| c.width).sum::<f64>())
             .collect::<Vec<_>>()
     });
+    // A width repair can prepend an overfull glyph to a continuation that
+    // initially held just one overfull glyph. It is not an indivisible word.
+    // Keep Windows emergency wrapping in that case; Mac's policy is unchanged.
+    let initially_single_cluster = (paragraph_style.word_platform
+        == crate::line_metrics::WordLayoutPlatform::Windows
+        && paragraph_style.allows_mid_word_break())
+    .then(|| {
+        lines
+            .iter()
+            .map(|line| line.clusters.len() == 1)
+            .collect::<Vec<_>>()
+    });
     let right_limit = column.end - paragraph_style.right_indent;
     let base_available = right_limit - column.start;
 
@@ -11649,7 +11661,18 @@ fn ensure_lines_fit_available_width<C: LineWrapContext, const SHAPE_ARABIC: bool
                         cluster.kind == InlineClusterKind::Grapheme
                             && is_latin_word_grapheme(&cluster.text)
                     });
+                let windows_expanded_single_cluster = initially_single_cluster
+                    .as_ref()
+                    .and_then(|original| original.get(line_index))
+                    .copied()
+                    .unwrap_or(false)
+                    && line.clusters.len() > 1
+                    && line
+                        .clusters
+                        .iter()
+                        .all(|cluster| cluster.width > effective_available + WRAP_FIT_TOLERANCE_PX);
                 if intrinsic_width > effective_available + WRAP_FIT_TOLERANCE_PX
+                    && !windows_expanded_single_cluster
                     && !has_terminal_overflow_punctuation
                     && !has_word_break_opportunity
                     && !follows_arabic_separator
@@ -29480,5 +29503,39 @@ mod tests {
                 prop_assert_eq!(bold, expected_bold.get(&(segment.start, segment.end)).copied());
             }
         }
+    }
+    #[test]
+    fn windows_emergency_wrap_keeps_each_digit_on_an_impossibly_narrow_line() {
+        // Retained Word fixed-auto/percentage-cell control: its 100-percent
+        // cell has less usable width than one digit. Word puts 0 and 1 on
+        // separate lines even after the separator in "Row 01".
+        let ctx = TestContext::new(10.0);
+        let text = "Row 01";
+        let paragraph = ParagraphStyle {
+            word_platform: crate::line_metrics::WordLayoutPlatform::Windows,
+            east_asian_rules: EastAsianLineBreakingRules {
+                compatibility_mode: Some(14),
+                ..EastAsianLineBreakingRules::default()
+            },
+            ..ParagraphStyle::default()
+        };
+        let lines =
+            wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &paragraph, 0, 1.3).unwrap();
+        let actual = collect_line_infos(&lines);
+        assert_eq!(
+            actual.iter().map(|l| l.text.as_str()).collect::<String>(),
+            text
+        );
+        let painted = actual
+            .iter()
+            .map(|line| {
+                line.text
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .collect::<String>()
+            })
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>();
+        assert_eq!(painted, ["R", "o", "w", "0", "1"]);
     }
 }

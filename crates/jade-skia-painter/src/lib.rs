@@ -22,9 +22,11 @@
 
 use jade_painter::{Painter, TextMetrics};
 use lopdf::dictionary;
+use skia_safe::QuickReject;
 use skia_safe::RoundOut;
 use std::collections::HashMap;
 use unicode_segmentation::UnicodeSegmentation;
+mod clipped_pdf_text;
 mod pdf_text;
 #[cfg(target_os = "windows")]
 mod windows_pdf_metrics;
@@ -99,6 +101,7 @@ struct StyleState {
     /// state, and `StyleState` is what `save`/`restore` stack here, so it is
     /// restored with the rest.
     global_alpha: f32,
+    pdf_rect_clip: Option<Rect>,
     dash: Vec<f32>,
     font_size_px: f32,
     font_index: usize,
@@ -176,6 +179,7 @@ impl Default for StyleState {
             stroke: Color4f::new(0.0, 0.0, 0.0, 1.0),
             line_width: 1.0,
             global_alpha: 1.0,
+            pdf_rect_clip: None,
             dash: Vec::new(),
             font_size_px: 16.0,
             font_index: 0,
@@ -250,6 +254,8 @@ struct SharedSurface {
     images: RefCell<HashMap<String, skia_safe::Image>>,
     fill_text_calls: std::cell::Cell<u64>,
     effect_text: RefCell<Vec<pdf_text::RecordedText>>,
+    clipped_pdf_text: RefCell<Vec<clipped_pdf_text::Run>>,
+    preserve_clipped_pdf_text: std::cell::Cell<bool>,
     /// Whether colours are mapped onto a dark page as they are drawn. See
     /// [`SkiaPainter::set_dark_paper`].
     dark_paper: std::cell::Cell<bool>,
@@ -268,6 +274,23 @@ enum PaintSurface {
 }
 
 impl SkiaPainter {
+    /// Enable before drawing a new vector recording. Keep culled TrueType
+    /// text with its actual physical font and rectangular clip in the PDF.
+    /// Raster and ordinary/Mac vector recordings keep their existing policy.
+    pub fn set_preserve_clipped_pdf_text(&self, enabled: bool) {
+        self.shared.preserve_clipped_pdf_text.set(enabled);
+        self.shared.style.borrow_mut().pdf_rect_clip = if enabled {
+            match &*self.shared.surface.borrow() {
+                PaintSurface::Recording { size, .. } => {
+                    Some(Rect::from_xywh(0.0, 0.0, size.0 as f32, size.1 as f32))
+                }
+                _ => None,
+            }
+        } else {
+            None
+        };
+    }
+
     /// Selects physical text sizing for an explicit print target.
     pub fn set_text_output_dpi(&self, dpi: Option<f64>) {
         self.shared
@@ -404,6 +427,8 @@ impl SkiaPainter {
                 images: RefCell::new(HashMap::new()),
                 fill_text_calls: std::cell::Cell::new(0),
                 effect_text: RefCell::new(Vec::new()),
+                clipped_pdf_text: RefCell::new(Vec::new()),
+                preserve_clipped_pdf_text: std::cell::Cell::new(false),
                 dark_paper: std::cell::Cell::new(false),
                 text_output_dpi: std::cell::Cell::new(None),
             }),
@@ -563,6 +588,12 @@ impl SkiaPainter {
         }
         for ((id, (_, height)), painter) in page_ids.iter().zip(&sizes).zip(pages) {
             pdf_text::append(&mut pdf, *id, *height, &painter.shared.effect_text.borrow())?;
+            clipped_pdf_text::append(
+                &mut pdf,
+                *id,
+                *height,
+                &painter.shared.clipped_pdf_text.borrow(),
+            )?;
         }
         for link in links {
             let &(page_width, page_height) =
@@ -850,6 +881,47 @@ impl SkiaPainter {
                 return;
             }
             if !path_text && editor_scale.is_none() {
+                if self.shared.preserve_clipped_pdf_text.get()
+                    && !self.shared.style.borrow().decorative_text
+                    && glyphs.len() == text.chars().count()
+                    && !text.chars().all(char::is_whitespace)
+                    && canvas.quick_reject(&blob.bounds().with_offset((x, y)))
+                {
+                    let clip = self.shared.style.borrow().pdf_rect_clip;
+                    let typeface = font.typeface();
+                    if let (Some(clip), Some(data)) = (clip, Self::shaping_data(&typeface)) {
+                        if clipped_pdf_text::has_truetype_outlines(&data) {
+                            if let Some([a, b, c, d, e, f]) =
+                                canvas.local_to_device_as_3x3().to_affine()
+                            {
+                                let mut widths = vec![0.0; glyphs.len()];
+                                font.get_widths(glyphs, &mut widths);
+                                self.shared.clipped_pdf_text.borrow_mut().push(
+                                    clipped_pdf_text::Run {
+                                        font: data,
+                                        font_id: typeface.unique_id(),
+                                        postscript_name: typeface
+                                            .post_script_name()
+                                            .unwrap_or_else(|| typeface.family_name()),
+                                        text: text.to_string(),
+                                        glyphs: glyphs.to_vec(),
+                                        widths,
+                                        font_size: font.size(),
+                                        transform: [
+                                            a,
+                                            b,
+                                            c + a * font.skew_x(),
+                                            d + b * font.skew_x(),
+                                            a * x + c * y + e,
+                                            b * x + d * y + f,
+                                        ],
+                                        clip,
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
                 canvas.draw_text_blob(&blob, (x, y), paint);
                 return;
             }
@@ -2308,6 +2380,37 @@ impl Painter for SkiaPainter {
     fn clip(&self) {
         let path = self.shared.path.borrow().clone();
         self.with_canvas(|canvas| {
+            if self.shared.preserve_clipped_pdf_text.get() {
+                // Only exact axis-aligned rectangular clips are retained.
+                // Unsupported clip shapes keep Skia's original behavior.
+                let mapped = path.is_rect().and_then(|(rect, _, _)| {
+                    let [a, b, c, d, e, f] = canvas.local_to_device_as_3x3().to_affine()?;
+                    if b != 0.0 || c != 0.0 {
+                        return None;
+                    }
+                    let x0 = a * rect.left() + e;
+                    let x1 = a * rect.right() + e;
+                    let y0 = d * rect.top() + f;
+                    let y1 = d * rect.bottom() + f;
+                    Some(Rect::from_ltrb(
+                        x0.min(x1),
+                        y0.min(y1),
+                        x0.max(x1),
+                        y0.max(y1),
+                    ))
+                });
+                let mut style = self.shared.style.borrow_mut();
+                style.pdf_rect_clip = style.pdf_rect_clip.zip(mapped).map(|(old, next)| {
+                    let left = old.left().max(next.left());
+                    let top = old.top().max(next.top());
+                    Rect::from_ltrb(
+                        left,
+                        top,
+                        old.right().min(next.right()).max(left),
+                        old.bottom().min(next.bottom()).max(top),
+                    )
+                });
+            }
             canvas.clip_path(&path, None, true);
         });
     }
