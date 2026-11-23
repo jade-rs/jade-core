@@ -41156,24 +41156,34 @@ where
         if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
-            // Windows Word drops before spacing after a paragraph-final
-            // manual break. pageBreakBefore and section starts retain it.
+            let page_break_before = paragraph
+                .properties
+                .as_ref()
+                .is_some_and(|properties| properties.page_break_before == Some(true));
+            // Word 2013+ omits before spacing for pageBreakBefore. Legacy
+            // compatibility modes retain it, as do section starts. Read the
+            // declared mode: the East Asian shaping fallback is mode 12
+            // even for modern, minimal documents with no compatSetting.
             if at_flow_start
                 && body_element_index != section_start
-                && paragraph
-                    .properties
-                    .as_ref()
-                    .is_none_or(|properties| properties.page_break_before != Some(true))
                 && !paragraph
                     .runs
                     .iter()
                     .any(|run| run.text.contains(PAGE_BREAK_CHAR))
-                && self.last_document.as_deref().is_some_and(|document| {
-                    jade_docx_layout::text_extract::body_follows_manual_page_break(
-                        document,
-                        body_element_index,
-                    )
-                })
+                && ((page_break_before
+                    && self
+                        .last_document
+                        .as_deref()
+                        .and_then(|document| document.compat.setting("compatibilityMode"))
+                        .and_then(|mode| mode.parse::<u32>().ok())
+                        .is_none_or(|mode| mode >= 15))
+                    || (!page_break_before
+                        && self.last_document.as_deref().is_some_and(|document| {
+                            jade_docx_layout::text_extract::body_follows_manual_page_break(
+                                document,
+                                body_element_index,
+                            )
+                        })))
             {
                 return 0.0;
             }

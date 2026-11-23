@@ -168,9 +168,13 @@ fn break_lines<'a, C: StyledMathMeasure>(
     }
     let word_mac_rtl = b.options.word_mac_rtl();
     let inherited_wrap = b.options.word_mac_inherited_before_wrap();
-    let prefers_relation = !word_mac_rtl
+    let word_windows_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
         && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac;
+            == crate::line_metrics::WordLayoutPlatform::Windows;
+    let prefers_relation = !word_mac_rtl
+        && (crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac
+            || word_windows_cambria);
     let breaks_after_operator =
         |class| class == AtomClass::Bin || prefers_relation && class == AtomClass::Rel;
     let substitute_start = settings.break_binary_subtraction == BreakBinarySubtraction::MinusPlus;
@@ -610,7 +614,15 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             }
             let interval_size = row_size.max(prev_size);
             let gap = super::MathConstants::cambria(interval_size).leading;
-            let min_gap = interval_size * if word_mac_cambria { 1.175 } else { 1.2 };
+            let windows_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
+                && crate::line_metrics::word_layout_platform()
+                    == crate::line_metrics::WordLayoutPlatform::Windows;
+            let min_gap = interval_size
+                * if word_mac_cambria || windows_cambria {
+                    1.175
+                } else {
+                    1.2
+                };
             baseline += (descent + ascent + gap).max(min_gap);
         } else if needs_top_leading && tall_row {
             total.ascent = spacing_metrics.ascent + super::MathConstants::cambria(row_size).leading;

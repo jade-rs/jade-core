@@ -594,17 +594,59 @@ SHARED_ORIGINALS = {
 }
 
 
-def shared_originals(root=ROOT):
+# These existing Mac math originals retain outline-only PDF text output.
+# Assert their genuine UI origins independently; the 141 full PDF gates above
+# remain mandatory. Windows fixes must preserve these Mac layout coordinates.
+MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
+                                    '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
+                                    '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
+                                    2,
+                                    1046),
+ 'probe-math-display-rtl-wrap-1': ('aa22151e8ddcd0ff2c2c7e599b537621ec6633c5e2a30f9b3d5443edd635a82d',
+                                   '6c92729ae5acccad1e7e0150a887e43c5f0e7f93bf72b4f7eaf1e62e86f060a2',
+                                   'b8ae6ea8a54cedb6cd58dcb52fc77497c25ecc810f476566c9509d50ed4ebdc0',
+                                   1,
+                                   819),
+ 'probe-math-italic-advances-lowercase': ('b1dd36320fda67bbdc51f5e83ef5d2c2faa5b5d8857457c86f11a1e933a71f6a',
+                                          '21806c73a57975e88f28376400a0a289b26656abfb1ffb99eb62f161ea62664f',
+                                          'de4953ed02aa6cb04bcd29f9eadf220e65b05ea1efdf2a2ee8e2f419af7f9110',
+                                          1,
+                                          524),
+ 'probe-math-italic-advances-uppercase': ('a664dc4e8d5915c5d1425eb8961b0d8d01808c271d8225efa481585f4f60140a',
+                                          '94fafe12787ce6e2e8f26ce9a5c2292d3df5b5b80c5614c10050a852e09687c3',
+                                          'a4b863b81c8d0cbe677cc907167a22bb84ce29052fcde8e76ef1cf4742d6d461',
+                                          1,
+                                          524),
+ 'probe-math-relation-wrap-after': ('37193745f3098273fd613cb767222d6bc6ddf2342de37a8659dc76d1410fa928',
+                                    'ad1acf1c68627d3652f204493b1676cf14d7cee1a575fd8b784eb89e742116e0',
+                                    'e7910720e4713f540d215a7b0ab3de24ce01392ef7f98fa5a477f573ae1a1bcb',
+                                    4,
+                                    1009),
+ 'probe-math-relation-wrap-before': ('43c447432b5f6f038a987e958943f60e90625302e3ec76678badf53914489ba4',
+                                     'be19c1726e05c151cff722b5a0ecd62a06c144cc0759512a0545e128d9402f9f',
+                                     '7ba9c28cf16f23aa76b06cf932b0a1e3e3b146af73f5542b1495c40487a0ef60',
+                                     4,
+                                     1009),
+ 'probe-math-relation-wrap-repeat': ('c63d20b2e8db80c72f7bc2fcd1165978303ecf1e910fb57550e34fefc544a3c2',
+                                     '3276597a0829566ee8b9d2bb8cc86a36fcf01dba2d58556044b92c47f5b8e1f4',
+                                     'a658f59ca72a953db64ee0255b8b65050261d6f8d32574b1c737074172ddbd54',
+                                     4,
+                                     1028)}
+
+
+def shared_originals(root=ROOT, references=None):
+    if references is None:
+        references = SHARED_ORIGINALS
     registry = read_json(root/'tests/word-oracle/platform-coordinates.json')
     cases_by_name = {}
     for case in registry['fixtures']:
         cases_by_name.setdefault(case['mac_case'], []).append(case)
     # Reject missing/duplicate required cases before reading any original files.
-    for name in SHARED_ORIGINALS:
+    for name in references:
         require(len(cases_by_name.get(name, ())) == 1,
                 name + ': missing or duplicate shared Mac original')
     results = []
-    for name, (source_sha, manifest_sha, coordinates_sha, pages, glyphs) in SHARED_ORIGINALS.items():
+    for name, (source_sha, manifest_sha, coordinates_sha, pages, glyphs) in references.items():
         case = cases_by_name[name][0]
         require(source_sha != CONTROL_SHA256,
                 name + ': normalized control must remain separate from captured originals')
@@ -679,6 +721,40 @@ def check_shared_originals(executable, output, root=ROOT):
     return results
 
 
+def check_math_layout_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(root, MATH_LAYOUT_ORIGINALS):
+        archive, capture, document, _ = archive_reference(root, case, case['windows'][0])
+        target = output/name
+        target.mkdir()
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': math font provider PDF changed')
+        provider = target/'original-Windows-font-provider.pdf'
+        provider.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(provider, fonts)
+        actual_file = target/'native.json'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac',
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': Mac math original coverage changed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=case['windows'][0]['archive'],
+                            glyphs=glyphs, page_count=expected['page_count']))
+    require(len(results) == 7 and sum(r['glyphs'] for r in results) == 5959,
+            'Mac math layout original coverage changed')
+    print('7 genuine Mac math layout originals: PASS', flush=True)
+    return results
+
+
 def require_mac_host(required):
     require(not required or sys.platform == 'darwin', 'Captured-original CI requires macOS')
 
@@ -748,12 +824,13 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
     require((output/'captured-original.png').read_bytes() ==
             (output/'normalized-control.png').read_bytes(), 'Schema normalization changed Mac pixels')
     shared_results = check_shared_originals(executable, output/'shared-originals', root)
+    math_results = check_math_layout_originals(executable, output/'math-layout-originals', root)
     result = dict(host=sys.platform,require_macos=require_macos,Mac_Word_version=raw['word_version'],
                   Mac_Word_build=raw['word_build'],Mac_capture_reference_sha256=REFERENCE_SHA256,
                   font_program_provider_Windows_Word=capture['word'],font_program_provider_archive=provider['capture'],
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
-                  shared_originals=shared_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  shared_originals=shared_results, math_layout_originals=math_results,
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 141 shared originals retain all layout and painted-PDF gates. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

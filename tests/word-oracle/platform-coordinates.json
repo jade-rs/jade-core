@@ -6432,6 +6432,181 @@
           "output_context": "independent-screen-print"
         }
       ]
+    },
+    {
+      "mac_case": "probe-math-display-alignment-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-display-alignment-1/source.docx",
+        "sha256": "bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-display-alignment-1/manifest.json",
+        "sha256": "5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004747969Z-36728554",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004747969Z-36728554.zip",
+            "sha256": "55ea3bcbde2b6b9b44290c4e50ef31812e966089abfeb48f952e098fd74e375f"
+          },
+          "capture_sha256": "83f5f70f5c8f98ca4db3bbb45707a699877cf6fe062a54e0cc501a6c63789ec2",
+          "fixture": "ww14-math-display-alignment-1-bc9962eb",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-display-rtl-wrap-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-display-rtl-wrap-1/source.docx",
+        "sha256": "aa22151e8ddcd0ff2c2c7e599b537621ec6633c5e2a30f9b3d5443edd635a82d"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-display-rtl-wrap-1/manifest.json",
+        "sha256": "6c92729ae5acccad1e7e0150a887e43c5f0e7f93bf72b4f7eaf1e62e86f060a2"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004747969Z-36728554",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004747969Z-36728554.zip",
+            "sha256": "55ea3bcbde2b6b9b44290c4e50ef31812e966089abfeb48f952e098fd74e375f"
+          },
+          "capture_sha256": "83f5f70f5c8f98ca4db3bbb45707a699877cf6fe062a54e0cc501a6c63789ec2",
+          "fixture": "ww14-math-display-rtl-wrap-1-aa22151e",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-italic-advances-lowercase",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-italic-advances-lowercase/source.docx",
+        "sha256": "b1dd36320fda67bbdc51f5e83ef5d2c2faa5b5d8857457c86f11a1e933a71f6a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-italic-advances-lowercase/manifest.json",
+        "sha256": "21806c73a57975e88f28376400a0a289b26656abfb1ffb99eb62f161ea62664f"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-italic-advances-lowercase-b1dd3632",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-italic-advances-uppercase",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-italic-advances-uppercase/source.docx",
+        "sha256": "a664dc4e8d5915c5d1425eb8961b0d8d01808c271d8225efa481585f4f60140a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-italic-advances-uppercase/manifest.json",
+        "sha256": "94fafe12787ce6e2e8f26ce9a5c2292d3df5b5b80c5614c10050a852e09687c3"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-italic-advances-uppercase-a664dc4e",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-relation-wrap-after",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-relation-wrap-after/source.docx",
+        "sha256": "37193745f3098273fd613cb767222d6bc6ddf2342de37a8659dc76d1410fa928"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-relation-wrap-after/manifest.json",
+        "sha256": "ad1acf1c68627d3652f204493b1676cf14d7cee1a575fd8b784eb89e742116e0"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-relation-wrap-after-37193745",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-relation-wrap-before",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-relation-wrap-before/source.docx",
+        "sha256": "43c447432b5f6f038a987e958943f60e90625302e3ec76678badf53914489ba4"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-relation-wrap-before/manifest.json",
+        "sha256": "be19c1726e05c151cff722b5a0ecd62a06c144cc0759512a0545e128d9402f9f"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-relation-wrap-before-43c44743",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-relation-wrap-repeat",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-relation-wrap-repeat/source.docx",
+        "sha256": "c63d20b2e8db80c72f7bc2fcd1165978303ecf1e910fb57550e34fefc544a3c2"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-relation-wrap-repeat/manifest.json",
+        "sha256": "3276597a0829566ee8b9d2bb8cc86a36fcf01dba2d58556044b92c47f5b8e1f4"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-relation-wrap-repeat-c63d20b2",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

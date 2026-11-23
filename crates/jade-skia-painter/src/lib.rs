@@ -251,6 +251,7 @@ struct SharedSurface {
     /// Interior mutability so faces can be registered through a clone; the
     /// renderer only ever reads them.
     fonts: RefCell<Vec<RegisteredTypeface>>,
+    outline_text_programs: RefCell<HashMap<u32, std::sync::Arc<[u8]>>>,
     images: RefCell<HashMap<String, skia_safe::Image>>,
     fill_text_calls: std::cell::Cell<u64>,
     effect_text: RefCell<Vec<pdf_text::RecordedText>>,
@@ -424,6 +425,7 @@ impl SkiaPainter {
                 stack: RefCell::new(Vec::new()),
                 path: RefCell::new(Path::new()),
                 fonts: RefCell::new(Vec::new()),
+                outline_text_programs: RefCell::new(HashMap::new()),
                 images: RefCell::new(HashMap::new()),
                 fill_text_calls: std::cell::Cell::new(0),
                 effect_text: RefCell::new(Vec::new()),
@@ -1971,6 +1973,79 @@ impl Painter for SkiaPainter {
         self.shared.text_output_dpi.get()
     }
 
+    fn supports_font_glyphs(&self) -> bool {
+        matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                ..
+            }
+        )
+    }
+
+    fn try_fill_font_glyph(
+        &self,
+        text: &str,
+        program: &std::sync::Arc<[u8]>,
+        glyph: u16,
+        font_units_scale: f64,
+        origin: (f64, f64),
+    ) -> Result<bool, Self::Error> {
+        if !matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                ..
+            }
+        ) || text.chars().count() != 1
+            || glyph == 0
+            || !font_units_scale.is_finite()
+            || font_units_scale <= 0.0
+            || !origin.0.is_finite()
+            || !origin.1.is_finite()
+        {
+            return Ok(false);
+        }
+        let mut font = self.font();
+        let typeface = font.typeface();
+        if font.str_to_glyphs_vec(text) != [glyph] {
+            return Ok(false);
+        }
+        let Some(data) = Self::shaping_data(&typeface) else {
+            return Ok(false);
+        };
+        let id = typeface.unique_id();
+        let mut verified = self.shared.outline_text_programs.borrow_mut();
+        let same_program = verified
+            .get(&id)
+            .is_some_and(|cached| std::sync::Arc::ptr_eq(cached, program));
+        if !same_program {
+            if data.1 != 0 || data.0.as_slice() != program.as_ref() {
+                return Ok(false);
+            }
+            if verified.len() >= 32 {
+                verified.clear();
+            }
+            verified.insert(id, std::sync::Arc::clone(program));
+        }
+        drop(verified);
+        let Some(face) = rustybuzz::Face::from_slice(program, 0) else {
+            return Ok(false);
+        };
+        font.set_size((font_units_scale * f64::from(face.units_per_em())) as f32);
+        font.set_skew_x(0.0);
+        font.set_embolden(false);
+        self.draw_glyphs(
+            text,
+            &[glyph],
+            &font,
+            origin.0 as f32,
+            origin.1 as f32,
+            &self.fill_paint(),
+        );
+        Ok(true)
+    }
+
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         self.shared
             .fill_text_calls
@@ -2489,6 +2564,49 @@ mod print_target_tests {
             .unwrap()
             .set_pdf_page_size_points(Some((6.0, 6.0)))
             .is_err());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn prepared_font_text_requires_exact_bytes_and_preserves_capture_fallback() {
+        let program: std::sync::Arc<[u8]> = std::fs::read(
+            std::path::PathBuf::from(std::env::var_os("WINDIR").unwrap()).join("Fonts/arial.ttf"),
+        )
+        .unwrap()
+        .into();
+        let painter = SkiaPainter::new_recording(96.0, 96.0).unwrap();
+        painter.register_font_bytes("Arial", 400, &program).unwrap();
+        painter.set_font("24px 'Arial'");
+        let glyph = painter.font().str_to_glyphs_vec("A")[0];
+        let scale = 24.0
+            / f64::from(
+                rustybuzz::Face::from_slice(&program, 0)
+                    .unwrap()
+                    .units_per_em(),
+            );
+        let mut different = program.to_vec();
+        let last = different.len() - 1;
+        different[last] ^= 1;
+        let wrong: std::sync::Arc<[u8]> = different.into();
+        let direct = RoutedPainter::direct(painter.clone());
+        assert!(!direct
+            .try_fill_font_glyph("A", &wrong, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        assert!(!direct
+            .try_fill_font_glyph("B", &program, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        let sink = Rc::new(RefCell::new(Vec::new()));
+        let captured = RoutedPainter::new(painter.clone(), Some(sink.clone()));
+        assert!(!captured
+            .try_fill_font_glyph("A", &program, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        assert!(sink.borrow().is_empty());
+        assert!(direct
+            .try_fill_font_glyph("A", &program, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        let bytes = SkiaPainter::encode_pdf(&[painter]).unwrap();
+        let pdf = lopdf::Document::load_mem(&bytes).unwrap();
+        assert_eq!(pdf.extract_text(&[1]).unwrap().trim(), "A");
     }
 
     #[cfg(target_os = "windows")]

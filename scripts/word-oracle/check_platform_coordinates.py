@@ -280,6 +280,13 @@ PHYSICAL_FONT_CASES = {
     'probe-unequal-variant-narrow-first-2-9-right',
     'table-legacy-hmerge-mac',
     'table-cell-fit-text-mac',
+    'probe-math-display-alignment-1',
+    'probe-math-display-rtl-wrap-1',
+    'probe-math-italic-advances-lowercase',
+    'probe-math-italic-advances-uppercase',
+    'probe-math-relation-wrap-after',
+    'probe-math-relation-wrap-before',
+    'probe-math-relation-wrap-repeat',
 }
 REQUIRED_CAPTURES = {
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
@@ -538,6 +545,13 @@ REQUIRED_CAPTURES = {
     'probe-unequal-variant-narrow-first-2-9-right': '20261114T004559814Z-c5e13cee',
     'table-legacy-hmerge-mac': '20261114T020815305Z-ab0cdcfa',
     'table-cell-fit-text-mac': '20261114T004633221Z-54077165',
+    'probe-math-display-alignment-1': '20261114T004747969Z-36728554',
+    'probe-math-display-rtl-wrap-1': '20261114T004747969Z-36728554',
+    'probe-math-italic-advances-lowercase': '20261114T004417585Z-59a68986',
+    'probe-math-italic-advances-uppercase': '20261114T004417585Z-59a68986',
+    'probe-math-relation-wrap-after': '20261114T004417585Z-59a68986',
+    'probe-math-relation-wrap-before': '20261114T004417585Z-59a68986',
+    'probe-math-relation-wrap-repeat': '20261114T004417585Z-59a68986',
 }
 
 # These original inputs have distinct screen and print origins in Windows
