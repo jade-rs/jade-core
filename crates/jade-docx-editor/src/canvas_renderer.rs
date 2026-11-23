@@ -451,6 +451,8 @@ mod page_layers;
 mod page_number_table_tests;
 #[cfg(test)]
 mod page_number_tests;
+#[cfg(test)]
+mod page_ref_tests;
 mod paragraph_font_cache;
 mod paragraph_hash;
 mod paragraph_join;
@@ -13484,9 +13486,14 @@ where
                         value.hash(&mut hasher);
                         20
                     }
-                    RunFieldKind::PageRef { name, hyperlink } => {
+                    RunFieldKind::PageRef {
+                        name,
+                        hyperlink,
+                        relative_position,
+                    } => {
                         name.hash(&mut hasher);
                         hyperlink.hash(&mut hasher);
+                        relative_position.hash(&mut hasher);
                         3
                     }
                     RunFieldKind::NoteRef {
@@ -43014,7 +43021,7 @@ where
                     }
                     RunFieldKind::NumPages => Some(self.resolved_total_page_count()),
                     RunFieldKind::SectionPages => self.current_section_page_count(),
-                    RunFieldKind::SectionNumber => Some(self.active_section_index + 1),
+                    RunFieldKind::SectionNumber => Some(self.section_field_value()),
                     _ => None,
                 };
                 let format = jade_docx_reader::field_format::FieldCode::parse(instruction)
@@ -43032,9 +43039,7 @@ where
             RunFieldKind::SectionPages => self
                 .current_section_page_count()
                 .map(|pages| pages.to_string()),
-            // Section storage is zero-based internally; Word's SECTION field
-            // is explicitly 1-based.
-            RunFieldKind::SectionNumber => Some((self.active_section_index + 1).to_string()),
+            RunFieldKind::SectionNumber => Some(self.section_field_value().to_string()),
             // A header's or footer's STYLEREF follows the page; in the body
             // Word shows its saved result until fields are updated.
             RunFieldKind::StyleRef { style, from_bottom } if self.rendering_header_footer_story => {
@@ -43094,17 +43099,25 @@ where
             // SET updates the bookmark environment for later fields but has no
             // visible result of its own. Never expose its saved result cache.
             RunFieldKind::Set { .. } => return None,
+            // `\p` prints "above", "below" or "on page N" in the document's
+            // language: keep Word's saved result, as NOTEREF `\p` does.
+            RunFieldKind::PageRef {
+                relative_position: true,
+                ..
+            } => field.cached_text.clone(),
             RunFieldKind::PageRef { name, .. } => {
-                // Resolve to the page number on which the bookmark begins. The
-                // bookmark→paragraph map is populated at load time; the
-                // paragraph→page map only exists once that paragraph has been
-                // laid out. When either is missing, fall back to Word's cached
-                // result so the field never renders blank (the next render pass
-                // recomputes once layout catches up). ECMA-376 §17.16.5.45.
+                // Resolve to the number the bookmark's first page displays:
+                // its section's `w:pgNumType` start and format applied, as a
+                // PAGE field on that page shows it. The bookmark→paragraph
+                // map is populated at load time; the paragraph→page map only
+                // exists once that paragraph has been laid out. When either
+                // is missing, fall back to Word's cached result so the field
+                // never renders blank (the next render pass recomputes once
+                // layout catches up). ECMA-376 §17.16.5.45.
                 self.bookmark_paragraphs
                     .get(name)
                     .and_then(|&paragraph| self.cached_paragraph_start_page(paragraph))
-                    .map(|page| page.to_string())
+                    .map(|page| self.page_reference_number(page))
                     .or_else(|| field.cached_text.clone())
             }
             RunFieldKind::NoteRef {
@@ -43357,6 +43370,20 @@ where
         self.page_origins.truncate(physical_page);
     }
 
+    /// What a SECTION field shows (1-based; sections are stored from 0). A
+    /// header or footer follows the section supplying the page's chrome
+    /// (`section_index_for_page`), so on a page shared across a continuous
+    /// break it names the section at the top of the page, not the one laid
+    /// out last. Word's behaviour there is unconfirmed by a capture.
+    fn section_field_value(&self) -> usize {
+        let section = if self.rendering_header_footer_story {
+            self.section_index_for_page(self.current_page_number)
+        } else {
+            self.active_section_index
+        };
+        section + 1
+    }
+
     fn current_section_page_count(&self) -> Option<usize> {
         section_page_count(&self.page_section_indices, self.current_page_number)
     }
@@ -43528,6 +43555,60 @@ where
         let section = self.numbering_section_for_page(page);
         let displayed = self.page_number_value(page);
         self.page_number_with_format(page, section, displayed)
+    }
+
+    /// The number a PAGEREF to a physical (1-based) page shows: what a PAGE
+    /// field on that page displays. A page this walk has not reached yet
+    /// (a table of contents before its entries) takes its section from the
+    /// previous pass, which laid out the page the target was cached on.
+    fn page_reference_number(&self, physical_page: usize) -> String {
+        let laid_out = self.page_section_indices.len();
+        if self.section_page_numbering.len() <= 1
+            || physical_page <= laid_out.max(self.current_page_number)
+            || physical_page > self.page_sections_before_pass.len()
+        {
+            return self.displayed_page_number(physical_page);
+        }
+        let owner = |page: usize| {
+            self.page_section_indices
+                .get(page - 1)
+                .or_else(|| self.page_sections_before_pass.get(page - 1))
+                .copied()
+                .unwrap_or(self.active_section_index)
+        };
+        let mut section = owner(physical_page);
+        while section > 0
+            && self.mid_page_start(section).is_some_and(|start| {
+                start.page == physical_page && !self.mid_page_start_has_content(start)
+            })
+        {
+            section -= 1;
+        }
+        let mut first_pages: Vec<Option<usize>> = vec![None; section + 1];
+        for page in 1..=physical_page {
+            if let Some(first) = first_pages.get_mut(owner(page)) {
+                first.get_or_insert(page);
+            }
+        }
+        let mut number_at_section_start = 1usize;
+        let mut first_page_of_section = 1usize;
+        for (index, first) in first_pages.iter().enumerate() {
+            let first_page = match self.mid_page_start(index) {
+                Some(start) if self.mid_page_start_has_content(start) => start.page,
+                Some(start) => start.page + 1,
+                None => first.unwrap_or(first_page_of_section),
+            };
+            if index > 0 {
+                number_at_section_start += first_page.saturating_sub(first_page_of_section);
+            }
+            first_page_of_section = first_page;
+            if let Some(start) = self.section_page_number_start(index) {
+                number_at_section_start = start;
+            }
+        }
+        let displayed =
+            number_at_section_start + physical_page.saturating_sub(first_page_of_section);
+        self.page_number_with_format(physical_page, section, displayed)
     }
 
     /// Each laid-out page's section (from 0) and the number its `PAGE`
@@ -57790,6 +57871,7 @@ mod tests {
             kind: RunFieldKind::PageRef {
                 name: "_Ref42".to_string(),
                 hyperlink: false,
+                relative_position: false,
             },
             cached_text: Some("9".to_string()),
             source_field_id: None,
@@ -57825,6 +57907,7 @@ mod tests {
             kind: RunFieldKind::PageRef {
                 name: "missing".to_string(),
                 hyperlink: false,
+                relative_position: false,
             },
             cached_text: Some("12".to_string()),
             source_field_id: None,

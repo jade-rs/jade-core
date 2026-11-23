@@ -10439,11 +10439,15 @@ impl DocumentParser {
                     .iter()
                     .map(|t| t.trim_matches('"'))
                     .find(|t| !t.is_empty() && !t.starts_with('\\'))?;
+                let has_switch = |switch: &str| {
+                    raw_tokens[name_idx + 1..]
+                        .iter()
+                        .any(|token| token.eq_ignore_ascii_case(switch))
+                };
                 Some(RunFieldKind::PageRef {
                     name: name.to_string(),
-                    hyperlink: raw_tokens[name_idx + 1..]
-                        .iter()
-                        .any(|token| token.eq_ignore_ascii_case("\\h")),
+                    hyperlink: has_switch("\\h"),
+                    relative_position: has_switch("\\p"),
                 })
             }
             "NOTEREF" => {
@@ -11033,6 +11037,7 @@ impl DocumentParser {
             | RunFieldKind::PageRef {
                 name,
                 hyperlink: true,
+                ..
             }
             | RunFieldKind::NoteRef {
                 name,
@@ -22773,6 +22778,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "_Ref456".to_string(),
                 hyperlink: true,
+                relative_position: false,
             }
         );
         // REF/PAGEREF results remain in the editable run text so selection
@@ -22803,6 +22809,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "heading2".to_string(),
                 hyperlink: false,
+                relative_position: false,
             }
         );
         assert_eq!(field.cached_text, None);
@@ -22904,6 +22911,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "_Toc1".to_string(),
                 hyperlink: true,
+                relative_position: false,
             }
         );
         assert_eq!(field.cached_text, None);
@@ -23097,6 +23105,7 @@ mod tests {
             RunFieldKind::PageRef {
                 name: "_Toc214570704".to_string(),
                 hyperlink: true,
+                relative_position: false,
             }
         );
         assert_eq!(pageref.cached_text, None);
