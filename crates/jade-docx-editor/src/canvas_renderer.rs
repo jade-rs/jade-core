@@ -26460,6 +26460,18 @@ where
                 {
                     let mut previous: Option<(usize, usize, &str, f64)> = None;
                     for (segment_index, prepared) in prepared_segments.iter().enumerate() {
+                        if paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                            && wrapped_line
+                                .tab_stops
+                                .iter()
+                                .any(|tab| tab.end_offset == prepared.segment.start)
+                        {
+                            // A resolved tab anchors the following text. Its
+                            // surrounding glyphs are not adjacent gaps to
+                            // widen when justifying the line.
+                            previous = None;
+                        }
                         let em = points_to_px(prepared.style.font_size_pt);
                         for (glyph_index, step) in prepared.glyph_steps.iter().enumerate() {
                             let text = step.text(&prepared.segment.text);
@@ -82575,5 +82587,75 @@ mod tests {
         // The renderer default face is Times New Roman, whose single line
         // Word sets 2355/2048 em tall (see `word_latin_font_line_height_em`).
         assert!((heights[&sized_key] - points_to_px(24.0 * 2355.0 / 2048.0)).abs() < 1e-4);
+    }
+    #[test]
+    fn windows_justification_keeps_the_resolved_tab_anchor_and_line_end() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_painter::recording::RecordingPainter;
+
+        let _restore = RestoreWordPlatform(word_layout_platform());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let text = format!("1．\t{}", "漢字仮名交じり文".repeat(32));
+        let mut document = doc_with_paragraph_texts(&[&text]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            alignment: Some("both".into()),
+            indent: Some(Indent {
+                right: Some(0.13),
+                ..Default::default()
+            }),
+            tabs: vec![TabStop {
+                kind: Some("left".into()),
+                position: Some(36.0),
+                leader: None,
+            }],
+            ..Default::default()
+        });
+        paragraph.runs[0].properties = Some(RunProperties {
+            font_size: Some(12.0),
+            font_family: Some("Uninstalled Geometry Test Face".into()),
+            ..Default::default()
+        });
+        let painter = RecordingPainter::with_width_per_char(7.3);
+        let mut renderer =
+            CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), false).unwrap();
+        for pass in 0..2 {
+            renderer.render(&document, &Options::default()).unwrap();
+            let lines = renderer.layout_debug_lines();
+            assert!(lines.len() > 1, "the first line must be justified");
+            let line = &lines[0];
+            let tab = line.tab_stops.first().expect("resolved tab");
+            let (fragment, glyph) = line
+                .fragments
+                .iter()
+                .flat_map(|fragment| fragment.glyphs.iter().map(move |glyph| (fragment, glyph)))
+                .find(|(_, glyph)| glyph.start == tab.end_offset)
+                .expect("first character after the tab");
+            let first = fragment.x + glyph.x - 2.0 * line.report_x_offset;
+            assert!(
+                (first - tab.end_x).abs() < 1e-6,
+                "pass {pass}: justification moved the fixed tab: {first} != {}",
+                tab.end_x
+            );
+            let end = line
+                .fragments
+                .iter()
+                .flat_map(|fragment| {
+                    fragment.glyphs.iter().map(move |glyph| {
+                        fragment.x + glyph.x + glyph.width - 2.0 * line.report_x_offset
+                    })
+                })
+                .fold(f64::NEG_INFINITY, f64::max);
+            assert!(
+                (end - (renderer.page_width - renderer.margin_right - points_to_px(0.13))).abs()
+                    < 1e-6,
+                "pass {pass}: excluding a cross-tab gap lost line slack"
+            );
+        }
     }
 }

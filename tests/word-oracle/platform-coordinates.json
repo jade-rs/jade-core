@@ -6607,6 +6607,64 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-complex-font-metrics-thonburi",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-complex-font-metrics-thonburi/source.docx",
+        "sha256": "a3624b218add7ffde685a1e84b699450711b3deb934e8d108a3540539ba90635"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-complex-font-metrics-thonburi/manifest.json",
+        "sha256": "ade3d196e9a967d74a593ca5b6e4880fb91b536d19163c732810c1ef88607f3c"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-complex-font-metrics-thonburi-a3624b21",
+          "font_source": "original-word-pdf",
+          "glyph_index_fonts": {
+            "file": "tests/word-oracle/windows/font-glyph-identities/word-16.0.19127.20936/a3624b218add7ffde685a1e84b699450711b3deb934e8d108a3540539ba90635.json",
+            "sha256": "2390107168203e72cf3107ba25eaadb6c3e11c1d22c634e288696f8d508aaae3"
+          }
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-complex-font-sweep-thonburi",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-complex-font-sweep-thonburi/source.docx",
+        "sha256": "a89fddbd946b44be2532215c542e3c47bcd5c17e77bca3be691f3fbab18b75ec"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-complex-font-sweep-thonburi/manifest.json",
+        "sha256": "6a9968c6b32939fdd2e7320d5120b8b29668966dcb598004a786b8ff51f82232"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-complex-font-sweep-thonburi-a89fddbd",
+          "font_source": "original-word-pdf",
+          "glyph_index_fonts": {
+            "file": "tests/word-oracle/windows/font-glyph-identities/word-16.0.19127.20936/a89fddbd946b44be2532215c542e3c47bcd5c17e77bca3be691f3fbab18b75ec.json",
+            "sha256": "f371de29cbba7ca54829b64a36d12b1b92e3628e82dd2f29107f7a85f135703c"
+          }
+        }
+      ]
     }
   ]
 }

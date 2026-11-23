@@ -342,5 +342,33 @@ class VisiblePdfProofTests(unittest.TestCase):
             self.verify()
 
 
+def glyph_index_font_record(name='Bound Face',weight=400,italic=False,handle=5):
+ r=bytearray(104);struct.pack_into('<III',r,0,82,104,handle);struct.pack_into('<i',r,28,weight);r[32]=int(italic);v=name.encode('utf-16-le');r[40:40+len(v)]=v;return bytes(r)
+def glyph_index_text_record(flags=0x14,pdy=False):
+ r=bytearray(96 if pdy else 88);struct.pack_into('<II',r,0,84,len(r));struct.pack_into('<Iff',r,24,2,0.,0.);struct.pack_into('<iiIII',r,36,600,700,2,76,flags|(0x2000 if pdy else 0));struct.pack_into('<I',r,72,80);struct.pack_into('<HH',r,76,7,8);v=[50,20,100,30] if pdy else [50,100];struct.pack_into('<'+'i'*len(v),r,80,*v);return bytes(r)
+def glyph_index_stream(*commands):return advanced_metafile(list(commands))
+def resolve_synthetic_glyph(identity,gid):
+ if identity!=('Bound Face',400,False):raise ValueError('Unbound font identity')
+ return {7:'\U0001f642',8:'A'}[gid]
+class GlyphIndexOriginTests(unittest.TestCase):
+ def test_explicit_font_bound_mapping_and_supplementary_one_index_advance(self):
+  d=glyph_index_stream(glyph_index_font_record(),record(37,struct.pack('<I',5)),glyph_index_text_record());self.assertEqual(emf_glyphs(d,1,612,792,glyph_index_resolver=resolve_synthetic_glyph),[[1,'\U0001f642',72.,84.],[1,'A',78.,84.]])
+ def test_no_implicit_mapping(self):
+  with self.assertRaisesRegex(ValueError,'Unsupported text options'):emf_glyphs(glyph_index_stream(glyph_index_font_record(),record(37,struct.pack('<I',5)),glyph_index_text_record()),1,612,792)
+ def test_selected_font_required(self):
+  with self.assertRaisesRegex(ValueError,'selected font identity'):emf_glyphs(glyph_index_stream(glyph_index_text_record()),1,612,792,glyph_index_resolver=resolve_synthetic_glyph)
+ def test_style_identity_not_guessed(self):
+  with self.assertRaisesRegex(ValueError,'Unbound font'):emf_glyphs(glyph_index_stream(glyph_index_font_record(weight=700),record(37,struct.pack('<I',5)),glyph_index_text_record()),1,612,792,glyph_index_resolver=resolve_synthetic_glyph)
+ def test_pdy_consumes_one_pair_per_glyph_index(self):
+  g=emf_glyphs(glyph_index_stream(glyph_index_font_record(),record(37,struct.pack('<I',5)),glyph_index_text_record(pdy=True)),1,612,792,glyph_index_resolver=resolve_synthetic_glyph);self.assertAlmostEqual(g[1][3],86.4);self.assertEqual(g[1][2],78.)
+ def test_dc_restore_restores_font_identity(self):
+  d=glyph_index_stream(glyph_index_font_record(),record(37,struct.pack('<I',5)),record(33,b''),glyph_index_font_record('Other',700,True,6),record(37,struct.pack('<I',6)),record(34,struct.pack('<i',-1)),glyph_index_text_record());self.assertEqual(len(emf_glyphs(d,1,612,792,glyph_index_resolver=resolve_synthetic_glyph)),2)
+ def test_ambiguous_unicode_mapping_rejected(self):
+  for bad in ['ab','',chr(0xd800),None]:
+   with self.subTest(bad=repr(bad)),self.assertRaisesRegex(ValueError,'unambiguous Unicode scalar'):emf_glyphs(glyph_index_stream(glyph_index_font_record(),record(37,struct.pack('<I',5)),glyph_index_text_record()),1,612,792,glyph_index_resolver=lambda *args:bad)
+ def test_other_unsupported_flags_still_fail(self):
+  with self.assertRaisesRegex(ValueError,'Unsupported text options'):emf_glyphs(glyph_index_stream(glyph_index_font_record(),record(37,struct.pack('<I',5)),glyph_index_text_record(0x94)),1,612,792,glyph_index_resolver=resolve_synthetic_glyph)
+
+
 if __name__ == '__main__':
     unittest.main()

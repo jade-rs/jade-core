@@ -634,6 +634,17 @@ MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110
                                      1028)}
 
 
+THAI_LAYOUT_ORIGINALS = {'probe-complex-font-metrics-thonburi': ['a3624b218add7ffde685a1e84b699450711b3deb934e8d108a3540539ba90635',
+                                         'ade3d196e9a967d74a593ca5b6e4880fb91b536d19163c732810c1ef88607f3c',
+                                         'ad1889753120033bd90413673b1c844210d092b16285b8a379c47771b4f0e33f',
+                                         3,
+                                         75],
+ 'probe-complex-font-sweep-thonburi': ['a89fddbd946b44be2532215c542e3c47bcd5c17e77bca3be691f3fbab18b75ec',
+                                       '6a9968c6b32939fdd2e7320d5120b8b29668966dcb598004a786b8ff51f82232',
+                                       '734597cf9eef5572c13f4479d4e23a6357b4f49a1a311e9738eede67e3fe18fc',
+                                       6,
+                                       270]}
+
 def shared_originals(root=ROOT, references=None):
     if references is None:
         references = SHARED_ORIGINALS
@@ -755,6 +766,41 @@ def check_math_layout_originals(executable, output, root=ROOT):
     return results
 
 
+
+def check_thai_layout_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(root, THAI_LAYOUT_ORIGINALS):
+        archive, capture, document, _ = archive_reference(root, case, case['windows'][0])
+        target = output/name
+        target.mkdir()
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': Thai font provider PDF changed')
+        provider = target/'original-Windows-font-provider.pdf'
+        provider.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(provider, fonts)
+        actual_file = target/'native.json'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac',
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': Mac Thai original coverage changed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=case['windows'][0]['archive'],
+                            glyphs=glyphs, page_count=expected['page_count']))
+    require(len(results) == 2 and sum(r['glyphs'] for r in results) == 345,
+            'Mac Thai layout original coverage changed')
+    print('2 genuine Mac Thai layout originals: PASS', flush=True)
+    return results
+
+
 def require_mac_host(required):
     require(not required or sys.platform == 'darwin', 'Captured-original CI requires macOS')
 
@@ -825,12 +871,14 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
             (output/'normalized-control.png').read_bytes(), 'Schema normalization changed Mac pixels')
     shared_results = check_shared_originals(executable, output/'shared-originals', root)
     math_results = check_math_layout_originals(executable, output/'math-layout-originals', root)
+    thai_results = check_thai_layout_originals(executable, output/'thai-layout-originals', root)
     result = dict(host=sys.platform,require_macos=require_macos,Mac_Word_version=raw['word_version'],
                   Mac_Word_build=raw['word_build'],Mac_capture_reference_sha256=REFERENCE_SHA256,
                   font_program_provider_Windows_Word=capture['word'],font_program_provider_archive=provider['capture'],
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 141 shared originals retain all layout and painted-PDF gates. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  thai_layout_originals=thai_results,
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 141 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

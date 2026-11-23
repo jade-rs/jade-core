@@ -24,6 +24,8 @@ INDEX = Path('tests/word-oracle/platform-coordinates.json')
 # Keep this separate from logical EMF coordinates: Windows print realization
 # can differ from screen metrics. Every case retains its own Word PDF.
 PHYSICAL_FONT_CASES = {
+    'probe-complex-font-sweep-thonburi',
+    'probe-complex-font-metrics-thonburi',
     '2col-mac',
     'align-center-mac',
     'alignment-mac',
@@ -289,6 +291,8 @@ PHYSICAL_FONT_CASES = {
     'probe-math-relation-wrap-repeat',
 }
 REQUIRED_CAPTURES = {
+    'probe-complex-font-sweep-thonburi': '20261114T004402030Z-30b8d3b5',
+    'probe-complex-font-metrics-thonburi': '20261114T004402030Z-30b8d3b5',
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
     'courier-new-regular-adjacent': '20261114T004252975Z-a999e8fb',
     'probe-column-fixed-dxa-4400': '20261114T004402030Z-30b8d3b5',
@@ -837,12 +841,21 @@ def archive_reference(root, case, windows):
         pages = document['metafiles']
         require([p['page'] for p in pages] == list(range(1, document['pages'] + 1)),
                 'Archived Word page coverage changed')
+        glyph_resolver = None
+        if 'glyph_index_fonts' in windows:
+            from windows_emf_font_maps import original_pdf_glyph_index_resolver
+            identity = read_json(checked_file(root, windows['glyph_index_fonts']))
+            glyph_resolver = original_pdf_glyph_index_resolver(
+                bundle.read(document['pdf']), identity,
+                source_sha256=document['sha256'], capture_sha256=windows['capture_sha256'],
+                word=capture['word'])
         glyphs = []
         for page in pages:
             data = bundle.read(page['file'])
             require(hashlib.sha256(data).hexdigest() == page['sha256'],
                     'Original archived Windows Word EMF changed')
-            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt']))
+            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt'],
+                                     glyph_index_resolver=glyph_resolver))
         drawing = dict(page_count=document['pages'], glyphs=glyphs)
         require(capture.get('table_glyph_projection', 'visible') in ('visible', 'unclipped'),
                 'Unknown archived drawing projection')
