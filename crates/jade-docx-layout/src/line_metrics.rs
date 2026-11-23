@@ -3933,6 +3933,11 @@ fn word_latin_font_vertical_units(
         "Devanagari Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2180.0, 874.0))
         }
+        // Original Windows Devanagari probes select Nirmala UI 1.46.
+        // Its embedded hhea and OS/2 Win metrics agree at 2210/514.
+        "Devanagari Sangam MN" if word_layout_platform() == WordLayoutPlatform::Windows => {
+            Some((2210.0, 514.0))
+        }
         "Tamil Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((1340.0, 717.0))
         }

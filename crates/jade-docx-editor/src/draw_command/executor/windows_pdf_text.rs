@@ -28,8 +28,8 @@ pub(crate) fn eligible<P: Painter>(context: &P, text: &str, style: &TextStyle) -
             || realized_print_parts(&style.font_descriptor_latin_ascii, dpi).is_some())
 }
 
-// Limit this extension to individually positioned, nonjoining CJK and Thai scalars.
-// Thai marks and SARA AM, variation selectors, joining scripts and feature shaping
+// Limit this extension to individually positioned, nonjoining CJK, Thai and Devanagari scalars.
+// Combining marks, Thai SARA AM, viramas, variation selectors, joining scripts and features
 // retain the established path; no font change enters logical measurements.
 fn supported_print_text(text: &str) -> bool {
     !text.is_empty()
@@ -37,6 +37,7 @@ fn supported_print_text(text: &str) -> bool {
             let value = u32::from(c);
             (' '..='~').contains(&c)
                 || matches!(value, 0x0e01..=0x0e2e | 0x0e30 | 0x0e32 | 0x0e40..=0x0e46)
+                || matches!(value, 0x0915..=0x0939)
                 || matches!(value, 0x2014 | 0x2026 | 0x2190..=0x2193 | 0x2460..=0x2473)
                 || (matches!(value, 0x3000..=0x303f | 0x3040..=0x30ff | 0x31f0..=0x31ff
                 | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff
@@ -374,6 +375,7 @@ mod tests {
         for text in [
             "ASCII 123",
             "กาลา",
+            "कमल",
             "เกลา",
             "日本語カナかな。ＡＢ１２",
             "𠀀",
@@ -390,6 +392,9 @@ mod tests {
             "กุ",
             "ก่",
             "กำ",
+            "कि",
+            "क्ष",
+            "क़",
             "\u{0e48}",
             "a\n",
             "か\u{3099}",

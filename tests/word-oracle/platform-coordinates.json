@@ -6665,6 +6665,35 @@
           }
         }
       ]
+    },
+    {
+      "mac_case": "probe-devanagari-line-box-devanagari",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-devanagari-line-box-devanagari/source.docx",
+        "sha256": "792e9cfdf369fec15644f6aab938d97b9b07cca50473b4c7185530543750d980"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-devanagari-line-box-devanagari/manifest.json",
+        "sha256": "7f39d001733941b3c754fd951a765448a7212a3aa10093c22f8a80abd008aaab"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-devanagari-line-box-devanagari-792e9cfd",
+          "font_source": "original-word-pdf",
+          "glyph_index_fonts": {
+            "file": "tests/word-oracle/windows/font-glyph-identities/word-16.0.19127.20936/792e9cfdf369fec15644f6aab938d97b9b07cca50473b4c7185530543750d980.json",
+            "sha256": "6287765b83ccfd6f8b9b656f3b8fe793d302c82a8106e3fbe08768c8593577bd"
+          }
+        }
+      ]
     }
   ]
 }
