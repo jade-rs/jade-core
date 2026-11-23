@@ -74,7 +74,10 @@ fn painted_text(renderer: &CanvasRenderer<RecordingPainter>) -> String {
         .ops()
         .iter()
         .filter_map(|op| match op {
-            Op::FillText(text, _, _) if text != "\u{21b5}" => Some(text.as_str()),
+            // Paragraph and page-break marks are not field results.
+            Op::FillText(text, _, _) if !matches!(text.as_str(), "\u{21b5}" | "\u{21d3}") => {
+                Some(text.as_str())
+            }
             _ => None,
         })
         .collect()
@@ -131,6 +134,37 @@ fn a_pageref_follows_its_targets_section_restart() {
         r#"<w:pgNumType w:start="5"/>"#,
     ));
     assert!(text.contains("[5]"), "{text:?}");
+}
+
+/// A section without `w:fmt` numbers in decimal: it does not take the
+/// roman format of the section after it. Page 1's footer PAGE shows "1",
+/// page 2's "i", and the PAGEREF on page 1 to page 2 shows "i".
+#[test]
+fn a_decimal_section_before_a_roman_one_keeps_decimal_numbers() {
+    let text = render_twice(&forward_reference(
+        r#"<w:fldSimple w:instr=" PAGEREF target "><w:r><w:t>9</w:t></w:r></w:fldSimple>"#,
+        r#"<w:pgNumType w:fmt="lowerRoman" w:start="1"/>"#,
+    ));
+    assert_eq!(text, "[i]F1TFi");
+}
+
+/// A PAGEREF from a roman section back to a decimal one shows the decimal
+/// number of the target's page.
+#[test]
+fn a_pageref_into_a_decimal_section_before_a_roman_one_is_decimal() {
+    let body = format!(
+        r#"<w:p><w:r><w:t>D</w:t></w:r></w:p><w:p><w:r><w:br w:type="page"/></w:r></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p><w:p><w:pPr>{}</w:pPr></w:p><w:p><w:r><w:t>[</w:t></w:r><w:fldSimple w:instr=" PAGEREF target "><w:r><w:t>9</w:t></w:r></w:fldSimple><w:r><w:t>]</w:t></w:r></w:p>{}"#,
+        section_properties("nextPage", ""),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="1"/>"#
+        ),
+    );
+    let text = render_twice(&package(
+        &body,
+        r#"<w:r><w:t>F</w:t></w:r><w:fldSimple w:instr=" PAGE "><w:r><w:t>1</w:t></w:r></w:fldSimple>"#,
+    ));
+    assert_eq!(text, "DF1TF2[2]Fi");
 }
 
 /// `\p` prints relative text, which Jade does not generate: the saved

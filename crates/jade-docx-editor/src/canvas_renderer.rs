@@ -43627,9 +43627,10 @@ where
             .section_page_numbering
             .get(section)
             .and_then(|numbering| numbering.as_ref());
-        let format = numbering
-            .and_then(|numbering| numbering.format.as_deref())
-            .or(self.page_number_format.as_deref());
+        // Each section numbers in its own `w:fmt`; one without it is decimal,
+        // never the last section's format (`page_number_format`, which only
+        // serves documents without per-section numbering).
+        let format = numbering.and_then(|numbering| numbering.format.as_deref());
         let number = format_page_number(displayed, format);
         match numbering.and_then(|numbering| {
             Some((
