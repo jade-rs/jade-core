@@ -817,6 +817,90 @@ impl SkiaPainter {
         (info.glyph_id != 0).then_some(info.glyph_id as u16)
     }
 
+    // Canvas quickReject uses an outward-rounded device clip. A glyph can
+    // overlap that conservative box while its actual outline lies wholly
+    // beyond a fractional PDF cell edge. Retain that culled text too, using
+    // the existing clipped/invisible text layer, without changing any ink.
+    fn exact_ink_outside_pdf_clip(
+        &self,
+        canvas: &skia_safe::Canvas,
+        font: &Font,
+        glyphs: &[u16],
+        origin: (f32, f32),
+        bounds: &Rect,
+    ) -> bool {
+        let Some(clip) = self.shared.style.borrow().pdf_rect_clip else {
+            return false;
+        };
+        let Some([a, b, c, d, e, f]) = canvas.local_to_device_as_3x3().to_affine() else {
+            return false;
+        };
+        if ![a, b, c, d, e, f].iter().all(|v| v.is_finite()) {
+            return false;
+        }
+        let mapped = |rect: Rect| {
+            let mut left = f32::INFINITY;
+            let mut top = f32::INFINITY;
+            let mut right = f32::NEG_INFINITY;
+            let mut bottom = f32::NEG_INFINITY;
+            for (x, y) in [
+                (rect.left(), rect.top()),
+                (rect.right(), rect.top()),
+                (rect.left(), rect.bottom()),
+                (rect.right(), rect.bottom()),
+            ] {
+                let x = x + origin.0;
+                let y = y + origin.1;
+                let px = a * x + c * y + e;
+                let py = b * x + d * y + f;
+                left = left.min(px);
+                top = top.min(py);
+                right = right.max(px);
+                bottom = bottom.max(py);
+            }
+            Rect::from_ltrb(left, top, right, bottom)
+        };
+        let conservative = mapped(*bounds);
+        if conservative.left() >= clip.left()
+            && conservative.top() >= clip.top()
+            && conservative.right() <= clip.right()
+            && conservative.bottom() <= clip.bottom()
+        {
+            return false;
+        }
+        let mut widths = vec![0.0; glyphs.len()];
+        font.get_widths(glyphs, &mut widths);
+        let mut ink: Option<Rect> = None;
+        let mut advance = 0.0;
+        for (&glyph, width) in glyphs.iter().zip(widths) {
+            let Some(path) = font.get_path(glyph) else {
+                return false;
+            };
+            if !path.is_empty() {
+                let next = path.bounds().with_offset((advance, 0.0));
+                ink = Some(ink.map_or(next, |old| {
+                    Rect::from_ltrb(
+                        old.left().min(next.left()),
+                        old.top().min(next.top()),
+                        old.right().max(next.right()),
+                        old.bottom().max(next.bottom()),
+                    )
+                }));
+            }
+            advance += width;
+        }
+        let Some(ink) = ink.map(mapped) else {
+            return false;
+        };
+        [ink.left(), ink.top(), ink.right(), ink.bottom()]
+            .iter()
+            .all(|v| v.is_finite())
+            && (ink.right() <= clip.left()
+                || ink.left() >= clip.right()
+                || ink.bottom() <= clip.top()
+                || ink.top() >= clip.bottom())
+    }
+
     fn draw_glyphs(&self, text: &str, glyphs: &[u16], font: &Font, x: f32, y: f32, paint: &Paint) {
         let mut builder = skia_safe::TextBlobBuilder::new();
         if matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_)) {
@@ -887,7 +971,14 @@ impl SkiaPainter {
                     && !self.shared.style.borrow().decorative_text
                     && glyphs.len() == text.chars().count()
                     && !text.chars().all(char::is_whitespace)
-                    && canvas.quick_reject(&blob.bounds().with_offset((x, y)))
+                    && (canvas.quick_reject(&blob.bounds().with_offset((x, y)))
+                        || self.exact_ink_outside_pdf_clip(
+                            canvas,
+                            font,
+                            glyphs,
+                            (x, y),
+                            blob.bounds(),
+                        ))
                 {
                     let clip = self.shared.style.borrow().pdf_rect_clip;
                     let typeface = font.typeface();

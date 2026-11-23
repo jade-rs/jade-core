@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "mac_case": "zwnj-table-line-metrics",
+  "compatibility_mode": 14,
+  "source": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/zwnj-table-line-metrics/source.docx",
+    "sha256": "f6694aeebff9e705c22e84a2436f46d090c78641d4aca21227947a4120526b63"
+  },
+  "mac_manifest": {
+    "file": "tests/word-oracle/mac-elsa-synthetic/zwnj-table-line-metrics/manifest.json",
+    "sha256": "ce6fb46fbfc6f4f2b5e6fa16988a66187032a84873d429620bbf42f57584d6ea"
+  },
+  "windows": [
+    {
+      "archive": {
+        "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004704886Z-7e8168a7.zip",
+        "sha256": "7567cb593c400e0950e7e4c9d23c656e17adad0ab4585b6b2400bfb912bf763d"
+      },
+      "capture_id": "20261114T004704886Z-7e8168a7",
+      "capture_sha256": "7d61141136508ae4ab811a178ab7c308db6e3e7ed828f4ccfcaf868916bc0827",
+      "fixture": "ww14-zwnj-table-line-metrics-f6694aee",
+      "word_product_version": "16.0.19127.20936",
+      "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+      "font_source": "original-word-pdf"
+    }
+  ],
+  "expected": {
+    "pages": 8,
+    "controls": {
+      "\u200c": 8
+    },
+    "emf_glyphs": 358,
+    "visible_glyphs": 356,
+    "unclipped_glyphs": 358,
+    "clipped_glyphs": 2,
+    "mac_glyphs": 358
+  },
+  "blank_regions": [
+    {
+      "page": 1,
+      "rect": [
+        178.3,
+        124,
+        180.0,
+        132
+      ]
+    },
+    {
+      "page": 2,
+      "rect": [
+        178.3,
+        151,
+        180.0,
+        166
+      ]
+    },
+    {
+      "page": 3,
+      "rect": [
+        178.3,
+        174,
+        180.0,
+        195
+      ]
+    },
+    {
+      "page": 4,
+      "rect": [
+        178.3,
+        205,
+        180.0,
+        232
+      ]
+    },
+    {
+      "page": 5,
+      "rect": [
+        178.3,
+        132,
+        180.0,
+        143
+      ]
+    },
+    {
+      "page": 6,
+      "rect": [
+        178.3,
+        156,
+        180.0,
+        175
+      ]
+    },
+    {
+      "page": 7,
+      "rect": [
+        178.3,
+        192,
+        180.0,
+        224
+      ]
+    },
+    {
+      "page": 8,
+      "rect": [
+        178.3,
+        245,
+        180.0,
+        292
+      ]
+    }
+  ],
+  "scope": "Original Verdana10.5/18/24/32pt and Courier New14/21/32/48pt narrow cells. Windows retains two fully clipped glyphs in PDF text; compare visible ink and complete source geometry separately. Mac expectations remain the unchanged historical Mac coordinates; missing original Mac version fields remain missing."
+}

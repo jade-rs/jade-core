@@ -3,7 +3,7 @@ use crate::draw_command::GlyphRunStep;
 use jade_painter::Painter;
 use std::rc::Rc;
 
-fn plain_arial(descriptor: &str) -> bool {
+fn plain_captured_latin(descriptor: &str) -> bool {
     let descriptor = jade_painter::font_features::strip(descriptor);
     for token in descriptor.split_whitespace() {
         let Some(number) = token
@@ -29,7 +29,15 @@ fn plain_arial(descriptor: &str) -> bool {
             .trim()
             .trim_matches(['\'', '"']);
         return (prefix.is_empty() || prefix.eq_ignore_ascii_case("normal"))
-            && (family.eq_ignore_ascii_case("Arial") || family.eq_ignore_ascii_case("ArialMT"));
+            && [
+                "Arial",
+                "ArialMT",
+                "Verdana",
+                "Courier New",
+                "CourierNewPSMT",
+            ]
+            .iter()
+            .any(|known| family.eq_ignore_ascii_case(known));
     }
     false
 }
@@ -55,7 +63,7 @@ fn plain_windows_style(text: &str, style: &TextStyle) -> bool {
         && !style.emboss
         && !style.imprint
         && style.effects.is_none()
-        && plain_arial(&style.font_descriptor_latin_ascii)
+        && plain_captured_latin(&style.font_descriptor_latin_ascii)
         && nonjoining_features(&style.font_descriptor_latin_ascii)
 }
 
@@ -123,7 +131,7 @@ pub(super) fn try_draw<P: Painter>(
         let Some(visible) = visible_piece(part) else {
             return Ok(false);
         };
-        if !visible.is_empty() && !plain_arial(&fonts[glyph.font_index as usize]) {
+        if !visible.is_empty() && !plain_captured_latin(&fonts[glyph.font_index as usize]) {
             return Ok(false);
         }
         changed |= visible != part;
@@ -160,24 +168,34 @@ mod tests {
             font_descriptor_latin_ascii: std::rc::Rc::from("10.5pt Arial"),
             ..Default::default()
         };
-        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
-            set_word_layout_platform(platform);
-            for text in ["\u{200b}", "\u{200c}", "\u{200d}", "\u{200c}\u{200d}"] {
-                assert_eq!(
-                    super::is_unpositioned_nonprinting_run(text, &style),
-                    platform == WordLayoutPlatform::Windows
-                );
-            }
-            for text in [
-                "",
-                "A",
-                "A\u{200d}",
-                "1\u{200c}",
-                "क\u{200d}",
-                "A\u{301}\u{200d}",
-                "👩\u{200d}💻",
-            ] {
-                assert!(!super::is_unpositioned_nonprinting_run(text, &style));
+        for family in [
+            "Arial",
+            "ArialMT",
+            "Verdana",
+            "Courier New",
+            "CourierNewPSMT",
+        ] {
+            let mut captured = style.clone();
+            captured.font_descriptor_latin_ascii = std::rc::Rc::from(format!("10.5pt '{family}'"));
+            for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+                set_word_layout_platform(platform);
+                for text in ["\u{200b}", "\u{200c}", "\u{200d}", "\u{200c}\u{200d}"] {
+                    assert_eq!(
+                        super::is_unpositioned_nonprinting_run(text, &captured),
+                        platform == WordLayoutPlatform::Windows
+                    );
+                }
+                for text in [
+                    "",
+                    "A",
+                    "A\u{200d}",
+                    "1\u{200c}",
+                    "क\u{200d}",
+                    "A\u{301}\u{200d}",
+                    "👩\u{200d}💻",
+                ] {
+                    assert!(!super::is_unpositioned_nonprinting_run(text, &captured));
+                }
             }
         }
         set_word_layout_platform(WordLayoutPlatform::Windows);
