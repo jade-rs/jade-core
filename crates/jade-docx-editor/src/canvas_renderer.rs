@@ -4340,8 +4340,8 @@ where
     /// `w:vAlign="both"` shifts published by the last measuring pass, keyed by
     /// body element index (see [`JustifiedGap`]).
     page_valign_gaps: HashMap<usize, JustifiedGap>,
-    /// True during the vAlign measuring pass: justified gaps are not applied,
-    /// so the pass sees (and publishes) the natural flow.
+    /// True during the vAlign measuring pass: neither justified gaps nor page
+    /// offsets are applied, so the pass sees (and publishes) the natural flow.
     valign_gaps_suspended: bool,
     /// `(page, body element, natural start)` gap slots recorded during the
     /// current full repaint: top-level elements that put content on a
@@ -40611,8 +40611,14 @@ where
     /// The vertical offset (px) to add to body content on the current page for
     /// section `w:vAlign`. Returns `0.0` for `top`/`both`/pageless or when no
     /// offset has been measured yet.
+    ///
+    /// The measuring pass always sees `0.0`: it lays out the natural flow, as
+    /// a fresh open does. Applying the previous layout's offsets there would
+    /// push content on a page that has since grown past the body bottom, so
+    /// the measured page breaks (and the offsets published from them) would
+    /// depend on the layout before the edit.
     fn current_page_valign_offset(&self) -> f64 {
-        if !self.section_valign_enabled() {
+        if !self.section_valign_enabled() || self.valign_gaps_suspended {
             return 0.0;
         }
         self.page_valign_offsets

@@ -903,3 +903,53 @@ fn justified_cached_layouts_keep_the_consumed_space_after() {
     renderer.current_y = 520.0;
     assert_eq!(renderer.current_spacing_after_consumed(), None);
 }
+
+/// An edit that grows a centered, bottom-aligned or justified page lays out
+/// exactly as a fresh render of the edited document, in one render. The
+/// measuring pass used to start from the previous layout's page offsets,
+/// so the grown page overflowed the body bottom and broke one page early.
+#[test]
+fn growing_an_aligned_page_matches_a_fresh_render() {
+    let body = |first: &str| {
+        let mut body = paragraph(first, "");
+        for index in 1..30 {
+            body.push_str(&paragraph(&format!("Line {index}"), ""));
+        }
+        body.push_str(&format!(r#"<w:sectPr>{MARGINS}</w:sectPr>"#));
+        load(&body)
+    };
+    let long = "word ".repeat(120);
+    for align in ["center", "bottom", "both"] {
+        let original = with_vertical_alignment(&body("First"), align);
+        let edited = with_vertical_alignment(&body(long.trim_end()), align);
+        let mut renderer = rendered(&original, &Options::default());
+        assert_eq!(renderer.current_page_number, 1, "{align}: one page");
+        renderer.set_incremental_dirty_from(0);
+        renderer
+            .render(&edited, &Options::default())
+            .expect("edited render");
+        let fresh = rendered(&edited, &Options::default());
+        assert_eq!(fresh.current_page_number, 1, "{align}: still one page");
+        assert_eq!(
+            flow_signature(&renderer),
+            flow_signature(&fresh),
+            "{align}: pagination"
+        );
+        let tops = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<f64> {
+            renderer
+                .selection
+                .paragraphs()
+                .iter()
+                .flat_map(|paragraph| paragraph.lines.iter().map(|line| line.absolute_top))
+                .collect()
+        };
+        let (after, reference) = (tops(&renderer), tops(&fresh));
+        assert_eq!(after.len(), reference.len(), "{align}: line count");
+        for (index, (edited, fresh)) in after.iter().zip(&reference).enumerate() {
+            assert!(
+                (edited - fresh).abs() < 0.01,
+                "{align}: line {index} at {edited}, fresh {fresh}"
+            );
+        }
+    }
+}
