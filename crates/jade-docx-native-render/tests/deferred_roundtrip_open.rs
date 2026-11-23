@@ -176,12 +176,12 @@ fn export_without_an_edit_matches_an_eager_load() {
             eager_export(&bytes, Vec::new(), 0),
             name,
         );
+        // Written from the source XML as loaded, without building the tree.
         assert_eq!(
             roundtrip_xml_builds(),
-            before + 1,
+            before,
             "{name}: export built the tree"
         );
-        // On a copy: the live document is still as opened.
         assert!(document.word_document().raw_document.is_none(), "{name}");
     }
 }
@@ -301,9 +301,11 @@ fn a_legacy_check_box_is_drawn_at_open() {
     assert!(plain.word_document().raw_document.is_none());
 }
 
-/// Idle time builds the tree: the shell's pass over the pages left stale.
+/// Painting the pages a window left stale draws them and does nothing
+/// else: it neither builds the tree nor repaints underneath the shell, which
+/// would leave it nothing to report as drawn.
 #[test]
-fn painting_stale_pages_builds_the_tree() {
+fn painting_stale_pages_draws_them_without_building_the_tree() {
     let bytes = fixture("footnote-table-each-page.docx");
     let mut document = NativeDocument::open_with_font_faces_and_paint_window(
         &bytes,
@@ -313,9 +315,93 @@ fn painting_stale_pages_builds_the_tree() {
         0..1,
     )
     .unwrap();
-    assert!(document.word_document().raw_document.is_none());
+    assert!(document.has_stale_pages());
     let before = roundtrip_xml_builds();
-    document.paint_stale_pages(0..usize::MAX).unwrap();
-    assert_eq!(roundtrip_xml_builds(), before + 1);
+    assert!(document.paint_stale_pages(0..usize::MAX).unwrap());
+    assert!(!document.has_stale_pages());
+    assert_eq!(roundtrip_xml_builds(), before);
+    assert!(document.word_document().raw_document.is_none());
+}
+
+/// The `w:document.xml` part of a package.
+fn document_xml(docx: &[u8]) -> String {
+    use std::io::Read;
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(docx)).unwrap();
+    let mut xml = String::new();
+    archive
+        .by_name("word/document.xml")
+        .unwrap()
+        .read_to_string(&mut xml)
+        .unwrap();
+    xml
+}
+
+/// `xml` without its `w:date` attributes, which carry the clock.
+fn without_dates(xml: &str) -> String {
+    let mut out = String::with_capacity(xml.len());
+    let mut rest = xml;
+    while let Some(at) = rest.find(" w:date=\"") {
+        out.push_str(&rest[..at]);
+        let after = &rest[at + " w:date=\"".len()..];
+        rest = &after[after.find('"').map_or(after.len(), |end| end + 1)..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// A tracked change typed after a deferred open takes the id after the
+/// file's own, as an eager load gives it, rather than starting again at 1.
+#[test]
+fn a_tracked_change_after_open_saves_as_an_eager_load_does() {
+    let bytes = fixture("review-kinds.docx");
+    let mut document = open(&bytes);
+    let paragraph = text_paragraph(&mut document);
+    document.set_change_tracking(true, "Tester").unwrap();
+    document.insert_text(paragraph, 0, "Tracked ", 1).unwrap();
+    let expected = eager_export(
+        &bytes,
+        vec![
+            HeadlessCommand::StartChangeTracking {
+                author: Some("Tester".to_string()),
+                initials: None,
+                date: None,
+                date_utc: None,
+            },
+            HeadlessCommand::InsertText {
+                paragraph,
+                offset: 0,
+                text: "Tracked ".to_string(),
+            },
+        ],
+        0,
+    );
+    let actual = without_dates(&document_xml(&document.export_docx().unwrap()));
+    let expected = without_dates(&document_xml(&expected));
+    assert!(actual.contains("Tracked "), "the edit was saved");
+    assert!(actual == expected, "tracked change saved differently");
+}
+
+/// An HTML altChunk splices paragraphs into the body at load; the deferred
+/// tree would attach node ids to the wrong ones, so such a document opens
+/// with the tree and an edit saves where it was made.
+#[test]
+fn an_alt_chunk_document_saves_edits_where_they_were_made() {
+    let bytes = fixture("alt-chunk-html.docx");
+    let mut document = open(&bytes);
     assert!(document.word_document().raw_document.is_some());
+    let paragraph = text_paragraph(&mut document);
+    document.insert_text(paragraph, 0, "Edited ", 1).unwrap();
+    assert_same(
+        document.export_docx().unwrap(),
+        eager_export(
+            &bytes,
+            vec![HeadlessCommand::InsertText {
+                paragraph,
+                offset: 0,
+                text: "Edited ".to_string(),
+            }],
+            0,
+        ),
+        "alt chunk",
+    );
 }
