@@ -35,6 +35,8 @@ fn every_field_shows_its_code_in_braces_and_back() {
 #[test]
 fn one_field_toggles_against_the_rest() {
     let mut document = common::open_fixture("public/fixtures/document-property-fields.docx");
+    // The fields are read from the round-trip tree, straight after open.
+    document.ensure_roundtrip_xml().unwrap();
     let whole = |document: &common::Doc, index: usize| {
         let length = document.paragraph_text(index).map_or(0, |text| text.len());
         SelectionRange::new(

@@ -175,6 +175,9 @@ fn typing_that_wraps_matches_a_full_repaint() {
 #[test]
 fn stable_body_typing_keeps_later_table_editing_metadata() {
     let mut document = open_fixture("public/fixtures/yokohama.docx");
+    // The node ids in the metadata come with the round-trip tree, which the
+    // shell's idle pass builds after open.
+    document.ensure_roundtrip_xml().unwrap();
     let before = serde_json::to_value((
         document.renderer().table_resize_metadata(),
         document.renderer().cell_layouts_debug_ref(),
