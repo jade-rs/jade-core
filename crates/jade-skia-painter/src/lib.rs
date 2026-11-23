@@ -1973,6 +1973,16 @@ impl Painter for SkiaPainter {
         self.shared.text_output_dpi.get()
     }
 
+    fn supports_font_glyphs(&self) -> bool {
+        matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                ..
+            }
+        )
+    }
+
     fn try_fill_font_glyph(
         &self,
         text: &str,

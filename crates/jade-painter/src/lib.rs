@@ -324,6 +324,12 @@ pub trait Painter {
 
     // ---- optional fast paths ----------------------------------------------
 
+    /// Whether this surface can attempt prepared font glyphs as vector text.
+    /// Callers must keep their original outline and font state otherwise.
+    fn supports_font_glyphs(&self) -> bool {
+        false
+    }
+
     /// Preserves a prepared outline glyph as selectable vector text when the
     /// backend can prove the current face has the exact supplied font bytes
     /// and the Unicode maps to this glyph. Otherwise the caller paints its

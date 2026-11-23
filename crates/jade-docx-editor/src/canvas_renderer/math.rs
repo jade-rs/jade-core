@@ -447,14 +447,18 @@ impl OwnedMathPlan {
                     }
                     if jade_docx_layout::line_metrics::word_layout_platform()
                         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                        && painter.supports_font_glyphs()
                     {
-                        painter.set_font(&styled_font(MathTextStyle {
-                            family: &glyph.family,
-                            size_px: glyph.size_px,
-                            color: &glyph.color,
-                            variant: jade_docx_layout::math_layout::styled::MathVariant::Plain,
-                        }));
-                        last_font = None;
+                        let font = (glyph.family.as_str(), glyph.size_px);
+                        if last_font != Some(font) {
+                            painter.set_font(&styled_font(MathTextStyle {
+                                family: &glyph.family,
+                                size_px: glyph.size_px,
+                                color: &glyph.color,
+                                variant: jade_docx_layout::math_layout::styled::MathVariant::Plain,
+                            }));
+                            last_font = Some(font);
+                        }
                         if let Some(program) = &prepared.font_program {
                             if painter.try_fill_font_glyph(
                                 glyph
@@ -603,9 +607,13 @@ pub fn paint_boxed_math<P: Painter>(
                 }
                 if jade_docx_layout::line_metrics::word_layout_platform()
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    && painter.supports_font_glyphs()
                 {
-                    painter.set_font(&styled_font(glyph.style));
-                    last_font = None;
+                    let font = (glyph.style.family, glyph.style.size_px);
+                    if last_font != Some(font) {
+                        painter.set_font(&styled_font(glyph.style));
+                        last_font = Some(font);
+                    }
                     if let Some(program) = &prepared.font_program {
                         if painter.try_fill_font_glyph(
                             glyph.display_text(&plan.text),

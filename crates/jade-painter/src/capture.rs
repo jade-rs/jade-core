@@ -401,6 +401,10 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         self.inner.fill_upright_text(text, x, y)
     }
 
+    fn supports_font_glyphs(&self) -> bool {
+        !self.is_capturing() && self.inner.supports_font_glyphs()
+    }
+
     fn try_fill_font_glyph(
         &self,
         text: &str,
