@@ -4082,7 +4082,11 @@ pub(crate) fn word_windows_join_control_line_height_px(font_descriptor: &str) ->
     {
         return None;
     }
-    Some(f64::from(size_pt) * 96.0 / 72.0 * 1.2)
+    // The retained Word PDF realizes 10.5pt Arial as 10.56pt on its
+    // 600dpi font grid. The invisible line box uses that same physical em;
+    // using the nominal em accumulates vertical drift across soft lines.
+    let device_em = (f64::from(size_pt) * 600.0 / 72.0).round();
+    (device_em > 0.0).then_some(device_em * 96.0 / 600.0 * 1.2)
 }
 
 pub(crate) fn word_mac_join_control_line_height_px(
@@ -5130,13 +5134,20 @@ mod tests {
         set_word_layout_platform(WordLayoutPlatform::Windows);
         for face in ["14pt Arial", "14pt ARIAL", "14pt 'ArialMT'"] {
             let height = word_windows_join_control_line_height_px(face).expect("regular Arial");
-            assert!((height - 14.0 * 96.0 / 72.0 * 1.2).abs() < 1e-9);
+            // Original Word realizes the requested 14pt em as 14.04pt.
+            assert!((height - 22.464).abs() < 1e-9);
         }
+        // Original source16 uses 10.5pt Arial, printed at 10.56pt.
+        assert!(
+            (word_windows_join_control_line_height_px("10.5pt Arial").unwrap() - 16.896).abs()
+                < 1e-9
+        );
         for face in [
             "bold 14pt Arial",
             "italic 14pt Arial",
             "14pt Calibri",
             "0pt Arial",
+            "0.001pt Arial",
         ] {
             assert!(
                 word_windows_join_control_line_height_px(face).is_none(),

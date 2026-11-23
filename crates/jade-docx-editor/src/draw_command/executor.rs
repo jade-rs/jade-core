@@ -878,6 +878,10 @@ fn execute_cached_text_run_with_font_state<P: Painter>(
     execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 
+pub(crate) fn is_windows_unpositioned_nonprinting_run(text: &str, style: &TextStyle) -> bool {
+    windows_control_text::is_unpositioned_nonprinting_run(text, style)
+}
+
 #[cold]
 #[inline(never)]
 #[allow(clippy::too_many_arguments)]
