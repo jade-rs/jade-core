@@ -42569,7 +42569,12 @@ where
     /// placed content there restarts the page's number although the page
     /// shows the chrome of the section at its top.
     fn numbering_section_for_page(&self, page: usize) -> usize {
-        let mut section = self.body_section_for_page(page);
+        self.numbering_section_from(page, self.body_section_for_page(page))
+    }
+
+    /// Steps back from `section`, the last section with body content on
+    /// `page`, past mid-page sections that placed nothing there.
+    fn numbering_section_from(&self, page: usize, mut section: usize) -> usize {
         while section > 0
             && self
                 .mid_page_start(section)
@@ -44254,9 +44259,9 @@ where
         // must not renumber the sections before it.
         if section == 0 {
             // Single-section documents never need the table.
-            let first_page = self.first_page_of_section_index(0).unwrap_or(page);
-            let start = self.section_page_number_start(0).unwrap_or(1);
-            return start + page.saturating_sub(first_page);
+            return self.page_number_walk(0, (1, 1), 0, page, |index| {
+                self.laid_out_first_page_of_section(index)
+            });
         }
         let mut cached = self.page_number_table.borrow_mut();
         let table = cached.get_or_insert_with(|| self.build_page_number_table());
@@ -44265,29 +44270,64 @@ where
         }
         // Sections from the first one whose start depends on the page being
         // laid out: usually none or one.
-        let (mut number_at_section_start, mut first_page_of_section) =
-            table.sections.last().copied().unwrap_or((1, 1));
-        for index in table.sections.len()..=section {
+        let state = table.sections.last().copied().unwrap_or((1, 1));
+        self.page_number_walk(table.sections.len(), state, section, page, |index| {
+            table.laid_out_first_page(index)
+        })
+    }
+
+    /// One step of the section walk behind a PAGE number: section `index`,
+    /// whose numbering starts on `first_page`, continues the count from
+    /// `(number, first_page)` of the section before (`(1, 1)` before the
+    /// first), unless its own `w:start` restarts it.
+    fn page_number_walk_step(
+        &self,
+        index: usize,
+        first_page: usize,
+        (number, previous_first_page): (usize, usize),
+    ) -> (usize, usize) {
+        let number = if index > 0 {
+            number + first_page.saturating_sub(previous_first_page)
+        } else {
+            number
+        };
+        (
+            self.section_page_number_start(index).unwrap_or(number),
+            first_page,
+        )
+    }
+
+    /// The number a PAGE field shows on a physical (1-based) `page` of
+    /// `section`, walking sections `from..=section` from `state`, the
+    /// `(number, first_page)` of section `from - 1` (`(1, 1)` from 0).
+    ///
+    /// A section's numbering starts on its mid-page start page when it
+    /// placed content there and on the page after when not; otherwise on
+    /// the first page `laid_out_first_page` gives it. A section owning no
+    /// page yet starts on the page being laid out when it is the active
+    /// one, any other on `page` itself.
+    fn page_number_walk(
+        &self,
+        from: usize,
+        state: (usize, usize),
+        section: usize,
+        page: usize,
+        laid_out_first_page: impl Fn(usize) -> Option<usize>,
+    ) -> usize {
+        let (number, first_page) = (from..=section).fold(state, |state, index| {
             let first_page = match self.mid_page_start(index) {
                 Some(start) if self.mid_page_start_has_content(start) => start.page,
                 Some(start) => start.page + 1,
-                None => table
-                    .laid_out_first_page(index)
+                None => laid_out_first_page(index)
                     .or_else(|| {
                         (index == self.active_section_index)
                             .then_some(self.current_page_number.max(1))
                     })
                     .unwrap_or(page),
             };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-        }
-        number_at_section_start + page.saturating_sub(first_page_of_section)
+            self.page_number_walk_step(index, first_page, state)
+        });
+        number + page.saturating_sub(first_page)
     }
 
     /// Section `index`'s `w:pgNumType w:start`.
@@ -44321,8 +44361,7 @@ where
             first_pages,
             sections: Vec::new(),
         };
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
+        let mut state = (1, 1);
         for index in 0.. {
             let first_page = match self.mid_page_start(index) {
                 Some(start) => match start.content {
@@ -44338,16 +44377,8 @@ where
                     None => break,
                 },
             };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-            table
-                .sections
-                .push((number_at_section_start, first_page_of_section));
+            state = self.page_number_walk_step(index, first_page, state);
+            table.sections.push(state);
         }
         table
     }
@@ -44361,26 +44392,12 @@ where
         }
         let page = physical_page.max(1);
         let section = self.numbering_section_for_page(page);
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
-        for index in 0..=section {
-            let first_page = self
-                .first_page_of_section_index_reference(index)
-                .unwrap_or(page);
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self
-                .section_page_numbering
-                .get(index)
-                .and_then(|numbering| numbering.as_ref())
-                .and_then(|numbering| numbering.start)
-            {
-                number_at_section_start = start as usize;
-            }
-        }
-        number_at_section_start + page.saturating_sub(first_page_of_section)
+        self.page_number_walk(0, (1, 1), section, page, |index| {
+            self.page_section_indices
+                .iter()
+                .position(|owner| *owner == index)
+                .map(|position| position + 1)
+        })
     }
 
     fn displayed_page_number(&self, physical_page: usize) -> String {
@@ -44414,39 +44431,26 @@ where
                 .copied()
                 .unwrap_or(self.active_section_index)
         };
-        let mut section = owner(physical_page);
-        while section > 0
-            && self.mid_page_start(section).is_some_and(|start| {
-                start.page == physical_page && !self.mid_page_start_has_content(start)
-            })
-        {
-            section -= 1;
-        }
+        let section = self.numbering_section_from(physical_page, owner(physical_page));
         let mut first_pages: Vec<Option<usize>> = vec![None; section + 1];
         for page in 1..=physical_page {
             if let Some(first) = first_pages.get_mut(owner(page)) {
                 first.get_or_insert(page);
             }
         }
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
-        for (index, first) in first_pages.iter().enumerate() {
-            let first_page = match self.mid_page_start(index) {
-                Some(start) if self.mid_page_start_has_content(start) => start.page,
-                Some(start) => start.page + 1,
-                None => first.unwrap_or(first_page_of_section),
-            };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-        }
-        let displayed =
-            number_at_section_start + physical_page.saturating_sub(first_page_of_section);
+        let displayed = self.page_number_walk(0, (1, 1), section, physical_page, |index| {
+            first_pages[index]
+        });
         self.page_number_with_format(physical_page, section, displayed)
+    }
+
+    /// What a PAGE field on each laid-out page shows, its section's
+    /// restart and numeral format applied: what a PAGEREF to the page shows
+    /// and what Word writes when it updates a table of contents' numbers.
+    pub fn displayed_page_labels(&self) -> Vec<String> {
+        (1..=self.resolved_total_page_count())
+            .map(|page| self.page_reference_number(page))
+            .collect()
     }
 
     /// Each laid-out page's section (from 0) and the number its `PAGE`
@@ -44564,7 +44568,9 @@ where
     /// body content. A mid-page section that placed content on its shared
     /// page starts there; one whose content moved on to the next page starts
     /// on that page. Otherwise the first page laid out for the section (the
-    /// page being laid out counts as the active section's).
+    /// page being laid out counts as the active section's). The tests'
+    /// view of what `page_number_walk` starts each section on.
+    #[cfg(test)]
     fn first_page_of_section_index(&self, section: usize) -> Option<usize> {
         if let Some(start) = self.mid_page_start(section) {
             return Some(if self.mid_page_start_has_content(start) {
@@ -44573,6 +44579,13 @@ where
                 start.page + 1
             });
         }
+        self.laid_out_first_page_of_section(section).or_else(|| {
+            (section == self.active_section_index).then_some(self.current_page_number.max(1))
+        })
+    }
+
+    /// The first page `page_section_indices` gives `section`.
+    fn laid_out_first_page_of_section(&self, section: usize) -> Option<usize> {
         let laid_out = self
             .page_section_indices
             .iter()
@@ -44583,30 +44596,7 @@ where
             self.page_number_page_visits.get()
                 + laid_out.unwrap_or(self.page_section_indices.len()),
         );
-        laid_out.or_else(|| {
-            (section == self.active_section_index).then_some(self.current_page_number.max(1))
-        })
-    }
-
-    /// `first_page_of_section_index` without the visit count, for the
-    /// reference algorithm.
-    #[cfg(test)]
-    fn first_page_of_section_index_reference(&self, section: usize) -> Option<usize> {
-        if let Some(start) = self.mid_page_start(section) {
-            return Some(if self.mid_page_start_has_content(start) {
-                start.page
-            } else {
-                start.page + 1
-            });
-        }
-        let laid_out = self
-            .page_section_indices
-            .iter()
-            .position(|owner| *owner == section)
-            .map(|index| index + 1);
-        laid_out.or_else(|| {
-            (section == self.active_section_index).then_some(self.current_page_number.max(1))
-        })
+        laid_out
     }
 
     pub fn table_order_for(&self, table_id: usize) -> Option<usize> {

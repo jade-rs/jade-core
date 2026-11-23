@@ -181,6 +181,14 @@ pub trait WordSession {
         None
     }
 
+    /// What a PAGE field on a physical (1-based) page shows at the last
+    /// layout, its section's restart and numeral format applied: the
+    /// number a table of contents' update writes. Without per-page labels,
+    /// the page's own number.
+    fn page_label(&self, page: usize) -> String {
+        page.to_string()
+    }
+
     /// Where a caret at a position would be drawn at the last layout —
     /// its x, its top in document coordinates and its height — without
     /// moving the selection.

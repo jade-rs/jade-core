@@ -242,3 +242,169 @@ fn a_footers_section_field_follows_the_pages_chrome_section() {
         .collect();
     assert_eq!(sections, ["1", "2", "2"], "{text:?}");
 }
+
+/// The keep-next measurer resolves a forward PAGEREF as the body paints
+/// it: from the previous pass's page sections. (A group at the top of the
+/// page is not measured, hence the leading paragraph.)
+#[test]
+fn a_keep_next_chains_forward_pageref_measures_as_it_paints() {
+    let field = r#"<w:fldSimple w:instr=" PAGEREF target "><w:r><w:t>9</w:t></w:r></w:fldSimple>"#;
+    let body = format!(
+        r#"<w:p><w:r><w:t>lead</w:t></w:r></w:p><w:p><w:pPr><w:keepNext/></w:pPr><w:r><w:t>[</w:t></w:r>{field}<w:r><w:t>]</w:t></w:r></w:p><w:p><w:r><w:t>next</w:t></w:r></w:p><w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>{}"#,
+        section_properties("nextPage", ""),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="1"/>"#
+        ),
+    );
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let word_doc =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let document = word_doc.document.as_ref().expect("document");
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&word_doc);
+    for _ in 0..2 {
+        renderer
+            .render(document, &Options::default())
+            .expect("render");
+    }
+    assert!(painted_text(&renderer).contains("[i]"));
+    let measurer = renderer
+        .keep_next_measurer
+        .as_ref()
+        .expect("the keepNext chain was measured");
+    assert_eq!(
+        measurer.page_sections_before_pass,
+        renderer.page_sections_before_pass
+    );
+    assert_eq!(measurer.page_reference_number(2), "i");
+}
+
+/// A session over a loaded document and the renderer that laid it out,
+/// as the browser's detached session reads its layout facts.
+struct LaidOutSession {
+    document: WordDocument,
+    renderer: CanvasRenderer<RecordingPainter>,
+    selection: Option<jade_selection::SelectionRange>,
+    executor: crate::commands::CommandExecutor,
+}
+
+impl crate::word::WordSession for LaidOutSession {
+    fn word_document(&self) -> &WordDocument {
+        &self.document
+    }
+    fn selection_range(&self) -> Option<jade_selection::SelectionRange> {
+        self.selection
+    }
+    fn set_selection_range(&mut self, range: Option<jade_selection::SelectionRange>) {
+        self.selection = range;
+    }
+    fn apply_command(
+        &mut self,
+        _command: jade_docx_headless_api::HeadlessCommand,
+        _keep: bool,
+    ) -> Result<(), String> {
+        Err("not used".into())
+    }
+    fn apply_commands(
+        &mut self,
+        _commands: Vec<jade_docx_headless_api::HeadlessCommand>,
+        _keep: bool,
+    ) -> Result<(), String> {
+        Err("not used".into())
+    }
+    fn execute_command(
+        &mut self,
+        command: Box<dyn crate::commands::Command>,
+        _keep: bool,
+    ) -> Result<(), String> {
+        let mut context =
+            crate::commands::CommandContext::new(&mut self.document, &mut self.selection);
+        self.executor
+            .execute(command, &mut context)
+            .map(|_| ())
+            .map_err(|error| format!("{error:?}"))
+    }
+    fn cell_id_for_paragraph(&self, _paragraph: usize) -> Option<usize> {
+        None
+    }
+    fn cell_layout(&self, _cell_id: usize) -> Option<&crate::word::CellLayout> {
+        None
+    }
+    fn cell_layouts(&self) -> &[crate::word::CellLayout] {
+        &[]
+    }
+    fn table_order_for(&self, _table_id: usize) -> Option<usize> {
+        None
+    }
+    fn hyperlink_regions(&self) -> Vec<HyperlinkRegion> {
+        Vec::new()
+    }
+    fn select_cells(&mut self, _anchor: usize, _focus: usize) -> Result<(), String> {
+        Err("not used".into())
+    }
+    fn page_count(&self) -> Option<usize> {
+        Some(self.renderer.page_count())
+    }
+    fn paragraph_page(&self, paragraph: usize) -> Option<usize> {
+        self.renderer.cached_paragraph_start_page(paragraph)
+    }
+    fn page_label(&self, page: usize) -> String {
+        self.renderer.displayed_page_labels()[page - 1].clone()
+    }
+}
+
+/// Updating a table of contents' page numbers writes the number the
+/// target page displays — "i" in a lower-roman section restarting at 1,
+/// not its physical page 2 — and leaves a `\p` entry's saved text.
+#[test]
+fn updating_toc_page_numbers_writes_the_displayed_number() {
+    use crate::word::references::toc::WordToc;
+    use crate::word::WordSession;
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGEREF target \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>9</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:r><w:t xml:space="preserve">Rel </w:t></w:r><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> PAGEREF target \p </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>below</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p>{}"#,
+        section_properties("nextPage", ""),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="1"/>"#
+        ),
+    );
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let document =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&document);
+    let model = document.document.clone().expect("document");
+    for _ in 0..2 {
+        renderer
+            .render(&model, &Options::default())
+            .expect("render");
+    }
+    let mut session = LaidOutSession {
+        document,
+        renderer,
+        selection: Some(jade_selection::SelectionRange::collapsed(
+            jade_selection::TextPosition::new(0, 0),
+        )),
+        executor: crate::commands::CommandExecutor::new(),
+    };
+    assert_eq!(session.paragraph_page(3), Some(2));
+    session.update_toc(true).expect("update the page numbers");
+
+    let text = |document: &WordDocument, index: usize| -> String {
+        document
+            .paragraph(index)
+            .expect("paragraph")
+            .runs
+            .iter()
+            .map(|run| run.text.as_str())
+            .collect()
+    };
+    assert_eq!(text(&session.document, 0), "Chapter\ti");
+    assert_eq!(text(&session.document, 1), "Rel below");
+    let exported = session.document.export_docx().expect("export");
+    let reloaded = futures::executor::block_on(WordDocument::load(&exported, &Options::default()))
+        .expect("reload");
+    assert_eq!(text(&reloaded, 0), "Chapter\ti");
+    assert_eq!(text(&reloaded, 1), "Rel below");
+}

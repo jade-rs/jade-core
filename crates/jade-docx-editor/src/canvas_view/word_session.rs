@@ -27,6 +27,8 @@ pub(super) struct LayoutFacts {
     hyperlinks: Vec<HyperlinkRegion>,
     page_count: Option<usize>,
     paragraph_pages: HashMap<usize, usize>,
+    /// `CanvasRenderer::displayed_page_labels`, page 1 first.
+    page_labels: Vec<String>,
 }
 
 /// Where an action left the selection, and what it returned.
@@ -131,6 +133,13 @@ impl WordSession for DetachedSession<'_> {
     fn paragraph_page(&self, paragraph: usize) -> Option<usize> {
         self.facts.paragraph_pages.get(&paragraph).copied()
     }
+
+    fn page_label(&self, page: usize) -> String {
+        page.checked_sub(1)
+            .and_then(|index| self.facts.page_labels.get(index))
+            .cloned()
+            .unwrap_or_else(|| page.to_string())
+    }
 }
 
 impl OffscreenDocumentView {
@@ -168,6 +177,7 @@ impl OffscreenDocumentView {
             hyperlinks: renderer.hyperlink_regions().to_vec(),
             page_count: Some(renderer.page_count()).filter(|count| *count > 0),
             paragraph_pages,
+            page_labels: renderer.displayed_page_labels(),
         }
     }
 

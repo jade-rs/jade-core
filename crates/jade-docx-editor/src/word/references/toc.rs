@@ -305,7 +305,8 @@ pub trait WordToc: WordSession {
                 move |document, _| document.update_table_of_contents_at(index).map(|_| ()),
             );
         }
-        // Each entry's bookmark, and the page its paragraph is on now.
+        // Each entry's bookmark, and the number the page its paragraph is on
+        // now displays (its section's restart and format, as Word writes).
         let document = self.word_document();
         let block = document.tables_of_contents()[index].clone();
         let model = document.document.as_ref();
@@ -315,8 +316,12 @@ pub trait WordToc: WordSession {
                 continue;
             };
             for run in &entry.runs {
-                let Some(RunFieldKind::PageRef { name, .. }) =
-                    run.field.as_ref().map(|field| &field.kind)
+                // `\p` keeps its saved relative text.
+                let Some(RunFieldKind::PageRef {
+                    name,
+                    relative_position: false,
+                    ..
+                }) = run.field.as_ref().map(|field| &field.kind)
                 else {
                     continue;
                 };
@@ -330,7 +335,7 @@ pub trait WordToc: WordSession {
                     .and_then(|_| document.bookmark_position(name))
                     .and_then(|position| self.paragraph_page(position.paragraph));
                 if let Some(page) = page {
-                    pages.insert(name.clone(), page.to_string());
+                    pages.insert(name.clone(), self.page_label(page));
                 }
             }
         }
