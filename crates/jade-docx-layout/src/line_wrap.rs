@@ -4659,6 +4659,32 @@ impl WrappedLine {
         extent.map(|(ascent, descent)| (ascent, descent, tallest_face))
     }
 
+    /// Windows-only candidate for a soft line containing only ZWJ in Arial.
+    pub fn windows_join_control_line_box_px(&self) -> Option<f64> {
+        if self.break_kind != LineBreakKind::Soft
+            || crate::line_metrics::word_layout_platform()
+                != crate::line_metrics::WordLayoutPlatform::Windows
+            || self.clusters.is_empty()
+            || !self.clusters.iter().all(|cluster| {
+                !cluster.text.is_empty() && cluster.text.chars().all(|ch| ch == '\u{200d}')
+            })
+        {
+            return None;
+        }
+        self.segments
+            .iter()
+            .filter_map(|segment| {
+                let style = crate::font_resolver::resolve_run_style_for_wrap(
+                    segment.properties.as_deref(),
+                    None,
+                );
+                crate::line_metrics::word_windows_join_control_line_height_px(
+                    &style.font_descriptor_latin_ascii,
+                )
+            })
+            .reduce(f64::max)
+    }
+
     /// An isolated join control can use a different font box on Word for Mac.
     pub fn mac_join_control_line_box_px(&self) -> Option<f64> {
         if self.break_kind != LineBreakKind::Soft

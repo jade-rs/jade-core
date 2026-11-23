@@ -944,6 +944,14 @@ impl SkiaPainter {
                     .borrow_mut()
                     .push(pdf_text::RecordedText {
                         text: text.to_string(),
+                        // Native Word enables output DPI only for Windows vector export.
+                        // Preserve the actual selected face, not a requested font alias.
+                        postscript_name: self.shared.text_output_dpi.get().map(|_| {
+                            let typeface = font.typeface();
+                            typeface
+                                .post_script_name()
+                                .unwrap_or_else(|| typeface.family_name())
+                        }),
                         font_size: font.size(),
                         widths: if glyphs.len() == 1 && text.chars().count() > 1 {
                             let mut scalar_widths = vec![0.0; text.chars().count()];

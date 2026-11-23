@@ -391,6 +391,17 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_title_tracking_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_ms_auto_spacing_probes.py
           python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Assert versioned Windows control-character coordinates and absence of extra ink
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_control_coordinates.py
+          python scripts/word-oracle/check_windows_control_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-control-coordinates
+      - name: Upload versioned Windows control-character results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-control-coordinates
+          path: target/windows-control-coordinates
+          if-no-files-found: ignore
       - name: Reconstruct versioned Windows script metrics from original Word output
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_script_metrics.py

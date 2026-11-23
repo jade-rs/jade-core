@@ -13,6 +13,7 @@ use rustc_hash::FxHashMap;
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
 use unicode_segmentation::UnicodeSegmentation;
 
+mod windows_control_text;
 pub(crate) mod windows_pdf_text;
 
 /// Maximum number of entries in the grapheme width cache.
@@ -1472,6 +1473,11 @@ fn draw_text_run_glyphs<P: Painter>(
     font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
     font_state.ensure_text_baseline_alphabetic(context);
 
+    if windows_control_text::try_draw(context, text, x, y, style, fonts, glyphs, font_state)? {
+        record_replay_fallback_run(glyphs.len() as u64);
+        return Ok(());
+    }
+
     // `w:outline` (§17.3.2.23): draw the glyphs as hollow stroked outlines using
     // the run's color, rather than solid fills. The glyph-batch fast path only
     // fills, so outline runs always take the per-glyph stroke path below.
@@ -1904,6 +1910,11 @@ fn execute_text_with_font_state<P: Painter>(
 
     // Keep replayed body text on alphabetic baseline even if callers changed it.
     font_state.ensure_text_baseline_alphabetic(context);
+    if let Some(width) =
+        windows_control_text::try_draw_simple(context, text, x, y, style, font_state)?
+    {
+        return Ok(width);
+    }
     if style.requires_advanced_layout() {
         return execute_text_with_spacing_and_font_state(
             context, text, x, y, 0.0, style, font_state,

@@ -4065,6 +4065,25 @@ pub fn word_windows_note_rule_metrics_px(font_descriptor: &str) -> Option<(f64, 
     let scale = f64::from(size_pt) * 96.0 / 72.0 / units;
     Some((ascent - position * scale, thickness * scale))
 }
+/// Arial ZWJ-only line height measured from the versioned Windows Word control
+/// fixture. Keep its nonprinting line box independent of Mac's control metrics.
+pub(crate) fn word_windows_join_control_line_height_px(font_descriptor: &str) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim_matches(['\'', '"']).trim();
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    if bold
+        || italic
+        || !(family.eq_ignore_ascii_case("Arial") || family.eq_ignore_ascii_case("ArialMT"))
+        || !size_pt.is_finite()
+        || size_pt <= 0.0
+    {
+        return None;
+    }
+    Some(f64::from(size_pt) * 96.0 / 72.0 * 1.2)
+}
 
 pub(crate) fn word_mac_join_control_line_height_px(
     font_descriptor: &str,
@@ -5104,6 +5123,31 @@ mod monospace_tests;
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_control_line_box_preserves_platform_and_regular_face_boundaries() {
+        use super::*;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for face in ["14pt Arial", "14pt ARIAL", "14pt 'ArialMT'"] {
+            let height = word_windows_join_control_line_height_px(face).expect("regular Arial");
+            assert!((height - 14.0 * 96.0 / 72.0 * 1.2).abs() < 1e-9);
+        }
+        for face in [
+            "bold 14pt Arial",
+            "italic 14pt Arial",
+            "14pt Calibri",
+            "0pt Arial",
+        ] {
+            assert!(
+                word_windows_join_control_line_height_px(face).is_none(),
+                "{face}"
+            );
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(word_windows_join_control_line_height_px("14pt Arial").is_none());
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn explicit_text_box_multiple_uses_the_font_box_without_changing_windows_body_policy() {
         use super::*;
