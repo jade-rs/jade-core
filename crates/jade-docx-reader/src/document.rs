@@ -2616,11 +2616,16 @@ pub enum RunFieldKind {
     /// `name` is the bookmark target; the renderer resolves it to a page number
     /// using the document's bookmark table and the laid-out page positions.
     /// `hyperlink` retains Word's `\h` switch so the result remains an
-    /// interactive jump to the bookmark.
+    /// interactive jump to the bookmark. `relative_position` is the `\p`
+    /// switch: Word then shows relative text ("above", "below", "on page
+    /// N") in the document's language, so the renderer keeps the saved
+    /// result instead of a page number.
     PageRef {
         name: String,
         #[serde(default)]
         hyperlink: bool,
+        #[serde(default)]
+        relative_position: bool,
     },
     /// Number of a bookmarked footnote/endnote reference (`NOTEREF`).
     /// Relative-position results retain Word's saved, localized text.

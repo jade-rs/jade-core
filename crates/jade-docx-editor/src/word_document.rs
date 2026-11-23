@@ -18174,6 +18174,7 @@ impl WordDocument {
             CrossReferenceKind::Page => RunFieldKind::PageRef {
                 name: bookmark_name.to_string(),
                 hyperlink,
+                relative_position: false,
             },
         };
         let resolved_value = matches!(kind, CrossReferenceKind::Text | CrossReferenceKind::Number)
@@ -22639,6 +22640,7 @@ impl WordDocument {
                 RunFieldKind::PageRef {
                     name: name.to_owned(),
                     hyperlink: true,
+                    relative_position: false,
                 },
                 "1".to_owned(),
             ),
@@ -25156,6 +25158,7 @@ impl WordDocument {
                 kind: RunFieldKind::PageRef {
                     name: bookmark.to_string(),
                     hyperlink: options.hyperlinks,
+                    relative_position: false,
                 },
                 cached_text: Some("1".to_string()),
                 source_field_id: None,
@@ -42967,8 +42970,16 @@ impl WordDocument {
             RunFieldKind::Ref {
                 name, hyperlink, ..
             } => format!(" REF {name}{} ", if *hyperlink { " \\h" } else { "" }),
-            RunFieldKind::PageRef { name, hyperlink } => {
-                format!(" PAGEREF {name}{} ", if *hyperlink { " \\h" } else { "" })
+            RunFieldKind::PageRef {
+                name,
+                hyperlink,
+                relative_position,
+            } => {
+                format!(
+                    " PAGEREF {name}{}{} ",
+                    if *hyperlink { " \\h" } else { "" },
+                    if *relative_position { " \\p" } else { "" }
+                )
             }
             RunFieldKind::NoteRef {
                 name,
@@ -53274,6 +53285,7 @@ mod tests {
                                 RunFieldKind::PageRef {
                                     name: actual,
                                     hyperlink: true,
+                                    ..
                                 } if kind == CrossReferenceKind::Page => assert_eq!(actual, name),
                                 RunFieldKind::Ref {
                                     name: actual,
@@ -53425,6 +53437,7 @@ mod tests {
                                 RunFieldKind::PageRef {
                                     name: "参照先_1".into(),
                                     hyperlink: true,
+                                    relative_position: false,
                                 }
                             } else {
                                 RunFieldKind::Ref {
