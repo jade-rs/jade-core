@@ -8123,7 +8123,7 @@ where
         // text, so the print device realizes the font em consistently.
         let windows_control_text = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            && text.contains(['\u{200b}', '\u{200c}', '\u{200d}']);
+            && crate::draw_command::CommandText::text_has_zero_width_controls(text);
         let physical_style = if combined_properties.is_none()
             && joined_step.is_none()
             && !steps.is_empty()
@@ -18525,6 +18525,10 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
                 && !paragraph_style.exact_line_spacing
                 && paragraph_style.word_grid_line_sizing.is_none()
+                && wrapped
+                    .clusters
+                    .first()
+                    .is_some_and(|cluster| cluster.text.starts_with('\u{200d}'))
                 && text
                     .chars()
                     .all(|ch| ch.is_ascii() || matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}'))

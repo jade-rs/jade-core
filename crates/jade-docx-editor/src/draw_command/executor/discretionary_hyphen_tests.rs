@@ -361,6 +361,43 @@ fn discretionary_hyphen_cached_presence_keeps_unicode_and_platform_identity() {
 }
 
 #[test]
+fn zero_width_cached_presence_keeps_legacy_wire_and_normal_replay_identity() {
+    assert_eq!(
+        std::mem::size_of::<CommandText>(),
+        std::mem::size_of::<Rc<str>>()
+    );
+    for value in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+        let _restore = platform(value);
+        for (source, soft, zero_width) in [
+            ("", false, false),
+            ("ordinary ASCII", false, false),
+            ("日本語・ね", false, false),
+            ("a\u{200e}b", false, false),
+            ("a\u{2}", false, false),
+            ("a\u{ad}b", true, false),
+            ("A\u{200c}B", false, true),
+            ("\u{200d}", false, true),
+            ("A\u{200b}B", false, true),
+            ("A\u{ad}\u{200d}B", true, true),
+            ("👩\u{200d}💻", false, true),
+        ] {
+            let text = CommandText::from(source);
+            let wire = serde_json::to_string(&text).unwrap();
+            assert_eq!(wire, serde_json::to_string(source).unwrap());
+            let restored: CommandText = serde_json::from_str(&wire).unwrap();
+            assert_eq!(restored.as_ref(), source);
+            assert_eq!(restored.has_soft_hyphen(), soft);
+            assert_eq!(restored.has_zero_width_controls(), zero_width);
+            assert_eq!(
+                restored.requires_windows_control_paint(),
+                value == WordLayoutPlatform::Windows && (soft || zero_width),
+                "{source:?} {value:?}"
+            );
+        }
+    }
+}
+
+#[test]
 fn discretionary_hyphen_cached_text_preserves_legacy_wire_and_unicode_identity() {
     for (source, has_control) in [
         ("plain ASCII", false),

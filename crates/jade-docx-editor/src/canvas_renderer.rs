@@ -37352,7 +37352,8 @@ where
             || text_style.emboss
             || text_style.imprint
             || text_style.effects.is_some()
-            || ((has_soft_hyphen || segment_text.contains(['\u{200b}', '\u{200c}', '\u{200d}']))
+            || ((has_soft_hyphen
+                || crate::draw_command::CommandText::text_has_zero_width_controls(segment_text))
                 && jade_docx_layout::line_metrics::word_layout_platform()
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
             || crate::draw_command::executor::windows_pdf_text::eligible(

@@ -48,7 +48,7 @@ fn nonjoining_features(descriptor: &str) -> bool {
 fn plain_windows_style(text: &str, style: &TextStyle) -> bool {
     jade_docx_layout::line_metrics::word_layout_platform()
         == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-        && text.contains(['\u{200b}', '\u{200c}', '\u{200d}'])
+        && super::CommandText::text_has_zero_width_controls(text)
         && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
         && !style.outline
         && !style.shadow
@@ -57,43 +57,6 @@ fn plain_windows_style(text: &str, style: &TextStyle) -> bool {
         && style.effects.is_none()
         && plain_arial(&style.font_descriptor_latin_ascii)
         && nonjoining_features(&style.font_descriptor_latin_ascii)
-}
-
-// The unshaped replay path also receives isolated controls when a captured
-// font subset has no cmap entry. Keep its original measured advance while
-// omitting only the nonprinting payload from the painter.
-pub(super) fn try_draw_simple<P: Painter>(
-    context: &P,
-    text: &str,
-    x: f64,
-    y: f64,
-    style: &TextStyle,
-    font_state: &mut FontStateTracker,
-) -> Result<Option<f64>, P::Error> {
-    if !plain_windows_style(text, style) || style.letter_spacing_px != 0.0 {
-        return Ok(None);
-    }
-    let Some(visible) = visible_piece(text) else {
-        return Ok(None);
-    };
-    if visible == text {
-        return Ok(None);
-    }
-    let logical = style.font_for_grapheme(text, super::classify_script(text));
-    if !nonjoining_features(logical) || (!visible.is_empty() && !plain_arial(logical)) {
-        return Ok(None);
-    }
-    font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
-    font_state.set_font_if_changed(context, logical);
-    let width = font_state.measure_text_cached(context, text, logical)?;
-    if !visible.is_empty() {
-        let physical = windows_pdf_text::single_scalar_font(context, visible, style);
-        if let Some(font) = physical.as_ref() {
-            font_state.set_font_rc_if_changed(context, font);
-        }
-        context.fill_text(visible, x, y)?;
-    }
-    Ok(Some(width))
 }
 
 fn visible_piece(text: &str) -> Option<&str> {
