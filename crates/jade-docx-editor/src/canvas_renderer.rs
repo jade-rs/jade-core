@@ -64,10 +64,10 @@ use jade_docx_layout::section_transition::{
 };
 pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
-    CaretMetrics, CaretMovement, CellLayout, FragmentLayout as SelectionFragmentLayout, GlyphBox,
-    LayoutFragmentDebug, LayoutGlyphDebug, LayoutLineDebug, LineLayout as SelectionLineLayout,
-    SelectedLineDebug, SelectionManager, SelectionRange, TabLeaderLayout, TabStopLayout,
-    TextPosition,
+    CaretMetrics, CaretMovement, CellLayout, CellRectSelection,
+    FragmentLayout as SelectionFragmentLayout, GlyphBox, LayoutFragmentDebug, LayoutGlyphDebug,
+    LayoutLineDebug, LineLayout as SelectionLineLayout, SelectedLineDebug, SelectionManager,
+    SelectionRange, TabLeaderLayout, TabStopLayout, TextPosition,
 };
 use jade_docx_reader::styles::StylesPart;
 use jade_painter::Painter;
@@ -225,6 +225,35 @@ impl SyncedLayoutInputs {
                 _ => false,
             }
     }
+}
+
+/// How the selection treats the lines of a table cell being painted.
+enum CellSelectionFrame {
+    /// A rectangular cell selection is showing: no line in the table is
+    /// highlighted, only whole cells.
+    SuppressAll,
+    /// The cell was filled; these (sorted) paragraphs need no line highlight.
+    Suppress(Vec<usize>),
+    /// Undecided until the cell is painted: paint is held from this index of
+    /// `deferred_cell_selection`.
+    Defer(usize),
+}
+
+/// Selection paint held back until the enclosing cell is decided.
+enum DeferredCellSelection {
+    Line(usize, SelectionLineLayout),
+    /// A nested cell's fill, in page-surface coordinates.
+    Fill((f64, f64, f64, f64)),
+}
+
+/// One page fragment of a table cell, for selection painting.
+pub(crate) struct CellSelectionTarget {
+    pub(crate) table_id: usize,
+    pub(crate) row: usize,
+    pub(crate) column: usize,
+    pub(crate) column_span: usize,
+    /// The fragment in page-surface coordinates: `(x, y, width, height)`.
+    pub(crate) rect: (f64, f64, f64, f64),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -4914,7 +4943,14 @@ where
     /// the same paragraph's lines more than once, and another paragraph's
     /// lines must not take them.
     pending_change_marks: (usize, Vec<(usize, usize)>),
-    cell_highlighted: RefCell<HashSet<usize>>,
+    /// The rectangular cell selection this pass paints, read before the pass
+    /// rebuilds the cell registry so that every pass decides alike.
+    cell_rect_selection: Option<CellRectSelection>,
+    /// How the selection treats the lines of each table cell being painted,
+    /// innermost cell last.
+    cell_selection_frames: RefCell<Vec<CellSelectionFrame>>,
+    /// Selection lines held back until their cell's content is painted.
+    deferred_cell_selection: RefCell<Vec<DeferredCellSelection>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
@@ -10509,7 +10545,9 @@ where
             paragraph_join_surfaces: std::collections::BTreeMap::new(),
             joined_render: None,
             pending_change_marks: (usize::MAX, Vec::new()),
-            cell_highlighted: RefCell::new(HashSet::new()),
+            cell_rect_selection: None,
+            cell_selection_frames: RefCell::new(Vec::new()),
+            deferred_cell_selection: RefCell::new(Vec::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
@@ -16686,6 +16724,8 @@ where
         } else {
             self.forced_dirty_from
         };
+        // Read before the registry is taken: its cell ids name the rectangle.
+        self.cell_rect_selection = self.selection.cell_selection_rect_bounds();
         // Incremental selection registration clears cell mappings. A confirmed
         // seek must restore the skipped prefix's cells as well as its tables.
         // Move the registry rather than cloning every cell (including each
@@ -16713,7 +16753,8 @@ where
             });
         self.selection
             .begin_render_incremental(incremental_dirty_from);
-        self.cell_highlighted.borrow_mut().clear();
+        self.cell_selection_frames.borrow_mut().clear();
+        self.deferred_cell_selection.borrow_mut().clear();
         self.paragraph_counter = 0;
         self.page_offset_y = 0.0;
         // Fresh per-render measurement buffer for section `w:vAlign`; populated
@@ -35657,28 +35698,38 @@ where
             return Ok(());
         };
 
-        if range.is_collapsed() && self.selection.selected_cell_ids_rect().is_none() {
+        if range.is_collapsed() && self.cell_rect_selection.is_none() {
             return Ok(());
         }
 
-        if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-            if self.selection.paragraph_in_selected_cell(paragraph_index)
-                || self.selection.is_cell_fully_selected(cell_id, &range)
+        // Inside a table cell, the cell decides: its fill already covers the
+        // line, or the line waits until the cell knows whether it is whole.
+        match self.cell_selection_frames.borrow().last() {
+            Some(CellSelectionFrame::SuppressAll) => return Ok(()),
+            Some(CellSelectionFrame::Suppress(paragraphs))
+                if paragraphs.binary_search(&paragraph_index).is_ok() =>
             {
-                // Fill this page's fragment of the cell once. A fragment that
-                // is not registered yet (the cell is still being painted, or
-                // this is the part continued from the previous page in a pass
-                // that rebuilds the registry) falls back to line highlights.
-                if let Some((fragment_id, rect)) = self.cell_fragment_on_current_page(cell_id) {
-                    if self.cell_highlighted.borrow_mut().insert(fragment_id) {
-                        self.draw_cell_highlight(rect)?;
-                    }
-                    return Ok(());
-                }
+                return Ok(());
             }
+            Some(CellSelectionFrame::Defer(_)) => {
+                self.deferred_cell_selection
+                    .borrow_mut()
+                    .push(DeferredCellSelection::Line(paragraph_index, line.clone()));
+                return Ok(());
+            }
+            _ => {}
         }
+        self.paint_selection_line(paragraph_index, line, &range)
+    }
 
-        let rects = self.compute_selection_rects(&self.selection, paragraph_index, line, &range);
+    /// Fills and edges the selected part of one line.
+    fn paint_selection_line(
+        &self,
+        paragraph_index: usize,
+        line: &SelectionLineLayout,
+        range: &SelectionRange,
+    ) -> Result<(), JsValue> {
+        let rects = self.compute_selection_rects(&self.selection, paragraph_index, line, range);
 
         if rects.is_empty() {
             return Ok(());
@@ -35797,50 +35848,237 @@ where
         rects
     }
 
-    /// The registered fragment of `cell_id`'s logical cell that lies on the
-    /// page being painted, with its bounds converted to that page's surface
-    /// and clipped to it, as `(fragment id, (x, y, width, height))`.
+    /// Starts painting a table cell for the selection, before its content.
     ///
-    /// Cell layouts are recorded in document space (each page's offset
-    /// included), while the page surface starts at zero. A cell split over a
-    /// page break has one fragment per page, and the paragraph-to-cell map
-    /// points at only one of them, so the other pages search the registry for
-    /// their own fragment.
-    fn cell_fragment_on_current_page(
+    /// A cell the selection covers whole is filled behind its content, as
+    /// Word does, and its own lines are not highlighted again. A frozen pixel
+    /// pass and a full pass reach the same decision here: it uses only the
+    /// cell's position, its paragraph indices and the selection, not the cell
+    /// registry the full pass is still rebuilding. When the selection ends in
+    /// the cell's last paragraph the decision needs that paragraph's length,
+    /// so it waits for [`Self::finish_cell_selection`].
+    ///
+    /// Returns whether a frame was pushed, to pass on to the finish call.
+    pub(crate) fn begin_cell_selection(
         &self,
-        cell_id: usize,
-    ) -> Option<(usize, (f64, f64, f64, f64))> {
-        let cells = self.selection.cell_layouts();
-        let cell = cells.get(cell_id)?;
-        let (page_top, page_bottom) = if self.pageless_mode {
-            (0.0, f64::INFINITY)
-        } else {
-            (self.page_offset_y, self.page_offset_y + self.page_height)
-        };
-        let clipped = |fragment: &CellLayout| {
-            let top = fragment.top.min(fragment.bottom).max(page_top);
-            let bottom = fragment.top.max(fragment.bottom).min(page_bottom);
-            (bottom > top).then(|| {
-                (
-                    fragment.left.min(fragment.right),
-                    top - page_top,
-                    (fragment.right - fragment.left).abs().max(1.0),
-                    (bottom - top).max(1.0),
-                )
-            })
-        };
-        if let Some(rect) = clipped(cell) {
-            return Some((cell_id, rect));
+        target: &CellSelectionTarget,
+        paragraphs: impl FnOnce() -> Option<Vec<usize>>,
+    ) -> Result<bool, JsValue> {
+        if self.use_selection_overlay || !self.should_draw_current_page_for_render() {
+            return Ok(false);
         }
-        cells.iter().enumerate().find_map(|(id, fragment)| {
-            (fragment.table_id == cell.table_id
-                && fragment.row == cell.row
-                && fragment.column == cell.column
-                && fragment.column_span == cell.column_span)
-                .then(|| clipped(fragment))
-                .flatten()
-                .map(|rect| (id, rect))
-        })
+        let Some(range) = self.selection.selection_range() else {
+            return Ok(false);
+        };
+        if matches!(
+            self.cell_selection_frames.borrow().last(),
+            Some(CellSelectionFrame::Suppress(_) | CellSelectionFrame::SuppressAll)
+        ) {
+            // A nested table inside a cell that is already filled (or inside a
+            // rectangular selection): the enclosing fill covers it.
+            self.cell_selection_frames
+                .borrow_mut()
+                .push(CellSelectionFrame::SuppressAll);
+            return Ok(true);
+        }
+        let frame = if let Some(rect) = self.cell_rect_selection {
+            // A rectangular selection fills whole cells only. The linear text
+            // range under it runs through every cell in between, so no line
+            // inside the table is highlighted.
+            if rect.table_id == target.table_id {
+                if rect.contains(
+                    target.table_id,
+                    target.row,
+                    target.column,
+                    target.column_span,
+                ) {
+                    self.draw_cell_highlight(target.rect)?;
+                }
+            } else if self.cell_selection_frames.borrow().is_empty() {
+                return Ok(false);
+            }
+            CellSelectionFrame::SuppressAll
+        } else {
+            if range.is_collapsed() {
+                return Ok(false);
+            }
+            let (start, end) = range.normalized();
+            let mut paragraphs = paragraphs().unwrap_or_default();
+            paragraphs.sort_unstable();
+            match (paragraphs.first(), paragraphs.last()) {
+                (Some(&first), Some(&last)) => {
+                    if start > TextPosition::new(first, 0) || end.paragraph < last {
+                        return Ok(false);
+                    }
+                    if end.paragraph > last {
+                        self.draw_cell_highlight(target.rect)?;
+                        CellSelectionFrame::Suppress(paragraphs)
+                    } else {
+                        CellSelectionFrame::Defer(self.deferred_cell_selection.borrow().len())
+                    }
+                }
+                // Lazily numbered cells learn their paragraphs while painting.
+                _ => CellSelectionFrame::Defer(self.deferred_cell_selection.borrow().len()),
+            }
+        };
+        self.cell_selection_frames.borrow_mut().push(frame);
+        Ok(true)
+    }
+
+    /// Fills a continuation row of a vertically merged cell on a page the
+    /// merged cell's own fragment does not reach, when the selection covers
+    /// that cell whole. Continuation rows register no cell fragment, so the
+    /// owner is the latest registered fragment above them in that column.
+    pub(crate) fn paint_vertical_merge_continuation_selection(
+        &self,
+        target: &CellSelectionTarget,
+    ) -> Result<(), JsValue> {
+        if self.use_selection_overlay
+            || self.pageless_mode
+            || !self.should_draw_current_page_for_render()
+        {
+            return Ok(());
+        }
+        let Some(range) = self.selection.selection_range() else {
+            return Ok(());
+        };
+        let cells = self.selection.cell_layouts();
+        let same_column = |cell: &&CellLayout| {
+            cell.table_id == target.table_id
+                && cell.column == target.column
+                && cell.column_span == target.column_span
+        };
+        let Some(owner) = cells
+            .iter()
+            .filter(same_column)
+            .filter(|cell| cell.row < target.row)
+            .max_by_key(|cell| cell.row)
+        else {
+            return Ok(());
+        };
+        let (x, y, width, height) = target.rect;
+        let (top, bottom) = (self.page_offset_y + y, self.page_offset_y + y + height);
+        if cells.iter().filter(same_column).any(|cell| {
+            cell.row == owner.row
+                && cell.top < bottom
+                && cell.bottom > top
+                && cell.left < x + width
+                && cell.right > x
+        }) {
+            // The merged cell's own fragment already spans this row here; in
+            // another section column it would not overlap horizontally.
+            return Ok(());
+        }
+        let selected = match self.cell_rect_selection {
+            Some(rect) => rect.contains(owner.table_id, owner.row, owner.column, owner.column_span),
+            None if range.is_collapsed() => false,
+            None => {
+                let (start, end) = range.normalized();
+                match (owner.paragraphs.first(), owner.paragraphs.last()) {
+                    (Some(&first), Some(&last)) => {
+                        start <= TextPosition::new(first, 0)
+                            && end
+                                >= TextPosition::new(last, self.selection.paragraph_text_len(last))
+                    }
+                    _ => false,
+                }
+            }
+        };
+        if selected {
+            self.draw_cell_highlight(target.rect)?;
+        }
+        Ok(())
+    }
+
+    /// Finishes a cell started by [`Self::begin_cell_selection`], after its
+    /// content. A deferred cell is filled now if the selection covers it
+    /// whole; otherwise its held-back paint is drawn. Inside another
+    /// undecided cell, both wait for that cell instead.
+    pub(crate) fn finish_cell_selection(
+        &self,
+        pushed: bool,
+        target: &CellSelectionTarget,
+        paragraphs: &[usize],
+    ) -> Result<(), JsValue> {
+        if !pushed {
+            return Ok(());
+        }
+        let (marker, parent_defers) = {
+            let mut frames = self.cell_selection_frames.borrow_mut();
+            let Some(CellSelectionFrame::Defer(marker)) = frames.pop() else {
+                return Ok(());
+            };
+            (
+                marker,
+                matches!(frames.last(), Some(CellSelectionFrame::Defer(_))),
+            )
+        };
+        let Some(range) = self.selection.selection_range() else {
+            self.deferred_cell_selection.borrow_mut().truncate(marker);
+            return Ok(());
+        };
+        let (start, end) = range.normalized();
+        let whole = match (paragraphs.iter().min(), paragraphs.iter().max()) {
+            (Some(&first), Some(&last)) => {
+                start <= TextPosition::new(first, 0)
+                    && end >= TextPosition::new(last, self.selection.paragraph_text_len(last))
+                    // The head of a cell split over a break shares the whole
+                    // cell's paragraph list. A last paragraph painted only on
+                    // a later fragment has no length yet in a full pass (and
+                    // a selection ending in it does not cover this fragment),
+                    // so the fragment must hold a line of it.
+                    && self.paragraph_has_line_in(last, target.rect)
+            }
+            _ => false,
+        };
+        let mut deferred = self.deferred_cell_selection.borrow_mut();
+        if whole {
+            // Everything inside a wholly selected cell is selected; its fill
+            // covers the held-back lines and nested fills.
+            deferred.truncate(marker);
+            if parent_defers {
+                deferred.push(DeferredCellSelection::Fill(target.rect));
+                return Ok(());
+            }
+            drop(deferred);
+            return self.draw_cell_highlight(target.rect);
+        }
+        if parent_defers {
+            return Ok(());
+        }
+        let held = deferred.split_off(marker);
+        drop(deferred);
+        for entry in &held {
+            match entry {
+                DeferredCellSelection::Line(paragraph_index, line) => {
+                    self.paint_selection_line(*paragraph_index, line, &range)?
+                }
+                DeferredCellSelection::Fill(rect) => self.draw_cell_highlight(*rect)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether `paragraph` has a recorded line inside the cell fragment
+    /// `rect`, given in page-surface coordinates of the page being painted.
+    fn paragraph_has_line_in(
+        &self,
+        paragraph: usize,
+        (x, y, width, height): (f64, f64, f64, f64),
+    ) -> bool {
+        let top = self.page_offset_y + y;
+        let bottom = top + height;
+        self.selection
+            .paragraphs()
+            .get(paragraph)
+            .is_some_and(|layout| {
+                layout.lines.iter().any(|line| {
+                    line.absolute_top >= top - 0.5
+                        && line.absolute_top < bottom
+                        && line.start_x >= x - 0.5
+                        && line.start_x < x + width
+                })
+            })
     }
 
     /// Fills a selected cell fragment, given in page-surface coordinates.
