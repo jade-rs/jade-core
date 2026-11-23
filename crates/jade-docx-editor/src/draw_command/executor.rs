@@ -9,7 +9,7 @@ use std::rc::Rc;
 use crate::document::FontHint;
 use crate::draw_command::{CommandText, DrawCommand, TabLeaderStyle, TextStyle};
 use jade_painter::Painter;
-use rustc_hash::{FxHashMap, FxHasher};
+use rustc_hash::FxHashMap;
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -399,7 +399,7 @@ impl FontStateTracker {
     fn compute_font_hash(font: &str) -> u64 {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         font.hash(&mut hasher);
         hasher.finish()
     }
@@ -412,7 +412,7 @@ impl FontStateTracker {
 
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         font_hash.hash(&mut hasher);
         text.hash(&mut hasher);
         hasher.finish()

@@ -1,6 +1,7 @@
+use crate::key_hasher::CacheKeyHasher;
 use crate::{line_wrap::ScriptCategory, units::points_to_px};
 use jade_docx_reader::document::{FontHint, RunProperties};
-use rustc_hash::{FxHashMap, FxHasher};
+use rustc_hash::FxHashMap;
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
@@ -605,7 +606,7 @@ fn normalize_font_stack_for_script(value: Option<&str>, fallback: &str, latin: b
     parts.join(", ")
 }
 
-fn hash_font_hint(hint: Option<&FontHint>, hasher: &mut FxHasher) {
+fn hash_font_hint(hint: Option<&FontHint>, hasher: &mut CacheKeyHasher) {
     let tag = match hint {
         Some(FontHint::EastAsia) => 1_u8,
         Some(FontHint::Complex) => 2_u8,
@@ -615,7 +616,7 @@ fn hash_font_hint(hint: Option<&FontHint>, hasher: &mut FxHasher) {
     tag.hash(hasher);
 }
 
-fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut FxHasher) {
+fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut CacheKeyHasher) {
     // A nonzero domain tag also preserves leading absent fields in FxHasher.
     // Windows' old zero tag let font_family=Courier New collide with a
     // complex-only Courier New request after the leading None fields.
@@ -674,7 +675,7 @@ fn hash_run_properties(properties: Option<&RunProperties>, hasher: &mut FxHasher
 }
 
 fn compute_font_families_cache_key(properties: Option<&RunProperties>) -> u64 {
-    let mut hasher = FxHasher::default();
+    let mut hasher = CacheKeyHasher::default();
     hash_run_properties(properties, &mut hasher);
     hasher.finish()
 }
@@ -683,7 +684,7 @@ fn compute_run_style_cache_key(
     properties: Option<&RunProperties>,
     doc_grid_char_spacing_px: Option<f64>,
 ) -> u64 {
-    let mut hasher = FxHasher::default();
+    let mut hasher = CacheKeyHasher::default();
     hash_run_properties(properties, &mut hasher);
     doc_grid_char_spacing_px.map(f64::to_bits).hash(&mut hasher);
     hasher.finish()
@@ -1921,7 +1922,7 @@ impl ResolvedRunStyle {
 }
 
 fn hash_font_descriptor(font_descriptor: &str) -> u64 {
-    let mut hasher = FxHasher::default();
+    let mut hasher = CacheKeyHasher::default();
     font_descriptor.hash(&mut hasher);
     hasher.finish()
 }

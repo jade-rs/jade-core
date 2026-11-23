@@ -895,7 +895,7 @@ impl ContentHash {
 
 /// Computes a content hash for the given hashable value.
 pub fn compute_content_hash<T: Hash>(value: &T) -> ContentHash {
-    let mut hasher = FxHasher::default();
+    let mut hasher = crate::key_hasher::CacheKeyHasher::default();
     value.hash(&mut hasher);
     ContentHash(hasher.finish())
 }
@@ -909,7 +909,7 @@ pub fn compute_paragraph_hash(
     text: &str,
     properties: Option<&ParagraphHashableProps>,
 ) -> ContentHash {
-    let mut hasher = FxHasher::default();
+    let mut hasher = crate::key_hasher::CacheKeyHasher::default();
     text.hash(&mut hasher);
     if let Some(props) = properties {
         props.hash(&mut hasher);
