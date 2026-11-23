@@ -491,6 +491,102 @@ SHARED_ORIGINALS = {
         'b0e1d64b757da296151e869eeaee17df29a67f4d0ce8e6955b5ce45c88f8840c',
         '28ad6548b9b20e689e51aa6e07c402d863c313f2261bb4f4c8f3ce66e8c5b276',
         '14837b89f9d390dd4bcbe526458aa2d15cc3b8cece564c00232e0102e49e28b8', 2, 1790),
+    'probe-table-flow-unequal-continuous-right-three-columns-start-column-1': (
+        'c23bf6d4bffb89bb1b286521d74fec4ce900578cd6734fe44436ce1f3631ef36',
+        '37693c20d3dbaa02c8958ef2dfc09b09c71eb8c2bffe092ace67123508e26f60',
+        'd6829390fba8f0be49892e98631e718b4bc6d29d20114e5bd020069f5f0ed5e2', 2, 267),
+    'probe-table-flow-unequal-continuous-right-three-columns-start-column-2': (
+        '4dcc7e73a0d104c505cdbefe24d319d655112d0ff583ddba507866987865a4b9',
+        'e3e5b970b697c44f8df25355af0f38c38e9de28e488bb2374e0c41431d252c1d',
+        '119c6dd6d1f045c01cc9c1acef4dd0856395bde882d65b34119a06caa5d22c22', 2, 264),
+    'probe-table-flow-unequal-continuous-right-three-columns-start-column-3': (
+        'ca37286c57328bf2e17ecebe2acd5d1d1058338061f361c2f2b68235a3b3633e',
+        'a03077cf6340b58e1174cbc93ffa2c16af6de7e022c55e9a73e4e990ce81aba6',
+        'f5cada04863298105964f513a423beae646222192ef10e62b2bb8ed31a30b20e', 2, 261),
+    'probe-table-flow-unequal-right-start-column-1': (
+        '341dd0851470c3463bcedac8f94a23872510a203db7c847a17421d38243133fc',
+        '3f40b8f0d3bbf1b77c0d3bb4b11e4f77846b485eb1d99d33307486e106577ed9',
+        'ad9e8b0a596c973b7e5810e896d17e804ec89c3df0355a1855674c60a6035231', 2, 215),
+    'probe-table-flow-unequal-right-start-column-2': (
+        '8204ce5ea70821dc387150c83a0364bf441fcf24e065f291497b79f15efe4650',
+        '9d0a67e30db5ae6c72eac95d97c2567841386ed54fe4394f92cae1be7effab3d',
+        '73cf312dff8e7e12c44335fe689a3011c935c905b551970af89e98e47a9c704e', 2, 215),
+    'probe-unequal-left-narrow-first-1-9': (
+        '9488256f0eeffa7c6006030943d3a6dd7b3581c299229c625d902ce74d387f9e',
+        'da278969df545fc8aff89ab2dd33537460c0ad13865b8d2b30c6f7b68d21bd80',
+        '631896ba65a6f349762c58e783fd796e3e664a699837187f8489cef7fd3d96bc', 1, 152),
+    'probe-unequal-left-narrow-first-2-9': (
+        'a91b6b8ebb5d8eb15a6f5755a7c5b6b9a278ba199add5bbf7c3e2216a694660b',
+        '8eb32424ea11aab0a4304b3d41f59f53ac3566a3c4e7b3465232913f142bf98e',
+        'f1102731e4f1721f93b2b7124c9c300afd2a52d2915a5d7a7a6836e6d56abcb1', 2, 152),
+    'probe-unequal-left-start-column-1': (
+        '4ba1d6d26cabfd9bc19c9e07aa56f7f7ddc47175fbf321da79282d1c394d8dd8',
+        '598d143458fa71737f090fafaba6751ce167bac7531bf00f6a929197eea1c413',
+        '7a90af92d0908462808d4c6fc58ffe5bde48ade467508409d9f0098b921a3837', 2, 215),
+    'probe-unequal-left-wide-first-1-9': (
+        'de03022e8907f323c73f8b384f3f133a2bf07ec49e2f0b73dcc11328e97e0fc1',
+        'bced551c9a97c0105ebcaf5862057cd26bae60e0f5a34181a2090920ebe9339b',
+        'd2bace23be4e7a64cb91678a50c637238c3bef8ce070f32ff5924db736ec8e77', 1, 152),
+    'probe-unequal-left-wide-first-2-9': (
+        'e4838211525e9ccf4a8bbbd97de8530c896de516e046dd12949f09f30bfe9f47',
+        '5d74a2a9fd2d2925368346cd64b8e1c1dc372da5930cd33f0691c706c0c64402',
+        '3228678eecb5bf0b9e2bcd404b6672664732b33242fa9659de9d143a6983b3a4', 2, 152),
+    'probe-unequal-right-narrow-first-1-1': (
+        '3e0a9cb676e8d3abefb41d490308e3d14ca99dd35a2b35adb55331748bef7867',
+        '03d7a52c59b6c3452a7fa0b9a57975dec4beca0cd6e930415a882bf8c0580b28',
+        '83d0eb3ea17ec143b2d200755e0e4882dba0ed7b439bc863ab348a4ae20941db', 1, 29),
+    'probe-unequal-right-narrow-first-1-9': (
+        '483c67194fc71ba25888b6b57fae60a1abce81580cb023257f12433ae07dd7e9',
+        '718c568b4e88707959ab6136ea9e5702163cfd2c80917acc164946561af08708',
+        '4f3dc889e4e9fe2a7c4b8d58e1a91715d58425ef40e64e5e6eed134fab5143b2', 1, 152),
+    'probe-unequal-right-narrow-first-2-9': (
+        '90085599cef3460d6f9608d0ba1d1fbd6c2e329084c1264a7ec941077747b21f',
+        'c78862691dca594a43b39805c6ed187336af03dc4193feb9b58df3f9f1203c22',
+        '4eec18cad6c9865acc4f4039b36bfd079f261fd2182387668fde5507282de142', 2, 152),
+    'probe-unequal-right-three-10': (
+        '72fd949f09a32668e2585718cfd119b11b0d77a3d5fca0d1ff411d0b45c63c81',
+        '44311955753a1fad48b6e5fb70dde40e1ee2d4fa5ca77c705ab84e71f761ef16',
+        'b452a001c2079547cf060918d7ee3fe8ae2d1b1d15a1ff33d63ebbc7a5536bc5', 1, 115),
+    'probe-unequal-right-three-17': (
+        '447cc7b5d861a8db4b667bf7fa707adee5ca13fedcbbfec26c360c2c858d3b2a',
+        'c4846d64f2c3084c7a6b2ebe86b8c8f7e6fa3cc94bfec293ddcdb94bb6e5f7b0',
+        'ba288ba5e6e7f29be88499d8529f587223a2be1b5c61e87778929b96d2df0d2a', 2, 174),
+    'probe-unequal-right-three-24': (
+        'b88365b763437910d6c7326246fbfd1cdbfe36f1f1ef4a28e967d66131733148',
+        'a6ee737fa10740d3d8851a3949c16b16d6161e97d1c0e88f9c332c87f6be75fd',
+        '88c6685aa8c4cd1db1421de9ebbd2e5a3b5add79f01ec7b8e5970c09cfadcc39', 2, 233),
+    'probe-unequal-right-three-4': (
+        '1e305f6c8ebe0d5427e9c7addc50dbb9650fd66d8fc048d29b90ac28e543eeb2',
+        '733e046343230adfe60bca50282118536cfd04bba2aff45afa8e4fb51501e5b6',
+        '24471d918eaf0fd72914dbd5e491bf3bff2ab2d6be88bbd0e4bcf521631a07e6', 1, 61),
+    'probe-unequal-right-three-7': (
+        '34ade372b13e94f2c17d2a472526d86e4d9c54b0927a2a7bde066bb546199cca',
+        'cd4fac9d4501ee8720ebd4cfcc2b9606a72e33439535cd386ee2dcbb47b95434',
+        'cfe60eb72b118ce0c82a73fb07cf689295e6b4a2c1945491ea5958aed27afba9', 1, 88),
+    'probe-unequal-right-wide-first-1-1': (
+        '2f21635c2210bee64dfc945b2a59620bb95c3a51c9fab75ed64e67f5a43a049b',
+        'c18b96c324c7dc157d44c4cf646d5a1cab6971688bca019b96b4c58ae7e817c0',
+        '8fcbe516fc916549b8a048c8b6b88b1556057087cb71f0b8ec50bca47a564903', 1, 29),
+    'probe-unequal-right-wide-first-1-9': (
+        'ada4f8928d001fbe3f2b677c6d947c494f8ba41c3bedffdbea5ab9e227cdc5b6',
+        'bc2ac9bd48cfbf9fc605197db5bf3115a009e58cb0057249939a96dbb825041a',
+        '24759fb1407acafbe28e1b8c24397e1bd74f155fef915b5b48d5f8e8e9ead05d', 1, 152),
+    'probe-unequal-right-wide-first-2-9': (
+        'e01afa56b4f11fcce52cdc4b39ed316cb16b5f41ed8d7f49e8c6296a1e1e565c',
+        '7784972889928fcb7a2e7fece13ed6edd044a48cf2702f6de09ade758612ffb4',
+        'def986867b2aec8255c4540f6427d7f0febce2fc7a0b4ad754a8c81cf82229e0', 2, 152),
+    'probe-unequal-variant-narrow-first-2-9-left': (
+        'c1035f8b07051813dfb80d5779264f184c6dc3a0e7ff331939e01cb6db25d3e0',
+        '4fada5c58a7b0057c18d99260abef2d86f070770c7d92fee6b525c47f9e9bd9c',
+        '902e668a48e17a9c0a3fb219fc17d43397e7bfeed0401b9857d08aae1550d0ab', 2, 152),
+    'probe-unequal-variant-narrow-first-2-9-right': (
+        '2a3280d08463acfe6a46436bb4ae3dcb2752ec5696fee8aa6feb804423ea9755',
+        '3390231412c4574ba4ecb68c6f23bdcca3856dfc032f673beca9e1c3b4781e26',
+        '4eec18cad6c9865acc4f4039b36bfd079f261fd2182387668fde5507282de142', 2, 152),
+    'table-legacy-hmerge-mac': (
+        'd7d32bbe5fc8baec326089fbff419b557732e80d86245794633a8a052feb7ffa',
+        '7237b87fef1a0bcd81a0703552397cc5792b76d105b341bebac123341d2ec217',
+        'ab7e294ff70cc631d9b9ffd59122921697c3df1708b573a90f04c9fd9ddd52a4', 1, 348),
 }
 
 
@@ -573,9 +669,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 116 and sum(r['glyphs'] for r in results) == 40292,
+    require(len(results) == 140 and sum(r['glyphs'] for r in results) == 44326,
             'Shared Mac original coverage changed')
-    print('116 shared Mac originals40292: layout and painted-PDF PASS', flush=True)
+    print('140 shared Mac originals44326: layout and painted-PDF PASS', flush=True)
     return results
 
 

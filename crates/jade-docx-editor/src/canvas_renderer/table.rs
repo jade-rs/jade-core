@@ -3178,6 +3178,7 @@ where
         };
         let sizing_width = section_frame_width(width_for_sizing);
         let mut column_widths = compute_column_widths(table, column_count, sizing_width);
+        let mut windows_fixed_preferred_resized_grid = false;
         let windows_fixed_preferred_width = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && !percentage_width
@@ -3226,6 +3227,8 @@ where
                 });
                 let total: f64 = column_widths.iter().sum();
                 if total > 0.0 {
+                    windows_fixed_preferred_resized_grid =
+                        windows_fixed_preferred_width && (width - total).abs() > 0.01;
                     for column_width in &mut column_widths {
                         *column_width *= width / total;
                     }
@@ -3700,8 +3703,10 @@ where
                         && row.height.is_some()
                         && !table_row_has_note_references(row))
             });
-        let windows_legacy_fixed_header_alignment =
-            windows_fixed_header_alignment && compatibility_mode.is_some_and(|mode| mode < 15);
+        let windows_legacy_fixed_header_alignment = windows_fixed_header_alignment
+            && (self.page_export_mode
+                || (windows_fixed_preferred_resized_grid && self.column_layout.count() == 3))
+            && compatibility_mode.is_some_and(|mode| mode < 15);
         let alignment_widths = ((word_mac_column_table
             || windows_legacy_fixed_header_alignment
             || windows_legacy_autofit_column_table)
@@ -3764,9 +3769,11 @@ where
         let alignment_widths = if rtl_spaced_auto_grid.is_some() || rtl_repeated_header_auto_grid {
             Some((last_column_width, self.current_column_width()))
         } else if windows_fixed_header_alignment {
-            // Legacy Windows uses the last occupied opening-page column for
-            // both logical and painted repeated-header alignment. Modern
-            // Windows keeps the opening column's frame.
+            // Legacy print alignment uses the last occupied opening-page column.
+            // Captured three-column resized grids also use it for logical alignment.
+            // The two-column originals keep Word's distinct screen frame even when
+            // their preferred width differs from the saved grid.
+            // Modern Windows keeps the opening column's frame.
             alignment_widths.or(Some((
                 self.current_column_width(),
                 self.current_column_width(),
