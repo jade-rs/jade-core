@@ -12514,14 +12514,8 @@ where
         let (current_page_number, active_section_index) =
             (self.current_page_number, self.active_section_index);
         let word_oracle_report_x_offsets = self.word_oracle_report_x_offsets.take();
-        let comment_annotations = std::mem::take(&mut self.comment_annotations);
-        let hyperlink_regions = std::mem::take(&mut self.hyperlink_regions);
-        let image_debug_regions = self.image_debug_regions.take();
-        let text_box_debug_regions = self.text_box_debug_regions.take();
-        let grouped_shape_text_regions = self.grouped_shape_text_regions.take();
-        let revision_debug_regions = self.revision_debug_regions.take();
-        let numbering_debug_regions = self.numbering_debug_regions.take();
-        let line_overflow_debug_regions = self.line_overflow_debug_regions.take();
+        // Links, comment marks and the per-page debug regions are merged back
+        // by the pixel-only pass itself (`PixelRerenderRegions`).
         let auxiliary_story_debug_lines = std::mem::take(&mut self.auxiliary_story_debug_lines);
         let table_layouts = std::mem::take(&mut self.table_layouts);
         let table_handles = std::mem::take(&mut self.table_handles);
@@ -12549,15 +12543,6 @@ where
         self.current_page_number = current_page_number;
         self.active_section_index = active_section_index;
         *self.word_oracle_report_x_offsets.get_mut() = word_oracle_report_x_offsets;
-        self.comment_annotations = comment_annotations;
-        self.hyperlink_regions = hyperlink_regions;
-        self.invalidate_hyperlink_regions_js_cache();
-        *self.image_debug_regions.get_mut() = image_debug_regions;
-        *self.text_box_debug_regions.get_mut() = text_box_debug_regions;
-        *self.grouped_shape_text_regions.get_mut() = grouped_shape_text_regions;
-        *self.revision_debug_regions.get_mut() = revision_debug_regions;
-        *self.numbering_debug_regions.get_mut() = numbering_debug_regions;
-        *self.line_overflow_debug_regions.get_mut() = line_overflow_debug_regions;
         self.auxiliary_story_debug_lines = auxiliary_story_debug_lines;
         self.table_layouts = table_layouts;
         self.table_handles = table_handles;
