@@ -4667,6 +4667,12 @@ where
     section_seek_geometry: Vec<SectionSeekGeometry>,
     /// `page_section_indices[n]` is the section owning physical page `n + 1`.
     page_section_indices: Vec<usize>,
+    /// Physical pages (1-indexed) that an oddPage/evenPage section break
+    /// inserted only to reach the required parity. Word prints them blank:
+    /// no header, footer, page borders or watermark, though each still
+    /// takes a page number. A walk settles the entries of the pages it
+    /// reaches afresh and keeps those of the pages a seek skips.
+    parity_filler_pages: std::collections::BTreeSet<usize>,
     /// `mid_page_section_starts[s]` describes where section `s` started
     /// partway down a page, after a continuous or next-column break; `None`
     /// when it started on a page of its own. That page keeps the header,
@@ -10366,6 +10372,7 @@ where
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
+            parity_filler_pages: std::collections::BTreeSet::new(),
             mid_page_section_starts: Vec::new(),
             page_number_table: RefCell::new(None),
             #[cfg(test)]
@@ -12466,7 +12473,7 @@ where
                     }
                 }
                 self.draw_page_fill()?;
-                self.draw_watermark()?;
+                self.draw_watermark(page)?;
                 self.draw_manuscript_grid();
                 self.draw_page_border_frame(PageBorderLayer::Back);
                 self.invalidate_context_state_tracking();
@@ -12494,7 +12501,7 @@ where
             }
         }
         self.draw_page_fill()?;
-        self.draw_watermark()?;
+        self.draw_watermark(page)?;
         self.draw_manuscript_grid();
         self.draw_page_border_frame(PageBorderLayer::Back);
         Ok(())
@@ -12611,8 +12618,8 @@ where
     /// The operation intentionally redraws the whole shape even during a band
     /// repaint: the active canvas clip limits it to the erased band, restoring
     /// exactly the watermark pixels that the band clear removed.
-    fn draw_watermark(&self) -> Result<(), JsValue> {
-        if self.pageless_mode {
+    fn draw_watermark(&self, page: usize) -> Result<(), JsValue> {
+        if self.pageless_mode || self.parity_filler_pages.contains(&page) {
             return Ok(());
         }
         let Some(text) = self.watermark_text.as_deref() else {
@@ -12814,7 +12821,10 @@ where
     /// starts with. `None` in pageless mode, with page chrome hidden, or when
     /// the page has no visible frame.
     fn page_border_frame_for_page(&self, page: usize) -> Option<PageBorderFrame> {
-        if self.pageless_mode || self.hides_page_chrome() {
+        if self.pageless_mode
+            || self.hides_page_chrome()
+            || self.parity_filler_pages.contains(&page)
+        {
             return None;
         }
         let (borders, section) = if self.section_page_borders.is_empty() {
@@ -16384,6 +16394,8 @@ where
         };
         let authoritative_mid_page_section_starts =
             snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
+        let authoritative_parity_filler_pages =
+            snapshot_authoritative_pagination.then(|| self.parity_filler_pages.clone());
         let previous_page_origins = self.page_origins.clone();
         // One buffer across passes: a seek restores the skipped pages from it.
         let mut previous_page_sections = std::mem::take(&mut self.page_sections_before_pass);
@@ -16910,6 +16922,11 @@ where
             record.pages.clear();
             record.columns.clear();
         }
+        // The pages this walk reaches settle afresh whether they are parity
+        // fillers; a seek keeps the entries of the pages it skips.
+        let first_walked_page = seek_snapshot.as_ref().map_or(1, |seek| seek.page_number);
+        self.parity_filler_pages
+            .retain(|&page| page < first_walked_page);
         // Mid-page section starts are not cleared here: each section the walk
         // reaches re-records its own entry at its transition, a seek keeps
         // those of the sections it skips, and a walk that stops early keeps
@@ -17608,6 +17625,9 @@ where
                 if let Some(starts) = authoritative_mid_page_section_starts.as_ref() {
                     self.mid_page_section_starts.clone_from(starts);
                 }
+                if let Some(fillers) = authoritative_parity_filler_pages {
+                    self.parity_filler_pages = fillers;
+                }
                 self.invalidate_page_number_table();
                 self.page_origins.clone_from(&previous_page_origins);
                 self.last_completed_pagination_edit_preserved =
@@ -17619,6 +17639,8 @@ where
                 if self.last_layout_complete {
                     self.drop_seek_snapshots_not_recorded_this_pass();
                     self.page_section_indices.truncate(self.current_page_number);
+                    let laid_out = self.current_page_number;
+                    self.parity_filler_pages.retain(|&page| page <= laid_out);
                     // Sections past the last one laid out no longer exist.
                     self.mid_page_section_starts
                         .truncate(self.active_section_index + 1);
@@ -19412,8 +19434,10 @@ where
         // oddPage/evenPage may require one intervening blank parity page. Keep
         // that page on the previous section's geometry; the final advance below
         // activates the new section's page settings.
+        // Word prints that page blank (no header, footer, page borders or
+        // watermark) while it still takes a page number.
         for _ in 1..page_advances {
-            self.force_page_break_with_valign_end(section_mark_top.take())?;
+            self.force_page_break_with_valign_end(section_mark_top.take(), true)?;
         }
 
         self.render_footer_simple()?;
@@ -19692,10 +19716,17 @@ where
     }
 
     fn force_page_break(&mut self) -> Result<(), JsValue> {
-        self.force_page_break_with_valign_end(None)
+        self.force_page_break_with_valign_end(None, false)
     }
 
-    fn force_page_break_with_valign_end(&mut self, valign_end: Option<f64>) -> Result<(), JsValue> {
+    /// Advances to a new page; `parity_filler` marks it as the blank page an
+    /// oddPage/evenPage section break inserts, before its backing paints any
+    /// page chrome.
+    fn force_page_break_with_valign_end(
+        &mut self,
+        valign_end: Option<f64>,
+        parity_filler: bool,
+    ) -> Result<(), JsValue> {
         if self.measuring_keep_next {
             return Ok(());
         }
@@ -19714,6 +19745,9 @@ where
         let previous_page_height = self.page_height;
         self.advance_page_offset(previous_page_height);
         let next_page = self.current_page_number + 1;
+        if parity_filler {
+            self.parity_filler_pages.insert(next_page);
+        }
         self.begin_next_page_backing(next_page)?;
         self.record_valign_used_height_at(valign_end.unwrap_or(self.current_y));
         self.current_page_number += 1;
@@ -42675,7 +42709,8 @@ where
         if self.pageless_mode {
             return Ok(());
         }
-        if self.hides_page_chrome() {
+        if self.hides_page_chrome() || self.parity_filler_pages.contains(&self.current_page_number)
+        {
             self.header_drawn = true;
             return Ok(());
         }
@@ -42850,7 +42885,8 @@ where
         // The footer belongs under the body's floating objects.
         self.end_page_body_layer();
 
-        if self.hides_page_chrome() {
+        if self.hides_page_chrome() || self.parity_filler_pages.contains(&self.current_page_number)
+        {
             self.footer_drawn = true;
             return Ok(());
         }
@@ -72159,7 +72195,7 @@ mod tests {
                 ..Default::default()
             });
             painter.clear();
-            renderer.draw_watermark().expect("draw fixed watermark");
+            renderer.draw_watermark(1).expect("draw fixed watermark");
             let ops = painter.ops();
             let font = ops
                 .iter()
@@ -72206,7 +72242,7 @@ mod tests {
             ..Default::default()
         });
         painter.clear();
-        renderer.draw_watermark().expect("draw fitted watermark");
+        renderer.draw_watermark(1).expect("draw fitted watermark");
         let ops = painter.ops();
         assert!(ops.iter().any(|op| matches!(op, Op::Scale(x, y) if (*x * 40.0 - 200.0 * 96.0 / 72.0).abs() < 1e-9 && *y == 1.0)), "{ops:?}");
         assert_eq!(
