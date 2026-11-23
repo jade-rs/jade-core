@@ -405,3 +405,37 @@ fn an_alt_chunk_document_saves_edits_where_they_were_made() {
         "alt chunk",
     );
 }
+
+/// Building the tree after a windowed open draws the window again and
+/// leaves the stale pages exactly as they were: their pixels are not
+/// changed by node ids. It reports doing so once.
+#[test]
+fn building_the_tree_leaves_the_stale_pages_as_they_were() {
+    let bytes = fixture("footnote-table-each-page.docx");
+    let mut document = NativeDocument::open_with_font_faces_and_paint_window(
+        &bytes,
+        816.0,
+        1056.0,
+        &faces(),
+        0..1,
+    )
+    .unwrap();
+    let stale: Vec<_> = (0..document.page_count())
+        .map(|page| document.is_page_stale(page))
+        .collect();
+    assert!(
+        stale.iter().any(|&stale| stale),
+        "a window leaves pages stale"
+    );
+    let first = document.page_pixels(0);
+    assert!(document.ensure_roundtrip_xml().unwrap(), "built");
+    assert!(
+        !document.ensure_roundtrip_xml().unwrap(),
+        "nothing more to do"
+    );
+    let after: Vec<_> = (0..document.page_count())
+        .map(|page| document.is_page_stale(page))
+        .collect();
+    assert_eq!(after, stale);
+    assert!(first == document.page_pixels(0));
+}

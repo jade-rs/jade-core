@@ -731,6 +731,9 @@ impl WordDocument {
         variant: &str,
         bytes: &[u8],
     ) -> Result<bool, String> {
+        // The story's reference is written into the tree; without it the
+        // export would save the document as it was loaded.
+        self.ensure_roundtrip_xml().map_err(|error| error.to_string())?;
         self.validate_story_section_index(section)?;
         let role = parse_role(role)?;
         let variant = parse_variant(variant)?;

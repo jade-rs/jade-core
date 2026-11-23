@@ -312,6 +312,16 @@ fn apply_tracking_formatting(
 
 /// Runs `step` with formatting edits recorded as tracked changes while the
 /// document has a revision session open.
+/// Builds the round-trip tree a deferred load left out before a command
+/// touches the document: saving patches the tree, so an edit made without it
+/// would reach the model and never the file.
+fn ensure_roundtrip_xml(ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+    ctx.document
+        .ensure_roundtrip_xml()
+        .map(|_| ())
+        .map_err(|error| CommandError::Custom(error.to_string()))
+}
+
 fn tracking_formatting(
     ctx: &mut CommandContext<'_>,
     step: impl FnOnce(&mut CommandContext<'_>) -> CommandResult<()>,
@@ -365,10 +375,8 @@ impl CommandExecutor {
         mut command: Box<dyn Command>,
         ctx: &mut CommandContext<'_>,
     ) -> CommandResult<()> {
+        ensure_roundtrip_xml(ctx)?;
         let before = if command.tracks_formatting() && ctx.document.revision_session().is_some() {
-            ctx.document
-                .ensure_roundtrip_xml()
-                .map_err(|error| CommandError::Custom(error.to_string()))?;
             ctx.document.snapshot_including_package().map(|snapshot| {
                 let paragraphs = ctx.document.formatting_before();
                 (snapshot, paragraphs, *ctx.selection)
@@ -608,6 +616,7 @@ impl CommandExecutor {
             Some(cmd) => cmd,
             None => return Ok(None),
         };
+        ensure_roundtrip_xml(ctx)?;
         let footprint = command.history_render_footprint();
         command.undo(ctx)?;
         self.redo_stack.push(command);
@@ -624,6 +633,7 @@ impl CommandExecutor {
             Some(cmd) => cmd,
             None => return Ok(None),
         };
+        ensure_roundtrip_xml(ctx)?;
         let footprint = command.history_render_footprint();
         tracking_formatting(ctx, |ctx| command.redo(ctx))?;
         if command.should_record_history() {

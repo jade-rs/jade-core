@@ -3004,9 +3004,10 @@ impl NativeDocument {
     ///
     /// Until the round-trip tree is built (the first edit or
     /// [`Self::ensure_roundtrip_xml`]), readers backed by the XML — content
-    /// controls, fields, tables of contents, cross-reference targets,
-    /// revisions, headings collapsed by default, editable ranges, alt text,
-    /// rendered paragraph lengths — are empty or wrong. Callers that read
+    /// controls, legacy form fields, fields, tables of contents,
+    /// cross-reference targets, revisions, headings collapsed by default,
+    /// editable ranges, alt text, rendered paragraph lengths, the XML half of
+    /// paragraph and table formats — are empty or wrong. Callers that read
     /// those call [`Self::ensure_roundtrip_xml`] first.
     pub fn word_document(&self) -> &WordDocument {
         &self.word_document
@@ -3130,27 +3131,37 @@ impl NativeDocument {
     /// attaches. The first paint needs only the model, and the tree is a
     /// second pass over `document.xml`; every edit and undo builds it first,
     /// and a shell calls this in idle time after the first frame so the first
-    /// keystroke does not pay for it. Does nothing once built; a tree that
-    /// failed to parse fails again without being parsed again.
+    /// keystroke does not pay for it. Returns whether it did anything — built
+    /// the tree or laid the document out again — so a shell knows whether
+    /// the model's readers or the page images it holds may have changed. The
+    /// pixels do not: the pages are drawn again, none is left stale. Does
+    /// nothing once built; a tree that failed to parse fails again without
+    /// being parsed again.
     ///
     /// Until it runs, readers of [`Self::word_document`] backed by the tree
-    /// see nothing of it: content controls, fields, tables of contents,
-    /// cross-reference targets, revisions, headings collapsed by default,
-    /// editable ranges, alt text and rendered paragraph lengths. A caller
-    /// that reads those calls this first.
-    pub fn ensure_roundtrip_xml(&mut self) -> Result<(), String> {
-        self.build_roundtrip_xml()?;
-        if self.roundtrip_relayout_pending {
-            self.repaint_all()?;
+    /// see nothing of it: content controls, legacy form fields, fields,
+    /// tables of contents, cross-reference targets, revisions, headings
+    /// collapsed by default, editable ranges, alt text, rendered paragraph
+    /// lengths, and the XML half of paragraph and table formats. A caller
+    /// that reads those, or reads anything the open set from them, calls
+    /// this first.
+    pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, String> {
+        let built = self.build_roundtrip_xml()?;
+        if !self.roundtrip_relayout_pending {
+            return Ok(built);
         }
-        Ok(())
+        // Only node ids changed, so the pages left stale and those not are
+        // as they were: lay everything out, draw the window, mark nothing.
+        self.repaint_all_drawing(self.paint_window.clone(), false)?;
+        self.bounded_pass_since_full_layout = false;
+        Ok(true)
     }
 
     /// [`Self::ensure_roundtrip_xml`] without the repaint, for an edit that
     /// repaints the whole document after it anyway.
-    fn build_roundtrip_xml(&mut self) -> Result<(), String> {
+    fn build_roundtrip_xml(&mut self) -> Result<bool, String> {
         if self.word_document.raw_document.is_some() {
-            return Ok(());
+            return Ok(false);
         }
         if let Some(error) = &self.roundtrip_xml_error {
             return Err(error.clone());
@@ -3166,9 +3177,9 @@ impl NativeDocument {
             Ok(true) => {
                 ROUNDTRIP_XML_BUILDS.with(|builds| builds.set(builds.get() + 1));
                 self.roundtrip_relayout_pending = true;
-                Ok(())
+                Ok(true)
             }
-            Ok(false) => Ok(()),
+            Ok(false) => Ok(false),
             Err(error) => {
                 let error = format!("round-trip XML failed: {error}");
                 self.roundtrip_xml_error = Some(error.clone());

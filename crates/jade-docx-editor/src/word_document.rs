@@ -2578,10 +2578,12 @@ impl WordDocument {
     /// preservation-oriented XML tree until the first edit or export.
     ///
     /// Until [`Self::ensure_roundtrip_xml`] runs, readers backed by the tree
-    /// see nothing of it: content controls, fields, tables of contents,
-    /// cross-reference targets, paragraph-mark revisions, headings collapsed
-    /// by default, editable ranges, alt text and rendered paragraph lengths.
-    /// Edits through the headless API fail; [`Self::export_docx`] works and
+    /// see nothing of it: content controls, legacy form fields, fields,
+    /// tables of contents, cross-reference targets, paragraph-mark revisions,
+    /// headings collapsed by default, editable ranges, alt text, rendered
+    /// paragraph lengths, and the XML half of paragraph and table formats.
+    /// Edits through the headless API, the command executor and story
+    /// replacement build the tree first; [`Self::export_docx`] before it
     /// writes the document as loaded. A document whose first paint depends
     /// on the tree (a legacy check box, an HTML altChunk) gets it here.
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all, fields(data_len = data.len())))]
@@ -3160,6 +3162,11 @@ impl WordDocument {
     /// to the already parsed semantic document. This is idempotent.
     pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
         if self.raw_document.is_some() {
+            return Ok(false);
+        }
+        // A document built in memory, or a package without a main part, has
+        // no source XML to build a tree from.
+        if self.document_part.is_none() {
             return Ok(false);
         }
         let doc_part = self
@@ -68561,6 +68568,66 @@ mod tests {
             .expect("deferred");
             assert!(deferred.raw_document.is_some(), "{name}");
         }
+    }
+
+    #[test]
+    fn deferred_load_headless_edits_save_as_an_eager_load_does() {
+        use crate::headless_api::apply_headless_commands_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        let edits = || HeadlessEditRequest {
+            commands: vec![
+                HeadlessCommand::InsertText {
+                    paragraph: 0,
+                    offset: 0,
+                    text: "Edited ".to_string(),
+                },
+                HeadlessCommand::SetHeaderParagraphText {
+                    paragraph: 0,
+                    text: "Header".to_string(),
+                },
+                HeadlessCommand::InsertBlankPage {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 0,
+                },
+            ],
+        };
+        let data =
+            std::fs::read(fixture_path("word-compat-comprehensive.docx")).expect("read fixture");
+        let options = Options::default();
+        let mut eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        apply_headless_commands_to_document(&mut eager, &edits()).expect("eager edit");
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        apply_headless_commands_to_document(&mut deferred, &edits()).expect("deferred edit");
+        assert!(deferred.raw_document.is_some(), "the edit built the tree");
+        assert!(
+            deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+            "a headless edit on a deferred load saved differently"
+        );
+    }
+
+    #[test]
+    fn deferred_load_story_replacement_saves_as_an_eager_load_does() {
+        let data = std::fs::read(fixture_path("contract.docx")).expect("read fixture");
+        let story = std::fs::read(fixture_path("hello.docx")).expect("read story");
+        let options = Options::default();
+        let mut eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        assert!(eager
+            .replace_story_from_docx(0, "header", "default", &story)
+            .expect("eager replace"));
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        assert!(deferred
+            .replace_story_from_docx(0, "header", "default", &story)
+            .expect("deferred replace"));
+        assert!(
+            deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+            "a story replacement on a deferred load saved differently"
+        );
     }
 
     #[test]
