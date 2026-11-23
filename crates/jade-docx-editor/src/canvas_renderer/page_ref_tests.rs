@@ -287,6 +287,8 @@ struct LaidOutSession {
     renderer: CanvasRenderer<RecordingPainter>,
     selection: Option<jade_selection::SelectionRange>,
     executor: crate::commands::CommandExecutor,
+    /// Whether the session reports the renderer's page labels.
+    labels: bool,
 }
 
 impl crate::word::WordSession for LaidOutSession {
@@ -343,14 +345,21 @@ impl crate::word::WordSession for LaidOutSession {
     fn select_cells(&mut self, _anchor: usize, _focus: usize) -> Result<(), String> {
         Err("not used".into())
     }
+    // The recording host always reports one page; count what was laid out.
     fn page_count(&self) -> Option<usize> {
-        Some(self.renderer.page_count())
+        Some(self.renderer.displayed_page_labels().len())
     }
     fn paragraph_page(&self, paragraph: usize) -> Option<usize> {
         self.renderer.cached_paragraph_start_page(paragraph)
     }
-    fn page_label(&self, page: usize) -> String {
-        self.renderer.displayed_page_labels()[page - 1].clone()
+    fn page_label(&self, page: usize) -> Option<crate::fields::PageLabel> {
+        if !self.labels {
+            return None;
+        }
+        self.renderer
+            .displayed_page_labels()
+            .get(page.checked_sub(1)?)
+            .cloned()
     }
 }
 
@@ -387,6 +396,7 @@ fn updating_toc_page_numbers_writes_the_displayed_number() {
             jade_selection::TextPosition::new(0, 0),
         )),
         executor: crate::commands::CommandExecutor::new(),
+        labels: true,
     };
     assert_eq!(session.paragraph_page(3), Some(2));
     session.update_toc(true).expect("update the page numbers");
@@ -407,4 +417,152 @@ fn updating_toc_page_numbers_writes_the_displayed_number() {
         .expect("reload");
     assert_eq!(text(&reloaded, 0), "Chapter\ti");
     assert_eq!(text(&reloaded, 1), "Rel below");
+}
+
+/// Loads `body` (with a footer "F"), lays it out twice, and returns a
+/// session over it with the caret at the start.
+fn laid_out_session(body: &str) -> LaidOutSession {
+    let data = package(body, "<w:r><w:t>F</w:t></w:r>");
+    let document =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&document);
+    let model = document.document.clone().expect("document");
+    for _ in 0..2 {
+        renderer
+            .render(&model, &Options::default())
+            .expect("render");
+    }
+    LaidOutSession {
+        document,
+        renderer,
+        selection: Some(jade_selection::SelectionRange::collapsed(
+            jade_selection::TextPosition::new(0, 0),
+        )),
+        executor: crate::commands::CommandExecutor::new(),
+        labels: true,
+    }
+}
+
+/// The text of each paragraph after exporting and reloading: its runs'
+/// text, and a field's saved result where the field keeps it apart from
+/// the run text (PAGE).
+fn exported_paragraphs(document: &WordDocument) -> Vec<String> {
+    let exported = document.export_docx().expect("export");
+    let reloaded = futures::executor::block_on(WordDocument::load(&exported, &Options::default()))
+        .expect("reload");
+    (0..reloaded.paragraph_count())
+        .map(|index| {
+            reloaded
+                .paragraph(index)
+                .expect("paragraph")
+                .runs
+                .iter()
+                .map(|run| match run.field.as_ref() {
+                    Some(field) if run.text.is_empty() => {
+                        field.cached_text.clone().unwrap_or_default()
+                    }
+                    _ => run.text.clone(),
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn complex_field(instruction: &str, result: &str) -> String {
+    format!(
+        r#"<w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> {instruction} </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>{result}</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r>"#
+    )
+}
+
+const ROMAN_RESTART: &str = r#"<w:pgNumType w:fmt="lowerRoman" w:start="1"/>"#;
+
+/// Updates every field of a two-page document: section 1 (numbered by
+/// `first`) holds a PAGEREF to the start of section 2 (numbered by
+/// `second`), which holds a PAGE and a `PAGE \* Arabic`. Returns the
+/// exported text of the two paragraphs.
+fn updated_page_fields(first: &str, second: &str) -> (String, String) {
+    use crate::word::fields::{FieldHost, WordFields};
+    let body = format!(
+        r#"<w:p><w:r><w:t>[</w:t></w:r>{}<w:r><w:t>]</w:t></w:r></w:p><w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T</w:t></w:r><w:bookmarkEnd w:id="0"/><w:r><w:t>(</w:t></w:r>{}<w:r><w:t>|</w:t></w:r>{}<w:r><w:t>)</w:t></w:r></w:p>{}"#,
+        complex_field("PAGEREF target \\h", "9"),
+        section_properties("nextPage", first),
+        complex_field("PAGE", "9"),
+        complex_field("PAGE \\* Arabic", "9"),
+        section_properties("nextPage", second),
+    );
+    let mut session = laid_out_session(&body);
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    let paragraphs = exported_paragraphs(&session.document);
+    (paragraphs[0].clone(), paragraphs[2].clone())
+}
+
+/// F9 writes the number the layout displays: a PAGEREF into, and a PAGE
+/// in, a lower-roman section restarting at 1 give "i", where the physical
+/// page is 2. A PAGE with its own numeric switch formats the PAGE value.
+#[test]
+fn updating_fields_writes_the_displayed_page_number() {
+    assert_eq!(
+        updated_page_fields("", ROMAN_RESTART),
+        ("[i]".to_string(), "T(i|1)".to_string())
+    );
+}
+
+/// A lower-roman section that continues from a first section starting at
+/// 5 shows "vi" on physical page 2, as the layout numbers it.
+#[test]
+fn updating_fields_follows_the_layouts_continued_numbering() {
+    assert_eq!(
+        updated_page_fields(
+            r#"<w:pgNumType w:start="5"/>"#,
+            r#"<w:pgNumType w:fmt="lowerRoman"/>"#
+        ),
+        ("[vi]".to_string(), "T(vi|6)".to_string())
+    );
+}
+
+/// Rebuilding a table of contents writes each entry's displayed page
+/// number where the session has a layout.
+#[test]
+fn rebuilding_a_toc_writes_the_displayed_page_number() {
+    use crate::word::references::toc::WordToc;
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>stale</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:pPr>{}</w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Chapter</w:t></w:r></w:p><w:p><w:r><w:t>body</w:t></w:r></w:p>{}"#,
+        section_properties("nextPage", ""),
+        section_properties("nextPage", ROMAN_RESTART),
+    );
+    let mut session = laid_out_session(&body);
+    session.update_toc(false).expect("rebuild the table");
+    let paragraphs = exported_paragraphs(&session.document);
+    let entry = paragraphs
+        .iter()
+        .find(|text| text.starts_with("Chapter"))
+        .expect("an entry for the heading");
+    assert!(entry.ends_with("\ti"), "{paragraphs:?}");
+}
+
+/// Without page labels a rebuild keeps the generated placeholders.
+#[test]
+fn rebuilding_a_toc_without_labels_keeps_its_placeholders() {
+    use crate::word::references::toc::WordToc;
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>stale</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p><w:p><w:pPr>{}</w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>Chapter</w:t></w:r></w:p>{}"#,
+        section_properties("nextPage", ""),
+        section_properties("nextPage", ROMAN_RESTART),
+    );
+    let mut session = laid_out_session(&body);
+    session.labels = false;
+    session.update_toc(false).expect("rebuild the table");
+    let paragraphs = exported_paragraphs(&session.document);
+    let entry = paragraphs
+        .iter()
+        .find(|text| text.starts_with("Chapter"))
+        .expect("an entry for the heading");
+    assert!(entry.ends_with("\t1"), "{paragraphs:?}");
 }

@@ -183,10 +183,10 @@ pub trait WordSession {
 
     /// What a PAGE field on a physical (1-based) page shows at the last
     /// layout, its section's restart and numeral format applied: the
-    /// number a table of contents' update writes. Without per-page labels,
-    /// the page's own number.
-    fn page_label(&self, page: usize) -> String {
-        page.to_string()
+    /// number a table of contents' update and F9 write. `None` when the
+    /// session has no such layout.
+    fn page_label(&self, _page: usize) -> Option<crate::fields::PageLabel> {
+        None
     }
 
     /// Where a caret at a position would be drawn at the last layout —

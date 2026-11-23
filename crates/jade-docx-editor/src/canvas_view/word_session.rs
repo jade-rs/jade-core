@@ -28,7 +28,7 @@ pub(super) struct LayoutFacts {
     page_count: Option<usize>,
     paragraph_pages: HashMap<usize, usize>,
     /// `CanvasRenderer::displayed_page_labels`, page 1 first.
-    page_labels: Vec<String>,
+    page_labels: Vec<crate::fields::PageLabel>,
 }
 
 /// Where an action left the selection, and what it returned.
@@ -134,11 +134,10 @@ impl WordSession for DetachedSession<'_> {
         self.facts.paragraph_pages.get(&paragraph).copied()
     }
 
-    fn page_label(&self, page: usize) -> String {
+    fn page_label(&self, page: usize) -> Option<crate::fields::PageLabel> {
         page.checked_sub(1)
             .and_then(|index| self.facts.page_labels.get(index))
             .cloned()
-            .unwrap_or_else(|| page.to_string())
     }
 }
 
@@ -325,5 +324,47 @@ impl crate::word::markup::WordMarkupDisplay for DetachedSession<'_> {
         _view: crate::revision_view::RevisionView,
     ) -> Result<bool, String> {
         Err("markup is the view's own".to_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::fields::PageLabel;
+
+    /// The detached session hands out the last layout's label for each
+    /// physical page, and none for a page the layout did not have.
+    #[test]
+    fn page_label_reads_the_layouts_labels() {
+        let mut document = futures::executor::block_on(WordDocument::load(
+            &crate::word::new::blank_document(crate::word::new::Blank::Japanese),
+            &Options::default(),
+        ))
+        .expect("a blank document loads");
+        let labels = vec![
+            PageLabel {
+                value: 1,
+                text: "1".into(),
+            },
+            PageLabel {
+                value: 1,
+                text: "i".into(),
+            },
+        ];
+        let session = DetachedSession {
+            document: &mut document,
+            selection: None,
+            executor: CommandExecutor::new(),
+            facts: Rc::new(LayoutFacts {
+                page_count: Some(2),
+                page_labels: labels.clone(),
+                ..LayoutFacts::default()
+            }),
+            cells_selected: None,
+        };
+        assert_eq!(session.page_label(1), Some(labels[0].clone()));
+        assert_eq!(session.page_label(2), Some(labels[1].clone()));
+        assert_eq!(session.page_label(0), None);
+        assert_eq!(session.page_label(3), None);
     }
 }

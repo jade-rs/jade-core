@@ -44417,12 +44417,39 @@ where
     /// (a table of contents before its entries) takes its section from the
     /// previous pass, which laid out the page the target was cached on.
     fn page_reference_number(&self, physical_page: usize) -> String {
+        self.page_label(physical_page).text
+    }
+
+    /// [`Self::page_reference_number`] with the PAGE value before its
+    /// numeral format.
+    fn page_label(&self, physical_page: usize) -> crate::fields::PageLabel {
+        if self.section_page_numbering.is_empty() {
+            let value =
+                self.page_number_start.unwrap_or(1) as usize + physical_page.saturating_sub(1);
+            return crate::fields::PageLabel {
+                value,
+                text: format_page_number(value, self.page_number_format.as_deref()),
+            };
+        }
+        let (section, value) = self.page_reference_value(physical_page.max(1));
+        crate::fields::PageLabel {
+            value,
+            text: self.page_number_with_format(physical_page.max(1), section, value),
+        }
+    }
+
+    /// The numbering section of a physical (1-based) page and the PAGE
+    /// value on it, for a page the walk has not reached yet as well.
+    fn page_reference_value(&self, physical_page: usize) -> (usize, usize) {
         let laid_out = self.page_section_indices.len();
         if self.section_page_numbering.len() <= 1
             || physical_page <= laid_out.max(self.current_page_number)
             || physical_page > self.page_sections_before_pass.len()
         {
-            return self.displayed_page_number(physical_page);
+            return (
+                self.numbering_section_for_page(physical_page),
+                self.page_number_value(physical_page),
+            );
         }
         let owner = |page: usize| {
             self.page_section_indices
@@ -44438,18 +44465,18 @@ where
                 first.get_or_insert(page);
             }
         }
-        let displayed = self.page_number_walk(0, (1, 1), section, physical_page, |index| {
+        let value = self.page_number_walk(0, (1, 1), section, physical_page, |index| {
             first_pages[index]
         });
-        self.page_number_with_format(physical_page, section, displayed)
+        (section, value)
     }
 
     /// What a PAGE field on each laid-out page shows, its section's
     /// restart and numeral format applied: what a PAGEREF to the page shows
     /// and what Word writes when it updates a table of contents' numbers.
-    pub fn displayed_page_labels(&self) -> Vec<String> {
+    pub fn displayed_page_labels(&self) -> Vec<crate::fields::PageLabel> {
         (1..=self.resolved_total_page_count())
-            .map(|page| self.page_reference_number(page))
+            .map(|page| self.page_label(page))
             .collect()
     }
 

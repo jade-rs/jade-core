@@ -1108,6 +1108,12 @@ pub trait WordFields: WordSession {
                 paragraph_pages.insert(paragraph, page);
             }
         }
+        // Every page's label, or none: a partial list would number some
+        // pages from the layout and others from the story.
+        let page_labels = self
+            .page_count()
+            .and_then(|count| (1..=count).map(|page| self.page_label(page)).collect())
+            .unwrap_or_default();
         let folder = host
             .file
             .as_ref()
@@ -1146,6 +1152,7 @@ pub trait WordFields: WordSession {
                 .map(|metadata| metadata.len()),
             page_count: self.page_count(),
             paragraph_pages,
+            page_labels,
             prompt_answers: answers,
             read_file,
             japanese: host.japanese,
