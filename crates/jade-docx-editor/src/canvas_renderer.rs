@@ -12324,6 +12324,92 @@ where
         result
     }
 
+    /// Draws `pages` (1-indexed, inclusive) again over a layout that has not
+    /// changed since the last render, which laid out the whole document: a
+    /// selection highlight moved, nothing else.
+    ///
+    /// The walk resumes at the top of the first page drawn when a page-top
+    /// snapshot allows it, stops after the last, and draws nothing else, so
+    /// it would otherwise leave the registries it rebuilds — text lines for
+    /// hit-testing and carets, table cells, links, comment marks, objects,
+    /// revision bars, list numbers — holding only the pages it walked, and
+    /// later pages would hit-test to the wrong paragraph until the next full
+    /// render. Those registries describe the unchanged layout, so the ones
+    /// the last render built are put back afterwards, and pagination is kept
+    /// as a page-bitmap fetch keeps it. A document with vertically aligned
+    /// sections cannot take this pass (see
+    /// [`Self::any_section_valign_enabled`]); its caller lays it all out. The selection registry is not frozen
+    /// for the walk, as it is for a bitmap fetch: a frozen one already holds
+    /// the table cells after the one being drawn, and a selection over a
+    /// table then paints whole cells where a full render paints lines.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_pages_over_unchanged_layout(
+        &mut self,
+        document: Rc<Document>,
+        options: &Options,
+        numbering_part: Option<&NumberingPart>,
+        header_lines: Option<&[HeaderLine]>,
+        footer_lines: Option<&[HeaderLine]>,
+        comments: Option<&HashMap<String, DocumentComment>>,
+        pages: std::ops::RangeInclusive<usize>,
+    ) -> Result<(), JsValue> {
+        // Moved, not copied: a drag selects on every move.
+        let selection = self.selection.take_registry();
+        let (current_page_number, active_section_index) =
+            (self.current_page_number, self.active_section_index);
+        let word_oracle_report_x_offsets = self.word_oracle_report_x_offsets.take();
+        let comment_annotations = std::mem::take(&mut self.comment_annotations);
+        let hyperlink_regions = std::mem::take(&mut self.hyperlink_regions);
+        let image_debug_regions = self.image_debug_regions.take();
+        let text_box_debug_regions = self.text_box_debug_regions.take();
+        let grouped_shape_text_regions = self.grouped_shape_text_regions.take();
+        let revision_debug_regions = self.revision_debug_regions.take();
+        let numbering_debug_regions = self.numbering_debug_regions.take();
+        let line_overflow_debug_regions = self.line_overflow_debug_regions.take();
+        let auxiliary_story_debug_lines = std::mem::take(&mut self.auxiliary_story_debug_lines);
+        let table_layouts = std::mem::take(&mut self.table_layouts);
+        let table_handles = std::mem::take(&mut self.table_handles);
+        let table_row_handles = std::mem::take(&mut self.table_row_handles);
+        let floating_table_frames = std::mem::take(&mut self.floating_table_frames);
+        let previous_limit = self.layout_page_limit;
+        self.layout_page_limit = Some(*pages.end());
+        self.set_visible_page_range(Some(pages));
+        self.skip_change_detection_once();
+        self.prefer_visible_window_seek_once();
+        self.preserve_pagination_for_pixel_rerender = true;
+        let result = self.render_with_numbering_rc(
+            document,
+            options,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            comments,
+        );
+        self.clear_visible_page_range();
+        self.layout_page_limit = previous_limit;
+        self.selection.restore_registry(selection);
+        // The walk stops at the bound; the page and section cursors that
+        // page labels read stay where the last full layout ended.
+        self.current_page_number = current_page_number;
+        self.active_section_index = active_section_index;
+        *self.word_oracle_report_x_offsets.get_mut() = word_oracle_report_x_offsets;
+        self.comment_annotations = comment_annotations;
+        self.hyperlink_regions = hyperlink_regions;
+        self.invalidate_hyperlink_regions_js_cache();
+        *self.image_debug_regions.get_mut() = image_debug_regions;
+        *self.text_box_debug_regions.get_mut() = text_box_debug_regions;
+        *self.grouped_shape_text_regions.get_mut() = grouped_shape_text_regions;
+        *self.revision_debug_regions.get_mut() = revision_debug_regions;
+        *self.numbering_debug_regions.get_mut() = numbering_debug_regions;
+        *self.line_overflow_debug_regions.get_mut() = line_overflow_debug_regions;
+        self.auxiliary_story_debug_lines = auxiliary_story_debug_lines;
+        self.table_layouts = table_layouts;
+        self.table_handles = table_handles;
+        self.table_row_handles = table_row_handles;
+        self.floating_table_frames = floating_table_frames;
+        result
+    }
+
     /// Ensures the given page is treated as dirty for the current render pass.
     /// This is important when we end up drawing due to a cache miss even if the
     /// caller didn't mark anything dirty ahead of time.
@@ -12481,8 +12567,20 @@ where
         self.host.mark_page_rendered(page.saturating_sub(1));
         self.current_page_cleared_whole = true;
         // Clear only pages we will draw to preserve pixels on clean pages.
+        // Whole device pixels: a page box that ends inside a pixel (A4 is
+        // 1122.5 CSS px tall) otherwise leaves part of the last row and
+        // column from the previous paint, blended into this one, so a
+        // repaint differs from a fresh paint along that edge.
         let context = self.host.painter();
-        context.clear_rect(0.0, 0.0, self.page_width, self.page_height);
+        let dpr = Some(self.host.device_pixel_ratio())
+            .filter(|dpr| dpr.is_finite() && *dpr > 0.0)
+            .unwrap_or(1.0);
+        context.clear_rect(
+            0.0,
+            0.0,
+            (self.page_width * dpr).ceil() / dpr,
+            (self.page_height * dpr).ceil() / dpr,
+        );
         // Document page background (`<w:background>`, §17.2.1): fill the whole
         // page behind all content. Skipped in dark preview when the color is the
         // default white so the dark theme is not covered (mirrors the paragraph
@@ -17630,7 +17728,12 @@ where
         // Turn this full repaint's per-page measurements into section-owned
         // `w:vAlign` offsets. The public full-render entry performs this as its
         // layout-only first pass, then immediately paints with the result.
-        if self.any_section_valign_enabled() && self.render_full_repaint {
+        // A pixel-only walk measures only the pages it covers; the offsets of
+        // the last full layout still hold for an unchanged document.
+        if self.any_section_valign_enabled()
+            && self.render_full_repaint
+            && !preserve_pixel_pagination
+        {
             let measured = page_valign_offsets_from_sections(
                 self.section_vertical_align,
                 &self.section_vertical_alignments,
@@ -40441,7 +40544,10 @@ where
         !self.pageless_mode && self.active_section_vertical_align() != SectionVerticalAlign::Top
     }
 
-    fn any_section_valign_enabled(&self) -> bool {
+    /// Whether any section is vertically aligned (`w:vAlign` other than
+    /// top). Its offsets depend on the used height of every page, so a pass
+    /// that walks only some pages cannot repaint such a document alone.
+    pub fn any_section_valign_enabled(&self) -> bool {
         !self.pageless_mode
             && if self.section_vertical_alignments.is_empty() {
                 self.section_vertical_align != SectionVerticalAlign::Top
