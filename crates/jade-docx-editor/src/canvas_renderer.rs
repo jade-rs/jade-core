@@ -16350,8 +16350,11 @@ where
             self.clear_fast_replay();
             self.preserve_completed_pagination_on_stable_edit = false;
         }
-        let measure_first = !self.render_skip_draw
-            && !self.pageless_mode
+        // A layout-only render (`render_layout_with_numbering_rc`) measures
+        // first too: its line positions and page breaks must match a painted
+        // render's, and laying out with the previous offsets would let a page
+        // that grew overflow. Its second pass then draws nothing either.
+        let measure_first = !self.pageless_mode
             && has_vertical_alignment
             && (self.needs_full_repaint() || self.force_full_repaint_once || remeasure_alignment);
 
@@ -46376,6 +46379,95 @@ mod tests {
             renderer.freeze_selection_for_pixel_rerender();
             renderer.render(&document, &options).unwrap();
             assert_eq!(renderer.page_origins, expected, "bitmap page {page}");
+        }
+    }
+
+    /// The page-bitmap path (`markFullRepaint`, `setVisiblePageRange(page)`,
+    /// `prepareRerenderForPage`, `preserveSelectionForNextRerender`,
+    /// `rerenderWithoutSnapshots`) paints each page of a `w:vAlign` document,
+    /// with and without page breaks, exactly as the full render did.
+    ///
+    /// Without the full-repaint mark a clean page is not drawn at all, for a
+    /// top-aligned document too, so that sequence is not a pixel oracle.
+    #[test]
+    fn page_bitmap_rerender_of_aligned_pages_matches_the_full_render() {
+        use jade_painter::recording::Op;
+        let painted = |painter: &jade_painter::recording::RecordingPainter| {
+            painter
+                .ops()
+                .into_iter()
+                .filter(|op| {
+                    matches!(
+                        op,
+                        Op::FillText(..) | Op::FillShapedText(..) | Op::FillRect(..)
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let options = options_for_seek_tests();
+        for align in ["center", "bottom", "both"] {
+            for page_breaks in [false, true] {
+                let mut body = String::new();
+                for index in 0..90 {
+                    let properties = if page_breaks && index % 17 == 0 && index > 0 {
+                        "<w:pageBreakBefore/>"
+                    } else {
+                        ""
+                    };
+                    body.push_str(&format!(
+                        r#"<w:p><w:pPr>{properties}<w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:t>Line {index} {}</w:t></w:r></w:p>"#,
+                        "word ".repeat(index % 23)
+                    ));
+                }
+                body.push_str(&format!(
+                    r#"<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/><w:vAlign w:val="{align}"/></w:sectPr>"#
+                ));
+                let data = super::section_tests::build_docx_with_body(&body);
+                let word_doc = futures::executor::block_on(
+                    crate::word_document::WordDocument::load(&data, &crate::Options::default()),
+                )
+                .expect("load");
+                let document = word_doc
+                    .document
+                    .as_ref()
+                    .expect("document")
+                    .as_ref()
+                    .clone();
+                let (host, pages) = PerPageRecordingHost::new(40);
+                let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+                renderer.mark_full_repaint();
+                renderer.render(&document, &options).unwrap();
+                // The view clears them once it has taken the page bitmaps.
+                renderer.clear_dirty_regions();
+                let page_count = renderer.current_page_number;
+                assert!(page_count >= 4, "{align}: {page_count} pages");
+                let reference: Vec<_> = pages[..page_count].iter().map(painted).collect();
+                for page in 0..page_count {
+                    for painter in &pages {
+                        painter.clear();
+                    }
+                    renderer.mark_full_repaint();
+                    renderer.set_visible_page_range(Some(page + 1..=page + 1));
+                    if page > 0 {
+                        renderer.prepare_rerender_for_page(page);
+                    }
+                    renderer.freeze_selection_for_pixel_rerender();
+                    renderer.skip_change_detection_once();
+                    renderer.rerender_with_cached_state().unwrap();
+                    renderer.clear_dirty_regions();
+                    assert_eq!(
+                        painted(&pages[page]),
+                        reference[page],
+                        "{align} page breaks {page_breaks}: page {}",
+                        page + 1
+                    );
+                    assert!(
+                        !reference[page].is_empty(),
+                        "{align}: page {} painted",
+                        page + 1
+                    );
+                }
+            }
         }
     }
 
