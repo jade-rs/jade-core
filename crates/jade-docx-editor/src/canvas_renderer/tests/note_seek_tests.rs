@@ -118,10 +118,19 @@ fn options() -> Options {
     options
 }
 
+/// What is on the page: the drawing after its last whole-page clear (a
+/// pass may clear a page and draw its chrome more than once).
 fn painted(painter: &RecordingPainter) -> Vec<Op> {
-    painter
-        .ops()
-        .into_iter()
+    let ops = painter.ops();
+    let start = ops
+        .iter()
+        .rposition(|op| {
+            matches!(op, Op::ClearRect(x, y, w, h)
+                if *x == 0.0 && *y == 0.0 && *w > 500.0 && *h > 500.0)
+        })
+        .map_or(0, |index| index + 1);
+    ops.into_iter()
+        .skip(start)
         .filter(|op| {
             matches!(
                 op,
@@ -563,6 +572,10 @@ fn snapshots_record_the_note_state_at_their_resume_point() {
     other = deep.clone();
     other.notes.footnotes = 5;
     assert!(!renderer.seek_snapshot_notes_are_current(&other, &options()));
+    // Nor one recorded under other note settings.
+    other = deep.clone();
+    other.notes.epoch += 1;
+    assert!(!renderer.seek_snapshot_notes_are_current(&other, &options()));
     // Nor one past an edit before it.
     renderer.forced_dirty_from = Some(deep.paragraph_index - 1);
     assert!(!renderer.seek_snapshot_notes_are_current(&deep, &options()));
@@ -613,14 +626,7 @@ fn check_history_with(
         .render_with_numbering(&document, options, None, None, None, None)
         .unwrap();
     let last_page = page_of(&renderer, &document, PARAGRAPHS - 1);
-    let mut visible = last_page.saturating_sub(visible_from_end).max(3);
-    // Editing the first paragraph of a next-page section at its own page
-    // top shifts the window seek a page, notes or not (a separate bug).
-    if let Some(split) = layout.split {
-        if visible == page_of(&renderer, &document, split) {
-            visible += 1;
-        }
-    }
+    let visible = last_page.saturating_sub(visible_from_end).max(3);
     let on_page: Vec<usize> = (0..PARAGRAPHS)
         .filter(|&element| page_of(&renderer, &document, element) == visible)
         .collect();
@@ -674,6 +680,13 @@ fn check_history_with(
             "step {step}"
         );
     }
+}
+
+#[test]
+fn editing_the_first_paragraph_of_a_next_page_section_matches_a_from_start_render() {
+    // Page 6 is the first page of the second section: the window seek clears
+    // it and draws its chrome twice, and the final page must still match.
+    check_history(7, &[(0, "0".to_string())], Some("eachSect"));
 }
 
 proptest::proptest! {

@@ -300,6 +300,8 @@ struct NoteSeekState {
     last_body_line_px: f64,
     /// `NOTE_SEEK_*` bits: the note kinds the walk registered.
     flags: u8,
+    /// `note_settings_epoch` when recorded.
+    epoch: u32,
 }
 
 const NOTE_SEEK_FOOTNOTES: u8 = 1;
@@ -4900,6 +4902,12 @@ where
     /// pass yet, or the note numbering settings changed since). A seek cuts
     /// them back to its snapshot's lengths instead of rebuilding them.
     note_order_flags: Option<u8>,
+    /// Bumped whenever note numbering (restart, format, start, per section),
+    /// endnote positions or custom marks change. Seek snapshots record it and
+    /// one from another epoch is refused.
+    note_settings_epoch: u32,
+    /// Resolved endnote position: the document default, then each section.
+    section_endnote_positions: Vec<jade_docx_reader::document::EndnotePosition>,
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
@@ -6271,19 +6279,34 @@ where
             endnote_scope: self.endnote_numbering_scope,
             last_body_line_px: self.last_body_line_px,
             flags: self.last_options.as_ref().map_or(0, note_seek_flags),
+            epoch: self.note_settings_epoch,
         })
+    }
+
+    /// Note numbering or placement changed: the previous pass's note maps
+    /// and every snapshot recorded so far no longer describe the document.
+    fn bump_note_settings_epoch(&mut self) {
+        self.note_settings_epoch = self.note_settings_epoch.wrapping_add(1);
+        self.note_order_flags = None;
     }
 
     /// Drops the seek snapshots an earlier pass recorded for
     /// `paragraph_index`, which this pass reaches with a note pending.
-    #[cold]
     fn forget_seek_snapshots_of(&self, paragraph_index: usize) {
-        self.page_start_seek_cache
-            .borrow_mut()
-            .remove(&paragraph_index);
         self.paragraph_seek_cache
             .borrow_mut()
             .remove(&paragraph_index);
+        // Page and column snapshots are recorded with a page-start snapshot
+        // of the same paragraph, so without one none of them points here.
+        // This runs at every paragraph start while a note is pending.
+        if self
+            .page_start_seek_cache
+            .borrow_mut()
+            .remove(&paragraph_index)
+            .is_none()
+        {
+            return;
+        }
         let page = self.current_page_number;
         let mut by_page = self.page_start_seek_cache_by_page.borrow_mut();
         if by_page
@@ -6352,7 +6375,7 @@ where
         }
         let notes = &snapshot.notes;
         let flags = note_seek_flags(options);
-        if notes.flags != flags {
+        if notes.flags != flags || notes.epoch != self.note_settings_epoch {
             return false;
         }
         // A note reference edited at or before the resume point changes the
@@ -10672,6 +10695,8 @@ where
             endnote_section_map: HashMap::new(),
             endnote_order: Vec::new(),
             note_order_flags: None,
+            note_settings_epoch: 0,
+            section_endnote_positions: Vec::new(),
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
@@ -17012,7 +17037,7 @@ where
         if self.custom_mark_footnotes != document_rc.custom_mark_footnotes
             || self.custom_mark_endnotes != document_rc.custom_mark_endnotes
         {
-            self.note_order_flags = None;
+            self.bump_note_settings_epoch();
             self.custom_mark_footnotes = document_rc.custom_mark_footnotes.clone();
             self.custom_mark_endnotes = document_rc.custom_mark_endnotes.clone();
         }
@@ -19280,9 +19305,20 @@ where
                 ))
             })
             .collect();
-        // Notes a seek keeps from the previous pass were numbered under the
-        // old settings.
-        if note_numbering_before.0 != self.section_footnote_numbering
+        // Where each section's endnotes go (document end, or section end).
+        let endnote_positions_before = std::mem::take(&mut self.section_endnote_positions);
+        self.section_endnote_positions
+            .push(document.resolved_endnote_position(None));
+        self.section_endnote_positions.extend(
+            (0..document.sections.len())
+                .map(|index| document.resolved_endnote_position(Some(index))),
+        );
+        // A host can change these settings and repaint only a bounded window
+        // (`setNoteNumbering`, `setEndnotePosition`). Everything laid out
+        // under the old settings is stale past it: note marks change width
+        // and number, and endnotes move between section ends and the
+        // document end. Drop it, and refuse snapshots recorded before.
+        let note_settings_changed = note_numbering_before.0 != self.section_footnote_numbering
             || note_numbering_before.1 != self.section_endnote_numbering
             || note_numbering_before.2.format != self.footnote_number_format
             || note_numbering_before.2.start != self.footnote_number_start
@@ -19290,8 +19326,11 @@ where
             || note_numbering_before.3.format != self.endnote_number_format
             || note_numbering_before.3.start != self.endnote_number_start
             || note_numbering_before.3.restart != self.endnote_number_restart
-        {
-            self.note_order_flags = None;
+            || endnote_positions_before != self.section_endnote_positions;
+        // The first pass compares against nothing laid out.
+        if note_settings_changed && !endnote_positions_before.is_empty() {
+            self.bump_note_settings_epoch();
+            self.invalidate_layout_from(0);
         }
 
         // Resolve fallback and section-owned margin line numbering.
@@ -45735,6 +45774,7 @@ mod tests {
     mod decoration_histories;
     mod float_seek_tests;
     mod float_wrap_witness_tests;
+    mod note_host_flow_tests;
     mod note_seek_tests;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
