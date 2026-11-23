@@ -884,7 +884,7 @@ impl NativeDocument {
                     self.stale_pages
                         .extend((0..pages).filter(|page| !drawn.contains(page)));
                 }
-                for page in drawn.clone() {
+                for page in drawn.start..drawn.end.min(pages) {
                     self.stale_pages.remove(&page);
                 }
             }
@@ -1034,6 +1034,15 @@ impl NativeDocument {
     ///
     /// The renderer paints the selection, so this costs a repaint — unlike
     /// moving a collapsed caret, which the shell draws itself.
+    ///
+    /// A selection changes no layout, only the highlight, so only the pages
+    /// the old or the new selection is on are drawn again, and of those only
+    /// the ones up to `visible_end_page_1idx`; the ones after it are left
+    /// stale for [`Self::paint_stale_pages`]. The pass lays out no further
+    /// than the last page it draws, and keeps the hit-test, caret and region
+    /// registries the last layout built: rebuilt from a pass that stopped at
+    /// the bound, they covered only the pages before it, and clicks and
+    /// carets on later pages went wrong until the next full repaint.
     pub fn select(
         &mut self,
         anchor: (usize, usize),
@@ -1044,11 +1053,107 @@ impl NativeDocument {
             TextPosition::new(anchor.0, anchor.1),
             TextPosition::new(focus.0, focus.1),
         );
+        // Read from the last pass's layout, before the selection changes.
+        let pages = [self.selection, Some(range)]
+            .into_iter()
+            .flatten()
+            .map(|range| self.selection_pages(range))
+            .try_fold(None, |acc: Option<(usize, usize)>, span| {
+                let (first, last) = span?;
+                Some(Some(
+                    acc.map_or((first, last), |(a, b)| (a.min(first), b.max(last))),
+                ))
+            })
+            .flatten();
         self.selection = Some(range);
         self.renderer.set_selection_range(Some(range));
-        let (from, _) = range.normalized();
-        self.repaint_bounded_to(from.paragraph, visible_end_page_1idx)
-            .map(|_| ())
+        let visible_end = visible_end_page_1idx.max(1);
+        let Some((first, last)) = pages else {
+            // An end of a selection the last pass did not lay out (one
+            // bounded to the pages on screen): the layout is not whole. Lay
+            // every page out again, draw the pages on screen, and leave every
+            // other page stale, since the pages may have moved.
+            // `visible_end` may mean "no bound" (`usize::MAX`); pages past
+            // the old count are left stale by the layout itself.
+            let drawn = 0..visible_end.min(self.page_count().max(1));
+            self.repaint_all_drawing(Some(drawn), true)?;
+            return Ok(());
+        };
+        let drawn = first..(last + 1).min(visible_end);
+        if !drawn.is_empty() {
+            if self.renderer.any_section_valign_enabled() {
+                // A vertically aligned section's offsets come from the used
+                // height of every page, which a pass over a few pages does
+                // not measure: lay every page out, drawing the same pages.
+                self.repaint_all_drawing(Some(drawn), false)?;
+            } else {
+                self.repaint_unchanged_layout(drawn)?;
+            }
+        }
+        // The layout did not change, so the pages read before it still hold.
+        let count = self.page_count();
+        self.stale_pages
+            .extend((first.max(visible_end)..=last).filter(|&page| page < count));
+        Ok(())
+    }
+
+    /// Draws `drawn` (0-based pages) again over a layout that has not
+    /// changed since the last pass, which laid out every page. The walk stops
+    /// after the last drawn page, and the registries the last pass built
+    /// (hit-testing, carets, cells, links, pagination) are kept, since they
+    /// describe the same layout.
+    fn repaint_unchanged_layout(&mut self, drawn: std::ops::Range<usize>) -> Result<(), String> {
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
+        self.renderer.set_selection_range_for_render(self.selection);
+        count_surface_document_render();
+        let result = self.renderer.render_pages_over_unchanged_layout(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+            drawn.start + 1..=drawn.end,
+        );
+        result.map_err(|_| "repaint failed".to_string())?;
+        if let Some(error) = self.renderer.take_render_error() {
+            return Err(error);
+        }
+        for page in drawn {
+            self.stale_pages.remove(&page);
+        }
+        self.renderer.clear_dirty_regions();
+        Ok(())
+    }
+
+    /// The first and last page (0-based) the lines of `range` are on in the
+    /// last pass's layout, or `None` when an end of it was not laid out.
+    fn selection_pages(&self, range: SelectionRange) -> Option<(usize, usize)> {
+        let (start, end) = range.normalized();
+        let paragraphs = self.renderer.selection_manager().paragraphs();
+        // The ends must be laid out; a paragraph between them without lines
+        // (hidden text) draws nothing.
+        for paragraph in [start.paragraph, end.paragraph] {
+            paragraphs
+                .get(paragraph)
+                .filter(|layout| !layout.lines.is_empty())?;
+        }
+        let mut span: Option<(usize, usize)> = None;
+        for layout in &paragraphs[start.paragraph..=end.paragraph] {
+            for line in &layout.lines {
+                let bottom = (line.absolute_top + line.height - 0.01).max(line.absolute_top);
+                for y in [line.absolute_top, bottom] {
+                    let page = self.renderer.page_for_y(y.max(0.0));
+                    span = Some(span.map_or((page, page), |(a, b)| (a.min(page), b.max(page))));
+                }
+            }
+        }
+        span
     }
 
     /// Selects whole cells, as Word does when a drag crosses from one cell
@@ -1232,20 +1337,8 @@ impl NativeDocument {
         }
     }
 
-    /// Repaints from `paragraph` up to `visible_end_page_1idx`, drawing every
-    /// page in that span.
-    ///
-    /// The same sequence a keystroke uses, minus the narrowing that only a
-    /// change confined to one page can afford.
-    fn repaint_bounded_to(
-        &mut self,
-        paragraph: usize,
-        visible_end_page_1idx: usize,
-    ) -> Result<Duration, String> {
-        self.repaint_bounded_inner(paragraph, visible_end_page_1idx, false)
-    }
-
-    /// As above, drawing only `visible_end_page_1idx` itself.
+    /// Repaints from `paragraph` up to `visible_end_page_1idx`, drawing only
+    /// `visible_end_page_1idx` itself.
     fn repaint_bounded(
         &mut self,
         paragraph: usize,

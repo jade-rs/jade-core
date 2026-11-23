@@ -495,6 +495,35 @@ impl SelectionManager {
         self.preserved_prefix_len = 0;
     }
 
+    /// Moves the registered layout out, leaving this manager empty but with
+    /// the same selection, caret affinity and cell selection, as a fresh
+    /// `begin_render` would. [`Self::restore_registry`] puts it back. Cheaper
+    /// than a clone for a pass whose registrations are to be discarded.
+    pub fn take_registry(&mut self) -> SelectionManager {
+        let mut kept = SelectionManager {
+            selection: self.selection,
+            caret_affinity: self.caret_affinity,
+            cell_selection: self.cell_selection.clone(),
+            frozen: self.frozen,
+            render_pass: self.render_pass,
+            ..Default::default()
+        };
+        std::mem::swap(self, &mut kept);
+        kept
+    }
+
+    /// Puts back what [`Self::take_registry`] took, keeping the selection
+    /// state set since.
+    pub fn restore_registry(&mut self, mut registry: SelectionManager) {
+        registry.selection = self.selection;
+        registry.caret_affinity = self.caret_affinity;
+        registry.cell_selection = std::mem::take(&mut self.cell_selection);
+        registry.frozen = self.frozen;
+        // Later than any pass the restored entries were registered in.
+        registry.render_pass = self.render_pass;
+        *self = registry;
+    }
+
     /// The number of leading paragraphs the current pass preserved from the
     /// previous render (0 after a full `begin_render`).
     pub fn preserved_prefix_len(&self) -> usize {
