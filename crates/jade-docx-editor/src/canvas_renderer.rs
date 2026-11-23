@@ -5692,6 +5692,32 @@ where
 
     /// Prepares a rerender pass that will draw a single page by seeking to the page start.
     pub fn prepare_rerender_for_page(&mut self, page_index: usize) {
+        let snapshot = self.page_rerender_seek_snapshot(page_index);
+        self.apply_page_rerender_seek(snapshot);
+    }
+
+    /// [`Self::prepare_rerender_for_page`] only when the pass can seek to the
+    /// page start; returns whether it did. Without a usable snapshot — page 0,
+    /// active notes, none recorded, one that no longer fits — nothing is
+    /// prepared, and the caller is free to take another path.
+    ///
+    /// Stricter than [`Self::prepare_rerender_for_page`] in one way: a
+    /// document with vertically aligned sections is declined, since their
+    /// offsets depend on the used height of every page and a seek measures
+    /// only the pages it walks.
+    pub fn try_prepare_rerender_for_page(&mut self, page_index: usize) -> bool {
+        if self.any_section_valign_enabled() {
+            return false;
+        }
+        let Some(snapshot) = self.page_rerender_seek_snapshot(page_index) else {
+            return false;
+        };
+        self.apply_page_rerender_seek(Some(snapshot));
+        true
+    }
+
+    /// The snapshot a pixel rerender of `page_index` may seek to, if any.
+    fn page_rerender_seek_snapshot(&self, page_index: usize) -> Option<PageStartSeekSnapshot> {
         let page_1idx = page_index.saturating_add(1);
         // Body seek snapshots restore counters but not the note reference
         // order. Rebuild that order before painting a footnote/endnote page.
@@ -5708,12 +5734,13 @@ where
                 .get(&page_1idx)
                 .cloned()
         };
-        let snapshot = match candidate {
+        match candidate {
             // Validate a page-top snapshot against the layout cache like the
             // spanning branch: a stale prefix must fall back to a full walk.
             Some(snapshot) if !snapshot.spanning => (self.seek_anchor_is_body_paragraph(&snapshot)
                 && self.last_options.as_ref().is_none_or(|options| {
-                    self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
+                    self.is_forward_window_seek_compatible_options(options)
+                        && self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
                 }))
             .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
@@ -5740,7 +5767,10 @@ where
                 }
             }
             Some(_) | None => None,
-        };
+        }
+    }
+
+    fn apply_page_rerender_seek(&mut self, snapshot: Option<PageStartSeekSnapshot>) {
         let use_seek = snapshot.is_some();
         self.forced_seek_snapshot = snapshot;
         // Rerendering for on-demand page bitmap extraction should prioritize visual
@@ -16710,6 +16740,12 @@ where
                 );
                 (paragraph, metadata)
             });
+        // A pixel-only walk covers a few pages of an unchanged layout. Set the
+        // authoritative region lists aside and put them back at the end, as
+        // with the object regions below: refilled from the walk alone, they
+        // would keep only the walked pages' links, comments and debug regions.
+        let preserved_page_regions =
+            preserve_pixel_pagination.then(|| PixelRerenderRegions::take(self));
         self.comment_annotations.clear();
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
@@ -17983,6 +18019,9 @@ where
 
         if let Some(regions) = preserved_object_regions {
             *self.object_debug_regions.borrow_mut() = regions;
+        }
+        if let Some(regions) = preserved_page_regions {
+            regions.restore(self);
         }
 
         // Clear per-render dirty state.
@@ -44632,6 +44671,168 @@ fn text_box_wrap_bottom_outset_px(border: &TextBoxBorder) -> f64 {
 fn page_break_before_requires_advance(enabled: bool, current_y: f64, body_top: f64) -> bool {
     const EPSILON: f64 = 1e-3;
     enabled && current_y > body_top + EPSILON
+}
+
+/// The region lists a pixel-only rerender sets aside; see
+/// `render_with_numbering_rc_once_inner`. Such a walk covers a few pages of an
+/// unchanged layout, so the lists it fills hold only those pages. Merged back,
+/// the walk's own entries stand for the pages it covered and the earlier ones
+/// for every other page.
+struct PixelRerenderRegions {
+    /// The pages (1-based) the walk's entries stand for.
+    walked: std::ops::RangeInclusive<usize>,
+    comment_annotations: CommentAnnotations,
+    hyperlink_regions: Vec<HyperlinkRegion>,
+    image_debug_regions: Vec<ImageDebugInfo>,
+    text_box_debug_regions: Vec<TextBoxDebugInfo>,
+    grouped_shape_text_regions: Vec<GroupedShapeTextDebugInfo>,
+    revision_debug_regions: Vec<RevisionDebugInfo>,
+    numbering_debug_regions: Vec<NumberingDebugInfo>,
+    line_overflow_debug_regions: Vec<LineOverflowDebugInfo>,
+    paragraph_frame_debug_regions: Vec<ParagraphFrameDebugInfo>,
+}
+
+/// `previous`'s entries before and after `walked`, around `walked`'s entries
+/// from `current`, in page order.
+fn merge_walked_pages<T>(
+    previous: Vec<T>,
+    current: Vec<T>,
+    walked: &std::ops::RangeInclusive<usize>,
+    page: impl Fn(&T) -> usize,
+) -> Vec<T> {
+    let (before, after): (Vec<T>, Vec<T>) = previous
+        .into_iter()
+        .filter(|entry| !walked.contains(&page(entry)))
+        .partition(|entry| page(entry) < *walked.start());
+    before
+        .into_iter()
+        .chain(
+            current
+                .into_iter()
+                .filter(|entry| walked.contains(&page(entry))),
+        )
+        .chain(after)
+        .collect()
+}
+
+impl PixelRerenderRegions {
+    fn take<P>(renderer: &mut CanvasRenderer<P>) -> Self
+    where
+        P: Painter,
+        P::Error: PainterError,
+    {
+        // The drawn window; without one, every page up to the layout limit.
+        let walked = renderer
+            .visible_page_range
+            .clone()
+            .unwrap_or_else(|| 1..=renderer.layout_page_limit.unwrap_or(usize::MAX));
+        Self {
+            walked,
+            comment_annotations: std::mem::take(&mut renderer.comment_annotations),
+            // Cloned, not taken: the walk retains a prefix of these itself.
+            hyperlink_regions: renderer.hyperlink_regions.clone(),
+            image_debug_regions: std::mem::take(renderer.image_debug_regions.get_mut()),
+            text_box_debug_regions: std::mem::take(renderer.text_box_debug_regions.get_mut()),
+            grouped_shape_text_regions: std::mem::take(
+                renderer.grouped_shape_text_regions.get_mut(),
+            ),
+            revision_debug_regions: std::mem::take(renderer.revision_debug_regions.get_mut()),
+            numbering_debug_regions: std::mem::take(renderer.numbering_debug_regions.get_mut()),
+            line_overflow_debug_regions: std::mem::take(
+                renderer.line_overflow_debug_regions.get_mut(),
+            ),
+            paragraph_frame_debug_regions: std::mem::take(
+                &mut renderer.paragraph_frame_debug_regions,
+            ),
+        }
+    }
+
+    fn restore<P>(self, renderer: &mut CanvasRenderer<P>)
+    where
+        P: Painter,
+        P::Error: PainterError,
+    {
+        let walked = &self.walked;
+        let previous = self.comment_annotations;
+        let current = std::mem::take(&mut renderer.comment_annotations);
+        let merged = merge_walked_pages(
+            previous
+                .entries
+                .into_iter()
+                .zip(previous.paragraphs)
+                .collect(),
+            current
+                .entries
+                .into_iter()
+                .zip(current.paragraphs)
+                .collect(),
+            walked,
+            |(annotation, _)| annotation.page,
+        );
+        let (entries, paragraphs) = merged.into_iter().unzip();
+        renderer.comment_annotations = CommentAnnotations {
+            entries,
+            paragraphs,
+        };
+        renderer.hyperlink_regions = merge_walked_pages(
+            self.hyperlink_regions,
+            std::mem::take(&mut renderer.hyperlink_regions),
+            walked,
+            |region| region.page,
+        );
+        renderer.invalidate_hyperlink_regions_js_cache();
+        fn merge_cell<T>(
+            cell: &mut RefCell<Vec<T>>,
+            previous: Vec<T>,
+            walked: &std::ops::RangeInclusive<usize>,
+            page: impl Fn(&T) -> usize,
+        ) {
+            let current = std::mem::take(cell.get_mut());
+            *cell.get_mut() = merge_walked_pages(previous, current, walked, page);
+        }
+        merge_cell(
+            &mut renderer.image_debug_regions,
+            self.image_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.text_box_debug_regions,
+            self.text_box_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.grouped_shape_text_regions,
+            self.grouped_shape_text_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.revision_debug_regions,
+            self.revision_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.numbering_debug_regions,
+            self.numbering_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.line_overflow_debug_regions,
+            self.line_overflow_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        renderer.paragraph_frame_debug_regions = merge_walked_pages(
+            self.paragraph_frame_debug_regions,
+            std::mem::take(&mut renderer.paragraph_frame_debug_regions),
+            walked,
+            |region| region.page,
+        );
+    }
 }
 
 /// S6 (span_seek): decide whether a spanning-paragraph seek snapshot may be
