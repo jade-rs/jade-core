@@ -1511,7 +1511,7 @@ impl NativeDocument {
         // A moved object can re-wrap text past the bound; a selection changes
         // no layout, so the pages after it keep pixels that are still right.
         if only_the_bound_page {
-            self.mark_pages_past_bound_stale(visible_end_page_1idx, None);
+            self.mark_pages_past_bound_stale(visible_end_page_1idx, false);
         }
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
@@ -1524,26 +1524,17 @@ impl NativeDocument {
     /// `bound_1idx` still show — and their lines still answer hit-testing
     /// with — the layout from before the edit, unless the pass reached the
     /// end of the document, proved the pagination after the edit unchanged,
-    /// or `edited` names the one paragraph the edit touched and its lines
-    /// begin and end where they did ([`Self::paragraph_extent`]). Otherwise
-    /// they are marked stale, so [`Self::paint_stale_pages`] lays the
-    /// document out again when a shell draws them. A keystroke that keeps
-    /// its paragraph's lines in place — typing, Backspace, Delete, in a
-    /// table cell or not — marks nothing.
-    fn mark_pages_past_bound_stale(
-        &mut self,
-        bound_1idx: usize,
-        edited: Option<(usize, Option<ParagraphExtent>)>,
-    ) {
-        if self.renderer.last_layout_complete()
+    /// or `downstream_stood` (the edit's own proof, from the lines it laid
+    /// out). Otherwise they are marked stale, so [`Self::paint_stale_pages`]
+    /// lays the document out again when a shell draws them. A keystroke that
+    /// keeps everything after its paragraph in place — typing, Backspace,
+    /// Delete, in a table cell or not — marks nothing.
+    fn mark_pages_past_bound_stale(&mut self, bound_1idx: usize, downstream_stood: bool) {
+        if downstream_stood
+            || self.renderer.last_layout_complete()
             || self.renderer.last_completed_pagination_edit_preserved()
         {
             return;
-        }
-        if let Some((paragraph, Some(before))) = edited {
-            if self.paragraph_extent(paragraph) == Some(before) {
-                return;
-            }
         }
         let count = self.page_count();
         if bound_1idx < count {
@@ -3421,11 +3412,26 @@ impl NativeDocument {
                     .prepare_completed_pagination_edit(paragraph, height);
             }
         }
+        // The caller's bound, raised to the last page the edited paragraph
+        // reached: the lines it carries onto the next page reflow too, and
+        // are laid out and drawn with the rest of it.
+        let visible_end_page_1idx = match extent_before.filter(|_| single_paragraph_edit) {
+            Some(extent) => visible_end_page_1idx
+                .max(self.renderer.page_for_y((extent.bottom - 0.5).max(0.0)) + 1),
+            None => visible_end_page_1idx,
+        };
         // Bounded to what the caller can see, so the pages it stops at are not
         // the document's page count.
         self.pass_covers_whole_document
             .set(visible_end_page_1idx >= self.page_count());
         self.bounded_pass_since_full_layout = true;
+        let bounded = visible_end_page_1idx < self.page_count();
+        // A pass that stops at its bound drops the line registry, the cells
+        // and the regions of the paragraphs after it; they are put back if
+        // the layout after the edit turns out to stand.
+        if single_paragraph_edit && bounded {
+            self.renderer.set_aside_edit_downstream(paragraph);
+        }
         // The sequence lives on the renderer, so this shell and the browser one
         // cannot drift apart on it. Reproducing it here is what produced three
         // repaints that ran and drew nothing.
@@ -3434,7 +3440,6 @@ impl NativeDocument {
         // The walk stops once it has crossed the bound, after laying out the
         // first lines of the next page; drawn, they would leave that page
         // cleared but for them. It is not drawn, and keeps what it showed.
-        let bounded = visible_end_page_1idx < self.page_count();
         if bounded {
             self.renderer
                 .set_visible_page_range(Some(1..=visible_end_page_1idx.max(1)));
@@ -3461,10 +3466,20 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
-        self.mark_pages_past_bound_stale(
-            visible_end_page_1idx,
-            single_paragraph_edit.then_some((paragraph, extent_before)),
-        );
+        // The layout after the edit stands when the renderer proved the
+        // pagination unchanged, or when the edited paragraph's lines begin and
+        // end where they did and every paragraph after it that the pass laid
+        // out again kept its lines.
+        let downstream_stood = self.renderer.take_edit_downstream().is_some_and(|saved| {
+            let stood = extent_before.is_some()
+                && self.paragraph_extent(paragraph) == extent_before
+                && self.renderer.edit_downstream_kept_its_lines(&saved);
+            if stood {
+                self.renderer.restore_edit_downstream(saved);
+            }
+            stood
+        });
+        self.mark_pages_past_bound_stale(visible_end_page_1idx, downstream_stood);
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).

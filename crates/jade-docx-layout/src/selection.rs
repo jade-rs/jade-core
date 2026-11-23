@@ -385,6 +385,14 @@ pub struct SelectionSuffix {
     non_selectable_paragraphs: HashSet<usize>,
 }
 
+impl SelectionSuffix {
+    /// The saved paragraph layouts, the first one at the index the suffix
+    /// was taken from.
+    pub fn paragraphs(&self) -> &[ParagraphLayout] {
+        &self.paragraphs
+    }
+}
+
 /// Saved cell geometry and its authoritative paragraph lookup.
 #[derive(Default)]
 pub struct CellRegistry {
@@ -934,6 +942,14 @@ impl SelectionManager {
 
     /// Move the cell lookup together with its geometry when the render may
     /// converge and keep the authoritative layout.
+    /// A copy of the cell registry, for a caller that may put it back.
+    pub fn cell_registry_snapshot(&self) -> CellRegistry {
+        CellRegistry {
+            cells: self.cells.clone(),
+            paragraph_to_cell: self.paragraph_to_cell.clone(),
+        }
+    }
+
     pub fn take_cell_registry(&mut self) -> CellRegistry {
         if self.frozen {
             return CellRegistry::default();

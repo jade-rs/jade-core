@@ -198,6 +198,71 @@ fn a_keystroke_in_a_table_cell_leaves_no_page_stale() {
     document.insert_text(cell, 0, "a", page + 1).unwrap();
     assert_eq!(document.position_rect(cell, 0).unwrap().height, rect.height);
     assert!(!document.has_stale_pages());
+    let mut fresh = open_bytes(&document.export_docx().unwrap());
+    for page in 0..fresh.page_count() {
+        assert_eq!(
+            document.page_pixels(page),
+            fresh.page_pixels(page),
+            "page {page}"
+        );
+    }
+    // The lines past the bound are still registered: hit-testing there needs
+    // no repaint, and none is pending.
+    assert_eq!(hit_mismatches(&document, &fresh), 0);
+    let paragraphs = sample_paragraphs(&mut fresh);
+    assert_eq!(
+        geometry(&mut document, &paragraphs),
+        geometry(&mut fresh, &paragraphs)
+    );
+    assert!(!document.paint_stale_pages(0..usize::MAX).unwrap());
+}
+
+/// Hit-test answers at a few points on every page that differ.
+fn hit_mismatches(a: &Doc, b: &Doc) -> usize {
+    let mut bad = 0;
+    for page in 0..a.page_count().min(b.page_count()) {
+        for (fx, fy) in [(0.3, 0.2), (0.5, 0.5), (0.7, 0.8), (0.2, 0.9)] {
+            let (width, height) = a.page_box(page);
+            let y = a.document_y(page, height * fy);
+            if a.position_at(width * fx, y) != b.position_at(width * fx, y) {
+                bad += 1;
+            }
+        }
+    }
+    bad
+}
+
+/// A paragraph that starts on the bound page and carries lines onto the
+/// next: its lines there reflow too, so the pass reaches that page.
+#[test]
+fn a_keystroke_in_a_paragraph_that_runs_past_the_bound_reflows_its_tail() {
+    let mut document = open_fixture("public/fixtures/word-mac-probe-squeeze-comma.docx");
+    let paragraph = 30;
+    let length = document.paragraph_text(paragraph).unwrap().len();
+    let start = document.position_rect(paragraph, 0).unwrap();
+    let end = document.position_rect(paragraph, length).unwrap();
+    let (first_page, last_page) = (
+        document.page_and_offset(start.document_y).0,
+        document.page_and_offset(end.document_y).0,
+    );
+    assert!(
+        last_page > first_page,
+        "paragraph {paragraph} runs onto the next page"
+    );
+    for letters in 1..=3 {
+        document
+            .insert_text(paragraph, 0, "a", first_page + 1)
+            .unwrap();
+        let fresh = open_bytes(&document.export_docx().unwrap());
+        for page in 0..fresh.page_count() {
+            assert!(
+                document.is_page_stale(page)
+                    || document.page_pixels(page) == fresh.page_pixels(page),
+                "after {letters}: page {page} wrong and not stale"
+            );
+        }
+    }
+    document.paint_stale_pages(0..usize::MAX).unwrap();
     let fresh = open_bytes(&document.export_docx().unwrap());
     for page in 0..fresh.page_count() {
         assert_eq!(

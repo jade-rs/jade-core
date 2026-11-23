@@ -4724,6 +4724,9 @@ where
     /// Section transitions can change height, so the current height cannot
     /// reconstruct origins belonging to earlier sections.
     page_origins: Vec<PhysicalPageOrigin>,
+    /// See [`Self::set_aside_edit_downstream`].
+    edit_downstream_request: Option<usize>,
+    edit_downstream: Option<EditDownstream>,
     /// Where layout records the bytes each field run shows, for the
     /// document's caret offsets (`WordDocument::rendered_field_lengths`).
     rendered_field_lengths: Option<crate::word_document::RenderedFieldLengths>,
@@ -7302,6 +7305,84 @@ where
     /// downstream layout. The edited paragraph is re-rendered and compared
     /// with its cached geometry; only a proven-stable result may retain the
     /// completed page count.
+    /// Asks the next pass, a bounded edit of `paragraph` that may stop at
+    /// its bound, to set aside what it would drop for the paragraphs after
+    /// it: their line registry, their hyperlink and object regions, the cell
+    /// registry and the page origins. A pass on the stable-edit path keeps
+    /// those itself and sets nothing aside. Collect it with
+    /// [`Self::take_edit_downstream`]; hand it back with
+    /// [`Self::restore_edit_downstream`] once
+    /// [`Self::edit_downstream_kept_its_lines`] says the layout after the
+    /// edit stood, or drop it.
+    pub fn set_aside_edit_downstream(&mut self, paragraph: usize) {
+        self.edit_downstream_request = Some(paragraph);
+        self.edit_downstream = None;
+    }
+
+    /// What the last pass set aside at [`Self::set_aside_edit_downstream`]'s
+    /// request, if it did.
+    pub fn take_edit_downstream(&mut self) -> Option<EditDownstream> {
+        self.edit_downstream_request = None;
+        self.edit_downstream.take()
+    }
+
+    /// Whether every paragraph after the edited one that the last pass laid
+    /// out again kept its text and its lines exactly where they were. The
+    /// last of them may have been laid out only in part, where the walk
+    /// stopped; its lines must then begin as they did.
+    pub fn edit_downstream_kept_its_lines(&self, saved: &EditDownstream) -> bool {
+        let current = self.selection.paragraphs();
+        let previous = saved.selection.paragraphs();
+        let Some(last) = (saved.from..current.len())
+            .rev()
+            .find(|&index| !current[index].lines.is_empty())
+        else {
+            return true;
+        };
+        (saved.from..=last).all(|index| {
+            let layout = &current[index];
+            let Some(before) = previous.get(index - saved.from) else {
+                return false;
+            };
+            let same_count = if index == last {
+                layout.lines.len() <= before.lines.len()
+            } else {
+                layout.lines.len() == before.lines.len()
+            };
+            same_count
+                && layout.text == before.text
+                && layout.lines.iter().zip(&before.lines).all(|(line, was)| {
+                    line.column_index == was.column_index
+                        && line.absolute_top == was.absolute_top
+                        && line.height == was.height
+                        && line.start_x == was.start_x
+                        && line.cursor_end_x == was.cursor_end_x
+                })
+        })
+    }
+
+    /// Puts back what [`Self::set_aside_edit_downstream`] set aside, over
+    /// whatever the pass registered again for the same paragraphs.
+    pub fn restore_edit_downstream(&mut self, saved: EditDownstream) {
+        let from = saved.from;
+        self.selection
+            .restore_selection_suffix(from, saved.selection);
+        self.selection.restore_cell_registry(saved.cells);
+        self.hyperlink_regions
+            .retain(|region| region.paragraph < from);
+        self.hyperlink_regions.extend(saved.hyperlinks);
+        self.invalidate_hyperlink_regions_js_cache();
+        let mut objects = self.object_debug_regions.borrow_mut();
+        objects.retain(|region| region.paragraph_index < from);
+        objects.extend(saved.objects);
+        drop(objects);
+        if self.page_origins.len() < saved.page_origins.len() {
+            let kept = self.page_origins.len();
+            self.page_origins
+                .extend_from_slice(&saved.page_origins[kept..]);
+        }
+    }
+
     pub fn prepare_completed_pagination_edit(
         &mut self,
         paragraph_index: usize,
@@ -10441,6 +10522,8 @@ where
             #[cfg(test)]
             page_number_reference_check: true,
             page_origins: Vec::new(),
+            edit_downstream_request: None,
+            edit_downstream: None,
             rendered_field_lengths: None,
             footnote_number_format: None,
             footnote_number_restart: NoteRestart::Continuous,
@@ -16755,6 +16838,40 @@ where
         // Move the registry rather than cloning every cell (including each
         // paragraph list) on every IME update. A stable edit reuses this same
         // allocation when restoring the authoritative offscreen cell geometry.
+        // A bounded edit asked for its downstream to be set aside (see
+        // `set_aside_edit_downstream`), unless the stable-edit path below
+        // keeps it.
+        let stable_keeps_tail = self.fast_replay_trigger.is_some()
+            && (incremental_dirty_from.is_some() || preserve_stable_edit_pagination);
+        let edit_downstream_request = self
+            .edit_downstream_request
+            .take()
+            .filter(|_| !preserve_pixel_pagination);
+        // On the stable-edit path the tail is set aside by that path; if the
+        // edit then proves unstable, it is handed over below.
+        let stable_downstream_request = edit_downstream_request.filter(|_| stable_keeps_tail);
+        let edit_downstream_parts =
+            edit_downstream_request
+                .filter(|_| !stable_keeps_tail)
+                .map(|paragraph| {
+                    let from = paragraph.saturating_add(1);
+                    (
+                        from,
+                        self.selection.cell_registry_snapshot(),
+                        self.hyperlink_regions
+                            .iter()
+                            .filter(|region| region.paragraph >= from)
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                        self.object_debug_regions
+                            .borrow()
+                            .iter()
+                            .filter(|region| region.paragraph_index >= from)
+                            .cloned()
+                            .collect::<Vec<_>>(),
+                        self.page_origins.clone(),
+                    )
+                });
         let mut stable_cells =
             preserve_stable_edit_pagination.then(|| self.selection.take_cell_registry());
         let mut previous_cells = if preserve_pixel_pagination || stable_cells.is_some() {
@@ -16765,7 +16882,7 @@ where
         // A stable text edit exits after its changed paragraph. Preserve the
         // untouched selection tail across begin_render_incremental's clear;
         // otherwise navigation and paragraph introspection lose those entries.
-        let selection_suffix = self
+        let mut selection_suffix = self
             .fast_replay_trigger
             // A completed-pagination edit can also repaint a whole page.
             // Full dirty state clears incremental_dirty_from, but the stable
@@ -16774,6 +16891,17 @@ where
             .map(|(paragraph, _)| {
                 let from = paragraph.saturating_add(1);
                 (from, self.selection.take_selection_suffix(from))
+            });
+        self.edit_downstream =
+            edit_downstream_parts.map(|(from, cells, hyperlinks, objects, page_origins)| {
+                EditDownstream {
+                    from,
+                    selection: self.selection.take_selection_suffix(from),
+                    cells,
+                    hyperlinks,
+                    objects,
+                    page_origins,
+                }
             });
         self.selection
             .begin_render_incremental(incremental_dirty_from);
@@ -16818,7 +16946,7 @@ where
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
         // than dropping them; PDF export reads them per page.
-        let hyperlink_suffix = selection_suffix.as_ref().map(|&(from, _)| {
+        let mut hyperlink_suffix = selection_suffix.as_ref().map(|&(from, _)| {
             let (kept, suffix) = std::mem::take(&mut self.hyperlink_regions)
                 .into_iter()
                 .partition(|region| region.paragraph < from);
@@ -17897,6 +18025,35 @@ where
         self.valign_gap_applied = (0, 0.0);
 
         // Store shared reference to avoid cloning on every render.
+        if !self.last_fast_replay_stable && stable_downstream_request.is_some() {
+            // The edit asked for its downstream and the stable path, which
+            // set it aside, did not prove it unchanged: hand it over.
+            if let (Some((from, selection)), Some(cells)) =
+                (selection_suffix.take(), stable_cells.take())
+            {
+                self.edit_downstream = Some(EditDownstream {
+                    from,
+                    selection,
+                    cells,
+                    hyperlinks: hyperlink_suffix
+                        .take()
+                        .map(|(_, suffix)| suffix)
+                        .unwrap_or_default(),
+                    objects: stable_edit_metadata
+                        .as_ref()
+                        .map(|(_, metadata)| {
+                            metadata
+                                .objects
+                                .iter()
+                                .filter(|region| region.paragraph_index >= from)
+                                .cloned()
+                                .collect()
+                        })
+                        .unwrap_or_default(),
+                    page_origins: previous_page_origins.clone(),
+                });
+            }
+        }
         if self.last_fast_replay_stable {
             if let Some((from, suffix)) = selection_suffix {
                 self.selection.restore_selection_suffix(from, suffix);
@@ -45017,6 +45174,17 @@ fn text_box_wrap_bottom_outset_px(border: &TextBoxBorder) -> f64 {
 fn page_break_before_requires_advance(enabled: bool, current_y: f64, body_top: f64) -> bool {
     const EPSILON: f64 = 1e-3;
     enabled && current_y > body_top + EPSILON
+}
+
+/// What a bounded edit pass drops for the paragraphs after the edited one;
+/// see [`CanvasRenderer::set_aside_edit_downstream`].
+pub struct EditDownstream {
+    from: usize,
+    selection: jade_docx_layout::selection::SelectionSuffix,
+    cells: jade_docx_layout::selection::CellRegistry,
+    hyperlinks: Vec<HyperlinkRegion>,
+    objects: Vec<RegisteredObjectRegion>,
+    page_origins: Vec<PhysicalPageOrigin>,
 }
 
 /// The region lists a pixel-only rerender sets aside; see
