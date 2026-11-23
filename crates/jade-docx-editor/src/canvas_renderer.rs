@@ -277,6 +277,49 @@ struct PageStartSeekSnapshot {
     /// Wrapping-float state live at the resume point, restored on seek so the
     /// resumed walk wraps exactly like a from-start walk.
     floats: SeekFloatState,
+    /// Footnote/endnote state at the resume point; see [`NoteSeekState`].
+    notes: NoteSeekState,
+}
+
+/// The note state a body walk has accumulated at a seek snapshot, as
+/// integers only: recording runs at every page top, so it copies no map.
+///
+/// A seek keeps the previous pass's note maps and cuts them back to these
+/// lengths. That is exact because notes enter `footnote_order` and
+/// `endnote_order` in first-reference order and the walk only appends after
+/// the resume point. Snapshots are recorded only while no note is pending:
+/// no footnote continues onto a later page and every footnote referenced so
+/// far is drawn, so nothing past the cut is still owed to an earlier page.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct NoteSeekState {
+    footnotes: usize,
+    endnotes: usize,
+    footnote_scope: NoteNumberingScope,
+    endnote_scope: NoteNumberingScope,
+    /// The continuation-line estimate a carried footnote reserves with.
+    last_body_line_px: f64,
+    /// `NOTE_SEEK_*` bits: the note kinds the walk registered.
+    flags: u8,
+}
+
+const NOTE_SEEK_FOOTNOTES: u8 = 1;
+const NOTE_SEEK_ENDNOTES: u8 = 2;
+/// Pageless passes number notes without pages; their maps cannot seed a
+/// paged seek.
+const NOTE_SEEK_PAGELESS: u8 = 4;
+
+fn note_seek_flags(options: &Options) -> u8 {
+    let mut flags = 0;
+    if options.render_footnotes {
+        flags |= NOTE_SEEK_FOOTNOTES;
+    }
+    if options.render_endnotes {
+        flags |= NOTE_SEEK_ENDNOTES;
+    }
+    if options.pageless() {
+        flags |= NOTE_SEEK_PAGELESS;
+    }
+    flags
 }
 
 /// Seek keys one layout pass recorded, from paragraph `from` on.
@@ -4852,6 +4895,11 @@ where
     endnote_display_map: HashMap<String, usize>,
     endnote_section_map: HashMap<String, usize>,
     endnote_order: Vec<String>,
+    /// The `NOTE_SEEK_*` kinds the note maps and orders above were built
+    /// with by the last pass, or `None` when they cannot seed a seek (no
+    /// pass yet, or the note numbering settings changed since). A seek cuts
+    /// them back to its snapshot's lengths instead of rebuilding them.
+    note_order_flags: Option<u8>,
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
@@ -5719,14 +5767,10 @@ where
     /// The snapshot a pixel rerender of `page_index` may seek to, if any.
     fn page_rerender_seek_snapshot(&self, page_index: usize) -> Option<PageStartSeekSnapshot> {
         let page_1idx = page_index.saturating_add(1);
-        // Body seek snapshots restore counters but not the note reference
-        // order. Rebuild that order before painting a footnote/endnote page.
-        let notes_active = self.document_has_notes
-            && self
-                .last_options
-                .as_ref()
-                .is_some_and(|options| options.render_footnotes || options.render_endnotes);
-        let candidate = if page_index == 0 || notes_active {
+        // A snapshot in a document with notes carries the note order lengths,
+        // counters and numbering scopes; the render cuts the previous pass's
+        // note maps back to them (`seek_snapshot_notes_are_current`).
+        let candidate = if page_index == 0 {
             None
         } else {
             self.page_start_seek_cache_by_page
@@ -6070,8 +6114,11 @@ where
         // The content hash keys `show_formatting_marks` (~line 5628) so toggling marks invalidates
         // caches. Note: with marks on the paragraph *render* cache is disabled (`cache_eligible`
         // is false), so the seek's forward pass never takes a cached-replay shortcut anyway.
-        let notes_enabled =
-            self.document_has_notes && (options.render_footnotes || options.render_endnotes);
+        // Footnotes and endnotes do not block a seek: snapshots record the note
+        // state at their resume point (`NoteSeekState`), are not recorded while
+        // a note is pending, and `seek_snapshot_notes_are_current` refuses one
+        // the previous pass's note maps cannot reproduce.
+        //
         // Comment ranges and markers are paragraph-local. A window seek starts
         // at a visible page top, or on an earlier non-visible page for a span,
         // and draws every visible paragraph fresh. It therefore rebuilds both
@@ -6090,7 +6137,6 @@ where
                     && part.numbering_instances.is_empty()
                     && part.picture_bullets.is_empty()
             }))
-            && !notes_enabled
             && !options.pageless()
             && !self.mirror_margins
     }
@@ -6121,6 +6167,10 @@ where
         if (self.current_y - self.effective_body_top()).abs() > EPS {
             return;
         }
+        let Some(notes) = self.note_seek_state() else {
+            self.forget_seek_snapshots_of(paragraph_index);
+            return;
+        };
         let snapshot = PageStartSeekSnapshot {
             paragraph_index,
             body_element_index,
@@ -6144,6 +6194,7 @@ where
             spanning: false,
             table_counter: self.table_counter,
             floats: self.seek_float_state(),
+            notes,
         };
         self.page_start_seek_cache
             .borrow_mut()
@@ -6195,6 +6246,130 @@ where
             .insert((snapshot.page_number, snapshot.column_index), snapshot);
     }
 
+    /// The note state for a seek snapshot taken now, or `None` while a note
+    /// is pending: a footnote continuing from an earlier page, a reference
+    /// line not placed yet, or footnotes referenced on this page but not yet
+    /// drawn. Resuming there would need the pending notes' layout, which a
+    /// snapshot does not carry.
+    fn note_seek_state(&self) -> Option<NoteSeekState> {
+        if self.document_has_notes
+            && (self.footnote_carry.is_some()
+                || self.carried_footnote_reserve_pending
+                || !self.unplaced_footnote_refs.is_empty()
+                || self.rendered_footnote_count != self.footnote_order.len()
+                || self.footnote_reserve_px != 0.0
+                || self.footnote_split_at_body_reference
+                || self.paragraph_restart.is_some()
+                || self.note_resume.is_some())
+        {
+            return None;
+        }
+        Some(NoteSeekState {
+            footnotes: self.footnote_order.len(),
+            endnotes: self.endnote_order.len(),
+            footnote_scope: self.footnote_numbering_scope,
+            endnote_scope: self.endnote_numbering_scope,
+            last_body_line_px: self.last_body_line_px,
+            flags: self.last_options.as_ref().map_or(0, note_seek_flags),
+        })
+    }
+
+    /// Drops the seek snapshots an earlier pass recorded for
+    /// `paragraph_index`, which this pass reaches with a note pending.
+    #[cold]
+    fn forget_seek_snapshots_of(&self, paragraph_index: usize) {
+        self.page_start_seek_cache
+            .borrow_mut()
+            .remove(&paragraph_index);
+        self.paragraph_seek_cache
+            .borrow_mut()
+            .remove(&paragraph_index);
+        let page = self.current_page_number;
+        let mut by_page = self.page_start_seek_cache_by_page.borrow_mut();
+        if by_page
+            .get(&page)
+            .is_some_and(|snapshot| snapshot.paragraph_index == paragraph_index)
+        {
+            by_page.remove(&page);
+        }
+        self.page_column_seek_cache
+            .borrow_mut()
+            .retain(|_, snapshot| snapshot.paragraph_index != paragraph_index);
+    }
+
+    /// Starts a pass's note maps: cut back to the lengths of the seek
+    /// snapshot `notes` when the pass seeks, empty when it walks from the
+    /// start. Every displayed number and section a note has comes from its
+    /// first reference, so the notes past the cut are exactly the ones the
+    /// resumed walk registers again.
+    fn restore_note_maps_for_seek(&mut self, notes: Option<&NoteSeekState>) {
+        let (footnotes, endnotes) = notes.map_or((0, 0), |notes| (notes.footnotes, notes.endnotes));
+        fn cut(
+            order: &mut Vec<String>,
+            display: &mut HashMap<String, usize>,
+            sections: &mut HashMap<String, usize>,
+            len: usize,
+        ) {
+            if len == 0 {
+                order.clear();
+                display.clear();
+                sections.clear();
+                return;
+            }
+            if len >= order.len() {
+                return;
+            }
+            for id in order.drain(len..) {
+                display.remove(&id);
+                sections.remove(&id);
+            }
+        }
+        cut(
+            &mut self.footnote_order,
+            &mut self.footnote_display_map,
+            &mut self.footnote_section_map,
+            footnotes,
+        );
+        cut(
+            &mut self.endnote_order,
+            &mut self.endnote_display_map,
+            &mut self.endnote_section_map,
+            endnotes,
+        );
+    }
+
+    /// Whether the previous pass's note maps can seed a seek to `snapshot`:
+    /// they were built for the same note kinds and reach at least as far as
+    /// the snapshot, so cutting them back to its lengths gives exactly what a
+    /// walk from the start would have registered before it.
+    fn seek_snapshot_notes_are_current(
+        &self,
+        snapshot: &PageStartSeekSnapshot,
+        options: &Options,
+    ) -> bool {
+        if !self.document_has_notes {
+            return true;
+        }
+        let notes = &snapshot.notes;
+        let flags = note_seek_flags(options);
+        if notes.flags != flags {
+            return false;
+        }
+        // A note reference edited at or before the resume point changes the
+        // order or numbers of the notes before it. Hosts drop later
+        // snapshots on an edit; refuse the seek here too.
+        if self
+            .forced_dirty_from
+            .is_some_and(|dirty| dirty < snapshot.paragraph_index)
+        {
+            return false;
+        }
+        (notes.footnotes == 0 && notes.endnotes == 0)
+            || (self.note_order_flags == Some(flags)
+                && self.footnote_order.len() >= notes.footnotes
+                && self.endnote_order.len() >= notes.endnotes)
+    }
+
     /// Float state for a seek snapshot. Recording is refused while a
     /// look-ahead pin is live, so `lookahead_pin` is `None` in practice; it is
     /// kept so a restore reproduces the walk state exactly either way.
@@ -6234,6 +6409,10 @@ where
         if body_element_index == usize::MAX || section_index == usize::MAX {
             return;
         }
+        let Some(notes) = self.note_seek_state() else {
+            self.forget_seek_snapshots_of(paragraph_index);
+            return;
+        };
         let snapshot = PageStartSeekSnapshot {
             paragraph_index,
             body_element_index,
@@ -6257,6 +6436,7 @@ where
             spanning: false,
             table_counter: self.table_counter,
             floats: self.seek_float_state(),
+            notes,
         };
         self.paragraph_seek_cache
             .borrow_mut()
@@ -6552,7 +6732,9 @@ where
         snapshot: &PageStartSeekSnapshot,
         options: &Options,
     ) -> bool {
-        if !self.seek_snapshot_geometry_is_valid(snapshot) {
+        if !self.seek_snapshot_geometry_is_valid(snapshot)
+            || !self.seek_snapshot_notes_are_current(snapshot, options)
+        {
             return false;
         }
         self.paragraph_seek_snapshot_matches_layout(
@@ -6579,7 +6761,9 @@ where
             return false;
         }
         // Page geometry must match the current render (snapshot is from a prior pass).
-        if !self.seek_snapshot_geometry_is_valid(snapshot) {
+        if !self.seek_snapshot_geometry_is_valid(snapshot)
+            || !self.seek_snapshot_notes_are_current(snapshot, options)
+        {
             return false;
         }
         // The snapshot's cumulative anchor must still agree with the current
@@ -6651,7 +6835,12 @@ where
 
         // Prefer exact paragraph snapshot (can be mid-page). This is the closest we can get to
         // "start from dirty paragraph" without scanning prefix paragraphs.
-        let dirty_paragraph_snapshot = self.paragraph_seek_cache.borrow().get(&dirty_from).cloned();
+        let dirty_paragraph_snapshot = self
+            .paragraph_seek_cache
+            .borrow()
+            .get(&dirty_from)
+            .filter(|snapshot| self.seek_snapshot_notes_are_current(snapshot, options))
+            .cloned();
         if let Some(snapshot) = dirty_paragraph_snapshot {
             if !self.paragraph_seek_snapshot_matches_layout(
                 dirty_from,
@@ -6801,6 +6990,7 @@ where
         let anchor = snapshot.paragraph_index;
         if anchor > dirty_from
             || !self.seek_anchor_is_body_paragraph(&snapshot)
+            || !self.seek_snapshot_notes_are_current(&snapshot, options)
             || !self.paragraph_seek_snapshot_matches_layout(anchor, &snapshot, "selected", options)
         {
             return None;
@@ -6884,6 +7074,11 @@ where
         if (seek.current_y - seek.margin_top).abs() <= EPS {
             // Top-of-column doesn't need prefix reconstruction.
             return true;
+        }
+        // The replay below redraws body paragraphs only; endnotes drawn at a
+        // section end above the seek point would be lost.
+        if self.document_has_notes {
+            return false;
         }
 
         let page_0idx = seek.page_number.saturating_sub(1);
@@ -10476,6 +10671,7 @@ where
             endnote_display_map: HashMap::new(),
             endnote_section_map: HashMap::new(),
             endnote_order: Vec::new(),
+            note_order_flags: None,
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
@@ -16809,11 +17005,17 @@ where
         self.footnote_counter = 0;
         self.footnote_numbering_scope = NoteNumberingScope::default();
         self.endnote_numbering_scope = NoteNumberingScope::default();
-        self.footnote_display_map.clear();
-        self.custom_mark_footnotes = document_rc.custom_mark_footnotes.clone();
-        self.custom_mark_endnotes = document_rc.custom_mark_endnotes.clone();
-        self.footnote_section_map.clear();
-        self.footnote_order.clear();
+        // The note display, section and order maps are kept until the seek
+        // decision below: a seek cuts them back to its snapshot instead of
+        // rebuilding them from the document start. Custom marks change how
+        // notes number, so the kept maps no longer apply when they do.
+        if self.custom_mark_footnotes != document_rc.custom_mark_footnotes
+            || self.custom_mark_endnotes != document_rc.custom_mark_endnotes
+        {
+            self.note_order_flags = None;
+            self.custom_mark_footnotes = document_rc.custom_mark_footnotes.clone();
+            self.custom_mark_endnotes = document_rc.custom_mark_endnotes.clone();
+        }
         self.update_footnote_surface_layout(&document_rc);
         self.rendered_footnote_count = 0;
         self.rendering_page_footnotes = false;
@@ -16840,9 +17042,6 @@ where
         self.measuring_notes = false;
         self.note_measure_layouts = 0;
         self.endnote_counter = 0;
-        self.endnote_display_map.clear();
-        self.endnote_section_map.clear();
-        self.endnote_order.clear();
         // A seek skips unchanged tables, so keep their IDs and editing handles.
         // Bitmap-only walks also stop early: restore their complete metadata at
         // the end instead of replacing it with the requested page's subset.
@@ -16977,9 +17176,10 @@ where
             self.forced_seek_snapshot.take();
             None
         } else {
-            self.forced_seek_snapshot
-                .take()
-                .filter(|snapshot| self.seek_snapshot_geometry_is_valid(snapshot))
+            self.forced_seek_snapshot.take().filter(|snapshot| {
+                self.seek_snapshot_geometry_is_valid(snapshot)
+                    && self.seek_snapshot_notes_are_current(snapshot, options)
+            })
         };
         // The window seek (edit fast path) takes precedence over an externally
         // forced snapshot; in practice the two never co-occur (the forced snapshot
@@ -17038,6 +17238,8 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
+        self.restore_note_maps_for_seek(seek_snapshot.as_ref().map(|seek| &seek.notes));
+        self.note_order_flags = Some(note_seek_flags(options));
         {
             let mut record = self.seek_pass_record.borrow_mut();
             record.from = seek_snapshot
@@ -17162,6 +17364,24 @@ where
         let mut deleted_numbering_offsets: HashMap<String, Vec<u32>> = HashMap::new();
 
         let mut rendered_endnotes = HashSet::new();
+        if let Some(seek) = seek_snapshot.as_ref() {
+            // The sections a seek skips already drew their section-end
+            // endnotes; the document-end pass must not draw them again.
+            if options.render_endnotes && seek.notes.endnotes > 0 {
+                rendered_endnotes.extend(
+                    self.endnote_order
+                        .iter()
+                        .filter(|id| {
+                            self.endnote_section_map.get(*id).is_some_and(|&section| {
+                                section < seek.section_index
+                                    && document.resolved_endnote_position(Some(section))
+                                        == jade_docx_reader::document::EndnotePosition::SectionEnd
+                            })
+                        })
+                        .cloned(),
+                );
+            }
+        }
         if let Some(body) = &document.body {
             // The body's contextual spacing and border boxes are decided per
             // adjacent pair when a paragraph is laid out (see
@@ -17210,6 +17430,12 @@ where
                 self.float_lookahead_pin = seek.floats.lookahead_pin;
                 self.footnote_counter = seek.footnote_counter;
                 self.endnote_counter = seek.endnote_counter;
+                self.footnote_numbering_scope = seek.notes.footnote_scope;
+                self.endnote_numbering_scope = seek.notes.endnote_scope;
+                // Snapshots are recorded only once every footnote referenced
+                // before them is drawn (`note_seek_state`).
+                self.rendered_footnote_count = self.footnote_order.len();
+                self.last_body_line_px = seek.notes.last_body_line_px;
                 self.page_width = seek.page_width;
                 self.page_height = seek.page_height;
                 self.margin_top = seek.margin_top;
@@ -19012,6 +19238,20 @@ where
             })
             .collect();
 
+        let note_numbering_before = (
+            std::mem::take(&mut self.section_footnote_numbering),
+            std::mem::take(&mut self.section_endnote_numbering),
+            ResolvedNoteNumbering {
+                format: self.footnote_number_format.clone(),
+                start: self.footnote_number_start,
+                restart: self.footnote_number_restart,
+            },
+            ResolvedNoteNumbering {
+                format: self.endnote_number_format.clone(),
+                start: self.endnote_number_start,
+                restart: self.endnote_number_restart,
+            },
+        );
         let footnote_props = document.resolved_note_numbering(None, true);
         self.footnote_number_format = footnote_props.number_format.clone();
         self.footnote_number_start = footnote_props.number_start;
@@ -19040,6 +19280,19 @@ where
                 ))
             })
             .collect();
+        // Notes a seek keeps from the previous pass were numbered under the
+        // old settings.
+        if note_numbering_before.0 != self.section_footnote_numbering
+            || note_numbering_before.1 != self.section_endnote_numbering
+            || note_numbering_before.2.format != self.footnote_number_format
+            || note_numbering_before.2.start != self.footnote_number_start
+            || note_numbering_before.2.restart != self.footnote_number_restart
+            || note_numbering_before.3.format != self.endnote_number_format
+            || note_numbering_before.3.start != self.endnote_number_start
+            || note_numbering_before.3.restart != self.endnote_number_restart
+        {
+            self.note_order_flags = None;
+        }
 
         // Resolve fallback and section-owned margin line numbering.
         self.line_numbering = document
@@ -45482,6 +45735,7 @@ mod tests {
     mod decoration_histories;
     mod float_seek_tests;
     mod float_wrap_witness_tests;
+    mod note_seek_tests;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
     mod paragraph_render_hash_tests;
@@ -65515,7 +65769,8 @@ mod tests {
             );
             assert!(renderer.is_forward_window_seek_compatible_options(&options));
             // A real note, including an empty or unknown-type note, must still
-            // retain the conservative note-layout guards.
+            // retain the conservative note-layout guards. Seeks stay open:
+            // their snapshots carry the note state.
             for note_type in [None, Some("normal"), Some("unknown")] {
                 let mut with_note = document.clone();
                 let notes = if endnotes {
@@ -65533,7 +65788,8 @@ mod tests {
                 );
                 renderer.render(&with_note, &options).unwrap();
                 assert!(renderer.document_has_notes);
-                assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+                assert!(!renderer.can_use_unchecked_cache_replay(&options));
+                assert!(renderer.is_forward_window_seek_compatible_options(&options));
             }
         }
     }
@@ -67189,6 +67445,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         let options = options_for_seek_tests();
@@ -67246,6 +67503,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         assert!(renderer
@@ -67279,6 +67537,7 @@ mod tests {
             spanning: false,
             table_counter: 0,
             floats: SeekFloatState::default(),
+            notes: NoteSeekState::default(),
         }
     }
 
@@ -67549,13 +67808,15 @@ mod tests {
     }
 
     #[test]
-    fn prepare_rerender_for_page_rejects_body_snapshot_with_notes() {
+    fn prepare_rerender_for_page_takes_body_snapshots_recorded_for_the_same_notes() {
         let mut renderer = test_renderer();
         renderer.pageless_mode = false;
         renderer.document_has_notes = true;
         let mut options = options_for_seek_tests();
         options.render_endnotes = true;
         renderer.last_options = Some(options);
+        // Recorded while endnotes were not rendered: the note state it carries
+        // does not describe this pass.
         renderer
             .page_start_seek_cache_by_page
             .borrow_mut()
@@ -67565,10 +67826,20 @@ mod tests {
 
         assert!(
             renderer.forced_seek_snapshot.is_none(),
-            "body snapshots do not restore note reference order"
+            "a snapshot recorded for other note kinds is refused"
         );
         assert!(!renderer.skip_layout_cache_update);
         assert!(renderer.preserve_pagination_for_pixel_rerender);
+
+        let mut snapshot = page_top_snapshot(&renderer, 2);
+        snapshot.notes.flags = NOTE_SEEK_ENDNOTES;
+        renderer
+            .page_start_seek_cache_by_page
+            .borrow_mut()
+            .insert(2, snapshot);
+        renderer.prepare_rerender_for_page(1);
+        assert!(renderer.forced_seek_snapshot.is_some());
+        assert!(renderer.skip_layout_cache_update);
     }
 
     #[test]
@@ -68019,10 +68290,12 @@ mod tests {
             );
             assert_eq!(
                 renderer.layout_extension_seek_last_miss(),
-                if mode == 4 {
-                    "vertical_text"
-                } else {
-                    "options"
+                match mode {
+                    // Notes no longer block the options; the snapshot was
+                    // recorded without them, so its note state is refused.
+                    0 | 1 => "stale_snapshots",
+                    4 => "vertical_text",
+                    _ => "options",
                 }
             );
             assert!(renderer.forced_seek_snapshot.is_none());
@@ -68598,6 +68871,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -68644,6 +68918,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -68689,6 +68964,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -68701,7 +68977,7 @@ mod tests {
     }
 
     #[test]
-    fn try_prepare_seek_start_is_disabled_when_notes_enabled() {
+    fn try_prepare_seek_start_needs_snapshots_recorded_for_the_same_notes() {
         let mut renderer = test_renderer();
         renderer.document_has_notes = true;
         renderer.visible_page_range = Some(2..=2);
@@ -68732,6 +69008,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -68744,6 +69021,7 @@ mod tests {
             ..Default::default()
         };
         options.set_pageless(false);
+        // The snapshot was recorded without notes rendered.
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
@@ -68753,6 +69031,34 @@ mod tests {
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
+
+        // Recorded for the same note kinds, with no note before it.
+        renderer
+            .page_start_seek_cache
+            .borrow_mut()
+            .get_mut(&dirty_from)
+            .unwrap()
+            .notes
+            .flags = NOTE_SEEK_ENDNOTES;
+        assert!(renderer
+            .try_prepare_seek_start(dirty_from, &options)
+            .is_some());
+        // Notes before it need the previous pass's note maps to reach it.
+        renderer
+            .page_start_seek_cache
+            .borrow_mut()
+            .get_mut(&dirty_from)
+            .unwrap()
+            .notes
+            .endnotes = 1;
+        assert!(renderer
+            .try_prepare_seek_start(dirty_from, &options)
+            .is_none());
+        renderer.note_order_flags = Some(NOTE_SEEK_ENDNOTES);
+        renderer.endnote_order.push("1".into());
+        assert!(renderer
+            .try_prepare_seek_start(dirty_from, &options)
+            .is_some());
     }
 
     #[test]
@@ -68788,6 +69094,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69885,6 +70192,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69930,6 +70238,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69959,6 +70268,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70024,6 +70334,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70075,6 +70386,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70122,6 +70434,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70173,6 +70486,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70219,6 +70533,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70276,6 +70591,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70335,6 +70651,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         // Fallback candidates (page start) for page 3.
@@ -70363,6 +70680,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         // Old cached layout for dirty paragraph to estimate its page (page 3 is 0-indexed=2).
@@ -70434,6 +70752,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70548,6 +70867,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70594,6 +70914,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -70621,6 +70942,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         renderer.paragraph_layout_cache.borrow_mut().insert(
@@ -70980,6 +71302,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -71007,6 +71330,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
