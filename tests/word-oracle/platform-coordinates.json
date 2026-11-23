@@ -6694,6 +6694,64 @@
           }
         }
       ]
+    },
+    {
+      "mac_case": "probe-mixed-sangam-matrix-240",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-mixed-sangam-matrix-240/source.docx",
+        "sha256": "3bcd21bef9b951fdcc75004c15c11c1285d94e607287a7b4cbadeddabbaccbba"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-mixed-sangam-matrix-240/manifest.json",
+        "sha256": "2b4fd55617afa505b3bad5ea9b1a864b59fa5f77dfd02396a710027a6fb0186f"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-mixed-sangam-matrix-240-3bcd21be",
+          "font_source": "original-word-pdf",
+          "glyph_index_fonts": {
+            "file": "tests/word-oracle/windows/font-glyph-identities/word-16.0.19127.20936/3bcd21bef9b951fdcc75004c15c11c1285d94e607287a7b4cbadeddabbaccbba.json",
+            "sha256": "1704f738c458c60e260a684b0e607440c1608d93548d60f85a55f8f7c781fbff"
+          }
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-mixed-sangam-matrix-276",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-mixed-sangam-matrix-276/source.docx",
+        "sha256": "214162179ddd266438624ff8fd5ac5cad9bff612703894595f13571a5123cb89"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-mixed-sangam-matrix-276/manifest.json",
+        "sha256": "72f8b5570bd6b93f9b186d14f9e583fe30af384aff2ea6975084b852a2f2a12f"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-mixed-sangam-matrix-276-21416217",
+          "font_source": "original-word-pdf",
+          "glyph_index_fonts": {
+            "file": "tests/word-oracle/windows/font-glyph-identities/word-16.0.19127.20936/214162179ddd266438624ff8fd5ac5cad9bff612703894595f13571a5123cb89.json",
+            "sha256": "d7fda20cba03abc50f90c7bc2ef4a69ad3bc97a5e5098486d6ab37ac3fe138f9"
+          }
+        }
+      ]
     }
   ]
 }
