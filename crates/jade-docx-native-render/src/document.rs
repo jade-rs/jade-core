@@ -272,7 +272,16 @@ pub struct NativeDocument {
     /// Pages laid out since they were last drawn: their surfaces hold what
     /// they showed before. [`Self::paint_stale_pages`] draws them.
     stale_pages: std::collections::BTreeSet<usize>,
+    /// Whether a bounded pass (an edit, a selection) has run since the last
+    /// whole-document layout. While it has, [`Self::paint_stale_pages`] lays
+    /// the document out from the start rather than resuming at a page.
+    bounded_pass_since_full_layout: bool,
 }
+
+/// How far before the first stale page [`NativeDocument::paint_stale_pages`]
+/// looks for a page it can resume layout at, before it lays the document out
+/// from the start instead.
+const SEEK_BACK_PAGES: usize = 8;
 
 thread_local! {
     static SURFACE_DOCUMENT_RENDERS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
@@ -487,6 +496,7 @@ impl NativeDocument {
             outline_indents: None,
             paint_window: window,
             stale_pages,
+            bounded_pass_since_full_layout: false,
         };
         // Should layout end on a box the section properties did not predict,
         // the host is built again to it, drawing the same window.
@@ -532,9 +542,92 @@ impl NativeDocument {
             return Ok(false);
         };
         let last = last.copied().unwrap_or(first);
+        if self.paint_stale_span_from_page_start(first, last)? {
+            return Ok(true);
+        }
         // Nothing changed since the pass that left them stale, so the pages
         // outside this span keep pixels that are still right.
         self.repaint_all_drawing(Some(first..last + 1), false)?;
+        self.bounded_pass_since_full_layout = false;
+        Ok(true)
+    }
+
+    /// Draws pages `first..=last` (0-based) by resuming layout at the start of
+    /// `first` and stopping after `last`, so the cost follows the pages drawn
+    /// rather than the document. Nothing changed since the pass that left
+    /// them stale: the caches that pass filled still hold, and pagination is
+    /// kept as it is. Returns `false`, having done nothing, when the renderer
+    /// has no page-start snapshot it can seek to at `first` or a few pages
+    /// before (page 0, a document whose notes are shown, snapshots that no
+    /// longer fit); the caller then lays the document out from the start.
+    fn paint_stale_span_from_page_start(
+        &mut self,
+        first: usize,
+        last: usize,
+    ) -> Result<bool, String> {
+        // A page that starts inside a table or a paragraph carried over from
+        // the page before may have no snapshot of its own. The nearest earlier
+        // page that has one does as well: the pages between are laid out
+        // again but, outside the visible range, not drawn.
+        // A bounded pass since the last whole layout (an edit, a selection)
+        // stops at its bound: the snapshots, the line registry hit-testing
+        // reads and the regions after it may belong to a layout that no
+        // longer exists, and only a whole layout rebuilds them.
+        if self.bounded_pass_since_full_layout {
+            return Ok(false);
+        }
+        // With a selection showing, a seek drew some highlighted pages
+        // differently from a whole layout (a selection running to the end of
+        // a long document); the whole layout draws them as a plain open does.
+        if self
+            .selection
+            .is_some_and(|selection| !selection.is_collapsed())
+        {
+            return Ok(false);
+        }
+        // Fetched before anything is prepared, so an early return leaves the
+        // renderer as it was.
+        let document = Rc::clone(
+            self.word_document
+                .document
+                .as_ref()
+                .ok_or_else(|| "document went missing".to_string())?,
+        );
+        if !(1..=first)
+            .rev()
+            .take(SEEK_BACK_PAGES)
+            .any(|page| self.renderer.try_prepare_rerender_for_page(page))
+        {
+            return Ok(false);
+        }
+        let pages_before = self.page_count();
+        // The pass stops after `last`, so its last page is not the
+        // document's page count.
+        self.pass_covers_whole_document.set(false);
+        self.renderer
+            .set_visible_page_range(Some(first + 1..=last + 1));
+        let previous_limit = self.renderer.layout_page_limit();
+        self.renderer.set_layout_page_limit(Some(last + 1));
+        let result = self.renderer.render_with_numbering_rc(
+            document,
+            &self.options,
+            self.word_document.numbering_part.as_ref(),
+            self.word_document.header_lines.as_deref(),
+            self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
+        );
+        self.renderer.set_layout_page_limit(previous_limit);
+        self.renderer.clear_visible_page_range();
+        self.pass_covers_whole_document.set(true);
+        result.map_err(|_| "repaint failed".to_string())?;
+        if let Some(error) = self.renderer.take_render_error() {
+            return Err(error);
+        }
+        debug_assert_eq!(self.page_count(), pages_before, "pagination is kept");
+        for page in first..=last {
+            self.stale_pages.remove(&page);
+        }
+        self.renderer.clear_dirty_regions();
         Ok(true)
     }
 
@@ -830,7 +923,9 @@ impl NativeDocument {
 
     /// Repaints every page from scratch.
     pub fn repaint_all(&mut self) -> Result<Duration, String> {
-        self.repaint_all_drawing(self.paint_window.clone(), true)
+        let elapsed = self.repaint_all_drawing(self.paint_window.clone(), true)?;
+        self.bounded_pass_since_full_layout = false;
+        Ok(elapsed)
     }
 
     /// Lays every page out again and draws those in `drawn` (0-based; every
@@ -1361,6 +1456,7 @@ impl NativeDocument {
             .clone();
         let started = Instant::now();
         self.refresh_field_display();
+        self.bounded_pass_since_full_layout = true;
         self.pass_covers_whole_document.set(false);
         self.renderer
             .prepare_incremental_repaint(paragraph, visible_end_page_1idx);
@@ -3219,6 +3315,7 @@ impl NativeDocument {
         // the document's page count.
         self.pass_covers_whole_document
             .set(visible_end_page_1idx >= self.page_count());
+        self.bounded_pass_since_full_layout = true;
         // The sequence lives on the renderer, so this shell and the browser one
         // cannot drift apart on it. Reproducing it here is what produced three
         // repaints that ran and drew nothing.

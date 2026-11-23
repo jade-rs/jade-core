@@ -14,6 +14,12 @@
 // builds resolve those imports without linking the layout engine.
 extern crate self as jade_docx_layout;
 
+/// Cache-key hashing shared with the layout engine (64-bit on wasm32). It
+/// depends only on `rustc-hash`, so compiling the file here keeps production
+/// builds free of the layout engine.
+#[path = "../../jade-docx-layout/src/key_hasher.rs"]
+pub mod key_hasher;
+
 /// Native ChartML parsing, authoring, embedded data, and portable previews.
 #[path = "../../jade-docx-editor/src/chart.rs"]
 pub(crate) mod chart;

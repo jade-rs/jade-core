@@ -64,10 +64,10 @@ use jade_docx_layout::section_transition::{
 };
 pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
-    CaretMetrics, CaretMovement, CellLayout, FragmentLayout as SelectionFragmentLayout, GlyphBox,
-    LayoutFragmentDebug, LayoutGlyphDebug, LayoutLineDebug, LineLayout as SelectionLineLayout,
-    SelectedLineDebug, SelectionManager, SelectionRange, TabLeaderLayout, TabStopLayout,
-    TextPosition,
+    CaretMetrics, CaretMovement, CellLayout, CellRectSelection,
+    FragmentLayout as SelectionFragmentLayout, GlyphBox, LayoutFragmentDebug, LayoutGlyphDebug,
+    LayoutLineDebug, LineLayout as SelectionLineLayout, SelectedLineDebug, SelectionManager,
+    SelectionRange, TabLeaderLayout, TabStopLayout, TextPosition,
 };
 use jade_docx_reader::styles::StylesPart;
 use jade_painter::Painter;
@@ -225,6 +225,35 @@ impl SyncedLayoutInputs {
                 _ => false,
             }
     }
+}
+
+/// How the selection treats the lines of a table cell being painted.
+enum CellSelectionFrame {
+    /// A rectangular cell selection is showing: no line in the table is
+    /// highlighted, only whole cells.
+    SuppressAll,
+    /// The cell was filled; these (sorted) paragraphs need no line highlight.
+    Suppress(Vec<usize>),
+    /// Undecided until the cell is painted: paint is held from this index of
+    /// `deferred_cell_selection`.
+    Defer(usize),
+}
+
+/// Selection paint held back until the enclosing cell is decided.
+enum DeferredCellSelection {
+    Line(usize, SelectionLineLayout),
+    /// A nested cell's fill, in page-surface coordinates.
+    Fill((f64, f64, f64, f64)),
+}
+
+/// One page fragment of a table cell, for selection painting.
+pub(crate) struct CellSelectionTarget {
+    pub(crate) table_id: usize,
+    pub(crate) row: usize,
+    pub(crate) column: usize,
+    pub(crate) column_span: usize,
+    /// The fragment in page-surface coordinates: `(x, y, width, height)`.
+    pub(crate) rect: (f64, f64, f64, f64),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -4335,8 +4364,8 @@ where
     /// `w:vAlign="both"` shifts published by the last measuring pass, keyed by
     /// body element index (see [`JustifiedGap`]).
     page_valign_gaps: HashMap<usize, JustifiedGap>,
-    /// True during the vAlign measuring pass: justified gaps are not applied,
-    /// so the pass sees (and publishes) the natural flow.
+    /// True during the vAlign measuring pass: neither justified gaps nor page
+    /// offsets are applied, so the pass sees (and publishes) the natural flow.
     valign_gaps_suspended: bool,
     /// `(page, body element, natural start)` gap slots recorded during the
     /// current full repaint: top-level elements that put content on a
@@ -4910,7 +4939,14 @@ where
     /// the same paragraph's lines more than once, and another paragraph's
     /// lines must not take them.
     pending_change_marks: (usize, Vec<(usize, usize)>),
-    cell_highlighted: RefCell<HashSet<usize>>,
+    /// The rectangular cell selection this pass paints, read before the pass
+    /// rebuilds the cell registry so that every pass decides alike.
+    cell_rect_selection: Option<CellRectSelection>,
+    /// How the selection treats the lines of each table cell being painted,
+    /// innermost cell last.
+    cell_selection_frames: RefCell<Vec<CellSelectionFrame>>,
+    /// Selection lines held back until their cell's content is painted.
+    deferred_cell_selection: RefCell<Vec<DeferredCellSelection>>,
     current_doc_grid: Option<DocGrid>,
     current_doc_grid_char_spacing_px: Option<f64>,
     current_text_direction: Option<TextDirection>,
@@ -5688,6 +5724,32 @@ where
 
     /// Prepares a rerender pass that will draw a single page by seeking to the page start.
     pub fn prepare_rerender_for_page(&mut self, page_index: usize) {
+        let snapshot = self.page_rerender_seek_snapshot(page_index);
+        self.apply_page_rerender_seek(snapshot);
+    }
+
+    /// [`Self::prepare_rerender_for_page`] only when the pass can seek to the
+    /// page start; returns whether it did. Without a usable snapshot — page 0,
+    /// active notes, none recorded, one that no longer fits — nothing is
+    /// prepared, and the caller is free to take another path.
+    ///
+    /// Stricter than [`Self::prepare_rerender_for_page`] in one way: a
+    /// document with vertically aligned sections is declined, since their
+    /// offsets depend on the used height of every page and a seek measures
+    /// only the pages it walks.
+    pub fn try_prepare_rerender_for_page(&mut self, page_index: usize) -> bool {
+        if self.any_section_valign_enabled() {
+            return false;
+        }
+        let Some(snapshot) = self.page_rerender_seek_snapshot(page_index) else {
+            return false;
+        };
+        self.apply_page_rerender_seek(Some(snapshot));
+        true
+    }
+
+    /// The snapshot a pixel rerender of `page_index` may seek to, if any.
+    fn page_rerender_seek_snapshot(&self, page_index: usize) -> Option<PageStartSeekSnapshot> {
         let page_1idx = page_index.saturating_add(1);
         // Body seek snapshots restore counters but not the note reference
         // order. Rebuild that order before painting a footnote/endnote page.
@@ -5704,12 +5766,13 @@ where
                 .get(&page_1idx)
                 .cloned()
         };
-        let snapshot = match candidate {
+        match candidate {
             // Validate a page-top snapshot against the layout cache like the
             // spanning branch: a stale prefix must fall back to a full walk.
             Some(snapshot) if !snapshot.spanning => (self.seek_anchor_is_body_paragraph(&snapshot)
                 && self.last_options.as_ref().is_none_or(|options| {
-                    self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
+                    self.is_forward_window_seek_compatible_options(options)
+                        && self.window_seek_snapshot_is_valid(&snapshot, page_1idx, options)
                 }))
             .then_some(snapshot),
             Some(snapshot) if self.span_seek_enabled => {
@@ -5736,7 +5799,10 @@ where
                 }
             }
             Some(_) | None => None,
-        };
+        }
+    }
+
+    fn apply_page_rerender_seek(&mut self, snapshot: Option<PageStartSeekSnapshot>) {
         let use_seek = snapshot.is_some();
         self.forced_seek_snapshot = snapshot;
         // Rerendering for on-demand page bitmap extraction should prioritize visual
@@ -10476,7 +10542,9 @@ where
             paragraph_join_surfaces: std::collections::BTreeMap::new(),
             joined_render: None,
             pending_change_marks: (usize::MAX, Vec::new()),
-            cell_highlighted: RefCell::new(HashSet::new()),
+            cell_rect_selection: None,
+            cell_selection_frames: RefCell::new(Vec::new()),
+            deferred_cell_selection: RefCell::new(Vec::new()),
             current_doc_grid: None,
             current_doc_grid_char_spacing_px: None,
             current_text_direction: None,
@@ -11596,7 +11664,7 @@ where
     fn compute_wrap_content_hash(text: &str, run_styles: &[RunStyle]) -> u64 {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         text.hash(&mut hasher);
         for style in run_styles {
             style.start.hash(&mut hasher);
@@ -11610,7 +11678,10 @@ where
             // The cached segments carry the run's revision mark and link,
             // which drawing reads: rejecting a deletion while the original
             // is shown keeps the text and properties but drops the mark.
-            fn hash_revision(mark: &RevisionMark, hasher: &mut FxHasher) {
+            fn hash_revision(
+                mark: &RevisionMark,
+                hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+            ) {
                 std::mem::discriminant(&mark.kind).hash(hasher);
                 mark.id.hash(hasher);
                 mark.author.hash(hasher);
@@ -11739,7 +11810,7 @@ where
     fn compute_wrap_style_hash(paragraph_style: &ParagraphStyle) -> u64 {
         use std::hash::{Hash, Hasher};
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
 
         paragraph_style.bidi.hash(&mut hasher);
         let word_metric_policy = u8::from(paragraph_style.word_east_asian_font_line_box)
@@ -13076,7 +13147,12 @@ where
             value.map(|v| (v * 100.0) as i32)
         }
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
+        // Fx64Hasher starts at zero like FxHasher. Seed it so an empty
+        // paragraph's leading zero writes are not no-ops. Native keys stay
+        // exactly as they were.
+        #[cfg(not(target_pointer_width = "64"))]
+        0x9e37_79b9_7f4a_7c15_u64.hash(&mut hasher);
 
         // Hash paragraph text as one contiguous byte stream to avoid allocating
         // a temporary concatenated String on every render.
@@ -13159,7 +13235,10 @@ where
         options: &Options,
         content_hash: Option<ContentHash>,
     ) -> ContentHash {
-        fn hash_shape_shadow(shadow: &ShapeShadow, hasher: &mut FxHasher) {
+        fn hash_shape_shadow(
+            shadow: &ShapeShadow,
+            hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+        ) {
             shadow.color.as_deref().hash(hasher);
             shadow.theme_color.as_deref().hash(hasher);
             for transform in &shadow.theme_transforms {
@@ -13177,7 +13256,10 @@ where
             shadow.direction_deg.to_bits().hash(hasher);
         }
 
-        fn hash_shape_glow(glow: &ShapeGlow, hasher: &mut FxHasher) {
+        fn hash_shape_glow(
+            glow: &ShapeGlow,
+            hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+        ) {
             glow.color.as_deref().hash(hasher);
             glow.theme_color.as_deref().hash(hasher);
             for transform in &glow.theme_transforms {
@@ -13193,7 +13275,10 @@ where
             glow.radius_px.to_bits().hash(hasher);
         }
 
-        fn hash_shape_group(group: &RunShapeGroup, hasher: &mut FxHasher) {
+        fn hash_shape_group(
+            group: &RunShapeGroup,
+            hasher: &mut jade_docx_layout::key_hasher::CacheKeyHasher,
+        ) {
             group.x.to_bits().hash(hasher);
             group.y.to_bits().hash(hasher);
             group.width.to_bits().hash(hasher);
@@ -13283,7 +13368,7 @@ where
             }
         }
 
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
 
         // Incremental layout already hashes the paragraph text. Reuse that
         // digest when available, while retaining per-run lengths below so
@@ -16317,8 +16402,11 @@ where
             self.clear_fast_replay();
             self.preserve_completed_pagination_on_stable_edit = false;
         }
-        let measure_first = !self.render_skip_draw
-            && !self.pageless_mode
+        // A layout-only render (`render_layout_with_numbering_rc`) measures
+        // first too: its line positions and page breaks must match a painted
+        // render's, and laying out with the previous offsets would let a page
+        // that grew overflow. Its second pass then draws nothing either.
+        let measure_first = !self.pageless_mode
             && has_vertical_alignment
             && (self.needs_full_repaint() || self.force_full_repaint_once || remeasure_alignment);
 
@@ -16650,6 +16738,8 @@ where
         } else {
             self.forced_dirty_from
         };
+        // Read before the registry is taken: its cell ids name the rectangle.
+        self.cell_rect_selection = self.selection.cell_selection_rect_bounds();
         // Incremental selection registration clears cell mappings. A confirmed
         // seek must restore the skipped prefix's cells as well as its tables.
         // Move the registry rather than cloning every cell (including each
@@ -16677,7 +16767,8 @@ where
             });
         self.selection
             .begin_render_incremental(incremental_dirty_from);
-        self.cell_highlighted.borrow_mut().clear();
+        self.cell_selection_frames.borrow_mut().clear();
+        self.deferred_cell_selection.borrow_mut().clear();
         self.paragraph_counter = 0;
         self.page_offset_y = 0.0;
         // Fresh per-render measurement buffer for section `w:vAlign`; populated
@@ -16707,6 +16798,12 @@ where
                 );
                 (paragraph, metadata)
             });
+        // A pixel-only walk covers a few pages of an unchanged layout. Set the
+        // authoritative region lists aside and put them back at the end, as
+        // with the object regions below: refilled from the walk alone, they
+        // would keep only the walked pages' links, comments and debug regions.
+        let preserved_page_regions =
+            preserve_pixel_pagination.then(|| PixelRerenderRegions::take(self));
         self.comment_annotations.clear();
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
@@ -17979,6 +18076,9 @@ where
 
         if let Some(regions) = preserved_object_regions {
             *self.object_debug_regions.borrow_mut() = regions;
+        }
+        if let Some(regions) = preserved_page_regions {
+            regions.restore(self);
         }
 
         // Clear per-render dirty state.
@@ -35611,28 +35711,38 @@ where
             return Ok(());
         };
 
-        if range.is_collapsed() && self.selection.selected_cell_ids_rect().is_none() {
+        if range.is_collapsed() && self.cell_rect_selection.is_none() {
             return Ok(());
         }
 
-        if let Some(cell_id) = self.selection.cell_id_for_paragraph(paragraph_index) {
-            if self.selection.paragraph_in_selected_cell(paragraph_index)
-                || self.selection.is_cell_fully_selected(cell_id, &range)
+        // Inside a table cell, the cell decides: its fill already covers the
+        // line, or the line waits until the cell knows whether it is whole.
+        match self.cell_selection_frames.borrow().last() {
+            Some(CellSelectionFrame::SuppressAll) => return Ok(()),
+            Some(CellSelectionFrame::Suppress(paragraphs))
+                if paragraphs.binary_search(&paragraph_index).is_ok() =>
             {
-                // Fill this page's fragment of the cell once. A fragment that
-                // is not registered yet (the cell is still being painted, or
-                // this is the part continued from the previous page in a pass
-                // that rebuilds the registry) falls back to line highlights.
-                if let Some((fragment_id, rect)) = self.cell_fragment_on_current_page(cell_id) {
-                    if self.cell_highlighted.borrow_mut().insert(fragment_id) {
-                        self.draw_cell_highlight(rect)?;
-                    }
-                    return Ok(());
-                }
+                return Ok(());
             }
+            Some(CellSelectionFrame::Defer(_)) => {
+                self.deferred_cell_selection
+                    .borrow_mut()
+                    .push(DeferredCellSelection::Line(paragraph_index, line.clone()));
+                return Ok(());
+            }
+            _ => {}
         }
+        self.paint_selection_line(paragraph_index, line, &range)
+    }
 
-        let rects = self.compute_selection_rects(&self.selection, paragraph_index, line, &range);
+    /// Fills and edges the selected part of one line.
+    fn paint_selection_line(
+        &self,
+        paragraph_index: usize,
+        line: &SelectionLineLayout,
+        range: &SelectionRange,
+    ) -> Result<(), JsValue> {
+        let rects = self.compute_selection_rects(&self.selection, paragraph_index, line, range);
 
         if rects.is_empty() {
             return Ok(());
@@ -35751,50 +35861,237 @@ where
         rects
     }
 
-    /// The registered fragment of `cell_id`'s logical cell that lies on the
-    /// page being painted, with its bounds converted to that page's surface
-    /// and clipped to it, as `(fragment id, (x, y, width, height))`.
+    /// Starts painting a table cell for the selection, before its content.
     ///
-    /// Cell layouts are recorded in document space (each page's offset
-    /// included), while the page surface starts at zero. A cell split over a
-    /// page break has one fragment per page, and the paragraph-to-cell map
-    /// points at only one of them, so the other pages search the registry for
-    /// their own fragment.
-    fn cell_fragment_on_current_page(
+    /// A cell the selection covers whole is filled behind its content, as
+    /// Word does, and its own lines are not highlighted again. A frozen pixel
+    /// pass and a full pass reach the same decision here: it uses only the
+    /// cell's position, its paragraph indices and the selection, not the cell
+    /// registry the full pass is still rebuilding. When the selection ends in
+    /// the cell's last paragraph the decision needs that paragraph's length,
+    /// so it waits for [`Self::finish_cell_selection`].
+    ///
+    /// Returns whether a frame was pushed, to pass on to the finish call.
+    pub(crate) fn begin_cell_selection(
         &self,
-        cell_id: usize,
-    ) -> Option<(usize, (f64, f64, f64, f64))> {
-        let cells = self.selection.cell_layouts();
-        let cell = cells.get(cell_id)?;
-        let (page_top, page_bottom) = if self.pageless_mode {
-            (0.0, f64::INFINITY)
-        } else {
-            (self.page_offset_y, self.page_offset_y + self.page_height)
-        };
-        let clipped = |fragment: &CellLayout| {
-            let top = fragment.top.min(fragment.bottom).max(page_top);
-            let bottom = fragment.top.max(fragment.bottom).min(page_bottom);
-            (bottom > top).then(|| {
-                (
-                    fragment.left.min(fragment.right),
-                    top - page_top,
-                    (fragment.right - fragment.left).abs().max(1.0),
-                    (bottom - top).max(1.0),
-                )
-            })
-        };
-        if let Some(rect) = clipped(cell) {
-            return Some((cell_id, rect));
+        target: &CellSelectionTarget,
+        paragraphs: impl FnOnce() -> Option<Vec<usize>>,
+    ) -> Result<bool, JsValue> {
+        if self.use_selection_overlay || !self.should_draw_current_page_for_render() {
+            return Ok(false);
         }
-        cells.iter().enumerate().find_map(|(id, fragment)| {
-            (fragment.table_id == cell.table_id
-                && fragment.row == cell.row
-                && fragment.column == cell.column
-                && fragment.column_span == cell.column_span)
-                .then(|| clipped(fragment))
-                .flatten()
-                .map(|rect| (id, rect))
-        })
+        let Some(range) = self.selection.selection_range() else {
+            return Ok(false);
+        };
+        if matches!(
+            self.cell_selection_frames.borrow().last(),
+            Some(CellSelectionFrame::Suppress(_) | CellSelectionFrame::SuppressAll)
+        ) {
+            // A nested table inside a cell that is already filled (or inside a
+            // rectangular selection): the enclosing fill covers it.
+            self.cell_selection_frames
+                .borrow_mut()
+                .push(CellSelectionFrame::SuppressAll);
+            return Ok(true);
+        }
+        let frame = if let Some(rect) = self.cell_rect_selection {
+            // A rectangular selection fills whole cells only. The linear text
+            // range under it runs through every cell in between, so no line
+            // inside the table is highlighted.
+            if rect.table_id == target.table_id {
+                if rect.contains(
+                    target.table_id,
+                    target.row,
+                    target.column,
+                    target.column_span,
+                ) {
+                    self.draw_cell_highlight(target.rect)?;
+                }
+            } else if self.cell_selection_frames.borrow().is_empty() {
+                return Ok(false);
+            }
+            CellSelectionFrame::SuppressAll
+        } else {
+            if range.is_collapsed() {
+                return Ok(false);
+            }
+            let (start, end) = range.normalized();
+            let mut paragraphs = paragraphs().unwrap_or_default();
+            paragraphs.sort_unstable();
+            match (paragraphs.first(), paragraphs.last()) {
+                (Some(&first), Some(&last)) => {
+                    if start > TextPosition::new(first, 0) || end.paragraph < last {
+                        return Ok(false);
+                    }
+                    if end.paragraph > last {
+                        self.draw_cell_highlight(target.rect)?;
+                        CellSelectionFrame::Suppress(paragraphs)
+                    } else {
+                        CellSelectionFrame::Defer(self.deferred_cell_selection.borrow().len())
+                    }
+                }
+                // Lazily numbered cells learn their paragraphs while painting.
+                _ => CellSelectionFrame::Defer(self.deferred_cell_selection.borrow().len()),
+            }
+        };
+        self.cell_selection_frames.borrow_mut().push(frame);
+        Ok(true)
+    }
+
+    /// Fills a continuation row of a vertically merged cell on a page the
+    /// merged cell's own fragment does not reach, when the selection covers
+    /// that cell whole. Continuation rows register no cell fragment, so the
+    /// owner is the latest registered fragment above them in that column.
+    pub(crate) fn paint_vertical_merge_continuation_selection(
+        &self,
+        target: &CellSelectionTarget,
+    ) -> Result<(), JsValue> {
+        if self.use_selection_overlay
+            || self.pageless_mode
+            || !self.should_draw_current_page_for_render()
+        {
+            return Ok(());
+        }
+        let Some(range) = self.selection.selection_range() else {
+            return Ok(());
+        };
+        let cells = self.selection.cell_layouts();
+        let same_column = |cell: &&CellLayout| {
+            cell.table_id == target.table_id
+                && cell.column == target.column
+                && cell.column_span == target.column_span
+        };
+        let Some(owner) = cells
+            .iter()
+            .filter(same_column)
+            .filter(|cell| cell.row < target.row)
+            .max_by_key(|cell| cell.row)
+        else {
+            return Ok(());
+        };
+        let (x, y, width, height) = target.rect;
+        let (top, bottom) = (self.page_offset_y + y, self.page_offset_y + y + height);
+        if cells.iter().filter(same_column).any(|cell| {
+            cell.row == owner.row
+                && cell.top < bottom
+                && cell.bottom > top
+                && cell.left < x + width
+                && cell.right > x
+        }) {
+            // The merged cell's own fragment already spans this row here; in
+            // another section column it would not overlap horizontally.
+            return Ok(());
+        }
+        let selected = match self.cell_rect_selection {
+            Some(rect) => rect.contains(owner.table_id, owner.row, owner.column, owner.column_span),
+            None if range.is_collapsed() => false,
+            None => {
+                let (start, end) = range.normalized();
+                match (owner.paragraphs.first(), owner.paragraphs.last()) {
+                    (Some(&first), Some(&last)) => {
+                        start <= TextPosition::new(first, 0)
+                            && end
+                                >= TextPosition::new(last, self.selection.paragraph_text_len(last))
+                    }
+                    _ => false,
+                }
+            }
+        };
+        if selected {
+            self.draw_cell_highlight(target.rect)?;
+        }
+        Ok(())
+    }
+
+    /// Finishes a cell started by [`Self::begin_cell_selection`], after its
+    /// content. A deferred cell is filled now if the selection covers it
+    /// whole; otherwise its held-back paint is drawn. Inside another
+    /// undecided cell, both wait for that cell instead.
+    pub(crate) fn finish_cell_selection(
+        &self,
+        pushed: bool,
+        target: &CellSelectionTarget,
+        paragraphs: &[usize],
+    ) -> Result<(), JsValue> {
+        if !pushed {
+            return Ok(());
+        }
+        let (marker, parent_defers) = {
+            let mut frames = self.cell_selection_frames.borrow_mut();
+            let Some(CellSelectionFrame::Defer(marker)) = frames.pop() else {
+                return Ok(());
+            };
+            (
+                marker,
+                matches!(frames.last(), Some(CellSelectionFrame::Defer(_))),
+            )
+        };
+        let Some(range) = self.selection.selection_range() else {
+            self.deferred_cell_selection.borrow_mut().truncate(marker);
+            return Ok(());
+        };
+        let (start, end) = range.normalized();
+        let whole = match (paragraphs.iter().min(), paragraphs.iter().max()) {
+            (Some(&first), Some(&last)) => {
+                start <= TextPosition::new(first, 0)
+                    && end >= TextPosition::new(last, self.selection.paragraph_text_len(last))
+                    // The head of a cell split over a break shares the whole
+                    // cell's paragraph list. A last paragraph painted only on
+                    // a later fragment has no length yet in a full pass (and
+                    // a selection ending in it does not cover this fragment),
+                    // so the fragment must hold a line of it.
+                    && self.paragraph_has_line_in(last, target.rect)
+            }
+            _ => false,
+        };
+        let mut deferred = self.deferred_cell_selection.borrow_mut();
+        if whole {
+            // Everything inside a wholly selected cell is selected; its fill
+            // covers the held-back lines and nested fills.
+            deferred.truncate(marker);
+            if parent_defers {
+                deferred.push(DeferredCellSelection::Fill(target.rect));
+                return Ok(());
+            }
+            drop(deferred);
+            return self.draw_cell_highlight(target.rect);
+        }
+        if parent_defers {
+            return Ok(());
+        }
+        let held = deferred.split_off(marker);
+        drop(deferred);
+        for entry in &held {
+            match entry {
+                DeferredCellSelection::Line(paragraph_index, line) => {
+                    self.paint_selection_line(*paragraph_index, line, &range)?
+                }
+                DeferredCellSelection::Fill(rect) => self.draw_cell_highlight(*rect)?,
+            }
+        }
+        Ok(())
+    }
+
+    /// Whether `paragraph` has a recorded line inside the cell fragment
+    /// `rect`, given in page-surface coordinates of the page being painted.
+    fn paragraph_has_line_in(
+        &self,
+        paragraph: usize,
+        (x, y, width, height): (f64, f64, f64, f64),
+    ) -> bool {
+        let top = self.page_offset_y + y;
+        let bottom = top + height;
+        self.selection
+            .paragraphs()
+            .get(paragraph)
+            .is_some_and(|layout| {
+                layout.lines.iter().any(|line| {
+                    line.absolute_top >= top - 0.5
+                        && line.absolute_top < bottom
+                        && line.start_x >= x - 0.5
+                        && line.start_x < x + width
+                })
+            })
     }
 
     /// Fills a selected cell fragment, given in page-surface coordinates.
@@ -40602,8 +40899,14 @@ where
     /// The vertical offset (px) to add to body content on the current page for
     /// section `w:vAlign`. Returns `0.0` for `top`/`both`/pageless or when no
     /// offset has been measured yet.
+    ///
+    /// The measuring pass always sees `0.0`: it lays out the natural flow, as
+    /// a fresh open does. Applying the previous layout's offsets there would
+    /// push content on a page that has since grown past the body bottom, so
+    /// the measured page breaks (and the offsets published from them) would
+    /// depend on the layout before the edit.
     fn current_page_valign_offset(&self) -> f64 {
-        if !self.section_valign_enabled() {
+        if !self.section_valign_enabled() || self.valign_gaps_suspended {
             return 0.0;
         }
         self.page_valign_offsets
@@ -43953,7 +44256,7 @@ where
         text: &str,
         font_descriptor: &str,
     ) -> Result<f64, Self::Error> {
-        let mut hasher = FxHasher::default();
+        let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
         font_descriptor.hash(&mut hasher);
         text.hash(&mut hasher);
         let key = hasher.finish();
@@ -44662,6 +44965,168 @@ fn text_box_wrap_bottom_outset_px(border: &TextBoxBorder) -> f64 {
 fn page_break_before_requires_advance(enabled: bool, current_y: f64, body_top: f64) -> bool {
     const EPSILON: f64 = 1e-3;
     enabled && current_y > body_top + EPSILON
+}
+
+/// The region lists a pixel-only rerender sets aside; see
+/// `render_with_numbering_rc_once_inner`. Such a walk covers a few pages of an
+/// unchanged layout, so the lists it fills hold only those pages. Merged back,
+/// the walk's own entries stand for the pages it covered and the earlier ones
+/// for every other page.
+struct PixelRerenderRegions {
+    /// The pages (1-based) the walk's entries stand for.
+    walked: std::ops::RangeInclusive<usize>,
+    comment_annotations: CommentAnnotations,
+    hyperlink_regions: Vec<HyperlinkRegion>,
+    image_debug_regions: Vec<ImageDebugInfo>,
+    text_box_debug_regions: Vec<TextBoxDebugInfo>,
+    grouped_shape_text_regions: Vec<GroupedShapeTextDebugInfo>,
+    revision_debug_regions: Vec<RevisionDebugInfo>,
+    numbering_debug_regions: Vec<NumberingDebugInfo>,
+    line_overflow_debug_regions: Vec<LineOverflowDebugInfo>,
+    paragraph_frame_debug_regions: Vec<ParagraphFrameDebugInfo>,
+}
+
+/// `previous`'s entries before and after `walked`, around `walked`'s entries
+/// from `current`, in page order.
+fn merge_walked_pages<T>(
+    previous: Vec<T>,
+    current: Vec<T>,
+    walked: &std::ops::RangeInclusive<usize>,
+    page: impl Fn(&T) -> usize,
+) -> Vec<T> {
+    let (before, after): (Vec<T>, Vec<T>) = previous
+        .into_iter()
+        .filter(|entry| !walked.contains(&page(entry)))
+        .partition(|entry| page(entry) < *walked.start());
+    before
+        .into_iter()
+        .chain(
+            current
+                .into_iter()
+                .filter(|entry| walked.contains(&page(entry))),
+        )
+        .chain(after)
+        .collect()
+}
+
+impl PixelRerenderRegions {
+    fn take<P>(renderer: &mut CanvasRenderer<P>) -> Self
+    where
+        P: Painter,
+        P::Error: PainterError,
+    {
+        // The drawn window; without one, every page up to the layout limit.
+        let walked = renderer
+            .visible_page_range
+            .clone()
+            .unwrap_or_else(|| 1..=renderer.layout_page_limit.unwrap_or(usize::MAX));
+        Self {
+            walked,
+            comment_annotations: std::mem::take(&mut renderer.comment_annotations),
+            // Cloned, not taken: the walk retains a prefix of these itself.
+            hyperlink_regions: renderer.hyperlink_regions.clone(),
+            image_debug_regions: std::mem::take(renderer.image_debug_regions.get_mut()),
+            text_box_debug_regions: std::mem::take(renderer.text_box_debug_regions.get_mut()),
+            grouped_shape_text_regions: std::mem::take(
+                renderer.grouped_shape_text_regions.get_mut(),
+            ),
+            revision_debug_regions: std::mem::take(renderer.revision_debug_regions.get_mut()),
+            numbering_debug_regions: std::mem::take(renderer.numbering_debug_regions.get_mut()),
+            line_overflow_debug_regions: std::mem::take(
+                renderer.line_overflow_debug_regions.get_mut(),
+            ),
+            paragraph_frame_debug_regions: std::mem::take(
+                &mut renderer.paragraph_frame_debug_regions,
+            ),
+        }
+    }
+
+    fn restore<P>(self, renderer: &mut CanvasRenderer<P>)
+    where
+        P: Painter,
+        P::Error: PainterError,
+    {
+        let walked = &self.walked;
+        let previous = self.comment_annotations;
+        let current = std::mem::take(&mut renderer.comment_annotations);
+        let merged = merge_walked_pages(
+            previous
+                .entries
+                .into_iter()
+                .zip(previous.paragraphs)
+                .collect(),
+            current
+                .entries
+                .into_iter()
+                .zip(current.paragraphs)
+                .collect(),
+            walked,
+            |(annotation, _)| annotation.page,
+        );
+        let (entries, paragraphs) = merged.into_iter().unzip();
+        renderer.comment_annotations = CommentAnnotations {
+            entries,
+            paragraphs,
+        };
+        renderer.hyperlink_regions = merge_walked_pages(
+            self.hyperlink_regions,
+            std::mem::take(&mut renderer.hyperlink_regions),
+            walked,
+            |region| region.page,
+        );
+        renderer.invalidate_hyperlink_regions_js_cache();
+        fn merge_cell<T>(
+            cell: &mut RefCell<Vec<T>>,
+            previous: Vec<T>,
+            walked: &std::ops::RangeInclusive<usize>,
+            page: impl Fn(&T) -> usize,
+        ) {
+            let current = std::mem::take(cell.get_mut());
+            *cell.get_mut() = merge_walked_pages(previous, current, walked, page);
+        }
+        merge_cell(
+            &mut renderer.image_debug_regions,
+            self.image_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.text_box_debug_regions,
+            self.text_box_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.grouped_shape_text_regions,
+            self.grouped_shape_text_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.revision_debug_regions,
+            self.revision_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.numbering_debug_regions,
+            self.numbering_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        merge_cell(
+            &mut renderer.line_overflow_debug_regions,
+            self.line_overflow_debug_regions,
+            walked,
+            |region| region.page,
+        );
+        renderer.paragraph_frame_debug_regions = merge_walked_pages(
+            self.paragraph_frame_debug_regions,
+            std::mem::take(&mut renderer.paragraph_frame_debug_regions),
+            walked,
+            |region| region.page,
+        );
+    }
 }
 
 /// S6 (span_seek): decide whether a spanning-paragraph seek snapshot may be
@@ -46199,6 +46664,95 @@ mod tests {
             renderer.freeze_selection_for_pixel_rerender();
             renderer.render(&document, &options).unwrap();
             assert_eq!(renderer.page_origins, expected, "bitmap page {page}");
+        }
+    }
+
+    /// The page-bitmap path (`markFullRepaint`, `setVisiblePageRange(page)`,
+    /// `prepareRerenderForPage`, `preserveSelectionForNextRerender`,
+    /// `rerenderWithoutSnapshots`) paints each page of a `w:vAlign` document,
+    /// with and without page breaks, exactly as the full render did.
+    ///
+    /// Without the full-repaint mark a clean page is not drawn at all, for a
+    /// top-aligned document too, so that sequence is not a pixel oracle.
+    #[test]
+    fn page_bitmap_rerender_of_aligned_pages_matches_the_full_render() {
+        use jade_painter::recording::Op;
+        let painted = |painter: &jade_painter::recording::RecordingPainter| {
+            painter
+                .ops()
+                .into_iter()
+                .filter(|op| {
+                    matches!(
+                        op,
+                        Op::FillText(..) | Op::FillShapedText(..) | Op::FillRect(..)
+                    )
+                })
+                .collect::<Vec<_>>()
+        };
+        let options = options_for_seek_tests();
+        for align in ["center", "bottom", "both"] {
+            for page_breaks in [false, true] {
+                let mut body = String::new();
+                for index in 0..90 {
+                    let properties = if page_breaks && index % 17 == 0 && index > 0 {
+                        "<w:pageBreakBefore/>"
+                    } else {
+                        ""
+                    };
+                    body.push_str(&format!(
+                        r#"<w:p><w:pPr>{properties}<w:spacing w:before="120" w:after="120"/></w:pPr><w:r><w:t>Line {index} {}</w:t></w:r></w:p>"#,
+                        "word ".repeat(index % 23)
+                    ));
+                }
+                body.push_str(&format!(
+                    r#"<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/><w:vAlign w:val="{align}"/></w:sectPr>"#
+                ));
+                let data = super::section_tests::build_docx_with_body(&body);
+                let word_doc = futures::executor::block_on(
+                    crate::word_document::WordDocument::load(&data, &crate::Options::default()),
+                )
+                .expect("load");
+                let document = word_doc
+                    .document
+                    .as_ref()
+                    .expect("document")
+                    .as_ref()
+                    .clone();
+                let (host, pages) = PerPageRecordingHost::new(40);
+                let mut renderer = CanvasRenderer::with_host(Box::new(host), false).unwrap();
+                renderer.mark_full_repaint();
+                renderer.render(&document, &options).unwrap();
+                // The view clears them once it has taken the page bitmaps.
+                renderer.clear_dirty_regions();
+                let page_count = renderer.current_page_number;
+                assert!(page_count >= 4, "{align}: {page_count} pages");
+                let reference: Vec<_> = pages[..page_count].iter().map(painted).collect();
+                for page in 0..page_count {
+                    for painter in &pages {
+                        painter.clear();
+                    }
+                    renderer.mark_full_repaint();
+                    renderer.set_visible_page_range(Some(page + 1..=page + 1));
+                    if page > 0 {
+                        renderer.prepare_rerender_for_page(page);
+                    }
+                    renderer.freeze_selection_for_pixel_rerender();
+                    renderer.skip_change_detection_once();
+                    renderer.rerender_with_cached_state().unwrap();
+                    renderer.clear_dirty_regions();
+                    assert_eq!(
+                        painted(&pages[page]),
+                        reference[page],
+                        "{align} page breaks {page_breaks}: page {}",
+                        page + 1
+                    );
+                    assert!(
+                        !reference[page].is_empty(),
+                        "{align}: page {} painted",
+                        page + 1
+                    );
+                }
+            }
         }
     }
 

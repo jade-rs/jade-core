@@ -27,7 +27,7 @@ thread_local! {
 }
 
 fn parsed(xml: &str) -> Option<Rc<Chart>> {
-    let mut hasher = rustc_hash::FxHasher::default();
+    let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
     xml.hash(&mut hasher);
     let key = hasher.finish();
     CHARTS.with(|charts| {

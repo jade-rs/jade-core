@@ -8,6 +8,7 @@ pub mod font_measurer;
 pub mod font_resolver;
 pub mod graphemes;
 pub mod hyphenation;
+pub mod key_hasher;
 pub mod layout_cache;
 pub mod line_geometry;
 pub mod line_metrics;

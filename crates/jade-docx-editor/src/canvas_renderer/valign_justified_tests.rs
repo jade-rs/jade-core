@@ -903,3 +903,165 @@ fn justified_cached_layouts_keep_the_consumed_space_after() {
     renderer.current_y = 520.0;
     assert_eq!(renderer.current_spacing_after_consumed(), None);
 }
+
+/// An edit that grows a centered, bottom-aligned or justified page lays out
+/// exactly as a fresh render of the edited document, in one render. The
+/// measuring pass used to start from the previous layout's page offsets,
+/// so the grown page overflowed the body bottom and broke one page early.
+/// One page of thirty short paragraphs, the first holding `first`, with
+/// every section aligned `align`.
+fn aligned_page(align: &str, first: &str) -> Document {
+    let mut body = paragraph(first, "");
+    for index in 1..30 {
+        body.push_str(&paragraph(&format!("Line {index}"), ""));
+    }
+    body.push_str(&format!(r#"<w:sectPr>{MARGINS}</w:sectPr>"#));
+    with_vertical_alignment(&load(&body), align)
+}
+
+/// Absolute top of every line, in flow order.
+fn line_tops(renderer: &CanvasRenderer<RecordingPainter>) -> Vec<f64> {
+    renderer
+        .selection
+        .paragraphs()
+        .iter()
+        .flat_map(|paragraph| paragraph.lines.iter().map(|line| line.absolute_top))
+        .collect()
+}
+
+/// `renderer` laid out `document` as a fresh full render does.
+fn assert_matches_fresh_render(
+    renderer: &CanvasRenderer<RecordingPainter>,
+    document: &Document,
+    context: &str,
+) {
+    let fresh = rendered(document, &Options::default());
+    assert_eq!(
+        flow_signature(renderer),
+        flow_signature(&fresh),
+        "{context}: pagination"
+    );
+    let (after, reference) = (line_tops(renderer), line_tops(&fresh));
+    assert_eq!(after.len(), reference.len(), "{context}: line count");
+    for (index, (edited, fresh)) in after.iter().zip(&reference).enumerate() {
+        assert!(
+            (edited - fresh).abs() < 0.01,
+            "{context}: line {index} at {edited}, fresh {fresh}"
+        );
+    }
+}
+
+/// A layout-only render (the lazy/background layout entry) after the same
+/// growth edit lays out as a fresh render: it measures without the previous
+/// page offsets before placing content with the new ones.
+#[test]
+fn layout_only_render_after_growing_an_aligned_page_matches_a_fresh_render() {
+    let long = "word ".repeat(120);
+    for align in ["center", "bottom", "both"] {
+        let edited = aligned_page(align, long.trim_end());
+        let mut renderer = rendered(&aligned_page(align, "First"), &Options::default());
+        renderer.set_incremental_dirty_from(0);
+        renderer.mark_full_repaint();
+        renderer
+            .render_layout_with_numbering_rc(
+                Rc::new(edited.clone()),
+                &Options::default(),
+                None,
+                None,
+                None,
+                None,
+            )
+            .expect("layout-only render");
+        assert_matches_fresh_render(&renderer, &edited, align);
+        // A painted render after it keeps that layout.
+        renderer
+            .render(&edited, &Options::default())
+            .expect("painted render");
+        assert_matches_fresh_render(&renderer, &edited, &format!("{align} then painted"));
+    }
+}
+
+/// The browser's lazy sequence: a growth edit painted with layout bounded to
+/// page 1, then `ensureLayoutThroughPage` extending the layout-only walk to
+/// the end. The result matches a fresh render.
+#[test]
+fn bounded_edit_then_layout_extension_on_aligned_pages_matches_a_fresh_render() {
+    let pages = |align: &str, first: &str| {
+        let mut body = paragraph(first, "");
+        for index in 1..70 {
+            body.push_str(&paragraph(&format!("Line {index}"), ""));
+        }
+        body.push_str(&format!(r#"<w:sectPr>{MARGINS}</w:sectPr>"#));
+        with_vertical_alignment(&load(&body), align)
+    };
+    let long = "word ".repeat(120);
+    let options = Options::default();
+    for align in ["center", "bottom", "both"] {
+        let edited = pages(align, long.trim_end());
+        let mut renderer = rendered(&pages(align, "First"), &options);
+        assert_eq!(renderer.current_page_number, 2, "{align}: two pages");
+        renderer.set_layout_page_limit(Some(1));
+        renderer.set_visible_page_range(Some(1..=1));
+        renderer.set_incremental_dirty_from(0);
+        renderer.render(&edited, &options).expect("bounded edit");
+        renderer.set_layout_page_limit(Some(100));
+        renderer.prepare_layout_extension_seek(Some(1), 100, &options);
+        renderer
+            .render_layout_with_numbering_rc(
+                Rc::new(edited.clone()),
+                &options,
+                None,
+                None,
+                None,
+                None,
+            )
+            .expect("layout extension");
+        assert_matches_fresh_render(&renderer, &edited, align);
+    }
+}
+
+#[test]
+fn growing_an_aligned_page_matches_a_fresh_render() {
+    let body = |first: &str| {
+        let mut body = paragraph(first, "");
+        for index in 1..30 {
+            body.push_str(&paragraph(&format!("Line {index}"), ""));
+        }
+        body.push_str(&format!(r#"<w:sectPr>{MARGINS}</w:sectPr>"#));
+        load(&body)
+    };
+    let long = "word ".repeat(120);
+    for align in ["center", "bottom", "both"] {
+        let original = with_vertical_alignment(&body("First"), align);
+        let edited = with_vertical_alignment(&body(long.trim_end()), align);
+        let mut renderer = rendered(&original, &Options::default());
+        assert_eq!(renderer.current_page_number, 1, "{align}: one page");
+        renderer.set_incremental_dirty_from(0);
+        renderer
+            .render(&edited, &Options::default())
+            .expect("edited render");
+        let fresh = rendered(&edited, &Options::default());
+        assert_eq!(fresh.current_page_number, 1, "{align}: still one page");
+        assert_eq!(
+            flow_signature(&renderer),
+            flow_signature(&fresh),
+            "{align}: pagination"
+        );
+        let tops = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<f64> {
+            renderer
+                .selection
+                .paragraphs()
+                .iter()
+                .flat_map(|paragraph| paragraph.lines.iter().map(|line| line.absolute_top))
+                .collect()
+        };
+        let (after, reference) = (tops(&renderer), tops(&fresh));
+        assert_eq!(after.len(), reference.len(), "{align}: line count");
+        for (index, (edited, fresh)) in after.iter().zip(&reference).enumerate() {
+            assert!(
+                (edited - fresh).abs() < 0.01,
+                "{align}: line {index} at {edited}, fresh {fresh}"
+            );
+        }
+    }
+}
