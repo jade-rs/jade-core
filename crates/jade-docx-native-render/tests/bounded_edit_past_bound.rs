@@ -334,3 +334,36 @@ fn a_wrapping_keystroke_in_a_document_with_footnotes_keeps_caret_queries_right()
     };
     assert_eq!(rects(&mut document), rects(&mut fresh));
 }
+
+/// A table's repeating header row (`w:tblHeader`) is drawn again on every
+/// page the table reaches, so typing in it changes those pages too.
+#[test]
+fn a_keystroke_in_a_repeated_header_row_leaves_the_later_pages_stale_or_right() {
+    let mut document = open_fixture("public/fixtures/table-complex-horizontal-direction.docx");
+    let paragraph = 1;
+    assert!(
+        document
+            .renderer()
+            .selection_manager()
+            .cell_id_for_paragraph(paragraph)
+            .is_some(),
+        "paragraph {paragraph} is in the header row"
+    );
+    document.insert_text(paragraph, 0, "a", 1).unwrap();
+    let fresh = open_bytes(&document.export_docx().unwrap());
+    assert!(document.has_stale_pages());
+    for page in 0..fresh.page_count() {
+        assert!(
+            document.is_page_stale(page) || document.page_pixels(page) == fresh.page_pixels(page),
+            "page {page} shows the old header without being stale"
+        );
+    }
+    document.paint_stale_pages(0..usize::MAX).unwrap();
+    for page in 0..fresh.page_count() {
+        assert_eq!(
+            document.page_pixels(page),
+            fresh.page_pixels(page),
+            "page {page}"
+        );
+    }
+}

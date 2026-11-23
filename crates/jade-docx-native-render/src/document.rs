@@ -3470,8 +3470,14 @@ impl NativeDocument {
         // pagination unchanged, or when the edited paragraph's lines begin and
         // end where they did and every paragraph after it that the pass laid
         // out again kept its lines.
+        // A repeated table header row or a STYLEREF shows the edited text on
+        // other pages too, which neither lines staying put nor a proven
+        // pagination vouch for.
+        let shown_elsewhere =
+            single_paragraph_edit && self.renderer.paragraph_text_shows_elsewhere(paragraph);
         let downstream_stood = self.renderer.take_edit_downstream().is_some_and(|saved| {
             let stood = extent_before.is_some()
+                && !shown_elsewhere
                 && self.paragraph_extent(paragraph) == extent_before
                 && self.renderer.edit_downstream_kept_its_lines(&saved);
             if stood {
@@ -3479,7 +3485,13 @@ impl NativeDocument {
             }
             stood
         });
-        self.mark_pages_past_bound_stale(visible_end_page_1idx, downstream_stood);
+        if shown_elsewhere {
+            let count = self.page_count();
+            self.stale_pages
+                .extend(visible_end_page_1idx.min(count)..count);
+        } else {
+            self.mark_pages_past_bound_stale(visible_end_page_1idx, downstream_stood);
+        }
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).

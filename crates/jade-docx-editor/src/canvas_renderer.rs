@@ -4689,6 +4689,11 @@ where
     /// Body paragraphs laid out, by paragraph: the page each starts on, its
     /// paragraph style and its text — what a header's STYLEREF looks up.
     styled_paragraphs: std::collections::BTreeMap<usize, (usize, Option<Rc<str>>, String)>,
+    /// Style ids a header's or footer's STYLEREF has looked up, lowercased.
+    style_ref_style_ids: RefCell<std::collections::HashSet<String>>,
+    /// Paragraphs of table header rows (`w:tblHeader`), which repeat at the
+    /// top of every page a table continues onto, from every layout so far.
+    repeated_header_paragraphs: RefCell<std::collections::BTreeSet<usize>>,
     /// Section currently producing body/header/footer content. Physical page
     /// assignments are retained across renders so SECTIONPAGES can converge in
     /// the same way as NUMPAGES after a full layout pass.
@@ -7359,6 +7364,27 @@ where
                         && line.cursor_end_x == was.cursor_end_x
                 })
         })
+    }
+
+    /// Whether `paragraph`'s text is shown on pages other than its own: a
+    /// table header row drawn again at the top of a later page, or a
+    /// paragraph whose style a header's or footer's STYLEREF looks up. Its
+    /// lines staying put then does not prove the later pages unchanged.
+    pub fn paragraph_text_shows_elsewhere(&self, paragraph: usize) -> bool {
+        if self
+            .repeated_header_paragraphs
+            .borrow()
+            .contains(&paragraph)
+        {
+            return true;
+        }
+        let referenced = self.style_ref_style_ids.borrow();
+        !referenced.is_empty()
+            && self
+                .styled_paragraphs
+                .get(&paragraph)
+                .and_then(|(_, style, _)| style.as_deref())
+                .is_some_and(|style| referenced.contains(&style.to_lowercase()))
     }
 
     /// Puts back what [`Self::set_aside_edit_downstream`] set aside, over
@@ -10512,6 +10538,8 @@ where
             section_page_numbering: Vec::new(),
             chapter_numbers: std::collections::BTreeMap::new(),
             styled_paragraphs: std::collections::BTreeMap::new(),
+            style_ref_style_ids: RefCell::default(),
+            repeated_header_paragraphs: RefCell::default(),
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
@@ -44207,6 +44235,9 @@ where
         from_bottom: bool,
     ) -> Option<String> {
         let wanted = self.style_id_for_reference(style);
+        self.style_ref_style_ids
+            .borrow_mut()
+            .insert(wanted.to_lowercase());
         let matching = self.styled_paragraphs.values().filter(|(_, id, _)| {
             id.as_deref()
                 .is_some_and(|id| id.eq_ignore_ascii_case(&wanted))
