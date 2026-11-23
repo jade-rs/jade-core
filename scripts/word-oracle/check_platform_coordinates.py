@@ -24,6 +24,9 @@ INDEX = Path('tests/word-oracle/platform-coordinates.json')
 # Keep this separate from logical EMF coordinates: Windows print realization
 # can differ from screen metrics. Every case retains its own Word PDF.
 PHYSICAL_FONT_CASES = {
+    'probe-mixed-sangam-matrix-240',
+    'probe-mixed-sangam-matrix-276',
+
     'probe-devanagari-line-box-devanagari',
     'probe-complex-font-sweep-thonburi',
     'probe-complex-font-metrics-thonburi',
@@ -292,6 +295,9 @@ PHYSICAL_FONT_CASES = {
     'probe-math-relation-wrap-repeat',
 }
 REQUIRED_CAPTURES = {
+    'probe-mixed-sangam-matrix-240': '20261114T004434269Z-e27596ca',
+    'probe-mixed-sangam-matrix-276': '20261114T004434269Z-e27596ca',
+
     'probe-devanagari-line-box-devanagari': '20261114T004402030Z-30b8d3b5',
     'probe-complex-font-sweep-thonburi': '20261114T004402030Z-30b8d3b5',
     'probe-complex-font-metrics-thonburi': '20261114T004402030Z-30b8d3b5',

@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "platform": "windows",
+  "source_sha256": "214162179ddd266438624ff8fd5ac5cad9bff612703894595f13571a5123cb89",
+  "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "original_pdf_sha256": "6951c8c50d5e2f5bb6c67d05a05e27a8ba91fab639c80cb6aac7c1c937e71362",
+  "fonts": [
+    {
+      "family": "Nirmala UI",
+      "weight": 400,
+      "italic": false,
+      "original_pdf_font_sha256": "07f19934f1b79792b04c9af539a79ae3090dc0b725f3464d83bcab402d60a41f",
+      "inspected_full_font_sha256": "ad02cdfc06e144ac45f318e8e5a64cbe04c7479d4beb91d25f5a319a466b1767",
+      "font_revision": 1.4600067138671875,
+      "glyph_count": 5025,
+      "glyphs": [
+        {
+          "glyph_index": 248,
+          "unicode_scalar": 2325,
+          "outline_sha256": "dd19cf6c8b7282d4b93aa144b305ba41ea532927866e3da3a2066986bd8f3ff1",
+          "advance_and_bearing": [
+            1768,
+            -35
+          ]
+        },
+        {
+          "glyph_index": 273,
+          "unicode_scalar": 2350,
+          "outline_sha256": "f32cfbce633868a85a917cf3bd6c2b9f08534728cc2642f28eebb43cddfc03f3",
+          "advance_and_bearing": [
+            1379,
+            -35
+          ]
+        },
+        {
+          "glyph_index": 277,
+          "unicode_scalar": 2354,
+          "outline_sha256": "41dd0bddcd41d040a41a078c79b73e1df656b576044123a70d93e572389f8383",
+          "advance_and_bearing": [
+            1463,
+            -35
+          ]
+        }
+      ]
+    }
+  ],
+  "derivation": {
+    "mapping": "unique original Word PDF font cmap",
+    "index_identity": "same-index outlines/hmtx verified against retained full Nirmala UI1.46 regular TTC identity",
+    "coordinate_data": false,
+    "raw_capture_unchanged": true
+  }
+}
