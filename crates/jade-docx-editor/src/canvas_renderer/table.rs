@@ -8121,16 +8121,20 @@ where
         // Tables retain their logical layout and source glyph origins. Route
         // eligible physical Windows text through the same executor as body
         // text, so the print device realizes the font em consistently.
+        let windows_control_text = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && crate::draw_command::CommandText::text_has_zero_width_controls(text);
         let physical_style = if combined_properties.is_none()
             && joined_step.is_none()
             && !steps.is_empty()
-            && context.text_output_dpi().is_some()
+            && (context.text_output_dpi().is_some() || windows_control_text)
         {
             let applied = self.resolve_applied_run_style_uncached(run_props);
             let mut style = self.cmd_text_style(run_props, &applied);
             style.fill_color = Rc::from(resolved.as_ref());
-            crate::draw_command::executor::windows_pdf_text::eligible(context, text, &style)
-                .then_some(style)
+            (windows_control_text
+                || crate::draw_command::executor::windows_pdf_text::eligible(context, text, &style))
+            .then_some(style)
         } else {
             None
         };
@@ -18299,17 +18303,31 @@ fn resolve_cell_join_control_sizing(
     styles_part: Option<&StylesPart>,
     text: &str,
 ) {
-    if style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+    let windows_latin_zwj = style.word_platform
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && text.contains('\u{200d}')
+        && text
+            .chars()
+            .all(|ch| ch.is_ascii() || matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}'));
+    if (style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        || windows_latin_zwj)
         && style.word_grid_line_sizing.is_none()
         && text.contains(['\u{200b}', '\u{200c}', '\u{200d}'])
     {
         let spacing = cell_paragraph_spacing(paragraph, styles_part);
-        style.word_proportional_line_sizing =
+        style.word_proportional_line_sizing = if windows_latin_zwj {
+            // Private candidate: use the explicit multiple for this isolated-control path.
+            // The ordinary Windows auto-spacing constructor intentionally returns None.
+            jade_docx_layout::line_metrics::WordProportionalLineSizing::for_text_box(
+                spacing.as_ref(),
+            )
+        } else {
             jade_docx_layout::line_metrics::WordProportionalLineSizing::new(
                 spacing.as_ref(),
                 false,
                 true,
-            );
+            )
+        };
     }
 }
 
@@ -18500,6 +18518,27 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
                 if advance < line_height {
                     line.shorter_line_advance = advance;
                 } else {
+                    line.min_advance = line.min_advance.max(advance);
+                }
+            }
+            if paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                && !paragraph_style.exact_line_spacing
+                && paragraph_style.word_grid_line_sizing.is_none()
+                && wrapped
+                    .clusters
+                    .first()
+                    .is_some_and(|cluster| cluster.text.starts_with('\u{200d}'))
+                && text
+                    .chars()
+                    .all(|ch| ch.is_ascii() || matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}'))
+            {
+                if let Some(height) = wrapped.windows_join_control_line_box_px() {
+                    let advance = paragraph_style
+                        .word_proportional_line_sizing
+                        .map_or(height, |sizing| {
+                            sizing.line_height_px(Some(height), line_height)
+                        });
                     line.min_advance = line.min_advance.max(advance);
                 }
             }

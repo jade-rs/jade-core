@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "fixtures": [
+    {
+      "mac_case": "probe-latin-join-controls-line-metrics",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-latin-join-controls-line-metrics/source.docx",
+        "sha256": "f85f726496ea2f379b4f212c310774e5ee586c258ca7269e76c6f54edbc87de9"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-latin-join-controls-line-metrics/manifest.json",
+        "sha256": "5185f9f2eed36b9e3971d849b0dea4101721308f66a0029edd7edb8e8bd177d7"
+      },
+      "windows": [
+        {
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-latin-join-controls-line-metrics-f85f7264",
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "font_source": "original-word-pdf"
+        }
+      ],
+      "blank_regions": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/latin-join-control-blank-regions.json",
+        "sha256": "a225d47d26ca829ae474859ceba2e7e51da9c21334bedd0b42a7e77fd0c27d79"
+      }
+    }
+  ]
+}
