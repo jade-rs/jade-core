@@ -131,6 +131,22 @@ struct NoteNumberingSettingsJs {
     restart: String,
 }
 
+/// Commands that rewrite a footnote or endnote by id, from the notes list
+/// rather than at the caret: the note and its references can sit on any
+/// page, so the edit is dirty from the document start and the caret
+/// paragraph's height says nothing about what moved.
+fn rewrites_notes_by_id(command: &HeadlessCommand) -> bool {
+    matches!(
+        command,
+        HeadlessCommand::UpdateFootnote { .. }
+            | HeadlessCommand::DeleteFootnote { .. }
+            | HeadlessCommand::UpdateEndnote { .. }
+            | HeadlessCommand::DeleteEndnote { .. }
+            | HeadlessCommand::ConvertFootnoteToEndnote { .. }
+            | HeadlessCommand::ConvertEndnoteToFootnote { .. }
+    )
+}
+
 fn note_kind_is_footnote(kind: &str) -> Result<bool, JsValue> {
     match kind {
         "footnote" => Ok(true),
@@ -12732,16 +12748,8 @@ impl OffscreenDocumentView {
         let inserts_cover_at_start = commands
             .iter()
             .any(|command| matches!(command, HeadlessCommand::InsertCoverPage { .. }));
-        let mutates_endnotes_globally = commands.iter().any(|command| {
-            matches!(
-                command,
-                HeadlessCommand::UpdateEndnote { .. }
-                    | HeadlessCommand::DeleteEndnote { .. }
-                    | HeadlessCommand::ConvertFootnoteToEndnote { .. }
-                    | HeadlessCommand::ConvertEndnoteToFootnote { .. }
-            )
-        });
-        if inserts_cover_at_start || mutates_endnotes_globally {
+        let mutates_notes_globally = commands.iter().any(rewrites_notes_by_id);
+        if inserts_cover_at_start || mutates_notes_globally {
             dirty_from = 0;
         }
         // Structural inserts (e.g. InsertTable) add brand-new body elements
@@ -12785,10 +12793,6 @@ impl OffscreenDocumentView {
                 | HeadlessCommand::InsertBibliography { .. }
                 | HeadlessCommand::InsertBlankPage { .. }
                 | HeadlessCommand::InsertCoverPage { .. }
-                | HeadlessCommand::UpdateEndnote { .. }
-                | HeadlessCommand::DeleteEndnote { .. }
-                | HeadlessCommand::ConvertFootnoteToEndnote { .. }
-                | HeadlessCommand::ConvertEndnoteToFootnote { .. }
                 | HeadlessCommand::InsertField { .. }
                 | HeadlessCommand::InsertEquation { .. }
                 | HeadlessCommand::ReplaceEquation { .. }
@@ -12862,14 +12866,15 @@ impl OffscreenDocumentView {
                 // replacement across paragraphs removes some; neither shows in
                 // the anchor paragraph's height.
                 | HeadlessCommand::InsertParagraphBreak { .. }
-            ) || matches!(
-                command,
-                HeadlessCommand::ReplaceRange {
-                    start_paragraph,
-                    end_paragraph,
-                    ..
-                } if start_paragraph != end_paragraph
-            )
+            ) || rewrites_notes_by_id(command)
+                || matches!(
+                    command,
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph,
+                        end_paragraph,
+                        ..
+                    } if start_paragraph != end_paragraph
+                )
         });
         // Every list item after the edited paragraphs takes its number from
         // the ones before it, so adding, removing or re-levelling an item
@@ -22578,6 +22583,34 @@ include!("crdt_live_view.rs");
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn note_commands_by_id_are_dirty_from_the_document_start() {
+        use jade_docx_headless_api::HeadlessCommand;
+        for command in [
+            HeadlessCommand::UpdateFootnote {
+                footnote_id: "2".into(),
+                text: "text".into(),
+            },
+            HeadlessCommand::DeleteFootnote {
+                footnote_id: "2".into(),
+            },
+            HeadlessCommand::UpdateEndnote {
+                endnote_id: "2".into(),
+                text: "text".into(),
+            },
+            HeadlessCommand::DeleteEndnote {
+                endnote_id: "2".into(),
+            },
+        ] {
+            assert!(super::rewrites_notes_by_id(&command), "{command:?}");
+        }
+        assert!(!super::rewrites_notes_by_id(&HeadlessCommand::InsertText {
+            paragraph: 0,
+            offset: 0,
+            text: "a".into(),
+        }));
+    }
+
     /// A drag keeps a cell object's anchor, and does not move a body object
     /// into a cell: either would store body frames for a cell layout.
     #[test]
