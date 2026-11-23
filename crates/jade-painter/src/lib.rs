@@ -324,6 +324,21 @@ pub trait Painter {
 
     // ---- optional fast paths ----------------------------------------------
 
+    /// Preserves a prepared outline glyph as selectable vector text when the
+    /// backend can prove the current face has the exact supplied font bytes
+    /// and the Unicode maps to this glyph. Otherwise the caller paints its
+    /// original outline. Raster backends keep the default outline path.
+    fn try_fill_font_glyph(
+        &self,
+        _text: &str,
+        _program: &std::sync::Arc<[u8]>,
+        _glyph: u16,
+        _font_units_scale: f64,
+        _origin: (f64, f64),
+    ) -> Result<bool, Self::Error> {
+        Ok(false)
+    }
+
     /// Draws a run of single-code-unit glyphs at explicit x positions in one
     /// call, using the font already set.
     ///

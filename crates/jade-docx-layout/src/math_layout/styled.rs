@@ -1082,8 +1082,9 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         if let Some(candidate) = self.breaks.as_mut().and_then(|breaks| breaks.last_mut()) {
             if (candidate.class == AtomClass::Bin
                 || candidate.class == AtomClass::Rel
-                    && crate::line_metrics::word_layout_platform()
-                        == crate::line_metrics::WordLayoutPlatform::Mac)
+                    && (crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac
+                        || self.style.family.eq_ignore_ascii_case("Cambria Math")))
                 && !candidate.manual
                 && candidate.mark.glyphs + 1 == glyphs
             {

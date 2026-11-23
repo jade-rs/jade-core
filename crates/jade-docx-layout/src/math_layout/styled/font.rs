@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct PreparedMathGlyph {
+    pub font_program: Option<Arc<[u8]>>,
     pub geometry: MathFontGlyph,
     pub scale: f64,
     pub outline: Arc<MathGlyphOutline>,
@@ -106,6 +107,7 @@ struct CachedGlyph {
 /// Other authored families and multi-codepoint graphemes use `fallback`.
 /// Construction/connector planning remains separate; shared layout places scripts.
 pub struct OpenTypeMathMeasure<'a, C> {
+    font_program: Option<Arc<[u8]>>,
     font: &'a OpenTypeMathFont<'a>,
     family: &'a str,
     fallback: C,
@@ -123,6 +125,7 @@ impl<'a, C> OpenTypeMathMeasure<'a, C> {
         max_outline_commands: usize,
     ) -> Self {
         Self {
+            font_program: None,
             font,
             family,
             fallback,
@@ -159,7 +162,7 @@ pub enum MathFontDataError {
 /// face is borrowed for each plan, never stored as a self-referential pointer.
 pub struct MathFontData {
     family: String,
-    bytes: Box<[u8]>,
+    bytes: Arc<[u8]>,
     face_index: u32,
     cache: Rc<RefCell<HashMap<u16, CachedGlyph>>>,
     max_cached_glyphs: usize,
@@ -198,7 +201,7 @@ impl MathFontData {
         Self::validate(&bytes)?;
         Ok(Self {
             family,
-            bytes: bytes.into_boxed_slice(),
+            bytes: bytes.into(),
             face_index: 0,
             cache: Rc::new(RefCell::new(HashMap::new())),
             max_cached_glyphs,
@@ -230,7 +233,7 @@ impl MathFontData {
         }
         Ok(Self {
             family,
-            bytes: bytes.into_boxed_slice(),
+            bytes: bytes.into(),
             face_index,
             cache: Rc::new(RefCell::new(HashMap::new())),
             max_cached_glyphs,
@@ -288,6 +291,8 @@ impl MathFontData {
         let face = OpenTypeMathFont::parse(&self.bytes, self.face_index)
             .map_err(MathFontLayoutError::Font)?;
         let context = OpenTypeMathMeasure {
+            font_program: (self.face_index == 0 && !self.bytes.starts_with(b"ttcf"))
+                .then(|| Arc::clone(&self.bytes)),
             font: &face,
             family: &self.family,
             fallback,
@@ -341,6 +346,7 @@ impl<C: StyledMathMeasure> OpenTypeMathMeasure<'_, C> {
         let cached = &cache[&glyph];
         let bounds = cached.outline.bounds;
         Ok(PreparedMathGlyph {
+            font_program: self.font_program.clone(),
             geometry: MathFontGlyph {
                 glyph_id: glyph,
                 advance_px: f64::from(cached.advance_units) * scale,
@@ -571,6 +577,7 @@ impl<C: StyledMathMeasure> StyledMathMeasure for OpenTypeMathMeasure<'_, C> {
         let cached = &cache[&glyph];
         let bounds = cached.outline.bounds;
         Ok(Some(PreparedMathGlyph {
+            font_program: self.font_program.clone(),
             geometry: MathFontGlyph {
                 glyph_id: glyph,
                 advance_px: f64::from(cached.advance_units) * scale,

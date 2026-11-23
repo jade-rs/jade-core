@@ -401,6 +401,23 @@ impl<P: Painter> Painter for RoutedPainter<P> {
         self.inner.fill_upright_text(text, x, y)
     }
 
+    fn try_fill_font_glyph(
+        &self,
+        text: &str,
+        program: &std::sync::Arc<[u8]>,
+        glyph: u16,
+        font_units_scale: f64,
+        origin: (f64, f64),
+    ) -> Result<bool, Self::Error> {
+        // Keep the caller's exact outline during deferred capture. A replay
+        // backend may differ from the surface on which the capture began.
+        if self.is_capturing() {
+            return Ok(false);
+        }
+        self.inner
+            .try_fill_font_glyph(text, program, glyph, font_units_scale, origin)
+    }
+
     /// Recorded whole, so the shaping (a ligature for its letters) happens
     /// when the capture is painted.
     fn try_fill_shaped_text(

@@ -259,6 +259,28 @@ pub(super) fn display_math_line_metrics(
             .descent
             .max(last_baseline + last_size * (455.0 / 2048.0));
     }
+    if word_layout_platform() == WordLayoutPlatform::Windows
+        && style.family.eq_ignore_ascii_case("Cambria Math")
+        && !word_grid_line_centres_text(snap, grid)
+    {
+        // The original Windows Cambria Math program reserves 455/2048 em
+        // below a display baseline, even when the equation's ink is shallower.
+        let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
+        let last_size = plan
+            .glyphs
+            .iter()
+            .filter(|g| {
+                g.visible
+                    && g.style.family.eq_ignore_ascii_case("Cambria Math")
+                    && g.baseline == last_baseline
+            })
+            .map(|g| g.style.size_px)
+            .reduce(f64::max)
+            .unwrap_or(style.size_px);
+        metrics.descent = metrics
+            .descent
+            .max(last_baseline + last_size * (455.0 / 2048.0));
+    }
     metrics
 }
 
@@ -423,6 +445,30 @@ impl OwnedMathPlan {
                             .set_fill_style_str(&owned_math_color(&glyph.color, automatic_color));
                         last_color = Some(glyph.color.as_str());
                     }
+                    if jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                    {
+                        painter.set_font(&styled_font(MathTextStyle {
+                            family: &glyph.family,
+                            size_px: glyph.size_px,
+                            color: &glyph.color,
+                            variant: jade_docx_layout::math_layout::styled::MathVariant::Plain,
+                        }));
+                        last_font = None;
+                        if let Some(program) = &prepared.font_program {
+                            if painter.try_fill_font_glyph(
+                                glyph
+                                    .rendered_text
+                                    .unwrap_or_else(|| &self.text[glyph.text_range.clone()]),
+                                program,
+                                prepared.geometry.glyph_id,
+                                prepared.scale,
+                                (x + glyph.x, baseline + glyph.baseline),
+                            )? {
+                                continue;
+                            }
+                        }
+                    }
                     paint_math_outline(painter, prepared, x + glyph.x, baseline + glyph.baseline);
                     continue;
                 }
@@ -554,6 +600,23 @@ pub fn paint_boxed_math<P: Painter>(
                 if last_color != Some(glyph.style.color) {
                     painter.set_fill_style_str(&styled_color(glyph.style.color));
                     last_color = Some(glyph.style.color);
+                }
+                if jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                {
+                    painter.set_font(&styled_font(glyph.style));
+                    last_font = None;
+                    if let Some(program) = &prepared.font_program {
+                        if painter.try_fill_font_glyph(
+                            glyph.display_text(&plan.text),
+                            program,
+                            prepared.geometry.glyph_id,
+                            prepared.scale,
+                            (x + glyph.x, baseline + glyph.baseline),
+                        )? {
+                            continue;
+                        }
+                    }
                 }
                 paint_math_outline(painter, prepared, x + glyph.x, baseline + glyph.baseline);
                 continue;

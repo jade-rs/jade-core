@@ -40780,24 +40780,24 @@ where
         if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
-            // Windows Word drops before spacing after a paragraph-final
-            // manual break. pageBreakBefore and section starts retain it.
+            // Windows Word omits before spacing after an explicit page
+            // break, including pageBreakBefore. Section starts retain it.
             if at_flow_start
                 && body_element_index != section_start
-                && paragraph
-                    .properties
-                    .as_ref()
-                    .is_none_or(|properties| properties.page_break_before != Some(true))
                 && !paragraph
                     .runs
                     .iter()
                     .any(|run| run.text.contains(PAGE_BREAK_CHAR))
-                && self.last_document.as_deref().is_some_and(|document| {
-                    jade_docx_layout::text_extract::body_follows_manual_page_break(
-                        document,
-                        body_element_index,
-                    )
-                })
+                && (paragraph
+                    .properties
+                    .as_ref()
+                    .is_some_and(|properties| properties.page_break_before == Some(true))
+                    || self.last_document.as_deref().is_some_and(|document| {
+                        jade_docx_layout::text_extract::body_follows_manual_page_break(
+                            document,
+                            body_element_index,
+                        )
+                    }))
             {
                 return 0.0;
             }
