@@ -12474,7 +12474,7 @@ where
                 }
                 self.draw_page_fill()?;
                 self.draw_watermark(page)?;
-                self.draw_manuscript_grid();
+                self.draw_manuscript_grid(page);
                 self.draw_page_border_frame(PageBorderLayer::Back);
                 self.invalidate_context_state_tracking();
                 self.band_redraw_clip_active = true;
@@ -12502,7 +12502,7 @@ where
         }
         self.draw_page_fill()?;
         self.draw_watermark(page)?;
-        self.draw_manuscript_grid();
+        self.draw_manuscript_grid(page);
         self.draw_page_border_frame(PageBorderLayer::Back);
         Ok(())
     }
@@ -12713,11 +12713,11 @@ where
     /// header drawing is saved with
     /// ([`crate::word_document::manuscript::manuscript_strokes`]). Like the
     /// watermark it is redrawn whole on a band repaint, clipped to the band.
-    fn draw_manuscript_grid(&self) {
+    fn draw_manuscript_grid(&self, page: usize) {
         use crate::word_document::manuscript::{
             manuscript_is_vertical, manuscript_strokes, ManuscriptStroke,
         };
-        if self.pageless_mode {
+        if self.pageless_mode || self.parity_filler_pages.contains(&page) {
             return;
         }
         let Some(grid) = self.manuscript_grid.as_ref() else {
@@ -17639,8 +17639,6 @@ where
                 if self.last_layout_complete {
                     self.drop_seek_snapshots_not_recorded_this_pass();
                     self.page_section_indices.truncate(self.current_page_number);
-                    let laid_out = self.current_page_number;
-                    self.parity_filler_pages.retain(|&page| page <= laid_out);
                     // Sections past the last one laid out no longer exist.
                     self.mid_page_section_starts
                         .truncate(self.active_section_index + 1);
@@ -19328,7 +19326,7 @@ where
         let has_next_column = previous_column_index + 1 < self.column_layout.count();
         let transition = resolve_section_transition(
             section_break,
-            self.current_page_number,
+            self.parity_page_number_before_section(target_section_index),
             !same_layout,
             has_next_column,
         );
@@ -19422,7 +19420,7 @@ where
             }
             page_transition = resolve_section_transition(
                 section_break,
-                self.current_page_number,
+                self.parity_page_number_before_section(target_section_index),
                 !same_layout,
                 has_next_column,
             );
@@ -19435,9 +19433,14 @@ where
         // that page on the previous section's geometry; the final advance below
         // activates the new section's page settings.
         // Word prints that page blank (no header, footer, page borders or
-        // watermark) while it still takes a page number.
+        // watermark) while it still takes a page number. On Mac the outgoing
+        // section's carried notes continue onto it instead (Windows drained
+        // them above), so it keeps its chrome. Finish the page's notes first:
+        // that settles whether any carry onto the next page.
         for _ in 1..page_advances {
-            self.force_page_break_with_valign_end(section_mark_top.take(), true)?;
+            self.render_footer_simple()?;
+            let parity_filler = self.footnote_carry.is_none();
+            self.force_page_break_with_valign_end(section_mark_top.take(), parity_filler)?;
         }
 
         self.render_footer_simple()?;
@@ -19713,6 +19716,21 @@ where
             }
         }
         Ok(())
+    }
+
+    /// The page number an oddPage/evenPage break into `target_section` tests
+    /// parity against, in the `current_page` sense of
+    /// `resolve_section_transition` (the page before the section's first
+    /// page). Word goes by the number the page displays, not its physical
+    /// position: the section's own `w:pgNumType w:start` when it restarts
+    /// numbering, else the number after the current page's (§17.6.12).
+    fn parity_page_number_before_section(&self, target_section: usize) -> usize {
+        match self.section_page_number_start(target_section) {
+            // Any number of the same parity as `start - 1`, without
+            // underflowing at `w:start="0"`.
+            Some(start) => start + 1,
+            None => self.page_number_value(self.current_page_number),
+        }
     }
 
     fn force_page_break(&mut self) -> Result<(), JsValue> {
@@ -42073,6 +42091,14 @@ where
     /// Returns the header editing boundary for a physical page. A measured
     /// rich-body height wins; the HeaderLine fallback remains for synthetic or
     /// not-yet-rendered documents that do not carry a parsed block story.
+    /// Whether the page at `zero_based_page` is the blank page an
+    /// oddPage/evenPage section break inserted to reach the required parity.
+    /// It shows no header or footer, so none can be edited there.
+    pub fn is_parity_filler_page_index(&self, zero_based_page: usize) -> bool {
+        self.parity_filler_pages
+            .contains(&zero_based_page.saturating_add(1))
+    }
+
     pub fn header_edit_boundary_for_page(&self, zero_based_page: usize) -> f64 {
         let measured = self
             .header_content_heights

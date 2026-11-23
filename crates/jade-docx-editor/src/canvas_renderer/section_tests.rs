@@ -114,41 +114,67 @@ fn joining_the_first_section_wraps_like_a_reload() {
 
 mod parity_filler {
     //! The page an oddPage/evenPage break inserts to reach the required
-    //! parity. Word prints it blank (no header, footer, page borders or
-    //! watermark) yet it takes a page number, as the Word for Mac capture of
-    //! `section-break-types.docx` shows (an empty page 3 between the
-    //! evenPage break's source and target sections).
+    //! parity. Word prints it blank (no header, footer, page borders,
+    //! watermark or manuscript grid) yet it takes a page number, as the Word
+    //! for Mac capture of `section-break-types.docx` shows (an empty page 3
+    //! between the evenPage break's source and target sections).
 
     use super::super::continuous_chrome_tests::{package, paragraphs, section, PAGE_FIELD};
-    use super::super::recording_host::recording_renderer;
+    use super::super::recording_host::{recording_renderer, RecordingHost};
     use super::super::*;
     use crate::word_document::WordDocument;
     use jade_painter::recording::{Op, RecordingPainter};
 
     const RED: &str = "FF0000";
     const BLUE: &str = "0000FF";
+    /// The manuscript grid's stroke colour.
+    const GRID: &str = "00AA00";
     const PAGE_BREAK: &str = r#"<w:p><w:r><w:br w:type="page"/></w:r></w:p>"#;
 
+    type Renderer = CanvasRenderer<RecordingPainter>;
+
     /// Section A's `a_body`, then section B starting with `break_type` and
-    /// holding a PAGE field. Both sections have headers and footers
-    /// followed by a PAGE field, and page borders.
-    fn two_sections(a_body: String, break_type: &str) -> Vec<u8> {
+    /// holding `b_body`. Both sections have headers and footers followed by
+    /// a PAGE field, and page borders; `extra_a`/`extra_b` add section
+    /// properties such as `w:pgNumType`.
+    fn sections(
+        a_body: String,
+        extra_a: &str,
+        break_type: &str,
+        b_body: String,
+        extra_b: &str,
+    ) -> Vec<u8> {
         package(
             &[
-                section("A", RED, "nextPage", a_body, ""),
-                section("B", BLUE, break_type, PAGE_FIELD.to_string(), ""),
+                section("A", RED, "nextPage", a_body, extra_a),
+                section("B", BLUE, break_type, b_body, extra_b),
             ],
             "",
         )
     }
 
-    /// Renders `data` with a text watermark and returns the renderer with
-    /// the ops of each page, split at its full-page clear.
-    fn render(data: &[u8]) -> (CanvasRenderer<RecordingPainter>, Rc<Document>, Vec<Vec<Op>>) {
+    fn two_sections(a_body: String, break_type: &str) -> Vec<u8> {
+        sections(a_body, "", break_type, PAGE_FIELD.to_string(), "")
+    }
+
+    /// Adds a text watermark and a manuscript grid to `document`.
+    fn decorate(document: &mut Document) {
+        document.watermark_text = Some("WM".into());
+        document.manuscript_grid = Some(jade_docx_reader::document::ManuscriptGrid {
+            style: jade_docx_reader::document::ManuscriptStyle::Lines,
+            chars: 20,
+            lines: 20,
+            color: format!("#{GRID}"),
+        });
+    }
+
+    /// Renders `data` decorated, returning the renderer, the rendered
+    /// document and the ops of each page.
+    fn render(data: &[u8]) -> (Renderer, Rc<Document>, Vec<Vec<Op>>) {
         let word_doc = futures::executor::block_on(WordDocument::load(data, &Options::default()))
             .expect("load");
         let mut document = Document::clone(word_doc.document.as_deref().expect("document"));
-        document.watermark_text = Some("WM".into());
+        decorate(&mut document);
         let document = Rc::new(document);
         let mut renderer = recording_renderer();
         renderer.sync_document_header_footer_stories(&word_doc);
@@ -159,6 +185,7 @@ mod parity_filler {
         (renderer, document, pages)
     }
 
+    /// The painted ops of each page, split at its full-page clear.
     fn split_pages(ops: &[Op]) -> Vec<Vec<Op>> {
         let mut pages: Vec<Vec<Op>> = Vec::new();
         for op in ops {
@@ -183,6 +210,11 @@ mod parity_filler {
             .collect()
     }
 
+    fn strokes_with(page: &[Op], color: &str) -> bool {
+        page.iter()
+            .any(|op| matches!(op, Op::SetStrokeStyle(stroke) if stroke.contains(color)))
+    }
+
     fn assert_blank(page: &[Op]) {
         assert!(
             !page
@@ -191,12 +223,14 @@ mod parity_filler {
             "no text, header, footer or watermark: {page:?}"
         );
         assert!(
-            !page.iter().any(|op| matches!(
-                op,
-                Op::SetStrokeStyle(color) if color.contains(RED) || color.contains(BLUE)
-            )),
+            !strokes_with(page, RED) && !strokes_with(page, BLUE),
             "no page border: {page:?}"
         );
+        assert!(!strokes_with(page, GRID), "no manuscript grid: {page:?}");
+    }
+
+    fn fillers(renderer: &Renderer) -> Vec<usize> {
+        renderer.parity_filler_pages.iter().copied().collect()
     }
 
     #[test]
@@ -214,20 +248,12 @@ mod parity_filler {
             "WMHB3P3FB3",
             "B's header, body PAGE field and footer on page 3"
         );
-        assert!(
-            pages[2]
-                .iter()
-                .any(|op| matches!(op, Op::SetStrokeStyle(color) if color.contains(BLUE))),
-            "B's border on page 3"
-        );
-        assert_eq!(
-            renderer
-                .parity_filler_pages
-                .iter()
-                .copied()
-                .collect::<Vec<_>>(),
-            [2]
-        );
+        assert!(strokes_with(&pages[2], BLUE), "B's border on page 3");
+        assert!(strokes_with(&pages[2], GRID), "the grid on page 3");
+        assert_eq!(fillers(&renderer), [2]);
+        assert!(renderer.is_parity_filler_page_index(1));
+        assert!(!renderer.is_parity_filler_page_index(0));
+        assert!(!renderer.is_parity_filler_page_index(2));
     }
 
     #[test]
@@ -263,20 +289,13 @@ mod parity_filler {
         let pages = split_pages(&renderer.host.painter().inner().ops());
         assert_eq!(pages.len(), 1, "only page 2 is repainted: {pages:?}");
         assert_blank(&pages[0]);
-        assert_eq!(
-            renderer
-                .parity_filler_pages
-                .iter()
-                .copied()
-                .collect::<Vec<_>>(),
-            [2]
-        );
+        assert_eq!(fillers(&renderer), [2]);
     }
 
     #[test]
     fn a_relayout_that_no_longer_needs_the_filler_drops_it() {
         let (mut renderer, _, _) = render(&two_sections(paragraphs("a", 1), "oddPage"));
-        assert!(renderer.parity_filler_pages.contains(&2));
+        assert_eq!(fillers(&renderer), [2]);
         let word_doc = futures::executor::block_on(WordDocument::load(
             &two_sections(paragraphs("a", 1), "evenPage"),
             &Options::default(),
@@ -293,5 +312,187 @@ mod parity_filler {
         assert!(renderer.parity_filler_pages.is_empty());
         let pages = split_pages(&renderer.host.painter().inner().ops());
         assert_eq!(text(&pages[1]), "HB2P2FB2");
+    }
+
+    /// A seek keeps the entries of the pages it skips and settles those it
+    /// walks afresh.
+    #[test]
+    fn a_seek_keeps_the_skipped_pages_entries_and_settles_the_walked_ones() {
+        // B's pages 3 to 7 each start with a paragraph at the page top.
+        let b_body: String = (0..5)
+            .map(|index| {
+                format!(r#"<w:p><w:pPr><w:pageBreakBefore/></w:pPr><w:r><w:t>b{index}</w:t></w:r></w:p>"#)
+            })
+            .collect();
+        let data = sections(paragraphs("a", 1), "", "oddPage", b_body, "");
+        let (mut renderer, document, _) = render(&data);
+        let page_count = renderer.page_section_indices.len();
+        assert_eq!(page_count, 7);
+        assert_eq!(fillers(&renderer), [2]);
+        let snapshot = renderer
+            .page_start_seek_cache_by_page
+            .borrow()
+            .iter()
+            .filter(|(&page, snapshot)| page >= 4 && page < page_count && !snapshot.spanning)
+            .min_by_key(|(&page, _)| page)
+            .map(|(_, snapshot)| snapshot.clone())
+            .unwrap_or_else(|| {
+                panic!(
+                    "no page-top snapshot on page 4..{page_count}: {:?} {:?}",
+                    renderer
+                        .page_start_seek_cache_by_page
+                        .borrow()
+                        .iter()
+                        .map(|(page, snapshot)| (*page, snapshot.page_number, snapshot.spanning))
+                        .collect::<Vec<_>>(),
+                    renderer.paragraph_seek_cache.borrow().len()
+                )
+            });
+        let resume = snapshot.page_number;
+        // Page 1 is not a filler: only a walk that skips it keeps the entry.
+        // The page after the resume page is walked, so it is settled anew.
+        renderer.parity_filler_pages.insert(1);
+        renderer.parity_filler_pages.insert(resume + 1);
+        renderer.set_visible_page_range(Some(resume..=page_count));
+        renderer.forced_seek_snapshot = Some(snapshot);
+        renderer
+            .render(&document, &Options::default())
+            .expect("seek render");
+        assert_eq!(fillers(&renderer), [1, 2], "resumed at page {resume}");
+    }
+
+    /// The outgoing section's footnote continues onto the page an oddPage
+    /// break would otherwise leave blank. On Mac the parity page carries
+    /// it, so it is no filler and keeps its chrome; Windows places the
+    /// continuation first and then settles parity from there.
+    #[test]
+    fn a_page_carrying_notes_is_no_filler() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../public/fixtures/footnote-long-continuation.docx");
+        let bytes = std::fs::read(path).expect("read fixture");
+        let model = futures::executor::block_on(WordDocument::load(&bytes, &Options::default()))
+            .expect("load fixture");
+        let mut document = Document::clone(model.document.as_deref().expect("document"));
+        decorate(&mut document);
+        // Split after "Reference to a long note" (element 30): the note's
+        // continuation is still pending when the oddPage break is reached.
+        let whole = document.sections.first().cloned().expect("one section");
+        let mut incoming = whole.properties.clone().unwrap_or_default();
+        incoming.section_type = Some("oddPage".into());
+        document.sections = vec![
+            SectionRange {
+                start: whole.start,
+                end: 31,
+                properties: whole.properties.clone(),
+            },
+            SectionRange {
+                start: 31,
+                end: whole.end,
+                properties: Some(incoming),
+            },
+        ];
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let painter = RecordingPainter::new();
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .expect("paged recording renderer");
+            renderer
+                .render(&document, &Options::default())
+                .expect("render");
+            let pages = split_pages(&painter.ops());
+            assert!(pages.len() >= 3, "{platform:?}: {} pages", pages.len());
+            assert!(
+                renderer.parity_filler_pages.is_empty(),
+                "{platform:?}: {:?}",
+                renderer.parity_filler_pages
+            );
+            let page_two = text(&pages[1]);
+            assert!(
+                page_two.contains("WM") && page_two.len() > 2,
+                "{platform:?}: page 2 keeps its watermark and notes: {page_two}"
+            );
+            assert!(
+                strokes_with(&pages[1], GRID),
+                "{platform:?}: grid on page 2"
+            );
+        }
+    }
+}
+
+mod parity_filler_numbering {
+    //! Word tests an oddPage/evenPage break against the number the page
+    //! displays (`w:pgNumType`), not its physical position.
+
+    use super::super::continuous_chrome_tests::{package, paragraphs, section, PAGE_FIELD};
+    use super::super::recording_host::recording_renderer;
+    use super::super::*;
+    use crate::word_document::WordDocument;
+    use jade_painter::recording::RecordingPainter;
+
+    fn render(extra_a: &str, break_type: &str, extra_b: &str) -> CanvasRenderer<RecordingPainter> {
+        let data = package(
+            &[
+                section("A", "FF0000", "nextPage", paragraphs("a", 1), extra_a),
+                section("B", "0000FF", break_type, PAGE_FIELD.to_string(), extra_b),
+            ],
+            "",
+        );
+        let word_doc = futures::executor::block_on(WordDocument::load(&data, &Options::default()))
+            .expect("load");
+        let mut renderer = recording_renderer();
+        renderer.sync_document_header_footer_stories(&word_doc);
+        renderer
+            .render(
+                word_doc.document.as_deref().expect("document"),
+                &Options::default(),
+            )
+            .expect("render");
+        renderer
+    }
+
+    /// Physical pages, filler pages, and the number B's first (last) page
+    /// shows.
+    fn layout(renderer: &CanvasRenderer<RecordingPainter>) -> (usize, Vec<usize>, usize) {
+        let pages = renderer.page_section_indices.len();
+        (
+            pages,
+            renderer.parity_filler_pages.iter().copied().collect(),
+            renderer.page_number_value(pages),
+        )
+    }
+
+    #[test]
+    fn a_first_section_numbered_from_two_settles_parity_by_its_numbers() {
+        let start_at_two = r#"<w:pgNumType w:start="2"/>"#;
+        // Page 1 shows 2, so B's first page shows 3: already odd.
+        assert_eq!(layout(&render(start_at_two, "oddPage", "")), (2, vec![], 3));
+        assert_eq!(
+            layout(&render(start_at_two, "evenPage", "")),
+            (3, vec![2], 4)
+        );
+    }
+
+    #[test]
+    fn a_section_restarting_its_numbers_settles_parity_by_its_start() {
+        let start = |n: u32| format!(r#"<w:pgNumType w:start="{n}"/>"#);
+        assert_eq!(layout(&render("", "oddPage", &start(1))), (2, vec![], 1));
+        assert_eq!(layout(&render("", "oddPage", &start(2))), (3, vec![2], 2));
+        assert_eq!(layout(&render("", "evenPage", &start(1))), (3, vec![2], 1));
+        assert_eq!(layout(&render("", "evenPage", &start(2))), (2, vec![], 2));
     }
 }
