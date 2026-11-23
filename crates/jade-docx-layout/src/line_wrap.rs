@@ -3702,12 +3702,52 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
         (None, None) => {
             let measured = match requested_ascii_measure {
                 Some(width) => width,
-                None => ctx.measure_text_with_font_key(
-                    grapheme,
-                    font_descriptor,
-                    font_descriptor_hash,
-                    font_descriptor_id,
-                )?,
+                None => {
+                    let measurement_text = if paragraph_style.is_some_and(|paragraph| {
+                        paragraph.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                            && paragraph
+                                .east_asian_rules
+                                .compatibility_mode
+                                .is_some_and(|mode| mode < 15)
+                    }) && grapheme.as_bytes().contains(&0xe2)
+                        && !style.has_font_features
+                        && style.letter_spacing_px == 0.0
+                        && crate::line_metrics::word_windows_join_control_line_height_px(
+                            font_descriptor,
+                        )
+                        .is_some()
+                    {
+                        // An original Arial subset may omit these format
+                        // characters. Their .notdef advance is not a Word
+                        // character width: measure only the visible base.
+                        let prefix = grapheme.trim_end_matches(['\u{200c}', '\u{200d}']);
+                        if grapheme
+                            .chars()
+                            .all(|ch| matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}'))
+                        {
+                            ""
+                        } else if prefix.len() == 1
+                            && prefix.as_bytes()[0].is_ascii_alphabetic()
+                            && prefix.len() < grapheme.len()
+                        {
+                            prefix
+                        } else {
+                            grapheme
+                        }
+                    } else {
+                        grapheme
+                    };
+                    if measurement_text.is_empty() {
+                        0.0
+                    } else {
+                        ctx.measure_text_with_font_key(
+                            measurement_text,
+                            font_descriptor,
+                            font_descriptor_hash,
+                            font_descriptor_id,
+                        )?
+                    }
+                }
             };
             // Restore the nominal full cell when the host rounds the known
             // face's requested size to its font metric grid.
@@ -9404,16 +9444,46 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 // Legacy Word Mac layout can break before a join control on
                 // an overwide Latin grapheme. Geeza Pro also splits a trailing
                 // ZWNJ on an overwide Arabic grapheme.
-                if mac_overflow
+                let windows_latin_control_overflow = candidate_overflow > WRAP_FIT_TOLERANCE_PX
+                    && paragraph_style.word_platform
+                        == crate::line_metrics::WordLayoutPlatform::Windows
                     && current_width <= f64::EPSILON
-                    && ((script == ScriptCategory::Latin
-                        && paragraph_style
-                            .east_asian_rules
-                            .compatibility_mode
-                            .is_none_or(|mode| mode < 15))
-                        || (script == ScriptCategory::Complex
-                            && grapheme.ends_with('\u{200c}')
-                            && is_geeza_pro(font_desc)))
+                    && paragraph_style
+                        .east_asian_rules
+                        .compatibility_mode
+                        .is_some_and(|mode| mode < 15)
+                    && script == ScriptCategory::Latin
+                    && grapheme.ends_with(['\u{200c}', '\u{200d}'])
+                    && grapheme
+                        .chars()
+                        .next()
+                        .is_some_and(|ch| ch.is_ascii_alphabetic())
+                    && grapheme[1..]
+                        .chars()
+                        .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'))
+                    && crate::line_metrics::word_windows_join_control_line_height_px(font_desc)
+                        .is_some()
+                    // Split only when the visible letter itself exceeds
+                    // the cell. The retained 10.5pt Arial A is slightly wider
+                    // than 7pt, but fits the otherwise identical 8pt cell.
+                    && {
+                        // Windows Arial deliberately uses the selected font
+                        // measurement, rather than the fixed ASCII tables.
+                        let advance = ctx.measure_text(&grapheme[..1], font_desc)?;
+                        advance * text_scale_x + style.letter_spacing_px - effective_available
+                            > WRAP_FIT_TOLERANCE_PX
+                    };
+                if current_width <= f64::EPSILON
+                    && (windows_latin_control_overflow
+                        || (mac_overflow
+                            && ((script == ScriptCategory::Latin
+                                && paragraph_style
+                                    .east_asian_rules
+                                    .compatibility_mode
+                                    .is_none_or(|mode| mode < 15))
+                                || (script == ScriptCategory::Complex
+                                    && grapheme.ends_with('\u{200c}')
+                                    && is_geeza_pro(font_desc)))))
                 {
                     let prefix = grapheme.trim_end_matches(['\u{200c}', '\u{200d}']);
                     if prefix.len() < grapheme.len()
@@ -9534,11 +9604,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 // its own line between overwide glyphs.
                 if candidate_overflow > WRAP_FIT_TOLERANCE_PX
                     && (current_width > 0.0
-                        || (mac_overflow
-                            && current_line_clusters.last().is_some_and(|cluster| {
-                                cluster.text.as_str() == "\u{200b}"
-                                    || is_word_mac_join_control(&cluster.text)
-                            })))
+                        || (current_line_clusters.last().is_some_and(|cluster| {
+                            cluster.text.as_str() == "\u{200b}"
+                                || is_word_mac_join_control(&cluster.text)
+                        }) && (mac_overflow
+                            || (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
+                                && paragraph_style.east_asian_rules.compatibility_mode.is_some_and(|mode| mode < 15)
+                                && crate::line_metrics::word_windows_join_control_line_height_px(font_desc).is_some()))))
                     && (!is_whitespace || wraps_arabic_space || wraps_arabic_nbsp)
                     && !shaped_arabic.is_some_and(|(_, continuation)| continuation)
                     && (!zero_width_oracle_glyph
@@ -24728,6 +24800,130 @@ mod tests {
             assert_eq!(ranges.last().unwrap().end, text.len());
             assert!(ranges.windows(2).all(|pair| pair[0].end == pair[1].start));
         }
+    }
+
+    #[test]
+    fn windows_legacy_control_wrap_preserves_modern_and_complex_clusters() {
+        use crate::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let mut ctx = TestContext::new(12.0);
+        let face: Rc<str> = Rc::from("12pt Arial");
+        ctx.style = ResolvedRunStyle::new(
+            Rc::clone(&face),
+            Rc::clone(&face),
+            Rc::clone(&face),
+            face,
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        for (mode, text, width, expected) in [
+            (Some(14), "A\u{200c}B", 8.0, vec!["A", "\u{200c}", "B"]),
+            (Some(15), "A\u{200c}B", 8.0, vec!["A\u{200c}", "B"]),
+            (None, "A\u{200c}B", 8.0, vec!["A\u{200c}", "B"]),
+            (Some(14), "A\u{200d}B", 8.0, vec!["A", "\u{200d}", "B"]),
+            (Some(15), "A\u{200d}B", 8.0, vec!["A\u{200d}", "B"]),
+            (
+                Some(14),
+                "A\u{200c}\u{200c}B",
+                8.0,
+                vec!["A", "\u{200c}\u{200c}", "B"],
+            ),
+            // This synthetic context measures a visible letter as 12px.
+            (Some(14), "A\u{200c}B", 12.1, vec!["A\u{200c}", "B"]),
+            (Some(14), "A\u{200d}B", 12.1, vec!["A\u{200d}", "B"]),
+            (
+                Some(14),
+                "A\u{200c}B",
+                28.0 / 3.0,
+                vec!["A", "\u{200c}", "B"],
+            ),
+            (Some(14), "\u{200c}B", 12.1, vec!["\u{200c}B"]),
+            (Some(14), "\u{200d}B", 12.1, vec!["\u{200d}B"]),
+            (Some(14), "\u{200b}B", 12.1, vec!["\u{200b}B"]),
+            (Some(14), "\u{200c}B", 8.0, vec!["\u{200c}", "B"]),
+            (Some(14), "\u{200d}B", 8.0, vec!["\u{200d}", "B"]),
+            (Some(14), "\u{200b}B", 8.0, vec!["\u{200b}", "B"]),
+            (Some(15), "\u{200c}B", 12.1, vec!["\u{200c}", "B"]),
+            (None, "\u{200c}B", 12.1, vec!["\u{200c}", "B"]),
+            (Some(14), "A\u{200d}B", 100.0, vec!["A\u{200d}B"]),
+            (Some(15), "A\u{200d}B", 100.0, vec!["A\u{200d}B"]),
+            (
+                Some(14),
+                "A\u{301}\u{200d}B",
+                8.0,
+                vec!["A\u{301}\u{200d}", "B"],
+            ),
+            (Some(14), "क\u{200d}", 8.0, vec!["क\u{200d}"]),
+            (Some(14), "👩\u{200d}💻", 8.0, vec!["👩\u{200d}💻"]),
+        ] {
+            let mut style = ParagraphStyle {
+                word_platform: WordLayoutPlatform::Windows,
+                ..ParagraphStyle::default()
+            };
+            style.east_asian_rules.compatibility_mode = mode;
+            let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, width)
+                .expect("wrap");
+            let actual: Vec<String> = lines
+                .iter()
+                .map(|line| line.segments.iter().map(|s| s.text.as_str()).collect())
+                .collect();
+            assert_eq!(actual, expected, "mode={mode:?} {text:?} at {width}px");
+            let ranges: Vec<_> = lines
+                .iter()
+                .flat_map(|line| &line.clusters)
+                .map(|c| c.start..c.end)
+                .collect();
+            assert_eq!(ranges[0].start, 0);
+            assert_eq!(ranges.last().unwrap().end, text.len());
+            assert!(ranges.windows(2).all(|pair| pair[0].end == pair[1].start));
+            assert_eq!(actual.concat(), text);
+        }
+        // Original subset 5.ttf: A hmtx1366 / upem2048 at 10.5pt.
+        // A exceeds 7pt by a real fractional advance, and fits 8pt.
+        ctx.width_per_grapheme = 1366.0 / 2048.0 * 14.0;
+        let face: Rc<str> = Rc::from("10.5pt Arial");
+        ctx.style = ResolvedRunStyle::new(
+            Rc::clone(&face),
+            Rc::clone(&face),
+            Rc::clone(&face),
+            face,
+            0.0,
+            1.0,
+            false,
+            None,
+        );
+        let mut style = ParagraphStyle {
+            word_platform: WordLayoutPlatform::Windows,
+            ..ParagraphStyle::default()
+        };
+        style.east_asian_rules.compatibility_mode = Some(14);
+        for (width, expected) in [
+            (4.0, vec!["A", "\u{200c}", "B"]),
+            (8.0, vec!["A", "\u{200c}", "B"]),
+            (28.0 / 3.0, vec!["A", "\u{200c}", "B"]),
+            (32.0 / 3.0, vec!["A\u{200c}", "B"]),
+            (80.0 / 3.0, vec!["A\u{200c}B"]),
+        ] {
+            let text = "A\u{200c}B";
+            let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, width)
+                .expect("wrap");
+            let actual: Vec<String> = lines
+                .iter()
+                .map(|line| {
+                    line.segments
+                        .iter()
+                        .map(|segment| segment.text.as_str())
+                        .collect()
+                })
+                .collect();
+            assert_eq!(actual, expected, "original 10.5pt Arial at {width}px");
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]

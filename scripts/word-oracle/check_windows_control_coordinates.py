@@ -19,9 +19,20 @@ from check_platform_coordinates import (
 from check_windows_font_coordinates import require_original_font_programs_registered
 
 INDEX = 'tests/word-oracle/windows/control-characters.json'
-REQUIRED = {('probe-latin-join-controls-line-metrics', '16.0.19127.20936'):
-            'f85f726496ea2f379b4f212c310774e5ee586c258ca7269e76c6f54edbc87de9'}
-CONTROLS = frozenset('\u200c\u200d')
+REQUIRED = {
+    ('probe-latin-join-controls-line-metrics', '16.0.19127.20936'): {
+        'source_sha256': 'f85f726496ea2f379b4f212c310774e5ee586c258ca7269e76c6f54edbc87de9',
+        'pages': 8, 'visible_glyphs': 572,
+        'controls': {'\u200c': 8, '\u200d': 24}, 'blank_pages': list(range(1, 9)),
+    },
+    ('probe-latin-join-control-run-boundaries', '16.0.19127.20936'): {
+        'source_sha256': '71872da24cf7895020be9bda71c996659d92537134b76f97686f2c089e860e10',
+        'pages': 4, 'visible_glyphs': 696,
+        'controls': {'\u200b': 5, '\u200c': 30, '\u200d': 30},
+        'blank_pages': list(range(1, 5)),
+    },
+}
+CONTROLS = frozenset('\u200b\u200c\u200d')
 
 
 def compare(expected, actual, label, *, font_metrics=False):
@@ -53,7 +64,7 @@ def model_control_counts(model):
 def editable_origins(model, expected_counts):
     """Project editable format characters only; never alter painted PDF text.
 
-    The original source keeps32 controls but Word emits none in PDF/EMF.
+    Each source keeps all its controls but Word emits none in PDF/EMF.
     This additional check asserts visible logical origins without changing
     the existing general comparator or any physical output assertion.
     """
@@ -121,10 +132,13 @@ def verify(root=ROOT):
         windows, = case['windows']
         key = (name, windows['word_product_version'])
         require(key in REQUIRED and key not in found
-                and case['source']['sha256'] == REQUIRED[key], 'Unknown/duplicate control source')
+                and case['source']['sha256'] == REQUIRED[key]['source_sha256'],
+                'Unknown/duplicate control source')
         found.add(key)
+        expected = REQUIRED[key]
         archive, capture, document, drawing = archive_reference(root, case, windows)
-        require(document['pages'] == 8 and len(drawing['glyphs']) == 572,
+        require(document['pages'] == expected['pages']
+                and len(drawing['glyphs']) == expected['visible_glyphs'],
                 'Original control fixture page/glyph coverage changed')
         require(not model_control_counts(drawing), 'Original Word unexpectedly paints controls')
         regions = read_json(checked_file(root, case['blank_regions']))
@@ -132,10 +146,10 @@ def verify(root=ROOT):
                 and regions['capture_sha256'] == windows['capture_sha256']
                 and regions['word_pdf_sha256'] == document['pdf_sha256']
                 and regions['word'] == capture['word'], 'Blank regions lost original identity')
-        require([r['page'] for r in regions['regions']] == list(range(1, 9)),
+        require([r['page'] for r in regions['regions']] == expected['blank_pages'],
                 'Every original control-only page must be checked')
         counts = source_control_counts(source)
-        require(counts == collections.Counter({'\u200c': 8, '\u200d': 24}),
+        require(counts == collections.Counter(expected['controls']),
                 'Original editable controls changed')
         rows.append((case, source, archive, capture, document, drawing, regions['regions'], counts))
     require(found == set(REQUIRED), 'Required versioned control fixture removed')
@@ -186,7 +200,8 @@ def check_windows(executable, output, root=ROOT):
                             capture_sha256=windows['capture_sha256'],
                             word_pdf_sha256=document['pdf_sha256'],
                             native_pdf_sha256=hashlib.sha256(native_pdf.read_bytes()).hexdigest(),
-                            pages=8,visible_glyphs=572,editable_controls=32,blank_slots=8))
+                            pages=document['pages'], visible_glyphs=len(drawing['glyphs']),
+                            editable_controls=sum(counts.values()), blank_slots=len(regions)))
         print(case['mac_case'], capture['word']['product_version'],
               'physical coordinates, editable controls and blank-slot ink: PASS', flush=True)
     (output / 'results.json').write_text(json.dumps(results, indent=2) + '\n', encoding='utf8')

@@ -29,6 +29,35 @@
         "file": "tests/word-oracle/windows/word-16.0.19127.20936/latin-join-control-blank-regions.json",
         "sha256": "a225d47d26ca829ae474859ceba2e7e51da9c21334bedd0b42a7e77fd0c27d79"
       }
+    },
+    {
+      "mac_case": "probe-latin-join-control-run-boundaries",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-latin-join-control-run-boundaries/source.docx",
+        "sha256": "71872da24cf7895020be9bda71c996659d92537134b76f97686f2c089e860e10"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-latin-join-control-run-boundaries/manifest.json",
+        "sha256": "600db10f43c0a530829fc0c60df9ac0549a171ed34637bdc444344199673fb9f"
+      },
+      "windows": [
+        {
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004402030Z-30b8d3b5.zip",
+            "sha256": "55b1be7b847181c55ff05fadc0543442db386c4f170f585d123de91b27305d31"
+          },
+          "capture_id": "20261114T004402030Z-30b8d3b5",
+          "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+          "fixture": "ww14-probe-latin-join-control-run-boundaries-71872da2",
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "font_source": "original-word-pdf"
+        }
+      ],
+      "blank_regions": {
+        "file": "tests/word-oracle/windows/word-16.0.19127.20936/latin-control-run-boundaries-blank-regions.json",
+        "sha256": "911109bb6e403252e8288c3f1b6be02890e504da535d4dc2dd0755091bbd40c2"
+      }
     }
   ]
 }

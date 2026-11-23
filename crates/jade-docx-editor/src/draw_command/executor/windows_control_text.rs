@@ -79,6 +79,12 @@ fn visible_piece(text: &str) -> Option<&str> {
         .then_some(&text[..first.len_utf8()])
 }
 
+// A table run may contain only a control swallowed by a preceding run's
+// grapheme. Its empty positioned plan must not trigger raw .notdef paint.
+pub(super) fn is_unpositioned_nonprinting_run(text: &str, style: &TextStyle) -> bool {
+    plain_windows_style(text, style) && visible_piece(text) == Some("")
+}
+
 // Source ranges and all precomputed origins remain intact. Only the painted
 // payload omits measured Word nonprinting controls, so an original PDF font
 // subset without their cmap entries cannot paint .notdef boxes.
@@ -144,6 +150,64 @@ pub(super) fn try_draw<P: Painter>(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn unpositioned_run_suppression_preserves_visible_complex_and_mac_text() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let style = super::TextStyle {
+            font_descriptor_latin_ascii: std::rc::Rc::from("10.5pt Arial"),
+            ..Default::default()
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for text in ["\u{200b}", "\u{200c}", "\u{200d}", "\u{200c}\u{200d}"] {
+                assert_eq!(
+                    super::is_unpositioned_nonprinting_run(text, &style),
+                    platform == WordLayoutPlatform::Windows
+                );
+            }
+            for text in [
+                "",
+                "A",
+                "A\u{200d}",
+                "1\u{200c}",
+                "क\u{200d}",
+                "A\u{301}\u{200d}",
+                "👩\u{200d}💻",
+            ] {
+                assert!(!super::is_unpositioned_nonprinting_run(text, &style));
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for kind in [
+            "outline",
+            "shadow",
+            "emboss",
+            "imprint",
+            "scale",
+            "other-font",
+        ] {
+            let mut unsupported = style.clone();
+            match kind {
+                "outline" => unsupported.outline = true,
+                "shadow" => unsupported.shadow = true,
+                "emboss" => unsupported.emboss = true,
+                "imprint" => unsupported.imprint = true,
+                "scale" => unsupported.text_scale_x = 0.8,
+                _ => {
+                    unsupported.font_descriptor_latin_ascii = std::rc::Rc::from("10.5pt Nirmala UI")
+                }
+            }
+            assert!(
+                !super::is_unpositioned_nonprinting_run("\u{200d}", &unsupported),
+                "{kind}"
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn only_measured_latin_controls_project_to_a_painted_letter() {
         assert_eq!(super::visible_piece("A\u{200c}\u{200d}"), Some("A"));

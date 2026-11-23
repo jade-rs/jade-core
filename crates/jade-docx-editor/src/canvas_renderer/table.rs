@@ -8163,7 +8163,29 @@ where
             )
             .map_err(PainterError::into_js_value)?;
         } else if steps.is_empty() {
-            if (text_scale_x - 1.0).abs() > f64::EPSILON {
+            let fallback_style = if windows_control_text || context.text_output_dpi().is_some() {
+                let applied = self.resolve_applied_run_style_uncached(run_props);
+                Some(self.cmd_text_style(run_props, &applied))
+            } else {
+                None
+            };
+            let nonprinting = fallback_style.as_ref().is_some_and(|style| {
+                crate::draw_command::executor::is_windows_unpositioned_nonprinting_run(text, style)
+            });
+            // A visible scalar can precede a control in a different run but
+            // share its grapheme. Its empty per-run plan still paints at the
+            // supplied origin, using the existing guarded print-em policy.
+            if let Some(font) = fallback_style.as_ref().and_then(|style| {
+                crate::draw_command::executor::windows_pdf_text::single_scalar_font(
+                    context, text, style,
+                )
+            }) {
+                context.set_font(font.as_ref());
+            }
+            if nonprinting {
+                // Keep the editable run and its model offsets. With no own
+                // glyph positions, this standalone format run paints no ink.
+            } else if (text_scale_x - 1.0).abs() > f64::EPSILON {
                 context.save();
                 context
                     .translate(x, text_y)
@@ -13820,18 +13842,18 @@ fn split_cell_paragraph(
         return None;
     }
     // A trailing join-control line can continue on the next page without
-    // carrying its preceding visible line with it.
-    let mac_invisible_tail = paragraph.widow_control
+    // carrying its preceding visible line with it. The retained Windows
+    // mode-14 original has the same boundary as the existing Mac captures.
+    let invisible_join_control_tail = paragraph.widow_control
         && fits > 0
         && fits + 1 == paragraph.lines.len()
         && paragraph.lines[fits - 1].break_kind == LineBreakKind::Soft
-        && word_layout_platform() == WordLayoutPlatform::Mac
         && !paragraph.lines[fits].text.is_empty()
         && paragraph.lines[fits]
             .text
             .chars()
             .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'));
-    if paragraph.widow_control && !mac_manual_break && !mac_invisible_tail {
+    if paragraph.widow_control && !mac_manual_break && !invisible_join_control_tail {
         match resolve_widow_orphan_decision(paragraph.lines.len(), fits) {
             WidowOrphanDecision::MoveWholeParagraph => return None,
             WidowOrphanDecision::BreakBeforeLine(line) => fits = line,
@@ -29348,6 +29370,59 @@ mod tests {
             split_cell_paragraph(&make(paragraph), 36.0, 36.0, false).is_some(),
             "an oversized paragraph can continue"
         );
+    }
+
+    #[test]
+    fn invisible_join_control_tail_keeps_visible_cell_line_on_both_platforms() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for control in ["\u{200c}", "\u{200d}"] {
+                let context = FixedWidthWrapContext::new();
+                let mut paragraph = layout_horizontal_paragraph_with_context(
+                    &context,
+                    &format!("A\n{control}"),
+                    20.0,
+                    12.0,
+                )
+                .unwrap();
+                assert_eq!(paragraph.lines.len(), 2);
+                // Model the soft emergency break produced by the wrap test.
+                Rc::make_mut(&mut paragraph.lines)[0].break_kind = LineBreakKind::Soft;
+                paragraph.widow_control = true;
+                let make = |paragraph: CellParagraph| CellBlock {
+                    source_index: 0,
+                    height: paragraph.height,
+                    kind: CellBlockKind::Paragraph(paragraph),
+                    paragraph_indices: vec![0],
+                };
+                let (head, tail) =
+                    split_cell_paragraph(&make(paragraph.clone()), 12.0, 100.0, false)
+                        .expect("only the invisible tail continues");
+                let CellBlockKind::Paragraph(head) = head.kind else {
+                    panic!("head paragraph")
+                };
+                let CellBlockKind::Paragraph(tail) = tail.kind else {
+                    panic!("tail paragraph")
+                };
+                assert_eq!(head.lines.len(), 1);
+                assert_eq!(tail.lines[0].text, control);
+                paragraph.keep_lines = true;
+                assert!(
+                    split_cell_paragraph(&make(paragraph.clone()), 12.0, 100.0, false).is_none()
+                );
+                paragraph.keep_lines = false;
+                Rc::make_mut(&mut paragraph.lines)[1].text = "B".to_owned();
+                assert!(
+                    split_cell_paragraph(&make(paragraph), 12.0, 100.0, false).is_none(),
+                    "visible orphan remains protected"
+                );
+            }
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
