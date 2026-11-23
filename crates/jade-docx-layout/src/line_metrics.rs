@@ -3949,6 +3949,13 @@ fn word_latin_font_vertical_units(
         "Oriya Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2009.0 * 2048.0 / 1747.0, 611.0 * 2048.0 / 1747.0))
         }
+        // Retained Windows Word Thai probes requested in Thonburi select
+        // Leelawadee UI. Its original embedded program has identical hhea
+        // and OS/2 Win boxes: 2210/514 at 2048 units per em. Keep Mac's
+        // separately observed Angsana substitution unchanged.
+        "Thonburi" if word_layout_platform() == WordLayoutPlatform::Windows => {
+            Some((2210.0, 514.0))
+        }
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
         // All four original Windows Word Bookman XPS faces retain this hhea
