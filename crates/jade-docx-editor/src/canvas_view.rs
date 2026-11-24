@@ -17972,12 +17972,19 @@ impl OffscreenDocumentView {
         let Some(document) = word_doc.document.as_ref() else {
             return to_value(&Vec::<BookmarkInfo>::new()).unwrap_or(JsValue::NULL);
         };
+        let live = word_doc.live_bookmark_markers();
         let bookmarks = document
             .bookmarks
             .iter()
             .map(|bookmark| {
-                let preview = word_doc
-                    .bookmark_surface_index(bookmark.start_paragraph)
+                // Markers between paragraphs are resolved to the paragraphs
+                // they bound, so a range never reaches into the next one; the
+                // markers are read back from the XML, which edits keep current.
+                let start = word_doc.bookmark_start(bookmark, live.as_ref());
+                let end = word_doc.bookmark_end(bookmark, live.as_ref());
+                let preview = start
+                    .map(|position| position.paragraph)
+                    .or_else(|| word_doc.bookmark_surface_index(bookmark.start_paragraph))
                     .and_then(|index| word_doc.paragraph(index))
                     .map(|paragraph| {
                         paragraph
@@ -17990,10 +17997,6 @@ impl OffscreenDocumentView {
                     .chars()
                     .take(80)
                     .collect();
-                // Markers between paragraphs are resolved to the paragraphs
-                // they bound, so a range never reaches into the next one.
-                let start = word_doc.bookmark_start(bookmark);
-                let end = word_doc.bookmark_end(bookmark);
                 BookmarkInfo {
                     name: bookmark.name.clone(),
                     start_paragraph: start.map_or_else(
