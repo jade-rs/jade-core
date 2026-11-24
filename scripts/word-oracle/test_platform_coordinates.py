@@ -219,6 +219,26 @@ class PlatformCoordinates(unittest.TestCase):
         required |= {'probe-unequal-variant-narrow-first-2-9-no-header', 'probe-unequal-variant-three-24-no-header', 'probe-unequal-continuation-border-0', 'probe-unequal-continuation-border-16', 'probe-unequal-continuation-border-4'}
         required |= {'probe-unequal-variant-narrow-first-2-9-fixed', 'probe-unequal-variant-three-24-fixed'}
         required |= {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
+        required |= {'probe-math-fraction-first-vs-prev',
+         'probe-math-fraction-larger-neighbors',
+         'probe-math-fraction-leading',
+         'probe-math-fraction-neighbors',
+         'probe-math-fraction-size-20',
+         'probe-math-fraction-size-24',
+         'probe-math-fraction-size-28',
+         'probe-math-fraction-size-32',
+         'probe-math-fraction-size-36',
+         'probe-math-fraction-size-40',
+         'probe-math-fraction-spacing-matrix',
+         'probe-math-repeat-bar-fraction-24',
+         'probe-math-repeat-bar-fraction-32',
+         'probe-math-repeat-fraction-20',
+         'probe-math-repeat-fraction-24',
+         'probe-math-repeat-fraction-28',
+         'probe-math-repeat-fraction-36',
+         'probe-math-repeat-fraction-40',
+         'probe-math-standalone-fractions-12',
+         'probe-math-standalone-fractions-explicit-sizes'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -767,7 +787,26 @@ class PlatformCoordinates(unittest.TestCase):
                              'probe-width-unequal-dxa-2400-dxa-2000',
                              'probe-width-unequal-pct-2500-auto-0',
                              'probe-width-unequal-pct-2500-dxa-2000',
-})
+} | {'probe-math-fraction-first-vs-prev',
+ 'probe-math-fraction-larger-neighbors',
+ 'probe-math-fraction-leading',
+ 'probe-math-fraction-neighbors',
+ 'probe-math-fraction-size-20',
+ 'probe-math-fraction-size-24',
+ 'probe-math-fraction-size-28',
+ 'probe-math-fraction-size-32',
+ 'probe-math-fraction-size-36',
+ 'probe-math-fraction-size-40',
+ 'probe-math-fraction-spacing-matrix',
+ 'probe-math-repeat-bar-fraction-24',
+ 'probe-math-repeat-bar-fraction-32',
+ 'probe-math-repeat-fraction-20',
+ 'probe-math-repeat-fraction-24',
+ 'probe-math-repeat-fraction-28',
+ 'probe-math-repeat-fraction-36',
+ 'probe-math-repeat-fraction-40',
+ 'probe-math-standalone-fractions-12',
+ 'probe-math-standalone-fractions-explicit-sizes'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word
