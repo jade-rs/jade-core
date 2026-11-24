@@ -849,3 +849,62 @@ fn display_math_margins_narrow_wrapping_and_drop_an_excess_left_margin() {
     assert_eq!(wide.lines.len(), 1);
     assert!(narrow.lines.len() > wide.lines.len());
 }
+
+#[test]
+fn display_fraction_shifts_follow_original_word_run_sizes() {
+    use crate::line_metrics::{set_word_layout_platform, word_layout_platform, WordLayoutPlatform};
+    use jade_docx_reader::{BodyElement, DocumentParser, OpenXmlPackage};
+    struct Restore(WordLayoutPlatform);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            set_word_layout_platform(self.0);
+        }
+    }
+    let _restore = Restore(word_layout_platform());
+    // Original Windows Word16.0.19127.20936 PDF and independent Mac origins:
+    // baseline of the opening1 minus the first numerator1, in points.
+    // The original DOCX paragraphs have a12pt base and explicit10..20pt runs.
+    let cases: [(&[u8], [f64; 2]); 6] = [
+        (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-20/source.docx")).as_slice(), [7.68, 7.68]),
+        (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-24/source.docx")).as_slice(), [9.12, 9.12]),
+        (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-28/source.docx")).as_slice(), [10.68, 10.56]),
+        (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-32/source.docx")).as_slice(), [12.12, 12.00]),
+        (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-36/source.docx")).as_slice(), [13.68, 13.68]),
+        (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-40/source.docx")).as_slice(), [15.12, 15.12]),
+    ];
+    for (data, expected) in cases {
+        let package = futures::executor::block_on(OpenXmlPackage::load(data)).unwrap();
+        let xml = std::str::from_utf8(package.get("word/document.xml").unwrap()).unwrap();
+        let document = DocumentParser::new().parse_document_xml(xml).unwrap();
+        let body = document.body.unwrap();
+        let math = body
+            .elements
+            .iter()
+            .find_map(BodyElement::as_math_paragraph)
+            .unwrap();
+        for (index, platform) in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac]
+            .into_iter()
+            .enumerate()
+        {
+            set_word_layout_platform(platform);
+            let plan = layout_styled_math_with_options(
+                &Measure::default(),
+                math,
+                MathTextStyle {
+                    size_px: 16.0,
+                    ..style()
+                },
+                &display(),
+            )
+            .unwrap();
+            let digits = glyphs(&plan, "1");
+            assert!(digits.len() >= 2);
+            let displacement_pt = (digits[0].baseline - digits[1].baseline) * 72.0 / 96.0;
+            assert!(
+                (displacement_pt - expected[index]).abs() <= 0.375,
+                "original fraction shift {platform:?}: {displacement_pt} vs {}",
+                expected[index],
+            );
+        }
+    }
+}

@@ -73,8 +73,6 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
         && !b.options.uniform
         && !b.options.settings.small_fractions
         && b.style.family.eq_ignore_ascii_case("Cambria Math")
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac
         && math.children.iter().any(|child| {
             !is_skipped(child)
                 && child.kind == MathElementKind::Fraction

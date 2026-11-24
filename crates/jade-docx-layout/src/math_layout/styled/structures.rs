@@ -271,13 +271,11 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                 let bar = kind != "noBar";
                 let (n0, n1, n) = self.piece(|b| b.slot(num, level_up, false, false))?;
                 let (d0, d1, d) = self.piece(|b| b.slot(den, level_up, false, true))?;
-                let word_mac_cambria = display
-                    && self.style.family.eq_ignore_ascii_case("Cambria Math")
-                    && crate::line_metrics::word_layout_platform()
-                        == crate::line_metrics::WordLayoutPlatform::Mac;
+                let word_cambria =
+                    display && self.style.family.eq_ignore_ascii_case("Cambria Math");
                 // Explicit sizing on both parts of a display fraction also
                 // sets its vertical separation, rule metrics and leading space.
-                let fraction_size = if word_mac_cambria && !self.font_bound() {
+                let fraction_size = if word_cambria && !self.font_bound() {
                     let mut glyphs = self.plan.glyphs[n0.glyphs..d1.glyphs]
                         .iter()
                         .filter(|glyph| glyph.visible);
@@ -350,7 +348,7 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
                     }
                     (up, down)
                 };
-                let pad = if word_mac_cambria {
+                let pad = if word_cambria {
                     0.0
                 } else {
                     self.size() * 0.12

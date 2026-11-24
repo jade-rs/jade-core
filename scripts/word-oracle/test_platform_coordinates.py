@@ -12,6 +12,29 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_fraction_originals_keep_word_build_font_and_vector_assertions(self):
+        names = check.MATH_FRACTION_RULE_CASES | check.BORDERLESS_MATH_CASES
+        self.assertEqual(len(names), 20)
+        self.assertEqual(len(check.BORDERLESS_MATH_CASES), 9)
+        self.assertLessEqual(names, check.PHYSICAL_FONT_CASES)
+        rows = [r for r in check.verify() if r[0] in names]
+        self.assertEqual({r[0] for r in rows}, names)
+        for name, source, archive, document, drawing, font_source in rows:
+            self.assertEqual(font_source, 'original-word-pdf')
+            with ZipFile(archive) as bundle:
+                capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['capture_id'], check.REQUIRED_CAPTURES[name])
+            import xml.etree.ElementTree as ET
+            with ZipFile(source) as bundle:
+                xml = ET.fromstring(bundle.read('word/document.xml'))
+            ns = {'m': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+            fractions = xml.findall('.//m:f', ns)
+            self.assertTrue(fractions)
+            kinds = [f.find('m:fPr/m:type', ns) for f in fractions]
+            no_bars = all(k is not None and k.get('{'+ns['m']+'}val') == 'noBar' for k in kinds)
+            self.assertEqual(no_bars, name in check.BORDERLESS_MATH_CASES)
+
     def test_numbering_originals_keep_each_word_version_and_physical_font_gate(self):
         names = {
             'numbering-alignment-matrix-mac',

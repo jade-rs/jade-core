@@ -214,6 +214,23 @@ pub(super) fn settings_from(
     settings
 }
 
+// Windows Word realizes the printed Cambria Math em on a 600dpi grid.
+// Its stored glyph positions retain the unrounded layout size.
+#[cfg(feature = "opentype-math")]
+fn word_windows_math_print_scale(scale: f64, size_px: f64, family: &str) -> f64 {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        || !family.eq_ignore_ascii_case("Cambria Math")
+        || !size_px.is_finite()
+        || size_px <= 0.0
+    {
+        return scale;
+    }
+    const PRINT_PIXEL_PX: f64 = 96.0 / 600.0;
+    let printed_size = (size_px / PRINT_PIXEL_PX).round().max(1.0) * PRINT_PIXEL_PX;
+    scale * printed_size / size_px
+}
+
 pub(super) fn display_math_line_metrics(
     plan: &StyledMathLayout<'_>,
     style: MathTextStyle<'_>,
@@ -466,7 +483,11 @@ impl OwnedMathPlan {
                                     .unwrap_or_else(|| &self.text[glyph.text_range.clone()]),
                                 program,
                                 prepared.geometry.glyph_id,
-                                prepared.scale,
+                                word_windows_math_print_scale(
+                                    prepared.scale,
+                                    glyph.size_px,
+                                    &glyph.family,
+                                ),
                                 (x + glyph.x, baseline + glyph.baseline),
                             )? {
                                 continue;
@@ -619,7 +640,11 @@ pub fn paint_boxed_math<P: Painter>(
                             glyph.display_text(&plan.text),
                             program,
                             prepared.geometry.glyph_id,
-                            prepared.scale,
+                            word_windows_math_print_scale(
+                                prepared.scale,
+                                glyph.style.size_px,
+                                glyph.style.family,
+                            ),
                             (x + glyph.x, baseline + glyph.baseline),
                         )? {
                             continue;

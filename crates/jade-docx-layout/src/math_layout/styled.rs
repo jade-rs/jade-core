@@ -704,7 +704,7 @@ pub(crate) struct Builder<'c, 'a, C> {
     pub(crate) style: MathTextStyle<'a>,
     /// The size scripts are scaled from: the run size at the top level.
     pub(crate) base_size: f64,
-    /// Word Mac uses the opening run size for spacing a display fraction.
+    /// Word uses the opening run size for spacing a display fraction.
     fraction_equation_size: Option<f64>,
     word_fraction_line_metrics: bool,
     pub(crate) level: u32,
@@ -822,12 +822,29 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
 
     fn line_metrics(&self, ink: MathMetrics) -> MathMetrics {
         #[cfg(feature = "opentype-math")]
-        if let Some(font) = self
-            .context
-            .font_parameters(self.style)
-            .filter(|_| !self.word_fraction_line_metrics)
         {
-            return font.line_metrics(ink);
+            let windows_fraction = self.word_fraction_line_metrics
+                && crate::line_metrics::word_layout_platform()
+                    == crate::line_metrics::WordLayoutPlatform::Windows;
+            let mut style = self.style;
+            if windows_fraction {
+                // The MATH leading follows the explicit equation run size,
+                // just as its fraction shifts and inter-atom spacing do.
+                if let Some(glyph) = self.plan.glyphs.iter().find(|glyph| {
+                    glyph.visible
+                        && glyph.baseline == 0.0
+                        && glyph.style.family.eq_ignore_ascii_case("Cambria Math")
+                }) {
+                    style.size_px = glyph.style.size_px;
+                }
+            }
+            if let Some(font) = self
+                .context
+                .font_parameters(style)
+                .filter(|_| !self.word_fraction_line_metrics || windows_fraction)
+            {
+                return font.line_metrics(ink);
+            }
         }
         ink
     }
