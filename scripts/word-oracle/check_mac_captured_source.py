@@ -591,11 +591,16 @@ SHARED_ORIGINALS = {
         '2f11b93894009a6aae32f06f831718f53924afe225860dd87d17acde14ec0ec1',
         '2904aa83d1ae4b57d28f8533f9979050efeb46d4516db9249cff0e4236bb0368',
         '65c50d531ecf005c2ee042086ad4378693d47149487e5cfcef66f5f45b31ac6d', 1, 351),
+
+    'probe-width-single-pct-2500-pct-2500': ('f74cf7aeddf0c23de7f85904e62286aa9108cf7b114ba9265ba000b78640684c', '7cf5df14270473cf686059a4bd83b98dc0f711d4f556a139d9e8f1da362ae3f5', 'd0e012af76d5a4bd13392522517957f387c98fa8489b09bf0e4272597cee2bc3', 3, 107),
+    'probe-width-unequal-dxa-2400-dxa-2000': ('a506ec0b61237aad385e39fc57e43d7d2c2fb17c700befeebe92805de4a4b98d', '0e6b492d96818ab8c8405d33d6cceda43ab5ce4282426775e4eedb34ac7efa97', 'bc48c94947aaebb6b1567bf627c90cb6f501edcc3390d6e49e4fc153773c0f8e', 2, 347),
+    'probe-width-unequal-pct-2500-auto-0': ('598e3bf932f8ea79aeffe90748afbfba82eef1ddd627c838a25e5cbce2c264af', '99ddbb4ee7286d8b9f7abc41139358494a2a3ce28c782418e35885d1c2e362fb', 'aa0d326262cbc9dac0766328236e894ff08ed0ee1569efc884f2fe2abf7351e4', 2, 215),
+    'probe-width-unequal-pct-2500-dxa-2000': ('8853a76fbdf8e3024c71d81830da307f5d73786edc271df564c295d3ef1381e7', '54e1c7a85faaebfb9fa55814801a3a81b8a3a387d5a7cb98195e66c3a44ccc3d', 'aa0d326262cbc9dac0766328236e894ff08ed0ee1569efc884f2fe2abf7351e4', 2, 215),
 }
 
 
 # These existing Mac math originals retain outline-only PDF text output.
-# Assert their genuine UI origins independently; the 141 full PDF gates above
+# Assert their genuine UI origins independently; the 145 full PDF gates above
 # remain mandatory. Windows fixes must preserve these Mac layout coordinates.
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
@@ -726,9 +731,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 141 and sum(r['glyphs'] for r in results) == 44677,
+    require(len(results) == 145 and sum(r['glyphs'] for r in results) == 45561,
             'Shared Mac original coverage changed')
-    print('141 shared Mac originals44677: layout and painted-PDF PASS', flush=True)
+    print('145 shared Mac originals45561: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -878,7 +883,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 141 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 145 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

@@ -20,6 +20,12 @@ from extract_windows_emf import extract, emf_glyphs
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
+PREFERRED_GRID_BORDER_CASES = {
+    'probe-width-single-pct-2500-pct-2500',
+    'probe-width-unequal-dxa-2400-dxa-2000',
+    'probe-width-unequal-pct-2500-auto-0',
+    'probe-width-unequal-pct-2500-dxa-2000',
+}
 # Original physical font face/size and per-glyph XY are fully supported here.
 # Keep this separate from logical EMF coordinates: Windows print realization
 # can differ from screen metrics. Every case retains its own Word PDF.
@@ -294,6 +300,7 @@ PHYSICAL_FONT_CASES = {
     'probe-math-relation-wrap-before',
     'probe-math-relation-wrap-repeat',
 }
+PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES
 REQUIRED_CAPTURES = {
     'probe-mixed-sangam-matrix-240': '20261114T004434269Z-e27596ca',
     'probe-mixed-sangam-matrix-276': '20261114T004434269Z-e27596ca',
@@ -564,6 +571,11 @@ REQUIRED_CAPTURES = {
     'probe-math-relation-wrap-after': '20261114T004417585Z-59a68986',
     'probe-math-relation-wrap-before': '20261114T004417585Z-59a68986',
     'probe-math-relation-wrap-repeat': '20261114T004417585Z-59a68986',
+
+    'probe-width-single-pct-2500-pct-2500': '20261114T004612020Z-5d981186',
+    'probe-width-unequal-dxa-2400-dxa-2000': '20261114T020653579Z-a7f517aa',
+    'probe-width-unequal-pct-2500-auto-0': '20261114T020656594Z-92d3b2ca',
+    'probe-width-unequal-pct-2500-dxa-2000': '20261114T020700519Z-4ca7ac7c',
 }
 
 # These original inputs have distinct screen and print origins in Windows
@@ -1007,9 +1019,29 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
+        if name in PREFERRED_GRID_BORDER_CASES:
+            borders = assert_original_vector_borders(original_pdf, painted_path, name)
+            proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
+                         capture_id=capture['capture_id'],
+                         original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),
+                         native_pdf_sha256=hashlib.sha256(painted_path.read_bytes()).hexdigest(),
+                         border_tolerance_pt=.375, pages=borders)
+            (target / 'versioned-vector-borders.json').write_text(
+                json.dumps(proof, indent=2) + '\n', encoding='utf8')
         print(f'{name}: {document["pages"]} pages, {len(drawing["glyphs"])} glyphs, '
               f'Windows Word {capture["word"]["product_version"]}: PASS', flush=True)
     return checked
+
+
+def assert_original_vector_borders(word_pdf, painted_pdf, label):
+    from compare_windows_borders import TOLERANCE_PT, compare as compare_borders
+    require(TOLERANCE_PT == .375, 'Original vector border tolerance changed')
+    results = compare_borders(word_pdf, painted_pdf)
+    require(bool(results) and all(
+        page['word_rectangles'] > 0 and page['native_rectangles'] > 0
+        and page['word_uncovered_count'] == page['native_uncovered_count'] == 0
+        for page in results), label + '/original-vector-borders: ' + repr(results))
+    return results
 
 
 def assert_independent_outputs(drawing, screen, snapshot, screen_png, snapshot_png,

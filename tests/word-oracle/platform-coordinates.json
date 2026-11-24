@@ -6752,6 +6752,106 @@
           }
         }
       ]
+    },
+    {
+      "mac_case": "probe-width-single-pct-2500-pct-2500",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-single-pct-2500-pct-2500/source.docx",
+        "sha256": "f74cf7aeddf0c23de7f85904e62286aa9108cf7b114ba9265ba000b78640684c"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-single-pct-2500-pct-2500/manifest.json",
+        "sha256": "7cf5df14270473cf686059a4bd83b98dc0f711d4f556a139d9e8f1da362ae3f5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004612020Z-5d981186",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004612020Z-5d981186.zip",
+            "sha256": "800ee159b38e02e76caca0bbbedcd2dc6f7a0222a71d62c9385725433c0c1f02"
+          },
+          "capture_sha256": "bafc3b1f6e9a31c6c73cf05efe6af653ac873c51ff7693ed19dd4bc7d8f143e0",
+          "fixture": "ww14-probe-width-single-pct-2500-pct-2500-f74cf7ae",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-width-unequal-dxa-2400-dxa-2000",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-unequal-dxa-2400-dxa-2000/source.docx",
+        "sha256": "a506ec0b61237aad385e39fc57e43d7d2c2fb17c700befeebe92805de4a4b98d"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-unequal-dxa-2400-dxa-2000/manifest.json",
+        "sha256": "0e6b492d96818ab8c8405d33d6cceda43ab5ce4282426775e4eedb34ac7efa97"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020653579Z-a7f517aa",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020653579Z-a7f517aa.zip",
+            "sha256": "39460ed98db413fddef25e9ab34a7444e760545fedd468c9494d957c4e2435ae"
+          },
+          "capture_sha256": "30925c34360e4b8330775f258901eef33ec1235caef90c4ee6a50926d020868e",
+          "fixture": "ww14-probe-width-unequal-dxa-2400-dxa-2000-a506ec0b",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-width-unequal-pct-2500-auto-0",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-unequal-pct-2500-auto-0/source.docx",
+        "sha256": "598e3bf932f8ea79aeffe90748afbfba82eef1ddd627c838a25e5cbce2c264af"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-unequal-pct-2500-auto-0/manifest.json",
+        "sha256": "99ddbb4ee7286d8b9f7abc41139358494a2a3ce28c782418e35885d1c2e362fb"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020656594Z-92d3b2ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020656594Z-92d3b2ca.zip",
+            "sha256": "06ad4dc59015e1f31bf2644f20cc748711a5fd4cd1b992922d41a97598c5a7a6"
+          },
+          "capture_sha256": "b893b54f4f6d3c83ef0f1a92f9300b9d72337f4ce566411800c7a8c3de28863d",
+          "fixture": "ww14-probe-width-unequal-pct-2500-auto-0-598e3bf9",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-width-unequal-pct-2500-dxa-2000",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-unequal-pct-2500-dxa-2000/source.docx",
+        "sha256": "8853a76fbdf8e3024c71d81830da307f5d73786edc271df564c295d3ef1381e7"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-width-unequal-pct-2500-dxa-2000/manifest.json",
+        "sha256": "54e1c7a85faaebfb9fa55814801a3a81b8a3a387d5a7cb98195e66c3a44ccc3d"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020700519Z-4ca7ac7c",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020700519Z-4ca7ac7c.zip",
+            "sha256": "7417e9b6d2ac5d5b947ebd50c9a248902c6affdce810a1e6f1070f58f0f33561"
+          },
+          "capture_sha256": "fbb751cdda8d899e7210681de61308fe32f3d8ec29143fd6f14de95bca8ad9ec",
+          "fixture": "ww14-probe-width-unequal-pct-2500-dxa-2000-8853a76f",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
