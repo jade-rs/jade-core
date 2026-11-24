@@ -260,6 +260,19 @@ jobs:
             crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-fixed
             !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
           if-no-files-found: ignore
+      - name: Upload original Mac visible-autofit column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-visible-autofit-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-narrow-first-2-9-no-header
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-no-header
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-0
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-16
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-4
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
       - name: Upload original Mac automatic-grid column coordinates
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -473,6 +486,19 @@ jobs:
           path: |
             target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-fixed
             target/platform-word-coordinates/probe-unequal-variant-three-24-fixed
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows visible-autofit column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-visible-autofit-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-no-header
+            target/platform-word-coordinates/probe-unequal-variant-three-24-no-header
+            target/platform-word-coordinates/probe-unequal-continuation-border-0
+            target/platform-word-coordinates/probe-unequal-continuation-border-16
+            target/platform-word-coordinates/probe-unequal-continuation-border-4
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload original Windows automatic-grid column coordinates

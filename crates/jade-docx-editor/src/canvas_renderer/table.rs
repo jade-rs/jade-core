@@ -3030,7 +3030,7 @@ where
                 .widths
                 .iter()
                 .any(|&width| width != available_width)
-            && leading_header_row_count(&table.rows) > 0
+            && table.rows.iter().any(|row| !table_row_is_hidden(row))
             && (((preferred_width.is_none() || percentage_width)
                 && uniform_single_column_cell_percentage(table).is_some())
                 || (centered_table
@@ -31903,6 +31903,51 @@ mod tests {
                     assert!((actual - original).abs() <= 0.375,
                         "{platform:?}/start-column-{start_column}: fixed percentage header {actual}, Word {original}");
                 }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+    #[test]
+    fn visible_legacy_autofit_grids_match_originals_without_headers() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // These immutable captured packages include their original style defaults.
+        // The first H is the data cell "Hdr", not a repeating table-header row.
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for (name, bytes, windows, mac) in [
+                ("probe-unequal-variant-narrow-first-2-9-no-header", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-unequal-variant-narrow-first-2-9-no-header/source.docx")).as_slice(), 346.1499938964844, 346.08),
+                ("probe-unequal-variant-three-24-no-header", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-unequal-variant-three-24-no-header/source.docx")).as_slice(), 97.8239974975586, 97.68),
+                ("probe-unequal-continuation-border-0", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-unequal-continuation-border-0/source.docx")).as_slice(), 97.8239974975586, 97.68),
+                ("probe-unequal-continuation-border-16", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-unequal-continuation-border-16/source.docx")).as_slice(), 97.8239974975586, 97.68),
+                ("probe-unequal-continuation-border-4", include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-unequal-continuation-border-4/source.docx")).as_slice(), 97.8239974975586, 97.68),
+            ] {
+                let model = futures::executor::block_on(
+                    crate::word_document::WordDocument::load_for_initial_render(
+                        bytes, &crate::Options::default(),
+                    ),
+                ).unwrap();
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }), false,
+                ).unwrap();
+                renderer.set_style_context(model.styles_part.clone().map(std::rc::Rc::new), None);
+                renderer.render(model.document.as_deref().unwrap(), &crate::Options::default()).unwrap();
+                let origins = painter.ops().into_iter().filter_map(|op| match op {
+                    Op::FillText(text, x, _) if text.starts_with('H') => Some(x * 0.75),
+                    Op::FillShapedText(text, clusters, _) if text.starts_with('H') => {
+                        clusters.first().map(|(_, x)| x * 0.75)
+                    }
+                    _ => None,
+                }).collect::<Vec<_>>();
+                assert_eq!(origins.len(), 1, "{platform:?}/{name}: no repeated header");
+                let expected = if platform == WordLayoutPlatform::Windows { windows } else { mac };
+                assert!((origins[0] - expected).abs() <= 0.375,
+                    "{platform:?}/{name}: visible autofit origin {}, Word {expected}", origins[0]);
             }
         }
         set_word_layout_platform(previous);

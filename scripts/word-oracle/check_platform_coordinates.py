@@ -313,8 +313,16 @@ FIXED_WIDTH_MATRIX_CASES = {'fixed-table-width-matrix-mac'}
 LEGACY_AUTOMATIC_GRID_CASES = {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
 LEGACY_FIXED_PERCENTAGE_COLUMN_CASES = {'probe-unequal-variant-narrow-first-2-9-fixed', 'probe-unequal-variant-three-24-fixed'}
 PREFERRED_GRID_BORDER_CASES |= LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
-PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES | LEGACY_AUTOMATIC_GRID_CASES | LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
+LEGACY_VISIBLE_AUTOFIT_CASES = {'probe-unequal-variant-narrow-first-2-9-no-header', 'probe-unequal-variant-three-24-no-header', 'probe-unequal-continuation-border-0', 'probe-unequal-continuation-border-16', 'probe-unequal-continuation-border-4'}
+BORDERLESS_GRID_CASES = {'probe-unequal-continuation-border-0'}
+PREFERRED_GRID_BORDER_CASES |= LEGACY_VISIBLE_AUTOFIT_CASES - BORDERLESS_GRID_CASES
+PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES | LEGACY_AUTOMATIC_GRID_CASES | LEGACY_VISIBLE_AUTOFIT_CASES | LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
 REQUIRED_CAPTURES = {
+    'probe-unequal-variant-narrow-first-2-9-no-header': '20261114T004559814Z-c5e13cee',
+    'probe-unequal-variant-three-24-no-header': '20261114T004559814Z-c5e13cee',
+    'probe-unequal-continuation-border-0': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-continuation-border-16': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-continuation-border-4': '20261114T004519313Z-65bdf3a6',
     'probe-unequal-variant-narrow-first-2-9-fixed': '20261114T004559814Z-c5e13cee',
     'probe-unequal-variant-three-24-fixed': '20261114T004559814Z-c5e13cee',
     'probe-table-flow-unequal-automatic-grid-start-column-1': '20261114T004450252Z-ac1d5d7d',
@@ -1047,8 +1055,9 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
-        if name in PREFERRED_GRID_BORDER_CASES:
-            borders = assert_original_vector_borders(original_pdf, painted_path, name)
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES:
+            borders = assert_original_vector_borders(
+                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES)
             proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
                          capture_id=capture['capture_id'],
                          original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),
@@ -1061,12 +1070,13 @@ def check_windows(executable, output, root=ROOT):
     return checked
 
 
-def assert_original_vector_borders(word_pdf, painted_pdf, label):
+def assert_original_vector_borders(word_pdf, painted_pdf, label, *, expected_empty=False):
     from compare_windows_borders import TOLERANCE_PT, compare as compare_borders
     require(TOLERANCE_PT == .375, 'Original vector border tolerance changed')
     results = compare_borders(word_pdf, painted_pdf)
     require(bool(results) and all(
-        page['word_rectangles'] > 0 and page['native_rectangles'] > 0
+        (page['word_rectangles'] == page['native_rectangles'] == 0
+         if expected_empty else page['word_rectangles'] > 0 and page['native_rectangles'] > 0)
         and page['word_uncovered_count'] == page['native_uncovered_count'] == 0
         for page in results), label + '/original-vector-borders: ' + repr(results))
     return results
