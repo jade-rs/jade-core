@@ -305,6 +305,7 @@ NUMBERING_LAYOUT_CASES = {
     'numbering-legal-format-matrix-mac',
     'numbering-table-header-mac',
     'numbering-table-nested-list-mac',
+    'numbering-table-matrix-mac',
     'numbering-textbox-full-matrix-mac',
 }
 HEADER_TAB_CASES = {'header-tab-overflow-short-mac', 'header-tab-overflow-long-mac'}
@@ -592,6 +593,7 @@ REQUIRED_CAPTURES = {
 
     'numbering-table-header-mac': '20261114T004334255Z-b74a0cd3',
     'numbering-table-nested-list-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-table-matrix-mac': '20261114T004334255Z-b74a0cd3',
 
     'header-tab-overflow-short-mac': '20261114T020256534Z-0729bfd7',
     'fixed-table-width-matrix-mac': '20261114T020447264Z-b8062685',

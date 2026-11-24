@@ -9130,6 +9130,9 @@ where
         let painter = self.host.painter();
         let context = &painter;
         context.set_font(TABLE_FONT);
+        // Table setup changes the painter directly after the paragraph prepass.
+        // Generated-number measurement and painting must select their face again.
+        self.reset_font_state();
         context.set_text_baseline("top");
         context.set_line_width(1.0);
         #[allow(deprecated)]
@@ -19340,6 +19343,46 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn table_setup_reselects_the_numbering_font_after_a_paragraph_prepass() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            let renderer = CanvasRenderer::with_host(
+                Box::new(super::super::recording_host::RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .unwrap();
+            let numbering_font = "16px 'Yu Mincho'";
+            // The prepass leaves this descriptor cached. Table setup then
+            // replaces the painter's font; an equal subsequent descriptor
+            // must still reach the host before measuring an unknown glyph.
+            TextMeasurer::measure_text(&renderer, "V", numbering_font).unwrap();
+            renderer.configure_table_context();
+            TextMeasurer::measure_text(&renderer, "V", numbering_font).unwrap();
+            let fonts: Vec<_> = painter
+                .ops()
+                .into_iter()
+                .filter_map(|op| match op {
+                    Op::SetFont(font) => Some(font),
+                    _ => None,
+                })
+                .collect();
+            assert_eq!(
+                fonts,
+                [numbering_font, TABLE_FONT, numbering_font],
+                "{platform:?}: table numbering must not use the table default font"
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn numbered_tables_keep_nested_markers_and_the_following_body_counter_on_both_platforms() {
         use jade_docx_layout::line_metrics::{
