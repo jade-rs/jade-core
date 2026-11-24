@@ -12,6 +12,33 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_numbering_originals_keep_each_word_version_and_physical_font_gate(self):
+        names = {
+            'numbering-alignment-matrix-mac',
+            'numbering-legal-format-matrix-mac',
+            'numbering-textbox-full-matrix-mac',
+            'numbering-table-header-mac',
+            'numbering-table-nested-list-mac',
+        }
+        registry = check.read_json(check.ROOT / check.INDEX)
+        cases = [r for r in registry['fixtures'] if r['mac_case'] in names]
+        self.assertEqual({r['mac_case'] for r in cases}, names)
+        self.assertEqual(names, check.NUMBERING_LAYOUT_CASES)
+        self.assertLessEqual(names, check.PHYSICAL_FONT_CASES)
+        for case in cases:
+            with self.subTest(case=case['mac_case']):
+                mac = check.read_json(check.checked_file(check.ROOT, case['mac_manifest']))
+                self.assertEqual(mac['reference']['version'], '16.114.4')
+                self.assertEqual(mac['reference']['platform'], 'mac')
+                self.assertEqual(len(case['windows']), 1)
+                windows = case['windows'][0]
+                self.assertEqual(windows['word_product_version'], '16.0.19127.20936')
+                self.assertEqual(windows['word_executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(windows['capture_id'], '20261114T004334255Z-b74a0cd3')
+                self.assertEqual(check.REQUIRED_CAPTURES[case['mac_case']], windows['capture_id'])
+                self.assertEqual(windows['font_source'], 'original-word-pdf')
+
     def test_preferred_saved_grids_keep_versioned_originals_fonts_and_borders(self):
         expected = {
             'probe-width-single-pct-2500-pct-2500': (3, 107),
@@ -123,6 +150,8 @@ class PlatformCoordinates(unittest.TestCase):
 }
         required |= {'probe-complex-font-metrics-thonburi',
                      'probe-complex-font-sweep-thonburi', 'probe-devanagari-line-box-devanagari', 'probe-mixed-sangam-matrix-240', 'probe-mixed-sangam-matrix-276'}
+        required |= {'numbering-textbox-full-matrix-mac', 'numbering-alignment-matrix-mac', 'numbering-legal-format-matrix-mac'}
+        required |= {'numbering-table-nested-list-mac', 'numbering-table-header-mac'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 

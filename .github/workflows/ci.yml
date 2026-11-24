@@ -414,6 +414,15 @@ jobs:
             target/platform-word-coordinates/probe-width-unequal-pct-2500-dxa-2000
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
+      - name: Upload versioned numbering coordinate comparisons
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-numbering-coordinate-results
+          path: |
+            target/platform-word-coordinates/numbering-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
       - name: Assert versioned Windows control-character coordinates and absence of extra ink
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_control_coordinates.py

@@ -8057,7 +8057,7 @@ pub fn numbered_paragraph_origin(
 }
 
 /// Numbered first-line text follows a space/nothing marker directly. When
-/// a tab-suffixed label overruns its text indent, Word for Mac advances to
+/// a tab-suffixed label overruns its text indent, Word advances to
 /// the next tab stop. The tab grid still starts at the containing margin.
 pub fn numbering_first_line_offset(
     body_start: f64,
@@ -8072,10 +8072,7 @@ pub fn numbering_first_line_offset(
     if matches!(suffix, Some("space" | "nothing")) {
         offset
     } else if offset > 0.0 {
-        let offset = if matches!(suffix, None | Some("tab"))
-            && !paragraph_style.bidi
-            && paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Mac
-        {
+        let offset = if matches!(suffix, None | Some("tab")) && !paragraph_style.bidi {
             // A paragraph stop overrides a list stop at the same position.
             // Keep raw clear stops until the two sets have been merged.
             let merged_tabs = tabs
@@ -13425,11 +13422,15 @@ mod float_exclusion_tests {
             assert_eq!(offset(80.0, 0.0, suffix, &style), -20.0);
             assert_eq!(offset(120.0, 0.0, suffix, &style), 20.0);
         }
-        for suffix in [None, Some("tab"), Some("unknown")] {
+        for suffix in [None, Some("tab")] {
             assert_eq!(offset(80.0, 3.0, suffix, &style), 3.0);
-            assert_eq!(offset(120.0, 3.0, suffix, &style), 20.0);
-            assert_eq!(offset(101.0, 3.0, suffix, &style), 3.0);
+            assert_eq!(offset(120.0, 3.0, suffix, &style), 44.0);
+            assert_eq!(offset(101.0, 3.0, suffix, &style), 44.0);
         }
+        assert_eq!(offset(120.0, 3.0, Some("unknown"), &style), 20.0);
+        style.bidi = true;
+        assert_eq!(offset(120.0, 3.0, Some("tab"), &style), 20.0);
+        style.bidi = false;
         style.word_platform = crate::line_metrics::WordLayoutPlatform::Mac;
         assert_eq!(offset(80.0, 3.0, Some("tab"), &style), 3.0);
         assert_eq!(offset(120.0, 0.0, Some("space"), &style), 20.0);
