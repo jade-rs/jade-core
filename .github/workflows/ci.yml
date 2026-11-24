@@ -250,6 +250,19 @@ jobs:
         run: |
           cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
           python3 scripts/word-oracle/check_mac_captured_source.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original
+      - name: Assert original Mac header-story coordinates and preserved Word versions
+        run: |
+          python3 -m unittest discover -s scripts/word-oracle -p test_mac_header_coordinates.py
+          python3 scripts/word-oracle/check_mac_header_coordinates.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory target/mac-header-originals
+      - name: Upload original Mac header-coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-header-original-coordinates
+          path: |
+            target/mac-header-originals
+            !target/mac-header-originals/**/fonts/**
+          if-no-files-found: ignore
       - name: Assert original Mac ZWNJ table coordinates
         run: |
           python3 scripts/word-oracle/test_zwnj_table_coordinates.py
@@ -412,6 +425,15 @@ jobs:
             target/platform-word-coordinates/probe-width-unequal-dxa-2400-dxa-2000
             target/platform-word-coordinates/probe-width-unequal-pct-2500-auto-0
             target/platform-word-coordinates/probe-width-unequal-pct-2500-dxa-2000
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows header-tab coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-header-tab-coordinates
+          path: |
+            target/platform-word-coordinates/header-tab-overflow-*
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload versioned numbering coordinate comparisons

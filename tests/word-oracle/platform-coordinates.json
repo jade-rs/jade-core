@@ -6977,6 +6977,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "header-tab-overflow-short-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/header-tab-overflow-short-mac/source.docx",
+        "sha256": "4fa200bd6280c49b2b0b545b360e038b96fd0f4d9d396dc7efceeb7e39ac4a3c"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/header-tab-overflow-short-mac/manifest.json",
+        "sha256": "be331583d32a80177fe068f60c202e2899bf8c2f27640d84c9a1a77bbc807f59"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020256534Z-0729bfd7",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020256534Z-0729bfd7.zip",
+            "sha256": "ac0e753c6aba42e0d7056a642dc2ba084460a7bbdd65c1ab363845f581394e87"
+          },
+          "capture_sha256": "da0ec543ae79cffee4d7e99d36de08e14e6c38f7ee8754c220584f953a045dcd",
+          "fixture": "ww14-header-tab-overflow-short-4fa200bd",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

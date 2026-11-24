@@ -152,6 +152,7 @@ class PlatformCoordinates(unittest.TestCase):
                      'probe-complex-font-sweep-thonburi', 'probe-devanagari-line-box-devanagari', 'probe-mixed-sangam-matrix-240', 'probe-mixed-sangam-matrix-276'}
         required |= {'numbering-textbox-full-matrix-mac', 'numbering-alignment-matrix-mac', 'numbering-legal-format-matrix-mac'}
         required |= {'numbering-table-nested-list-mac', 'numbering-table-header-mac'}
+        required |= {'header-tab-overflow-short-mac'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
