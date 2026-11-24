@@ -9077,12 +9077,10 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
 
                 let mut line_origin =
                     paragraph_style.line_base_x(base_x, lines.len()) + current_line_indent;
-                let tab_stop_cursor_width = balanced_tab_stop_cursor_width(
-                    current_width,
-                    &current_line_clusters,
-                    paragraph_style,
-                );
-                let cursor_x = line_origin + tab_stop_cursor_width;
+                // A tab follows the advances actually drawn before it.
+                // Inflating a balanced-SBCS prefix can skip the next stop and
+                // move a fitting header segment onto another line on Windows.
+                let cursor_x = line_origin + current_width;
                 // An absolute position tab goes to its own position, whatever
                 // the tab stops say.
                 let positional = paragraph_style
@@ -11018,42 +11016,6 @@ fn tab_segment_start_width(
         desired_width = current_width + default_tab_width.max(1.0);
     }
     desired_width
-}
-
-fn balanced_tab_stop_cursor_width(
-    current_width: f64,
-    current_line_clusters: &[InlineCluster],
-    paragraph_style: &ParagraphStyle,
-) -> f64 {
-    if !paragraph_style.enable_line_break_rules
-        || !paragraph_style
-            .east_asian_rules
-            .balance_single_byte_double_byte_width
-        // Word for Mac picks the stop from the drawn advances: its header
-        // `AAA…<tab>BBB…` keeps the B run at the next default stop.
-        || !crate::line_metrics::word_widens_balanced_single_byte_glyphs(
-            paragraph_style.word_platform,
-        )
-        || current_line_clusters.is_empty()
-        || current_line_clusters.iter().any(|cluster| {
-            cluster.kind != InlineClusterKind::Grapheme
-                || cluster.inline_object.is_some()
-                || !cluster.text.chars().all(|ch| ch.is_ascii_alphabetic())
-        })
-    {
-        return current_width;
-    }
-
-    // Word's compatibility mode uses a wider SBCS cursor when it selects the
-    // tab stop following a pure alphabetic line prefix. Keep ordinary glyph
-    // advances unchanged: widening them globally regresses mixed CJK/Latin
-    // paragraphs. Normalizing only the stop lookup also makes the decision
-    // stable when Yu Mincho falls back to a narrower Linux font.
-    let alphabetic_width = current_line_clusters
-        .iter()
-        .map(|cluster| cluster.width)
-        .sum::<f64>();
-    current_width + alphabetic_width * BALANCED_SBCS_EXTRA_RATIO
 }
 
 /// Finds Word's next tab stop past `cursor_x`.
@@ -22744,8 +22706,33 @@ mod tests {
             word_platform,
             ..ParagraphStyle::default()
         };
+        struct HeaderWidths(VariableWidthContext);
+        impl LineWrapContext for HeaderWidths {
+            type Error = ();
+
+            fn resolve_run_style(
+                &self,
+                properties: Option<&RunProperties>,
+            ) -> Result<Rc<ResolvedRunStyle>, Self::Error> {
+                self.0.resolve_run_style(properties)
+            }
+
+            fn measure_text(&self, text: &str, _font_descriptor: &str) -> Result<f64, Self::Error> {
+                // Retained Word header glyph advances: A is wider than B.
+                // A constant-width fake cannot distinguish 37 A's from 40 A's
+                // on the opposite sides of the seventh default tab stop.
+                Ok(text
+                    .chars()
+                    .map(|ch| match ch {
+                        'A' => 9.9,
+                        'B' => 9.64,
+                        _ => 14.0,
+                    })
+                    .sum())
+            }
+        }
         let lines = wrap_text_into_lines(
-            &VariableWidthContext::new(9.0, 14.0),
+            &HeaderWidths(VariableWidthContext::new(9.0, 14.0)),
             &text,
             &runs,
             0.0,
@@ -22771,12 +22758,12 @@ mod tests {
 
     #[test]
     fn header_tabbed_segment_reflows_together_at_the_declared_stop() {
-        for fixture in [
-            "header-tab-overflow-long.docx",
-            "header-tab-overflow-short.docx",
+        for platform in [
+            crate::line_metrics::WordLayoutPlatform::Windows,
+            crate::line_metrics::WordLayoutPlatform::Mac,
         ] {
-            let (text, lines) =
-                wrap_header_tab_fixture(fixture, crate::line_metrics::WordLayoutPlatform::Windows);
+            let fixture = "header-tab-overflow-long.docx";
+            let (text, lines) = wrap_header_tab_fixture(fixture, platform);
             let expected_first_line = text.split_once('\t').expect("fixture tab").0;
 
             assert_eq!(
@@ -22798,21 +22785,22 @@ mod tests {
     }
 
     #[test]
-    fn mac_header_tab_takes_the_next_default_stop_from_drawn_advances() {
-        // Word for Mac 16.113 (`header-tab-overflow-short`): the 37 A's end
-        // before a default stop, and the B run fits there on the same line.
-        let (text, lines) = wrap_header_tab_fixture(
-            "header-tab-overflow-short.docx",
+    fn both_word_platforms_keep_a_fitting_header_tab_at_the_next_drawn_stop() {
+        // Independent Mac Word16.114 and Windows Word16.0.19127.20936
+        // originals keep 37 A's and the following 18 B's on one line.
+        for platform in [
             crate::line_metrics::WordLayoutPlatform::Mac,
-        );
-        assert_eq!(wrapped_line_texts(&lines), vec![text.replace('\t', "")]);
-        let a_width = points_to_px(37.0 * 6.75);
-        let default_stop = points_to_px(6.0 * 42.0);
-        assert!(
-            (lines[0].segments[1].leading_width - (default_stop - a_width)).abs() < 1e-6,
-            "B run starts at the sixth default stop: actual={}",
-            lines[0].segments[1].leading_width,
-        );
+            crate::line_metrics::WordLayoutPlatform::Windows,
+        ] {
+            let (text, lines) = wrap_header_tab_fixture("header-tab-overflow-short.docx", platform);
+            assert_eq!(wrapped_line_texts(&lines), vec![text.replace('\t', "")]);
+            let a_width = 37.0 * 9.9;
+            let default_stop = points_to_px(7.0 * 42.0);
+            assert!(
+                (lines[0].segments[1].leading_width - (default_stop - a_width)).abs() < 1e-6,
+                "{platform:?}: B run starts at the seventh default stop"
+            );
+        }
     }
 
     #[test]

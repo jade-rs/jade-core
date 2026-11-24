@@ -307,7 +307,8 @@ NUMBERING_LAYOUT_CASES = {
     'numbering-table-nested-list-mac',
     'numbering-textbox-full-matrix-mac',
 }
-PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES
+HEADER_TAB_CASES = {'header-tab-overflow-short-mac', 'header-tab-overflow-long-mac'}
+PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES
 REQUIRED_CAPTURES = {
     'probe-mixed-sangam-matrix-240': '20261114T004434269Z-e27596ca',
     'probe-mixed-sangam-matrix-276': '20261114T004434269Z-e27596ca',
@@ -590,6 +591,8 @@ REQUIRED_CAPTURES = {
 
     'numbering-table-header-mac': '20261114T004334255Z-b74a0cd3',
     'numbering-table-nested-list-mac': '20261114T004334255Z-b74a0cd3',
+
+    'header-tab-overflow-short-mac': '20261114T020256534Z-0729bfd7',
 }
 
 # These original inputs have distinct screen and print origins in Windows
