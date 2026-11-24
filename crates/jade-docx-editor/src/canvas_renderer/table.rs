@@ -3732,6 +3732,7 @@ where
             && compatibility_mode.is_some_and(|mode| mode < 15);
         let alignment_widths = ((word_mac_column_table
             || windows_legacy_fixed_header_alignment
+            || windows_legacy_fixed_percentage_table
             || windows_legacy_autofit_column_table)
             && !self.pageless_mode
             && self.paragraph_frame_column.is_none()
@@ -31806,5 +31807,104 @@ mod tests {
             .position(|op| matches!(op, Op::FillRect(_, _, width, height) if *width == 40.0 && *height == 20.0))
             .expect("the picture is drawn");
         assert!(picture < text);
+    }
+    #[test]
+    fn legacy_fixed_percentage_columns_match_each_platform_word_origins() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // The retained two- and three-column fixed-table captures keep their
+        // independent Windows and Mac header origins, including continuation pages.
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for (columns, start_column, row_count, windows, mac) in [
+                (2, 2, 9, vec![346.15, 187.1], vec![346.08, 187.2]),
+                (
+                    3,
+                    1,
+                    25,
+                    vec![140.66, 257.21, 416.23, 97.824, 214.37],
+                    vec![140.64, 257.28, 416.16, 97.68, 214.32],
+                ),
+            ] {
+                let column_xml = if columns == 2 {
+                    r#"<w:col w:w="2700" w:space="480"/><w:col w:w="5846" w:space="0"/>"#
+                } else {
+                    r#"<w:col w:w="1850" w:space="480"/><w:col w:w="2700" w:space="480"/><w:col w:w="3566" w:space="0"/>"#
+                };
+                let column_break = if start_column == 2 {
+                    r#"<w:p><w:r><w:br w:type="column"/></w:r></w:p>"#
+                } else {
+                    ""
+                };
+                let rows = (0..row_count).map(|row| {
+                    let header = if row == 0 { "<w:tblHeader/>" } else { "" };
+                    // Use only the first header glyph; its left-aligned origin
+                    // is independent of the recording backend's text metrics.
+                    let text = if row == 0 { "H" } else { "Row 01 has several words to wrap" };
+                    format!(r#"<w:tr><w:trPr>{header}<w:cantSplit/><w:trHeight w:val="840" w:hRule="exact"/></w:trPr>
+                        <w:tc><w:tcPr><w:tcW w:type="pct" w:w="5000"/></w:tcPr>
+                        <w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="22"/>
+                        </w:rPr><w:t>{text}</w:t></w:r></w:p></w:tc></w:tr>"#)
+                }).collect::<String>();
+                let xml = format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+                    <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact" w:after="0"/></w:pPr>
+                    <w:r><w:t>Lead paragraph</w:t></w:r></w:p>{column_break}
+                    <w:tbl><w:tblPr><w:tblW w:type="pct" w:w="2500"/><w:jc w:val="center"/>
+                    <w:tblCellMar><w:left w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar>
+                    <w:tblBorders><w:top w:val="single" w:sz="8"/><w:left w:val="single" w:sz="8"/>
+                    <w:bottom w:val="single" w:sz="8"/><w:right w:val="single" w:sz="8"/>
+                    <w:insideH w:val="single" w:sz="8"/><w:insideV w:val="single" w:sz="8"/></w:tblBorders>
+                    <w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="800"/></w:tblGrid>{rows}</w:tbl>
+                    <w:sectPr><w:pgSz w:w="11906" w:h="8000"/>
+                    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+                    <w:cols w:num="{columns}" w:space="480" w:equalWidth="0">{column_xml}</w:cols></w:sectPr></w:body></w:document>"#
+                );
+                let mut document = jade_docx_reader::DocumentParser::new()
+                    .parse_document_xml(&xml)
+                    .unwrap();
+                document.east_asian_line_breaking.compatibility_mode = Some(14);
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                renderer
+                    .render(&document, &crate::Options::default())
+                    .unwrap();
+                let headers = painter
+                    .ops()
+                    .into_iter()
+                    .filter_map(|op| match op {
+                        Op::FillText(text, x, _) if text == "H" => Some(x * 0.75),
+                        Op::FillShapedText(text, clusters, _) if text == "H" => {
+                            clusters.first().map(|(_, x)| x * 0.75)
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                let expected = if platform == WordLayoutPlatform::Mac {
+                    mac
+                } else {
+                    windows
+                };
+                assert_eq!(
+                    headers.len(),
+                    expected.len(),
+                    "{platform:?}/{columns}-columns/{start_column}"
+                );
+                for (actual, original) in headers.into_iter().zip(expected) {
+                    assert!((actual - original).abs() <= 0.375,
+                        "{platform:?}/start-column-{start_column}: fixed percentage header {actual}, Word {original}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
     }
 }
