@@ -11429,6 +11429,21 @@ fn word_constrained_fixed_grid(
                 }
             }
         }
+        // A single fixed row carries the current cell preferences even when
+        // tblGrid still describes an older layout. Windows scales those cell
+        // widths to tblW; using the stale grid can change both wrapping and
+        // the height of following paragraphs.
+        if column_count > 1 {
+            if let [row] = table.rows.as_slice() {
+                let mut widths = absolute_fixed_row_widths(row, column_count)?;
+                let budget = absolute_table_width(table)?;
+                let total = widths.iter().sum::<f64>();
+                for width in &mut widths {
+                    *width *= budget / total;
+                }
+                return Some(widths);
+            }
+        }
         // The original Windows two-row controls distribute conflicting
         // preferred cell widths within tblW, with either a narrow or a wide
         // serialized grid. Keep the single-row/column Windows rules intact.

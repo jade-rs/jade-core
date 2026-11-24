@@ -7002,6 +7002,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "fixed-table-width-matrix-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/fixed-table-width-matrix-mac/source.docx",
+        "sha256": "5d53094641db91deb2ccee705807464bb889a8da0ae543ab96510d3941c8530d"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/fixed-table-width-matrix-mac/manifest.json",
+        "sha256": "dda853ca99f2fa98cfb937f4980a65fbacc67760ca0addfc431fff91e1eefdce"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020447264Z-b8062685",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020447264Z-b8062685.zip",
+            "sha256": "f00dee04e8a04a3c4657216331496987c03d470c9ed867f555e8794f5bd86295"
+          },
+          "capture_sha256": "6a05824267367ff8460ee3b4ed7e37a3637c98afddeee7ea9ab6c7b1712787a0",
+          "fixture": "ww14-fixed-table-width-matrix-mac-5d530946",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
