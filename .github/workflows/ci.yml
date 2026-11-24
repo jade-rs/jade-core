@@ -260,6 +260,15 @@ jobs:
             crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-fixed
             !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
           if-no-files-found: ignore
+      - name: Upload original Mac unclipped merged-column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-unclipped-merged-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/unclipped-table-layout-originals
+            !crates/jade-docx-native-render/target/word-mac-coordinates/**/fonts/**
+          if-no-files-found: ignore
       - name: Upload original Mac visible-autofit column coordinates
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -486,6 +495,15 @@ jobs:
           path: |
             target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-fixed
             target/platform-word-coordinates/probe-unequal-variant-three-24-fixed
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows RTL merged-column coordinates and rules
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-rtl-merged-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-*
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload versioned Windows fraction coordinates and vector rules
