@@ -7777,6 +7777,81 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1/source.docx",
+        "sha256": "8cebdc4679e907312a0afb64461d31fe0275cb8856dce54702107a2ab7cdb45b"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1/manifest.json",
+        "sha256": "442bc9ee47b3191435d75314d0bb345c11f91ef626fe5944b6e68d30d53bf51c"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020625597Z-2761cea8",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020625597Z-2761cea8.zip",
+            "sha256": "5768e075be61a490c09f73aa9f4908091cdf7683c00e5222f185b53de8f51808"
+          },
+          "capture_sha256": "9cbe66c7430c4394456c312064515d62add0cf7b80d128ee306e3601ba4ff2b8",
+          "fixture": "ww14-probe-table-flow-unequal-continuous-vertical-mer-8cebdc46",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2/source.docx",
+        "sha256": "27199ed59be287089d55a4a3bc3709493a9689046914a8946b7421aa6bddca2c"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2/manifest.json",
+        "sha256": "3f8081ccd60785ad2cf774c2a3de57ec569b60840331a2463e6e08a520824c20"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020627365Z-1088d320",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020627365Z-1088d320.zip",
+            "sha256": "782ce2647c0880b276d62769084e939c83c0a19cdb4ffac1c2d4fa0c5ddee7e9"
+          },
+          "capture_sha256": "053fc673b5d3912b076eceb059278a5591adc5aea8de5f8bbe10477866f07f6b",
+          "fixture": "ww14-probe-table-flow-unequal-continuous-vertical-mer-27199ed5",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3/source.docx",
+        "sha256": "eb733532cb1107ab112234789cd827f93a142a5254a23fd41a5af922fc76a445"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3/manifest.json",
+        "sha256": "5dd8d2cc552073b0847fb352ddf158fea59aa780f03aefc73044852185318863"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T020631298Z-7877fbf1",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T020631298Z-7877fbf1.zip",
+            "sha256": "f10bcb99eedb926b68ce245e5a3f375fc4c39460b1444c6948da963a42867998"
+          },
+          "capture_sha256": "92dd2c2315d9f286582d22679dc420c4142276a9676e0858dc0994bd34b1b50c",
+          "fixture": "ww14-probe-table-flow-unequal-continuous-vertical-mer-eb733532",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

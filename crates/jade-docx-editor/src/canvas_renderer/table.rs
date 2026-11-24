@@ -2984,7 +2984,9 @@ where
             && percentage_width
             && !table.bidi_visual
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
-        let rtl_merged_percentage_grid = word_mac_column_table
+        // Word14-compatible merged percentage grids share the legacy RTL
+        // frame on Windows and Mac; keep all existing geometry guards.
+        let rtl_merged_percentage_grid = use_column_frame
             && percentage_width
             && matches!(self.document_east_asian_rules.compatibility_mode, Some(14))
             && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
@@ -3011,6 +3013,9 @@ where
                         .iter()
                         .any(|cell| matches!(cell.vertical_merge.as_deref(), Some("continue")))
             });
+        let windows_legacy_rtl_merged_percentage_grid = rtl_merged_percentage_grid
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
         // Legacy Windows exact-height autofit tables use the same section
         // sizing/alignment frames as their independent Mac originals. Only
         // geometry is shared here; Windows fonts and line metrics stay intact.
@@ -3170,6 +3175,7 @@ where
         let width_for_sizing = if rtl_spaced_auto_grid.is_some() {
             last_column_width
         } else if (word_mac_column_table
+            || windows_legacy_rtl_merged_percentage_grid
             || windows_legacy_fixed_percentage_table
             || windows_legacy_rtl_percentage_header_grid
             || windows_legacy_autofit_column_table)
@@ -3186,6 +3192,7 @@ where
         let sizing_compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let section_frame_width = |width| {
             if windows_legacy_rtl_percentage_header_grid
+                || windows_legacy_rtl_merged_percentage_grid
                 || windows_legacy_autofit_column_table
                 || windows_legacy_fixed_percentage_table
             {
@@ -3207,6 +3214,7 @@ where
             && !percentage_width
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
         if word_mac_column_table
+            || windows_legacy_rtl_merged_percentage_grid
             || windows_legacy_fixed_percentage_table
             || windows_fixed_preferred_width
             || windows_legacy_rtl_percentage_header_grid
@@ -3731,6 +3739,7 @@ where
                 || (windows_fixed_preferred_resized_grid && self.column_layout.count() == 3))
             && compatibility_mode.is_some_and(|mode| mode < 15);
         let alignment_widths = ((word_mac_column_table
+            || rtl_merged_percentage_grid
             || windows_legacy_fixed_header_alignment
             || windows_legacy_fixed_percentage_table
             || windows_legacy_autofit_column_table)
@@ -9447,16 +9456,36 @@ where
             return Ok(());
         }
 
+        // A continuation uses the same Windows collapsed border bands as
+        // an ordinary cell: rules start at the stored row boundary and join
+        // the vertical edges. Mac retains its existing centre-line geometry.
+        let windows_collapsed = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !cell.has_separate_borders();
+        let (horizontal_x, horizontal_width) = if windows_collapsed {
+            let left = visible_border_width(&cell.border_left) * 0.5;
+            let right = visible_border_width(&cell.border_right) * 0.5;
+            (x - left, width + left + right)
+        } else {
+            (x, width)
+        };
+        let vertical_bottom = y
+            + height
+            + if windows_collapsed && sides.bottom {
+                cell.bottom_border_extent()
+            } else {
+                0.0
+            };
         context.save();
         if sides.top {
             self.draw_horizontal_cell_border(
                 context,
-                x,
+                horizontal_x,
                 y,
-                width,
+                horizontal_width,
                 &cell.border_top,
                 &cell.border_top_segments,
-                None,
+                windows_collapsed.then_some(y),
                 super::border_styles::BorderSide::Top,
             )?;
         }
@@ -9465,26 +9494,26 @@ where
             x + width,
             y,
             x + width,
-            y + height,
+            vertical_bottom,
             &cell.border_right,
             super::border_styles::BorderSide::Right,
         )?;
         if sides.bottom {
             self.draw_horizontal_cell_border(
                 context,
-                x,
+                horizontal_x,
                 y + height,
-                width,
+                horizontal_width,
                 &cell.border_bottom,
                 &cell.border_bottom_segments,
-                None,
+                windows_collapsed.then_some(y + height),
                 super::border_styles::BorderSide::Bottom,
             )?;
         }
         self.draw_border_side(
             context,
             x,
-            y + height,
+            vertical_bottom,
             x,
             y,
             &cell.border_left,
@@ -31951,5 +31980,63 @@ mod tests {
             }
         }
         set_word_layout_platform(previous);
+    }
+    #[test]
+    fn rtl_merged_percentage_originals_share_the_same_column_frame() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        // Original Word packages preserve their unequal RTL section, saved
+        // grid, vertical merges and style defaults. With identical mock font
+        // measurements both platform modes must use the same table frame.
+        // Absolute genuine Word glyph/font/rule comparisons run in oracle CI.
+        for bytes in [
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1/source.docx")).as_slice(),
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2/source.docx")).as_slice(),
+            include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3/source.docx")).as_slice(),
+        ] {
+            let mut frames = Vec::new();
+            for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+                set_word_layout_platform(platform);
+                let model = futures::executor::block_on(
+                    crate::word_document::WordDocument::load_for_initial_render(
+                        bytes, &crate::Options::default(),
+                    ),
+                ).unwrap();
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }), false,
+                ).unwrap();
+                renderer.set_style_context(model.styles_part.clone().map(std::rc::Rc::new), None);
+                renderer.render(model.document.as_deref().unwrap(), &crate::Options::default()).unwrap();
+                assert_eq!(renderer.table_layouts.len(), 1);
+                let widths = renderer.table_layouts[0].column_widths.clone();
+                assert_eq!(widths.len(), 2);
+                assert!(widths.iter().all(|width| *width > 0.0));
+                let first_g = painter.ops().into_iter().find_map(|op| match op {
+                    Op::FillText(text, x, _) if text.starts_with('G') => Some(x),
+                    Op::FillShapedText(text, clusters, _) if text.starts_with('G') => {
+                        clusters.first().map(|(_, x)| *x)
+                    }
+                    _ => None,
+                }).expect("original table G marker");
+                frames.push((widths, first_g));
+            }
+            for (mac, windows) in frames[0].0.iter().zip(&frames[1].0) {
+                assert!((mac - windows).abs() * 0.75 <= 0.375,
+                    "RTL merged original grid: Mac {mac}, Windows {windows}");
+            }
+            assert!((frames[0].1 - frames[1].1).abs() * 0.75 <= 0.375,
+                "RTL merged original anchor: Mac {}, Windows {}", frames[0].1, frames[1].1);
+        }
     }
 }

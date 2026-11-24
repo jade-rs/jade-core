@@ -743,6 +743,25 @@ MATH_LAYOUT_ORIGINALS.update({'probe-math-fraction-first-vs-prev': ('b4a18c1c87e
                                                     1,
                                                     284)})
 
+# Historical Mac traces include clipped glyph origins. Preserve that
+# projection explicitly; these are additional logical gates, while all161
+# existing shared originals retain their layout and painted-PDF assertions.
+UNCLIPPED_TABLE_LAYOUT_ORIGINALS = {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1': ('8cebdc4679e907312a0afb64461d31fe0275cb8856dce54702107a2ab7cdb45b',
+                                                                                                 '442bc9ee47b3191435d75314d0bb345c11f91ef626fe5944b6e68d30d53bf51c',
+                                                                                                 '6dc851dd8995c8741927235b72338d52410b89822576258044be10ce6076bee3',
+                                                                                                 2,
+                                                                                                 526),
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2': ('27199ed59be287089d55a4a3bc3709493a9689046914a8946b7421aa6bddca2c',
+                                                                                                 '3f8081ccd60785ad2cf774c2a3de57ec569b60840331a2463e6e08a520824c20',
+                                                                                                 'e138360f1423eb47d45d2f7b3c7691ed72ad0ea4b233a3d6d5bb9e23b93f288d',
+                                                                                                 2,
+                                                                                                 518),
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3': ('eb733532cb1107ab112234789cd827f93a142a5254a23fd41a5af922fc76a445',
+                                                                                                 '5dd8d2cc552073b0847fb352ddf158fea59aa780f03aefc73044852185318863',
+                                                                                                 '6f93ac0eb146ab8a3d40b79749d1950f904a48fb607150f64a4fdc1e5e8265c9',
+                                                                                                 2,
+                                                                                                 510)}
+
 THAI_LAYOUT_ORIGINALS = {'probe-complex-font-metrics-thonburi': ['a3624b218add7ffde685a1e84b699450711b3deb934e8d108a3540539ba90635',
                                          'ade3d196e9a967d74a593ca5b6e4880fb91b536d19163c732810c1ef88607f3c',
                                          'ad1889753120033bd90413673b1c844210d092b16285b8a379c47771b4f0e33f',
@@ -910,6 +929,48 @@ def check_thai_layout_originals(executable, output, root=ROOT):
     return results
 
 
+def check_unclipped_table_layout_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(
+            root, UNCLIPPED_TABLE_LAYOUT_ORIGINALS):
+        require('includes clipped text origins' in manifest['reference'].get('extractor', '')
+                and manifest.get('capturePaintedGlyphs')
+                and not manifest.get('clipPaintedGlyphs'),
+                name + ': original unclipped projection changed')
+        archive, capture, document, _ = archive_reference(root, case, case['windows'][0])
+        target = output/name
+        target.mkdir()
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': original font provider PDF changed')
+        provider = target/'original-Windows-font-provider.pdf'
+        provider.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(provider, fonts)
+        actual_file = target/'native.json'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac',
+                        str(actual_file.with_suffix('.pdf')), '--unclipped-tables',
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': unclipped Mac original coverage changed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=case['windows'][0]['archive'],
+                            glyphs=glyphs, page_count=expected['page_count'],
+                            original_projection='unclipped-logical',
+                            painted_PDF_reference_available=False))
+    require(len(results) == 3 and sum(r['glyphs'] for r in results) == 1554,
+            'Unclipped Mac table original coverage changed')
+    print('3 genuine unclipped Mac table originals1554: logical layout PASS', flush=True)
+    return results
+
+
 def require_mac_host(required):
     require(not required or sys.platform == 'darwin', 'Captured-original CI requires macOS')
 
@@ -981,13 +1042,15 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
     shared_results = check_shared_originals(executable, output/'shared-originals', root)
     math_results = check_math_layout_originals(executable, output/'math-layout-originals', root)
     thai_results = check_thai_layout_originals(executable, output/'thai-layout-originals', root)
+    unclipped_results = check_unclipped_table_layout_originals(
+        executable, output/'unclipped-table-layout-originals', root)
     result = dict(host=sys.platform,require_macos=require_macos,Mac_Word_version=raw['word_version'],
                   Mac_Word_build=raw['word_build'],Mac_capture_reference_sha256=REFERENCE_SHA256,
                   font_program_provider_Windows_Word=capture['word'],font_program_provider_archive=provider['capture'],
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
-                  thai_layout_originals=thai_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 161 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. 24 math originals additionally assert7755 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 161 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 24 math originals additionally assert7755 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

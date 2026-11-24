@@ -12,6 +12,21 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_rtl_merged_originals_require_each_word_build_fonts_and_vector_rules(self):
+        self.assertEqual(len(check.RTL_MERGED_PERCENTAGE_CASES), 3)
+        self.assertLessEqual(check.RTL_MERGED_PERCENTAGE_CASES, check.PHYSICAL_FONT_CASES)
+        rows = [r for r in check.verify() if r[0] in check.RTL_MERGED_PERCENTAGE_CASES]
+        self.assertEqual({r[0] for r in rows}, check.RTL_MERGED_PERCENTAGE_CASES)
+        for name, source, archive, document, drawing, font_source in rows:
+            with self.subTest(case=name), ZipFile(archive) as bundle:
+                capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                    '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(check.REQUIRED_CAPTURES[name], capture['capture_id'])
+                self.assertEqual(font_source, 'original-word-pdf')
+                self.assertNotIn(name, check.BORDERLESS_GRID_CASES | check.BORDERLESS_MATH_CASES)
+
     def test_fraction_originals_keep_word_build_font_and_vector_assertions(self):
         names = check.MATH_FRACTION_RULE_CASES | check.BORDERLESS_MATH_CASES
         self.assertEqual(len(names), 20)
@@ -239,6 +254,9 @@ class PlatformCoordinates(unittest.TestCase):
          'probe-math-repeat-fraction-40',
          'probe-math-standalone-fractions-12',
          'probe-math-standalone-fractions-explicit-sizes'}
+        required |= {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
+         'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
+         'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -806,7 +824,9 @@ class PlatformCoordinates(unittest.TestCase):
  'probe-math-repeat-fraction-36',
  'probe-math-repeat-fraction-40',
  'probe-math-standalone-fractions-12',
- 'probe-math-standalone-fractions-explicit-sizes'})
+ 'probe-math-standalone-fractions-explicit-sizes'} | {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word

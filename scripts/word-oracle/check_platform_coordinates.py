@@ -338,7 +338,15 @@ BORDERLESS_MATH_CASES = {'probe-math-fraction-first-vs-prev',
  'probe-math-repeat-fraction-36',
  'probe-math-repeat-fraction-40'}
 PHYSICAL_FONT_CASES |= MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES
+RTL_MERGED_PERCENTAGE_CASES = {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
+PHYSICAL_FONT_CASES |= RTL_MERGED_PERCENTAGE_CASES
 REQUIRED_CAPTURES = {
+    'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1': '20261114T020625597Z-2761cea8',
+    'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2': '20261114T020627365Z-1088d320',
+    'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3': '20261114T020631298Z-7877fbf1',
+
     'probe-math-fraction-first-vs-prev': '20261114T004417585Z-59a68986',
     'probe-math-fraction-larger-neighbors': '20261114T004417585Z-59a68986',
     'probe-math-fraction-leading': '20261114T004417585Z-59a68986',
@@ -1097,7 +1105,7 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
-        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES:
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES:
             borders = assert_original_vector_borders(
                 original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES)
             proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
