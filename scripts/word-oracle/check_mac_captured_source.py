@@ -603,11 +603,12 @@ SHARED_ORIGINALS = {
 
     'numbering-table-header-mac': ('9721cf7b8de1056124b3e851ea3173aacf92480ebbc364c7c320819c7044f43f', 'f44df7c386a1c8db1a52e1e1e8bfc99d4b3f5e4d30a43fef6fa955d2405d5c09', 'a2e007eadcfe5e6a49c8023fbbfe307ca7eb2019f9e056abd23cab3f70eb44b5', 2, 598),
     'numbering-table-nested-list-mac': ('a787347823b95e7a7d75fc6eb1fc998a3577ee9ddbcd7ee00fc9d99e6ff3d39a', 'a3ab1ce3674cd25ae4e58c77b94a449b8eee17ceab4d7ca3ad520a412b6dc626', 'b763cbae4f92d57bd8c26e2e5a8eff9f41ebb9e216146af01cfc8a02a625d6a7', 1, 450),
+    'fixed-table-width-matrix-mac': ('5d53094641db91deb2ccee705807464bb889a8da0ae543ab96510d3941c8530d', 'dda853ca99f2fa98cfb937f4980a65fbacc67760ca0addfc431fff91e1eefdce', 'b6bf0a5bf399ec7c521ebbbef466221731164c07e14c7ca09e9bf214155943db', 8, 752),
 }
 
 
 # These existing Mac math originals retain outline-only PDF text output.
-# Assert their genuine UI origins independently; the 150 full PDF gates above
+# Assert their genuine UI origins independently; the 151 full PDF gates above
 # remain mandatory. Windows fixes must preserve these Mac layout coordinates.
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
@@ -738,9 +739,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 150 and sum(r['glyphs'] for r in results) == 48481,
+    require(len(results) == 151 and sum(r['glyphs'] for r in results) == 49233,
             'Shared Mac original coverage changed')
-    print('150 shared Mac originals48481: layout and painted-PDF PASS', flush=True)
+    print('151 shared Mac originals49233: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -890,7 +891,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 150 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 151 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Seven math originals additionally assert5959 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result
