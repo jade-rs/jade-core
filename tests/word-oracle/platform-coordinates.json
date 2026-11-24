@@ -7027,6 +7027,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "numbering-table-matrix-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-table-matrix-mac/source.docx",
+        "sha256": "0a71ba6e7f2949f1e9cd3731523fcd5f6b1c678fe934abdb40dccfdcf22b00e8"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-table-matrix-mac/manifest.json",
+        "sha256": "7e32ff9650d2dd66d6b0ca332465b52402df30f695c18e8bfeeb395bb59dabe5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-numbering-table-matrix-mac-0a71ba6e",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

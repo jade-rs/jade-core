@@ -250,6 +250,15 @@ jobs:
         run: |
           cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
           python3 scripts/word-oracle/check_mac_captured_source.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original
+      - name: Upload original Mac table-numbering matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-table-numbering-matrix-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/numbering-table-matrix-mac
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
       - name: Upload original Mac fixed-table matrix coordinates
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -434,6 +443,15 @@ jobs:
             target/platform-word-coordinates/probe-width-unequal-dxa-2400-dxa-2000
             target/platform-word-coordinates/probe-width-unequal-pct-2500-auto-0
             target/platform-word-coordinates/probe-width-unequal-pct-2500-dxa-2000
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows table-numbering matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-table-numbering-matrix-coordinates
+          path: |
+            target/platform-word-coordinates/numbering-table-matrix-mac
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload versioned Windows fixed-table matrix coordinates

@@ -19,6 +19,7 @@ class PlatformCoordinates(unittest.TestCase):
             'numbering-textbox-full-matrix-mac',
             'numbering-table-header-mac',
             'numbering-table-nested-list-mac',
+            'numbering-table-matrix-mac',
         }
         registry = check.read_json(check.ROOT / check.INDEX)
         cases = [r for r in registry['fixtures'] if r['mac_case'] in names]
@@ -151,7 +152,7 @@ class PlatformCoordinates(unittest.TestCase):
         required |= {'probe-complex-font-metrics-thonburi',
                      'probe-complex-font-sweep-thonburi', 'probe-devanagari-line-box-devanagari', 'probe-mixed-sangam-matrix-240', 'probe-mixed-sangam-matrix-276'}
         required |= {'numbering-textbox-full-matrix-mac', 'numbering-alignment-matrix-mac', 'numbering-legal-format-matrix-mac'}
-        required |= {'numbering-table-nested-list-mac', 'numbering-table-header-mac'}
+        required |= {'numbering-table-nested-list-mac', 'numbering-table-header-mac', 'numbering-table-matrix-mac'}
         required |= {'header-tab-overflow-short-mac'}
         required.add('fixed-table-width-matrix-mac')
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
