@@ -310,8 +310,11 @@ NUMBERING_LAYOUT_CASES = {
 }
 HEADER_TAB_CASES = {'header-tab-overflow-short-mac', 'header-tab-overflow-long-mac'}
 FIXED_WIDTH_MATRIX_CASES = {'fixed-table-width-matrix-mac'}
-PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES
+LEGACY_AUTOMATIC_GRID_CASES = {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
+PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES | LEGACY_AUTOMATIC_GRID_CASES
 REQUIRED_CAPTURES = {
+    'probe-table-flow-unequal-automatic-grid-start-column-1': '20261114T004450252Z-ac1d5d7d',
+    'probe-table-flow-unequal-automatic-grid-start-column-2': '20261114T004450252Z-ac1d5d7d',
     'probe-mixed-sangam-matrix-240': '20261114T004434269Z-e27596ca',
     'probe-mixed-sangam-matrix-276': '20261114T004434269Z-e27596ca',
 

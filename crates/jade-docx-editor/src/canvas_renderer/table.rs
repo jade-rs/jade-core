@@ -3035,7 +3035,16 @@ where
                 && uniform_single_column_cell_percentage(table).is_some())
                 || (centered_table
                     && (percentage_width || absolute_table_width(table).is_some())
-                    && exact_single_column_saved_grid(table, column_count)))
+                    && (exact_single_column_saved_grid(table, column_count)
+                        || (percentage_width
+                            && table.columns.is_empty()
+                            && table.rows.iter().all(|row| {
+                                row.cells.iter().all(|cell| {
+                                    cell.style.get("width").is_none_or(|width| {
+                                        width.trim().eq_ignore_ascii_case("auto")
+                                    })
+                                })
+                            })))))
             && table.rows.iter().all(|row| {
                 row.height_rule == Some(TableRowHeightRule::Exact)
                     && row.height.is_some()
@@ -19343,6 +19352,90 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn legacy_automatic_column_grids_match_each_platform_word_origins() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // Independent retained Word captures of the two automatic-grid
+        // fixtures. Windows16.0.19127.20936 and the Mac originals each keep
+        // their own three repeated-header origins, including the next page.
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            for (start_column, windows, mac) in [
+                (1, [187.1, 346.15, 108.5], [187.2, 346.08, 108.48]),
+                (2, [346.15, 187.1, 346.15], [346.08, 187.2, 346.08]),
+            ] {
+                let column_break = if start_column == 2 {
+                    r#"<w:p><w:r><w:br w:type="column"/></w:r></w:p>"#
+                } else {
+                    ""
+                };
+                let rows = (0..13).map(|row| {
+                    let header = if row == 0 { "<w:tblHeader/>" } else { "" };
+                    // Use only the first header glyph; its left-aligned origin
+                    // is independent of the recording backend's text metrics.
+                    let text = if row == 0 { "H" } else { "Row 01 has several words to wrap" };
+                    format!(r#"<w:tr><w:trPr>{header}<w:trHeight w:val="840" w:hRule="exact"/></w:trPr>
+                        <w:tc><w:tcPr><w:tcW w:type="auto" w:w="0"/></w:tcPr>
+                        <w:p><w:pPr><w:spacing w:after="0"/></w:pPr><w:r><w:rPr>
+                        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="22"/>
+                        </w:rPr><w:t>{text}</w:t></w:r></w:p></w:tc></w:tr>"#)
+                }).collect::<String>();
+                let xml = format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+                    <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact" w:after="0"/></w:pPr>
+                    <w:r><w:t>Lead paragraph</w:t></w:r></w:p>{column_break}
+                    <w:tbl><w:tblPr><w:tblW w:type="pct" w:w="2500"/><w:jc w:val="center"/>
+                    <w:tblCellMar><w:left w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar>
+                    <w:tblLayout w:type="autofit"/></w:tblPr><w:tblGrid/>{rows}</w:tbl>
+                    <w:sectPr><w:pgSz w:w="11906" w:h="8000"/>
+                    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+                    <w:cols w:num="2" w:space="480" w:equalWidth="0"><w:col w:w="2700" w:space="480"/>
+                    <w:col w:w="5846" w:space="0"/></w:cols></w:sectPr></w:body></w:document>"#
+                );
+                let mut document = jade_docx_reader::DocumentParser::new()
+                    .parse_document_xml(&xml)
+                    .unwrap();
+                document.east_asian_line_breaking.compatibility_mode = Some(14);
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                renderer
+                    .render(&document, &crate::Options::default())
+                    .unwrap();
+                let headers = painter
+                    .ops()
+                    .into_iter()
+                    .filter_map(|op| match op {
+                        Op::FillText(text, x, _) if text == "H" => Some(x * 0.75),
+                        Op::FillShapedText(text, clusters, _) if text == "H" => {
+                            clusters.first().map(|(_, x)| x * 0.75)
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                let expected = if platform == WordLayoutPlatform::Mac {
+                    mac
+                } else {
+                    windows
+                };
+                assert_eq!(headers.len(), expected.len(), "{platform:?}/{start_column}");
+                for (actual, original) in headers.into_iter().zip(expected) {
+                    assert!((actual - original).abs() <= 0.375,
+                        "{platform:?}/start-column-{start_column}: automatic grid header {actual}, Word {original}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn table_setup_reselects_the_numbering_font_after_a_paragraph_prepass() {
         use jade_docx_layout::line_metrics::{

@@ -7052,6 +7052,56 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-start-column-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-start-column-1/source.docx",
+        "sha256": "912db14b4123e131b34cf6501b98c8d767adc5e51d5b0bd7d440d75a52d316f8"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-start-column-1/manifest.json",
+        "sha256": "11636e9c7f1573922b7495d922cea7a1b4cea0d25da24c114e61c95bb81bb8cc"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-start-co-912db14b",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-table-flow-unequal-automatic-grid-start-column-2",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-start-column-2/source.docx",
+        "sha256": "0628b15210382818608bccfb8f53ea556bd3133552eb1304be5a294437bd3336"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-table-flow-unequal-automatic-grid-start-column-2/manifest.json",
+        "sha256": "ca2896eabad77ba81a95e745179a49778004b40d2066d4a3c0fdde4f108c8d80"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004450252Z-ac1d5d7d",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004450252Z-ac1d5d7d.zip",
+            "sha256": "f4ca6507fcd013cc76ea94c588fce77eeafeaeceb40368bc766789145f4939fa"
+          },
+          "capture_sha256": "cbf42870371b23391bf760c8998d6f0a7f919e274d0b5f4f5c464f3f3883972e",
+          "fixture": "ww14-probe-table-flow-unequal-automatic-grid-start-co-0628b152",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
