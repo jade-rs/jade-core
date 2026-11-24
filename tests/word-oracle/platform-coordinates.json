@@ -7277,6 +7277,506 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-math-fraction-first-vs-prev",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-first-vs-prev/source.docx",
+        "sha256": "b4a18c1c87ecdb1b1177590d39ecb49452a6e312e7d82135af114992ac63de94"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-first-vs-prev/manifest.json",
+        "sha256": "3f27ce68ad5ee832ebc88ce98294b3d2716b3af0f61c9afeb108ca9aa856e5d8"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-first-vs-prev-b4a18c1c",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-larger-neighbors",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-larger-neighbors/source.docx",
+        "sha256": "12cc7422c9a73dfa28dae9ad91813616d0ea61f17f9f32e524c799d4cd16789f"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-larger-neighbors/manifest.json",
+        "sha256": "b971a9edf81b40d6bac858fe3ce14573cb835f5e25ce11f1d9b0b252b94b2d39"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-larger-neighbors-12cc7422",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-leading",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-leading/source.docx",
+        "sha256": "d2b2c2a764659bbb749d9d666fb1fa98ca385d36a936d47ad792ec138e671de2"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-leading/manifest.json",
+        "sha256": "96fdedd6c6d4b1b422063054391a490a83b892502f8463179c80d2b30c2f0749"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-leading-d2b2c2a7",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-neighbors",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-neighbors/source.docx",
+        "sha256": "fead76a10e66fe60ab830441098b072012072517a80e35c3ca9aba952d7802f9"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-neighbors/manifest.json",
+        "sha256": "ca5088adecb14f7a3c5a548cfa6ed4803b44f2e0c58f8505d421b7e9dca38492"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-neighbors-fead76a1",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-size-20",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-20/source.docx",
+        "sha256": "333a79b7219943ef896bdc299e60c2db52fd8d4be93414a07c60088f04105365"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-20/manifest.json",
+        "sha256": "9b193213dc8e133a9e5d7a8e9b935518586a3784a0a833f5a1767fd681136c2c"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-size-20-333a79b7",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-size-24",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-24/source.docx",
+        "sha256": "6f799918bffe329264b7f3be4f5a2e31806b75ecd48e92407cf9f2d5a5de3520"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-24/manifest.json",
+        "sha256": "719c798968d39c44b7fc449e5ef3f4a50446aef6ed687fe37ea5acf7400607cd"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-size-24-6f799918",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-size-28",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-28/source.docx",
+        "sha256": "f4ac618c70f336280d5ef0ea0768164a5be308d8121c1afb58a12392562b5336"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-28/manifest.json",
+        "sha256": "b3d12effab67fef1de3c499b315d09ee3add57fe3c86fdf16a24a20d4ac67ef8"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-size-28-f4ac618c",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-size-32",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-32/source.docx",
+        "sha256": "f0c4610086ac0a877fd9942d74a2b998b27a4acca011e43e1052889133347198"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-32/manifest.json",
+        "sha256": "a3ae7f5d9a180ccefeb063190656f6f566a8159722cee8127ae6edcd92bd67a8"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-size-32-f0c46100",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-size-36",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-36/source.docx",
+        "sha256": "2c18765ea05dc2b312f21e4c1f6922a8c251a553c9f9f594b7809a2392463e08"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-36/manifest.json",
+        "sha256": "b48e16f4388198a2c88960b6fc72b639481b2846cb4a8aae5b788084f6c48b46"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-size-36-2c18765e",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-size-40",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-40/source.docx",
+        "sha256": "f211e7cbce01868e6453bdaf02c7d197424f7e52aa508300e20956b6895dd165"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-size-40/manifest.json",
+        "sha256": "54d411422b897d181db02bffbab37277ba33ca82142235e24f9ba7b300ad5c1b"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-size-40-f211e7cb",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-fraction-spacing-matrix",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-spacing-matrix/source.docx",
+        "sha256": "e50d530ac6d8c491ad7f90ffd771cb28ab4c6073282c9a136d98b85b9d4dfd0e"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-fraction-spacing-matrix/manifest.json",
+        "sha256": "be1191a1d0508ee356c115cda0b470903138d84f72e25859669064abb912fe7a"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-fraction-spacing-matrix-e50d530a",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-bar-fraction-24",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-bar-fraction-24/source.docx",
+        "sha256": "29a928f61e793e206b27f8c7c0cd95fab436d67aa9ac94253f4263d15d008442"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-bar-fraction-24/manifest.json",
+        "sha256": "a48f4c36cbe15b8c54749b78790f0403bd4a77fa862e2c16eb844bcc211fcc0a"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-repeat-bar-fraction-24-29a928f6",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-bar-fraction-32",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-bar-fraction-32/source.docx",
+        "sha256": "5900e52798d4dfd7ad83de4befca4f8386358af7a1812d53aec0ca69b9071f84"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-bar-fraction-32/manifest.json",
+        "sha256": "f3093c4bb0b1b06fc58e415193a2824f0e33baf549618f51307c18e4b8364352"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-repeat-bar-fraction-32-5900e527",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-fraction-20",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-20/source.docx",
+        "sha256": "65205af1f48cd3a1368955a9d0687f8a0d872802451bbd4957dfa545024e97d4"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-20/manifest.json",
+        "sha256": "d0f1cb5e4671653f8991b1665715a1019cdd912c0d94f2710b66a97dcf233af3"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004417585Z-59a68986",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004417585Z-59a68986.zip",
+            "sha256": "436c16fa5f80c998e557dcfbdc53a69476faeb9705844d465ce303f0d78420e0"
+          },
+          "capture_sha256": "dad476b421f1972c1c78c25d0cff9d367118322f042e2a0236fe7a48513f82ef",
+          "fixture": "ww14-probe-math-repeat-fraction-20-65205af1",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-fraction-24",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-24/source.docx",
+        "sha256": "25c7bcc6a34a3aad0774a6c8eb2220430649bdeb2ec019f0e0b184f70fa6b16a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-24/manifest.json",
+        "sha256": "07f9e270c68d5c1243ae555f32b6d23981e2b9a21ac451661bd8077ae45787e5"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-math-repeat-fraction-24-25c7bcc6",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-fraction-28",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-28/source.docx",
+        "sha256": "f5e0ff2577bfc793e7164db660095bdd9c97f36342b4f795fa72f0d8c2646e3a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-28/manifest.json",
+        "sha256": "93262a820812d7510edde6a65468ccccb9c77f4012fc85973a3e51a6bb8ab0e6"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-math-repeat-fraction-28-f5e0ff25",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-fraction-36",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-36/source.docx",
+        "sha256": "b94617104464b83c68682a39aec43e1a976c7eadfaa2951036421e6643ea8eaa"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-36/manifest.json",
+        "sha256": "2516b50308189a596b37eb5fe8f8e9709cdbaed0562ac327820018f2149a105a"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-math-repeat-fraction-36-b9461710",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-repeat-fraction-40",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-40/source.docx",
+        "sha256": "7be3ba8a5c757b2f897b8c3e489bf744c55cbd668eff96492aba892526e7d83b"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-repeat-fraction-40/manifest.json",
+        "sha256": "890461f7e9b93faf22512e2686e14272aa59327f6a97f83c9354a8881b429f57"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-math-repeat-fraction-40-7be3ba8a",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-standalone-fractions-12",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-standalone-fractions-12/source.docx",
+        "sha256": "b8e369ffa2f7092558aaef422e9dffff6280079c0bd1482011982957145114b6"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-standalone-fractions-12/manifest.json",
+        "sha256": "19e9a602c00b463ee3072afb5d0bdcd9b0e6454ed0558ef6a9a0d45bc68fb198"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-math-standalone-fractions-12-b8e369ff",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "probe-math-standalone-fractions-explicit-sizes",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-standalone-fractions-explicit-sizes/source.docx",
+        "sha256": "b0054462f00eddb4741b3fb09200499f70c67760daaff0a63dd2adc0dfda7fcb"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-standalone-fractions-explicit-sizes/manifest.json",
+        "sha256": "0d8bb74a92683a355ea14c41e195f6ef72b2a339d42ed4ee7e48eb5999467408"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004434269Z-e27596ca",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004434269Z-e27596ca.zip",
+            "sha256": "838d8b90896f784a5ff429de9fa441d994f1d04a797a00ea08fc6943a1058a6d"
+          },
+          "capture_sha256": "83686cafc047697c74dc5f7eae29a0359049e8580bcd1eda99c68a189160d2d2",
+          "fixture": "ww14-probe-math-standalone-fractions-explicit-sizes-b0054462",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

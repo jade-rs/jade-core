@@ -317,7 +317,49 @@ LEGACY_VISIBLE_AUTOFIT_CASES = {'probe-unequal-variant-narrow-first-2-9-no-heade
 BORDERLESS_GRID_CASES = {'probe-unequal-continuation-border-0'}
 PREFERRED_GRID_BORDER_CASES |= LEGACY_VISIBLE_AUTOFIT_CASES - BORDERLESS_GRID_CASES
 PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES | LEGACY_AUTOMATIC_GRID_CASES | LEGACY_VISIBLE_AUTOFIT_CASES | LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
+MATH_FRACTION_RULE_CASES = {'probe-math-fraction-size-20',
+ 'probe-math-fraction-size-24',
+ 'probe-math-fraction-size-28',
+ 'probe-math-fraction-size-32',
+ 'probe-math-fraction-size-36',
+ 'probe-math-fraction-size-40',
+ 'probe-math-fraction-spacing-matrix',
+ 'probe-math-repeat-bar-fraction-24',
+ 'probe-math-repeat-bar-fraction-32',
+ 'probe-math-standalone-fractions-12',
+ 'probe-math-standalone-fractions-explicit-sizes'}
+BORDERLESS_MATH_CASES = {'probe-math-fraction-first-vs-prev',
+ 'probe-math-fraction-larger-neighbors',
+ 'probe-math-fraction-leading',
+ 'probe-math-fraction-neighbors',
+ 'probe-math-repeat-fraction-20',
+ 'probe-math-repeat-fraction-24',
+ 'probe-math-repeat-fraction-28',
+ 'probe-math-repeat-fraction-36',
+ 'probe-math-repeat-fraction-40'}
+PHYSICAL_FONT_CASES |= MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES
 REQUIRED_CAPTURES = {
+    'probe-math-fraction-first-vs-prev': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-larger-neighbors': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-leading': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-neighbors': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-20': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-24': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-28': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-32': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-36': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-40': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-spacing-matrix': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-bar-fraction-24': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-bar-fraction-32': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-fraction-20': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-fraction-24': '20261114T004434269Z-e27596ca',
+    'probe-math-repeat-fraction-28': '20261114T004434269Z-e27596ca',
+    'probe-math-repeat-fraction-36': '20261114T004434269Z-e27596ca',
+    'probe-math-repeat-fraction-40': '20261114T004434269Z-e27596ca',
+    'probe-math-standalone-fractions-12': '20261114T004434269Z-e27596ca',
+    'probe-math-standalone-fractions-explicit-sizes': '20261114T004434269Z-e27596ca',
+
     'probe-unequal-variant-narrow-first-2-9-no-header': '20261114T004559814Z-c5e13cee',
     'probe-unequal-variant-three-24-no-header': '20261114T004559814Z-c5e13cee',
     'probe-unequal-continuation-border-0': '20261114T004519313Z-65bdf3a6',
@@ -1055,9 +1097,9 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
-        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES:
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES:
             borders = assert_original_vector_borders(
-                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES)
+                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES)
             proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
                          capture_id=capture['capture_id'],
                          original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),

@@ -6,6 +6,16 @@ import check_mac_captured_source as check
 
 
 class CapturedMacOriginalTests(unittest.TestCase):
+    def test_math_original_coverage_and_motion_rejection(self):
+        rows = check.shared_originals(references=check.MATH_LAYOUT_ORIGINALS)
+        self.assertEqual(len(rows), 24)
+        self.assertEqual(sum(r[5] for r in rows), 7755)
+        for name, case, source, manifest, expected, count in rows:
+            actual = dict(copy.deepcopy(expected), input_sha256=case['source']['sha256'])
+            actual['glyphs'][0][2] += .376
+            with self.subTest(case=name), self.assertRaises(ValueError):
+                check.assert_layout(expected, actual, case['source']['sha256'], name)
+
     def test_shared_mac_originals_keep_independent_sources_and_coverage(self):
         rows = check.shared_originals()
         self.assertEqual({r[0] for r in rows}, set(check.SHARED_ORIGINALS))
