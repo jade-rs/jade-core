@@ -312,6 +312,7 @@ HEADER_TAB_CASES = {'header-tab-overflow-short-mac', 'header-tab-overflow-long-m
 FIXED_WIDTH_MATRIX_CASES = {'fixed-table-width-matrix-mac'}
 LEGACY_AUTOMATIC_GRID_CASES = {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
 LEGACY_FIXED_PERCENTAGE_COLUMN_CASES = {'probe-unequal-variant-narrow-first-2-9-fixed', 'probe-unequal-variant-three-24-fixed'}
+PREFERRED_GRID_BORDER_CASES |= LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
 PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES | LEGACY_AUTOMATIC_GRID_CASES | LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
 REQUIRED_CAPTURES = {
     'probe-unequal-variant-narrow-first-2-9-fixed': '20261114T004559814Z-c5e13cee',

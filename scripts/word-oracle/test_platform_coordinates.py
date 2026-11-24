@@ -46,6 +46,8 @@ class PlatformCoordinates(unittest.TestCase):
             'probe-width-unequal-dxa-2400-dxa-2000': (2, 347),
             'probe-width-unequal-pct-2500-auto-0': (2, 347),
             'probe-width-unequal-pct-2500-dxa-2000': (2, 347),
+            'probe-unequal-variant-narrow-first-2-9-fixed': (2, 240),
+            'probe-unequal-variant-three-24-fixed': (2, 665),
         }
         self.assertEqual(check.PREFERRED_GRID_BORDER_CASES, set(expected))
         self.assertLessEqual(set(expected), check.PHYSICAL_FONT_CASES)
