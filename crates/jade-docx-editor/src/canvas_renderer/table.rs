@@ -2957,23 +2957,37 @@ where
             }
         }
 
+        let column_count = compute_column_count(table);
         let word_mac_column_table = use_column_frame
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
         let preferred_width = table.style.get("width");
         let percentage_width = preferred_width.is_some_and(|width| width.trim().ends_with('%'));
+        let centered_table = table.style.get("text-align").is_some_and(|alignment| {
+            alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
+        });
+        // A saved one-cell grid does not override the preferred percentage in
+        // these legacy Windows body tables, either. Keep Mac's saved-grid path.
+        let windows_body_preferred_grid = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+            && !table_floats(table)
+            && self.column_layout.count() == 1
+            && centered_table
+            && exact_single_column_saved_grid(table, column_count);
         // Retained Windows Word14-compatible originals resolve fixed percentage
-        // grids against the legacy column text frame, including cell margins.
-        let windows_legacy_fixed_percentage_column_table = use_column_frame
+        // grids against the legacy text frame, including cell margins.
+        let windows_legacy_fixed_percentage_table = (use_column_frame
+            || windows_body_preferred_grid)
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && self.document_east_asian_rules.compatibility_mode == Some(14)
             && percentage_width
             && !table.bidi_visual
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
-        let centered_table = table.style.get("text-align").is_some_and(|alignment| {
-            alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
-        });
         let rtl_merged_percentage_grid = word_mac_column_table
             && percentage_width
             && matches!(self.document_east_asian_rules.compatibility_mode, Some(14))
@@ -3001,7 +3015,6 @@ where
                         .iter()
                         .any(|cell| matches!(cell.vertical_merge.as_deref(), Some("continue")))
             });
-        let column_count = compute_column_count(table);
         // Legacy Windows exact-height autofit tables use the same section
         // sizing/alignment frames as their independent Mac originals. Only
         // geometry is shared here; Windows fonts and line metrics stay intact.
@@ -3013,7 +3026,6 @@ where
             && self.footnote_reserve_px == 0.0
             && !table.bidi_visual
             && column_count == 1
-            && (preferred_width.is_none() || percentage_width)
             && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
             && self.column_layout.count() > 1
             && self.column_layout.start_x(0) < self.column_layout.start_x(1)
@@ -3023,7 +3035,11 @@ where
                 .iter()
                 .any(|&width| width != available_width)
             && leading_header_row_count(&table.rows) > 0
-            && uniform_single_column_cell_percentage(table).is_some()
+            && (((preferred_width.is_none() || percentage_width)
+                && uniform_single_column_cell_percentage(table).is_some())
+                || (centered_table
+                    && (percentage_width || absolute_table_width(table).is_some())
+                    && exact_single_column_saved_grid(table, column_count)))
             && table.rows.iter().all(|row| {
                 row.height_rule == Some(TableRowHeightRule::Exact)
                     && row.height.is_some()
@@ -3149,7 +3165,7 @@ where
         let width_for_sizing = if rtl_spaced_auto_grid.is_some() {
             last_column_width
         } else if (word_mac_column_table
-            || windows_legacy_fixed_percentage_column_table
+            || windows_legacy_fixed_percentage_table
             || windows_legacy_rtl_percentage_header_grid
             || windows_legacy_autofit_column_table)
             && percentage_width
@@ -3166,7 +3182,7 @@ where
         let section_frame_width = |width| {
             if windows_legacy_rtl_percentage_header_grid
                 || windows_legacy_autofit_column_table
-                || windows_legacy_fixed_percentage_column_table
+                || windows_legacy_fixed_percentage_table
             {
                 let leading = pre_2013_table_text_inset_px(table, sizing_compatibility_mode);
                 if leading > 0.0 {
@@ -3186,7 +3202,7 @@ where
             && !percentage_width
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
         if word_mac_column_table
-            || windows_legacy_fixed_percentage_column_table
+            || windows_legacy_fixed_percentage_table
             || windows_fixed_preferred_width
             || windows_legacy_rtl_percentage_header_grid
             || windows_legacy_autofit_column_table
@@ -3206,7 +3222,7 @@ where
                 // Word's legacy percentage grid includes the exposed spacing
                 // slot and outer frame edge. Resize the grid before centering,
                 // keeping text and all four perimeter rules on the same frame.
-                let width = if windows_legacy_fixed_percentage_column_table {
+                let width = if windows_legacy_fixed_percentage_table {
                     table
                         .rows
                         .iter()
@@ -11507,6 +11523,37 @@ fn fixed_grid_matches_widths(table: &Table, widths: &[f64]) -> bool {
         })
 }
 
+/// A saved one-column grid with repeated headings and exact plain-text rows.
+/// Limit the additional Windows preferred-width policy to this measured shape.
+fn exact_single_column_saved_grid(table: &Table, column_count: usize) -> bool {
+    column_count == 1
+        && table.columns.len() == 1
+        && table.columns[0]
+            .width
+            .is_some_and(|width| width.is_finite() && width > 0.0)
+        && leading_header_row_count(&table.rows) > 0
+        && table.rows.iter().all(|row| {
+            row.height_rule == Some(TableRowHeightRule::Exact)
+                && row.height.is_some()
+                && resolve_cell_spacing_px(row, table) == 0.0
+                && !table_row_has_note_references(row)
+                && row.grid_before.unwrap_or_default() == 0
+                && row.grid_after.unwrap_or_default() == 0
+                && row.cells.len() == 1
+                && row.cells.iter().all(|cell| {
+                    cell.span.unwrap_or(1) == 1
+                        && cell.vertical_merge.is_none()
+                        && cell.text_direction.is_none()
+                        && cell.blocks.iter().all(|block| match block {
+                            BodyElement::Paragraph(paragraph) => paragraph.runs.iter().all(|run| {
+                                run.image.is_none() && run.text_box.is_none() && run.math.is_none()
+                            }),
+                            _ => false,
+                        })
+                })
+        })
+}
+
 /// In a single-cell autofit grid that flows through section columns, an
 /// absolute tblW can widen the cell even when the saved grid and tcW are
 /// smaller. An oversized preferred cell still participates in autofit.
@@ -19282,6 +19329,127 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_legacy_saved_grid_preferences_match_each_platform_word_origins() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        // Independent original Word captures for the same four DOCX inputs.
+        // Both platforms keep their own expected header origins. The unequal
+        // section repeats the heading in its second column and on page two.
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (layout, table_type, table_width, cell_type, cell_width, unequal, windows, mac) in [
+                (
+                    "fixed",
+                    "pct",
+                    2500,
+                    "pct",
+                    2500,
+                    false,
+                    [187.58, 187.58, 187.58],
+                    [187.44, 187.44, 187.44],
+                ),
+                (
+                    "autofit",
+                    "dxa",
+                    2400,
+                    "dxa",
+                    2000,
+                    true,
+                    [163.58, 322.63, 84.864],
+                    [163.44, 322.56, 84.96],
+                ),
+                (
+                    "autofit",
+                    "pct",
+                    2500,
+                    "auto",
+                    0,
+                    true,
+                    [187.10, 346.15, 108.50],
+                    [187.20, 346.08, 108.48],
+                ),
+                (
+                    "autofit",
+                    "pct",
+                    2500,
+                    "dxa",
+                    2000,
+                    true,
+                    [187.10, 346.15, 108.50],
+                    [187.20, 346.08, 108.48],
+                ),
+            ] {
+                let columns = if unequal {
+                    r#"<w:cols w:num="2" w:space="480" w:equalWidth="0"><w:col w:w="2700" w:space="480"/><w:col w:w="5846" w:space="0"/></w:cols>"#
+                } else {
+                    r#"<w:cols w:num="1"/>"#
+                };
+                let rows = (0..13).map(|row| {
+                    let header = if row == 0 { "<w:tblHeader/>" } else { "" };
+                    let text = if row == 0 { "H" } else { "Row 01 has several words to wrap" };
+                    format!(r#"<w:tr><w:trPr>{header}<w:trHeight w:val="840" w:hRule="exact"/></w:trPr>
+                        <w:tc><w:tcPr><w:tcW w:type="{cell_type}" w:w="{cell_width}"/></w:tcPr>
+                        <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact"/></w:pPr>
+                        <w:r><w:rPr><w:rFonts w:ascii="Arial"/><w:sz w:val="22"/></w:rPr><w:t>{text}</w:t></w:r></w:p></w:tc></w:tr>"#)
+                }).collect::<String>();
+                let xml = format!(
+                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>
+                    <w:p><w:pPr><w:spacing w:line="400" w:lineRule="exact"/></w:pPr><w:r><w:t>Lead paragraph</w:t></w:r></w:p>
+                    <w:tbl><w:tblPr><w:tblW w:type="{table_type}" w:w="{table_width}"/><w:jc w:val="center"/>
+                    <w:tblCellMar><w:left w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tblCellMar>
+                    <w:tblBorders><w:top w:val="single" w:sz="8"/><w:left w:val="single" w:sz="8"/>
+                    <w:bottom w:val="single" w:sz="8"/><w:right w:val="single" w:sz="8"/>
+                    <w:insideH w:val="single" w:sz="8"/><w:insideV w:val="single" w:sz="8"/></w:tblBorders>
+                    <w:tblLayout w:type="{layout}"/></w:tblPr><w:tblGrid><w:gridCol w:w="2000"/></w:tblGrid>{rows}</w:tbl>
+                    <w:sectPr><w:pgSz w:w="11906" w:h="8000"/>
+                    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>{columns}</w:sectPr>
+                    </w:body></w:document>"#
+                );
+                let mut document = jade_docx_reader::DocumentParser::new()
+                    .parse_document_xml(&xml)
+                    .unwrap();
+                document.east_asian_line_breaking.compatibility_mode = Some(14);
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                renderer
+                    .render(&document, &crate::Options::default())
+                    .unwrap();
+                let headers = painter
+                    .ops()
+                    .into_iter()
+                    .filter_map(|op| match op {
+                        Op::FillText(text, x, _) if text == "H" => Some(x * 0.75),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+                let expected = if platform == WordLayoutPlatform::Mac {
+                    mac
+                } else {
+                    windows
+                };
+                assert_eq!(
+                    headers.len(),
+                    expected.len(),
+                    "{platform:?}/{table_type}/{cell_type}"
+                );
+                for (x, expected_x) in headers.into_iter().zip(expected) {
+                    assert!((x - expected_x).abs() <= 0.375,
+                        "{platform:?}/{layout}/{table_type}/{cell_type}: native={x}, Word={expected_x}");
+                }
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn legacy_fixed_column_percentages_match_retained_word_origins() {
         use jade_docx_layout::line_metrics::{
