@@ -46,6 +46,12 @@ class PlatformCoordinates(unittest.TestCase):
             'probe-width-unequal-dxa-2400-dxa-2000': (2, 347),
             'probe-width-unequal-pct-2500-auto-0': (2, 347),
             'probe-width-unequal-pct-2500-dxa-2000': (2, 347),
+            'probe-unequal-variant-narrow-first-2-9-fixed': (2, 240),
+            'probe-unequal-variant-three-24-fixed': (2, 665),
+            'probe-unequal-variant-narrow-first-2-9-no-header': (2, 237),
+            'probe-unequal-variant-three-24-no-header': (2, 653),
+            'probe-unequal-continuation-border-16': (2, 653),
+            'probe-unequal-continuation-border-4': (2, 653),
         }
         self.assertEqual(check.PREFERRED_GRID_BORDER_CASES, set(expected))
         self.assertLessEqual(set(expected), check.PHYSICAL_FONT_CASES)
@@ -60,6 +66,38 @@ class PlatformCoordinates(unittest.TestCase):
                 self.assertEqual(font_source, 'original-word-pdf')
                 self.assertEqual(drawing['page_count'], pages)
                 self.assertEqual(sum(not g[1].isspace() for g in drawing['glyphs']), glyphs)
+
+    def test_borderless_original_requires_explicit_empty_rule_expectation(self):
+        from compare_windows_borders import rectangles
+        import hashlib
+        names = {'probe-unequal-continuation-border-0'}
+        self.assertEqual(check.BORDERLESS_GRID_CASES, names)
+        rows = [row for row in check.verify() if row[0] in names]
+        self.assertEqual({row[0] for row in rows}, names)
+        for name, _, archive, document, drawing, font_source in rows:
+            self.assertEqual(drawing['page_count'], 2)
+            self.assertEqual(sum(not g[1].isspace() for g in drawing['glyphs']), 653)
+            self.assertEqual(font_source, 'original-word-pdf')
+            with ZipFile(archive) as bundle, tempfile.TemporaryDirectory() as directory:
+                data = bundle.read(document['pdf'])
+                self.assertEqual(hashlib.sha256(data).hexdigest(), document['pdf_sha256'])
+                original = Path(directory) / 'original.pdf'
+                original.write_bytes(data)
+                self.assertEqual(rectangles(original), [[], []])
+        empty = dict(page=1, word_rectangles=0, native_rectangles=0,
+                     word_uncovered_count=0, native_uncovered_count=0)
+        with patch('compare_windows_borders.compare', return_value=[empty]):
+            self.assertEqual(check.assert_original_vector_borders(
+                None, None, 'nil', expected_empty=True), [empty])
+            with self.assertRaisesRegex(ValueError, 'original-vector-borders'):
+                check.assert_original_vector_borders(None, None, 'positive-rule-case')
+        for bad in [[], [dict(empty, word_rectangles=1)],
+                    [dict(empty, native_rectangles=1)],
+                    [dict(empty, word_uncovered_count=1)],
+                    [dict(empty, native_uncovered_count=1)]]:
+            with patch('compare_windows_borders.compare', return_value=bad):
+                with self.assertRaisesRegex(ValueError, 'original-vector-borders'):
+                    check.assert_original_vector_borders(None, None, 'nil', expected_empty=True)
 
     def test_vector_border_gate_rejects_missing_extra_or_empty_ink(self):
         good = dict(page=1, word_rectangles=3, native_rectangles=4,
@@ -155,6 +193,8 @@ class PlatformCoordinates(unittest.TestCase):
         required |= {'numbering-table-nested-list-mac', 'numbering-table-header-mac', 'numbering-table-matrix-mac'}
         required |= {'header-tab-overflow-short-mac'}
         required.add('fixed-table-width-matrix-mac')
+        required |= {'probe-unequal-variant-narrow-first-2-9-no-header', 'probe-unequal-variant-three-24-no-header', 'probe-unequal-continuation-border-0', 'probe-unequal-continuation-border-16', 'probe-unequal-continuation-border-4'}
+        required |= {'probe-unequal-variant-narrow-first-2-9-fixed', 'probe-unequal-variant-three-24-fixed'}
         required |= {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
@@ -691,6 +731,13 @@ class PlatformCoordinates(unittest.TestCase):
             if 'version' not in manifest['reference']:
                 missing.append(case['mac_case'])
         self.assertEqual(set(missing), {'fixed-table-width-matrix-mac', 'column-table-fixed-preferred-width-mac', 'column-table-fixed-preferred-width-smaller-mac', 'courier-new-line-metrics', 'courier-new-regular-adjacent', 'inline-image-rotation-table-picture-only-mac', 'latin-break-budget-620', 'latin-break-budget-638', 'latin-break-budget-645', 'latin-break-budget-652', 'latin-break-budget-659', 'nested-after-spacing-oversized-48-0', 'nested-after-spacing-repeat-header', 'nested-after-spacing-short-5pt', 'probe-column-fixed-dxa-4400', 'probe-column-fixed-dxa-6800', 'probe-continuous-column-explicit-break', 'probe-fixed-auto-table-grid-1000-cell-pct-2500', 'probe-fixed-auto-table-grid-2000-cell-pct-1250', 'probe-fixed-auto-table-grid-2000-cell-pct-5000', 'probe-fixed-auto-table-grid-4000-cell-pct-2500', 'probe-second-column-centered-table', 'probe-table-flow-cell-spacing-start-column-1', 'probe-table-flow-continuous-start-column-1', 'probe-table-flow-continuous-start-column-2', 'probe-table-flow-continuous-vertical-merge-start-column-1', 'probe-table-flow-continuous-vertical-merge-start-column-2', 'probe-table-flow-split-rows-continuous-start-column-1', 'probe-table-flow-split-rows-start-column-1', 'probe-table-flow-split-rows-start-column-2', 'probe-table-flow-start-column-1', 'probe-table-flow-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-1', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-2', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-3', 'probe-table-flow-unequal-right-start-column-1', 'probe-table-flow-unequal-right-start-column-2', 'probe-table-flow-unequal-start-column-1', 'probe-table-flow-unequal-start-column-2', 'probe-unequal-autofit-section-width-matrix', 'probe-unequal-autofit-wrapped-header', 'probe-unequal-center-narrow-first-1-1', 'probe-unequal-center-narrow-first-1-9', 'probe-unequal-center-narrow-first-2-9', 'probe-unequal-center-three-10', 'probe-unequal-center-three-13', 'probe-unequal-center-three-17', 'probe-unequal-center-three-24', 'probe-unequal-center-three-4', 'probe-unequal-center-wide-first-1-1', 'probe-unequal-center-wide-first-1-9', 'probe-unequal-center-wide-first-2-9', 'probe-unequal-control-1-16-with-tail', 'probe-unequal-control-1-16-without-tail', 'probe-unequal-control-1-21-with-tail', 'probe-unequal-control-1-21-without-tail', 'probe-unequal-control-1-22-with-tail', 'probe-unequal-control-1-22-without-tail', 'probe-unequal-control-1-23-with-tail', 'probe-unequal-control-1-23-without-tail', 'probe-unequal-control-1-24-without-tail', 'probe-unequal-control-2-12-with-tail', 'probe-unequal-control-2-12-without-tail', 'probe-unequal-control-2-19-with-tail', 'probe-unequal-control-2-19-without-tail', 'probe-unequal-control-3-14-with-tail', 'probe-unequal-control-3-14-without-tail', 'probe-unequal-control-3-8-with-tail', 'probe-unequal-control-3-8-without-tail', 'probe-unequal-explicit-paragraph-width-3300', 'probe-unequal-explicit-paragraph-width-3566', 'probe-unequal-explicit-paragraph-width-3800', 'probe-unequal-left-narrow-first-1-1', 'probe-unequal-left-narrow-first-1-9', 'probe-unequal-left-narrow-first-2-1', 'probe-unequal-left-narrow-first-2-9', 'probe-unequal-left-start-column-1', 'probe-unequal-left-wide-first-1-1', 'probe-unequal-left-wide-first-1-9', 'probe-unequal-left-wide-first-2-1', 'probe-unequal-left-wide-first-2-9', 'probe-unequal-right-narrow-first-1-1', 'probe-unequal-right-narrow-first-1-9', 'probe-unequal-right-narrow-first-2-9', 'probe-unequal-right-three-10', 'probe-unequal-right-three-17', 'probe-unequal-right-three-24', 'probe-unequal-right-three-4', 'probe-unequal-right-three-7', 'probe-unequal-right-wide-first-1-1', 'probe-unequal-right-wide-first-1-9', 'probe-unequal-right-wide-first-2-9', 'probe-unequal-variant-narrow-first-2-9-center', 'probe-unequal-variant-narrow-first-2-9-dxa', 'probe-unequal-variant-narrow-first-2-9-left', 'probe-unequal-variant-narrow-first-2-9-long', 'probe-unequal-variant-narrow-first-2-9-right', 'probe-unequal-variant-three-24-center', 'probe-unequal-variant-three-24-dxa', 'probe-unequal-variant-three-24-left', 'probe-unequal-variant-three-24-long', 'probe-unequal-variant-three-24-right', 'probe-width-equal-auto-0-pct-2500', 'probe-width-equal-pct-2500-auto-0', 'probe-width-equal-pct-2500-dxa-2000', 'probe-width-equal-pct-2500-pct-2500', 'probe-width-equal-pct-2500-pct-5000', 'probe-width-equal-pct-5000-pct-2500', 'probe-width-short-narrow-first-1-1', 'probe-width-short-narrow-first-1-4', 'probe-width-short-narrow-first-1-5', 'probe-width-short-narrow-first-1-9', 'probe-width-short-narrow-first-2-1', 'probe-width-short-narrow-first-2-4', 'probe-width-short-narrow-first-2-5', 'probe-width-short-narrow-first-2-9', 'probe-width-short-wide-first-1-1', 'probe-width-short-wide-first-1-4', 'probe-width-short-wide-first-1-5', 'probe-width-short-wide-first-1-9', 'probe-width-short-wide-first-2-1', 'probe-width-short-wide-first-2-4', 'probe-width-short-wide-first-2-5', 'probe-width-short-wide-first-2-9', 'probe-width-single-auto-0-pct-2500', 'probe-width-single-dxa-2400-dxa-2000', 'probe-width-unequal-auto-0-pct-2500', 'probe-width-unequal-pct-2500-pct-2500', 'probe-width-unequal-pct-2500-pct-5000', 'probe-width-unequal-pct-5000-pct-2500', 'table-flow-continuous-start-column-1-mac', 'table-flow-continuous-vertical-merge-start-column-2-mac', 'table-flow-split-rows-start-column-1-mac', 'table-oversized-row-after-spacing-fresh-fit', 'table-row-after-spacing-short-5pt', 'textbox-exact-line-matrix-mac', 'vert-align-sweep-browser-mac', 'probe-math-display-alignment-1', 'probe-math-display-rtl-wrap-1', 'probe-math-italic-advances-lowercase', 'probe-math-italic-advances-uppercase', 'probe-math-relation-wrap-after', 'probe-math-relation-wrap-before', 'probe-math-relation-wrap-repeat', 'probe-complex-font-metrics-thonburi', 'probe-complex-font-sweep-thonburi', 'probe-devanagari-line-box-devanagari', 'probe-mixed-sangam-matrix-240', 'probe-mixed-sangam-matrix-276',
+            'probe-unequal-variant-narrow-first-2-9-no-header',
+            'probe-unequal-variant-three-24-no-header',
+            'probe-unequal-continuation-border-0',
+            'probe-unequal-continuation-border-16',
+            'probe-unequal-continuation-border-4',
+            'probe-unequal-variant-narrow-first-2-9-fixed',
+            'probe-unequal-variant-three-24-fixed',
             'probe-table-flow-unequal-automatic-grid-start-column-1',
             'probe-table-flow-unequal-automatic-grid-start-column-2',
                              'probe-width-single-pct-2500-pct-2500',
