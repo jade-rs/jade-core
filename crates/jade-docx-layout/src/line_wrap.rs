@@ -3712,12 +3712,9 @@ fn compute_text_advance_step_with_descriptor<'a, C: LineWrapContext>(
                     }) && grapheme.as_bytes().contains(&0xe2)
                         && !style.has_font_features
                         && style.letter_spacing_px == 0.0
-                        && crate::line_metrics::word_windows_join_control_line_height_px(
-                            font_descriptor,
-                        )
-                        .is_some()
+                        && crate::line_metrics::word_windows_latin_control_font(font_descriptor)
                     {
-                        // An original Arial subset may omit these format
+                        // An original Latin subset may omit these format
                         // characters. Their .notdef advance is not a Word
                         // character width: measure only the visible base.
                         let prefix = grapheme.trim_end_matches(['\u{200c}', '\u{200d}']);
@@ -4719,6 +4716,32 @@ impl WrappedLine {
                     None,
                 );
                 crate::line_metrics::word_windows_join_control_line_height_px(
+                    &style.font_descriptor_latin_ascii,
+                )
+            })
+            .reduce(f64::max)
+    }
+
+    /// A legacy Windows ZWNJ soft line in captured Verdana/Courier faces.
+    pub fn windows_zwnj_line_box_px(&self) -> Option<f64> {
+        if self.break_kind != LineBreakKind::Soft
+            || crate::line_metrics::word_layout_platform()
+                != crate::line_metrics::WordLayoutPlatform::Windows
+            || self.clusters.is_empty()
+            || !self.clusters.iter().all(|cluster| {
+                !cluster.text.is_empty() && cluster.text.chars().all(|ch| ch == '\u{200c}')
+            })
+        {
+            return None;
+        }
+        self.segments
+            .iter()
+            .filter_map(|segment| {
+                let style = crate::font_resolver::resolve_run_style_for_wrap(
+                    segment.properties.as_deref(),
+                    None,
+                );
+                crate::line_metrics::word_windows_zwnj_line_height_px(
                     &style.font_descriptor_latin_ascii,
                 )
             })
@@ -9461,8 +9484,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     && grapheme[1..]
                         .chars()
                         .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'))
-                    && crate::line_metrics::word_windows_join_control_line_height_px(font_desc)
-                        .is_some()
+                    && crate::line_metrics::word_windows_latin_control_font(font_desc)
                     // Split only when the visible letter itself exceeds
                     // the cell. The retained 10.5pt Arial A is slightly wider
                     // than 7pt, but fits the otherwise identical 8pt cell.
@@ -9608,9 +9630,15 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                             cluster.text.as_str() == "\u{200b}"
                                 || is_word_mac_join_control(&cluster.text)
                         }) && (mac_overflow
-                            || (paragraph_style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows
-                                && paragraph_style.east_asian_rules.compatibility_mode.is_some_and(|mode| mode < 15)
-                                && crate::line_metrics::word_windows_join_control_line_height_px(font_desc).is_some()))))
+                            || (paragraph_style.word_platform
+                                == crate::line_metrics::WordLayoutPlatform::Windows
+                                && paragraph_style
+                                    .east_asian_rules
+                                    .compatibility_mode
+                                    .is_some_and(|mode| mode < 15)
+                                && crate::line_metrics::word_windows_latin_control_font(
+                                    font_desc,
+                                )))))
                     && (!is_whitespace || wraps_arabic_space || wraps_arabic_nbsp)
                     && !shaped_arabic.is_some_and(|(_, continuation)| continuation)
                     && (!zero_width_oracle_glyph
@@ -24810,78 +24838,81 @@ mod tests {
         let previous = word_layout_platform();
         set_word_layout_platform(WordLayoutPlatform::Windows);
         let mut ctx = TestContext::new(12.0);
-        let face: Rc<str> = Rc::from("12pt Arial");
-        ctx.style = ResolvedRunStyle::new(
-            Rc::clone(&face),
-            Rc::clone(&face),
-            Rc::clone(&face),
-            face,
-            0.0,
-            1.0,
-            false,
-            None,
-        );
-        for (mode, text, width, expected) in [
-            (Some(14), "A\u{200c}B", 8.0, vec!["A", "\u{200c}", "B"]),
-            (Some(15), "A\u{200c}B", 8.0, vec!["A\u{200c}", "B"]),
-            (None, "A\u{200c}B", 8.0, vec!["A\u{200c}", "B"]),
-            (Some(14), "A\u{200d}B", 8.0, vec!["A", "\u{200d}", "B"]),
-            (Some(15), "A\u{200d}B", 8.0, vec!["A\u{200d}", "B"]),
-            (
-                Some(14),
-                "A\u{200c}\u{200c}B",
-                8.0,
-                vec!["A", "\u{200c}\u{200c}", "B"],
-            ),
-            // This synthetic context measures a visible letter as 12px.
-            (Some(14), "A\u{200c}B", 12.1, vec!["A\u{200c}", "B"]),
-            (Some(14), "A\u{200d}B", 12.1, vec!["A\u{200d}", "B"]),
-            (
-                Some(14),
-                "A\u{200c}B",
-                28.0 / 3.0,
-                vec!["A", "\u{200c}", "B"],
-            ),
-            (Some(14), "\u{200c}B", 12.1, vec!["\u{200c}B"]),
-            (Some(14), "\u{200d}B", 12.1, vec!["\u{200d}B"]),
-            (Some(14), "\u{200b}B", 12.1, vec!["\u{200b}B"]),
-            (Some(14), "\u{200c}B", 8.0, vec!["\u{200c}", "B"]),
-            (Some(14), "\u{200d}B", 8.0, vec!["\u{200d}", "B"]),
-            (Some(14), "\u{200b}B", 8.0, vec!["\u{200b}", "B"]),
-            (Some(15), "\u{200c}B", 12.1, vec!["\u{200c}", "B"]),
-            (None, "\u{200c}B", 12.1, vec!["\u{200c}", "B"]),
-            (Some(14), "A\u{200d}B", 100.0, vec!["A\u{200d}B"]),
-            (Some(15), "A\u{200d}B", 100.0, vec!["A\u{200d}B"]),
-            (
-                Some(14),
-                "A\u{301}\u{200d}B",
-                8.0,
-                vec!["A\u{301}\u{200d}", "B"],
-            ),
-            (Some(14), "क\u{200d}", 8.0, vec!["क\u{200d}"]),
-            (Some(14), "👩\u{200d}💻", 8.0, vec!["👩\u{200d}💻"]),
-        ] {
-            let mut style = ParagraphStyle {
-                word_platform: WordLayoutPlatform::Windows,
-                ..ParagraphStyle::default()
-            };
-            style.east_asian_rules.compatibility_mode = mode;
-            let lines = wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, width)
-                .expect("wrap");
-            let actual: Vec<String> = lines
-                .iter()
-                .map(|line| line.segments.iter().map(|s| s.text.as_str()).collect())
-                .collect();
-            assert_eq!(actual, expected, "mode={mode:?} {text:?} at {width}px");
-            let ranges: Vec<_> = lines
-                .iter()
-                .flat_map(|line| &line.clusters)
-                .map(|c| c.start..c.end)
-                .collect();
-            assert_eq!(ranges[0].start, 0);
-            assert_eq!(ranges.last().unwrap().end, text.len());
-            assert!(ranges.windows(2).all(|pair| pair[0].end == pair[1].start));
-            assert_eq!(actual.concat(), text);
+        for family in ["Arial", "Verdana", "Courier New"] {
+            let face: Rc<str> = Rc::from(format!("12pt '{family}'"));
+            ctx.style = ResolvedRunStyle::new(
+                Rc::clone(&face),
+                Rc::clone(&face),
+                Rc::clone(&face),
+                face,
+                0.0,
+                1.0,
+                false,
+                None,
+            );
+            for (mode, text, width, expected) in [
+                (Some(14), "A\u{200c}B", 8.0, vec!["A", "\u{200c}", "B"]),
+                (Some(15), "A\u{200c}B", 8.0, vec!["A\u{200c}", "B"]),
+                (None, "A\u{200c}B", 8.0, vec!["A\u{200c}", "B"]),
+                (Some(14), "A\u{200d}B", 8.0, vec!["A", "\u{200d}", "B"]),
+                (Some(15), "A\u{200d}B", 8.0, vec!["A\u{200d}", "B"]),
+                (
+                    Some(14),
+                    "A\u{200c}\u{200c}B",
+                    8.0,
+                    vec!["A", "\u{200c}\u{200c}", "B"],
+                ),
+                // This synthetic context measures a visible letter as 12px.
+                (Some(14), "A\u{200c}B", 12.1, vec!["A\u{200c}", "B"]),
+                (Some(14), "A\u{200d}B", 12.1, vec!["A\u{200d}", "B"]),
+                (
+                    Some(14),
+                    "A\u{200c}B",
+                    28.0 / 3.0,
+                    vec!["A", "\u{200c}", "B"],
+                ),
+                (Some(14), "\u{200c}B", 12.1, vec!["\u{200c}B"]),
+                (Some(14), "\u{200d}B", 12.1, vec!["\u{200d}B"]),
+                (Some(14), "\u{200b}B", 12.1, vec!["\u{200b}B"]),
+                (Some(14), "\u{200c}B", 8.0, vec!["\u{200c}", "B"]),
+                (Some(14), "\u{200d}B", 8.0, vec!["\u{200d}", "B"]),
+                (Some(14), "\u{200b}B", 8.0, vec!["\u{200b}", "B"]),
+                (Some(15), "\u{200c}B", 12.1, vec!["\u{200c}", "B"]),
+                (None, "\u{200c}B", 12.1, vec!["\u{200c}", "B"]),
+                (Some(14), "A\u{200d}B", 100.0, vec!["A\u{200d}B"]),
+                (Some(15), "A\u{200d}B", 100.0, vec!["A\u{200d}B"]),
+                (
+                    Some(14),
+                    "A\u{301}\u{200d}B",
+                    8.0,
+                    vec!["A\u{301}\u{200d}", "B"],
+                ),
+                (Some(14), "क\u{200d}", 8.0, vec!["क\u{200d}"]),
+                (Some(14), "👩\u{200d}💻", 8.0, vec!["👩\u{200d}💻"]),
+            ] {
+                let mut style = ParagraphStyle {
+                    word_platform: WordLayoutPlatform::Windows,
+                    ..ParagraphStyle::default()
+                };
+                style.east_asian_rules.compatibility_mode = mode;
+                let lines =
+                    wrap_text_into_lines(&ctx, text, &[make_run(text)], 0.0, &style, 0, width)
+                        .expect("wrap");
+                let actual: Vec<String> = lines
+                    .iter()
+                    .map(|line| line.segments.iter().map(|s| s.text.as_str()).collect())
+                    .collect();
+                assert_eq!(actual, expected, "mode={mode:?} {text:?} at {width}px");
+                let ranges: Vec<_> = lines
+                    .iter()
+                    .flat_map(|line| &line.clusters)
+                    .map(|c| c.start..c.end)
+                    .collect();
+                assert_eq!(ranges[0].start, 0);
+                assert_eq!(ranges.last().unwrap().end, text.len());
+                assert!(ranges.windows(2).all(|pair| pair[0].end == pair[1].start));
+                assert_eq!(actual.concat(), text);
+            }
         }
         // Original subset 5.ttf: A hmtx1366 / upem2048 at 10.5pt.
         // A exceeds 7pt by a real fractional advance, and fits 8pt.

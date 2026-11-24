@@ -7058,9 +7058,16 @@ where
                 .any(|fragment| fragment.x + fragment.width >= right)
         };
         let clip_right = clip.ancestor_right.filter(|right| reaches_right(*right));
-        let check_cell_right = jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            && reaches_right(clip.cell_right);
+        let check_cell_right = reaches_right(clip.cell_right);
+        // Windows PDF clips are half-open at the exact cell edge. Keep the
+        // existing Mac capture tolerance; it belongs to independent originals.
+        let cell_ink_tolerance = if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        {
+            0.0
+        } else {
+            CELL_CAPTURE_INK_EDGE_TOLERANCE_PX
+        };
         if line.text.is_empty() || (!check_vertical && clip_right.is_none() && !check_cell_right) {
             return Ok(None);
         }
@@ -7133,8 +7140,7 @@ where
                 if check_cell_right
                     && metrics.left.is_finite()
                     && metrics.right + metrics.left > 0.0
-                    && fragment.x + glyph.x - metrics.left
-                        >= clip.cell_right + CELL_CAPTURE_INK_EDGE_TOLERANCE_PX
+                    && fragment.x + glyph.x - metrics.left >= clip.cell_right + cell_ink_tolerance
                 {
                     continue;
                 }
@@ -18543,6 +18549,14 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
                     line.min_advance = line.min_advance.max(advance);
                 }
             }
+            let legacy_zwnj = paragraph_style
+                .east_asian_rules
+                .compatibility_mode
+                .is_some_and(|mode| mode < 15)
+                && wrapped
+                    .clusters
+                    .first()
+                    .is_some_and(|cluster| cluster.text.starts_with('\u{200c}'));
             if paragraph_style.word_platform
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
                 && !paragraph_style.exact_line_spacing
@@ -18550,18 +18564,27 @@ fn horizontal_cell_paragraph_from_wrapped_lines(
                 && wrapped
                     .clusters
                     .first()
-                    .is_some_and(|cluster| cluster.text.starts_with('\u{200d}'))
+                    .is_some_and(|cluster| cluster.text.starts_with('\u{200d}') || legacy_zwnj)
                 && text
                     .chars()
                     .all(|ch| ch.is_ascii() || matches!(ch, '\u{200b}' | '\u{200c}' | '\u{200d}'))
             {
-                if let Some(height) = wrapped.windows_join_control_line_box_px() {
+                let control_height = if legacy_zwnj {
+                    wrapped.windows_zwnj_line_box_px()
+                } else {
+                    wrapped.windows_join_control_line_box_px()
+                };
+                if let Some(height) = control_height {
                     let advance = paragraph_style
                         .word_proportional_line_sizing
                         .map_or(height, |sizing| {
                             sizing.line_height_px(Some(height), line_height)
                         });
-                    line.min_advance = line.min_advance.max(advance);
+                    if legacy_zwnj && advance < line_height {
+                        line.shorter_line_advance = advance;
+                    } else {
+                        line.min_advance = line.min_advance.max(advance);
+                    }
                 }
             }
             line.left_inset = paragraph_style.line_indent(index);
