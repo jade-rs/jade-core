@@ -6852,6 +6852,131 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "numbering-alignment-matrix-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-alignment-matrix-mac/source.docx",
+        "sha256": "73798fc698bd87d8b7dfaaa541ea7b85db3bb950e3e79ca2b75c936baab9fba8"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-alignment-matrix-mac/manifest.json",
+        "sha256": "19773195d7b06ccec6a58f64e340b9f31f028f2de17e6103109ae75ce4eb75bb"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-numbering-alignment-matrix-mac-73798fc6",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "numbering-legal-format-matrix-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-legal-format-matrix-mac/source.docx",
+        "sha256": "7219dd24ac737ad89b84a1758408a46a1a7c37f092722e08b8846ea411f02d92"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-legal-format-matrix-mac/manifest.json",
+        "sha256": "d162bb2dbfc0949cd1920031e380f9c6dacd200dde8184926afdf69df7e2dfad"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-numbering-legal-format-matrix-mac-7219dd24",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "numbering-textbox-full-matrix-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-textbox-full-matrix-mac/source.docx",
+        "sha256": "3100cb3dd7a5a1901e4c2f9fc176b759b5b26e7c88db422a5c4a68cfc35a1b54"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-textbox-full-matrix-mac/manifest.json",
+        "sha256": "ff65d858eec98bf5bcdd3c93e616fab0850d0769ac44dc17491ed31562f157b7"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-numbering-textbox-full-matrix-mac-3100cb3d",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "numbering-table-header-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-table-header-mac/source.docx",
+        "sha256": "9721cf7b8de1056124b3e851ea3173aacf92480ebbc364c7c320819c7044f43f"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-table-header-mac/manifest.json",
+        "sha256": "f44df7c386a1c8db1a52e1e1e8bfc99d4b3f5e4d30a43fef6fa955d2405d5c09"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-numbering-table-header-mac-9721cf7b",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "numbering-table-nested-list-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-table-nested-list-mac/source.docx",
+        "sha256": "a787347823b95e7a7d75fc6eb1fc998a3577ee9ddbcd7ee00fc9d99e6ff3d39a"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/numbering-table-nested-list-mac/manifest.json",
+        "sha256": "a3ab1ce3674cd25ae4e58c77b94a449b8eee17ceab4d7ca3ad520a412b6dc626"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-numbering-table-nested-list-mac-a7873478",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }

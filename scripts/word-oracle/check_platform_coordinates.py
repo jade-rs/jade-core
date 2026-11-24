@@ -300,7 +300,14 @@ PHYSICAL_FONT_CASES = {
     'probe-math-relation-wrap-before',
     'probe-math-relation-wrap-repeat',
 }
-PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES
+NUMBERING_LAYOUT_CASES = {
+    'numbering-alignment-matrix-mac',
+    'numbering-legal-format-matrix-mac',
+    'numbering-table-header-mac',
+    'numbering-table-nested-list-mac',
+    'numbering-textbox-full-matrix-mac',
+}
+PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES
 REQUIRED_CAPTURES = {
     'probe-mixed-sangam-matrix-240': '20261114T004434269Z-e27596ca',
     'probe-mixed-sangam-matrix-276': '20261114T004434269Z-e27596ca',
@@ -576,6 +583,13 @@ REQUIRED_CAPTURES = {
     'probe-width-unequal-dxa-2400-dxa-2000': '20261114T020653579Z-a7f517aa',
     'probe-width-unequal-pct-2500-auto-0': '20261114T020656594Z-92d3b2ca',
     'probe-width-unequal-pct-2500-dxa-2000': '20261114T020700519Z-4ca7ac7c',
+
+    'numbering-alignment-matrix-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-legal-format-matrix-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-textbox-full-matrix-mac': '20261114T004334255Z-b74a0cd3',
+
+    'numbering-table-header-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-table-nested-list-mac': '20261114T004334255Z-b74a0cd3',
 }
 
 # These original inputs have distinct screen and print origins in Windows

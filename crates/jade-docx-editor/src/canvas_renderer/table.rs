@@ -2941,20 +2941,16 @@ where
             hyphenation: self.document_hyphenation,
         };
 
-        if jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-        {
-            if let Some(numbering_part) = numbering_part {
-                // Keep-with-next measures a speculative table prefix.
-                let mut provisional_counter;
-                let counter = if measure_keep_next_prefix {
-                    provisional_counter = numbering_counter.clone();
-                    &mut provisional_counter
-                } else {
-                    &mut *numbering_counter
-                };
-                self.collect_cell_numbering(table, numbering_part, counter, &mut layout_config)?;
-            }
+        if let Some(numbering_part) = numbering_part {
+            // Keep-with-next measures a speculative table prefix.
+            let mut provisional_counter;
+            let counter = if measure_keep_next_prefix {
+                provisional_counter = numbering_counter.clone();
+                &mut provisional_counter
+            } else {
+                &mut *numbering_counter
+            };
+            self.collect_cell_numbering(table, numbering_part, counter, &mut layout_config)?;
         }
 
         let column_count = compute_column_count(table);
@@ -19329,6 +19325,89 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn numbered_tables_keep_nested_markers_and_the_following_body_counter_on_both_platforms() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let paragraph = |text: &str| {
+            format!(
+                r#"<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>"#
+            )
+        };
+        let cell = |content: String| format!("<w:tc>{content}</w:tc>");
+        let table = |content: String| {
+            format!(
+                r#"<w:tbl><w:tblPr><w:tblW w:type="dxa" w:w="4800"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="4800"/></w:tblGrid><w:tr>{content}</w:tr></w:tbl>"#
+            )
+        };
+        let nested = table(cell(paragraph("Nested")));
+        let cells = cell(format!(
+            "{}{nested}{}",
+            paragraph("Cell before"),
+            paragraph("Cell after")
+        ));
+        let xml = format!(
+            r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{}{}{}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:left="1440" w:top="1440" w:right="1440" w:bottom="1440"/></w:sectPr></w:body></w:document>"#,
+            paragraph("Body before"),
+            table(cells),
+            paragraph("Body after")
+        );
+        let numbering = NumberingPart::from_xml(
+            r#"<w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="1"><w:lvl w:ilvl="0"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%1."/><w:suff w:val="space"/><w:pPr><w:ind w:left="432" w:hanging="216"/></w:pPr></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="1"/></w:num></w:numbering>"#,
+        ).unwrap();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let document = jade_docx_reader::DocumentParser::new()
+                .parse_document_xml(&xml)
+                .unwrap();
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            let mut renderer = CanvasRenderer::with_host(
+                Box::new(super::super::recording_host::RecordingHost {
+                    painter: painter.clone(),
+                }),
+                false,
+            )
+            .unwrap();
+            renderer
+                .render_with_numbering(
+                    &document,
+                    &crate::Options::default(),
+                    Some(&numbering),
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            let markers = renderer.numbering_debug_regions();
+            assert_eq!(
+                markers
+                    .iter()
+                    .map(|marker| marker.text.trim())
+                    .collect::<Vec<_>>(),
+                ["1.", "2.", "3.", "4.", "5."],
+                "{platform:?}"
+            );
+            // The recording backend can paint a marker one glyph at a time.
+            let numbers = painter
+                .ops()
+                .into_iter()
+                .filter_map(|op| match op {
+                    Op::FillText(text, _, _) | Op::FillShapedText(text, _, _) => Some(text),
+                    _ => None,
+                })
+                .filter(|text| {
+                    text.chars()
+                        .all(|ch| ch.is_ascii_digit() || ch == '.' || ch.is_whitespace())
+                })
+                .map(|text| text.split_whitespace().collect::<String>())
+                .collect::<String>();
+            assert_eq!(numbers, "1.2.3.4.5.", "{platform:?}");
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn windows_legacy_saved_grid_preferences_match_each_platform_word_origins() {
         use jade_docx_layout::line_metrics::{

@@ -22202,8 +22202,9 @@ where
                                 picture,
                             });
                         }
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                        if !paragraph_style.bidi
+                            || paragraph_style.word_platform
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         {
                             paragraph_style.tab_origin_offset -= x - tab_base_x;
                         }
@@ -32978,7 +32979,9 @@ where
                     .as_ref()
                     .map(|level| (level.tabs.as_slice(), props.tabs.as_slice())),
             );
-        if paragraph_style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        if !paragraph_style.bidi
+            || paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         {
             paragraph_style.tab_origin_offset -= x - tab_base_x;
         }
@@ -38381,9 +38384,7 @@ where
         alignment: Option<&str>,
         paragraph_style: &ParagraphStyle,
     ) -> f64 {
-        if paragraph_style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            || paragraph_style.bidi
-        {
+        if paragraph_style.bidi {
             return anchor_x;
         }
         match alignment {
@@ -38398,11 +38399,7 @@ where
         suffix: Option<&str>,
         paragraph_style: &ParagraphStyle,
     ) -> &'a str {
-        if suffix == Some("tab")
-            && paragraph_style.word_platform
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            && !paragraph_style.bidi
-        {
+        if suffix == Some("tab") && !paragraph_style.bidi {
             // The reader appends a display space for an explicit tab suffix.
             // Word chooses the stop from the label's end before that space.
             return text.strip_suffix(' ').unwrap_or(text);
