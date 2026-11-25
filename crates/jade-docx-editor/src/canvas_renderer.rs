@@ -4774,16 +4774,19 @@ where
     /// Body paragraphs laid out, by paragraph: the page each starts on, its
     /// paragraph style and its text — what a header's STYLEREF looks up.
     styled_paragraphs: std::collections::BTreeMap<usize, (usize, Option<Rc<str>>, String)>,
-    /// Style ids a header's or footer's STYLEREF has looked up, lowercased.
-    style_ref_style_ids: RefCell<std::collections::HashSet<String>>,
-    /// What the current pass has recorded into `style_ref_style_ids` and
-    /// `repeated_header_paragraphs`: a pass that walks the whole document
-    /// from its start replaces those with it, any other adds it.
-    style_ref_style_ids_this_pass: RefCell<std::collections::HashSet<String>>,
-    repeated_header_paragraphs_this_pass: RefCell<std::collections::BTreeSet<usize>>,
+    /// Style ids a header's or footer's STYLEREF has looked up, lowercased,
+    /// each with the [`Self::record_pass`] that last looked it up.
+    style_ref_style_ids: RefCell<std::collections::HashMap<String, u64>>,
     /// Paragraphs of table header rows (`w:tblHeader`), which repeat at the
-    /// top of every page a table continues onto, from every layout so far.
-    repeated_header_paragraphs: RefCell<std::collections::BTreeSet<usize>>,
+    /// top of every page a table continues onto, each with the
+    /// [`Self::record_pass`] that last drew it there. A pass that walks the
+    /// whole document from its start drops what it did not record itself;
+    /// any other only adds. Stamping in place, rather than gathering a pass's
+    /// records in a set of their own, keeps a pass that records what is
+    /// already there free of allocation, as every keystroke's is.
+    repeated_header_paragraphs: RefCell<std::collections::BTreeMap<usize, u64>>,
+    /// Counts layout passes; stamps the records above.
+    record_pass: u64,
     /// Section currently producing body/header/footer content. Physical page
     /// assignments are retained across renders so SECTIONPAGES can converge in
     /// the same way as NUMPAGES after a full layout pass.
@@ -7650,27 +7653,28 @@ where
         if self
             .repeated_header_paragraphs
             .borrow()
-            .contains(&paragraph)
-            || self
-                .repeated_header_paragraphs_this_pass
-                .borrow()
-                .contains(&paragraph)
+            .contains_key(&paragraph)
         {
             return true;
         }
-        let (referenced, this_pass) = (
-            self.style_ref_style_ids.borrow(),
-            self.style_ref_style_ids_this_pass.borrow(),
-        );
-        (!referenced.is_empty() || !this_pass.is_empty())
+        let referenced = self.style_ref_style_ids.borrow();
+        !referenced.is_empty()
             && self
                 .styled_paragraphs
                 .get(&paragraph)
                 .and_then(|(_, style, _)| style.as_deref())
-                .is_some_and(|style| {
-                    let style = style.to_lowercase();
-                    referenced.contains(&style) || this_pass.contains(&style)
-                })
+                .is_some_and(|style| referenced.contains_key(&style.to_lowercase()))
+    }
+
+    /// Records `paragraphs` as a table's header rows drawn again on a later
+    /// page; see [`Self::paragraph_text_shows_elsewhere`].
+    #[inline]
+    pub(crate) fn record_repeated_header_paragraphs(&self, paragraphs: std::ops::Range<usize>) {
+        let pass = self.record_pass;
+        let mut records = self.repeated_header_paragraphs.borrow_mut();
+        for paragraph in paragraphs {
+            *records.entry(paragraph).or_insert(pass) = pass;
+        }
     }
 
     /// Puts back what [`Self::set_aside_edit_downstream`] set aside, over
@@ -10828,8 +10832,7 @@ where
             styled_paragraphs: std::collections::BTreeMap::new(),
             style_ref_style_ids: RefCell::default(),
             repeated_header_paragraphs: RefCell::default(),
-            style_ref_style_ids_this_pass: RefCell::default(),
-            repeated_header_paragraphs_this_pass: RefCell::default(),
+            record_pass: 0,
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
@@ -17545,10 +17548,7 @@ where
         // Neither skipped nor replayed from cache: every table and header
         // this pass reaches records itself again.
         let walks_from_start = seek_snapshot.is_none() && self.prefix_replay_until.is_none();
-        self.repeated_header_paragraphs_this_pass
-            .borrow_mut()
-            .clear();
-        self.style_ref_style_ids_this_pass.borrow_mut().clear();
+        self.record_pass += 1;
         if !preserve_pixel_pagination {
             let mut regions = self.object_debug_regions.borrow_mut();
             if let Some(seek) = seek_snapshot.as_ref() {
@@ -18627,32 +18627,16 @@ where
             && walk_reached_end
             && !preserve_pixel_pagination
             && !self.pageless_mode;
-        // Swapped rather than moved, and untouched when there is nothing to
-        // record: a document without repeating header rows or STYLEREF
-        // fields pays two emptiness checks a pass.
-        let (kept, this_pass) = (
-            self.repeated_header_paragraphs.get_mut(),
-            self.repeated_header_paragraphs_this_pass.get_mut(),
-        );
+        let pass = self.record_pass;
         if whole_walk {
-            if !kept.is_empty() || !this_pass.is_empty() {
-                std::mem::swap(kept, this_pass);
-                this_pass.clear();
+            self.repeated_header_paragraphs
+                .get_mut()
+                .retain(|_, recorded| *recorded == pass);
+            if self.visible_page_range.is_none() && !self.render_skip_draw {
+                self.style_ref_style_ids
+                    .get_mut()
+                    .retain(|_, recorded| *recorded == pass);
             }
-        } else if !this_pass.is_empty() {
-            kept.append(this_pass);
-        }
-        let (kept, this_pass) = (
-            self.style_ref_style_ids.get_mut(),
-            self.style_ref_style_ids_this_pass.get_mut(),
-        );
-        if whole_walk && self.visible_page_range.is_none() && !self.render_skip_draw {
-            if !kept.is_empty() || !this_pass.is_empty() {
-                std::mem::swap(kept, this_pass);
-                this_pass.clear();
-            }
-        } else if !this_pass.is_empty() {
-            kept.extend(this_pass.drain());
         }
 
         // Clear per-render dirty state.
@@ -44975,9 +44959,12 @@ where
         from_bottom: bool,
     ) -> Option<String> {
         let wanted = self.style_id_for_reference(style);
-        self.style_ref_style_ids_this_pass
+        let pass = self.record_pass;
+        *self
+            .style_ref_style_ids
             .borrow_mut()
-            .insert(wanted.to_lowercase());
+            .entry(wanted.to_lowercase())
+            .or_insert(pass) = pass;
         let matching = self.styled_paragraphs.values().filter(|(_, id, _)| {
             id.as_deref()
                 .is_some_and(|id| id.eq_ignore_ascii_case(&wanted))

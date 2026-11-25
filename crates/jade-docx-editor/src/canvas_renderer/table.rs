@@ -3890,10 +3890,7 @@ where
                             layout_config: &LayoutConfig|
          -> Result<(), JsValue> {
             if let Some(range) = header_paragraphs.take() {
-                renderer
-                    .repeated_header_paragraphs_this_pass
-                    .borrow_mut()
-                    .extend(range.clone());
+                renderer.record_repeated_header_paragraphs(range.clone());
                 header_paragraphs.set(Some(range));
             }
             let mut rewrapped_headers;
