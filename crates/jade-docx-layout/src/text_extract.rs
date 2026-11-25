@@ -785,7 +785,11 @@ fn word_oracle_line_x_offset(input: &ParagraphLayoutInput, line_index: usize) ->
 
 fn word_oracle_line_start_x(input: &ParagraphLayoutInput, line_index: usize) -> f64 {
     let start_x = input.base_x + input.paragraph_style.line_indent(line_index);
-    start_x + word_oracle_line_x_offset(input, line_index)
+    start_x
+        + word_oracle_line_x_offset(
+            input,
+            line_index.saturating_sub(input.paragraph_style.leading_page_breaks),
+        )
 }
 
 fn paragraph_line_height_points<C: LineWrapContext>(
@@ -2312,6 +2316,34 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
             previous_element_was_math = false;
             let paragraph_index = next_paragraph_index;
             next_paragraph_index += 1;
+            let section_start = element_index
+                == document
+                    .sections
+                    .get(active_section_index)
+                    .map_or(0, |section| section.start);
+            let windows_page_break_before = crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows
+                && paragraph.properties.as_ref().is_some_and(|props| {
+                    props.page_break_before == Some(true) && props.frame.is_none()
+                });
+            let legacy_page_break_spacing = windows_page_break_before
+                && crate::line_metrics::preserves_spacing_at_page_break_before(document);
+            if windows_page_break_before && current_y > content_top_y + EPS {
+                let previous_after = preceding_spacing_after(
+                    &mut trailing_spacing_after,
+                    current_page_0,
+                    current_column,
+                    current_y,
+                    || false,
+                );
+                current_page_0 += 1;
+                current_column = 0;
+                current_y = content_top_y;
+                if legacy_page_break_spacing && previous_after > 0.0 {
+                    trailing_spacing_after =
+                        Some((current_page_0, current_column, current_y, previous_after));
+                }
+            }
             let Some(mut input) = build_paragraph_input(
                 &layout_context,
                 paragraph_index,
@@ -2353,7 +2385,12 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         &mut current_page_0,
                         &mut current_column,
                         column_layout.len(),
-                        input.spacing_before_px,
+                        if windows_page_break_before && !legacy_page_break_spacing && !section_start
+                        {
+                            0.0
+                        } else {
+                            input.spacing_before_px
+                        },
                         preceding_spacing_after,
                         element_index
                             == document
@@ -2430,18 +2467,23 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         && !input.text.contains(PAGE_BREAK_CHAR)
                 },
             );
+            let page_before_spacing = current_page_0;
             advance_paragraph_spacing_before(
                 &mut current_y,
                 &mut current_page_0,
                 &mut current_column,
                 column_layout.len(),
-                input.spacing_before_px,
+                if windows_page_break_before
+                    && !legacy_page_break_spacing
+                    && !section_start
+                    && !input.text.contains(PAGE_BREAK_CHAR)
+                {
+                    0.0
+                } else {
+                    input.spacing_before_px
+                },
                 preceding_spacing_after,
-                element_index
-                    == document
-                        .sections
-                        .get(active_section_index)
-                        .map_or(0, |section| section.start),
+                section_start,
                 input.spacing_before_px > 0.0 && input.text.contains(PAGE_BREAK_CHAR),
                 input.spacing_before_px > 0.0
                     && windows_manual_break_suppresses_before(paragraph, document, element_index),
@@ -2545,6 +2587,10 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 continue;
             }
 
+            input.paragraph_style.set_leading_page_breaks(&input.text);
+            let windows_manual_page_break = input.paragraph_style.word_platform
+                == crate::line_metrics::WordLayoutPlatform::Windows
+                && input.text.contains(PAGE_BREAK_CHAR);
             let wrapped = wrap_text_into_lines(
                 context,
                 &input.text,
@@ -2695,7 +2741,27 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
             let mut visible_line_index_in_paragraph = 0usize;
             let mut paragraph_ended_with_page_break = false;
             let mut previous_emitted_line_text: Option<String> = None;
+            let leading_page_breaks = input.paragraph_style.leading_page_breaks;
+            let spacing_before = crate::line_metrics::collapsed_spacing_before(
+                input.spacing_before_px,
+                preceding_spacing_after,
+            );
+            let mut spacing_after_leading_breaks = if section_start { spacing_before } else { 0.0 };
             for (wrapped_line_index, line) in wrapped.iter().enumerate() {
+                if leading_page_breaks != 0 {
+                    if wrapped_line_index == 0 && page_before_spacing != current_page_0 {
+                        current_y = content_top_y;
+                        spacing_after_leading_breaks = spacing_before;
+                        paragraph_ended_with_page_break = true;
+                        continue;
+                    }
+                    if wrapped_line_index == leading_page_breaks
+                        && (line.break_kind != crate::line_wrap::LineBreakKind::ParagraphEnd
+                            || !line.segments.is_empty())
+                    {
+                        current_y += spacing_after_leading_breaks;
+                    }
+                }
                 let line_height_px = line_heights
                     .as_ref()
                     .map_or(input.line_height_px, |heights| heights[wrapped_line_index]);
@@ -2710,6 +2776,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                         content_bottom_y,
                     );
                 }
+                let page_before_line = current_page_0;
                 ensure_vertical_space_in_columns(
                     &mut current_y,
                     &mut current_page_0,
@@ -2719,6 +2786,11 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     content_top_y,
                     content_bottom_y,
                 );
+                if wrapped_line_index < leading_page_breaks && current_page_0 != page_before_line {
+                    spacing_after_leading_breaks = spacing_before;
+                    paragraph_ended_with_page_break = true;
+                    continue;
+                }
 
                 let text: String = line
                     .segments
@@ -2743,9 +2815,13 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                     .map(|segment| segment.end)
                     .or_else(|| line.break_range.map(|(_, end)| end))
                     .unwrap_or(line_start);
+                let indent_line_index = if windows_manual_page_break {
+                    wrapped_line_index
+                } else {
+                    visible_line_index_in_paragraph
+                };
                 let line_x = column_layout.left(current_column)
-                    + (word_oracle_line_start_x(&input, visible_line_index_in_paragraph)
-                        - content_left_x);
+                    + (word_oracle_line_start_x(&input, indent_line_index) - content_left_x);
 
                 let emitted_line = should_emit_word_oracle_line(&line_text);
                 let duplicate_terminal_line = line_text.graphemes(true).count() <= 1

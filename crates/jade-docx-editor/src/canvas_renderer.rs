@@ -12426,6 +12426,9 @@ where
         let mut hasher = jade_docx_layout::key_hasher::CacheKeyHasher::default();
 
         paragraph_style.bidi.hash(&mut hasher);
+        if paragraph_style.leading_page_breaks != 0 {
+            paragraph_style.leading_page_breaks.hash(&mut hasher);
+        }
         let word_metric_policy = u8::from(paragraph_style.word_east_asian_font_line_box)
             | (u8::from(
                 paragraph_style.word_platform
@@ -21202,7 +21205,29 @@ where
             self.current_y,
             self.effective_body_top(),
         ) {
+            let preceding_after = self
+                .last_document
+                .as_deref()
+                .filter(|_| {
+                    jade_docx_layout::line_metrics::word_layout_platform()
+                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                })
+                .filter(|document| {
+                    jade_docx_layout::line_metrics::preserves_spacing_at_page_break_before(document)
+                })
+                .map_or(0.0, |_| {
+                    self.paragraph_spacing_after_input(paragraph, body_element_index, section_index)
+                });
+            let previous_page = self.current_page_number;
             self.force_page_break()?;
+            if preceding_after > 0.0 && self.current_page_number != previous_page {
+                self.trailing_spacing_after = Some((
+                    self.current_page_number,
+                    self.column_index,
+                    self.current_y,
+                    preceding_after,
+                ));
+            }
         }
 
         // Best-effort: record a seek snapshot if this paragraph begins at the top of a page.
@@ -22627,6 +22652,8 @@ where
             || self.contextual_suppresses_spacing_before(body_element_index);
         let preceding_spacing_after =
             self.paragraph_spacing_after_input(paragraph, body_element_index, section_index);
+        let mut applied_spacing_before = 0.0;
+        let page_before_spacing = self.current_page_number;
         if spacing_ref
             .is_some_and(|spacing| spacing.before.is_some() || spacing.before_lines.is_some())
             && !suppress_spacing_before
@@ -22668,8 +22695,10 @@ where
                 );
             }
             self.current_y += spacing_before;
+            applied_spacing_before = spacing_before;
         }
 
+        let spacing_advanced_page = page_before_spacing != self.current_page_number;
         let mut paragraph_top_y = self.current_y;
         let widow_control_enabled = paragraph
             .properties
@@ -23886,6 +23915,23 @@ where
         // gives a lone 20pt picture a 20pt line at single spacing and a
         // 21.8pt one at 1.15 lines of 10.5pt Arial.
         let has_inline_objects = !inline_images.is_empty() || !inline_text_boxes.is_empty();
+        if body_element_index != usize::MAX
+            && !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+        {
+            paragraph_style.set_leading_page_breaks(&layout_text);
+        }
+        // Section-leading paragraphs retain their spacing on the first text
+        // page. Ordinary leading breaks drop it when the break fits.
+        let starts_section = paragraph_style.leading_page_breaks != 0
+            && self
+                .last_document
+                .as_deref()
+                .and_then(|document| document.sections.get(section_index))
+                .map_or(0, |section| section.start)
+                == body_element_index;
         let object_only =
             has_inline_objects && run_styles.iter().all(|style| style.inline_object.is_some());
         let text_single_line_spacing = !has_inline_objects
@@ -24172,6 +24218,9 @@ where
             let lines_start = (self.current_page_number, self.current_y, self.column_index);
             loop {
                 let resuming = resume_from > paragraph_offset;
+                if resuming {
+                    paragraph_style.leading_page_breaks = 0;
+                }
                 paragraph_style.first_line_indent = if first_line_consumed || resuming {
                     0.0
                 } else {
@@ -24238,6 +24287,9 @@ where
                     keep_next_enabled,
                     top_leading_share,
                     exact_line_baseline_share,
+                    applied_spacing_before,
+                    starts_section,
+                    spacing_advanced_page,
                     if numbering_consumed || resuming {
                         None
                     } else {
@@ -26507,6 +26559,9 @@ where
         keep_next_enabled: bool,
         top_leading_share: f64,
         exact_line_baseline_share: Option<f64>,
+        spacing_before: f64,
+        starts_section: bool,
+        spacing_advanced_page: bool,
         pending_numbering: Option<&PendingNumberingRender>,
         paragraph_shading: Option<ShadingPaint>,
         windows_shading_continuation: bool,
@@ -26614,7 +26669,7 @@ where
         // and must never be split across pages (jade-docx-layout plans them).
         let band_starts = paragraph_style.float_band_starts(lines.len());
         let band_count = band_starts.len();
-        let first_band_end = band_starts.get(1).copied().unwrap_or(lines.len());
+        let first_band = paragraph_style.first_content_band(lines.len());
         // Shared grid/auto plans consume the wrapper's existing font boxes.
         // Constant-height auto paragraphs do not allocate a line-height plan.
         let numbering_ascent = pending_numbering
@@ -26769,7 +26824,7 @@ where
                 else {
                     return height;
                 };
-                let label_ascent = numbering_ascent.filter(|_| band == 0);
+                let label_ascent = numbering_ascent.filter(|_| first_band.contains(&start));
                 let (ascent, descent) =
                     jade_docx_layout::line_metrics::line_font_box_with_numbering_ascent(
                         body,
@@ -27436,7 +27491,16 @@ where
                         .last()
                         .is_some_and(|cluster| cluster.text == "\u{ad}")
             });
+        let leading_page_breaks = paragraph_style.leading_page_breaks;
+        let mut spacing_after_leading_breaks = if starts_section { spacing_before } else { 0.0 };
         for (line_index, wrapped_line) in lines.iter().enumerate() {
+            if leading_page_breaks != 0 && line_index == 0 && spacing_advanced_page {
+                // Spacing already took the first break to the next page.
+                // Keep that advance and transfer the space to the text.
+                self.current_y -= spacing_before;
+                spacing_after_leading_breaks = spacing_before;
+                continue;
+            }
             let line_height = line_heights
                 .as_ref()
                 .map_or(line_height, |heights| heights[line_index]);
@@ -27456,6 +27520,9 @@ where
                 // line box here shifts all following browser debug coordinates
                 // down by one line.
                 continue;
+            }
+            if leading_page_breaks != 0 && line_index == leading_page_breaks {
+                self.current_y += spacing_after_leading_breaks;
             }
 
             // Where this line starts in the paragraph's layout text: a note
@@ -27721,7 +27788,7 @@ where
                     max_bottom_offset = font_box.map_or(line_height * 0.2, |(_, descent)| descent);
                 }
             }
-            if let Some(ascent) = numbering_ascent.filter(|_| line_index < first_band_end) {
+            if let Some(ascent) = numbering_ascent.filter(|_| first_band.contains(&line_index)) {
                 let (ascent, descent) =
                     jade_docx_layout::line_metrics::line_font_box_with_numbering_ascent(
                         (-min_top_offset, max_bottom_offset),
@@ -27732,7 +27799,7 @@ where
             }
             if let Some((ascent, descent)) = paragraph_style
                 .numbering_border_box
-                .filter(|_| line_index < first_band_end)
+                .filter(|_| first_band.contains(&line_index))
             {
                 min_top_offset = min_top_offset.min(-ascent);
                 max_bottom_offset = max_bottom_offset.max(descent);
@@ -27920,6 +27987,12 @@ where
                 line_box_height
             };
             self.ensure_space(fit_height)?;
+            if line_index < leading_page_breaks && self.current_page_number != page_before_space {
+                // A leading break's line box can fail to fit at the foot of
+                // the page. The natural advance also satisfies the break.
+                spacing_after_leading_breaks = spacing_before;
+                continue;
+            }
             // A taller far-side segment that no longer fits moved to a new
             // page or column: it starts there like any line, and the old
             // band's bottom must not be applied to the new page.
@@ -28010,7 +28083,7 @@ where
                     }
                 }
             }
-            if line_index == 0 {
+            if line_index == leading_page_breaks {
                 if let Some(numbering) = pending_numbering {
                     // Its number goes along when the paragraph started in a
                     // later column than the one it was measured in.
@@ -42022,12 +42095,11 @@ where
                     .iter()
                     .any(|run| run.text.contains(PAGE_BREAK_CHAR))
                 && ((page_break_before
-                    && self
-                        .last_document
-                        .as_deref()
-                        .and_then(|document| document.compat.setting("compatibilityMode"))
-                        .and_then(|mode| mode.parse::<u32>().ok())
-                        .is_none_or(|mode| mode >= 15))
+                    && self.last_document.as_deref().is_none_or(|document| {
+                        !jade_docx_layout::line_metrics::preserves_spacing_at_page_break_before(
+                            document,
+                        )
+                    }))
                     || (!page_break_before
                         && self.last_document.as_deref().is_some_and(|document| {
                             jade_docx_layout::text_extract::body_follows_manual_page_break(

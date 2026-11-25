@@ -19705,7 +19705,10 @@ impl WordDocument {
         Ok((None, Some(target.to_string())))
     }
 
-    fn validate_text_position_boundary(&self, position: TextPosition) -> Result<(), String> {
+    pub(crate) fn validate_text_position_boundary(
+        &self,
+        position: TextPosition,
+    ) -> Result<(), String> {
         let text = self
             .paragraph(position.paragraph)
             .map(|paragraph| {
@@ -34353,6 +34356,95 @@ impl WordDocument {
             Some(ParagraphSurface::Body { path })
                 if matches!(path.as_slice(), [PathEntry::Element(_)])
         )
+    }
+
+    /// Body block before which Word inserts a manual page-break paragraph.
+    /// A caret in a table targets the outer body table.
+    pub(crate) fn manual_page_break_anchor(
+        &self,
+        surface: usize,
+    ) -> Option<(usize, bool, Option<XmlNodeId>)> {
+        let ParagraphSurface::Body { path } = self.paragraph_surfaces.get(surface)? else {
+            return None;
+        };
+        let PathEntry::Element(index) = *path.first()? else {
+            return None;
+        };
+        let element = self.document.as_ref()?.body.as_ref()?.elements.get(index)?;
+        let (before_table, node) = match element {
+            BodyElement::Paragraph(paragraph) if path.len() == 1 => (false, paragraph.node_id),
+            BodyElement::Table(table) => (true, table.node_id),
+            _ => return None,
+        };
+        if let Some(raw) = self.raw_document.as_ref() {
+            let body = Self::find_body_element_id(raw)?;
+            if raw.parent_id(node?) != Some(body) {
+                return None;
+            }
+        }
+        Some((index, before_table, node))
+    }
+
+    pub(crate) fn insert_manual_page_break_paragraph(
+        &mut self,
+        anchor_surface: usize,
+    ) -> Result<usize, String> {
+        let (body_index, before_table, anchor_node) = self
+            .manual_page_break_anchor(anchor_surface)
+            .ok_or("manual page-break anchor is unavailable")?;
+        let mut paragraph = Paragraph {
+            runs: Vec::new(),
+            properties: (!before_table).then(|| ParagraphProperties {
+                widow_control: Some(true),
+                ..Default::default()
+            }),
+            node_id: None,
+            comment_ranges: Vec::new(),
+            comment_markers: Vec::new(),
+        };
+
+        if let Some(raw) = self.raw_document.as_mut() {
+            let anchor = anchor_node.ok_or("manual page-break anchor has no XML node")?;
+            let body_id =
+                Self::find_body_element_id(raw).ok_or("document body XML is unavailable")?;
+            let insertion_index = raw
+                .path(anchor)
+                .and_then(|path| path.as_slice().last().copied())
+                .filter(|_| raw.parent_id(anchor) == Some(body_id))
+                .ok_or("manual page-break anchor is not a direct body child")?;
+            let mut children = Vec::new();
+            if !before_table {
+                let widow_control = raw.create_element("w:widowControl", Vec::new(), Vec::new());
+                children.push(XmlNode::Element(raw.create_element(
+                    "w:pPr",
+                    Vec::new(),
+                    vec![XmlNode::Element(widow_control)],
+                )));
+            }
+            let element = raw.create_element("w:p", Vec::new(), children);
+            paragraph.node_id = raw
+                .insert_node_preserving_ids(body_id, insertion_index, XmlNode::Element(element))
+                .map_err(|error| error.to_string())?;
+        }
+        let document = self.document_mut().ok_or("document is unavailable")?;
+        let body = document
+            .body
+            .as_mut()
+            .ok_or("document body is unavailable")?;
+        body.elements
+            .insert(body_index, BodyElement::from_paragraph(paragraph));
+        Self::rebuild_section_ranges(document);
+        self.rebuild_paragraph_surfaces();
+        self.paragraph_surfaces
+            .iter()
+            .position(|surface| {
+                matches!(
+                    surface,
+                    ParagraphSurface::Body { path }
+                        if path.as_slice() == [PathEntry::Element(body_index)]
+                )
+            })
+            .ok_or_else(|| "inserted page-break paragraph is unavailable".into())
     }
 
     pub(crate) fn table_xml_element(&self, index: usize) -> Option<&XmlElement> {

@@ -212,6 +212,9 @@ pub struct ParagraphStyle {
     /// resolution so renderers consume the same cluster order as selection.
     pub bidi: bool,
     pub first_line_indent: f64,
+    /// Physical break-only lines before the first content line of a Windows
+    /// body paragraph. They advance pages without using its first-line indent.
+    pub leading_page_breaks: usize,
     pub first_line_available_adjustment: f64,
     pub continuation_available_adjustment: f64,
     pub right_indent: f64,
@@ -331,6 +334,7 @@ impl Default for ParagraphStyle {
             text_alignment: None,
             bidi: false,
             first_line_indent: 0.0,
+            leading_page_breaks: 0,
             first_line_available_adjustment: 0.0,
             continuation_available_adjustment: 0.0,
             right_indent: 0.0,
@@ -401,6 +405,20 @@ fn positional_tab_target(
 }
 
 impl ParagraphStyle {
+    /// Windows treats an initial manual page break as a page advance before
+    /// the paragraph's first line. Spaces, tabs and line breaks consume it.
+    pub fn set_leading_page_breaks(&mut self, text: &str) {
+        self.leading_page_breaks =
+            if self.word_platform == crate::line_metrics::WordLayoutPlatform::Windows {
+                text.len()
+                    - text
+                        .trim_start_matches(jade_docx_reader::PAGE_BREAK_CHAR)
+                        .len()
+            } else {
+                0
+            };
+    }
+
     /// Generated numbering retains grid and boundary spacing, but Word does
     /// not widen its ASCII digits/symbols with the body's balanced-SBCS rule.
     pub fn for_numbering_marker(&self) -> Cow<'_, Self> {
@@ -663,6 +681,15 @@ impl ParagraphStyle {
             .collect()
     }
 
+    /// Physical lines sharing the band that holds the paragraph's first text.
+    pub fn first_content_band(&self, line_count: usize) -> Range<usize> {
+        let start = self.leading_page_breaks.min(line_count);
+        let end = (start.saturating_add(1)..line_count)
+            .find(|&index| !self.line_shares_float_band(index))
+            .unwrap_or(line_count);
+        start..end
+    }
+
     /// Number of full-width physical line bands skipped before this line.
     pub fn skipped_float_lines_before(&self, line_index: usize) -> usize {
         self.float_line_segments
@@ -688,6 +715,9 @@ impl ParagraphStyle {
     /// A dropped cap reserves its width on the first `lines` body lines; a
     /// margin cap shifts only its enlarged first glyph into the start margin.
     pub fn line_indent(&self, line_index: usize) -> f64 {
+        let Some(line_index) = line_index.checked_sub(self.leading_page_breaks) else {
+            return 0.0;
+        };
         let mut indent = if line_index == 0 {
             self.first_line_indent
         } else {
@@ -709,7 +739,8 @@ impl ParagraphStyle {
 
     fn available_width_for_line(&self, base_available: f64, line_index: usize) -> f64 {
         let base_available = self.line_base_width(base_available, line_index);
-        let adjustment = if line_index == 0 {
+        let first_content_line = line_index == self.leading_page_breaks;
+        let adjustment = if first_content_line {
             -self.first_line_available_adjustment
         } else {
             self.continuation_available_adjustment
@@ -718,7 +749,7 @@ impl ParagraphStyle {
         let residual_hanging_indent = self.first_line_indent < 0.0
             && -self.tab_origin_offset + self.first_line_indent > f64::EPSILON;
         if residual_hanging_indent && self.east_asian_advance_scale > 1.0 {
-            if line_index == 0 {
+            if first_content_line {
                 // A hanging first line that remains inset after the hanging
                 // amount uses the unscaled text extent in Word. Keep the FE
                 // fallback scale for glyph advances, but restore the same
@@ -4487,10 +4518,8 @@ impl WrappedLine {
         if border_box.is_none() && label_ascent.is_none() {
             return heights;
         }
-        let first_band_end = (1..lines.len())
-            .find(|&index| !style.line_shares_float_band(index))
-            .unwrap_or(lines.len());
-        for (index, line) in lines[..first_band_end].iter().enumerate() {
+        for index in style.first_content_band(lines.len()) {
+            let line = &lines[index];
             let Some(body) = line
                 .content_box_px_with_paragraph_mark(mark_font_box)
                 .or_else(|| border_box.map(|_| (fallback_px * 0.8, fallback_px * 0.2)))
@@ -4542,9 +4571,7 @@ impl WrappedLine {
             mark_font_box,
             label_ascent,
         );
-        let first_band_end = (1..lines.len())
-            .find(|&index| !style.line_shares_float_band(index))
-            .unwrap_or(lines.len());
+        let first_band = style.first_content_band(lines.len());
         let mut total = 0.0;
         let mut band_height = 0.0_f64;
         for (index, line) in lines.iter().enumerate() {
@@ -4586,7 +4613,7 @@ impl WrappedLine {
                     ascent = ascent.max(mark_ascent);
                 }
             }
-            if index < first_band_end {
+            if first_band.contains(&index) {
                 (ascent, descent) = crate::line_metrics::line_font_box_with_numbering_ascent(
                     (ascent, descent),
                     label_ascent,
