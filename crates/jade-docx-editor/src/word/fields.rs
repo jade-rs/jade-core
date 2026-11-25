@@ -1157,6 +1157,7 @@ pub trait WordFields: WordSession {
             page_count: self.page_count(),
             paragraph_pages,
             page_labels,
+            page_labels_from_layout: self.has_page_labels(),
             prompt_answers: answers,
             read_file,
             japanese: host.japanese,
@@ -1185,6 +1186,9 @@ pub trait WordFields: WordSession {
         host: &FieldHost,
         answers: HashMap<String, String>,
     ) -> Result<(), String> {
+        // Every page's number first; a page the session cannot lay out
+        // keeps its fields' results.
+        self.complete_layout();
         let environment = self.field_environment(host, answers);
         self.execute_command(Box::new(FieldCommand::update(scope, environment)), true)
     }

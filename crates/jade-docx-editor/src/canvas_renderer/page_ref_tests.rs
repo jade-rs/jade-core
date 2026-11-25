@@ -289,6 +289,10 @@ struct LaidOutSession {
     executor: crate::commands::CommandExecutor,
     /// Whether the session reports the renderer's page labels.
     labels: bool,
+    /// Whether `complete_layout` may lay the rest of the document out, as
+    /// a host with its renderer at hand can; a session over a snapshot of
+    /// the layout cannot.
+    can_layout: bool,
 }
 
 impl crate::word::WordSession for LaidOutSession {
@@ -361,6 +365,19 @@ impl crate::word::WordSession for LaidOutSession {
             .get(page.checked_sub(1)?)
             .cloned()
     }
+    fn has_page_labels(&self) -> bool {
+        self.labels && self.renderer.has_page_labels()
+    }
+    fn complete_layout(&mut self) -> bool {
+        if self.can_layout && !self.renderer.last_layout_complete() {
+            let model = self.document.document.clone().expect("document");
+            self.renderer.set_layout_page_limit(None);
+            self.renderer
+                .render(&model, &Options::default())
+                .expect("complete the layout");
+        }
+        self.renderer.last_layout_complete()
+    }
 }
 
 /// Updating a table of contents' page numbers writes the number the
@@ -397,6 +414,7 @@ fn updating_toc_page_numbers_writes_the_displayed_number() {
         )),
         executor: crate::commands::CommandExecutor::new(),
         labels: true,
+        can_layout: true,
     };
     assert_eq!(session.paragraph_page(3), Some(2));
     session.update_toc(true).expect("update the page numbers");
@@ -441,6 +459,7 @@ fn laid_out_session(body: &str) -> LaidOutSession {
         )),
         executor: crate::commands::CommandExecutor::new(),
         labels: true,
+        can_layout: true,
     }
 }
 
@@ -573,23 +592,7 @@ fn rebuilding_a_toc_without_labels_keeps_its_placeholders() {
 /// a pixel-only rerender of page 1 stops its walk on page 2 while still in
 /// A.
 fn session_after_rerender() -> LaidOutSession {
-    let filler: String = (0..60)
-        .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
-        .collect();
-    let tail: String = (0..60)
-        .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
-        .collect();
-    let body = format!(
-        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T(</w:t></w:r><w:bookmarkEnd w:id="0"/>{}<w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
-        complex_field("PAGEREF target \\h", "9"),
-        section_properties("nextPage", ""),
-        complex_field("PAGE", "9"),
-        section_properties(
-            "continuous",
-            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
-        ),
-    );
-    let mut session = laid_out_session(&body);
+    let mut session = laid_out_session(&shared_page_toc_body());
     let labels = |session: &LaidOutSession| -> Vec<String> {
         session
             .renderer
@@ -610,6 +613,28 @@ fn session_after_rerender() -> LaidOutSession {
         .expect("pixel rerender");
     assert_eq!(labels(&session), ["1", "vii", "viii", "ix"]);
     session
+}
+
+/// A TOC whose entry points at the first paragraph (with a PAGE field) of
+/// a continuous lower-roman section from 7 that starts on page 2, shared
+/// with the decimal section before it: labels 1, vii, viii, ix.
+fn shared_page_toc_body() -> String {
+    let filler: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
+        .collect();
+    let tail: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
+        .collect();
+    format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T(</w:t></w:r><w:bookmarkEnd w:id="0"/>{}<w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
+        complex_field("PAGEREF target \\h", "9"),
+        section_properties("nextPage", ""),
+        complex_field("PAGE", "9"),
+        section_properties(
+            "continuous",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+    )
 }
 
 /// A pixel-only rerender leaves the labels the last full layout recorded,
@@ -705,21 +730,47 @@ fn session_after_numbering_edit() -> LaidOutSession {
 }
 
 /// After a numbering-only edit and an incomplete pass, updating the TOC's
-/// page numbers leaves the entry for a page past the stop as it was: no
-/// old "50", and no guess either.
+/// page numbers first lays the rest of the document out, so the entry on
+/// C's first page gets "C".
 #[test]
-fn a_toc_update_after_a_limited_pass_leaves_unfinished_pages_alone() {
+fn a_toc_update_after_a_limited_pass_completes_the_layout_first() {
     use crate::word::references::toc::WordToc;
     let mut session = session_after_numbering_edit();
-    session.update_toc(true).expect("update the page numbers");
-    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t9");
+    assert_eq!(session.update_toc(true), Ok(0));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tC");
 }
 
-/// The same for F9: the PAGE field on C's first page keeps its result.
+/// The same for F9: the PAGE field on C's first page shows "C".
 #[test]
-fn f9_after_a_limited_pass_leaves_unfinished_pages_alone() {
+fn f9_after_a_limited_pass_completes_the_layout_first() {
     use crate::word::fields::{FieldHost, WordFields};
     let mut session = session_after_numbering_edit();
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(
+        paragraphs.iter().any(|text| text == "T(C)"),
+        "{paragraphs:?}"
+    );
+}
+
+/// A session that cannot lay out the rest leaves the entry and the field on
+/// the page past the stop as they were, and says how many it left.
+#[test]
+fn without_a_complete_layout_unfinished_pages_are_left_and_counted() {
+    use crate::word::fields::{FieldHost, WordFields};
+    use crate::word::references::toc::WordToc;
+    let mut session = session_after_numbering_edit();
+    session.can_layout = false;
+    assert_eq!(session.update_toc(true), Ok(1));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t9");
+    // F9 over the whole document also rebuilds the table (which finds no
+    // headings here); only the PAGE field matters below.
     session
         .update_fields(
             crate::fields::FieldScope::Document,
@@ -732,6 +783,68 @@ fn f9_after_a_limited_pass_leaves_unfinished_pages_alone() {
         paragraphs.iter().any(|text| text == "T(9)"),
         "{paragraphs:?}"
     );
+}
+
+/// From the review's probe: a stable one-character edit on page 1, armed
+/// as the lazy view arms stable-height commands, stops its walk on the
+/// edit page. It moved no page, so the labels stay, and a session that
+/// cannot lay out further still writes "vii".
+#[test]
+fn a_toc_update_after_a_stable_edit_on_page_one_writes_the_laid_out_label() {
+    use crate::word::references::toc::WordToc;
+    let mut session = laid_out_session(&shared_page_toc_body());
+    session.can_layout = false;
+    let mut model: Document = (**session.document.document.as_ref().expect("document")).clone();
+    if let Some(body) = model.body.as_mut() {
+        if let BodyElement::Paragraph(paragraph) = &mut body.elements[1] {
+            paragraph.runs.first_mut().expect("run").text.push('x');
+        }
+    }
+    let height = session
+        .renderer
+        .cached_paragraph_height(1)
+        .expect("laid out");
+    session.renderer.clear_dirty_regions();
+    session.renderer.set_incremental_dirty_from(1);
+    session.renderer.set_fast_replay_trigger(1, height);
+    session
+        .renderer
+        .render(&model, &Options::default())
+        .expect("the edit");
+    assert!(session.renderer.last_fast_replay_stable());
+    assert!(!session.renderer.last_layout_complete());
+    assert_eq!(session.update_toc(true), Ok(0));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tvii");
+}
+
+/// A lazily opened document laid out only through page 1: updating the
+/// TOC lays the rest out first and writes "vii" for the entry on page 2.
+#[test]
+fn a_toc_update_in_a_lazy_layout_completes_it_first() {
+    use crate::word::references::toc::WordToc;
+    let data = package(&shared_page_toc_body(), "<w:r><w:t>F</w:t></w:r>");
+    let document =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&document);
+    let model = document.document.clone().expect("document");
+    renderer.set_layout_page_limit(Some(1));
+    renderer
+        .render(&model, &Options::default())
+        .expect("render page 1");
+    assert!(!renderer.last_layout_complete());
+    let mut session = LaidOutSession {
+        document,
+        renderer,
+        selection: Some(jade_selection::SelectionRange::collapsed(
+            jade_selection::TextPosition::new(0, 0),
+        )),
+        executor: crate::commands::CommandExecutor::new(),
+        labels: true,
+        can_layout: true,
+    };
+    assert_eq!(session.update_toc(true), Ok(0));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tvii");
 }
 
 /// Print ranges and the TOC read the same labels after a pixel rerender.

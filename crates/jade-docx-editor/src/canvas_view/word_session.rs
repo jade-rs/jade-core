@@ -29,6 +29,10 @@ pub(super) struct LayoutFacts {
     paragraph_pages: HashMap<usize, usize>,
     /// `CanvasRenderer::displayed_page_labels`, page 1 first.
     page_labels: Vec<crate::fields::PageLabel>,
+    /// `CanvasRenderer::has_page_labels`.
+    has_page_labels: bool,
+    /// Whether the layout reached the end of the document.
+    layout_complete: bool,
 }
 
 /// Where an action left the selection, and what it returned.
@@ -139,6 +143,17 @@ impl WordSession for DetachedSession<'_> {
             .and_then(|index| self.facts.page_labels.get(index))
             .cloned()
     }
+
+    fn has_page_labels(&self) -> bool {
+        self.facts.has_page_labels
+    }
+
+    /// The facts were read before the action ran, and the session cannot
+    /// lay the document out itself: a host that runs a page-number command
+    /// completes the layout first (`OffscreenDocumentView::complete_layout`).
+    fn complete_layout(&mut self) -> bool {
+        self.facts.layout_complete
+    }
 }
 
 impl OffscreenDocumentView {
@@ -177,7 +192,55 @@ impl OffscreenDocumentView {
             page_count: Some(renderer.page_count()).filter(|count| *count > 0),
             paragraph_pages,
             page_labels: renderer.displayed_page_labels(),
+            has_page_labels: renderer.has_page_labels(),
+            layout_complete: renderer.last_layout_complete(),
         }
+    }
+
+    /// Lays the document out through its end, without drawing, when the last
+    /// layout stopped short (a lazily opened document lays out only what the
+    /// viewport needs): what F9 and a table of contents' page numbers read
+    /// first, so every page has its number. Returns whether the layout is
+    /// complete afterwards.
+    pub(super) fn complete_layout(&self) -> Result<bool, JsValue> {
+        if self.renderer.borrow().last_layout_complete() {
+            return Ok(true);
+        }
+        let (options, document, numbering_part, header_lines, footer_lines, comments) = {
+            let state = self.state.borrow();
+            let Some(word_doc) = state.word_doc.as_ref() else {
+                return Ok(false);
+            };
+            (
+                state.options.clone(),
+                word_doc.document.as_ref().map(Rc::clone),
+                word_doc.numbering_part.clone(),
+                word_doc.header_lines.clone(),
+                word_doc.footer_lines.clone(),
+                word_doc.comments.clone(),
+            )
+        };
+        let Some(document) = document else {
+            return Ok(false);
+        };
+        let mut renderer = self.renderer.borrow_mut();
+        let previous_visible_range = renderer.visible_page_range();
+        let previous_limit = renderer.layout_page_limit();
+        renderer.set_layout_page_limit(None);
+        renderer.set_visible_page_range(previous_visible_range);
+        renderer.prepare_layout_extension_seek(previous_limit, usize::MAX, &options);
+        renderer
+            .render_layout_with_numbering_rc(
+                document,
+                &options,
+                numbering_part.as_ref(),
+                header_lines.as_deref(),
+                footer_lines.as_deref(),
+                Some(&comments),
+            )
+            .map_err(|error| JsValue::from_str(&format!("{error:?}")))?;
+        renderer.clear_dirty_regions();
+        Ok(renderer.last_layout_complete())
     }
 
     /// Reads from the document as a session: what a dialog opens on.

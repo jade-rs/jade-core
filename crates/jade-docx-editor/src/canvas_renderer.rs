@@ -45518,6 +45518,14 @@ where
             .collect()
     }
 
+    /// Whether `displayed_page_labels` reflects a layout: a single section's
+    /// labels are always read live, several sections' once a paginating
+    /// pass has recorded their owners. With this true, a page missing from
+    /// the labels is one the last pass did not finish (possibly none).
+    pub fn has_page_labels(&self) -> bool {
+        self.section_page_numbering.len() <= 1 || self.label_page_owners.is_some()
+    }
+
     /// `label_page_owners` when labels follow them: in a multi-section
     /// document a paginating pass has laid out. A single section's labels
     /// do not depend on where a walk stopped, and are read live.
@@ -45537,6 +45545,12 @@ where
     fn record_label_page_owners(&mut self) {
         if self.section_page_numbering.len() <= 1 {
             self.label_page_owners = None;
+            return;
+        }
+        // A pass that stopped on a proven-stable fast replay changed no
+        // page: the owners recorded before it still hold, as after a
+        // pixel-only pass.
+        if self.last_fast_replay_stable && !self.last_layout_complete {
             return;
         }
         let finished = if self.last_layout_complete {
