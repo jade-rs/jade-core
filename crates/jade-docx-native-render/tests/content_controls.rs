@@ -32,6 +32,9 @@ fn tags(document: &common::Doc) -> Vec<Vec<String>> {
 #[test]
 fn paragraphs_know_the_content_control_they_are_in_through_edits() {
     let mut document = common::open_bytes(&with_content_control());
+    // Read straight after open, before any edit or idle pass built the tree
+    // the controls are found in.
+    document.ensure_roundtrip_xml().unwrap();
     let outer = vec!["outer".to_string()];
     let found = tags(&document);
     assert_eq!(found[0], Vec::<String>::new());

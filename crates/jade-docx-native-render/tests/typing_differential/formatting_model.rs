@@ -282,6 +282,11 @@ fn check_sequence(operations: &[Operation]) {
     let bytes = package(rich_body(), "");
     let mut actual = open_bytes(&bytes);
     let mut reference = open_bytes(&bytes);
+    // As the shell's idle pass leaves them, so a rejected first edit is not
+    // also the one that builds the round-trip tree and repaints.
+    for document in [&mut actual, &mut reference] {
+        document.ensure_roundtrip_xml().unwrap();
+    }
     let mut model = Model::new();
     model.check(&actual, "initial");
     for (step, operation) in operations.iter().enumerate() {

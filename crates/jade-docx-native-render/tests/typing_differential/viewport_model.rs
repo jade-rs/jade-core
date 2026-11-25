@@ -264,6 +264,12 @@ fn check_sequence_for_body(body: &str, operations: &[Operation]) {
     let bytes = package(body, "");
     let mut actual = open_bytes(&bytes);
     let mut reference = open_bytes(&bytes);
+    // As the shell's idle pass leaves them: the node ids in table metadata
+    // come with the round-trip tree, which one edit path would otherwise
+    // build and the other not.
+    for document in [&mut actual, &mut reference] {
+        document.ensure_roundtrip_xml().unwrap();
+    }
     let initial_pixels: Vec<_> = (0..actual.page_count())
         .map(|page| actual.page_pixels(page))
         .collect();
