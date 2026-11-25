@@ -1077,6 +1077,7 @@ struct PreparedCell {
     right_border_shared: bool,
     closes_table: bool,
     separate_border_model: bool,
+    legacy_inline_border_edges: bool,
     logical_paragraph_count: usize,
     /// Model paragraphs suppressed only from visual layout by `w:hideMark`.
     /// They still reserve selection indices so later cells stay aligned with
@@ -1126,6 +1127,7 @@ impl PreparedCell {
             right_border_shared: self.right_border_shared,
             closes_table: self.closes_table,
             separate_border_model: self.separate_border_model,
+            legacy_inline_border_edges: self.legacy_inline_border_edges,
             logical_paragraph_count: self.logical_paragraph_count,
             hidden_end_marker_paragraph_count: self.hidden_end_marker_paragraph_count,
             page_top_inset: self.page_top_inset,
@@ -1871,6 +1873,7 @@ struct LayoutConfig {
     /// The document's `w:useFELayout`.
     document_uses_east_asian_layout: bool,
     word_modern_border_insets: bool,
+    windows_legacy_spaced_text_margins: bool,
     word_mac_bidi_alignment: bool,
     /// Auto paragraph spacing collapses like HTML margins (no
     /// `doNotUseHTMLParagraphAutoSpacing`).
@@ -2933,6 +2936,7 @@ where
             document_uses_east_asian_layout: self.document_east_asian_rules.use_east_asian_layout,
             word_mac_bidi_alignment: jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: word_modern_nested_border_frame_enabled(
                 self.document_east_asian_rules.compatibility_mode,
             ),
@@ -2962,6 +2966,36 @@ where
         let centered_table = table.style.get("text-align").is_some_and(|alignment| {
             alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
         });
+        let windows_rtl_spaced_percentage_grid = use_column_frame
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.document_east_asian_rules.compatibility_mode == Some(14)
+            && !self.measuring_keep_next
+            && self.footnote_reserve_px == 0.0
+            && percentage_width
+            && centered_table
+            && !table.bidi_visual
+            && column_count == 1
+            && table.columns.is_empty()
+            && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
+            && self.column_layout.count() > 1
+            && self.column_layout.start_x(0) > self.column_layout.start_x(1)
+            && self
+                .column_layout
+                .widths
+                .iter()
+                .any(|&width| width != available_width)
+            && table.rows.iter().any(|row| !table_row_is_hidden(row))
+            && table.rows.iter().all(|row| {
+                table_row_is_hidden(row)
+                    || (resolve_cell_spacing_px(row, table) > 0.0
+                        && !table_row_has_note_references(row)
+                        && row
+                            .cells
+                            .iter()
+                            .all(|cell| !cell_has_absolute_preferred_width(cell)))
+            });
+        layout_config.windows_legacy_spaced_text_margins = windows_rtl_spaced_percentage_grid;
         // A saved one-cell grid does not override the preferred percentage in
         // these legacy Windows body tables, either. Keep Mac's saved-grid path.
         let windows_body_preferred_grid = jade_docx_layout::line_metrics::word_layout_platform()
@@ -3102,12 +3136,13 @@ where
                 .rows
                 .iter()
                 .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
-        let rtl_spaced_auto_grid = (word_mac_column_table
+        let rtl_spaced_auto_grid = ((word_mac_column_table
             && percentage_width
             && self.column_layout.start_x(0) > self.column_layout.start_x(1)
             && column_count == 1
             && word_mac_sizes_without_grid(table, column_count)
             && centered_table)
+            || windows_rtl_spaced_percentage_grid)
             .then(|| table.rows.iter().find(|row| !table_row_is_hidden(row)))
             .flatten()
             .filter(|row| resolve_cell_spacing_px(row, table) > 0.0)
@@ -3190,8 +3225,12 @@ where
             available_width
         };
         let sizing_compatibility_mode = self.document_east_asian_rules.compatibility_mode;
-        let section_frame_width = |width| {
-            if windows_legacy_rtl_percentage_header_grid
+        let section_frame_width = |width: f64| {
+            if windows_rtl_spaced_percentage_grid {
+                // Windows resolves this separated legacy preferred grid against
+                // the final column's trailing text edge, excluding its cell margin.
+                (width - pre_2013_table_trailing_text_inset_px(table)).max(1.0)
+            } else if windows_legacy_rtl_percentage_header_grid
                 || windows_legacy_rtl_merged_percentage_grid
                 || windows_legacy_autofit_column_table
                 || windows_legacy_fixed_percentage_table
@@ -3214,6 +3253,7 @@ where
             && !percentage_width
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
         if word_mac_column_table
+            || windows_rtl_spaced_percentage_grid
             || windows_legacy_rtl_merged_percentage_grid
             || windows_legacy_fixed_percentage_table
             || windows_fixed_preferred_width
@@ -3327,13 +3367,15 @@ where
         } else {
             None
         };
-        let rtl_wrapping_widths = rtl_spaced_auto_grid.map(|_| {
-            let mut widths = column_widths.clone();
-            widths[0] = (widths[0]
-                - points_to_px(2.0 * (5.4 - MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT)))
-            .max(1.0);
-            widths
-        });
+        let rtl_wrapping_widths = rtl_spaced_auto_grid
+            .filter(|_| !windows_rtl_spaced_percentage_grid)
+            .map(|_| {
+                let mut widths = column_widths.clone();
+                widths[0] = (widths[0]
+                    - points_to_px(2.0 * (5.4 - MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT)))
+                .max(1.0);
+                widths
+            });
         let wrapping_widths = original_widths
             .as_deref()
             .or(rtl_wrapping_widths.as_deref())
@@ -3411,7 +3453,9 @@ where
                     compatibility_mode,
                 )
             });
-            let x = if let Some((spacing, frame)) = rtl_spaced_auto_grid {
+            let x = if let Some((spacing, frame)) =
+                rtl_spaced_auto_grid.filter(|_| !windows_rtl_spaced_percentage_grid)
+            {
                 x + spacing + frame
             } else if word_mac_column_table
                 && percentage_width
@@ -4237,6 +4281,7 @@ where
                                 table,
                                 row,
                                 SpacedTableFrameSegment {
+                                    legacy_inline_border_edges: windows_rtl_spaced_percentage_grid,
                                     x: left_edge,
                                     y: self.current_y,
                                     width: right_edge - left_edge,
@@ -4319,6 +4364,7 @@ where
                                 table,
                                 &table.rows[previous_row],
                                 SpacedTableFrameSegment {
+                                    legacy_inline_border_edges: windows_rtl_spaced_percentage_grid,
                                     x: left_edge,
                                     y: bottom,
                                     width: right_edge - left_edge,
@@ -4512,6 +4558,7 @@ where
                     table,
                     row,
                     SpacedTableFrameSegment {
+                        legacy_inline_border_edges: windows_rtl_spaced_percentage_grid,
                         x: left_edge,
                         y: self.current_y,
                         width: right_edge - left_edge,
@@ -6347,6 +6394,9 @@ where
                         table,
                         row,
                         SpacedTableFrameSegment {
+                            legacy_inline_border_edges: row_cells
+                                .first()
+                                .is_some_and(|cell| cell.legacy_inline_border_edges),
                             x: grid.table_x,
                             y: y_top,
                             width: *grid.column_positions.last().unwrap_or(&0.0),
@@ -9233,6 +9283,13 @@ where
             (x, y, width, height)
         };
 
+        let (x, width) = if cell.legacy_inline_border_edges {
+            let leading = visible_border_width(&cell.border_left);
+            let trailing = visible_border_width(&cell.border_right);
+            (x - leading, width + leading + trailing)
+        } else {
+            (x, width)
+        };
         let windows = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
         // Windows collapsed rules start at the stored row boundary;
@@ -9372,6 +9429,19 @@ where
             frame.x + frame.width,
             frame.y + frame.height,
         );
+        let (left, right) = if frame.legacy_inline_border_edges {
+            (
+                left - edge(TableBorderSide::Left)
+                    .as_ref()
+                    .map_or(0.0, visible_border_width),
+                right
+                    + edge(TableBorderSide::Right)
+                        .as_ref()
+                        .map_or(0.0, visible_border_width),
+            )
+        } else {
+            (left, right)
+        };
         let windows = jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
         let bottom_edge = if frame.draw_bottom {
@@ -15130,6 +15200,7 @@ fn table_border_edge_for_side(
 /// One painted row segment of a spaced table's outer frame.
 #[derive(Clone, Copy, Debug)]
 struct SpacedTableFrameSegment {
+    legacy_inline_border_edges: bool,
     x: f64,
     y: f64,
     width: f64,
@@ -16234,7 +16305,13 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
             let windows = jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
             let factor = if windows && cell_spacing > f64::EPSILON {
-                1.0
+                if config.windows_legacy_spaced_text_margins {
+                    // This legacy separated RTL grid measures its text frame
+                    // from the authored margins without charging the rule again.
+                    0.0
+                } else {
+                    1.0
+                }
             } else {
                 0.5
             };
@@ -16843,6 +16920,7 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
             right_border_shared: false,
             closes_table: is_bottom_row,
             separate_border_model: separated,
+            legacy_inline_border_edges: config.windows_legacy_spaced_text_margins,
             logical_paragraph_count,
             hidden_end_marker_paragraph_count,
             page_top_inset: 0.0,
@@ -20783,6 +20861,7 @@ mod tests {
                 spacing_grid_pitch_pt: None,
                 document_snap_to_grid_default: false,
                 document_uses_east_asian_layout: false,
+                windows_legacy_spaced_text_margins: false,
                 word_modern_border_insets: false,
                 word_mac_bidi_alignment: false,
                 html_auto_spacing: true,
@@ -20897,6 +20976,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -23136,6 +23216,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -24671,6 +24752,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -25110,6 +25192,7 @@ mod tests {
             right_border_shared: false,
             closes_table: false,
             separate_border_model: false,
+            legacy_inline_border_edges: false,
             logical_paragraph_count: 0,
             hidden_end_marker_paragraph_count: 0,
             page_top_inset: 0.0,
@@ -26259,6 +26342,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -27843,6 +27927,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: true,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -27968,6 +28053,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -28104,6 +28190,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -28357,6 +28444,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -28502,6 +28590,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -28684,6 +28773,7 @@ mod tests {
             spacing_grid_pitch_pt: None,
             document_snap_to_grid_default: false,
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,
@@ -30006,6 +30096,7 @@ mod tests {
             paragraph_line_heights: FxHashMap::default(),
             paragraph_east_asian_rules: FxHashMap::default(),
             document_uses_east_asian_layout: false,
+            windows_legacy_spaced_text_margins: false,
             word_modern_border_insets: false,
             word_mac_bidi_alignment: false,
             html_auto_spacing: true,

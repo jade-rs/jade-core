@@ -713,6 +713,22 @@ SHARED_ORIGINALS.update({'probe-table-flow-split-rows-continuous-cell-spacing-st
                                  2,
                                  75)})
 
+SHARED_ORIGINALS.update({'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-1': ('7c2c3e65c9c89285a79690d7552067f5f334e106bdb42dffa09164de1bba42dd',
+                                                                                                                         '3e44ed99605334ac960051e25231d0375b719ac193753744d3a363dcda28e456',
+                                                                                                                         '09140a4b341e15a6595ec3fa053dda45c58d72fdf7093f04c528cb1c75b4342a',
+                                                                                                                         7,
+                                                                                                                         1008),
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2': ('a74235f76658ecf5964173b46f95a0cfdb4d53504fe5d1fb134793b45d07803b',
+                                                                                                                         'f0d87f6bc188fa843374e9a55f26a4de3bd6408bb0d11206e5ce6e5ec93cf38d',
+                                                                                                                         '65219ae7420bb61eb0baddc7fd4174401240dc641b1b49461caf2892432d4414',
+                                                                                                                         7,
+                                                                                                                         1008),
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3': ('f7efea5f7dc8568c07c5ca42b7ecc5a1996bd9c4b12d59f3ee89f1ffe119eb61',
+                                                                                                                         'd2a2c64ffee3152069ef2d8aaae1fad022639819c9d317457e5b486724f10155',
+                                                                                                                         '9a40dcbc1d5416a5e4995813f6091e3919cc831a545d77d31a8358a5132c9569',
+                                                                                                                         8,
+                                                                                                                         1005)})
+
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
                                     '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
@@ -952,9 +968,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 179 and sum(r['glyphs'] for r in results) == 62139,
+    require(len(results) == 182 and sum(r['glyphs'] for r in results) == 65160,
             'Shared Mac original coverage changed')
-    print('179 shared Mac originals62139: layout and painted-PDF PASS', flush=True)
+    print('182 shared Mac originals65160: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -1148,7 +1164,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 179 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 182 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result
