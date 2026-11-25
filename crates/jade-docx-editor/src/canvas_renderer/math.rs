@@ -239,14 +239,11 @@ pub(super) fn display_math_line_metrics(
     snap_default: bool,
 ) -> MathMetrics {
     use jade_docx_layout::line_metrics::{
-        resolve_effective_snap_to_grid, word_grid_line_centres_text, word_layout_platform,
-        WordLayoutPlatform,
+        resolve_effective_snap_to_grid, word_grid_line_centres_text,
     };
     let snap = resolve_effective_snap_to_grid(properties.snap_to_grid, snap_default, grid);
     let mut metrics = plan.line_metrics;
-    if word_layout_platform() == WordLayoutPlatform::Mac
-        && style.family.eq_ignore_ascii_case("Cambria Math")
-        && !word_grid_line_centres_text(snap, grid)
+    if style.family.eq_ignore_ascii_case("Cambria Math") && !word_grid_line_centres_text(snap, grid)
     {
         // Word reserves the Cambria Math font line box even for equations
         // whose ink fits well above the baseline, such as a single digit.
@@ -272,28 +269,6 @@ pub(super) fn display_math_line_metrics(
             last_size = style.size_px;
         }
         metrics.ascent = metrics.ascent.max(first_size * (1946.0 / 2048.0));
-        metrics.descent = metrics
-            .descent
-            .max(last_baseline + last_size * (455.0 / 2048.0));
-    }
-    if word_layout_platform() == WordLayoutPlatform::Windows
-        && style.family.eq_ignore_ascii_case("Cambria Math")
-        && !word_grid_line_centres_text(snap, grid)
-    {
-        // The original Windows Cambria Math program reserves 455/2048 em
-        // below a display baseline, even when the equation's ink is shallower.
-        let last_baseline = plan.lines.last().map_or(0.0, |line| line.baseline);
-        let last_size = plan
-            .glyphs
-            .iter()
-            .filter(|g| {
-                g.visible
-                    && g.style.family.eq_ignore_ascii_case("Cambria Math")
-                    && g.baseline == last_baseline
-            })
-            .map(|g| g.style.size_px)
-            .reduce(f64::max)
-            .unwrap_or(style.size_px);
         metrics.descent = metrics
             .descent
             .max(last_baseline + last_size * (455.0 / 2048.0));
@@ -822,23 +797,13 @@ impl DisplayMathStyle<'_> {
         let mut style = self.boxed_math_style(family);
         if let Some(properties) = math.properties.as_deref() {
             let mark = properties.mark_run_properties.as_ref();
-            let word_mac = jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
-            // The paragraph mark has its own font size. Word for Mac
-            // leaves the equation at the inherited size unless its runs
-            // specify their own sizes.
-            let mark_size = if word_mac {
-                None
-            } else {
-                mark.and_then(|p| p.font_size)
-            };
-            if let Some(size) = mark_size
-                .or_else(|| {
-                    properties
-                        .style
-                        .as_deref()
-                        .and_then(|id| self.styles.and_then(|s| s.resolve_font_size(id)))
-                })
+            // The paragraph mark size is separate from the equation runs.
+            // Inherit the paragraph style/default size; explicit math run
+            // sizes still override it in the layout plan.
+            if let Some(size) = properties
+                .style
+                .as_deref()
+                .and_then(|id| self.styles.and_then(|s| s.resolve_font_size(id)))
                 .filter(|size| size.is_finite() && *size > 0.0)
             {
                 style.size_px = points_to_px(size);
@@ -878,20 +843,17 @@ impl DisplayMathStyle<'_> {
                 .and_then(|p| p.alignment.as_deref())
                 .or_else(|| inherited.as_ref().and_then(|p| p.alignment.as_deref()))
                 .or_else(|| defaults.and_then(|p| p.alignment.as_deref()));
-            let word_mac = jade_docx_layout::line_metrics::word_layout_platform()
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
             settings.default_justification = match alignment {
                 Some("center") => MathJustification::Center,
                 Some("right") => MathJustification::Right,
                 Some("left") => MathJustification::Left,
-                Some("start") if word_mac => MathJustification::Left,
-                Some("end") if word_mac || !bidi => MathJustification::Right,
-                Some("end") => MathJustification::Left,
+                Some("start") => MathJustification::Left,
+                Some("end") => MathJustification::Right,
                 _ if bidi => MathJustification::Right,
                 _ => MathJustification::Left,
             };
             settings.word_mac_rtl_paragraph =
-                word_mac && bidi && settings.default_justification == MathJustification::Right;
+                bidi && settings.default_justification == MathJustification::Right;
             settings.wrap_indent_px = 0.0;
             settings.wrap_right = false;
         }
@@ -1070,5 +1032,142 @@ mod tests {
         assert_eq!(MathParagraphAlignment::Center.x(10.0, 100.0, 20.0), 50.0);
         assert_eq!(MathParagraphAlignment::Right.x(10.0, 100.0, 20.0), 90.0);
         assert_eq!(MathParagraphAlignment::Center.x(10.0, 20.0, 40.0), 10.0);
+    }
+    #[test]
+    fn original_math_paragraph_mark_sizes_do_not_resize_equations() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_docx_layout::math_layout::styled::MathLayoutOptions;
+        use jade_painter::recording::RecordingPainter;
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        // The original contains inherited 12pt equations and explicit 14pt
+        // math runs, with paragraph marks independently set to 10pt or 16pt.
+        // Absolute original Word positions and font sizes are asserted in CI.
+        let bytes = include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-paragraph-mark-size/source.docx"
+        ));
+        let model = futures::executor::block_on(
+            crate::word_document::WordDocument::load_for_initial_render(
+                bytes,
+                &crate::Options::default(),
+            ),
+        )
+        .unwrap();
+        let document = model.document.as_deref().unwrap();
+        let paragraphs: Vec<_> = document
+            .body
+            .as_ref()
+            .unwrap()
+            .elements
+            .iter()
+            .filter_map(crate::document::BodyElement::as_math_paragraph)
+            .collect();
+        assert_eq!(paragraphs.len(), 6);
+        let resources = DisplayMathStyle {
+            styles: model.styles_part.as_ref(),
+            theme: None,
+            settings: jade_docx_layout::math_layout::styled::MathSettings::default(),
+            dark_mode_text: false,
+        };
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            let painter = RecordingPainter::with_width_per_char(7.0);
+            for (paragraph, expected_points) in
+                paragraphs.iter().zip([12.0, 14.0, 12.0, 14.0, 12.0, 14.0])
+            {
+                let style = resources.body_math_style(paragraph, "Cambria Math");
+                assert!(
+                    (style.size_px * 0.75 - 12.0).abs() < 1e-9,
+                    "paragraph mark changed inherited equation size on {platform:?}"
+                );
+                let plan = layout_math_elements(
+                    &painter,
+                    &paragraph.elements,
+                    style,
+                    &MathLayoutOptions {
+                        display: true,
+                        ..MathLayoutOptions::default()
+                    },
+                    #[cfg(feature = "opentype-math")]
+                    None,
+                )
+                .unwrap();
+                let glyph = plan.glyphs.iter().find(|glyph| glyph.visible).unwrap();
+                assert!(
+                    (glyph.style.size_px * 0.75 - expected_points).abs() < 1e-9,
+                    "explicit equation run size changed on {platform:?}"
+                );
+            }
+        }
+    }
+    #[test]
+    fn original_inherited_display_math_uses_paragraph_side_indents() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        let model = futures::executor::block_on(
+            crate::word_document::WordDocument::load_for_initial_render(
+                include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"),
+                    "/../../tests/word-oracle/mac-elsa-synthetic/probe-math-display-paragraph-indents/source.docx")),
+                &crate::Options::default(),
+            ),
+        ).unwrap();
+        let document = model.document.as_deref().unwrap();
+        let paragraphs: Vec<_> = document
+            .body
+            .as_ref()
+            .unwrap()
+            .elements
+            .iter()
+            .filter_map(crate::document::BodyElement::as_math_paragraph)
+            .collect();
+        assert_eq!(paragraphs.len(), 6);
+        // The original alternates plain, first-line and hanging paragraphs
+        // in both directions. Inherited display equations use only the side
+        // indents; their first mathematical row is not an ordinary text row.
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (paragraph, (left, width)) in paragraphs.iter().zip([
+                (0.0, 300.0),
+                (54.0, 228.0),
+                (54.0, 228.0),
+                (0.0, 300.0),
+                (18.0, 228.0),
+                (18.0, 228.0),
+            ]) {
+                let (actual_left, actual_width) =
+                    jade_docx_layout::math_layout::math_block_content_box(
+                        paragraph.properties.as_deref(),
+                        0.0,
+                        400.0,
+                        12.0,
+                        false,
+                        false,
+                    );
+                assert!(
+                    (actual_left * 0.75 - left).abs() < 1e-9,
+                    "first-line indent leaked into inherited display math on {platform:?}"
+                );
+                assert!(
+                    (actual_width * 0.75 - width).abs() < 1e-9,
+                    "wrong paragraph side-indent box on {platform:?}"
+                );
+            }
+        }
     }
 }

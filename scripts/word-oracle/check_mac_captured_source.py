@@ -640,6 +640,11 @@ MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110
                                           'a4b863b81c8d0cbe677cc907167a22bb84ce29052fcde8e76ef1cf4742d6d461',
                                           1,
                                           524),
+ 'probe-math-paragraph-mark-size': ('f9b87f2e7e4254c026236f5ad5ecf7ad5e686c2015b0313b39c84c4eae91010c',
+                                    '4975d6d08f5b2491460ace00696808891aa8b5290d2a0f834a166f9cec61b3d2',
+                                    'b325916c0dedbc355c1f74ba2fb41ed5e40847173fdbfd0bb99a0a622bef87f4',
+                                    1,
+                                    184),
  'probe-math-relation-wrap-after': ('37193745f3098273fd613cb767222d6bc6ddf2342de37a8659dc76d1410fa928',
                                     'ad1acf1c68627d3652f204493b1676cf14d7cee1a575fd8b784eb89e742116e0',
                                     'e7910720e4713f540d215a7b0ab3de24ce01392ef7f98fa5a477f573ae1a1bcb',
@@ -888,9 +893,9 @@ def check_math_layout_originals(executable, output, root=ROOT):
                             font_program_provider_Windows_Word=capture['word'],
                             font_program_provider_archive=case['windows'][0]['archive'],
                             glyphs=glyphs, page_count=expected['page_count']))
-    require(len(results) == 24 and sum(r['glyphs'] for r in results) == 7755,
+    require(len(results) == 25 and sum(r['glyphs'] for r in results) == 7939,
             'Mac math layout original coverage changed')
-    print('24 genuine Mac math layout originals: PASS', flush=True)
+    print('25 genuine Mac math layout originals: PASS', flush=True)
     return results
 
 
@@ -1050,7 +1055,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 161 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 24 math originals additionally assert7755 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 161 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result
