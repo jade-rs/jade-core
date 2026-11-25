@@ -548,11 +548,45 @@ impl NativeDocument {
     /// the first pass over a document does: a footer on page 1 is drawn
     /// before the last page is reached. The renderer shows the settled
     /// totals the second time.
+    ///
+    /// So it does when the pass drew a header's or footer's STYLEREF on a
+    /// page of the window other than the page's own headings show: a header
+    /// is drawn before the body below it is laid out, and the first pass has
+    /// no headings yet. Wrong pages outside the window are left stale.
     fn redraw_wrong_page_totals(&mut self) -> Result<(), String> {
-        if self.renderer.take_page_totals_changed() {
-            self.repaint_all_drawing(self.paint_window.clone(), false)?;
+        let window = self.paint_window.clone();
+        let mut style_refs_drawn_wrong = false;
+        if self.renderer.has_style_reference_wrong_pages() {
+            let wrong = self.renderer.take_style_reference_wrong_pages();
+            style_refs_drawn_wrong = wrong
+                .iter()
+                .any(|page| window.as_ref().is_none_or(|window| window.contains(page)));
+            if !style_refs_drawn_wrong {
+                self.mark_pages_stale(wrong);
+            }
+        }
+        if self.renderer.take_page_totals_changed() || style_refs_drawn_wrong {
+            self.repaint_all_drawing(window, false)?;
         }
         Ok(())
+    }
+
+    /// Leaves stale the pages whose STYLEREF the pass just run drew other
+    /// than the headings it laid out show, so [`Self::paint_stale_pages`]
+    /// draws them from those headings.
+    #[inline]
+    fn mark_wrong_style_references_stale(&mut self) {
+        if self.renderer.has_style_reference_wrong_pages() {
+            let wrong = self.renderer.take_style_reference_wrong_pages();
+            self.mark_pages_stale(wrong);
+        }
+    }
+
+    #[cold]
+    fn mark_pages_stale(&mut self, pages: std::collections::BTreeSet<usize>) {
+        let count = self.page_count();
+        self.stale_pages
+            .extend(pages.into_iter().filter(|&page| page < count));
     }
 
     /// Leaves every page stale when the pass just run drew a NUMPAGES or
@@ -563,6 +597,7 @@ impl NativeDocument {
         if self.renderer.take_page_totals_changed() {
             self.stale_pages.extend(0..self.page_count());
         }
+        self.mark_wrong_style_references_stale();
     }
 
     /// Limits what a whole-document repaint draws to `window` (0-based
@@ -703,6 +738,7 @@ impl NativeDocument {
         for page in first..=last {
             self.stale_pages.remove(&page);
         }
+        self.mark_wrong_style_references_stale();
         self.renderer.clear_dirty_regions();
         Ok(true)
     }
@@ -1301,6 +1337,7 @@ impl NativeDocument {
         for page in drawn {
             self.stale_pages.remove(&page);
         }
+        self.mark_wrong_style_references_stale();
         self.renderer.clear_dirty_regions();
         Ok(())
     }
@@ -1571,6 +1608,7 @@ impl NativeDocument {
         if only_the_bound_page {
             self.mark_pages_past_bound_stale(visible_end_page_1idx, false);
         }
+        self.mark_wrong_style_references_stale();
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
