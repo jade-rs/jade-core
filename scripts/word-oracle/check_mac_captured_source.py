@@ -618,8 +618,45 @@ SHARED_ORIGINALS = {
 
 
 # These existing Mac math originals retain outline-only PDF text output.
-# Assert their genuine UI origins independently; the 161 full PDF gates above
+# Assert their genuine UI origins independently; the 164 full PDF gates above
 # remain mandatory. Windows fixes must preserve these Mac layout coordinates.
+SHARED_ORIGINALS.update({'table-oversized-row-after-spacing-continuation-fit': ('b67ba297bb75830a1cc878b69ef0fdf4910b7237cf85c60516c8374a63e2efe4',
+                                                        'b675aee3458ace8ef5892854399f363272775182c5657f855429621778171cec',
+                                                        '9f0c5477c187f3edb31cf432cb15e6746a44d003cdd76ee104c1be2b79b8ec4e',
+                                                        3,
+                                                        1312),
+ 'table-oversized-row-after-spacing-continuation-overflow': ('9fdfcf6b802640c181e1bd7cf594fa6b7fc691f2361d9fbc419c6bf15e67e0f2',
+                                                             '27c9a314eed2d9d235510b2be738dd0c86ef33fd1d379ad84f19931ee9030c91',
+                                                             '36d6218b4dd180ad717d0dbd8334095c6c66e5e75b86a7af7145fd8e360dfcd5',
+                                                             3,
+                                                             1338),
+ 'table-oversized-row-after-spacing-fresh-overflow': ('36e17b7d4a666cc4ff9125fbc608d88b11d94ded41cbcb637c8934f8bb39e749',
+                                                      'f17e29412d11258705352bdd9e72c1827914008b2a453fc6a283e2afe265eddb',
+                                                      'b34a0ef25b6d9246b1285abd99c68bdcd7bfa7f792ff1929f2511c2b9e867183',
+                                                      2,
+                                                      1291)})
+
+SHARED_ORIGINALS.update({'nested-after-spacing-double-nested': ('cd2c66f1674e00e177c62cb5f2841c6d66a706c5fb32c06e822d1b753ff1502b',
+                                        '4c83394e4fd05f1e32b47106ef47d4d307c34cd9dfdcafb390f8b8e16a6a12b4',
+                                        'b34a0ef25b6d9246b1285abd99c68bdcd7bfa7f792ff1929f2511c2b9e867183',
+                                        2,
+                                        1291),
+ 'nested-after-spacing-oversized-49-0': ('9611461eea4a4d0fddcf28c1747ff2e97af4857f55de13fbcbcfccdbf9dbf4c1',
+                                         'fe650bfd287b8c0d03e7669c553b7e103e7006073c792935753b3189f7f29fcb',
+                                         'b34a0ef25b6d9246b1285abd99c68bdcd7bfa7f792ff1929f2511c2b9e867183',
+                                         2,
+                                         1291),
+ 'nested-after-spacing-oversized-50-1': ('63accf1227385f2421aa2fe700d077348dcdaaf74d512e5655e0ec8ae53bcfa3',
+                                         '9399db7c230a2e1b46acb25de1ff236e39998853394172b3b8e6765a8dcb1529',
+                                         '36d6218b4dd180ad717d0dbd8334095c6c66e5e75b86a7af7145fd8e360dfcd5',
+                                         3,
+                                         1338),
+ 'nested-after-spacing-short-10pt': ('73f7e28a27c4db6f4174edbdc20482717d5aad5c38073b0e0d9ecc1354738fd9',
+                                     '8f77c823caaeb6cc197e8fb6d4448e9250a97d6609346cb16a85751ae054930e',
+                                     '56870c2d30e3c8d248d5beec4f981616e154842b4cfed2bfbc3507baa0c7c807',
+                                     2,
+                                     59)})
+
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
                                     '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
@@ -859,9 +896,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 161 and sum(r['glyphs'] for r in results) == 51810,
+    require(len(results) == 168 and sum(r['glyphs'] for r in results) == 59730,
             'Shared Mac original coverage changed')
-    print('161 shared Mac originals51810: layout and painted-PDF PASS', flush=True)
+    print('168 shared Mac originals59730: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -1055,7 +1092,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 161 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 168 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

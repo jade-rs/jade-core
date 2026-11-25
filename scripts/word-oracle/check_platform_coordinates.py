@@ -337,6 +337,16 @@ BORDERLESS_MATH_CASES = {'probe-math-fraction-first-vs-prev',
  'probe-math-repeat-fraction-28',
  'probe-math-repeat-fraction-36',
  'probe-math-repeat-fraction-40'}
+OVERSIZED_MANUAL_BREAK_CASES = {'table-oversized-row-after-spacing-continuation-fit',
+ 'table-oversized-row-after-spacing-continuation-overflow',
+ 'table-oversized-row-after-spacing-fresh-overflow'}
+PHYSICAL_FONT_CASES |= OVERSIZED_MANUAL_BREAK_CASES
+ADDITIONAL_AFTER_SPACING_CASES = {'nested-after-spacing-double-nested',
+ 'nested-after-spacing-oversized-49-0',
+ 'nested-after-spacing-oversized-50-1',
+ 'nested-after-spacing-short-10pt',
+ 'table-row-without-headings-mac'}
+PHYSICAL_FONT_CASES |= ADDITIONAL_AFTER_SPACING_CASES
 INHERITED_RIGHT_MATH_CASES = {'probe-math-display-alignment-0'}
 PHYSICAL_FONT_CASES |= INHERITED_RIGHT_MATH_CASES
 PARAGRAPH_MARK_MATH_CASES = {'probe-math-paragraph-mark-size'}
@@ -346,6 +356,16 @@ RTL_MERGED_PERCENTAGE_CASES = {'probe-table-flow-unequal-continuous-vertical-mer
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
 PHYSICAL_FONT_CASES |= RTL_MERGED_PERCENTAGE_CASES
 REQUIRED_CAPTURES = {
+    'nested-after-spacing-double-nested': '20261114T004322231Z-e7a4d03f',
+    'nested-after-spacing-oversized-49-0': '20261114T004322231Z-e7a4d03f',
+    'nested-after-spacing-oversized-50-1': '20261114T004322231Z-e7a4d03f',
+    'nested-after-spacing-short-10pt': '20261114T004334255Z-b74a0cd3',
+    'table-row-without-headings-mac': '20261114T004647940Z-877c5941',
+
+    'table-oversized-row-after-spacing-continuation-fit': '20261114T020830750Z-13e77d19',
+    'table-oversized-row-after-spacing-continuation-overflow': '20261114T020832449Z-7b8b0314',
+    'table-oversized-row-after-spacing-fresh-overflow': '20261114T020840914Z-686154c0',
+
     'probe-math-display-alignment-0': '20261114T004747969Z-36728554',
     'probe-math-paragraph-mark-size': '20261114T004417585Z-59a68986',
     'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1': '20261114T020625597Z-2761cea8',
@@ -1110,9 +1130,9 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
-        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES:
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES:
             borders = assert_original_vector_borders(
-                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES)
+                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES)
             proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
                          capture_id=capture['capture_id'],
                          original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),

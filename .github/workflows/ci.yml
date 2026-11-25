@@ -250,6 +250,16 @@ jobs:
         run: |
           cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
           python3 scripts/word-oracle/check_mac_captured_source.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original
+      - name: Upload original Mac oversized manual-break row coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-oversized-manual-break-row-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-oversized-row-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/nested-after-spacing-*
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
       - name: Upload original Mac fixed-percentage column coordinates
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -504,6 +514,17 @@ jobs:
           name: windows-rtl-merged-column-coordinates
           path: |
             target/platform-word-coordinates/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows oversized manual-break row coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-oversized-manual-break-row-coordinates
+          path: |
+            target/platform-word-coordinates/table-oversized-row-after-spacing-*
+            target/platform-word-coordinates/nested-after-spacing-*
+            target/platform-word-coordinates/table-row-without-headings-mac
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload versioned Windows fraction coordinates and vector rules

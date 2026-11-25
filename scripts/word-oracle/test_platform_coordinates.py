@@ -319,6 +319,14 @@ class PlatformCoordinates(unittest.TestCase):
          'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
         required |= {'probe-math-paragraph-mark-size'}
         required |= {'probe-math-display-alignment-0'}
+        required |= {'table-oversized-row-after-spacing-continuation-fit',
+         'table-oversized-row-after-spacing-continuation-overflow',
+         'table-oversized-row-after-spacing-fresh-overflow'}
+        required |= {'nested-after-spacing-double-nested',
+         'nested-after-spacing-oversized-49-0',
+         'nested-after-spacing-oversized-50-1',
+         'nested-after-spacing-short-10pt',
+         'table-row-without-headings-mac'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -888,7 +896,16 @@ class PlatformCoordinates(unittest.TestCase):
  'probe-math-standalone-fractions-12',
  'probe-math-standalone-fractions-explicit-sizes'} | {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
- 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'})
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'} | {'table-oversized-row-after-spacing-continuation-fit',
+ 'table-oversized-row-after-spacing-continuation-overflow',
+ 'table-oversized-row-after-spacing-fresh-overflow'} | {'nested-after-spacing-double-nested',
+ 'nested-after-spacing-oversized-49-0',
+ 'nested-after-spacing-oversized-50-1',
+ 'nested-after-spacing-short-10pt'})
+        known = next(c for c in archived if c['mac_case'] == 'table-row-without-headings-mac')
+        reference = check.read_json(check.checked_file(check.ROOT, known['mac_manifest']))['reference']
+        self.assertEqual(reference['version'], '16.114.3')
+        self.assertEqual(reference['osVersion'], '27.0.1 (26A434)')
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word
