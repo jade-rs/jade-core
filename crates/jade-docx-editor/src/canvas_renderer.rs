@@ -7861,7 +7861,7 @@ where
         }
         let (page, style, _) = self.styled_paragraphs.get(&paragraph)?;
         let style = style.as_deref()?;
-        if !referenced.contains(&style.to_lowercase()) {
+        if !referenced.contains_key(&style.to_lowercase()) {
             return None;
         }
         let earlier_in_style =
