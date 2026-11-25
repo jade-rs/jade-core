@@ -182,6 +182,7 @@ impl OffscreenDocumentView {
             user_name: state.options.author_name_or_default(),
             page_count: Some(renderer.page_count()).filter(|count| *count > 0),
             paragraph_pages,
+            page_labels: renderer.displayed_page_labels(),
             prompt_answers: answers,
             ..FieldEnvironment::default()
         }
