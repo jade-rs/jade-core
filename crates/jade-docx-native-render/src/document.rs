@@ -1500,6 +1500,7 @@ impl NativeDocument {
             self.word_document.numbering_part.as_ref(),
             self.word_document.header_lines.as_deref(),
             self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
             visible_end_page_1idx,
         );
         self.renderer.clear_visible_page_range();
@@ -3463,6 +3464,7 @@ impl NativeDocument {
             self.word_document.numbering_part.as_ref(),
             self.word_document.header_lines.as_deref(),
             self.word_document.footer_lines.as_deref(),
+            Some(&self.word_document.comments),
             visible_end_page_1idx,
         );
         if bounded {

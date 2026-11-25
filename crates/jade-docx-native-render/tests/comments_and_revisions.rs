@@ -37,8 +37,8 @@ fn typing_before_a_later_page_comment_keeps_its_annotation() {
     assert!(document.page_and_offset(caret.document_y).0 > 0);
     document.add_comment("later", "reviewer").unwrap();
     document.set_markup_visible(true).unwrap();
-    // Bounded repaint does not receive comment bodies on the regular path
-    // either. Verify the anchors and geometry that it is expected to retain.
+    // The anchors and geometry a bounded repaint must retain; the comment
+    // bodies are checked by `typing_next_to_a_comment_keeps_its_text`.
     let annotations = |document: &NativeDocument| {
         document
             .renderer()
@@ -66,6 +66,47 @@ fn typing_before_a_later_page_comment_keeps_its_annotation() {
         .renderer()
         .last_completed_pagination_edit_candidate());
     assert_eq!(annotations(&document), before);
+}
+
+/// Typing repaints the page bounded; the comment marks it rebuilds still carry
+/// the comment's author and text, as after opening the document.
+#[test]
+fn typing_next_to_a_comment_keeps_its_text() {
+    let mut document = open_contract();
+    let paragraph = paragraph_on_first_page(&mut document);
+    document
+        .select((paragraph, 0), (paragraph, 12), 1)
+        .expect("select");
+    document
+        .add_comment("確認してください", "レビュアー")
+        .expect("add a comment");
+    document.set_markup_visible(true).unwrap();
+    let bodies = |document: &NativeDocument| {
+        let mut bodies = document
+            .renderer()
+            .comment_annotations()
+            .iter()
+            .filter(|annotation| annotation.page == 1)
+            .map(|annotation| {
+                (
+                    annotation.id.clone(),
+                    annotation.text.clone(),
+                    annotation.author.clone(),
+                )
+            })
+            .collect::<Vec<_>>();
+        bodies.sort();
+        bodies
+    };
+    let before = bodies(&document);
+    assert!(before
+        .iter()
+        .any(|(_, text, author)| text == "確認してください"
+            && author.as_deref() == Some("レビュアー")));
+
+    document.insert_text(paragraph, 0, "a", 1).unwrap();
+
+    assert_eq!(bodies(&document), before);
 }
 
 /// A comment has to survive being written out, or it never reaches the other
