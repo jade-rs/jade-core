@@ -657,6 +657,78 @@ SHARED_ORIGINALS.update({'nested-after-spacing-double-nested': ('cd2c66f1674e00e
                                      2,
                                      59)})
 
+SHARED_ORIGINALS.update({'probe-table-flow-split-rows-continuous-cell-spacing-start-column-1': ('16c5f2bd6a1d61bbf12255fab8694f950818ca05579a3fafd4e90107c1bb527d',
+                                                                        '56129164d161312ca67a169e86a3d7c194ee03de6cbe6bfe2d3dacbe2d9b132c',
+                                                                        'dd16d092193663546c4e2900a04b00bb0a9d293aa11d2af6f46c8eea23780bb6',
+                                                                        5,
+                                                                        759),
+ 'probe-table-flow-split-rows-continuous-cell-spacing-start-column-2': ('7da0662d7d99c3dd0ea9301cc861bffea75e3d1aef6b2a8a27f22a1d374d02fc',
+                                                                        'c80405c7b7dad2878521187b10eda9dc0e6e7f32566d701a46d5eb1572d855b0',
+                                                                        '8b63d2b9b62a61e505b83ec65b7b67709b7a456abf97e50594be267bedaa0f2d',
+                                                                        5,
+                                                                        759),
+ 'table-cell-after-spacing-later-paragraph': ('baec4dd0c3451624665bf18c74687ddf5561be7e731933576f67f150dd3103b7',
+                                              'bb27f1cbe8118bc402d2aaf837ec0eb2e429674bf05b62f668d95556b1758979',
+                                              'cb50d7908204751b159f13caebc68c47b76920af241878bbc23874a94f095708',
+                                              2,
+                                              115),
+ 'table-cell-after-spacing-manual-break': ('ce2549078c801c7a395b173ce21c02d2156a986af3af4b6fe40490a4c3fa1577',
+                                           'c48fa89f830fde60cfae0b035e7dea66d2f84934cc115fb45a1a2843db6c5435',
+                                           'b11d94e74573655867674364785d8fbc28f418948e302bbd1b3db3e46f91c457',
+                                           2,
+                                           119),
+ 'table-cell-after-spacing-move-entire-row': ('a1635ee1094bb0f433f83c8b0ed3860d6e2038331b66754c6438ecf6091de852',
+                                              'cc80c1739d72e4d69ece9346b33801415230a9496fd71ca237f97560e78a73dc',
+                                              '5640a4153fae37e5127f37cab8f300f9a5de6734f1e016757e99fe59fff32f8d',
+                                              2,
+                                              115),
+ 'table-cell-after-spacing-shift-continuation': ('24c58e88a2f1d8aa4b87c6e73f2bb0e2da6d72036e8bc25597d0445d28523851',
+                                                 '97451864d01c27dfe8722ac1daf0e2f01342a0af1e2cf4aaf94142f121fcb47a',
+                                                 '2fd34027b89b18ed876023597a531b9bc493f7cd71391ee618c424ef6e7da373',
+                                                 2,
+                                                 115),
+ 'table-cell-after-spacing-split-control': ('42d3e02e450614df8b4f8105e4263213776e09716d79416ea2431fe28692fb20',
+                                            '8be7411036101e772bad316d7e8b5ffd9ba0baa4cb44fa02faac8d8631a91ba4',
+                                            '9847ddc9935e7547a6292ddfa01062a03a18fb20fcebeff365ff38759ac50aa0',
+                                            2,
+                                            115),
+ 'table-row-after-spacing-asymmetric': ('383a75a519f4cf162150007fe26d82a65f24d477b1a4e158d2188b202b81f862',
+                                        '335b1d0699da4d6353108ef4850be2e32dfee7c496cded254be99d0fb2b4c51e',
+                                        '56870c2d30e3c8d248d5beec4f981616e154842b4cfed2bfbc3507baa0c7c807',
+                                        2,
+                                        59),
+ 'table-row-after-spacing-short-10pt': ('50118f5bd78d881e64dedf61273c59b528824d17c992b844cb22ed425855a0b6',
+                                        'ae58c1d04209a6faa55fb8dedf50fddd7b7467c8814ccbab952d91022ce39c3a',
+                                        '56870c2d30e3c8d248d5beec4f981616e154842b4cfed2bfbc3507baa0c7c807',
+                                        2,
+                                        59),
+ 'latin-break-budget-630': ('d86b300e0ec27cfd308037dc21b502736983f9b27aa3519698b83267fbc7620a',
+                            '63355a53be512a88895089ddfce7fc1973162ae85a1e0293b77484834065b32b',
+                            '336f0b59b6dc92357b84c9460e1f22a59a758ef77ca8d07edf0fc397bb0648cf',
+                            2,
+                            119),
+ 'latin-row-real-continuation': ('4508a174a7a137e9d778112c817c786db84a9f3ebedeeb6cf72abfaaaf53a033',
+                                 '867ca5f020008ee8a165ae312df62398db93fcf8b0196088defc7c4190ba2370',
+                                 '579d7197854ad589bf78661ff0365d7c205783847aee2cab5b3e1aa0e83559a5',
+                                 2,
+                                 75)})
+
+SHARED_ORIGINALS.update({'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-1': ('7c2c3e65c9c89285a79690d7552067f5f334e106bdb42dffa09164de1bba42dd',
+                                                                                                                         '3e44ed99605334ac960051e25231d0375b719ac193753744d3a363dcda28e456',
+                                                                                                                         '09140a4b341e15a6595ec3fa053dda45c58d72fdf7093f04c528cb1c75b4342a',
+                                                                                                                         7,
+                                                                                                                         1008),
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2': ('a74235f76658ecf5964173b46f95a0cfdb4d53504fe5d1fb134793b45d07803b',
+                                                                                                                         'f0d87f6bc188fa843374e9a55f26a4de3bd6408bb0d11206e5ce6e5ec93cf38d',
+                                                                                                                         '65219ae7420bb61eb0baddc7fd4174401240dc641b1b49461caf2892432d4414',
+                                                                                                                         7,
+                                                                                                                         1008),
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3': ('f7efea5f7dc8568c07c5ca42b7ecc5a1996bd9c4b12d59f3ee89f1ffe119eb61',
+                                                                                                                         'd2a2c64ffee3152069ef2d8aaae1fad022639819c9d317457e5b486724f10155',
+                                                                                                                         '9a40dcbc1d5416a5e4995813f6091e3919cc831a545d77d31a8358a5132c9569',
+                                                                                                                         8,
+                                                                                                                         1005)})
+
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
                                     '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
@@ -896,9 +968,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 168 and sum(r['glyphs'] for r in results) == 59730,
+    require(len(results) == 182 and sum(r['glyphs'] for r in results) == 65160,
             'Shared Mac original coverage changed')
-    print('168 shared Mac originals59730: layout and painted-PDF PASS', flush=True)
+    print('182 shared Mac originals65160: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -1092,7 +1164,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 168 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 182 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

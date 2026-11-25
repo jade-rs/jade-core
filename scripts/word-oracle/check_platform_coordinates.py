@@ -347,6 +347,25 @@ ADDITIONAL_AFTER_SPACING_CASES = {'nested-after-spacing-double-nested',
  'nested-after-spacing-short-10pt',
  'table-row-without-headings-mac'}
 PHYSICAL_FONT_CASES |= ADDITIONAL_AFTER_SPACING_CASES
+ROW_AFTER_SPACING_CASES = {'latin-break-budget-630',
+ 'latin-row-real-continuation',
+ 'table-cell-after-spacing-later-paragraph',
+ 'table-cell-after-spacing-manual-break',
+ 'table-cell-after-spacing-move-entire-row',
+ 'table-cell-after-spacing-shift-continuation',
+ 'table-cell-after-spacing-split-control',
+ 'table-row-after-spacing-asymmetric',
+ 'table-row-after-spacing-short-10pt'}
+CONTINUED_HEADER_FRAME_CASES = {'probe-table-flow-split-rows-continuous-cell-spacing-start-column-1',
+ 'probe-table-flow-split-rows-continuous-cell-spacing-start-column-2'}
+PHYSICAL_FONT_CASES |= ROW_AFTER_SPACING_CASES | CONTINUED_HEADER_FRAME_CASES
+RTL_SPACED_PERCENTAGE_CASES = {'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3'}
+RTL_SPACED_PERCENTAGE_EMPTY_RULE_PAGES = {'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-1': (),
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2': (),
+ 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3': (8,)}
+PHYSICAL_FONT_CASES |= RTL_SPACED_PERCENTAGE_CASES
 INHERITED_RIGHT_MATH_CASES = {'probe-math-display-alignment-0'}
 PHYSICAL_FONT_CASES |= INHERITED_RIGHT_MATH_CASES
 PARAGRAPH_MARK_MATH_CASES = {'probe-math-paragraph-mark-size'}
@@ -356,6 +375,22 @@ RTL_MERGED_PERCENTAGE_CASES = {'probe-table-flow-unequal-continuous-vertical-mer
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
 PHYSICAL_FONT_CASES |= RTL_MERGED_PERCENTAGE_CASES
 REQUIRED_CAPTURES = {
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-1': '20261114T004450252Z-ac1d5d7d',
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2': '20261114T004450252Z-ac1d5d7d',
+    'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3': '20261114T004450252Z-ac1d5d7d',
+
+    'probe-table-flow-split-rows-continuous-cell-spacing-start-column-1': '20261114T004434269Z-e27596ca',
+    'probe-table-flow-split-rows-continuous-cell-spacing-start-column-2': '20261114T004434269Z-e27596ca',
+    'table-cell-after-spacing-later-paragraph': '20261114T004633221Z-54077165',
+    'table-cell-after-spacing-manual-break': '20261114T004633221Z-54077165',
+    'table-cell-after-spacing-move-entire-row': '20261114T004633221Z-54077165',
+    'table-cell-after-spacing-shift-continuation': '20261114T004633221Z-54077165',
+    'table-cell-after-spacing-split-control': '20261114T004633221Z-54077165',
+    'table-row-after-spacing-asymmetric': '20261114T020856500Z-ff0457a1',
+    'table-row-after-spacing-short-10pt': '20261114T004647940Z-877c5941',
+    'latin-break-budget-630': '20261114T004309406Z-2c388f57',
+    'latin-row-real-continuation': '20261114T004322231Z-e7a4d03f',
+
     'nested-after-spacing-double-nested': '20261114T004322231Z-e7a4d03f',
     'nested-after-spacing-oversized-49-0': '20261114T004322231Z-e7a4d03f',
     'nested-after-spacing-oversized-50-1': '20261114T004322231Z-e7a4d03f',
@@ -1130,9 +1165,10 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
-        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES:
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES | ROW_AFTER_SPACING_CASES | CONTINUED_HEADER_FRAME_CASES | RTL_SPACED_PERCENTAGE_CASES:
             borders = assert_original_vector_borders(
-                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES)
+                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES | ROW_AFTER_SPACING_CASES,
+                expected_empty_pages=RTL_SPACED_PERCENTAGE_EMPTY_RULE_PAGES.get(name, ()))
             proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
                          capture_id=capture['capture_id'],
                          original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),
@@ -1145,13 +1181,17 @@ def check_windows(executable, output, root=ROOT):
     return checked
 
 
-def assert_original_vector_borders(word_pdf, painted_pdf, label, *, expected_empty=False):
+def assert_original_vector_borders(word_pdf, painted_pdf, label, *, expected_empty=False,
+                                   expected_empty_pages=()):
     from compare_windows_borders import TOLERANCE_PT, compare as compare_borders
     require(TOLERANCE_PT == .375, 'Original vector border tolerance changed')
     results = compare_borders(word_pdf, painted_pdf)
+    require(set(expected_empty_pages) <= {p['page'] for p in results},
+            label + '/original-vector-borders: expected empty page missing')
     require(bool(results) and all(
         (page['word_rectangles'] == page['native_rectangles'] == 0
-         if expected_empty else page['word_rectangles'] > 0 and page['native_rectangles'] > 0)
+         if expected_empty or page['page'] in expected_empty_pages
+         else page['word_rectangles'] > 0 and page['native_rectangles'] > 0)
         and page['word_uncovered_count'] == page['native_uncovered_count'] == 0
         for page in results), label + '/original-vector-borders: ' + repr(results))
     return results
