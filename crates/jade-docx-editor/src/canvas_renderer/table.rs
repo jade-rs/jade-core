@@ -4059,12 +4059,9 @@ where
                                     &header_heights_snapshot,
                                     header_row_count,
                                 ) <= full_page_content_height;
-                        // Word for Mac moves a new row that fits on the next page
-                        // when an occupied cell cannot start here with its spacing.
-                        let keep_after_spacing =
-                            jade_docx_layout::line_metrics::word_layout_platform()
-                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                                || pending_height > full_page_content_height + ROW_SPLIT_EPSILON;
+                        // Both platforms keep the final line with its after-spacing.
+                        // A row that fits a fresh page starts all occupied cells together.
+                        let keep_after_spacing = true;
                         let move_row_if_cell_cannot_start = keep_after_spacing
                             && row_start
                             && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON;
@@ -4243,7 +4240,17 @@ where
                                     x: left_edge,
                                     y: self.current_y,
                                     width: right_edge - left_edge,
-                                    height: split.head_height,
+                                    // The last row reserves its trailing cell spacing
+                                    // in each closed Windows continuation frame too.
+                                    height: split.head_height
+                                        + if last_visible_row == Some(row_index)
+                                            && jade_docx_layout::line_metrics::word_layout_platform()
+                                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                                        {
+                                            resolve_cell_spacing_px(row, table)
+                                        } else {
+                                            0.0
+                                        },
                                     draw_top: (row_start && first_visible_row == Some(row_index))
                                         || (jade_docx_layout::line_metrics::word_layout_platform()
                                             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
@@ -6327,6 +6334,26 @@ where
                         rect.height,
                         line_height,
                         bands,
+                    )?;
+                }
+            }
+            // Windows Word repeats the separated table perimeter along with
+            // the header cells. Keep Mac's existing painted header unchanged.
+            if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                if let Some(row) = table.rows.get(row_index) {
+                    self.draw_spaced_table_frame_segment(
+                        table,
+                        row,
+                        SpacedTableFrameSegment {
+                            x: grid.table_x,
+                            y: y_top,
+                            width: *grid.column_positions.last().unwrap_or(&0.0),
+                            height: row_height,
+                            draw_top: row_index == 0,
+                            draw_bottom: false,
+                        },
                     )?;
                 }
             }
@@ -13937,8 +13964,9 @@ fn split_cell_paragraph(
         resolve_widow_orphan_decision, word_layout_platform, WidowOrphanDecision,
         WordLayoutPlatform,
     };
-    // Word for Mac permits splits at manual breaks inside cells even with
-    // paragraph pagination controls. The row's cantSplit is checked separately.
+    // Mac permits manual-break splits despite paragraph pagination controls.
+    // Windows does too when the paragraph exceeds a fresh frame. The row's
+    // cantSplit is checked separately.
     let word_manual_break = fits > 0
         && paragraph.lines[fits - 1].break_kind == LineBreakKind::Hard
         && (word_layout_platform() == WordLayoutPlatform::Mac
@@ -32105,6 +32133,74 @@ mod tests {
                 assert_eq!(
                     counts, expected,
                     "original manual-break row pagination on {platform:?}"
+                );
+            }
+        }
+    }
+    #[test]
+    fn original_short_table_rows_keep_after_spacing_on_the_next_page() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        // Genuine Word originals leave20pt after a666.6pt filler row.
+        // A14pt target line plus10pt after-spacing moves to page2 in both
+        // platforms, even when only one of the two cells has after-spacing.
+        // Original page glyph counts are21/38; old Windows emitted42/17.
+        let cases: [(&[u8], &[usize]); 2] = [
+            (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/table-row-after-spacing-asymmetric/source.docx")).as_slice(), &[21, 38]),
+            (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/table-row-after-spacing-short-10pt/source.docx")).as_slice(), &[21, 38]),
+        ];
+        for (bytes, expected) in cases {
+            for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+                set_word_layout_platform(platform);
+                let model = futures::executor::block_on(
+                    crate::word_document::WordDocument::load_for_initial_render(
+                        bytes,
+                        &crate::Options::default(),
+                    ),
+                )
+                .unwrap();
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                renderer.set_style_context(model.styles_part.clone().map(std::rc::Rc::new), None);
+                renderer
+                    .render(
+                        model.document.as_deref().unwrap(),
+                        &crate::Options::default(),
+                    )
+                    .unwrap();
+                let lines = renderer.layout_debug_lines();
+                let mut counts = Vec::new();
+                for line in &lines {
+                    let count = line
+                        .fragments
+                        .iter()
+                        .flat_map(|fragment| &fragment.glyphs)
+                        .flat_map(|glyph| glyph.text.chars())
+                        .filter(|ch| !ch.is_whitespace() && !ch.is_control())
+                        .count();
+                    if count == 0 {
+                        continue;
+                    }
+                    counts.resize(counts.len().max(line.page + 1), 0);
+                    counts[line.page] += count;
+                }
+                assert_eq!(
+                    counts, expected,
+                    "original short row after-spacing pagination on {platform:?}"
                 );
             }
         }
