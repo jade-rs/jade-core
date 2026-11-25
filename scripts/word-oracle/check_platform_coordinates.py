@@ -366,6 +366,23 @@ RTL_SPACED_PERCENTAGE_EMPTY_RULE_PAGES = {'probe-table-flow-unequal-automatic-gr
  'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2': (),
  'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3': (8,)}
 PHYSICAL_FONT_CASES |= RTL_SPACED_PERCENTAGE_CASES
+EXACT_RTL_SAVED_GRID_CASES = {'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-3',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-1',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-2',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-3',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-3',
+ 'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-1',
+ 'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-2'}
+EXACT_RTL_SAVED_GRID_BORDERLESS_CASES = {'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-3',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-3'}
+EXACT_RTL_SAVED_GRID_EMPTY_RULE_PAGES = {'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-2': (2,)}
+PHYSICAL_FONT_CASES |= EXACT_RTL_SAVED_GRID_CASES
 INHERITED_RIGHT_MATH_CASES = {'probe-math-display-alignment-0'}
 PHYSICAL_FONT_CASES |= INHERITED_RIGHT_MATH_CASES
 PARAGRAPH_MARK_MATH_CASES = {'probe-math-paragraph-mark-size'}
@@ -375,6 +392,17 @@ RTL_MERGED_PERCENTAGE_CASES = {'probe-table-flow-unequal-continuous-vertical-mer
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
 PHYSICAL_FONT_CASES |= RTL_MERGED_PERCENTAGE_CASES
 REQUIRED_CAPTURES = {
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-2': '20261114T020551563Z-2cbf9dbb',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-3': '20261114T020553202Z-d340f912',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-1': '20261114T020556226Z-7c387e46',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-2': '20261114T020601595Z-d8faa169',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-3': '20261114T020604671Z-17546442',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-1': '20261114T020607734Z-a3b9c756',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-2': '20261114T020610813Z-e2bc204d',
+    'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-3': '20261114T020613890Z-d20dcb6f',
+    'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-1': '20261114T020639127Z-65012dfd',
+    'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-2': '20261114T020644388Z-3ee3a36b',
+
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-1': '20261114T004450252Z-ac1d5d7d',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-2': '20261114T004450252Z-ac1d5d7d',
     'probe-table-flow-unequal-automatic-grid-split-rows-continuous-cell-spacing-three-columns-rtl-section-start-column-3': '20261114T004450252Z-ac1d5d7d',
@@ -1165,10 +1193,10 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
-        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES | ROW_AFTER_SPACING_CASES | CONTINUED_HEADER_FRAME_CASES | RTL_SPACED_PERCENTAGE_CASES:
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES | ROW_AFTER_SPACING_CASES | CONTINUED_HEADER_FRAME_CASES | RTL_SPACED_PERCENTAGE_CASES | EXACT_RTL_SAVED_GRID_CASES:
             borders = assert_original_vector_borders(
-                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES | ROW_AFTER_SPACING_CASES,
-                expected_empty_pages=RTL_SPACED_PERCENTAGE_EMPTY_RULE_PAGES.get(name, ()))
+                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES | OVERSIZED_MANUAL_BREAK_CASES | ADDITIONAL_AFTER_SPACING_CASES | ROW_AFTER_SPACING_CASES | EXACT_RTL_SAVED_GRID_BORDERLESS_CASES,
+                expected_empty_pages=(RTL_SPACED_PERCENTAGE_EMPTY_RULE_PAGES | EXACT_RTL_SAVED_GRID_EMPTY_RULE_PAGES).get(name, ()))
             proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
                          capture_id=capture['capture_id'],
                          original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),

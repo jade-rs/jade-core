@@ -2966,6 +2966,46 @@ where
         let centered_table = table.style.get("text-align").is_some_and(|alignment| {
             alignment.eq_ignore_ascii_case("center") || alignment.eq_ignore_ascii_case("centre")
         });
+        // Original legacy exact-row tables use the same column geometry on
+        // Windows: the saved grid is resized against the final column frame.
+        // Keep platform font, bidi and paragraph metrics unchanged.
+        let windows_exact_rtl_column_table = use_column_frame
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.document_east_asian_rules.compatibility_mode == Some(14)
+            && !self.measuring_keep_next
+            && self.footnote_reserve_px == 0.0
+            && percentage_width
+            && !table.bidi_visual
+            && column_count == 1
+            && table.columns.len() == 1
+            && resolve_table_layout_mode(table) == TableLayoutMode::Autofit
+            && self.column_layout.count() > 1
+            && self.column_layout.start_x(0) > self.column_layout.start_x(1)
+            && self
+                .column_layout
+                .widths
+                .iter()
+                .any(|&width| width != available_width)
+            && table.style.get("text-align").is_some_and(|alignment| {
+                alignment.eq_ignore_ascii_case("right") || alignment.eq_ignore_ascii_case("end")
+            })
+            && leading_header_row_count(&table.rows) > 0
+            && table.rows.iter().any(|row| !table_row_is_hidden(row))
+            && table.rows.iter().all(|row| {
+                table_row_is_hidden(row)
+                    || (row.height_rule == Some(TableRowHeightRule::Exact)
+                        && resolve_cell_spacing_px(row, table) == 0.0
+                        && !table_row_has_note_references(row)
+                        && row.cells.iter().all(|cell| {
+                            !cell_has_absolute_preferred_width(cell)
+                                && cell
+                                    .blocks
+                                    .iter()
+                                    .all(|block| matches!(block, BodyElement::Paragraph(_)))
+                        }))
+            });
+        let word_column_table = word_mac_column_table || windows_exact_rtl_column_table;
         let windows_rtl_spaced_percentage_grid = use_column_frame
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
@@ -3136,7 +3176,7 @@ where
                 .rows
                 .iter()
                 .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
-        let rtl_spaced_auto_grid = ((word_mac_column_table
+        let rtl_spaced_auto_grid = ((word_column_table
             && percentage_width
             && self.column_layout.start_x(0) > self.column_layout.start_x(1)
             && column_count == 1
@@ -3151,7 +3191,7 @@ where
                 let frame = spacing_frame_width(row, table, TableBorderSide::Left);
                 (spacing, frame)
             });
-        let rtl_repeated_header_auto_grid = (word_mac_column_table
+        let rtl_repeated_header_auto_grid = (word_column_table
             || windows_legacy_rtl_percentage_header_grid)
             && !self.measuring_keep_next
             && percentage_width
@@ -3172,8 +3212,7 @@ where
                 .rows
                 .iter()
                 .any(|row| row.height_rule != Some(TableRowHeightRule::Exact));
-        let unequal_auto_percentage = ((word_mac_column_table
-            || windows_legacy_autofit_column_table)
+        let unequal_auto_percentage = ((word_column_table || windows_legacy_autofit_column_table)
             && !self.measuring_keep_next
             && self.footnote_reserve_px == 0.0
             && !table.bidi_visual
@@ -3209,7 +3248,7 @@ where
         // column; the usual percentage grid uses the narrowest column.
         let width_for_sizing = if rtl_spaced_auto_grid.is_some() {
             last_column_width
-        } else if (word_mac_column_table
+        } else if (word_column_table
             || windows_legacy_rtl_merged_percentage_grid
             || windows_legacy_fixed_percentage_table
             || windows_legacy_rtl_percentage_header_grid
@@ -3231,6 +3270,7 @@ where
                 // the final column's trailing text edge, excluding its cell margin.
                 (width - pre_2013_table_trailing_text_inset_px(table)).max(1.0)
             } else if windows_legacy_rtl_percentage_header_grid
+                || windows_exact_rtl_column_table
                 || windows_legacy_rtl_merged_percentage_grid
                 || windows_legacy_autofit_column_table
                 || windows_legacy_fixed_percentage_table
@@ -3252,7 +3292,7 @@ where
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             && !percentage_width
             && resolve_table_layout_mode(table) == TableLayoutMode::Fixed;
-        if word_mac_column_table
+        if word_column_table
             || windows_rtl_spaced_percentage_grid
             || windows_legacy_rtl_merged_percentage_grid
             || windows_legacy_fixed_percentage_table
@@ -3457,7 +3497,7 @@ where
                 rtl_spaced_auto_grid.filter(|_| !windows_rtl_spaced_percentage_grid)
             {
                 x + spacing + frame
-            } else if word_mac_column_table
+            } else if word_column_table
                 && percentage_width
                 && floating_table_x.is_none()
                 && table.style.get("text-align").is_some_and(|alignment| {
@@ -3782,7 +3822,7 @@ where
             && (self.page_export_mode
                 || (windows_fixed_preferred_resized_grid && self.column_layout.count() == 3))
             && compatibility_mode.is_some_and(|mode| mode < 15);
-        let alignment_widths = ((word_mac_column_table
+        let alignment_widths = ((word_column_table
             || rtl_merged_percentage_grid
             || windows_legacy_fixed_header_alignment
             || windows_legacy_fixed_percentage_table
@@ -4631,7 +4671,7 @@ where
                 }
             }
         }
-        if word_mac_column_table {
+        if word_column_table {
             if let Some(row) = last_visible_row_index.and_then(|index| table.rows.get(index)) {
                 let spacing = resolve_cell_spacing_px(row, table);
                 if spacing > 0.0
@@ -9196,6 +9236,12 @@ where
         }
         if self.pageless_mode {
             return Ok(false);
+        }
+        if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.paragraph_frame_column.is_none()
+        {
+            self.finish_column_separators();
         }
         self.render_footer_simple()?;
         let previous_page_height = self.page_height;

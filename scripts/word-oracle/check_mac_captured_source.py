@@ -729,6 +729,57 @@ SHARED_ORIGINALS.update({'probe-table-flow-unequal-automatic-grid-split-rows-con
                                                                                                                          8,
                                                                                                                          1005)})
 
+SHARED_ORIGINALS.update({'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-2': ('10fd0cf05c90162f5c09d14c2b25e891b7bb15958756b296c61132fab1dafc05',
+                                                                                                            '3c2cee88dcb39d0b32f65368eff8154b76a126ed485a5d351cbf3ffab5e077f8',
+                                                                                                            '479e23e94515554b4bae611f11ad7e6f874cb8400faee5304c27fb30b607dd35',
+                                                                                                            2,
+                                                                                                            264),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-next-column-section-start-column-3': ('f78469d72c491ce28bba8cee4c6db9e098073963ab0a20df0c4e27c5e6cd2e3e',
+                                                                                                            '6a0cd530cc3138d83be628920f069cfb58c93fab8ccee0be3369f7c55a23f710',
+                                                                                                            'd87cdda5ffb4d76526aae711e2f3b08777856bbcba8df62786fc0064eabf75a1',
+                                                                                                            2,
+                                                                                                            261),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-1': ('1f560ec09ce2462be32a98ddd2ecf6a2e5b15f8a9806d9e44bcfc37ef79de754',
+                                                                                                   'c8e6e8174dd397a732ff12d269be90348a5cb2580760575e3e3a606435448968',
+                                                                                                   'c663ba6b9e7f35971f465ab452b292c7fb194a879d4d1ac22612565c2057af6f',
+                                                                                                   2,
+                                                                                                   267),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-2': ('557718f5d6600edc9f9db9eb51f1d2c5b74797facd706cbd837b0410c8a2850a',
+                                                                                                   'f97511b16dfa6966079d75de892eb1bfe00c7e5465c17e7abf6de4f109416c76',
+                                                                                                   'b385604bb955e2431b04c1297ddd21c97e884e62eca1bb510723f2034a899c5b',
+                                                                                                   2,
+                                                                                                   264),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-separators-start-column-3': ('d0a5bdd1bec27bae622e3cbc4c401c029b372d5b25c412842646272fb6989027',
+                                                                                                   '08845b3748720409c0b2fe15745d568c3b36f9414d52ad4481ed6e094c08a0b3',
+                                                                                                   '116da706aa4b75ad7f491e1f81eb6367a77ed16be6108a25d13fcf5c95f14f18',
+                                                                                                   2,
+                                                                                                   261),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-1': ('42f5d58322b29c81493e0c12c8215c10b94a04b0de1bafd0ea4b92054969388c',
+                                                                                        'd2943eeb44154a4893bf459dc70915be621aeb5f7ae509b99620e69c2e799b8f',
+                                                                                        'c663ba6b9e7f35971f465ab452b292c7fb194a879d4d1ac22612565c2057af6f',
+                                                                                        2,
+                                                                                        267),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-2': ('4fe8d386ac11b6dbcfcc52aec3860c941827d322622500b625c2e6810d8af367',
+                                                                                        '9e674491d80eb586d492e0c4c008154ea5aa365b390abf8f63be80d7df6234ba',
+                                                                                        'b385604bb955e2431b04c1297ddd21c97e884e62eca1bb510723f2034a899c5b',
+                                                                                        2,
+                                                                                        264),
+ 'probe-table-flow-unequal-continuous-right-three-columns-rtl-section-start-column-3': ('5ad149a3bf65ab905245652c1e105405a10e4b55819d628a6153e6a2734cfd56',
+                                                                                        '408470ee51739b8a27e735f69e0d838b6f9c931632d74726966d73d596246a79',
+                                                                                        '116da706aa4b75ad7f491e1f81eb6367a77ed16be6108a25d13fcf5c95f14f18',
+                                                                                        2,
+                                                                                        261),
+ 'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-1': ('e1bb63246427d0eb805e9b97d06792c51013c927d9bfcc515dbcc60f519d8a0a',
+                                                                                        '9b3e629e94b14499236487815cd76eed15b88b6f37ce6157d282bdcbc33048f1',
+                                                                                        '18c143e1a3f0eecad825395c81f4b3d19970fc151856ad0712c018981526a80b',
+                                                                                        1,
+                                                                                        131),
+ 'probe-table-flow-unequal-right-three-columns-rtl-section-separators-start-column-2': ('869d384e30a962d67668bbf23b883f28bfa7b608f6360e42da86d47d526efc77',
+                                                                                        '2cb8a9a2fc5c5c3aeb87333aa9574c838030e1ca1cd7d2c0564d608f3004b84c',
+                                                                                        '69e8786b84c1c67a8786fdd03dfc2da903bd8cba24e28b5e7929424b5f02efd5',
+                                                                                        2,
+                                                                                        131)})
+
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
                                     '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
@@ -968,9 +1019,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 182 and sum(r['glyphs'] for r in results) == 65160,
+    require(len(results) == 192 and sum(r['glyphs'] for r in results) == 67531,
             'Shared Mac original coverage changed')
-    print('182 shared Mac originals65160: layout and painted-PDF PASS', flush=True)
+    print('192 shared Mac originals67531: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -1164,7 +1215,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 182 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 192 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

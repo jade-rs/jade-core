@@ -13379,7 +13379,15 @@ where
         {
             return;
         }
+        let windows = jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
         let positions = self.column_layout.separator_positions();
+        // Word only separates columns reached by this page's body flow.
+        let active_rules = if windows {
+            self.column_index.min(positions.len())
+        } else {
+            positions.len()
+        };
         if positions.is_empty() {
             return;
         }
@@ -13401,8 +13409,8 @@ where
         context.save();
         context.set_stroke_style_str(COLUMN_SEPARATOR_COLOR);
         context.set_line_width(COLUMN_SEPARATOR_WIDTH_PX);
-        for x in positions {
-            let px = (x.round()) + 0.5; // crisp 1px line
+        for x in positions.into_iter().take(active_rules) {
+            let px = if windows { x } else { (x.round()) + 0.5 };
             context.begin_path();
             context.move_to(px, top);
             context.line_to(px, bottom);
