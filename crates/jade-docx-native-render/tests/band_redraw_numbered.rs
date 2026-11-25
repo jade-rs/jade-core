@@ -172,6 +172,7 @@ fn typing_in_a_numbered_paragraph_repaints_its_band_and_matches_a_full_repaint()
                 word.numbering_part.as_ref(),
                 word.header_lines.as_deref(),
                 word.footer_lines.as_deref(),
+                None,
                 page,
             )
             .expect("repaint");

@@ -4659,8 +4659,11 @@ where
     /// ([`collapsed_spacing_before`]); anything drawn in between (a table, a
     /// page break) moves the cursor and so leaves both in full.
     trailing_spacing_after: Option<(usize, usize, f64, f64)>,
-    header_lines: Option<Vec<HeaderLine>>,
-    footer_lines: Option<Vec<HeaderLine>>,
+    /// Shared so a render handed the same lines again (a page-bitmap fetch,
+    /// a keystroke) keeps them instead of copying them; see
+    /// [`Self::adopt_header_footer_lines`].
+    header_lines: Option<Rc<[HeaderLine]>>,
+    footer_lines: Option<Rc<[HeaderLine]>>,
     /// Variant shown on the first page of the section when `title_page` is
     /// true. Falls back to the default when None.
     header_lines_first: Option<Vec<HeaderLine>>,
@@ -4883,7 +4886,9 @@ where
     selection: SelectionManager,
     paragraph_counter: usize,
     page_offset_y: f64,
-    comment_store: HashMap<String, DocumentComment>,
+    /// Shared so a render handed the same comments again keeps them instead
+    /// of copying every comment; see [`Self::adopt_comment_store`].
+    comment_store: Rc<HashMap<String, DocumentComment>>,
     comment_annotations: CommentAnnotations,
     hyperlink_regions: Vec<HyperlinkRegion>,
     /// The front of `hyperlink_regions` kept from the previous render.
@@ -10850,7 +10855,7 @@ where
             selection: SelectionManager::new(),
             paragraph_counter: 0,
             page_offset_y: 0.0,
-            comment_store: HashMap::new(),
+            comment_store: Rc::default(),
             comment_annotations: CommentAnnotations::default(),
             hyperlink_regions: Vec::new(),
             hyperlink_retained: RetainedHyperlinks::default(),
@@ -12741,6 +12746,7 @@ where
         &mut self,
         document: Rc<Document>,
         options: &Options,
+        comments: Option<&HashMap<String, DocumentComment>>,
         visible_end_page_1idx: usize,
     ) -> Result<(), JsValue> {
         self.render_bounded_to_page_with_parts(
@@ -12749,6 +12755,7 @@ where
             None,
             None,
             None,
+            comments,
             visible_end_page_1idx,
         )
     }
@@ -12758,7 +12765,10 @@ where
     /// Numbering, headers and footers live outside the body, and a render
     /// without them produces a document with no page furniture and unnumbered
     /// lists — which reads as a layout difference rather than as parts left
-    /// behind.
+    /// behind. The comments are one of those parts: with comments shown, a
+    /// render without them replaces the comment store with an empty one, and
+    /// the comment marks on the repainted pages lose their author and text.
+    #[allow(clippy::too_many_arguments)]
     pub fn render_bounded_to_page_with_parts(
         &mut self,
         document: Rc<Document>,
@@ -12766,6 +12776,7 @@ where
         numbering_part: Option<&NumberingPart>,
         header_lines: Option<&[HeaderLine]>,
         footer_lines: Option<&[HeaderLine]>,
+        comments: Option<&HashMap<String, DocumentComment>>,
         visible_end_page_1idx: usize,
     ) -> Result<(), JsValue> {
         let previous_limit = self.layout_page_limit();
@@ -12776,7 +12787,7 @@ where
             numbering_part,
             header_lines,
             footer_lines,
-            None,
+            comments,
         );
         self.set_layout_page_limit(previous_limit);
         result
@@ -17258,11 +17269,11 @@ where
         self.hyperlink_retained =
             RetainedHyperlinks::capture(incremental_dirty_from, &self.hyperlink_regions);
         self.invalidate_hyperlink_regions_js_cache();
-        if options.render_comments {
-            self.comment_store = comments.cloned().unwrap_or_default();
+        self.adopt_comment_store(if options.render_comments {
+            comments
         } else {
-            self.comment_store.clear();
-        }
+            None
+        });
         self.image_debug_regions.borrow_mut().clear();
         self.text_box_debug_regions.borrow_mut().clear();
         self.grouped_shape_text_regions.borrow_mut().clear();
@@ -17498,8 +17509,8 @@ where
         };
         self.last_line_baseline = self.current_y;
         self.trailing_spacing_after = None;
-        self.header_lines = header_lines.map(|lines| lines.to_vec());
-        self.footer_lines = footer_lines.map(|lines| lines.to_vec());
+        Self::adopt_header_footer_lines(&mut self.header_lines, header_lines);
+        Self::adopt_header_footer_lines(&mut self.footer_lines, footer_lines);
         self.header_drawn = false;
         self.footer_drawn = false;
 
@@ -19392,10 +19403,11 @@ where
 
         let numbering_part = self.last_numbering_part.clone();
         let numbering_part_ref = numbering_part.as_deref();
+        // Handles, not copies: the render sees its own stores handed back and
+        // keeps them (`adopt_comment_store`, `adopt_header_footer_lines`).
         let header = self.header_lines.clone();
         let footer = self.footer_lines.clone();
-
-        let stored_comments = self.comment_store.clone();
+        let stored_comments = Rc::clone(&self.comment_store);
 
         // Use the _rc variant to avoid cloning the document again.
         self.render_with_numbering_rc(
@@ -19406,6 +19418,39 @@ where
             footer.as_deref(),
             Some(&stored_comments),
         )
+    }
+
+    /// Makes `comments` the comment store, copying them only when they differ
+    /// from the store already held.
+    ///
+    /// The store is handed back on every page-bitmap fetch
+    /// ([`Self::rerender_with_cached_state`]) and the caller's own map on
+    /// every edit, so most renders pass what the store already holds. The
+    /// address is checked first; equal contents from another map (the
+    /// caller's) are kept too, which compares without allocating.
+    fn adopt_comment_store(&mut self, comments: Option<&HashMap<String, DocumentComment>>) {
+        match comments {
+            Some(comments)
+                if std::ptr::eq(&*self.comment_store, comments)
+                    || *self.comment_store == *comments => {}
+            Some(comments) => self.comment_store = Rc::new(comments.clone()),
+            None if self.comment_store.is_empty() => {}
+            None => self.comment_store = Rc::default(),
+        }
+    }
+
+    /// Makes `lines` the header or footer lines held in `slot`, copying them
+    /// only when they differ from the lines already there (see
+    /// [`Self::adopt_comment_store`]).
+    fn adopt_header_footer_lines(
+        slot: &mut Option<Rc<[HeaderLine]>>,
+        lines: Option<&[HeaderLine]>,
+    ) {
+        match (slot.as_deref(), lines) {
+            (None, None) => {}
+            (Some(held), Some(lines)) if std::ptr::eq(held, lines) || held == lines => {}
+            (_, lines) => *slot = lines.map(Rc::from),
+        }
     }
 
     fn apply_document_page_settings(&mut self, document: &Document) -> Result<(), JsValue> {
@@ -48834,6 +48879,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
                 1,
             )
             .unwrap();
@@ -48925,6 +48971,7 @@ mod tests {
                     None,
                     None,
                     None,
+                    None,
                     1,
                 )
                 .unwrap();
@@ -48948,6 +48995,7 @@ mod tests {
                 .render_bounded_to_page_with_parts(
                     Rc::clone(model.document.as_ref().unwrap()),
                     &options,
+                    None,
                     None,
                     None,
                     None,
@@ -66783,6 +66831,151 @@ mod tests {
         assert!(renderer.can_use_unchecked_cache_replay(&options));
     }
 
+    fn commented_paragraph_document(text: &str) -> Document {
+        let mut document = doc_with_paragraph_texts(&[text, "next paragraph"]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.comment_ranges.push(CommentRange {
+            id: "1".into(),
+            start: 0,
+            end: 9,
+        });
+        paragraph.comment_markers.push(CommentMarker {
+            id: "1".into(),
+            position: 9,
+        });
+        document
+    }
+
+    fn review_comments() -> HashMap<String, DocumentComment> {
+        HashMap::from([(
+            "1".into(),
+            DocumentComment {
+                id: "1".into(),
+                text: "review text".into(),
+                author: Some("reviewer".into()),
+                ..Default::default()
+            },
+        )])
+    }
+
+    #[test]
+    fn bounded_repaint_keeps_comment_metadata() {
+        let (mut renderer, _) = recording_renderer();
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let comments = review_comments();
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                None,
+                None,
+                Some(&comments),
+            )
+            .unwrap();
+        // Typing next to the commented range repaints its page bounded.
+        let edited = Rc::new(commented_paragraph_document("commented bodyx"));
+        renderer.prepare_incremental_repaint(0, 1);
+        renderer
+            .render_bounded_to_page_with_parts(
+                edited,
+                &options,
+                None,
+                None,
+                None,
+                Some(&comments),
+                1,
+            )
+            .unwrap();
+        let annotations = renderer.comment_annotations();
+        assert!(!annotations.is_empty());
+        for annotation in annotations {
+            assert_eq!(annotation.page, 1);
+            assert_eq!(annotation.text, "review text");
+            assert_eq!(annotation.author.as_deref(), Some("reviewer"));
+        }
+    }
+
+    #[test]
+    fn cached_rerender_keeps_comment_and_header_stores() {
+        let (mut renderer, _) = recording_renderer();
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let comments = review_comments();
+        let header = vec![HeaderLine {
+            center: Some("header".into()),
+            ..Default::default()
+        }];
+        let footer = vec![HeaderLine {
+            center: Some("footer".into()),
+            ..Default::default()
+        }];
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                Some(&header),
+                Some(&footer),
+                Some(&comments),
+            )
+            .unwrap();
+        let store = Rc::clone(&renderer.comment_store);
+        let header_lines = renderer.header_lines.clone().unwrap();
+        let footer_lines = renderer.footer_lines.clone().unwrap();
+        for _ in 0..10 {
+            renderer.rerender_with_cached_state().unwrap();
+            assert!(Rc::ptr_eq(&store, &renderer.comment_store));
+            assert!(Rc::ptr_eq(
+                &header_lines,
+                renderer.header_lines.as_ref().unwrap()
+            ));
+            assert!(Rc::ptr_eq(
+                &footer_lines,
+                renderer.footer_lines.as_ref().unwrap()
+            ));
+        }
+        // The caller's own maps with the same contents are kept too.
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                Some(&header.clone()),
+                Some(&footer.clone()),
+                Some(&comments.clone()),
+            )
+            .unwrap();
+        assert!(Rc::ptr_eq(&store, &renderer.comment_store));
+        assert!(Rc::ptr_eq(
+            &header_lines,
+            renderer.header_lines.as_ref().unwrap()
+        ));
+        // Different contents replace them.
+        let mut changed = comments.clone();
+        changed.get_mut("1").unwrap().text = "edited".into();
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                None,
+                Some(&footer),
+                Some(&changed),
+            )
+            .unwrap();
+        assert_eq!(renderer.comment_store.get("1").unwrap().text, "edited");
+        assert!(renderer.header_lines.is_none());
+        assert!(renderer
+            .comment_annotations()
+            .iter()
+            .all(|annotation| annotation.text == "edited"));
+    }
+
     fn check_anchored_comment_window_edits(
         visible: usize,
         replacements: &[String],
@@ -74958,10 +75151,10 @@ mod tests {
         renderer
             .render(&doc_with_paragraph_texts(&["body"]), &Options::default())
             .expect("initial render");
-        renderer.header_lines = Some(vec![HeaderLine {
+        renderer.header_lines = Some(Rc::from(vec![HeaderLine {
             left: Some("legacy header".to_string()),
             ..Default::default()
-        }]);
+        }]));
         let mut document = note_test_document();
         let body = document.body.as_mut().expect("body");
         let BodyElement::Paragraph(paragraph) = &mut body.elements[0] else {
@@ -79380,7 +79573,7 @@ mod tests {
     fn footer_content_inside_bottom_margin_does_not_move_body() {
         let mut renderer = test_renderer();
         renderer.current_page_number = 1;
-        renderer.footer_lines = Some(vec![hl("one line")]);
+        renderer.footer_lines = Some(Rc::from(vec![hl("one line")]));
         assert_eq!(
             renderer.effective_body_bottom(),
             renderer.page_height - renderer.margin_bottom
@@ -79490,7 +79683,7 @@ mod tests {
     #[test]
     fn without_section_stories_the_document_wide_lines_still_apply() {
         let mut renderer = test_renderer();
-        renderer.header_lines = Some(vec![hl("doc")]);
+        renderer.header_lines = Some(Rc::from(vec![hl("doc")]));
         renderer.page_section_indices = vec![0, 1];
         renderer.current_page_number = 2;
         renderer.active_section_index = 1;
