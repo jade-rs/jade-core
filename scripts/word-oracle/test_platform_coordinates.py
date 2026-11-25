@@ -901,8 +901,11 @@ class PlatformCoordinates(unittest.TestCase):
  'table-oversized-row-after-spacing-fresh-overflow'} | {'nested-after-spacing-double-nested',
  'nested-after-spacing-oversized-49-0',
  'nested-after-spacing-oversized-50-1',
- 'nested-after-spacing-short-10pt',
- 'table-row-without-headings-mac'})
+ 'nested-after-spacing-short-10pt'})
+        known = next(c for c in archived if c['mac_case'] == 'table-row-without-headings-mac')
+        reference = check.read_json(check.checked_file(check.ROOT, known['mac_manifest']))['reference']
+        self.assertEqual(reference['version'], '16.114.3')
+        self.assertEqual(reference['osVersion'], '27.0.1 (26A434)')
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word
