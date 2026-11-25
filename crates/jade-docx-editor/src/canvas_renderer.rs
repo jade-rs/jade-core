@@ -4776,6 +4776,11 @@ where
     styled_paragraphs: std::collections::BTreeMap<usize, (usize, Option<Rc<str>>, String)>,
     /// Style ids a header's or footer's STYLEREF has looked up, lowercased.
     style_ref_style_ids: RefCell<std::collections::HashSet<String>>,
+    /// What the current pass has recorded into `style_ref_style_ids` and
+    /// `repeated_header_paragraphs`: a pass that walks the whole document
+    /// from its start replaces those with it, any other adds it.
+    style_ref_style_ids_this_pass: RefCell<std::collections::HashSet<String>>,
+    repeated_header_paragraphs_this_pass: RefCell<std::collections::BTreeSet<usize>>,
     /// Paragraphs of table header rows (`w:tblHeader`), which repeat at the
     /// top of every page a table continues onto, from every layout so far.
     repeated_header_paragraphs: RefCell<std::collections::BTreeSet<usize>>,
@@ -7646,16 +7651,26 @@ where
             .repeated_header_paragraphs
             .borrow()
             .contains(&paragraph)
+            || self
+                .repeated_header_paragraphs_this_pass
+                .borrow()
+                .contains(&paragraph)
         {
             return true;
         }
-        let referenced = self.style_ref_style_ids.borrow();
-        !referenced.is_empty()
+        let (referenced, this_pass) = (
+            self.style_ref_style_ids.borrow(),
+            self.style_ref_style_ids_this_pass.borrow(),
+        );
+        (!referenced.is_empty() || !this_pass.is_empty())
             && self
                 .styled_paragraphs
                 .get(&paragraph)
                 .and_then(|(_, style, _)| style.as_deref())
-                .is_some_and(|style| referenced.contains(&style.to_lowercase()))
+                .is_some_and(|style| {
+                    let style = style.to_lowercase();
+                    referenced.contains(&style) || this_pass.contains(&style)
+                })
     }
 
     /// Puts back what [`Self::set_aside_edit_downstream`] set aside, over
@@ -10813,6 +10828,8 @@ where
             styled_paragraphs: std::collections::BTreeMap::new(),
             style_ref_style_ids: RefCell::default(),
             repeated_header_paragraphs: RefCell::default(),
+            style_ref_style_ids_this_pass: RefCell::default(),
+            repeated_header_paragraphs_this_pass: RefCell::default(),
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
@@ -17525,6 +17542,13 @@ where
                     .and_then(|dirty_from| self.try_prepare_seek_start(dirty_from, options))
             })
         };
+        // Neither skipped nor replayed from cache: every table and header
+        // this pass reaches records itself again.
+        let walks_from_start = seek_snapshot.is_none() && self.prefix_replay_until.is_none();
+        self.repeated_header_paragraphs_this_pass
+            .borrow_mut()
+            .clear();
+        self.style_ref_style_ids_this_pass.borrow_mut().clear();
         if !preserve_pixel_pagination {
             let mut regions = self.object_debug_regions.borrow_mut();
             if let Some(seek) = seek_snapshot.as_ref() {
@@ -18588,6 +18612,29 @@ where
         }
         if let Some(regions) = preserved_page_regions {
             regions.restore(self);
+        }
+        // A pass that laid the whole document out from its start replaces
+        // what earlier passes recorded, so the indices of paragraphs an edit
+        // has since moved do not pile up; any other adds to it. Headers are
+        // looked up only on the pages drawn, so the style ids are replaced
+        // only by a pass that drew every page.
+        let whole_walk = walks_from_start
+            && self.last_layout_complete
+            && !preserve_pixel_pagination
+            && !self.pageless_mode;
+        let header_paragraphs = std::mem::take(self.repeated_header_paragraphs_this_pass.get_mut());
+        if whole_walk {
+            *self.repeated_header_paragraphs.get_mut() = header_paragraphs;
+        } else {
+            self.repeated_header_paragraphs
+                .get_mut()
+                .extend(header_paragraphs);
+        }
+        let style_ids = std::mem::take(self.style_ref_style_ids_this_pass.get_mut());
+        if whole_walk && self.visible_page_range.is_none() && !self.render_skip_draw {
+            *self.style_ref_style_ids.get_mut() = style_ids;
+        } else {
+            self.style_ref_style_ids.get_mut().extend(style_ids);
         }
 
         // Clear per-render dirty state.
@@ -44910,7 +44957,7 @@ where
         from_bottom: bool,
     ) -> Option<String> {
         let wanted = self.style_id_for_reference(style);
-        self.style_ref_style_ids
+        self.style_ref_style_ids_this_pass
             .borrow_mut()
             .insert(wanted.to_lowercase());
         let matching = self.styled_paragraphs.values().filter(|(_, id, _)| {

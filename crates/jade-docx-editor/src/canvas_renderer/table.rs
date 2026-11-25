@@ -3836,11 +3836,22 @@ where
         );
 
         let header_height = repeated_header_height(&header_heights_snapshot, header_row_count);
+        // The header rows' paragraphs, once they are assigned: recorded when
+        // the rows are drawn again on a later page.
+        let header_paragraphs: std::cell::Cell<Option<std::ops::Range<usize>>> =
+            std::cell::Cell::new(None);
         let draw_headers = |renderer: &mut Self,
                             table_x,
                             paint_width,
                             layout_config: &LayoutConfig|
          -> Result<(), JsValue> {
+            if let Some(range) = header_paragraphs.take() {
+                renderer
+                    .repeated_header_paragraphs_this_pass
+                    .borrow_mut()
+                    .extend(range.clone());
+                header_paragraphs.set(Some(range));
+            }
             let mut rewrapped_headers;
             let active_widths;
             let active_positions;
@@ -3992,9 +4003,10 @@ where
             // A header row's text is drawn again on every page the table
             // continues onto; see `paragraph_text_shows_elsewhere`.
             if row_index < header_row_count {
-                self.repeated_header_paragraphs
-                    .borrow_mut()
-                    .extend(row_first_paragraph..self.paragraph_counter);
+                header_paragraphs.set(match header_paragraphs.take() {
+                    Some(range) => Some(range.start..self.paragraph_counter),
+                    None => Some(row_first_paragraph..self.paragraph_counter),
+                });
             }
 
             loop {
