@@ -560,6 +560,8 @@ mod page_number_table_tests;
 mod page_number_tests;
 #[cfg(test)]
 mod page_ref_tests;
+#[cfg(test)]
+mod page_total_tests;
 mod paragraph_font_cache;
 mod paragraph_hash;
 mod paragraph_join;
@@ -44153,11 +44155,13 @@ where
     }
 
     fn resolve_run_field(&self, field: &RunField) -> Option<String> {
-        // A body NUMPAGES shows its saved result until fields are updated;
-        // a header's or footer's shows the final count, as does a printed
-        // page's.
-        if matches!(field.kind.without_format(), RunFieldKind::NumPages)
-            && !self.rendering_header_footer_story
+        // A body NUMPAGES or SECTIONPAGES shows its saved result until
+        // fields are updated; a header's or footer's shows the final count,
+        // as does a printed page's.
+        if matches!(
+            field.kind.without_format(),
+            RunFieldKind::NumPages | RunFieldKind::SectionPages
+        ) && !self.rendering_header_footer_story
             && !self.spelling_export_mode
             && field.cached_text.is_some()
         {
@@ -44478,8 +44482,10 @@ where
     /// out. A pass that ends on another count leaves
     /// [`Self::take_page_totals_changed`] set so the shell draws once more.
     fn resolved_total_page_count(&self) -> usize {
+        // A bounded pass that runs onto a new page knows of it from the
+        // host before it settles.
         let estimate = match &self.settled_page_totals {
-            Some(totals) => totals.pages,
+            Some(totals) => totals.pages.max(self.host.page_count()),
             None => self.host.page_count(),
         };
         estimate.max(self.current_page_number)
@@ -44522,9 +44528,18 @@ where
         if !self.last_layout_complete {
             return;
         }
+        // Sections are counted once a document has shown a SECTIONPAGES,
+        // and kept counted, so a pass that draws none (a bounded edit off
+        // the header) does not forget them.
         let mut section_pages = Vec::new();
-        if shown.iter().any(|(section, _)| section.is_some()) {
-            for &section in &self.page_section_indices {
+        let counts_sections = shown.iter().any(|(section, _)| section.is_some())
+            || self
+                .settled_page_totals
+                .as_ref()
+                .is_some_and(|totals| !totals.section_pages.is_empty());
+        if counts_sections {
+            for page in 1..=self.page_section_indices.len() {
+                let section = self.chrome_section_of_recorded_page(page);
                 if section_pages.len() <= section {
                     section_pages.resize(section + 1, 0);
                 }
@@ -44535,14 +44550,42 @@ where
             pages,
             section_pages,
         };
-        self.page_totals_changed = shown.iter().any(|&(section, value)| {
-            value
-                != match section {
-                    None => totals.pages,
-                    Some(section) => totals.section_pages.get(section).copied().unwrap_or(0),
-                }
-        });
+        // Only totals that moved call for another paint. A value drawn
+        // before its section's last page was reached can differ from the
+        // settled one on every pass; raising the flag for it would repaint
+        // forever.
+        let moved = self.settled_page_totals.as_ref() != Some(&totals);
+        self.page_totals_changed |= moved
+            && shown.iter().any(|&(section, value)| {
+                value
+                    != match section {
+                        None => totals.pages,
+                        Some(section) => totals.section_pages.get(section).copied().unwrap_or(0),
+                    }
+            });
         self.settled_page_totals = Some(totals);
+    }
+
+    /// Forgets the totals settled for the document laid out before, when
+    /// another replaces it on the same renderer: its page count is not this
+    /// document's.
+    pub fn reset_page_totals(&mut self) {
+        self.settled_page_totals = None;
+        self.page_totals_shown.get_mut().clear();
+        self.page_totals_changed = false;
+    }
+
+    /// The section whose header and footer a recorded physical (1-based)
+    /// page shows: the one at its top when a section started partway down
+    /// it (`section_index_for_page`), otherwise the last with content there.
+    /// SECTIONPAGES counts a section's pages by this rule. Word's count for a
+    /// page shared across a continuous break is unconfirmed by a capture.
+    fn chrome_section_of_recorded_page(&self, page: usize) -> usize {
+        let last = self.page_section_indices[page - 1];
+        match self.mid_page_start(last) {
+            Some(start) if start.page == page => start.page_top_section,
+            _ => last,
+        }
     }
 
     /// Whether the last completed layout drew a NUMPAGES or SECTIONPAGES
@@ -44632,7 +44675,8 @@ where
             .as_ref()
             .map_or(&[][..], |totals| &totals.section_pages);
         section_page_count(
-            &self.page_section_indices,
+            |page| self.chrome_section_of_recorded_page(page),
+            self.page_section_indices.len(),
             settled,
             self.current_page_number,
         )
@@ -45877,27 +45921,31 @@ enum MidPageContent {
     Absent,
 }
 
-/// The section containing `physical_page` and its page count: the pages
-/// `page_section_indices` assigns it, raised to the count the last completed
-/// layout settled for it (`settled`, by section). A section's final page
-/// count is unknown while its first header is being drawn, so the settled
-/// count stands in for it.
+/// The section whose header and footer `physical_page` shows and its page
+/// count: the recorded pages (`1..=recorded`) showing that section, by
+/// `chrome_section`, raised to the count the last completed layout settled
+/// for it (`settled`, by section). A section's final page count is unknown
+/// while its first header is being drawn, so the settled count stands in
+/// for it.
 fn section_page_count(
-    page_section_indices: &[usize],
+    chrome_section: impl Fn(usize) -> usize,
+    recorded: usize,
     settled: &[usize],
     physical_page: usize,
 ) -> Option<(usize, usize)> {
-    let section = *page_section_indices.get(physical_page.checked_sub(1)?)?;
-    let laid_out = page_section_indices
-        .iter()
-        .filter(|&&candidate| candidate == section)
+    if physical_page == 0 || physical_page > recorded {
+        return None;
+    }
+    let section = chrome_section(physical_page);
+    let laid_out = (1..=recorded)
+        .filter(|&page| chrome_section(page) == section)
         .count();
     let settled = settled.get(section).copied().unwrap_or(0);
     Some((section, laid_out.max(settled)))
 }
 
 /// See `CanvasRenderer::settled_page_totals`.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct SettledPageTotals {
     pages: usize,
     /// Pages by section index.
@@ -80158,7 +80206,7 @@ mod tests {
     #[test]
     fn section_page_count_uses_the_physical_pages_assigned_to_each_section() {
         let page_sections = [0, 0, 1, 1, 1];
-        let count = |page| section_page_count(&page_sections, &[], page);
+        let count = |page| section_page_count(|page| page_sections[page - 1], 5, &[], page);
         assert_eq!(count(1), Some((0, 2)));
         assert_eq!(count(2), Some((0, 2)));
         assert_eq!(count(3), Some((1, 3)));
@@ -80167,8 +80215,12 @@ mod tests {
         assert_eq!(count(6), None);
         // A section the last layout settled at more pages than laid out so
         // far shows the settled count.
-        assert_eq!(section_page_count(&[0, 1], &[1, 4], 2), Some((1, 4)));
-        assert_eq!(section_page_count(&[0, 1, 1], &[1, 1], 3), Some((1, 2)));
+        let by = |sections: &'static [usize]| move |page: usize| sections[page - 1];
+        assert_eq!(section_page_count(by(&[0, 1]), 2, &[1, 4], 2), Some((1, 4)));
+        assert_eq!(
+            section_page_count(by(&[0, 1, 1]), 3, &[1, 1], 3),
+            Some((1, 2))
+        );
     }
 
     #[test]
@@ -80185,9 +80237,43 @@ mod tests {
             resolved_value: None,
         };
 
-        // Page 4 belongs to section 1, which owns three physical pages. The
-        // stale Word cache is intentionally different to prove live layout wins.
+        // In a header or footer, page 4 belongs to section 1, which owns
+        // three physical pages. The stale Word cache is intentionally
+        // different to prove live layout wins.
+        renderer.rendering_header_footer_story = true;
         assert_eq!(renderer.resolve_run_field(&field).as_deref(), Some("3"));
+        // In the body Word shows the saved result until fields are updated,
+        // except on a printed page.
+        renderer.rendering_header_footer_story = false;
+        assert_eq!(renderer.resolve_run_field(&field).as_deref(), Some("99"));
+        renderer.spelling_export_mode = true;
+        assert_eq!(renderer.resolve_run_field(&field).as_deref(), Some("3"));
+    }
+
+    /// A pass that shows a SECTIONPAGES other than the settled one, without
+    /// the settled totals moving, asks for no further paint; one that moves
+    /// them does.
+    #[test]
+    fn page_totals_flag_only_totals_that_moved() {
+        let mut renderer = test_renderer();
+        renderer.last_layout_complete = true;
+        renderer.page_section_indices = vec![0, 0];
+        renderer.show_page_total(None, 1);
+        renderer.settle_page_totals(2);
+        assert!(renderer.take_page_totals_changed(), "the first pass");
+        renderer.show_page_total(Some(0), 1);
+        renderer.show_page_total(None, 2);
+        renderer.settle_page_totals(2);
+        assert!(renderer.take_page_totals_changed(), "sections counted now");
+        renderer.show_page_total(Some(0), 1);
+        renderer.settle_page_totals(2);
+        assert!(!renderer.take_page_totals_changed(), "nothing moved");
+        renderer.page_section_indices = vec![0, 0, 0];
+        renderer.show_page_total(None, 2);
+        renderer.settle_page_totals(3);
+        assert!(renderer.take_page_totals_changed(), "a page added");
+        renderer.reset_page_totals();
+        assert!(renderer.settled_page_totals.is_none());
     }
 
     #[test]

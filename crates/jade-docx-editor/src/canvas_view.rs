@@ -10993,6 +10993,7 @@ impl OffscreenDocumentView {
                 let (pending_images, metadata) = {
                     let mut renderer_mut = renderer.borrow_mut();
                     renderer_mut.clear_selection();
+                    renderer_mut.reset_page_totals();
                     renderer_mut.set_style_context(
                         word_doc.styles_part.clone().map(Rc::new),
                         word_doc.loaded_theme_part().map(Rc::new),
@@ -11128,6 +11129,7 @@ impl OffscreenDocumentView {
                 let (pending_images, metadata, page_count) = {
                     let mut renderer_mut = renderer.borrow_mut();
                     renderer_mut.clear_selection();
+                    renderer_mut.reset_page_totals();
                     renderer_mut.set_style_context(
                         word_doc.styles_part.clone().map(Rc::new),
                         word_doc.loaded_theme_part().map(Rc::new),
@@ -11344,6 +11346,7 @@ impl OffscreenDocumentView {
                 let (pending_images, metadata, page_count, complete) = {
                     let mut renderer_mut = renderer.borrow_mut();
                     renderer_mut.clear_selection();
+                    renderer_mut.reset_page_totals();
                     renderer_mut.set_style_context(
                         word_doc.styles_part.clone().map(Rc::new),
                         word_doc.loaded_theme_part().map(Rc::new),

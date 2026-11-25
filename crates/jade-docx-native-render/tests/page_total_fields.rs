@@ -9,6 +9,7 @@ mod common;
 
 use common::repo_path;
 use jade_docx_headless_api::HeadlessCommand;
+use jade_docx_native_render::document::surface_document_renders;
 use jade_docx_native_render::{FontFace, NativeDocument};
 use std::io::{Cursor, Read, Write};
 
@@ -75,29 +76,69 @@ fn three_pages(footer: &str) -> Vec<u8> {
             format!("<w:p>{break_before}<w:r><w:t>Page {text}</w:t></w:r></w:p>")
         })
         .collect();
-    let document = format!(
-        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{body}<w:sectPr><w:footerReference w:type="default" r:id="rIdFooter"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
+    package(&body, "", footer, None)
+}
+
+/// The section properties every section of [`package`] shares; `{SECT}` in
+/// a body is a section break of that kind.
+fn section_properties(extra: &str, header: bool) -> String {
+    let header = if header {
+        r#"<w:headerReference w:type="default" r:id="rIdHeader"/>"#
+    } else {
+        ""
+    };
+    format!(
+        r#"<w:sectPr>{header}<w:footerReference w:type="default" r:id="rIdFooter"/>{extra}<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>"#
+    )
+}
+
+/// A package with `body`, whose last section takes `last_extra` section
+/// properties, a footer and, optionally, a header.
+fn package(body: &str, last_extra: &str, footer: &str, header: Option<&str>) -> Vec<u8> {
+    let body = body.replace(
+        "{SECT}",
+        &section_properties(r#"<w:type w:val="continuous"/>"#, header.is_some()),
     );
+    let last = section_properties(last_extra, header.is_some());
+    let document = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{body}{last}</w:body></w:document>"#
+    );
+    let (header_override, header_relationship) = if header.is_some() {
+        (
+            r#"<Override PartName="/word/header1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml"/>"#,
+            r#"<Relationship Id="rIdHeader" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/header" Target="header1.xml"/>"#,
+        )
+    } else {
+        ("", "")
+    };
+    let mut parts = vec![
+        (
+            "[Content_Types].xml",
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>{header_override}</Types>"#
+            ),
+        ),
+        (
+            "_rels/.rels",
+            r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.to_string(),
+        ),
+        (
+            "word/_rels/document.xml.rels",
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>{header_relationship}</Relationships>"#
+            ),
+        ),
+        ("word/document.xml", document),
+        ("word/footer1.xml", footer.to_string()),
+    ];
+    if let Some(header) = header {
+        parts.push(("word/header1.xml", header.to_string()));
+    }
     let mut bytes = Vec::new();
     {
         let mut zip = zip::ZipWriter::new(Cursor::new(&mut bytes));
         let options = zip::write::SimpleFileOptions::default();
-        for (name, content) in [
-            (
-                "[Content_Types].xml",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>"#.to_string(),
-            ),
-            (
-                "_rels/.rels",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.to_string(),
-            ),
-            (
-                "word/_rels/document.xml.rels",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdFooter" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>"#.to_string(),
-            ),
-            ("word/document.xml", document),
-            ("word/footer1.xml", footer.to_string()),
-        ] {
+        for (name, content) in parts {
             zip.start_file(name, options).expect("zip entry");
             zip.write_all(content.as_bytes()).expect("zip write");
         }
@@ -189,15 +230,98 @@ fn numpages_follows_an_edit_that_adds_a_page_once_stale_pages_are_drawn() {
         .unwrap();
         document.apply_command(page_break, false).unwrap();
         assert_eq!(document.page_count(), 4, "window {window:?}");
-        for _ in 0..4 {
-            if !document.has_stale_pages() {
-                break;
-            }
-            let pages = document.page_count();
-            assert!(document.paint_stale_pages(0..pages).unwrap());
-        }
-        assert!(!document.has_stale_pages(), "window {window:?}");
+        drain(&mut document);
         let edited = document.export_docx().unwrap();
         assert_footers_read_of(&document, &edited, 4);
     }
+}
+
+/// Draws every stale page, as a shell's idle loop does, and returns how many
+/// rounds that took.
+fn drain(document: &mut NativeDocument) -> usize {
+    let mut rounds = 0;
+    while document.has_stale_pages() {
+        rounds += 1;
+        assert!(rounds <= 4, "stale pages keep coming back");
+        let pages = document.page_count();
+        assert!(document.paint_stale_pages(0..pages).unwrap());
+    }
+    rounds
+}
+
+#[test]
+fn sectionpages_on_a_page_two_continuous_sections_share_settles() {
+    let filler = "The quick brown fox jumps over the lazy dog, and the second \
+        section starts partway down a page the first one also fills.";
+    let paragraphs = |label: &str| -> String {
+        (0..40)
+            .map(|index| format!("<w:p><w:r><w:t>{label} {index} {filler}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = format!(
+        "{}<w:p><w:pPr>{{SECT}}</w:pPr></w:p>{}",
+        paragraphs("First"),
+        paragraphs("Second"),
+    );
+    let section_pages = format!(
+        r#"<w:r><w:t xml:space="preserve">Section page </w:t></w:r>{}<w:r><w:t xml:space="preserve"> of </w:t></w:r>{}"#,
+        field("PAGE", "1"),
+        field("SECTIONPAGES", "1"),
+    );
+    let header = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="{W}" xmlns:r="{R}"><w:p>{section_pages}</w:p></w:hdr>"#
+    );
+    // The second section starts partway down the page the first ends on.
+    let bytes = package(
+        &body,
+        r#"<w:type w:val="continuous"/>"#,
+        &footer(&section_pages),
+        Some(&header),
+    );
+    for window in [None, Some(0..1)] {
+        let before = surface_document_renders();
+        let mut document = open(&bytes, window.clone());
+        assert!(document.page_count() >= 3, "a page is shared");
+        // The first pass learns the totals; one more draws them.
+        assert!(
+            surface_document_renders() - before <= 2,
+            "window {window:?}: {} renders at open",
+            surface_document_renders() - before
+        );
+        // Drawing the stale pages settles them: they do not come back.
+        assert!(drain(&mut document) <= 1, "window {window:?}");
+    }
+}
+
+#[test]
+fn numpages_follows_typing_that_runs_onto_a_new_page_past_the_bound() {
+    for window in [None, Some(0..3)] {
+        let mut document = open(&three_pages(&field_footer()), window.clone());
+        assert_eq!(document.page_count(), 3);
+        // Typed on the last page, bounded to it; the text runs onto a fourth.
+        document
+            .insert_text(3, 0, &"overflowing words ".repeat(400), 3)
+            .unwrap();
+        drain(&mut document);
+        let total = document.page_count();
+        assert!(total > 3, "window {window:?}: the text ran onto a new page");
+        let edited = document.export_docx().unwrap();
+        assert_footers_read_of(&document, &edited, total);
+    }
+}
+
+#[test]
+fn numpages_survives_a_page_box_change() {
+    let mut document = open(&three_pages(&field_footer()), None);
+    document
+        .apply_command(
+            HeadlessCommand::SetPageOrientation { landscape: true },
+            true,
+        )
+        .unwrap();
+    let (width, height) = document.layout_page_size();
+    assert!(width > height);
+    drain(&mut document);
+    let edited = document.export_docx().unwrap();
+    assert_footers_read_of(&document, &edited, document.page_count());
 }
