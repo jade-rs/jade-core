@@ -600,8 +600,9 @@ impl NativeDocument {
         // A bounded pass since the last whole layout (an edit, a selection)
         // stops at its bound: the snapshots, the line registry hit-testing
         // reads and the regions after it may belong to a layout that no
-        // longer exists, and only a whole layout rebuilds them.
-        if self.bounded_pass_since_full_layout {
+        // longer exists, and only a whole layout rebuilds them. So may a
+        // layout from before the round-trip tree gave the model its node ids.
+        if self.bounded_pass_since_full_layout || self.roundtrip_relayout_pending {
             return Ok(false);
         }
         // With a selection showing, a seek drew some highlighted pages
