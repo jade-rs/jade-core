@@ -131,6 +131,22 @@ struct NoteNumberingSettingsJs {
     restart: String,
 }
 
+/// Commands that rewrite a footnote or endnote by id, from the notes list
+/// rather than at the caret: the note and its references can sit on any
+/// page, so the edit is dirty from the document start and the caret
+/// paragraph's height says nothing about what moved.
+fn rewrites_notes_by_id(command: &HeadlessCommand) -> bool {
+    matches!(
+        command,
+        HeadlessCommand::UpdateFootnote { .. }
+            | HeadlessCommand::DeleteFootnote { .. }
+            | HeadlessCommand::UpdateEndnote { .. }
+            | HeadlessCommand::DeleteEndnote { .. }
+            | HeadlessCommand::ConvertFootnoteToEndnote { .. }
+            | HeadlessCommand::ConvertEndnoteToFootnote { .. }
+    )
+}
+
 fn note_kind_is_footnote(kind: &str) -> Result<bool, JsValue> {
     match kind {
         "footnote" => Ok(true),
@@ -2896,6 +2912,10 @@ impl OffscreenDocumentView {
             return EditingMode::Body;
         }
         let page_index = renderer.page_for_y(y);
+        // The blank parity page shows no header or footer to edit.
+        if renderer.is_parity_filler_page_index(page_index) {
+            return EditingMode::Body;
+        }
         let page_height = renderer.page_height_for_page(page_index);
         let local_y = y - renderer.page_top_y(page_index);
         let margin_bottom = renderer.margin_bottom();
@@ -3944,6 +3964,22 @@ impl OffscreenDocumentView {
         Ok(())
     }
 
+    /// Header/footer editing entry also refuses the blank page an
+    /// oddPage/evenPage break inserted: it shows no header or footer.
+    fn validate_hf_edit_page_index(&self, page_index: usize) -> Result<(), JsValue> {
+        self.validate_hf_page_index(page_index)?;
+        if self
+            .renderer
+            .borrow()
+            .is_parity_filler_page_index(page_index)
+        {
+            return Err(JsValue::from_str(&format!(
+                "page index {page_index} is a blank page inserted by a section break and has no header or footer"
+            )));
+        }
+        Ok(())
+    }
+
     fn hf_cursor_at_segment_end(
         &self,
         page_index: usize,
@@ -4355,7 +4391,7 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let mode = Self::parse_hf_role(&role)?;
         let (segment, _) = Self::parse_hf_alignment(&alignment)?;
-        self.validate_hf_page_index(page_index)?;
+        self.validate_hf_edit_page_index(page_index)?;
         let variant = self.variant_for_page_index(page_index, mode == EditingMode::Header);
         let (hf_role, hf_variant) = Self::hf_role_variant(mode, variant)
             .ok_or_else(|| JsValue::from_str("body is not a header/footer editing role"))?;
@@ -4423,7 +4459,7 @@ impl OffscreenDocumentView {
     ) -> Result<JsValue, JsValue> {
         let mode = Self::parse_hf_role(&role)?;
         let (segment, hf_alignment) = Self::parse_hf_alignment(&alignment)?;
-        self.validate_hf_page_index(page_index)?;
+        self.validate_hf_edit_page_index(page_index)?;
         let variant = self.variant_for_page_index(page_index, mode == EditingMode::Header);
         let (hf_role, hf_variant) = Self::hf_role_variant(mode, variant)
             .ok_or_else(|| JsValue::from_str("body is not a header/footer editing role"))?;
@@ -12712,16 +12748,8 @@ impl OffscreenDocumentView {
         let inserts_cover_at_start = commands
             .iter()
             .any(|command| matches!(command, HeadlessCommand::InsertCoverPage { .. }));
-        let mutates_endnotes_globally = commands.iter().any(|command| {
-            matches!(
-                command,
-                HeadlessCommand::UpdateEndnote { .. }
-                    | HeadlessCommand::DeleteEndnote { .. }
-                    | HeadlessCommand::ConvertFootnoteToEndnote { .. }
-                    | HeadlessCommand::ConvertEndnoteToFootnote { .. }
-            )
-        });
-        if inserts_cover_at_start || mutates_endnotes_globally {
+        let mutates_notes_globally = commands.iter().any(rewrites_notes_by_id);
+        if inserts_cover_at_start || mutates_notes_globally {
             dirty_from = 0;
         }
         // Structural inserts (e.g. InsertTable) add brand-new body elements
@@ -12765,10 +12793,6 @@ impl OffscreenDocumentView {
                 | HeadlessCommand::InsertBibliography { .. }
                 | HeadlessCommand::InsertBlankPage { .. }
                 | HeadlessCommand::InsertCoverPage { .. }
-                | HeadlessCommand::UpdateEndnote { .. }
-                | HeadlessCommand::DeleteEndnote { .. }
-                | HeadlessCommand::ConvertFootnoteToEndnote { .. }
-                | HeadlessCommand::ConvertEndnoteToFootnote { .. }
                 | HeadlessCommand::InsertField { .. }
                 | HeadlessCommand::InsertEquation { .. }
                 | HeadlessCommand::ReplaceEquation { .. }
@@ -12842,14 +12866,15 @@ impl OffscreenDocumentView {
                 // replacement across paragraphs removes some; neither shows in
                 // the anchor paragraph's height.
                 | HeadlessCommand::InsertParagraphBreak { .. }
-            ) || matches!(
-                command,
-                HeadlessCommand::ReplaceRange {
-                    start_paragraph,
-                    end_paragraph,
-                    ..
-                } if start_paragraph != end_paragraph
-            )
+            ) || rewrites_notes_by_id(command)
+                || matches!(
+                    command,
+                    HeadlessCommand::ReplaceRange {
+                        start_paragraph,
+                        end_paragraph,
+                        ..
+                    } if start_paragraph != end_paragraph
+                )
         });
         // Every list item after the edited paragraphs takes its number from
         // the ones before it, so adding, removing or re-levelling an item
@@ -17947,12 +17972,19 @@ impl OffscreenDocumentView {
         let Some(document) = word_doc.document.as_ref() else {
             return to_value(&Vec::<BookmarkInfo>::new()).unwrap_or(JsValue::NULL);
         };
+        let live = word_doc.live_bookmark_markers();
         let bookmarks = document
             .bookmarks
             .iter()
             .map(|bookmark| {
-                let preview = word_doc
-                    .bookmark_surface_index(bookmark.start_paragraph)
+                // Markers between paragraphs are resolved to the paragraphs
+                // they bound, so a range never reaches into the next one; the
+                // markers are read back from the XML, which edits keep current.
+                let start = word_doc.bookmark_start(bookmark, live.as_ref());
+                let end = word_doc.bookmark_end(bookmark, live.as_ref());
+                let preview = start
+                    .map(|position| position.paragraph)
+                    .or_else(|| word_doc.bookmark_surface_index(bookmark.start_paragraph))
                     .and_then(|index| word_doc.paragraph(index))
                     .map(|paragraph| {
                         paragraph
@@ -17965,10 +17997,6 @@ impl OffscreenDocumentView {
                     .chars()
                     .take(80)
                     .collect();
-                // Markers between paragraphs are resolved to the paragraphs
-                // they bound, so a range never reaches into the next one.
-                let start = word_doc.bookmark_start(bookmark);
-                let end = word_doc.bookmark_end(bookmark);
                 BookmarkInfo {
                     name: bookmark.name.clone(),
                     start_paragraph: start.map_or_else(
@@ -22558,6 +22586,34 @@ include!("crdt_live_view.rs");
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn note_commands_by_id_are_dirty_from_the_document_start() {
+        use jade_docx_headless_api::HeadlessCommand;
+        for command in [
+            HeadlessCommand::UpdateFootnote {
+                footnote_id: "2".into(),
+                text: "text".into(),
+            },
+            HeadlessCommand::DeleteFootnote {
+                footnote_id: "2".into(),
+            },
+            HeadlessCommand::UpdateEndnote {
+                endnote_id: "2".into(),
+                text: "text".into(),
+            },
+            HeadlessCommand::DeleteEndnote {
+                endnote_id: "2".into(),
+            },
+        ] {
+            assert!(super::rewrites_notes_by_id(&command), "{command:?}");
+        }
+        assert!(!super::rewrites_notes_by_id(&HeadlessCommand::InsertText {
+            paragraph: 0,
+            offset: 0,
+            text: "a".into(),
+        }));
+    }
+
     /// A drag keeps a cell object's anchor, and does not move a body object
     /// into a cell: either would store body frames for a cell layout.
     #[test]

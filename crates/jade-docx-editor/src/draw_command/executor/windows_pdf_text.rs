@@ -21,27 +21,99 @@ pub(crate) fn eligible<P: Painter>(context: &P, text: &str, style: &TextStyle) -
         && !style.imprint
         && style.effects.is_none()
         && !text.is_empty()
-        && supported_print_text(text)
+        && (supported_print_text(text)
+            || (latin_join_control_text(text)
+                && regular_arial_print_realization(&style.font_descriptor_latin_ascii, dpi)))
         && ((style.letter_spacing_px != 0.0
             && style.enable_pair_kerning
             && regular_calibri(&style.font_descriptor_latin_ascii).is_some())
             || realized_print_parts(&style.font_descriptor_latin_ascii, dpi).is_some())
 }
 
-// Limit this extension to individually positioned, nonjoining CJK scalars.
-// Combining marks, variation selectors, complex scripts and feature shaping
+// Limit this extension to individually positioned, nonjoining CJK, Thai and Devanagari scalars.
+// Combining marks, Thai SARA AM, viramas, variation selectors, joining scripts and features
 // retain the established path; no font change enters logical measurements.
 fn supported_print_text(text: &str) -> bool {
     !text.is_empty()
         && text.chars().all(|c| {
             let value = u32::from(c);
             (' '..='~').contains(&c)
-                || matches!(value, 0x2014 | 0x2026 | 0x2192 | 0x2460..=0x2473)
+                || matches!(value, 0x0e01..=0x0e2e | 0x0e30 | 0x0e32 | 0x0e40..=0x0e46)
+                || matches!(value, 0x0915..=0x0939)
+                || matches!(value, 0x00b7 | 0x2014 | 0x2026 | 0x2190..=0x2193 | 0x2460..=0x2473)
                 || (matches!(value, 0x3000..=0x303f | 0x3040..=0x30ff | 0x31f0..=0x31ff
                 | 0x3400..=0x4dbf | 0x4e00..=0x9fff | 0xf900..=0xfaff
                 | 0xff01..=0xff60 | 0xffe0..=0xffe6 | 0x20000..=0x2ffff)
                     && !matches!(value, 0x302a..=0x302f | 0x3099..=0x309a))
         })
+}
+
+// Print-only candidate: ASCII letters may carry unpainted join controls.
+// Keep all source ranges and physical origins, and reject leading controls,
+// combining marks, other scripts, styled faces and mixed font slots.
+fn latin_join_control_text(text: &str) -> bool {
+    let mut follows_letter = false;
+    let mut has_control = false;
+    for c in text.chars() {
+        if matches!(c, '\u{200c}' | '\u{200d}') {
+            if !follows_letter {
+                return false;
+            }
+            has_control = true;
+        } else {
+            if !(' '..='~').contains(&c) {
+                return false;
+            }
+            follows_letter = c.is_ascii_alphabetic();
+        }
+    }
+    has_control
+}
+
+fn regular_arial_print_realization(descriptor: &str, dpi: f64) -> bool {
+    realized_print_parts(descriptor, dpi).is_some_and(|(prefix, suffix, _)| {
+        let prefix = prefix.trim();
+        let family = suffix
+            .split(',')
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .trim_matches(['\'', '"']);
+        (prefix.is_empty() || prefix.eq_ignore_ascii_case("normal"))
+            && (family.eq_ignore_ascii_case("Arial") || family.eq_ignore_ascii_case("ArialMT"))
+    })
+}
+
+fn latin_join_control_steps(text: &str, glyphs: &[GlyphRunStep], font_count: usize) -> bool {
+    if font_count != 1 || !latin_join_control_text(text) {
+        return false;
+    }
+    let mut cursor = 0;
+    for glyph in glyphs {
+        let start = glyph.text_start as usize;
+        let end = glyph.text_end as usize;
+        if start != cursor || end <= start || glyph.font_index != 0 || !glyph.x_offset.is_finite() {
+            return false;
+        }
+        let Some(part) = text.get(start..end) else {
+            return false;
+        };
+        let mut chars = part.chars();
+        let Some(first) = chars.next() else {
+            return false;
+        };
+        if !(' '..='~').contains(&first) {
+            return false;
+        }
+        if chars.clone().next().is_some()
+            && (!first.is_ascii_alphabetic()
+                || !chars.all(|c| matches!(c, '\u{200c}' | '\u{200d}')))
+        {
+            return false;
+        }
+        cursor = end;
+    }
+    cursor == text.len()
 }
 
 fn single_scalar_steps(text: &str, glyphs: &[GlyphRunStep], font_count: usize) -> bool {
@@ -191,7 +263,10 @@ pub(super) fn try_draw<P: Painter>(
 ) -> Result<bool, P::Error> {
     if eligible(context, text, style)
         && !fonts.is_empty()
-        && single_scalar_steps(text, glyphs, fonts.len())
+        && (single_scalar_steps(text, glyphs, fonts.len())
+            || (fonts.len() == 1
+                && regular_arial_print_realization(&fonts[0], dpi)
+                && latin_join_control_steps(text, glyphs, fonts.len())))
         && ((text.is_ascii() && fonts.len() == 1)
             || fonts
                 .iter()
@@ -372,6 +447,10 @@ mod tests {
     fn simple_cjk_printing_rejects_joining_and_combining_sequences() {
         for text in [
             "ASCII 123",
+            "Arial · 10.5 pt",
+            "กาลา",
+            "कमल",
+            "เกลา",
             "日本語カナかな。ＡＢ１２",
             "𠀀",
             "something…",
@@ -383,6 +462,14 @@ mod tests {
         for text in [
             "",
             "a\t",
+            "กิ",
+            "กุ",
+            "ก่",
+            "กำ",
+            "कि",
+            "क्ष",
+            "क़",
+            "\u{0e48}",
             "a\n",
             "か\u{3099}",
             "中\u{302a}",
@@ -394,6 +481,53 @@ mod tests {
             "…\u{200d}",
         ] {
             assert!(!super::supported_print_text(text), "{text}");
+        }
+    }
+
+    #[test]
+    fn latin_control_printing_preserves_complete_utf8_cluster_ranges() {
+        let text = "A\u{200d}B";
+        let mut steps = vec![
+            GlyphRunStep {
+                text_start: 0,
+                text_end: 4,
+                font_index: 0,
+                x_offset: 0.0,
+            },
+            GlyphRunStep {
+                text_start: 4,
+                text_end: 5,
+                font_index: 0,
+                x_offset: 7.0,
+            },
+        ];
+        assert!(super::latin_join_control_steps(text, &steps, 1));
+        assert!(!super::latin_join_control_steps(text, &steps, 2));
+        assert!(!super::latin_join_control_steps(text, &steps[..1], 1));
+        steps[0].text_end = 3;
+        assert!(!super::latin_join_control_steps(text, &steps, 1));
+        steps[0].text_end = 4;
+        steps[1].x_offset = f64::NAN;
+        assert!(!super::latin_join_control_steps(text, &steps, 1));
+    }
+
+    #[test]
+    fn latin_control_printing_rejects_joining_scripts_and_other_faces() {
+        for text in [
+            "\u{200d}A",
+            "1\u{200d}",
+            "ا\u{200d}",
+            "क\u{200d}",
+            "A\u{301}\u{200d}",
+        ] {
+            assert!(!super::latin_join_control_text(text));
+        }
+        assert!(super::regular_arial_print_realization(
+            "10.5pt Arial",
+            600.0
+        ));
+        for font in ["10.5pt Calibri", "bold 10.5pt Arial", "italic 10.5pt Arial"] {
+            assert!(!super::regular_arial_print_realization(font, 600.0));
         }
     }
 

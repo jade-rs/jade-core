@@ -542,3 +542,45 @@ fn bookmarks_written_between_paragraphs_cover_exactly_those_paragraphs() {
         Some(TextPosition::new(paragraph, 4))
     );
 }
+
+#[test]
+fn bookmarks_stay_with_their_paragraphs_when_a_paragraph_is_added() {
+    use jade_docx_layout::selection::TextPosition;
+    // Enter at the end of a clause adds a paragraph between two clauses. The
+    // stored positions are body indices that the split does not move, so the
+    // second clause was reported on the new paragraph and its own text fell
+    // outside every clause.
+    for body in [
+        concat!(
+            r#"<w:bookmarkStart w:id="1" w:name="First"/>"#,
+            r#"<w:p><w:r><w:t>Alpha</w:t></w:r></w:p>"#,
+            r#"<w:bookmarkEnd w:id="1"/><w:bookmarkStart w:id="2" w:name="Second"/>"#,
+            r#"<w:p><w:r><w:t>Beta</w:t></w:r></w:p>"#,
+            r#"<w:bookmarkEnd w:id="2"/>"#,
+        ),
+        concat!(
+            r#"<w:p><w:bookmarkStart w:id="1" w:name="First"/><w:r><w:t>Alpha</w:t></w:r><w:bookmarkEnd w:id="1"/></w:p>"#,
+            r#"<w:p><w:bookmarkStart w:id="2" w:name="Second"/><w:r><w:t>Beta</w:t></w:r><w:bookmarkEnd w:id="2"/></w:p>"#,
+        ),
+    ] {
+        let mut document = load_bytes(&common::package(body, &[]));
+        let first = body_paragraph(&document);
+        assert!(document.split_paragraph_at(first, 5));
+        assert_eq!(text(&document, first + 2), "Beta");
+        assert_eq!(
+            document.bookmark_position("First"),
+            Some(TextPosition::new(first, 0)),
+            "{body}"
+        );
+        assert_eq!(
+            document.bookmark_position("Second"),
+            Some(TextPosition::new(first + 2, 0)),
+            "{body}"
+        );
+        assert_eq!(
+            document.bookmark_end_position("Second"),
+            Some(TextPosition::new(first + 2, 4)),
+            "{body}"
+        );
+    }
+}

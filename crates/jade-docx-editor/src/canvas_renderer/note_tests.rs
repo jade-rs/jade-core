@@ -1401,3 +1401,76 @@ fn model_word_text_box_reference_has_no_display_offset() {
         TextPosition::new(box_surface, 8)
     );
 }
+
+/// Page rerenders may seek to a page top past earlier notes: the snapshot
+/// carries the note order lengths, counters and numbering scopes, and the
+/// render cuts the previous pass's note maps back to them. Whether a page
+/// seeks or not (a page continuing a footnote, or with notes still to draw,
+/// records no snapshot), every page of the note fixtures must paint, and
+/// number its notes, like a walk from the document start.
+#[test]
+fn page_rerenders_past_notes_paint_like_a_walk_from_the_start() {
+    use jade_painter::recording::Op;
+    let painted = |painter: &RecordingPainter| {
+        painter
+            .ops()
+            .into_iter()
+            .filter(|op| {
+                matches!(
+                    op,
+                    Op::FillText(..)
+                        | Op::FillShapedText(..)
+                        | Op::FillRect(..)
+                        | Op::MoveTo(..)
+                        | Op::LineTo(..)
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    for name in [
+        "footnote-long-continuation.docx",
+        "footnote-table-each-page.docx",
+        "footnote-table-textbox-order.docx",
+        "footnote.docx",
+        "endnote.docx",
+    ] {
+        let (model, mut renderer, painter) = render_fixture_recorded(name);
+        let document = model.document.as_ref().expect("document").clone();
+        let pages = renderer.current_page_number;
+        let mut seeks = 0;
+        for page in (2..=pages).rev() {
+            painter.clear();
+            renderer.set_visible_page_range(Some(page..=page));
+            renderer.skip_change_detection_once();
+            if renderer.try_prepare_rerender_for_page(page - 1) {
+                seeks += 1;
+            }
+            renderer.render(&document, &Options::default()).unwrap();
+            let reference_painter = RecordingPainter::new();
+            let mut reference = CanvasRenderer::with_host(
+                Box::new(RecordingHost {
+                    painter: reference_painter.clone(),
+                }),
+                false,
+            )
+            .expect("paged recording renderer");
+            reference.set_visible_page_range(Some(page..=page));
+            reference.render(&document, &Options::default()).unwrap();
+            assert!(
+                painted(&painter) == painted(&reference_painter),
+                "{name}: page {page} paints like a walk from the start"
+            );
+            assert_eq!(
+                display_numbers(&renderer.footnote_display_map),
+                display_numbers(&reference.footnote_display_map),
+                "{name}: page {page} footnote numbers"
+            );
+            assert_eq!(
+                display_numbers(&renderer.endnote_display_map),
+                display_numbers(&reference.endnote_display_map),
+                "{name}: page {page} endnote numbers"
+            );
+        }
+        eprintln!("{name}: {seeks} of {} page rerenders seeked", pages - 1);
+    }
+}

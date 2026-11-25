@@ -67,8 +67,12 @@ pub const SCENARIOS: &[&str] = &[
 /// Callgrind's `--toggle-collect=*perf_measured_region*` keys on this name, so
 /// it must stay a real, uninlined function with this name.
 #[inline(never)]
+// SAFETY: This symbol is unique to the standalone performance harness. It is
+// called only through its Rust signature, never through a foreign ABI.
+#[unsafe(export_name = "jade_docx_perf_measured_region")]
 pub fn perf_measured_region(body: &mut dyn FnMut()) {
-    body();
+    // Keep ThinLTO from specializing the callback away from the named boundary.
+    std::hint::black_box(body)();
     std::hint::black_box(());
 }
 
@@ -401,6 +405,21 @@ fn type_one(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn measured_region_invokes_the_mutable_callback_once() {
+        let mut calls = 0;
+        perf_measured_region(&mut || calls += 1);
+        assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn measured_region_preserves_rust_unwinding() {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            perf_measured_region(&mut || panic!("measured callback"));
+        }));
+        assert!(result.is_err());
+    }
 
     #[test]
     fn formatting_mark_workload_draws_marks_during_warm_typing() {

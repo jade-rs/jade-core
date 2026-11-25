@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "source_sha256": "71872da24cf7895020be9bda71c996659d92537134b76f97686f2c089e860e10",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+  "word_pdf_sha256": "a9eaf3582e639564ba616a3d7165f35acd98d5999e0192508a907064a9168324",
+  "selection": "Explicit ink-absence rectangles in the original control-only lines and the wide-cell inline-control margin. Each region is entirely white in the sealed Word PDF. They are not expected glyph coordinates; visible coordinates remain the original EMF/PDF data.",
+  "regions": [
+    {
+      "page": 1,
+      "rect": [
+        178,
+        178,
+        185,
+        188
+      ]
+    },
+    {
+      "page": 2,
+      "rect": [
+        178,
+        66,
+        185,
+        76
+      ]
+    },
+    {
+      "page": 3,
+      "rect": [
+        178,
+        90,
+        185,
+        101
+      ]
+    },
+    {
+      "page": 4,
+      "rect": [
+        185,
+        52,
+        188,
+        61
+      ]
+    }
+  ]
+}

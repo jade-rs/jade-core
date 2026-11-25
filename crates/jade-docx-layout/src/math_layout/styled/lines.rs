@@ -73,8 +73,6 @@ pub(crate) fn math_lines<'a, C: StyledMathMeasure>(
         && !b.options.uniform
         && !b.options.settings.small_fractions
         && b.style.family.eq_ignore_ascii_case("Cambria Math")
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac
         && math.children.iter().any(|child| {
             !is_skipped(child)
                 && child.kind == MathElementKind::Fraction
@@ -141,7 +139,7 @@ fn break_lines<'a, C: StyledMathMeasure>(
     };
     let max_width = b.options.max_width.filter(|w| *w > 0.0);
     let settings = b.options.settings;
-    let inherited_wrap = b.options.word_mac_inherited_before_wrap();
+    let inherited_wrap = b.options.word_inherited_before_wrap();
     let ignore_manual = inherited_wrap && max_width.is_none_or(|width| metrics.width <= width);
     // One candidate per glyph; a manual break wins.
     let mut candidates: Vec<BreakCandidate> = Vec::new();
@@ -167,10 +165,14 @@ fn break_lines<'a, C: StyledMathMeasure>(
         }
     }
     let word_mac_rtl = b.options.word_mac_rtl();
-    let inherited_wrap = b.options.word_mac_inherited_before_wrap();
-    let prefers_relation = !word_mac_rtl
+    let inherited_wrap = b.options.word_inherited_before_wrap();
+    let word_windows_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
         && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac;
+            == crate::line_metrics::WordLayoutPlatform::Windows;
+    let prefers_relation = !word_mac_rtl
+        && (crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Mac
+            || word_windows_cambria);
     let breaks_after_operator =
         |class| class == AtomClass::Bin || prefers_relation && class == AtomClass::Rel;
     let substitute_start = settings.break_binary_subtraction == BreakBinarySubtraction::MinusPlus;
@@ -610,7 +612,20 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
             }
             let interval_size = row_size.max(prev_size);
             let gap = super::MathConstants::cambria(interval_size).leading;
-            let min_gap = interval_size * if word_mac_cambria { 1.175 } else { 1.2 };
+            let windows_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
+                && crate::line_metrics::word_layout_platform()
+                    == crate::line_metrics::WordLayoutPlatform::Windows;
+            let min_gap = interval_size
+                * if windows_cambria && !b.options.settings.use_display_defaults {
+                    // The original Cambria Math hhea table gives ascent1595,
+                    // descent455 and lineGap353 at2048 UPM. Keep the full
+                    // baseline pitch; rounding each interval accumulates drift.
+                    (1595.0 + 455.0 + 353.0) / 2048.0
+                } else if word_mac_cambria || windows_cambria {
+                    1.175
+                } else {
+                    1.2
+                };
             baseline += (descent + ascent + gap).max(min_gap);
         } else if needs_top_leading && tall_row {
             total.ascent = spacing_metrics.ascent + super::MathConstants::cambria(row_size).leading;
@@ -623,7 +638,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
         };
         let x = match justification {
             MathJustification::Right
-                if b.options.word_mac_rtl() || b.options.word_mac_inherited_before_wrap() =>
+                if b.options.word_mac_rtl() || b.options.word_inherited_before_wrap() =>
             {
                 width - line.metrics.width
             }

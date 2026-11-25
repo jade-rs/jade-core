@@ -186,6 +186,7 @@ impl SkiaRenderHost {
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
             first.set_text_output_dpi(Some(600.0));
+            first.set_preserve_clipped_pdf_text(true);
         }
         for (family, weight, italic, face) in &fonts.faces {
             first.register_face_styled(family, *weight, *italic, face.clone());
@@ -261,6 +262,7 @@ impl SkiaRenderHost {
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
             surface.set_text_output_dpi(Some(600.0));
+            surface.set_preserve_clipped_pdf_text(true);
         }
         // Parsed faces, not bytes. A new Skia surface starts with none, and a
         // document that paginates mid-render creates surfaces on the hot path —

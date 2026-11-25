@@ -58,9 +58,9 @@ use jade_docx_layout::note_area::{
     note_line_overflows, reserve_note_area, NoteAreaReserve, MIN_NOTE_LINE_PT,
 };
 use jade_docx_layout::section_transition::{
-    resolve_page_margins, resolve_section_transition, word_section_text_direction,
-    SectionBreakType, SectionTransition, DEFAULT_MARGIN_PT, DEFAULT_PAGE_HEIGHT_PT,
-    DEFAULT_PAGE_WIDTH_PT,
+    parity_page_advances, resolve_page_margins, resolve_section_transition,
+    word_section_text_direction, SectionBreakType, SectionTransition, DEFAULT_MARGIN_PT,
+    DEFAULT_PAGE_HEIGHT_PT, DEFAULT_PAGE_WIDTH_PT,
 };
 pub use jade_docx_layout::selection::CaretAffinity;
 use jade_docx_layout::selection::{
@@ -306,6 +306,51 @@ struct PageStartSeekSnapshot {
     /// Wrapping-float state live at the resume point, restored on seek so the
     /// resumed walk wraps exactly like a from-start walk.
     floats: SeekFloatState,
+    /// Footnote/endnote state at the resume point; see [`NoteSeekState`].
+    notes: NoteSeekState,
+}
+
+/// The note state a body walk has accumulated at a seek snapshot, as
+/// integers only: recording runs at every page top, so it copies no map.
+///
+/// A seek keeps the previous pass's note maps and cuts them back to these
+/// lengths. That is exact because notes enter `footnote_order` and
+/// `endnote_order` in first-reference order and the walk only appends after
+/// the resume point. Snapshots are recorded only while no note is pending:
+/// no footnote continues onto a later page and every footnote referenced so
+/// far is drawn, so nothing past the cut is still owed to an earlier page.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct NoteSeekState {
+    footnotes: usize,
+    endnotes: usize,
+    footnote_scope: NoteNumberingScope,
+    endnote_scope: NoteNumberingScope,
+    /// The continuation-line estimate a carried footnote reserves with.
+    last_body_line_px: f64,
+    /// `NOTE_SEEK_*` bits: the note kinds the walk registered.
+    flags: u8,
+    /// `note_settings_epoch` when recorded.
+    epoch: u32,
+}
+
+const NOTE_SEEK_FOOTNOTES: u8 = 1;
+const NOTE_SEEK_ENDNOTES: u8 = 2;
+/// Pageless passes number notes without pages; their maps cannot seed a
+/// paged seek.
+const NOTE_SEEK_PAGELESS: u8 = 4;
+
+fn note_seek_flags(options: &Options) -> u8 {
+    let mut flags = 0;
+    if options.render_footnotes {
+        flags |= NOTE_SEEK_FOOTNOTES;
+    }
+    if options.render_endnotes {
+        flags |= NOTE_SEEK_ENDNOTES;
+    }
+    if options.pageless() {
+        flags |= NOTE_SEEK_PAGELESS;
+    }
+    flags
 }
 
 /// Seek keys one layout pass recorded, from paragraph `from` on.
@@ -2567,7 +2612,7 @@ impl ColumnLayout {
         let available_for_columns = (total_body_width - gaps.iter().sum::<f64>()).max(1.0);
 
         let widths = if use_custom_widths {
-            let mut collected: Vec<f64> = columns
+            let collected: Vec<f64> = columns
                 .columns
                 .iter()
                 .take(count)
@@ -2575,14 +2620,9 @@ impl ColumnLayout {
                 .collect();
             let total_declared: f64 = collected.iter().sum();
             if total_declared > 0.0 {
-                // Word for Mac uses the authored column widths even when
-                // their sum differs from the available body width.
-                if jade_docx_layout::line_metrics::word_layout_platform()
-                    != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-                {
-                    let scale = available_for_columns / total_declared;
-                    collected.iter_mut().for_each(|w| *w *= scale);
-                }
+                // Both Word platforms retain explicitly authored unequal widths,
+                // even when their sum and gutters exceed the page body. Scaling
+                // them shifts later columns and changes table wrapping.
                 collected
             } else {
                 vec![available_for_columns / count.max(1) as f64; count]
@@ -4635,6 +4675,7 @@ where
     /// unusually tall header/footer exceeds the body boundary.
     rendering_header_footer_story: bool,
     auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode,
+    capture_painted_table_headers: bool,
     auxiliary_story_debug_lines: Vec<AuxiliaryStoryLineDebug>,
     /// Mirrors `SectionProperties::title_page` from the default section.
     title_page: bool,
@@ -4703,6 +4744,12 @@ where
     section_seek_geometry: Vec<SectionSeekGeometry>,
     /// `page_section_indices[n]` is the section owning physical page `n + 1`.
     page_section_indices: Vec<usize>,
+    /// Physical pages (1-indexed) that an oddPage/evenPage section break
+    /// inserted only to reach the required parity. Word prints them blank:
+    /// no header, footer, page borders or watermark, though each still
+    /// takes a page number. A walk settles the entries of the pages it
+    /// reaches afresh and keeps those of the pages a seek skips.
+    parity_filler_pages: std::collections::BTreeSet<usize>,
     /// `mid_page_section_starts[s]` describes where section `s` started
     /// partway down a page, after a continuous or next-column break; `None`
     /// when it started on a page of its own. That page keeps the header,
@@ -4891,6 +4938,17 @@ where
     endnote_display_map: HashMap<String, usize>,
     endnote_section_map: HashMap<String, usize>,
     endnote_order: Vec<String>,
+    /// The `NOTE_SEEK_*` kinds the note maps and orders above were built
+    /// with by the last pass, or `None` when they cannot seed a seek (no
+    /// pass yet, or the note numbering settings changed since). A seek cuts
+    /// them back to its snapshot's lengths instead of rebuilding them.
+    note_order_flags: Option<u8>,
+    /// Bumped whenever note numbering (restart, format, start, per section),
+    /// endnote positions or custom marks change. Seek snapshots record it and
+    /// one from another epoch is refused.
+    note_settings_epoch: u32,
+    /// Resolved endnote position: the document default, then each section.
+    section_endnote_positions: Vec<jade_docx_reader::document::EndnotePosition>,
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
@@ -5765,14 +5823,10 @@ where
     /// The snapshot a pixel rerender of `page_index` may seek to, if any.
     fn page_rerender_seek_snapshot(&self, page_index: usize) -> Option<PageStartSeekSnapshot> {
         let page_1idx = page_index.saturating_add(1);
-        // Body seek snapshots restore counters but not the note reference
-        // order. Rebuild that order before painting a footnote/endnote page.
-        let notes_active = self.document_has_notes
-            && self
-                .last_options
-                .as_ref()
-                .is_some_and(|options| options.render_footnotes || options.render_endnotes);
-        let candidate = if page_index == 0 || notes_active {
+        // A snapshot in a document with notes carries the note order lengths,
+        // counters and numbering scopes; the render cuts the previous pass's
+        // note maps back to them (`seek_snapshot_notes_are_current`).
+        let candidate = if page_index == 0 {
             None
         } else {
             self.page_start_seek_cache_by_page
@@ -6116,8 +6170,11 @@ where
         // The content hash keys `show_formatting_marks` (~line 5628) so toggling marks invalidates
         // caches. Note: with marks on the paragraph *render* cache is disabled (`cache_eligible`
         // is false), so the seek's forward pass never takes a cached-replay shortcut anyway.
-        let notes_enabled =
-            self.document_has_notes && (options.render_footnotes || options.render_endnotes);
+        // Footnotes and endnotes do not block a seek: snapshots record the note
+        // state at their resume point (`NoteSeekState`), are not recorded while
+        // a note is pending, and `seek_snapshot_notes_are_current` refuses one
+        // the previous pass's note maps cannot reproduce.
+        //
         // Comment ranges and markers are paragraph-local. A window seek starts
         // at a visible page top, or on an earlier non-visible page for a span,
         // and draws every visible paragraph fresh. It therefore rebuilds both
@@ -6136,7 +6193,6 @@ where
                     && part.numbering_instances.is_empty()
                     && part.picture_bullets.is_empty()
             }))
-            && !notes_enabled
             && !options.pageless()
             && !self.mirror_margins
     }
@@ -6167,6 +6223,10 @@ where
         if (self.current_y - self.effective_body_top()).abs() > EPS {
             return;
         }
+        let Some(notes) = self.note_seek_state() else {
+            self.forget_seek_snapshots_of(paragraph_index);
+            return;
+        };
         let snapshot = PageStartSeekSnapshot {
             paragraph_index,
             body_element_index,
@@ -6190,6 +6250,7 @@ where
             spanning: false,
             table_counter: self.table_counter,
             floats: self.seek_float_state(),
+            notes,
         };
         self.page_start_seek_cache
             .borrow_mut()
@@ -6241,6 +6302,145 @@ where
             .insert((snapshot.page_number, snapshot.column_index), snapshot);
     }
 
+    /// The note state for a seek snapshot taken now, or `None` while a note
+    /// is pending: a footnote continuing from an earlier page, a reference
+    /// line not placed yet, or footnotes referenced on this page but not yet
+    /// drawn. Resuming there would need the pending notes' layout, which a
+    /// snapshot does not carry.
+    fn note_seek_state(&self) -> Option<NoteSeekState> {
+        if self.document_has_notes
+            && (self.footnote_carry.is_some()
+                || self.carried_footnote_reserve_pending
+                || !self.unplaced_footnote_refs.is_empty()
+                || self.rendered_footnote_count != self.footnote_order.len()
+                || self.footnote_reserve_px != 0.0
+                || self.footnote_split_at_body_reference
+                || self.paragraph_restart.is_some()
+                || self.note_resume.is_some())
+        {
+            return None;
+        }
+        Some(NoteSeekState {
+            footnotes: self.footnote_order.len(),
+            endnotes: self.endnote_order.len(),
+            footnote_scope: self.footnote_numbering_scope,
+            endnote_scope: self.endnote_numbering_scope,
+            last_body_line_px: self.last_body_line_px,
+            flags: self.last_options.as_ref().map_or(0, note_seek_flags),
+            epoch: self.note_settings_epoch,
+        })
+    }
+
+    /// Note numbering or placement changed: the previous pass's note maps
+    /// and every snapshot recorded so far no longer describe the document.
+    fn bump_note_settings_epoch(&mut self) {
+        self.note_settings_epoch = self.note_settings_epoch.wrapping_add(1);
+        self.note_order_flags = None;
+    }
+
+    /// Drops the seek snapshots an earlier pass recorded for
+    /// `paragraph_index`, which this pass reaches with a note pending.
+    fn forget_seek_snapshots_of(&self, paragraph_index: usize) {
+        self.paragraph_seek_cache
+            .borrow_mut()
+            .remove(&paragraph_index);
+        // Page and column snapshots are recorded with a page-start snapshot
+        // of the same paragraph, so without one none of them points here.
+        // This runs at every paragraph start while a note is pending.
+        if self
+            .page_start_seek_cache
+            .borrow_mut()
+            .remove(&paragraph_index)
+            .is_none()
+        {
+            return;
+        }
+        let page = self.current_page_number;
+        let mut by_page = self.page_start_seek_cache_by_page.borrow_mut();
+        if by_page
+            .get(&page)
+            .is_some_and(|snapshot| snapshot.paragraph_index == paragraph_index)
+        {
+            by_page.remove(&page);
+        }
+        self.page_column_seek_cache
+            .borrow_mut()
+            .retain(|_, snapshot| snapshot.paragraph_index != paragraph_index);
+    }
+
+    /// Starts a pass's note maps: cut back to the lengths of the seek
+    /// snapshot `notes` when the pass seeks, empty when it walks from the
+    /// start. Every displayed number and section a note has comes from its
+    /// first reference, so the notes past the cut are exactly the ones the
+    /// resumed walk registers again.
+    fn restore_note_maps_for_seek(&mut self, notes: Option<&NoteSeekState>) {
+        let (footnotes, endnotes) = notes.map_or((0, 0), |notes| (notes.footnotes, notes.endnotes));
+        fn cut(
+            order: &mut Vec<String>,
+            display: &mut HashMap<String, usize>,
+            sections: &mut HashMap<String, usize>,
+            len: usize,
+        ) {
+            if len == 0 {
+                order.clear();
+                display.clear();
+                sections.clear();
+                return;
+            }
+            if len >= order.len() {
+                return;
+            }
+            for id in order.drain(len..) {
+                display.remove(&id);
+                sections.remove(&id);
+            }
+        }
+        cut(
+            &mut self.footnote_order,
+            &mut self.footnote_display_map,
+            &mut self.footnote_section_map,
+            footnotes,
+        );
+        cut(
+            &mut self.endnote_order,
+            &mut self.endnote_display_map,
+            &mut self.endnote_section_map,
+            endnotes,
+        );
+    }
+
+    /// Whether the previous pass's note maps can seed a seek to `snapshot`:
+    /// they were built for the same note kinds and reach at least as far as
+    /// the snapshot, so cutting them back to its lengths gives exactly what a
+    /// walk from the start would have registered before it.
+    fn seek_snapshot_notes_are_current(
+        &self,
+        snapshot: &PageStartSeekSnapshot,
+        options: &Options,
+    ) -> bool {
+        if !self.document_has_notes {
+            return true;
+        }
+        let notes = &snapshot.notes;
+        let flags = note_seek_flags(options);
+        if notes.flags != flags || notes.epoch != self.note_settings_epoch {
+            return false;
+        }
+        // A note reference edited at or before the resume point changes the
+        // order or numbers of the notes before it. Hosts drop later
+        // snapshots on an edit; refuse the seek here too.
+        if self
+            .forced_dirty_from
+            .is_some_and(|dirty| dirty < snapshot.paragraph_index)
+        {
+            return false;
+        }
+        (notes.footnotes == 0 && notes.endnotes == 0)
+            || (self.note_order_flags == Some(flags)
+                && self.footnote_order.len() >= notes.footnotes
+                && self.endnote_order.len() >= notes.endnotes)
+    }
+
     /// Float state for a seek snapshot. Recording is refused while a
     /// look-ahead pin is live, so `lookahead_pin` is `None` in practice; it is
     /// kept so a restore reproduces the walk state exactly either way.
@@ -6280,6 +6480,10 @@ where
         if body_element_index == usize::MAX || section_index == usize::MAX {
             return;
         }
+        let Some(notes) = self.note_seek_state() else {
+            self.forget_seek_snapshots_of(paragraph_index);
+            return;
+        };
         let snapshot = PageStartSeekSnapshot {
             paragraph_index,
             body_element_index,
@@ -6303,6 +6507,7 @@ where
             spanning: false,
             table_counter: self.table_counter,
             floats: self.seek_float_state(),
+            notes,
         };
         self.paragraph_seek_cache
             .borrow_mut()
@@ -6598,7 +6803,9 @@ where
         snapshot: &PageStartSeekSnapshot,
         options: &Options,
     ) -> bool {
-        if !self.seek_snapshot_geometry_is_valid(snapshot) {
+        if !self.seek_snapshot_geometry_is_valid(snapshot)
+            || !self.seek_snapshot_notes_are_current(snapshot, options)
+        {
             return false;
         }
         self.paragraph_seek_snapshot_matches_layout(
@@ -6625,7 +6832,9 @@ where
             return false;
         }
         // Page geometry must match the current render (snapshot is from a prior pass).
-        if !self.seek_snapshot_geometry_is_valid(snapshot) {
+        if !self.seek_snapshot_geometry_is_valid(snapshot)
+            || !self.seek_snapshot_notes_are_current(snapshot, options)
+        {
             return false;
         }
         // The snapshot's cumulative anchor must still agree with the current
@@ -6697,7 +6906,12 @@ where
 
         // Prefer exact paragraph snapshot (can be mid-page). This is the closest we can get to
         // "start from dirty paragraph" without scanning prefix paragraphs.
-        let dirty_paragraph_snapshot = self.paragraph_seek_cache.borrow().get(&dirty_from).cloned();
+        let dirty_paragraph_snapshot = self
+            .paragraph_seek_cache
+            .borrow()
+            .get(&dirty_from)
+            .filter(|snapshot| self.seek_snapshot_notes_are_current(snapshot, options))
+            .cloned();
         if let Some(snapshot) = dirty_paragraph_snapshot {
             if !self.paragraph_seek_snapshot_matches_layout(
                 dirty_from,
@@ -6847,6 +7061,7 @@ where
         let anchor = snapshot.paragraph_index;
         if anchor > dirty_from
             || !self.seek_anchor_is_body_paragraph(&snapshot)
+            || !self.seek_snapshot_notes_are_current(&snapshot, options)
             || !self.paragraph_seek_snapshot_matches_layout(anchor, &snapshot, "selected", options)
         {
             return None;
@@ -6930,6 +7145,11 @@ where
         if (seek.current_y - seek.margin_top).abs() <= EPS {
             // Top-of-column doesn't need prefix reconstruction.
             return true;
+        }
+        // The replay below redraws body paragraphs only; endnotes drawn at a
+        // section end above the seek point would be lost.
+        if self.document_has_notes {
+            return false;
         }
 
         let page_0idx = seek.page_number.saturating_sub(1);
@@ -10521,6 +10741,7 @@ where
             hf_story_layouts: HashMap::new(),
             rendering_header_footer_story: false,
             auxiliary_story_capture_mode: AuxiliaryStoryCaptureMode::Disabled,
+            capture_painted_table_headers: false,
             auxiliary_story_debug_lines: Vec::new(),
             title_page: false,
             even_and_odd_headers: false,
@@ -10543,6 +10764,7 @@ where
             active_section_index: 0,
             section_seek_geometry: Vec::new(),
             page_section_indices: Vec::new(),
+            parity_filler_pages: std::collections::BTreeSet::new(),
             mid_page_section_starts: Vec::new(),
             page_number_table: RefCell::new(None),
             #[cfg(test)]
@@ -10625,6 +10847,9 @@ where
             endnote_display_map: HashMap::new(),
             endnote_section_map: HashMap::new(),
             endnote_order: Vec::new(),
+            note_order_flags: None,
+            note_settings_epoch: 0,
+            section_endnote_positions: Vec::new(),
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
@@ -12721,8 +12946,8 @@ where
                     }
                 }
                 self.draw_page_fill()?;
-                self.draw_watermark()?;
-                self.draw_manuscript_grid();
+                self.draw_watermark(page)?;
+                self.draw_manuscript_grid(page);
                 self.draw_page_border_frame(PageBorderLayer::Back);
                 self.invalidate_context_state_tracking();
                 self.band_redraw_clip_active = true;
@@ -12761,8 +12986,8 @@ where
             }
         }
         self.draw_page_fill()?;
-        self.draw_watermark()?;
-        self.draw_manuscript_grid();
+        self.draw_watermark(page)?;
+        self.draw_manuscript_grid(page);
         self.draw_page_border_frame(PageBorderLayer::Back);
         Ok(())
     }
@@ -12878,8 +13103,8 @@ where
     /// The operation intentionally redraws the whole shape even during a band
     /// repaint: the active canvas clip limits it to the erased band, restoring
     /// exactly the watermark pixels that the band clear removed.
-    fn draw_watermark(&self) -> Result<(), JsValue> {
-        if self.pageless_mode {
+    fn draw_watermark(&self, page: usize) -> Result<(), JsValue> {
+        if self.pageless_mode || self.parity_filler_pages.contains(&page) {
             return Ok(());
         }
         let Some(text) = self.watermark_text.as_deref() else {
@@ -12973,11 +13198,11 @@ where
     /// header drawing is saved with
     /// ([`crate::word_document::manuscript::manuscript_strokes`]). Like the
     /// watermark it is redrawn whole on a band repaint, clipped to the band.
-    fn draw_manuscript_grid(&self) {
+    fn draw_manuscript_grid(&self, page: usize) {
         use crate::word_document::manuscript::{
             manuscript_is_vertical, manuscript_strokes, ManuscriptStroke,
         };
-        if self.pageless_mode {
+        if self.pageless_mode || self.parity_filler_pages.contains(&page) {
             return;
         }
         let Some(grid) = self.manuscript_grid.as_ref() else {
@@ -13081,7 +13306,10 @@ where
     /// starts with. `None` in pageless mode, with page chrome hidden, or when
     /// the page has no visible frame.
     fn page_border_frame_for_page(&self, page: usize) -> Option<PageBorderFrame> {
-        if self.pageless_mode || self.hides_page_chrome() {
+        if self.pageless_mode
+            || self.hides_page_chrome()
+            || self.parity_filler_pages.contains(&page)
+        {
             return None;
         }
         let (borders, section) = if self.section_page_borders.is_empty() {
@@ -16673,6 +16901,8 @@ where
         };
         let authoritative_mid_page_section_starts =
             snapshot_authoritative_pagination.then(|| self.mid_page_section_starts.clone());
+        let authoritative_parity_filler_pages =
+            snapshot_authoritative_pagination.then(|| self.parity_filler_pages.clone());
         let previous_page_origins = self.page_origins.clone();
         // One buffer across passes: a seek restores the skipped pages from it.
         let mut previous_page_sections = std::mem::take(&mut self.page_sections_before_pass);
@@ -17015,11 +17245,17 @@ where
         self.footnote_counter = 0;
         self.footnote_numbering_scope = NoteNumberingScope::default();
         self.endnote_numbering_scope = NoteNumberingScope::default();
-        self.footnote_display_map.clear();
-        self.custom_mark_footnotes = document_rc.custom_mark_footnotes.clone();
-        self.custom_mark_endnotes = document_rc.custom_mark_endnotes.clone();
-        self.footnote_section_map.clear();
-        self.footnote_order.clear();
+        // The note display, section and order maps are kept until the seek
+        // decision below: a seek cuts them back to its snapshot instead of
+        // rebuilding them from the document start. Custom marks change how
+        // notes number, so the kept maps no longer apply when they do.
+        if self.custom_mark_footnotes != document_rc.custom_mark_footnotes
+            || self.custom_mark_endnotes != document_rc.custom_mark_endnotes
+        {
+            self.bump_note_settings_epoch();
+            self.custom_mark_footnotes = document_rc.custom_mark_footnotes.clone();
+            self.custom_mark_endnotes = document_rc.custom_mark_endnotes.clone();
+        }
         self.update_footnote_surface_layout(&document_rc);
         self.rendered_footnote_count = 0;
         self.rendering_page_footnotes = false;
@@ -17046,9 +17282,6 @@ where
         self.measuring_notes = false;
         self.note_measure_layouts = 0;
         self.endnote_counter = 0;
-        self.endnote_display_map.clear();
-        self.endnote_section_map.clear();
-        self.endnote_order.clear();
         // A seek skips unchanged tables, so keep their IDs and editing handles.
         // Bitmap-only walks also stop early: restore their complete metadata at
         // the end instead of replacing it with the requested page's subset.
@@ -17183,9 +17416,10 @@ where
             self.forced_seek_snapshot.take();
             None
         } else {
-            self.forced_seek_snapshot
-                .take()
-                .filter(|snapshot| self.seek_snapshot_geometry_is_valid(snapshot))
+            self.forced_seek_snapshot.take().filter(|snapshot| {
+                self.seek_snapshot_geometry_is_valid(snapshot)
+                    && self.seek_snapshot_notes_are_current(snapshot, options)
+            })
         };
         // The window seek (edit fast path) takes precedence over an externally
         // forced snapshot; in practice the two never co-occur (the forced snapshot
@@ -17244,6 +17478,8 @@ where
         if let Some(seek) = seek_snapshot.as_ref() {
             self.active_section_index = seek.section_index;
         }
+        self.restore_note_maps_for_seek(seek_snapshot.as_ref().map(|seek| &seek.notes));
+        self.note_order_flags = Some(note_seek_flags(options));
         {
             let mut record = self.seek_pass_record.borrow_mut();
             record.from = seek_snapshot
@@ -17253,6 +17489,11 @@ where
             record.pages.clear();
             record.columns.clear();
         }
+        // The pages this walk reaches settle afresh whether they are parity
+        // fillers; a seek keeps the entries of the pages it skips.
+        let first_walked_page = seek_snapshot.as_ref().map_or(1, |seek| seek.page_number);
+        self.parity_filler_pages
+            .retain(|&page| page < first_walked_page);
         // Mid-page section starts are not cleared here: each section the walk
         // reaches re-records its own entry at its transition, a seek keeps
         // those of the sections it skips, and a walk that stops early keeps
@@ -17368,6 +17609,24 @@ where
         let mut deleted_numbering_offsets: HashMap<String, Vec<u32>> = HashMap::new();
 
         let mut rendered_endnotes = HashSet::new();
+        if let Some(seek) = seek_snapshot.as_ref() {
+            // The sections a seek skips already drew their section-end
+            // endnotes; the document-end pass must not draw them again.
+            if options.render_endnotes && seek.notes.endnotes > 0 {
+                rendered_endnotes.extend(
+                    self.endnote_order
+                        .iter()
+                        .filter(|id| {
+                            self.endnote_section_map.get(*id).is_some_and(|&section| {
+                                section < seek.section_index
+                                    && document.resolved_endnote_position(Some(section))
+                                        == jade_docx_reader::document::EndnotePosition::SectionEnd
+                            })
+                        })
+                        .cloned(),
+                );
+            }
+        }
         if let Some(body) = &document.body {
             // The body's contextual spacing and border boxes are decided per
             // adjacent pair when a paragraph is laid out (see
@@ -17416,6 +17675,12 @@ where
                 self.float_lookahead_pin = seek.floats.lookahead_pin;
                 self.footnote_counter = seek.footnote_counter;
                 self.endnote_counter = seek.endnote_counter;
+                self.footnote_numbering_scope = seek.notes.footnote_scope;
+                self.endnote_numbering_scope = seek.notes.endnote_scope;
+                // Snapshots are recorded only once every footnote referenced
+                // before them is drawn (`note_seek_state`).
+                self.rendered_footnote_count = self.footnote_order.len();
+                self.last_body_line_px = seek.notes.last_body_line_px;
                 self.page_width = seek.page_width;
                 self.page_height = seek.page_height;
                 self.margin_top = seek.margin_top;
@@ -17730,20 +17995,19 @@ where
                         0,
                         options,
                     );
-                    // Word for Mac omits the empty section mark from page
-                    // vAlign and from the vertical flow at a continuous column
-                    // change. Keep its layout available for editing.
+                    // Word omits empty continuous section marks from vertical
+                    // flow on both platforms. Mac also excludes them from page
+                    // vAlign. Keep their layout available for editing.
                     let empty_section_mark = body_element_index + 1 == end
                         && sections.get(index + 1).is_some_and(|next| {
-                            self.section_valign_enabled()
-                                || next
-                                    .properties
-                                    .as_ref()
-                                    .and_then(|props| props.section_type.as_deref())
-                                    == Some("continuous")
+                            next.properties
+                                .as_ref()
+                                .and_then(|props| props.section_type.as_deref())
+                                == Some("continuous")
+                                || (self.section_valign_enabled()
+                                    && jade_docx_layout::line_metrics::word_layout_platform()
+                                        == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
                         })
-                        && jade_docx_layout::line_metrics::word_layout_platform()
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         && matches!(element, BodyElement::Paragraph(paragraph)
                             if paragraph.runs.is_empty()
                                 && paragraph.properties.as_ref().is_some_and(|props|
@@ -17950,6 +18214,9 @@ where
                 }
                 if let Some(starts) = authoritative_mid_page_section_starts.as_ref() {
                     self.mid_page_section_starts.clone_from(starts);
+                }
+                if let Some(fillers) = authoritative_parity_filler_pages {
+                    self.parity_filler_pages = fillers;
                 }
                 self.invalidate_page_number_table();
                 self.page_origins.clone_from(&previous_page_origins);
@@ -19247,6 +19514,20 @@ where
             })
             .collect();
 
+        let note_numbering_before = (
+            std::mem::take(&mut self.section_footnote_numbering),
+            std::mem::take(&mut self.section_endnote_numbering),
+            ResolvedNoteNumbering {
+                format: self.footnote_number_format.clone(),
+                start: self.footnote_number_start,
+                restart: self.footnote_number_restart,
+            },
+            ResolvedNoteNumbering {
+                format: self.endnote_number_format.clone(),
+                start: self.endnote_number_start,
+                restart: self.endnote_number_restart,
+            },
+        );
         let footnote_props = document.resolved_note_numbering(None, true);
         self.footnote_number_format = footnote_props.number_format.clone();
         self.footnote_number_start = footnote_props.number_start;
@@ -19275,6 +19556,33 @@ where
                 ))
             })
             .collect();
+        // Where each section's endnotes go (document end, or section end).
+        let endnote_positions_before = std::mem::take(&mut self.section_endnote_positions);
+        self.section_endnote_positions
+            .push(document.resolved_endnote_position(None));
+        self.section_endnote_positions.extend(
+            (0..document.sections.len())
+                .map(|index| document.resolved_endnote_position(Some(index))),
+        );
+        // A host can change these settings and repaint only a bounded window
+        // (`setNoteNumbering`, `setEndnotePosition`). Everything laid out
+        // under the old settings is stale past it: note marks change width
+        // and number, and endnotes move between section ends and the
+        // document end. Drop it, and refuse snapshots recorded before.
+        let note_settings_changed = note_numbering_before.0 != self.section_footnote_numbering
+            || note_numbering_before.1 != self.section_endnote_numbering
+            || note_numbering_before.2.format != self.footnote_number_format
+            || note_numbering_before.2.start != self.footnote_number_start
+            || note_numbering_before.2.restart != self.footnote_number_restart
+            || note_numbering_before.3.format != self.endnote_number_format
+            || note_numbering_before.3.start != self.endnote_number_start
+            || note_numbering_before.3.restart != self.endnote_number_restart
+            || endnote_positions_before != self.section_endnote_positions;
+        // The first pass compares against nothing laid out.
+        if note_settings_changed && !endnote_positions_before.is_empty() {
+            self.bump_note_settings_epoch();
+            self.invalidate_layout_from(0);
+        }
 
         // Resolve fallback and section-owned margin line numbering.
         self.line_numbering = document
@@ -19684,11 +19992,15 @@ where
         let section_break = SectionBreakType::from_word_value(section_break_type);
         let previous_column_index = self.column_index;
         let has_next_column = previous_column_index + 1 < self.column_layout.count();
-        let transition = resolve_section_transition(
+        let transition = self.settle_parity_transition(
             section_break,
-            self.current_page_number,
-            !same_layout,
-            has_next_column,
+            target_section_index,
+            resolve_section_transition(
+                section_break,
+                self.current_page_number,
+                !same_layout,
+                has_next_column,
+            ),
         );
 
         let page_top_section = self.section_index_for_page(self.current_page_number);
@@ -19778,11 +20090,15 @@ where
                 self.render_footer_simple()?;
                 section_mark_top = None;
             }
-            page_transition = resolve_section_transition(
+            page_transition = self.settle_parity_transition(
                 section_break,
-                self.current_page_number,
-                !same_layout,
-                has_next_column,
+                target_section_index,
+                resolve_section_transition(
+                    section_break,
+                    self.current_page_number,
+                    !same_layout,
+                    has_next_column,
+                ),
             );
         }
         let SectionTransition::NextPage { page_advances } = page_transition else {
@@ -19792,8 +20108,15 @@ where
         // oddPage/evenPage may require one intervening blank parity page. Keep
         // that page on the previous section's geometry; the final advance below
         // activates the new section's page settings.
+        // Word prints that page blank (no header, footer, page borders or
+        // watermark) while it still takes a page number. On Mac the outgoing
+        // section's carried notes continue onto it instead (Windows drained
+        // them above), so it keeps its chrome. Finish the page's notes first:
+        // that settles whether any carry onto the next page.
         for _ in 1..page_advances {
-            self.force_page_break_with_valign_end(section_mark_top.take())?;
+            self.render_footer_simple()?;
+            let parity_filler = self.footnote_carry.is_none();
+            self.force_page_break_with_valign_end(section_mark_top.take(), parity_filler)?;
         }
 
         self.render_footer_simple()?;
@@ -20071,11 +20394,50 @@ where
         Ok(())
     }
 
-    fn force_page_break(&mut self) -> Result<(), JsValue> {
-        self.force_page_break_with_valign_end(None)
+    /// Settles how many pages an oddPage/evenPage break into
+    /// `target_section` advances by displayed page numbers, as Word does:
+    /// the number the current page shows against the section's own
+    /// `w:pgNumType w:start` when it restarts numbering, else against the
+    /// next number (§17.6.12). `transition` was resolved from the physical
+    /// page, which only settles whether the break starts a page; other break
+    /// types keep it, and never look up a page number.
+    fn settle_parity_transition(
+        &self,
+        section_break: SectionBreakType,
+        target_section: usize,
+        transition: SectionTransition,
+    ) -> SectionTransition {
+        match transition {
+            SectionTransition::NextPage { .. }
+                if matches!(
+                    section_break,
+                    SectionBreakType::OddPage | SectionBreakType::EvenPage
+                ) =>
+            {
+                SectionTransition::NextPage {
+                    page_advances: parity_page_advances(
+                        section_break,
+                        self.page_number_value(self.current_page_number),
+                        self.section_page_number_start(target_section),
+                    ),
+                }
+            }
+            transition => transition,
+        }
     }
 
-    fn force_page_break_with_valign_end(&mut self, valign_end: Option<f64>) -> Result<(), JsValue> {
+    fn force_page_break(&mut self) -> Result<(), JsValue> {
+        self.force_page_break_with_valign_end(None, false)
+    }
+
+    /// Advances to a new page; `parity_filler` marks it as the blank page an
+    /// oddPage/evenPage section break inserts, before its backing paints any
+    /// page chrome.
+    fn force_page_break_with_valign_end(
+        &mut self,
+        valign_end: Option<f64>,
+        parity_filler: bool,
+    ) -> Result<(), JsValue> {
         if self.measuring_keep_next {
             return Ok(());
         }
@@ -20094,6 +20456,9 @@ where
         let previous_page_height = self.page_height;
         self.advance_page_offset(previous_page_height);
         let next_page = self.current_page_number + 1;
+        if parity_filler {
+            self.parity_filler_pages.insert(next_page);
+        }
         self.begin_next_page_backing(next_page)?;
         self.record_valign_used_height_at(valign_end.unwrap_or(self.current_y));
         self.current_page_number += 1;
@@ -22007,8 +22372,9 @@ where
                                 picture,
                             });
                         }
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                        if !paragraph_style.bidi
+                            || paragraph_style.word_platform
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         {
                             paragraph_style.tab_origin_offset -= x - tab_base_x;
                         }
@@ -26265,6 +26631,18 @@ where
                 {
                     let mut previous: Option<(usize, usize, &str, f64)> = None;
                     for (segment_index, prepared) in prepared_segments.iter().enumerate() {
+                        if paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                            && wrapped_line
+                                .tab_stops
+                                .iter()
+                                .any(|tab| tab.end_offset == prepared.segment.start)
+                        {
+                            // A resolved tab anchors the following text. Its
+                            // surrounding glyphs are not adjacent gaps to
+                            // widen when justifying the line.
+                            previous = None;
+                        }
                         let em = points_to_px(prepared.style.font_size_pt);
                         for (glyph_index, step) in prepared.glyph_steps.iter().enumerate() {
                             let text = step.text(&prepared.segment.text);
@@ -32771,7 +33149,9 @@ where
                     .as_ref()
                     .map(|level| (level.tabs.as_slice(), props.tabs.as_slice())),
             );
-        if paragraph_style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        if !paragraph_style.bidi
+            || paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         {
             paragraph_style.tab_origin_offset -= x - tab_base_x;
         }
@@ -37145,7 +37525,8 @@ where
             || text_style.emboss
             || text_style.imprint
             || text_style.effects.is_some()
-            || (has_soft_hyphen
+            || ((has_soft_hyphen
+                || crate::draw_command::CommandText::text_has_zero_width_controls(segment_text))
                 && jade_docx_layout::line_metrics::word_layout_platform()
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
             || crate::draw_command::executor::windows_pdf_text::eligible(
@@ -38173,9 +38554,7 @@ where
         alignment: Option<&str>,
         paragraph_style: &ParagraphStyle,
     ) -> f64 {
-        if paragraph_style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            || paragraph_style.bidi
-        {
+        if paragraph_style.bidi {
             return anchor_x;
         }
         match alignment {
@@ -38190,11 +38569,7 @@ where
         suffix: Option<&str>,
         paragraph_style: &ParagraphStyle,
     ) -> &'a str {
-        if suffix == Some("tab")
-            && paragraph_style.word_platform
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            && !paragraph_style.bidi
-        {
+        if suffix == Some("tab") && !paragraph_style.bidi {
             // The reader appends a display space for an explicit tab suffix.
             // Word chooses the stop from the label's end before that space.
             return text.strip_suffix(' ').unwrap_or(text);
@@ -40089,7 +40464,7 @@ where
     /// Rebuilds diagnostics from page one with no lazy limit or seek replay.
     /// This is deliberately expensive and should only run for release captures.
     pub fn capture_full_layout_debug(&mut self) -> Result<FullLayoutDebugSnapshot, JsValue> {
-        self.capture_full_layout_debug_with_table_projection(true)
+        self.capture_full_layout_debug_with_table_projection(true, false)
     }
 
     /// Include table glyph origins hidden by an exact row's clipping region.
@@ -40098,12 +40473,22 @@ where
     pub fn capture_full_layout_debug_unclipped_tables(
         &mut self,
     ) -> Result<FullLayoutDebugSnapshot, JsValue> {
-        self.capture_full_layout_debug_with_table_projection(false)
+        self.capture_full_layout_debug_with_table_projection(false, false)
+    }
+
+    /// Capture the visible glyphs of repeated table headers as well as body
+    /// cells. This opt-in diagnostic projection matches painted-PDF captures;
+    /// ordinary captures, editing geometry and painter commands are unchanged.
+    pub fn capture_full_layout_debug_painted_table_headers(
+        &mut self,
+    ) -> Result<FullLayoutDebugSnapshot, JsValue> {
+        self.capture_full_layout_debug_with_table_projection(true, true)
     }
 
     fn capture_full_layout_debug_with_table_projection(
         &mut self,
         clip_table_glyphs: bool,
+        painted_table_headers: bool,
     ) -> Result<FullLayoutDebugSnapshot, JsValue> {
         if self.last_document.is_none() {
             return Err(JsValue::from_str("Document not loaded"));
@@ -40111,12 +40496,14 @@ where
         let saved_limit = self.layout_page_limit;
         let saved_visible = self.visible_page_range.clone();
         let saved_capture = self.auxiliary_story_capture_mode;
+        let saved_header_projection = self.capture_painted_table_headers;
         let saved_force_full_repaint = self.force_full_repaint_once;
         let saved_disable_seek_replay = self.disable_seek_replay_once;
         let saved_hf_story_layouts = std::mem::take(&mut self.hf_story_layouts);
         self.layout_page_limit = None;
         self.visible_page_range = None;
         self.auxiliary_story_capture_mode = AuxiliaryStoryCaptureMode::Full;
+        self.capture_painted_table_headers = painted_table_headers;
         self.force_full_repaint_once = true;
         self.disable_seek_replay_once = true;
 
@@ -40130,8 +40517,15 @@ where
             let mut auxiliary_lines = self.auxiliary_story_debug_lines.clone();
             let mut clipped_table_lines = HashMap::new();
             let mut painted_table_lines = HashMap::new();
+            let mut clipped_header_lines = HashMap::new();
             auxiliary_lines.retain(|entry| {
-                if entry.story == "table_clip_projection" {
+                if entry.story == "table_header_clip_projection" {
+                    clipped_header_lines.insert(
+                        (entry.line.paragraph, entry.line.line, entry.line.page),
+                        entry.line.clone(),
+                    );
+                    false
+                } else if entry.story == "table_clip_projection" {
                     clipped_table_lines.insert(
                         (entry.line.paragraph, entry.line.line, entry.line.page),
                         entry.line.clone(),
@@ -40147,6 +40541,20 @@ where
                     true
                 }
             });
+            if clip_table_glyphs {
+                for entry in auxiliary_lines
+                    .iter_mut()
+                    .filter(|entry| entry.story == "table_header")
+                {
+                    if let Some(clipped) = clipped_header_lines.remove(&(
+                        entry.line.paragraph,
+                        entry.line.line,
+                        entry.line.page,
+                    )) {
+                        entry.line.fragments = clipped.fragments;
+                    }
+                }
+            }
             let auxiliary_line_keys = auxiliary_lines
                 .iter()
                 .filter(|entry| matches!(entry.story, "text_box" | "endnote"))
@@ -40224,10 +40632,11 @@ where
         self.layout_page_limit = saved_limit;
         self.visible_page_range = saved_visible;
         self.auxiliary_story_capture_mode = saved_capture;
+        self.capture_painted_table_headers = saved_header_projection;
         self.auxiliary_story_debug_lines.retain(|entry| {
             !matches!(
                 entry.story,
-                "table_clip_projection" | "table_paint_projection"
+                "table_clip_projection" | "table_paint_projection" | "table_header_clip_projection"
             )
         });
         self.force_full_repaint_once = saved_force_full_repaint;
@@ -40927,24 +41336,34 @@ where
         if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
-            // Windows Word drops before spacing after a paragraph-final
-            // manual break. pageBreakBefore and section starts retain it.
+            let page_break_before = paragraph
+                .properties
+                .as_ref()
+                .is_some_and(|properties| properties.page_break_before == Some(true));
+            // Word 2013+ omits before spacing for pageBreakBefore. Legacy
+            // compatibility modes retain it, as do section starts. Read the
+            // declared mode: the East Asian shaping fallback is mode 12
+            // even for modern, minimal documents with no compatSetting.
             if at_flow_start
                 && body_element_index != section_start
-                && paragraph
-                    .properties
-                    .as_ref()
-                    .is_none_or(|properties| properties.page_break_before != Some(true))
                 && !paragraph
                     .runs
                     .iter()
                     .any(|run| run.text.contains(PAGE_BREAK_CHAR))
-                && self.last_document.as_deref().is_some_and(|document| {
-                    jade_docx_layout::text_extract::body_follows_manual_page_break(
-                        document,
-                        body_element_index,
-                    )
-                })
+                && ((page_break_before
+                    && self
+                        .last_document
+                        .as_deref()
+                        .and_then(|document| document.compat.setting("compatibilityMode"))
+                        .and_then(|mode| mode.parse::<u32>().ok())
+                        .is_none_or(|mode| mode >= 15))
+                    || (!page_break_before
+                        && self.last_document.as_deref().is_some_and(|document| {
+                            jade_docx_layout::text_extract::body_follows_manual_page_break(
+                                document,
+                                body_element_index,
+                            )
+                        })))
             {
                 return 0.0;
             }
@@ -42622,6 +43041,14 @@ where
         self.header_content_heights[page_index] = Some(content_height.max(0.0));
     }
 
+    /// Whether the page at `zero_based_page` is the blank page an
+    /// oddPage/evenPage section break inserted to reach the required parity.
+    /// It shows no header or footer, so none can be edited there.
+    pub fn is_parity_filler_page_index(&self, zero_based_page: usize) -> bool {
+        self.parity_filler_pages
+            .contains(&zero_based_page.saturating_add(1))
+    }
+
     /// Returns the header editing boundary for a physical page. A measured
     /// rich-body height wins; the HeaderLine fallback remains for synthetic or
     /// not-yet-rendered documents that do not carry a parsed block story.
@@ -43261,7 +43688,8 @@ where
         if self.pageless_mode {
             return Ok(());
         }
-        if self.hides_page_chrome() {
+        if self.hides_page_chrome() || self.parity_filler_pages.contains(&self.current_page_number)
+        {
             self.header_drawn = true;
             return Ok(());
         }
@@ -43436,7 +43864,8 @@ where
         // The footer belongs under the body's floating objects.
         self.end_page_body_layer();
 
-        if self.hides_page_chrome() {
+        if self.hides_page_chrome() || self.parity_filler_pages.contains(&self.current_page_number)
+        {
             self.footer_drawn = true;
             return Ok(());
         }
@@ -46003,6 +46432,8 @@ mod tests {
     mod decoration_histories;
     mod float_seek_tests;
     mod float_wrap_witness_tests;
+    mod note_host_flow_tests;
+    mod note_seek_tests;
     mod numbering_snapshot_histories;
     mod numbering_width_histories;
     mod paragraph_render_hash_tests;
@@ -54083,12 +54514,17 @@ mod tests {
     #[cfg(feature = "opentype-math")]
     #[test]
     fn boxed_math_inherits_paragraph_font_size_and_word_script_scales() {
-        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="30"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:pStyle w:val="Equation"/><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="20"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
         let document = jade_docx_reader::DocumentParser::new()
             .parse_document_xml(xml)
             .unwrap();
         let blocks = document.body.unwrap().elements;
         let (mut renderer, _) = recording_renderer();
+        // Equation size comes from the paragraph style; its independently
+        // sized paragraph mark must not resize the equation or its scripts.
+        renderer.styles_part = Some(Rc::new(StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Equation"><w:rPr><w:sz w:val="30"/></w:rPr></w:style></w:styles>"#
+        ).unwrap()));
         renderer
             .register_math_font(
                 "Host Math".into(),
@@ -54230,63 +54666,86 @@ mod tests {
 
     #[test]
     fn display_math_without_special_defaults_uses_paragraph_alignment_in_body_and_boxes() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
         use jade_docx_layout::math_layout::styled::MathJustification;
-        use jade_docx_layout::math_layout::MathParagraphAlignment;
-        for (paragraph_alignment, bidi, expected) in [
-            ("left", false, MathParagraphAlignment::Left),
-            ("center", false, MathParagraphAlignment::Center),
-            ("right", false, MathParagraphAlignment::Right),
-            ("start", true, MathParagraphAlignment::Right),
-            ("end", true, MathParagraphAlignment::Left),
-        ] {
-            for explicit in [false, true] {
-                let math_jc = if explicit {
-                    r#"<m:jc m:val="center"/>"#
-                } else {
-                    ""
-                };
-                let bidi = if bidi { "<w:bidi/>" } else { "" };
-                let xml = format!(
-                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:jc w:val="{paragraph_alignment}"/>{bidi}</w:pPr><m:oMathPara><m:oMathParaPr>{math_jc}</m:oMathParaPr><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
-                );
-                let document = jade_docx_reader::DocumentParser::new()
-                    .parse_document_xml(&xml)
-                    .unwrap();
-                let blocks = &document.body.as_ref().unwrap().elements;
-                let BodyElement::Math(math) = &blocks[0] else {
-                    panic!("missing math")
-                };
-                let (mut renderer, _) = recording_renderer();
-                renderer.math_settings =
-                    math::settings_from(&jade_docx_reader::settings::MathProperties {
-                        display_default: Some(false),
-                        default_justification: Some("right".into()),
-                        wrap_indent: Some(1440.0),
-                        wrap_right: Some(true),
-                        ..Default::default()
-                    });
-                let settings = renderer.display_math_style().display_math_settings(math);
-                assert_eq!(settings.wrap_indent_px, 0.0);
-                assert!(!settings.wrap_right);
-                if paragraph_alignment == "center" {
-                    assert_eq!(settings.default_justification, MathJustification::Center);
+        use jade_docx_layout::math_layout::MathParagraphAlignment::{Center, Left, Right};
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        // The original32-equation display-alignment-0 probe establishes the
+        // physical left/right and inherited-right precedence in both directions.
+        // Preserve that matrix on both body and boxed equation surfaces.
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (paragraph_alignment, bidi, expected_cases) in [
+                ("left", false, [Left, Left, Center, Right]),
+                ("center", false, [Center, Left, Center, Right]),
+                ("right", false, [Right, Right, Right, Right]),
+                ("start", false, [Left, Left, Center, Right]),
+                ("end", false, [Right, Right, Right, Right]),
+                ("left", true, [Left, Left, Center, Right]),
+                ("right", true, [Right, Right, Right, Right]),
+                ("start", true, [Left, Left, Center, Right]),
+                ("end", true, [Right, Right, Right, Right]),
+            ] {
+                for (math_alignment, expected) in
+                    [None, Some("left"), Some("center"), Some("right")]
+                        .into_iter()
+                        .zip(expected_cases)
+                {
+                    let math_jc = math_alignment
+                        .map(|value| format!(r#"<m:jc m:val="{value}"/>"#))
+                        .unwrap_or_default();
+                    let bidi_xml = if bidi { "<w:bidi/>" } else { "" };
+                    let xml = format!(
+                        r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:jc w:val="{paragraph_alignment}"/>{bidi_xml}</w:pPr><m:oMathPara><m:oMathParaPr>{math_jc}</m:oMathParaPr><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
+                    );
+                    let document = jade_docx_reader::DocumentParser::new()
+                        .parse_document_xml(&xml)
+                        .unwrap();
+                    let blocks = &document.body.as_ref().unwrap().elements;
+                    let BodyElement::Math(math) = &blocks[0] else {
+                        panic!("missing math")
+                    };
+                    let (mut renderer, _) = recording_renderer();
+                    renderer.math_settings =
+                        math::settings_from(&jade_docx_reader::settings::MathProperties {
+                            display_default: Some(false),
+                            default_justification: Some("right".into()),
+                            wrap_indent: Some(1440.0),
+                            wrap_right: Some(true),
+                            ..Default::default()
+                        });
+                    let settings = renderer.display_math_style().display_math_settings(math);
+                    assert_eq!(settings.wrap_indent_px, 0.0);
+                    assert!(!settings.wrap_right);
+                    if paragraph_alignment == "center" {
+                        assert_eq!(settings.default_justification, MathJustification::Center);
+                    }
+                    let measured = renderer
+                        .measure_text_box_blocks(blocks, 10.0, 210.0, &mut NumberingCounter::new())
+                        .unwrap();
+                    assert_eq!(
+                        measured.math_plans[0].alignment, expected,
+                        "{platform:?}/{paragraph_alignment}/bidi={bidi}/{math_alignment:?}"
+                    );
+                    renderer.current_y = 100.0;
+                    let left = renderer.current_column_x();
+                    let width = renderer.current_column_width();
+                    renderer.render_math_block(math).unwrap();
+                    let lines = renderer.layout_debug_lines();
+                    let advance = lines[0].fragments[0].width;
+                    assert!(
+                        (lines[0].start_x - expected.x(left, width, advance)).abs() < 1e-5,
+                        "{platform:?}/{paragraph_alignment}/bidi={bidi}/{math_alignment:?}"
+                    );
                 }
-                let measured = renderer
-                    .measure_text_box_blocks(blocks, 10.0, 210.0, &mut NumberingCounter::new())
-                    .unwrap();
-                let expected = if explicit {
-                    MathParagraphAlignment::Center
-                } else {
-                    expected
-                };
-                assert_eq!(measured.math_plans[0].alignment, expected);
-                renderer.current_y = 100.0;
-                let left = renderer.current_column_x();
-                let width = renderer.current_column_width();
-                renderer.render_math_block(math).unwrap();
-                let lines = renderer.layout_debug_lines();
-                let advance = lines[0].fragments[0].width;
-                assert!((lines[0].start_x - expected.x(left, width, advance)).abs() < 1e-5);
             }
         }
     }
@@ -54311,7 +54770,7 @@ mod tests {
                 r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
                 Some("Child"),
                 None,
-                MathParagraphAlignment::Left,
+                MathParagraphAlignment::Right,
             ),
             (
                 r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
@@ -66038,7 +66497,8 @@ mod tests {
             );
             assert!(renderer.is_forward_window_seek_compatible_options(&options));
             // A real note, including an empty or unknown-type note, must still
-            // retain the conservative note-layout guards.
+            // retain the conservative note-layout guards. Seeks stay open:
+            // their snapshots carry the note state.
             for note_type in [None, Some("normal"), Some("unknown")] {
                 let mut with_note = document.clone();
                 let notes = if endnotes {
@@ -66056,7 +66516,8 @@ mod tests {
                 );
                 renderer.render(&with_note, &options).unwrap();
                 assert!(renderer.document_has_notes);
-                assert!(!renderer.is_forward_window_seek_compatible_options(&options));
+                assert!(!renderer.can_use_unchecked_cache_replay(&options));
+                assert!(renderer.is_forward_window_seek_compatible_options(&options));
             }
         }
     }
@@ -67712,6 +68173,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         let options = options_for_seek_tests();
@@ -67769,6 +68231,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         assert!(renderer
@@ -67802,6 +68265,7 @@ mod tests {
             spanning: false,
             table_counter: 0,
             floats: SeekFloatState::default(),
+            notes: NoteSeekState::default(),
         }
     }
 
@@ -68072,13 +68536,15 @@ mod tests {
     }
 
     #[test]
-    fn prepare_rerender_for_page_rejects_body_snapshot_with_notes() {
+    fn prepare_rerender_for_page_takes_body_snapshots_recorded_for_the_same_notes() {
         let mut renderer = test_renderer();
         renderer.pageless_mode = false;
         renderer.document_has_notes = true;
         let mut options = options_for_seek_tests();
         options.render_endnotes = true;
         renderer.last_options = Some(options);
+        // Recorded while endnotes were not rendered: the note state it carries
+        // does not describe this pass.
         renderer
             .page_start_seek_cache_by_page
             .borrow_mut()
@@ -68088,10 +68554,20 @@ mod tests {
 
         assert!(
             renderer.forced_seek_snapshot.is_none(),
-            "body snapshots do not restore note reference order"
+            "a snapshot recorded for other note kinds is refused"
         );
         assert!(!renderer.skip_layout_cache_update);
         assert!(renderer.preserve_pagination_for_pixel_rerender);
+
+        let mut snapshot = page_top_snapshot(&renderer, 2);
+        snapshot.notes.flags = NOTE_SEEK_ENDNOTES;
+        renderer
+            .page_start_seek_cache_by_page
+            .borrow_mut()
+            .insert(2, snapshot);
+        renderer.prepare_rerender_for_page(1);
+        assert!(renderer.forced_seek_snapshot.is_some());
+        assert!(renderer.skip_layout_cache_update);
     }
 
     #[test]
@@ -68542,10 +69018,12 @@ mod tests {
             );
             assert_eq!(
                 renderer.layout_extension_seek_last_miss(),
-                if mode == 4 {
-                    "vertical_text"
-                } else {
-                    "options"
+                match mode {
+                    // Notes no longer block the options; the snapshot was
+                    // recorded without them, so its note state is refused.
+                    0 | 1 => "stale_snapshots",
+                    4 => "vertical_text",
+                    _ => "options",
                 }
             );
             assert!(renderer.forced_seek_snapshot.is_none());
@@ -69121,6 +69599,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69167,6 +69646,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69212,6 +69692,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69224,7 +69705,7 @@ mod tests {
     }
 
     #[test]
-    fn try_prepare_seek_start_is_disabled_when_notes_enabled() {
+    fn try_prepare_seek_start_needs_snapshots_recorded_for_the_same_notes() {
         let mut renderer = test_renderer();
         renderer.document_has_notes = true;
         renderer.visible_page_range = Some(2..=2);
@@ -69255,6 +69736,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -69267,6 +69749,7 @@ mod tests {
             ..Default::default()
         };
         options.set_pageless(false);
+        // The snapshot was recorded without notes rendered.
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
@@ -69276,6 +69759,34 @@ mod tests {
         assert!(renderer
             .try_prepare_seek_start(dirty_from, &options)
             .is_none());
+
+        // Recorded for the same note kinds, with no note before it.
+        renderer
+            .page_start_seek_cache
+            .borrow_mut()
+            .get_mut(&dirty_from)
+            .unwrap()
+            .notes
+            .flags = NOTE_SEEK_ENDNOTES;
+        assert!(renderer
+            .try_prepare_seek_start(dirty_from, &options)
+            .is_some());
+        // Notes before it need the previous pass's note maps to reach it.
+        renderer
+            .page_start_seek_cache
+            .borrow_mut()
+            .get_mut(&dirty_from)
+            .unwrap()
+            .notes
+            .endnotes = 1;
+        assert!(renderer
+            .try_prepare_seek_start(dirty_from, &options)
+            .is_none());
+        renderer.note_order_flags = Some(NOTE_SEEK_ENDNOTES);
+        renderer.endnote_order.push("1".into());
+        assert!(renderer
+            .try_prepare_seek_start(dirty_from, &options)
+            .is_some());
     }
 
     #[test]
@@ -69311,6 +69822,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70408,6 +70920,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70453,6 +70966,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70482,6 +70996,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70547,6 +71062,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70598,6 +71114,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70645,6 +71162,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70696,6 +71214,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70742,6 +71261,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70799,6 +71319,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -70858,6 +71379,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         // Fallback candidates (page start) for page 3.
@@ -70886,6 +71408,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         // Old cached layout for dirty paragraph to estimate its page (page 3 is 0-indexed=2).
@@ -70957,6 +71480,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -71071,6 +71595,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -71117,6 +71642,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -71144,6 +71670,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         renderer.paragraph_layout_cache.borrow_mut().insert(
@@ -71503,6 +72030,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
         renderer.page_start_seek_cache_by_page.borrow_mut().insert(
@@ -71530,6 +72058,7 @@ mod tests {
                 spanning: false,
                 table_counter: 0,
                 floats: SeekFloatState::default(),
+                notes: NoteSeekState::default(),
             },
         );
 
@@ -73087,7 +73616,7 @@ mod tests {
                 ..Default::default()
             });
             painter.clear();
-            renderer.draw_watermark().expect("draw fixed watermark");
+            renderer.draw_watermark(1).expect("draw fixed watermark");
             let ops = painter.ops();
             let font = ops
                 .iter()
@@ -73134,7 +73663,7 @@ mod tests {
             ..Default::default()
         });
         painter.clear();
-        renderer.draw_watermark().expect("draw fitted watermark");
+        renderer.draw_watermark(1).expect("draw fitted watermark");
         let ops = painter.ops();
         assert!(ops.iter().any(|op| matches!(op, Op::Scale(x, y) if (*x * 40.0 - 200.0 * 96.0 / 72.0).abs() < 1e-9 && *y == 1.0)), "{ops:?}");
         assert_eq!(
@@ -75593,6 +76122,40 @@ mod tests {
             ScriptCategory::EastAsia,
             "expected ideographic full stop to use EastAsia fonts"
         );
+    }
+
+    #[test]
+    fn authored_unequal_column_widths_are_not_scaled_to_the_page_body() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        // Retained probe-unequal-center-three-10: 9,026 twips of body,
+        // but 8,116 twips of explicit columns plus two 480-twip gutters.
+        // Windows and Mac Word both keep those explicit widths.
+        let columns = SectionColumns {
+            count: Some(3),
+            equal_width: Some(false),
+            columns: [(92.5, 24.0), (135.0, 24.0), (178.3, 0.0)]
+                .into_iter()
+                .map(|(width, space)| jade_docx_reader::ColumnDefinition {
+                    width: Some(width),
+                    space: Some(space),
+                })
+                .collect(),
+            ..SectionColumns::default()
+        };
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            set_word_layout_platform(platform);
+            let layout = ColumnLayout::from_section(&columns, points_to_px(451.3), 96.0);
+            for (index, expected) in [92.5, 135.0, 178.3].into_iter().enumerate() {
+                assert!((layout.width(index) - points_to_px(expected)).abs() < 0.0001);
+            }
+            assert!((layout.start_x(0) - 96.0).abs() < 0.0001);
+            assert!((layout.start_x(1) - (96.0 + points_to_px(116.5))).abs() < 0.0001);
+            assert!((layout.start_x(2) - (96.0 + points_to_px(275.5))).abs() < 0.0001);
+        }
+        set_word_layout_platform(previous);
     }
 
     #[test]
@@ -80672,6 +81235,96 @@ mod tests {
         }
     }
 
+    #[test]
+    fn empty_continuous_section_marks_keep_the_next_section_at_the_flow_top() {
+        use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+        use jade_docx_reader::document::{PageSettings, SectionColumns};
+        let settings = PageSettings {
+            width: Some(400.0),
+            height: Some(792.0),
+            margin_top: Some(72.0),
+            margin_bottom: Some(72.0),
+            margin_left: Some(40.0),
+            margin_right: Some(40.0),
+            ..Default::default()
+        };
+        let section = |count: u32, continuous: bool| SectionProperties {
+            page_settings: Some(settings.clone()),
+            section_type: continuous.then(|| "continuous".to_string()),
+            columns: Some(SectionColumns {
+                count: Some(count),
+                space: Some(20.0),
+                equal_width: Some(true),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let document = |empty: Option<bool>| {
+            let texts = if empty.is_some() {
+                vec!["before", "", "after"]
+            } else {
+                vec!["before", "after"]
+            };
+            let mut document = doc_with_paragraph_texts(&texts);
+            let split = if empty.is_some() { 2 } else { 1 };
+            let end = texts.len();
+            if let Some(is_section_mark) = empty {
+                let paragraph = document.body.as_mut().unwrap().elements[1]
+                    .as_paragraph_mut()
+                    .unwrap();
+                paragraph.runs.clear();
+                paragraph.properties = Some(ParagraphProperties {
+                    section: is_section_mark.then(|| section(1, false)),
+                    spacing: Some(Spacing {
+                        after: Some(13.0),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                });
+            }
+            document.page_settings = Some(settings.clone());
+            document.default_section = Some(section(2, true));
+            document.sections = vec![
+                SectionRange {
+                    start: 0,
+                    end: split,
+                    properties: Some(section(1, false)),
+                },
+                SectionRange {
+                    start: split,
+                    end,
+                    properties: Some(section(2, true)),
+                },
+            ];
+            document
+        };
+        let top = |document: &Document, platform| {
+            set_word_layout_platform(platform);
+            let (mut renderer, _) = recording_renderer();
+            renderer.pageless_mode = false;
+            let mut options = Options::default();
+            options.set_pageless(false);
+            renderer.render(document, &options).unwrap();
+            let top = renderer.selection.paragraphs().last().unwrap().lines[0].absolute_top;
+            (top, renderer.current_page_number)
+        };
+        for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+            let control = top(&document(None), platform);
+            let section_mark = top(&document(Some(true)), platform);
+            let ordinary_empty = top(&document(Some(false)), platform);
+            set_word_layout_platform(WordLayoutPlatform::Windows);
+            assert_eq!(section_mark.1, control.1, "{platform:?}");
+            assert!(
+                (section_mark.0 - control.0).abs() < 1e-6,
+                "{platform:?}: {control:?} {section_mark:?}"
+            );
+            assert!(
+                ordinary_empty.0 > control.0 + 1.0,
+                "{platform:?}: ordinary empty paragraph lost its line"
+            );
+        }
+    }
+
     /// Word balances a multi-column section's columns before a continuous
     /// section break: eleven equal lines go six and five, the first column
     /// the longer, and the section after starts below the taller column.
@@ -82144,5 +82797,75 @@ mod tests {
         // The renderer default face is Times New Roman, whose single line
         // Word sets 2355/2048 em tall (see `word_latin_font_line_height_em`).
         assert!((heights[&sized_key] - points_to_px(24.0 * 2355.0 / 2048.0)).abs() < 1e-4);
+    }
+    #[test]
+    fn windows_justification_keeps_the_resolved_tab_anchor_and_line_end() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_painter::recording::RecordingPainter;
+
+        let _restore = RestoreWordPlatform(word_layout_platform());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let text = format!("1．\t{}", "漢字仮名交じり文".repeat(32));
+        let mut document = doc_with_paragraph_texts(&[&text]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            alignment: Some("both".into()),
+            indent: Some(Indent {
+                right: Some(0.13),
+                ..Default::default()
+            }),
+            tabs: vec![TabStop {
+                kind: Some("left".into()),
+                position: Some(36.0),
+                leader: None,
+            }],
+            ..Default::default()
+        });
+        paragraph.runs[0].properties = Some(RunProperties {
+            font_size: Some(12.0),
+            font_family: Some("Uninstalled Geometry Test Face".into()),
+            ..Default::default()
+        });
+        let painter = RecordingPainter::with_width_per_char(7.3);
+        let mut renderer =
+            CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), false).unwrap();
+        for pass in 0..2 {
+            renderer.render(&document, &Options::default()).unwrap();
+            let lines = renderer.layout_debug_lines();
+            assert!(lines.len() > 1, "the first line must be justified");
+            let line = &lines[0];
+            let tab = line.tab_stops.first().expect("resolved tab");
+            let (fragment, glyph) = line
+                .fragments
+                .iter()
+                .flat_map(|fragment| fragment.glyphs.iter().map(move |glyph| (fragment, glyph)))
+                .find(|(_, glyph)| glyph.start == tab.end_offset)
+                .expect("first character after the tab");
+            let first = fragment.x + glyph.x - 2.0 * line.report_x_offset;
+            assert!(
+                (first - tab.end_x).abs() < 1e-6,
+                "pass {pass}: justification moved the fixed tab: {first} != {}",
+                tab.end_x
+            );
+            let end = line
+                .fragments
+                .iter()
+                .flat_map(|fragment| {
+                    fragment.glyphs.iter().map(move |glyph| {
+                        fragment.x + glyph.x + glyph.width - 2.0 * line.report_x_offset
+                    })
+                })
+                .fold(f64::NEG_INFINITY, f64::max);
+            assert!(
+                (end - (renderer.page_width - renderer.margin_right - points_to_px(0.13))).abs()
+                    < 1e-6,
+                "pass {pass}: excluding a cross-tab gap lost line slack"
+            );
+        }
     }
 }
