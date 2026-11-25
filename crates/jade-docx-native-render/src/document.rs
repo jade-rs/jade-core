@@ -539,7 +539,30 @@ impl NativeDocument {
         // the host is built again to it, drawing the same window.
         let window = opened.paint_window.clone();
         opened.follow_page_box(window)?;
+        opened.redraw_wrong_page_totals()?;
         Ok(opened)
+    }
+
+    /// Draws the paint window once more when the pass just run drew a
+    /// NUMPAGES or SECTIONPAGES total other than the one it ended with, as
+    /// the first pass over a document does: a footer on page 1 is drawn
+    /// before the last page is reached. The renderer shows the settled
+    /// totals the second time.
+    fn redraw_wrong_page_totals(&mut self) -> Result<(), String> {
+        if self.renderer.take_page_totals_changed() {
+            self.repaint_all_drawing(self.paint_window.clone(), false)?;
+        }
+        Ok(())
+    }
+
+    /// Leaves every page stale when the pass just run drew a NUMPAGES or
+    /// SECTIONPAGES total other than the one it ended with — an edit that
+    /// changed the page count, a page box that rebuilt the renderer — so
+    /// [`Self::paint_stale_pages`] draws them with the settled totals.
+    fn mark_wrong_page_totals_stale(&mut self) {
+        if self.renderer.take_page_totals_changed() {
+            self.stale_pages.extend(0..self.page_count());
+        }
     }
 
     /// Limits what a whole-document repaint draws to `window` (0-based
@@ -1045,6 +1068,7 @@ impl NativeDocument {
         // on every subsequent keystroke (the browser consumes it in its payload).
         self.renderer.clear_dirty_regions();
         self.follow_page_box(drawn)?;
+        self.mark_wrong_page_totals_stale();
         Ok(started.elapsed())
     }
 
@@ -3616,6 +3640,7 @@ impl NativeDocument {
         } else {
             self.mark_pages_past_bound_stale(visible_end_page_1idx, downstream_stood);
         }
+        self.mark_wrong_page_totals_stale();
         // The native host has consumed this pass directly into retained page
         // surfaces. Leaving the tracker full-dirty disables incremental drawing
         // on every subsequent keystroke (the browser consumes it in its payload).
