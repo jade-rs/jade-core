@@ -258,6 +258,11 @@ jobs:
           path: |
             crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-oversized-row-after-spacing-*
             crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/nested-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-cell-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-row-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-table-flow-split-rows-continuous-cell-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/latin-break-budget-630
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/latin-row-real-continuation
             !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
           if-no-files-found: ignore
       - name: Upload original Mac fixed-percentage column coordinates
@@ -525,6 +530,11 @@ jobs:
             target/platform-word-coordinates/table-oversized-row-after-spacing-*
             target/platform-word-coordinates/nested-after-spacing-*
             target/platform-word-coordinates/table-row-without-headings-mac
+            target/platform-word-coordinates/table-cell-after-spacing-*
+            target/platform-word-coordinates/table-row-after-spacing-*
+            target/platform-word-coordinates/probe-table-flow-split-rows-continuous-cell-spacing-*
+            target/platform-word-coordinates/latin-break-budget-630
+            target/platform-word-coordinates/latin-row-real-continuation
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload versioned Windows fraction coordinates and vector rules
