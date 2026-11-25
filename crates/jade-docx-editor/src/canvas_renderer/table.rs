@@ -4027,11 +4027,19 @@ where
             // Reserve the whole recursive row in document order before any
             // cell is split into page fragments. Painting order is not model order.
             let indices_preassigned = true;
+            let row_first_paragraph = self.paragraph_counter;
             self.paragraph_counter = assign_row_paragraph_indices(
                 &mut pending_cells,
                 self.paragraph_counter,
                 &self.footnote_surface_extras,
             );
+            // A header row's text is drawn again on every page the table
+            // continues onto; see `paragraph_text_shows_elsewhere`.
+            if row_index < header_row_count {
+                self.repeated_header_paragraphs
+                    .borrow_mut()
+                    .extend(row_first_paragraph..self.paragraph_counter);
+            }
 
             loop {
                 // A row that fits but whose notes would not start below it
