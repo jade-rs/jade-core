@@ -4063,7 +4063,8 @@ where
                         // when an occupied cell cannot start here with its spacing.
                         let keep_after_spacing =
                             jade_docx_layout::line_metrics::word_layout_platform()
-                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                                || pending_height > full_page_content_height + ROW_SPLIT_EPSILON;
                         let move_row_if_cell_cannot_start = keep_after_spacing
                             && row_start
                             && pending_height <= full_page_content_height + ROW_SPLIT_EPSILON;
@@ -13938,10 +13939,11 @@ fn split_cell_paragraph(
     };
     // Word for Mac permits splits at manual breaks inside cells even with
     // paragraph pagination controls. The row's cantSplit is checked separately.
-    let mac_manual_break = fits > 0
+    let word_manual_break = fits > 0
         && paragraph.lines[fits - 1].break_kind == LineBreakKind::Hard
-        && word_layout_platform() == WordLayoutPlatform::Mac;
-    if !mac_manual_break
+        && (word_layout_platform() == WordLayoutPlatform::Mac
+            || block.height > fresh_page_height + ROW_SPLIT_EPSILON);
+    if !word_manual_break
         && paragraph.keep_lines
         && block.height <= fresh_page_height + ROW_SPLIT_EPSILON
     {
@@ -13959,7 +13961,7 @@ fn split_cell_paragraph(
             .text
             .chars()
             .all(|ch| matches!(ch, '\u{200c}' | '\u{200d}'));
-    if paragraph.widow_control && !mac_manual_break && !invisible_join_control_tail {
+    if paragraph.widow_control && !word_manual_break && !invisible_join_control_tail {
         match resolve_widow_orphan_decision(paragraph.lines.len(), fits) {
             WidowOrphanDecision::MoveWholeParagraph => return None,
             WidowOrphanDecision::BreakBeforeLine(line) => fits = line,
@@ -32037,6 +32039,74 @@ mod tests {
             }
             assert!((frames[0].1 - frames[1].1).abs() * 0.75 <= 0.375,
                 "RTL merged original anchor: Mac {}, Windows {}", frames[0].1, frames[1].1);
+        }
+    }
+    #[test]
+    fn original_oversized_manual_break_rows_keep_spacing_with_their_last_line() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        // Original Word packages use49 manual lines at14pt,10pt after-spacing,
+        // and a666.6pt filler row. Both genuine platform traces put the first
+        // manual line in the20pt remainder and keep the last line with spacing.
+        let cases: [(&[u8], &[usize]); 3] = [
+            (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/table-oversized-row-after-spacing-continuation-fit/source.docx")).as_slice(), &[47, 1248, 17]),
+            (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/table-oversized-row-after-spacing-continuation-overflow/source.docx")).as_slice(), &[47, 1248, 43]),
+            (include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/word-oracle/mac-elsa-synthetic/table-oversized-row-after-spacing-fresh-overflow/source.docx")).as_slice(), &[1248, 43]),
+        ];
+        for (bytes, expected) in cases {
+            for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+                set_word_layout_platform(platform);
+                let model = futures::executor::block_on(
+                    crate::word_document::WordDocument::load_for_initial_render(
+                        bytes,
+                        &crate::Options::default(),
+                    ),
+                )
+                .unwrap();
+                let painter = RecordingPainter::with_width_per_char(7.0);
+                let mut renderer = CanvasRenderer::with_host(
+                    Box::new(super::super::recording_host::RecordingHost {
+                        painter: painter.clone(),
+                    }),
+                    false,
+                )
+                .unwrap();
+                renderer.set_style_context(model.styles_part.clone().map(std::rc::Rc::new), None);
+                renderer
+                    .render(
+                        model.document.as_deref().unwrap(),
+                        &crate::Options::default(),
+                    )
+                    .unwrap();
+                let lines = renderer.layout_debug_lines();
+                let mut counts = Vec::new();
+                for line in &lines {
+                    let count = line
+                        .fragments
+                        .iter()
+                        .flat_map(|fragment| &fragment.glyphs)
+                        .flat_map(|glyph| glyph.text.chars())
+                        .filter(|ch| !ch.is_whitespace() && !ch.is_control())
+                        .count();
+                    if count == 0 {
+                        continue;
+                    }
+                    counts.resize(counts.len().max(line.page + 1), 0);
+                    counts[line.page] += count;
+                }
+                assert_eq!(
+                    counts, expected,
+                    "original manual-break row pagination on {platform:?}"
+                );
+            }
         }
     }
 }

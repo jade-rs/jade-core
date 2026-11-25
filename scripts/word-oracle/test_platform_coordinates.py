@@ -319,6 +319,9 @@ class PlatformCoordinates(unittest.TestCase):
          'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
         required |= {'probe-math-paragraph-mark-size'}
         required |= {'probe-math-display-alignment-0'}
+        required |= {'table-oversized-row-after-spacing-continuation-fit',
+         'table-oversized-row-after-spacing-continuation-overflow',
+         'table-oversized-row-after-spacing-fresh-overflow'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -888,7 +891,9 @@ class PlatformCoordinates(unittest.TestCase):
  'probe-math-standalone-fractions-12',
  'probe-math-standalone-fractions-explicit-sizes'} | {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
- 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'})
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'} | {'table-oversized-row-after-spacing-continuation-fit',
+ 'table-oversized-row-after-spacing-continuation-overflow',
+ 'table-oversized-row-after-spacing-fresh-overflow'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word
