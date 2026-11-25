@@ -36,13 +36,11 @@ pub fn math_block_content_box(
         return (column_left, column_width.max(1.0));
     };
     let bidi = properties.bidi.unwrap_or(false);
-    let inherited_mac = !use_display_defaults
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac;
-    // Word for Mac uses the paragraph's leading and trailing indents for
+    let inherited_paragraph = !use_display_defaults;
+    // Word uses the paragraph's leading and trailing indents for
     // inherited display math, including the legacy w:left and w:right values.
     let logical_indent;
-    let indent = if inherited_mac && bidi {
+    let indent = if inherited_paragraph && bidi {
         logical_indent = jade_docx_reader::Indent {
             left: indent.right,
             right: indent.left,
@@ -63,7 +61,7 @@ pub fn math_block_content_box(
     let px = |value: Option<f64>| points_to_px(value.unwrap_or(0.0) as f32);
     let left = px(resolve_indent_left_pt(&indent, false, char_unit_pt));
     let right = px(resolve_indent_right_pt(&indent, false, char_unit_pt));
-    let first = if inherited_mac {
+    let first = if inherited_paragraph {
         0.0
     } else {
         px(resolve_indent_first_line_pt(

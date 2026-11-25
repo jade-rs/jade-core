@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 /// Searchable counterparts of text whose visual effects require glyph paths.
 pub(crate) struct RecordedText {
     pub text: String,
+    pub postscript_name: Option<String>,
     pub font_size: f32,
     pub widths: Vec<f32>,
     pub ascent: f32,
@@ -38,6 +39,7 @@ pub(crate) fn append(
             (width / run.font_size * 1000.0).to_bits(),
             (run.ascent / run.font_size * 1000.0).to_bits(),
             (run.descent / run.font_size * 1000.0).to_bits(),
+            run.postscript_name.clone(),
         )
     };
     let mut keys = BTreeMap::new();
@@ -45,7 +47,7 @@ pub(crate) fn append(
         for (ch, width) in run.text.chars().zip(&run.widths) {
             let key = key(ch, *width, run);
             keys.insert(
-                key,
+                key.clone(),
                 (
                     f32::from_bits(key.1),
                     f32::from_bits(key.2),
@@ -57,7 +59,7 @@ pub(crate) fn append(
     let mut metrics = BTreeMap::<_, Vec<_>>::new();
     for (key, value) in keys {
         metrics
-            .entry((key.2, key.3))
+            .entry((key.2, key.3, key.4.clone()))
             .or_default()
             .push((key, value));
     }
@@ -66,6 +68,7 @@ pub(crate) fn append(
     for group in metrics.values().flat_map(|entries| entries.chunks(255)) {
         let index = fonts.len();
         let name = format!("JadeEffectText{index}");
+        let declared_name = group[0].0 .4.as_deref().unwrap_or(name.as_str());
         let mut procs = lopdf::Dictionary::new();
         // An unused conventional 'm' supplies the em scale to Type3 readers
         // which otherwise estimate it from the first arbitrary glyph width.
@@ -96,7 +99,7 @@ pub(crate) fn append(
                 "<{code:02X}> <{}>",
                 hex(&unicode(&key.0.to_string(), false))
             ));
-            codes.insert(*key, (name.clone(), code));
+            codes.insert((*key).clone(), (name.clone(), code));
         }
         let mut cmap = String::from("/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n/CMapName /JadeUnicode def\n/CMapType 2 def\n1 begincodespacerange\n<00> <FF>\nendcodespacerange\n");
         for chunk in mappings.chunks(100) {
@@ -118,7 +121,7 @@ pub(crate) fn append(
             Object::Real(max_ascent),
         ];
         let descriptor = pdf.add_object(dictionary! {
-            "Type" => "FontDescriptor", "FontName" => Object::Name(name.as_bytes().to_vec()),
+            "Type" => "FontDescriptor", "FontName" => Object::Name(declared_name.as_bytes().to_vec()),
             "Flags" => 4, "FontBBox" => bounds.clone(), "ItalicAngle" => 0,
             "Ascent" => max_ascent, "Descent" => -max_descent,
             "CapHeight" => max_ascent, "StemV" => 0,

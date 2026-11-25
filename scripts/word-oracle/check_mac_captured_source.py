@@ -591,20 +591,206 @@ SHARED_ORIGINALS = {
         '2f11b93894009a6aae32f06f831718f53924afe225860dd87d17acde14ec0ec1',
         '2904aa83d1ae4b57d28f8533f9979050efeb46d4516db9249cff0e4236bb0368',
         '65c50d531ecf005c2ee042086ad4378693d47149487e5cfcef66f5f45b31ac6d', 1, 351),
+
+    'probe-width-single-pct-2500-pct-2500': ('f74cf7aeddf0c23de7f85904e62286aa9108cf7b114ba9265ba000b78640684c', '7cf5df14270473cf686059a4bd83b98dc0f711d4f556a139d9e8f1da362ae3f5', 'd0e012af76d5a4bd13392522517957f387c98fa8489b09bf0e4272597cee2bc3', 3, 107),
+    'probe-width-unequal-dxa-2400-dxa-2000': ('a506ec0b61237aad385e39fc57e43d7d2c2fb17c700befeebe92805de4a4b98d', '0e6b492d96818ab8c8405d33d6cceda43ab5ce4282426775e4eedb34ac7efa97', 'bc48c94947aaebb6b1567bf627c90cb6f501edcc3390d6e49e4fc153773c0f8e', 2, 347),
+    'probe-width-unequal-pct-2500-auto-0': ('598e3bf932f8ea79aeffe90748afbfba82eef1ddd627c838a25e5cbce2c264af', '99ddbb4ee7286d8b9f7abc41139358494a2a3ce28c782418e35885d1c2e362fb', 'aa0d326262cbc9dac0766328236e894ff08ed0ee1569efc884f2fe2abf7351e4', 2, 215),
+    'probe-width-unequal-pct-2500-dxa-2000': ('8853a76fbdf8e3024c71d81830da307f5d73786edc271df564c295d3ef1381e7', '54e1c7a85faaebfb9fa55814801a3a81b8a3a387d5a7cb98195e66c3a44ccc3d', 'aa0d326262cbc9dac0766328236e894ff08ed0ee1569efc884f2fe2abf7351e4', 2, 215),
+
+    'numbering-alignment-matrix-mac': ('73798fc698bd87d8b7dfaaa541ea7b85db3bb950e3e79ca2b75c936baab9fba8', '19773195d7b06ccec6a58f64e340b9f31f028f2de17e6103109ae75ce4eb75bb', '4583c70de14ef82cdfcea7dc67853ca95fc09ce50ada81a1db741900d379302f', 1, 729),
+    'numbering-legal-format-matrix-mac': ('7219dd24ac737ad89b84a1758408a46a1a7c37f092722e08b8846ea411f02d92', 'd162bb2dbfc0949cd1920031e380f9c6dacd200dde8184926afdf69df7e2dfad', 'b889ce6249832986097dc7380436b686931a7a629c35a192667eae97547df2b3', 1, 414),
+    'numbering-textbox-full-matrix-mac': ('3100cb3dd7a5a1901e4c2f9fc176b759b5b26e7c88db422a5c4a68cfc35a1b54', 'ff65d858eec98bf5bcdd3c93e616fab0850d0769ac44dc17491ed31562f157b7', '0e4e6e33388d2ea0b4ec31352fca541581a84e2eeba8f696d30fc53a4b47294c', 1, 729),
+
+    'numbering-table-header-mac': ('9721cf7b8de1056124b3e851ea3173aacf92480ebbc364c7c320819c7044f43f', 'f44df7c386a1c8db1a52e1e1e8bfc99d4b3f5e4d30a43fef6fa955d2405d5c09', 'a2e007eadcfe5e6a49c8023fbbfe307ca7eb2019f9e056abd23cab3f70eb44b5', 2, 598),
+    'numbering-table-nested-list-mac': ('a787347823b95e7a7d75fc6eb1fc998a3577ee9ddbcd7ee00fc9d99e6ff3d39a', 'a3ab1ce3674cd25ae4e58c77b94a449b8eee17ceab4d7ca3ad520a412b6dc626', 'b763cbae4f92d57bd8c26e2e5a8eff9f41ebb9e216146af01cfc8a02a625d6a7', 1, 450),
+    'fixed-table-width-matrix-mac': ('5d53094641db91deb2ccee705807464bb889a8da0ae543ab96510d3941c8530d', 'dda853ca99f2fa98cfb937f4980a65fbacc67760ca0addfc431fff91e1eefdce', 'b6bf0a5bf399ec7c521ebbbef466221731164c07e14c7ca09e9bf214155943db', 8, 752),
+    'numbering-table-matrix-mac': ('0a71ba6e7f2949f1e9cd3731523fcd5f6b1c678fe934abdb40dccfdcf22b00e8', '7e32ff9650d2dd66d6b0ca332465b52402df30f695c18e8bfeeb395bb59dabe5', '4583c70de14ef82cdfcea7dc67853ca95fc09ce50ada81a1db741900d379302f', 1, 729),
+    'probe-table-flow-unequal-automatic-grid-start-column-1': ('912db14b4123e131b34cf6501b98c8d767adc5e51d5b0bd7d440d75a52d316f8', '11636e9c7f1573922b7495d922cea7a1b4cea0d25da24c114e61c95bb81bb8cc', 'f21f8e8374c8786be706b4bd4e30fa40d622db5436ed8d848ab7ea560e2e3b20', 2, 215),
+    'probe-table-flow-unequal-automatic-grid-start-column-2': ('0628b15210382818608bccfb8f53ea556bd3133552eb1304be5a294437bd3336', 'ca2896eabad77ba81a95e745179a49778004b40d2066d4a3c0fdde4f108c8d80', '78a382c3f29283594a71304d78da086a1143db1351eb97339950714f33d3bcb7', 2, 215),
+    'probe-unequal-variant-narrow-first-2-9-fixed': ('456c868001b488bc2cdf56ba21ebce276dca0515a4d0b41d1aa6524b4919b66a', '7ec873c5da032a2709dd8069e088cd823217c31b768a8a2e381866d36d15a9a8', 'd6bdef4bc1aaf164d25ad63d5eedd19a503fcb9e0c4bca70d180a59a311090f5', 2, 152),
+    'probe-unequal-variant-three-24-fixed': ('a8ccfa52817c23e650cc95fc6a022b4dccd5c0224cf00f98205d2633c484f183', '172a2d5e41084ae19e99f31d5f67ce7bec48b8fadf2487e28f77aae173c0fab2', '58ab1e66028ee8872f7725764fb6a51b78afa80c1af08f1971ce435738793c7e', 2, 233),
+    'probe-unequal-variant-narrow-first-2-9-no-header': ('6bd0c810d0f4a64c9a4c0c4121372286f4bf0ab1e5e7b55dd384e7519d2fb6fc', 'dccb126ed68df60b20645ff26f2917f0998a86f01d83e93fe05379a96338b3c3', '7fa22ae882e0927edbb7791cce4cbb61baecac77ef10091c0177e36513f37076', 2, 149),
+    'probe-unequal-variant-three-24-no-header': ('b1d448be69c99cbb1992f3c1357474c23af72da7e46e8647235e17082a7c979e', '0749f489313f427ade6af5d0c01966b82867551f8a4e76756f6600747595dd19', '6ee18371a14c1c65d41a7d2cebbdb7053a27ed149debbef3fbdaf19e1a8a3721', 2, 221),
+    'probe-unequal-continuation-border-0': ('62f30a28b1c7ca1a754be3d60667ec5b829fba75089dccd194b4ca121d87d359', '106b4536226f629781a3221a2d6815b23ffe826bed2ce7d9fe4580216730d274', 'feb6ae0980746822f5ffdf3586c35a23b62d7204c1306197fca8001fe59e2284', 2, 221),
+    'probe-unequal-continuation-border-16': ('8f4d45418d483603d8b6dffd55905f750a576af30ad99d6398758d56721cea55', '34f60feb060a2a29e4b08f73e9fe41f4470ee4b441ca49a2f1d6175fc81e6125', 'fe0767b1cdd1095d3d6a3ed193a5381b74e93f71452625e102f6de1406e8f1f8', 2, 221),
+    'probe-unequal-continuation-border-4': ('fce4a4535fb6e4b0148aef8fcc5e551ac12266291b2a592801f1e2de8de936e4', 'ca3755f44836b3e5160d41557513f24bc0cb1ae545755a2ef1c0f87595032241', '658402674bff275ced69ce4e8e7b406c7bf41e0f5732d699dd1af8abd47660be', 2, 221),
 }
 
 
-def shared_originals(root=ROOT):
+# These existing Mac math originals retain outline-only PDF text output.
+# Assert their genuine UI origins independently; the 161 full PDF gates above
+# remain mandatory. Windows fixes must preserve these Mac layout coordinates.
+MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
+                                    '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
+                                    '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
+                                    2,
+                                    1046),
+ 'probe-math-display-rtl-wrap-1': ('aa22151e8ddcd0ff2c2c7e599b537621ec6633c5e2a30f9b3d5443edd635a82d',
+                                   '6c92729ae5acccad1e7e0150a887e43c5f0e7f93bf72b4f7eaf1e62e86f060a2',
+                                   'b8ae6ea8a54cedb6cd58dcb52fc77497c25ecc810f476566c9509d50ed4ebdc0',
+                                   1,
+                                   819),
+ 'probe-math-italic-advances-lowercase': ('b1dd36320fda67bbdc51f5e83ef5d2c2faa5b5d8857457c86f11a1e933a71f6a',
+                                          '21806c73a57975e88f28376400a0a289b26656abfb1ffb99eb62f161ea62664f',
+                                          'de4953ed02aa6cb04bcd29f9eadf220e65b05ea1efdf2a2ee8e2f419af7f9110',
+                                          1,
+                                          524),
+ 'probe-math-italic-advances-uppercase': ('a664dc4e8d5915c5d1425eb8961b0d8d01808c271d8225efa481585f4f60140a',
+                                          '94fafe12787ce6e2e8f26ce9a5c2292d3df5b5b80c5614c10050a852e09687c3',
+                                          'a4b863b81c8d0cbe677cc907167a22bb84ce29052fcde8e76ef1cf4742d6d461',
+                                          1,
+                                          524),
+ 'probe-math-paragraph-mark-size': ('f9b87f2e7e4254c026236f5ad5ecf7ad5e686c2015b0313b39c84c4eae91010c',
+                                    '4975d6d08f5b2491460ace00696808891aa8b5290d2a0f834a166f9cec61b3d2',
+                                    'b325916c0dedbc355c1f74ba2fb41ed5e40847173fdbfd0bb99a0a622bef87f4',
+                                    1,
+                                    184),
+ 'probe-math-relation-wrap-after': ('37193745f3098273fd613cb767222d6bc6ddf2342de37a8659dc76d1410fa928',
+                                    'ad1acf1c68627d3652f204493b1676cf14d7cee1a575fd8b784eb89e742116e0',
+                                    'e7910720e4713f540d215a7b0ab3de24ce01392ef7f98fa5a477f573ae1a1bcb',
+                                    4,
+                                    1009),
+ 'probe-math-relation-wrap-before': ('43c447432b5f6f038a987e958943f60e90625302e3ec76678badf53914489ba4',
+                                     'be19c1726e05c151cff722b5a0ecd62a06c144cc0759512a0545e128d9402f9f',
+                                     '7ba9c28cf16f23aa76b06cf932b0a1e3e3b146af73f5542b1495c40487a0ef60',
+                                     4,
+                                     1009),
+ 'probe-math-relation-wrap-repeat': ('c63d20b2e8db80c72f7bc2fcd1165978303ecf1e910fb57550e34fefc544a3c2',
+                                     '3276597a0829566ee8b9d2bb8cc86a36fcf01dba2d58556044b92c47f5b8e1f4',
+                                     'a658f59ca72a953db64ee0255b8b65050261d6f8d32574b1c737074172ddbd54',
+                                     4,
+                                     1028)}
+
+
+MATH_LAYOUT_ORIGINALS.update({'probe-math-fraction-first-vs-prev': ('b4a18c1c87ecdb1b1177590d39ecb49452a6e312e7d82135af114992ac63de94',
+                                       '3f27ce68ad5ee832ebc88ce98294b3d2716b3af0f61c9afeb108ca9aa856e5d8',
+                                       'da570acc55b9bf4e7d22c1d2a78e156be9d73dbd05a5585745a939967d8183f0',
+                                       1,
+                                       84),
+ 'probe-math-fraction-larger-neighbors': ('12cc7422c9a73dfa28dae9ad91813616d0ea61f17f9f32e524c799d4cd16789f',
+                                          'b971a9edf81b40d6bac858fe3ce14573cb835f5e25ce11f1d9b0b252b94b2d39',
+                                          'b753151be0524e10a6eb59689f0b3a127095dd1066134877a34074e0aaee3bf0',
+                                          1,
+                                          76),
+ 'probe-math-fraction-leading': ('d2b2c2a764659bbb749d9d666fb1fa98ca385d36a936d47ad792ec138e671de2',
+                                 '96fdedd6c6d4b1b422063054391a490a83b892502f8463179c80d2b30c2f0749',
+                                 '3ddf1a4d7cdb367fdf92f87ccb312a3080f35d1d189819b56fefb4bda1f3e905',
+                                 1,
+                                 130),
+ 'probe-math-fraction-neighbors': ('fead76a10e66fe60ab830441098b072012072517a80e35c3ca9aba952d7802f9',
+                                   'ca5088adecb14f7a3c5a548cfa6ed4803b44f2e0c58f8505d421b7e9dca38492',
+                                   '855ee0333319356d0d11e1dc0714a7436a7e266fe9681e2f3632b5adb6739891',
+                                   1,
+                                   74),
+ 'probe-math-fraction-size-20': ('333a79b7219943ef896bdc299e60c2db52fd8d4be93414a07c60088f04105365',
+                                 '9b193213dc8e133a9e5d7a8e9b935518586a3784a0a833f5a1767fd681136c2c',
+                                 'da6227e9e332d8069ccf2a547fe50ad7a2da9ae0ef7278aa88615e084cfa2e07',
+                                 1,
+                                 54),
+ 'probe-math-fraction-size-24': ('6f799918bffe329264b7f3be4f5a2e31806b75ecd48e92407cf9f2d5a5de3520',
+                                 '719c798968d39c44b7fc449e5ef3f4a50446aef6ed687fe37ea5acf7400607cd',
+                                 '2d235aeb1f6f3608e349585406d723ffb1bebd1535072507731cc0b7d53f6a89',
+                                 1,
+                                 54),
+ 'probe-math-fraction-size-28': ('f4ac618c70f336280d5ef0ea0768164a5be308d8121c1afb58a12392562b5336',
+                                 'b3d12effab67fef1de3c499b315d09ee3add57fe3c86fdf16a24a20d4ac67ef8',
+                                 '2afcfee0003f76693e09e97a11d8046aa1dd1c8cbe412ec8625f691a3df71582',
+                                 1,
+                                 54),
+ 'probe-math-fraction-size-32': ('f0c4610086ac0a877fd9942d74a2b998b27a4acca011e43e1052889133347198',
+                                 'a3ae7f5d9a180ccefeb063190656f6f566a8159722cee8127ae6edcd92bd67a8',
+                                 'f296be5e4613a7ef28f38f1a2648a859538165d51cdae67ec23ae8515bd5972d',
+                                 1,
+                                 54),
+ 'probe-math-fraction-size-36': ('2c18765ea05dc2b312f21e4c1f6922a8c251a553c9f9f594b7809a2392463e08',
+                                 'b48e16f4388198a2c88960b6fc72b639481b2846cb4a8aae5b788084f6c48b46',
+                                 'e09939d120453fc63a9ba39b979b7ba5f0572af998ea62ab8120bef24bd8c067',
+                                 1,
+                                 54),
+ 'probe-math-fraction-size-40': ('f211e7cbce01868e6453bdaf02c7d197424f7e52aa508300e20956b6895dd165',
+                                 '54d411422b897d181db02bffbab37277ba33ca82142235e24f9ba7b300ad5c1b',
+                                 '218d89af5cb05e14f577a38d54b351e52f933fe25116fab9bbd7a6b59a633d3a',
+                                 1,
+                                 54),
+ 'probe-math-fraction-spacing-matrix': ('e50d530ac6d8c491ad7f90ffd771cb28ab4c6073282c9a136d98b85b9d4dfd0e',
+                                        'be1191a1d0508ee356c115cda0b470903138d84f72e25859669064abb912fe7a',
+                                        'a70e5d00e5d298f99cf9696ba14c9b4e4089c7612439e6e6d1b363b2c965db8d',
+                                        1,
+                                        162),
+ 'probe-math-repeat-bar-fraction-32': ('5900e52798d4dfd7ad83de4befca4f8386358af7a1812d53aec0ca69b9071f84',
+                                       'f3093c4bb0b1b06fc58e415193a2824f0e33baf549618f51307c18e4b8364352',
+                                       '3ddf1a4d7cdb367fdf92f87ccb312a3080f35d1d189819b56fefb4bda1f3e905',
+                                       1,
+                                       130),
+ 'probe-math-repeat-fraction-28': ('f5e0ff2577bfc793e7164db660095bdd9c97f36342b4f795fa72f0d8c2646e3a',
+                                   '93262a820812d7510edde6a65468ccccb9c77f4012fc85973a3e51a6bb8ab0e6',
+                                   '58a42402210d6449d96ae6b250b341aa5b5bf25df338027e27a2613fd00037a4',
+                                   1,
+                                   130),
+ 'probe-math-repeat-fraction-36': ('b94617104464b83c68682a39aec43e1a976c7eadfaa2951036421e6643ea8eaa',
+                                   '2516b50308189a596b37eb5fe8f8e9709cdbaed0562ac327820018f2149a105a',
+                                   '773982a7004d8e95db0fa3ce0a3466b8bb656084eed2ef300006e754363f6f91',
+                                   1,
+                                   130),
+ 'probe-math-repeat-fraction-40': ('7be3ba8a5c757b2f897b8c3e489bf744c55cbd668eff96492aba892526e7d83b',
+                                   '890461f7e9b93faf22512e2686e14272aa59327f6a97f83c9354a8881b429f57',
+                                   '4f24a9ab0b153b22eb60454f687d53b6b1b21d289e740e80c28370df6fba4c24',
+                                   1,
+                                   130),
+ 'probe-math-standalone-fractions-12': ('b8e369ffa2f7092558aaef422e9dffff6280079c0bd1482011982957145114b6',
+                                        '19e9a602c00b463ee3072afb5d0bdcd9b0e6454ed0558ef6a9a0d45bc68fb198',
+                                        '3bd8821c8d7e2568d560ef25c0e3c014f56189b3d30e4638e25f24f017ce3e36',
+                                        1,
+                                        142),
+ 'probe-math-standalone-fractions-explicit-sizes': ('b0054462f00eddb4741b3fb09200499f70c67760daaff0a63dd2adc0dfda7fcb',
+                                                    '0d8bb74a92683a355ea14c41e195f6ef72b2a339d42ed4ee7e48eb5999467408',
+                                                    'c1ea260a1256686eb7875430e8c486915c560e2bdfbb7d494205bcc2b5d7c25c',
+                                                    1,
+                                                    284)})
+
+# Historical Mac traces include clipped glyph origins. Preserve that
+# projection explicitly; these are additional logical gates, while all161
+# existing shared originals retain their layout and painted-PDF assertions.
+UNCLIPPED_TABLE_LAYOUT_ORIGINALS = {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1': ('8cebdc4679e907312a0afb64461d31fe0275cb8856dce54702107a2ab7cdb45b',
+                                                                                                 '442bc9ee47b3191435d75314d0bb345c11f91ef626fe5944b6e68d30d53bf51c',
+                                                                                                 '6dc851dd8995c8741927235b72338d52410b89822576258044be10ce6076bee3',
+                                                                                                 2,
+                                                                                                 526),
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2': ('27199ed59be287089d55a4a3bc3709493a9689046914a8946b7421aa6bddca2c',
+                                                                                                 '3f8081ccd60785ad2cf774c2a3de57ec569b60840331a2463e6e08a520824c20',
+                                                                                                 'e138360f1423eb47d45d2f7b3c7691ed72ad0ea4b233a3d6d5bb9e23b93f288d',
+                                                                                                 2,
+                                                                                                 518),
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3': ('eb733532cb1107ab112234789cd827f93a142a5254a23fd41a5af922fc76a445',
+                                                                                                 '5dd8d2cc552073b0847fb352ddf158fea59aa780f03aefc73044852185318863',
+                                                                                                 '6f93ac0eb146ab8a3d40b79749d1950f904a48fb607150f64a4fdc1e5e8265c9',
+                                                                                                 2,
+                                                                                                 510)}
+
+THAI_LAYOUT_ORIGINALS = {'probe-complex-font-metrics-thonburi': ['a3624b218add7ffde685a1e84b699450711b3deb934e8d108a3540539ba90635',
+                                         'ade3d196e9a967d74a593ca5b6e4880fb91b536d19163c732810c1ef88607f3c',
+                                         'ad1889753120033bd90413673b1c844210d092b16285b8a379c47771b4f0e33f',
+                                         3,
+                                         75],
+ 'probe-complex-font-sweep-thonburi': ['a89fddbd946b44be2532215c542e3c47bcd5c17e77bca3be691f3fbab18b75ec',
+                                       '6a9968c6b32939fdd2e7320d5120b8b29668966dcb598004a786b8ff51f82232',
+                                       '734597cf9eef5572c13f4479d4e23a6357b4f49a1a311e9738eede67e3fe18fc',
+                                       6,
+                                       270]}
+
+def shared_originals(root=ROOT, references=None):
+    if references is None:
+        references = SHARED_ORIGINALS
     registry = read_json(root/'tests/word-oracle/platform-coordinates.json')
     cases_by_name = {}
     for case in registry['fixtures']:
         cases_by_name.setdefault(case['mac_case'], []).append(case)
     # Reject missing/duplicate required cases before reading any original files.
-    for name in SHARED_ORIGINALS:
+    for name in references:
         require(len(cases_by_name.get(name, ())) == 1,
                 name + ': missing or duplicate shared Mac original')
     results = []
-    for name, (source_sha, manifest_sha, coordinates_sha, pages, glyphs) in SHARED_ORIGINALS.items():
+    for name, (source_sha, manifest_sha, coordinates_sha, pages, glyphs) in references.items():
         case = cases_by_name[name][0]
         require(source_sha != CONTROL_SHA256,
                 name + ': normalized control must remain separate from captured originals')
@@ -673,9 +859,120 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 141 and sum(r['glyphs'] for r in results) == 44677,
+    require(len(results) == 161 and sum(r['glyphs'] for r in results) == 51810,
             'Shared Mac original coverage changed')
-    print('141 shared Mac originals44677: layout and painted-PDF PASS', flush=True)
+    print('161 shared Mac originals51810: layout and painted-PDF PASS', flush=True)
+    return results
+
+
+def check_math_layout_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(root, MATH_LAYOUT_ORIGINALS):
+        archive, capture, document, _ = archive_reference(root, case, case['windows'][0])
+        target = output/name
+        target.mkdir()
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': math font provider PDF changed')
+        provider = target/'original-Windows-font-provider.pdf'
+        provider.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(provider, fonts)
+        actual_file = target/'native.json'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac',
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': Mac math original coverage changed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=case['windows'][0]['archive'],
+                            glyphs=glyphs, page_count=expected['page_count']))
+    require(len(results) == 25 and sum(r['glyphs'] for r in results) == 7939,
+            'Mac math layout original coverage changed')
+    print('25 genuine Mac math layout originals: PASS', flush=True)
+    return results
+
+
+
+def check_thai_layout_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(root, THAI_LAYOUT_ORIGINALS):
+        archive, capture, document, _ = archive_reference(root, case, case['windows'][0])
+        target = output/name
+        target.mkdir()
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': Thai font provider PDF changed')
+        provider = target/'original-Windows-font-provider.pdf'
+        provider.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(provider, fonts)
+        actual_file = target/'native.json'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac',
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': Mac Thai original coverage changed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=case['windows'][0]['archive'],
+                            glyphs=glyphs, page_count=expected['page_count']))
+    require(len(results) == 2 and sum(r['glyphs'] for r in results) == 345,
+            'Mac Thai layout original coverage changed')
+    print('2 genuine Mac Thai layout originals: PASS', flush=True)
+    return results
+
+
+def check_unclipped_table_layout_originals(executable, output, root=ROOT):
+    output.mkdir(parents=True, exist_ok=False)
+    results = []
+    for name, case, source, manifest, expected, glyphs in shared_originals(
+            root, UNCLIPPED_TABLE_LAYOUT_ORIGINALS):
+        require('includes clipped text origins' in manifest['reference'].get('extractor', '')
+                and manifest.get('capturePaintedGlyphs')
+                and not manifest.get('clipPaintedGlyphs'),
+                name + ': original unclipped projection changed')
+        archive, capture, document, _ = archive_reference(root, case, case['windows'][0])
+        target = output/name
+        target.mkdir()
+        with ZipFile(archive) as bundle:
+            data = bundle.read(document['pdf'])
+        require(hashlib.sha256(data).hexdigest() == document['pdf_sha256'],
+                name + ': original font provider PDF changed')
+        provider = target/'original-Windows-font-provider.pdf'
+        provider.write_bytes(data)
+        fonts = target/'fonts'
+        extract_fonts(provider, fonts)
+        actual_file = target/'native.json'
+        subprocess.run([str(executable), str(source), str(actual_file), 'mac',
+                        str(actual_file.with_suffix('.pdf')), '--unclipped-tables',
+                        '--fonts-directory', str(fonts)], check=True)
+        actual = read_json(actual_file)
+        require_original_font_programs_registered(fonts, actual)
+        require(assert_layout(expected, actual, case['source']['sha256'], name) == glyphs,
+                name + ': unclipped Mac original coverage changed')
+        results.append(dict(name=name, source_sha256=case['source']['sha256'],
+                            Mac_reference=manifest['reference'],
+                            Mac_coordinates_sha256=manifest['coordinatesSha256'],
+                            font_program_provider_Windows_Word=capture['word'],
+                            font_program_provider_archive=case['windows'][0]['archive'],
+                            glyphs=glyphs, page_count=expected['page_count'],
+                            original_projection='unclipped-logical',
+                            painted_PDF_reference_available=False))
+    require(len(results) == 3 and sum(r['glyphs'] for r in results) == 1554,
+            'Unclipped Mac table original coverage changed')
+    print('3 genuine unclipped Mac table originals1554: logical layout PASS', flush=True)
     return results
 
 
@@ -748,12 +1045,17 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
     require((output/'captured-original.png').read_bytes() ==
             (output/'normalized-control.png').read_bytes(), 'Schema normalization changed Mac pixels')
     shared_results = check_shared_originals(executable, output/'shared-originals', root)
+    math_results = check_math_layout_originals(executable, output/'math-layout-originals', root)
+    thai_results = check_thai_layout_originals(executable, output/'thai-layout-originals', root)
+    unclipped_results = check_unclipped_table_layout_originals(
+        executable, output/'unclipped-table-layout-originals', root)
     result = dict(host=sys.platform,require_macos=require_macos,Mac_Word_version=raw['word_version'],
                   Mac_Word_build=raw['word_build'],Mac_capture_reference_sha256=REFERENCE_SHA256,
                   font_program_provider_Windows_Word=capture['word'],font_program_provider_archive=provider['capture'],
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
-                  shared_originals=shared_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  shared_originals=shared_results, math_layout_originals=math_results,
+                  thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 161 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

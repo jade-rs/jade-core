@@ -12,6 +12,209 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_inherited_right_original_retains_complete_authoring_matrix_and_word_build(self):
+        name = 'probe-math-display-alignment-0'
+        self.assertEqual(check.INHERITED_RIGHT_MATH_CASES, {name})
+        self.assertLessEqual(check.INHERITED_RIGHT_MATH_CASES, check.PHYSICAL_FONT_CASES)
+        row, = [r for r in check.verify() if r[0] == name]
+        _, source, archive, document, drawing, font_source = row
+        self.assertEqual(font_source, 'original-word-pdf')
+        with ZipFile(archive) as bundle:
+            capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+        self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+        self.assertEqual(capture['word']['executable_sha256'],
+            '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        self.assertEqual(capture['capture_id'], check.REQUIRED_CAPTURES[name])
+        import xml.etree.ElementTree as ET
+        from itertools import product
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+              'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+        with ZipFile(source) as bundle:
+            xml = ET.fromstring(bundle.read('word/document.xml'))
+            settings = ET.fromstring(bundle.read('word/settings.xml'))
+        self.assertEqual(settings.find('.//m:dispDef', ns).get('{'+ns['m']+'}val'), '0')
+        cases = []
+        for paragraph in xml.findall('.//w:p', ns):
+            math = paragraph.find('m:oMathPara', ns)
+            if math is None:
+                continue
+            bidi = paragraph.find('w:pPr/w:bidi', ns).get('{'+ns['w']+'}val')
+            alignment = paragraph.find('w:pPr/w:jc', ns).get('{'+ns['w']+'}val')
+            explicit = math.find('m:oMathParaPr/m:jc', ns)
+            cases.append((bidi, alignment, None if explicit is None else
+                          explicit.get('{'+ns['m']+'}val')))
+        self.assertEqual(len(cases), 32)
+        self.assertEqual(set(cases), set(product(('0', '1'),
+            ('left', 'right', 'start', 'end'), (None, 'left', 'center', 'right'))))
+
+    def test_paragraph_mark_math_preserves_original_word_version_and_font_gate(self):
+        name = 'probe-math-paragraph-mark-size'
+        self.assertEqual(check.PARAGRAPH_MARK_MATH_CASES, {name})
+        self.assertLessEqual(check.PARAGRAPH_MARK_MATH_CASES, check.PHYSICAL_FONT_CASES)
+        row, = [r for r in check.verify() if r[0] == name]
+        _, source, archive, document, drawing, font_source = row
+        self.assertEqual(font_source, 'original-word-pdf')
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004417585Z-59a68986')
+        with ZipFile(archive) as bundle:
+            capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+        self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+        self.assertEqual(capture['word']['executable_sha256'],
+            '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        import xml.etree.ElementTree as ET
+        with ZipFile(source) as bundle:
+            xml = ET.fromstring(bundle.read('word/document.xml'))
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+              'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+        paragraphs = [p for p in xml.findall('.//w:p', ns)
+                      if p.find('m:oMathPara', ns) is not None]
+        marks = [p.find('w:pPr/w:rPr/w:sz', ns) for p in paragraphs]
+        self.assertEqual([None if m is None else m.get('{'+ns['w']+'}val')
+                          for m in marks], [None, None, '20', '20', '32', '32'])
+        self.assertFalse(xml.findall('.//m:f', ns))
+
+    def test_rtl_merged_originals_require_each_word_build_fonts_and_vector_rules(self):
+        self.assertEqual(len(check.RTL_MERGED_PERCENTAGE_CASES), 3)
+        self.assertLessEqual(check.RTL_MERGED_PERCENTAGE_CASES, check.PHYSICAL_FONT_CASES)
+        rows = [r for r in check.verify() if r[0] in check.RTL_MERGED_PERCENTAGE_CASES]
+        self.assertEqual({r[0] for r in rows}, check.RTL_MERGED_PERCENTAGE_CASES)
+        for name, source, archive, document, drawing, font_source in rows:
+            with self.subTest(case=name), ZipFile(archive) as bundle:
+                capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['word']['executable_sha256'],
+                    '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(check.REQUIRED_CAPTURES[name], capture['capture_id'])
+                self.assertEqual(font_source, 'original-word-pdf')
+                self.assertNotIn(name, check.BORDERLESS_GRID_CASES | check.BORDERLESS_MATH_CASES)
+
+    def test_fraction_originals_keep_word_build_font_and_vector_assertions(self):
+        names = check.MATH_FRACTION_RULE_CASES | check.BORDERLESS_MATH_CASES
+        self.assertEqual(len(names), 20)
+        self.assertEqual(len(check.BORDERLESS_MATH_CASES), 9)
+        self.assertLessEqual(names, check.PHYSICAL_FONT_CASES)
+        rows = [r for r in check.verify() if r[0] in names]
+        self.assertEqual({r[0] for r in rows}, names)
+        for name, source, archive, document, drawing, font_source in rows:
+            self.assertEqual(font_source, 'original-word-pdf')
+            with ZipFile(archive) as bundle:
+                capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['capture_id'], check.REQUIRED_CAPTURES[name])
+            import xml.etree.ElementTree as ET
+            with ZipFile(source) as bundle:
+                xml = ET.fromstring(bundle.read('word/document.xml'))
+            ns = {'m': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+            fractions = xml.findall('.//m:f', ns)
+            self.assertTrue(fractions)
+            kinds = [f.find('m:fPr/m:type', ns) for f in fractions]
+            no_bars = all(k is not None and k.get('{'+ns['m']+'}val') == 'noBar' for k in kinds)
+            self.assertEqual(no_bars, name in check.BORDERLESS_MATH_CASES)
+
+    def test_numbering_originals_keep_each_word_version_and_physical_font_gate(self):
+        names = {
+            'numbering-alignment-matrix-mac',
+            'numbering-legal-format-matrix-mac',
+            'numbering-textbox-full-matrix-mac',
+            'numbering-table-header-mac',
+            'numbering-table-nested-list-mac',
+            'numbering-table-matrix-mac',
+        }
+        registry = check.read_json(check.ROOT / check.INDEX)
+        cases = [r for r in registry['fixtures'] if r['mac_case'] in names]
+        self.assertEqual({r['mac_case'] for r in cases}, names)
+        self.assertEqual(names, check.NUMBERING_LAYOUT_CASES)
+        self.assertLessEqual(names, check.PHYSICAL_FONT_CASES)
+        for case in cases:
+            with self.subTest(case=case['mac_case']):
+                mac = check.read_json(check.checked_file(check.ROOT, case['mac_manifest']))
+                self.assertEqual(mac['reference']['version'], '16.114.4')
+                self.assertEqual(mac['reference']['platform'], 'mac')
+                self.assertEqual(len(case['windows']), 1)
+                windows = case['windows'][0]
+                self.assertEqual(windows['word_product_version'], '16.0.19127.20936')
+                self.assertEqual(windows['word_executable_sha256'],
+                                 '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+                self.assertEqual(windows['capture_id'], '20261114T004334255Z-b74a0cd3')
+                self.assertEqual(check.REQUIRED_CAPTURES[case['mac_case']], windows['capture_id'])
+                self.assertEqual(windows['font_source'], 'original-word-pdf')
+
+    def test_preferred_saved_grids_keep_versioned_originals_fonts_and_borders(self):
+        expected = {
+            'probe-width-single-pct-2500-pct-2500': (3, 107),
+            'probe-width-unequal-dxa-2400-dxa-2000': (2, 347),
+            'probe-width-unequal-pct-2500-auto-0': (2, 347),
+            'probe-width-unequal-pct-2500-dxa-2000': (2, 347),
+            'probe-unequal-variant-narrow-first-2-9-fixed': (2, 240),
+            'probe-unequal-variant-three-24-fixed': (2, 665),
+            'probe-unequal-variant-narrow-first-2-9-no-header': (2, 237),
+            'probe-unequal-variant-three-24-no-header': (2, 653),
+            'probe-unequal-continuation-border-16': (2, 653),
+            'probe-unequal-continuation-border-4': (2, 653),
+        }
+        self.assertEqual(check.PREFERRED_GRID_BORDER_CASES, set(expected))
+        self.assertLessEqual(set(expected), check.PHYSICAL_FONT_CASES)
+        rows = {row[0]: row for row in check.verify() if row[0] in expected}
+        self.assertEqual(set(rows), set(expected))
+        for name, (pages, glyphs) in expected.items():
+            _, _, archive, _, drawing, font_source = rows[name]
+            with self.subTest(case=name), ZipFile(archive) as bundle:
+                capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+                self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+                self.assertEqual(capture['capture_id'], check.REQUIRED_CAPTURES[name])
+                self.assertEqual(font_source, 'original-word-pdf')
+                self.assertEqual(drawing['page_count'], pages)
+                self.assertEqual(sum(not g[1].isspace() for g in drawing['glyphs']), glyphs)
+
+    def test_borderless_original_requires_explicit_empty_rule_expectation(self):
+        from compare_windows_borders import rectangles
+        import hashlib
+        names = {'probe-unequal-continuation-border-0'}
+        self.assertEqual(check.BORDERLESS_GRID_CASES, names)
+        rows = [row for row in check.verify() if row[0] in names]
+        self.assertEqual({row[0] for row in rows}, names)
+        for name, _, archive, document, drawing, font_source in rows:
+            self.assertEqual(drawing['page_count'], 2)
+            self.assertEqual(sum(not g[1].isspace() for g in drawing['glyphs']), 653)
+            self.assertEqual(font_source, 'original-word-pdf')
+            with ZipFile(archive) as bundle, tempfile.TemporaryDirectory() as directory:
+                data = bundle.read(document['pdf'])
+                self.assertEqual(hashlib.sha256(data).hexdigest(), document['pdf_sha256'])
+                original = Path(directory) / 'original.pdf'
+                original.write_bytes(data)
+                self.assertEqual(rectangles(original), [[], []])
+        empty = dict(page=1, word_rectangles=0, native_rectangles=0,
+                     word_uncovered_count=0, native_uncovered_count=0)
+        with patch('compare_windows_borders.compare', return_value=[empty]):
+            self.assertEqual(check.assert_original_vector_borders(
+                None, None, 'nil', expected_empty=True), [empty])
+            with self.assertRaisesRegex(ValueError, 'original-vector-borders'):
+                check.assert_original_vector_borders(None, None, 'positive-rule-case')
+        for bad in [[], [dict(empty, word_rectangles=1)],
+                    [dict(empty, native_rectangles=1)],
+                    [dict(empty, word_uncovered_count=1)],
+                    [dict(empty, native_uncovered_count=1)]]:
+            with patch('compare_windows_borders.compare', return_value=bad):
+                with self.assertRaisesRegex(ValueError, 'original-vector-borders'):
+                    check.assert_original_vector_borders(None, None, 'nil', expected_empty=True)
+
+    def test_vector_border_gate_rejects_missing_extra_or_empty_ink(self):
+        good = dict(page=1, word_rectangles=3, native_rectangles=4,
+                    word_uncovered_count=0, native_uncovered_count=0)
+        with patch('compare_windows_borders.compare', return_value=[good]):
+            self.assertEqual(check.assert_original_vector_borders(None, None, 'table'), [good])
+        with patch('compare_windows_borders.TOLERANCE_PT', .5):
+            with self.assertRaisesRegex(ValueError, 'tolerance changed'):
+                check.assert_original_vector_borders(None, None, 'table')
+        invalid = [[], [dict(good, word_uncovered_count=1)],
+                   [dict(good, native_uncovered_count=1)],
+                   [dict(good, word_rectangles=0)], [dict(good, native_rectangles=0)],
+                   [good, dict(good, page=2, native_uncovered_count=1)]]
+        for results in invalid:
+            with self.subTest(results=results), patch(
+                    'compare_windows_borders.compare', return_value=results):
+                with self.assertRaisesRegex(ValueError, 'original-vector-borders'):
+                    check.assert_original_vector_borders(None, None, 'table')
+
     def test_word_display_aliases_retain_distinct_embedded_postscript_styles(self):
         row = next(r for r in check.verify() if r[0] == 'aptos-ascii-advances-mac')
         _, _, manifest, document, _, _ = row
@@ -76,7 +279,46 @@ class PlatformCoordinates(unittest.TestCase):
                             check.compare(expected, actual, 'wrong Type3 face', font_metrics=True)
 
     def test_original_print_cases_require_face_size_and_origin_assertions(self):
-        required = {'2col-mac', 'align-center-mac', 'alignment-mac', 'aptos-ascii-advances-mac', 'aptos-kerning-mac', 'aptos-numeric-ranges-mac', 'aptos-range-compat-14-en-US-mac', 'aptos-range-compat-15-en-US-mac', 'ascii-punctuation-mac', 'borderless-table-mac', 'cell-alignment-mac', 'char-spacing-mac', 'column-break-mac', 'column-table-fixed-preferred-width-mac', 'column-table-fixed-preferred-width-smaller-mac', 'courier-new-line-metrics', 'courier-new-regular-adjacent', 'decimal-tabs-mac', 'direction-with-selection-mac', 'endnote-mac', 'eqruby-grid-mac', 'eqruby-nogrid-mac', 'exact-and-minimum-lines-mac', 'floating-inside-outside-mac', 'floating-simple-position-mac', 'floating-square-wrap-mac', 'floating-through-concave-mac', 'floating-tight-polygon-mac', 'floating-top-bottom-offset-mac', 'floating-wrap-sides-mac', 'floating-z-order-mac', 'footnote-long-continuation-mac', 'footnote-mac', 'footnote-table-each-page-mac', 'footnote-table-textbox-order-mac', 'fractional-picture-anchors-mac', 'header-footer-edge-cases-mac', 'header-footer-sectionpages-mac', 'header-footer-sections-mac', 'header-tab-overflow-long-mac', 'indents-mac', 'inline-image-position-grid-mac', 'inline-image-position-nogrid-mac', 'inline-image-rotation-table-picture-only-mac', 'jade-script-baseline-20261030', 'kana-mac', 'keep-mac', 'latin-break-budget-620', 'latin-break-budget-638', 'latin-break-budget-645', 'latin-break-budget-652', 'latin-break-budget-659', 'line-numbering-mac', 'line-spacing-mac', 'merged-table-over-page-mac', 'mirror-margins-mac', 'mirror-margins-parity-mac', 'nested-after-spacing-oversized-48-0', 'nested-after-spacing-repeat-header', 'nested-after-spacing-short-5pt', 'nested-merged-tables-mac', 'note-styles-creation-mac', 'numbering-by-style-mac', 'numbering-restart-mac', 'odd-even-stories-mac', 'paragraph-spacing-mac', 'probe-column-fixed-dxa-4400', 'probe-column-fixed-dxa-6800', 'probe-contextual-paragraph-spacing-mode14', 'probe-contextual-paragraph-spacing-mode15', 'probe-continuous-column-explicit-break', 'probe-fixed-auto-table-grid-1000-cell-pct-2500', 'probe-fixed-auto-table-grid-2000-cell-pct-1250', 'probe-fixed-auto-table-grid-2000-cell-pct-5000', 'probe-fixed-auto-table-grid-4000-cell-pct-2500', 'probe-hyphenation-split-word-sweep-off', 'probe-paragraph-border-wrap', 'probe-second-column-centered-table', 'probe-table-flow-cell-spacing-start-column-1', 'probe-table-flow-continuous-start-column-1', 'probe-table-flow-continuous-start-column-2', 'probe-table-flow-continuous-vertical-merge-start-column-1', 'probe-table-flow-continuous-vertical-merge-start-column-2', 'probe-table-flow-split-rows-continuous-start-column-1', 'probe-table-flow-split-rows-start-column-1', 'probe-table-flow-split-rows-start-column-2', 'probe-table-flow-start-column-1', 'probe-table-flow-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-1', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-2', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-3', 'probe-table-flow-unequal-right-start-column-1', 'probe-table-flow-unequal-right-start-column-2', 'probe-table-flow-unequal-start-column-1', 'probe-table-flow-unequal-start-column-2', 'probe-unequal-autofit-section-width-matrix', 'probe-unequal-autofit-wrapped-header', 'probe-unequal-center-narrow-first-1-1', 'probe-unequal-center-narrow-first-1-9', 'probe-unequal-center-narrow-first-2-9', 'probe-unequal-center-three-10', 'probe-unequal-center-three-13', 'probe-unequal-center-three-17', 'probe-unequal-center-three-24', 'probe-unequal-center-three-4', 'probe-unequal-center-wide-first-1-1', 'probe-unequal-center-wide-first-1-9', 'probe-unequal-center-wide-first-2-9', 'probe-unequal-control-1-16-with-tail', 'probe-unequal-control-1-16-without-tail', 'probe-unequal-control-1-21-with-tail', 'probe-unequal-control-1-21-without-tail', 'probe-unequal-control-1-22-with-tail', 'probe-unequal-control-1-22-without-tail', 'probe-unequal-control-1-23-with-tail', 'probe-unequal-control-1-23-without-tail', 'probe-unequal-control-1-24-without-tail', 'probe-unequal-control-2-12-with-tail', 'probe-unequal-control-2-12-without-tail', 'probe-unequal-control-2-19-with-tail', 'probe-unequal-control-2-19-without-tail', 'probe-unequal-control-3-14-with-tail', 'probe-unequal-control-3-14-without-tail', 'probe-unequal-control-3-8-with-tail', 'probe-unequal-control-3-8-without-tail', 'probe-unequal-explicit-paragraph-width-3300', 'probe-unequal-explicit-paragraph-width-3566', 'probe-unequal-explicit-paragraph-width-3800', 'probe-unequal-left-narrow-first-1-1', 'probe-unequal-left-narrow-first-1-9', 'probe-unequal-left-narrow-first-2-1', 'probe-unequal-left-narrow-first-2-9', 'probe-unequal-left-start-column-1', 'probe-unequal-left-wide-first-1-1', 'probe-unequal-left-wide-first-1-9', 'probe-unequal-left-wide-first-2-1', 'probe-unequal-left-wide-first-2-9', 'probe-unequal-right-narrow-first-1-1', 'probe-unequal-right-narrow-first-1-9', 'probe-unequal-right-narrow-first-2-9', 'probe-unequal-right-three-10', 'probe-unequal-right-three-17', 'probe-unequal-right-three-24', 'probe-unequal-right-three-4', 'probe-unequal-right-three-7', 'probe-unequal-right-wide-first-1-1', 'probe-unequal-right-wide-first-1-9', 'probe-unequal-right-wide-first-2-9', 'probe-unequal-variant-narrow-first-2-9-center', 'probe-unequal-variant-narrow-first-2-9-dxa', 'probe-unequal-variant-narrow-first-2-9-left', 'probe-unequal-variant-narrow-first-2-9-long', 'probe-unequal-variant-narrow-first-2-9-right', 'probe-unequal-variant-three-24-center', 'probe-unequal-variant-three-24-dxa', 'probe-unequal-variant-three-24-left', 'probe-unequal-variant-three-24-long', 'probe-unequal-variant-three-24-right', 'probe-width-equal-auto-0-pct-2500', 'probe-width-equal-pct-2500-auto-0', 'probe-width-equal-pct-2500-dxa-2000', 'probe-width-equal-pct-2500-pct-2500', 'probe-width-equal-pct-2500-pct-5000', 'probe-width-equal-pct-5000-pct-2500', 'probe-width-short-narrow-first-1-1', 'probe-width-short-narrow-first-1-4', 'probe-width-short-narrow-first-1-5', 'probe-width-short-narrow-first-1-9', 'probe-width-short-narrow-first-2-1', 'probe-width-short-narrow-first-2-4', 'probe-width-short-narrow-first-2-5', 'probe-width-short-narrow-first-2-9', 'probe-width-short-wide-first-1-1', 'probe-width-short-wide-first-1-4', 'probe-width-short-wide-first-1-5', 'probe-width-short-wide-first-1-9', 'probe-width-short-wide-first-2-1', 'probe-width-short-wide-first-2-4', 'probe-width-short-wide-first-2-5', 'probe-width-short-wide-first-2-9', 'probe-width-single-auto-0-pct-2500', 'probe-width-single-dxa-2400-dxa-2000', 'probe-width-unequal-auto-0-pct-2500', 'probe-width-unequal-pct-2500-pct-2500', 'probe-width-unequal-pct-2500-pct-5000', 'probe-width-unequal-pct-5000-pct-2500', 'ruby-grid-mac', 'ruby-nogrid-mac', 'ruby-wide-grid-mac', 'ruby-wide-nogrid-mac', 'run-styles-mac', 'script-position-mac', 'section-break-types-mac', 'sections-mac', 'story-inline-picture-metrics-mac', 'table-bidi-alignment-mac', 'table-bidi-visual-mac', 'table-border-conflicts-mac', 'table-boundary-cant-split-mac', 'table-cell-fit-text-mac', 'table-diagonal-borders-mac', 'table-flow-continuous-start-column-1-mac', 'table-flow-continuous-vertical-merge-start-column-2-mac', 'table-flow-split-rows-start-column-1-mac', 'table-hidden-rows-mac', 'table-hide-mark-mac', 'table-legacy-hmerge-mac', 'table-oversized-row-after-spacing-fresh-fit', 'table-repeating-header-mac', 'table-row-after-spacing-short-5pt', 'table-vertical-merge-page-break-mac', 'table3x2merged-mac', 'tabs-geometry-mac', 'tabs-mac', 'textbox-body-properties-mac', 'textbox-exact-line-matrix-mac', 'textbox-fixed-pitch-matrix-mac', 'textbox-tall-header-overlap-mac', 'toc-instrtext-edge-cases-mac', 'toc-sequence-page-number-mac', 'underline-kinds-mac', 'unequal-columns-mac', 'vert-align-sweep-2-browser-mac', 'vert-align-sweep-browser-mac', 'widow-control-mac', 'word-compat-comprehensive-mac', 'word-mac-probe-distribute-single', 'word-mac-probe-float-lookahead', 'word-mac-probe-floating-horizontal-14', 'word-mac-probe-floating-horizontal-15', 'word-mac-probe-grid-line-unit', 'word-mac-probe-grid-line-unit-table', 'word-mac-probe-indent', 'word-mac-probe-numbering-label', 'word-mac-probe-numbering-label-faces', 'word-mac-probe-object-space-runs-unbalanced', 'word-mac-probe-pairs-kerned', 'word-mac-probe-squeeze-conditions-nocompress', 'word-mac-probe-squeeze-plain', 'word-mac-probe-vert-align-sweep-2', 'wrong-num-mac'}
+        required = {'2col-mac', 'align-center-mac', 'alignment-mac', 'aptos-ascii-advances-mac', 'aptos-kerning-mac', 'aptos-numeric-ranges-mac', 'aptos-range-compat-14-en-US-mac', 'aptos-range-compat-15-en-US-mac', 'ascii-punctuation-mac', 'borderless-table-mac', 'cell-alignment-mac', 'char-spacing-mac', 'column-break-mac', 'column-table-fixed-preferred-width-mac', 'column-table-fixed-preferred-width-smaller-mac', 'courier-new-line-metrics', 'courier-new-regular-adjacent', 'decimal-tabs-mac', 'direction-with-selection-mac', 'endnote-mac', 'eqruby-grid-mac', 'eqruby-nogrid-mac', 'exact-and-minimum-lines-mac', 'floating-inside-outside-mac', 'floating-simple-position-mac', 'floating-square-wrap-mac', 'floating-through-concave-mac', 'floating-tight-polygon-mac', 'floating-top-bottom-offset-mac', 'floating-wrap-sides-mac', 'floating-z-order-mac', 'footnote-long-continuation-mac', 'footnote-mac', 'footnote-table-each-page-mac', 'footnote-table-textbox-order-mac', 'fractional-picture-anchors-mac', 'header-footer-edge-cases-mac', 'header-footer-sectionpages-mac', 'header-footer-sections-mac', 'header-tab-overflow-long-mac', 'indents-mac', 'inline-image-position-grid-mac', 'inline-image-position-nogrid-mac', 'inline-image-rotation-table-picture-only-mac', 'jade-script-baseline-20261030', 'kana-mac', 'keep-mac', 'latin-break-budget-620', 'latin-break-budget-638', 'latin-break-budget-645', 'latin-break-budget-652', 'latin-break-budget-659', 'line-numbering-mac', 'line-spacing-mac', 'merged-table-over-page-mac', 'mirror-margins-mac', 'mirror-margins-parity-mac', 'nested-after-spacing-oversized-48-0', 'nested-after-spacing-repeat-header', 'nested-after-spacing-short-5pt', 'nested-merged-tables-mac', 'note-styles-creation-mac', 'numbering-by-style-mac', 'numbering-restart-mac', 'odd-even-stories-mac', 'paragraph-spacing-mac', 'probe-column-fixed-dxa-4400', 'probe-column-fixed-dxa-6800', 'probe-contextual-paragraph-spacing-mode14', 'probe-contextual-paragraph-spacing-mode15', 'probe-continuous-column-explicit-break', 'probe-fixed-auto-table-grid-1000-cell-pct-2500', 'probe-fixed-auto-table-grid-2000-cell-pct-1250', 'probe-fixed-auto-table-grid-2000-cell-pct-5000', 'probe-fixed-auto-table-grid-4000-cell-pct-2500', 'probe-hyphenation-split-word-sweep-off', 'probe-paragraph-border-wrap', 'probe-second-column-centered-table', 'probe-table-flow-cell-spacing-start-column-1', 'probe-table-flow-continuous-start-column-1', 'probe-table-flow-continuous-start-column-2', 'probe-table-flow-continuous-vertical-merge-start-column-1', 'probe-table-flow-continuous-vertical-merge-start-column-2', 'probe-table-flow-split-rows-continuous-start-column-1', 'probe-table-flow-split-rows-start-column-1', 'probe-table-flow-split-rows-start-column-2', 'probe-table-flow-start-column-1', 'probe-table-flow-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-1', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-2', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-3', 'probe-table-flow-unequal-right-start-column-1', 'probe-table-flow-unequal-right-start-column-2', 'probe-table-flow-unequal-start-column-1', 'probe-table-flow-unequal-start-column-2', 'probe-unequal-autofit-section-width-matrix', 'probe-unequal-autofit-wrapped-header', 'probe-unequal-center-narrow-first-1-1', 'probe-unequal-center-narrow-first-1-9', 'probe-unequal-center-narrow-first-2-9', 'probe-unequal-center-three-10', 'probe-unequal-center-three-13', 'probe-unequal-center-three-17', 'probe-unequal-center-three-24', 'probe-unequal-center-three-4', 'probe-unequal-center-wide-first-1-1', 'probe-unequal-center-wide-first-1-9', 'probe-unequal-center-wide-first-2-9', 'probe-unequal-control-1-16-with-tail', 'probe-unequal-control-1-16-without-tail', 'probe-unequal-control-1-21-with-tail', 'probe-unequal-control-1-21-without-tail', 'probe-unequal-control-1-22-with-tail', 'probe-unequal-control-1-22-without-tail', 'probe-unequal-control-1-23-with-tail', 'probe-unequal-control-1-23-without-tail', 'probe-unequal-control-1-24-without-tail', 'probe-unequal-control-2-12-with-tail', 'probe-unequal-control-2-12-without-tail', 'probe-unequal-control-2-19-with-tail', 'probe-unequal-control-2-19-without-tail', 'probe-unequal-control-3-14-with-tail', 'probe-unequal-control-3-14-without-tail', 'probe-unequal-control-3-8-with-tail', 'probe-unequal-control-3-8-without-tail', 'probe-unequal-explicit-paragraph-width-3300', 'probe-unequal-explicit-paragraph-width-3566', 'probe-unequal-explicit-paragraph-width-3800', 'probe-unequal-left-narrow-first-1-1', 'probe-unequal-left-narrow-first-1-9', 'probe-unequal-left-narrow-first-2-1', 'probe-unequal-left-narrow-first-2-9', 'probe-unequal-left-start-column-1', 'probe-unequal-left-wide-first-1-1', 'probe-unequal-left-wide-first-1-9', 'probe-unequal-left-wide-first-2-1', 'probe-unequal-left-wide-first-2-9', 'probe-unequal-right-narrow-first-1-1', 'probe-unequal-right-narrow-first-1-9', 'probe-unequal-right-narrow-first-2-9', 'probe-unequal-right-three-10', 'probe-unequal-right-three-17', 'probe-unequal-right-three-24', 'probe-unequal-right-three-4', 'probe-unequal-right-three-7', 'probe-unequal-right-wide-first-1-1', 'probe-unequal-right-wide-first-1-9', 'probe-unequal-right-wide-first-2-9', 'probe-unequal-variant-narrow-first-2-9-center', 'probe-unequal-variant-narrow-first-2-9-dxa', 'probe-unequal-variant-narrow-first-2-9-left', 'probe-unequal-variant-narrow-first-2-9-long', 'probe-unequal-variant-narrow-first-2-9-right', 'probe-unequal-variant-three-24-center', 'probe-unequal-variant-three-24-dxa', 'probe-unequal-variant-three-24-left', 'probe-unequal-variant-three-24-long', 'probe-unequal-variant-three-24-right', 'probe-width-equal-auto-0-pct-2500', 'probe-width-equal-pct-2500-auto-0', 'probe-width-equal-pct-2500-dxa-2000', 'probe-width-equal-pct-2500-pct-2500', 'probe-width-equal-pct-2500-pct-5000', 'probe-width-equal-pct-5000-pct-2500', 'probe-width-short-narrow-first-1-1', 'probe-width-short-narrow-first-1-4', 'probe-width-short-narrow-first-1-5', 'probe-width-short-narrow-first-1-9', 'probe-width-short-narrow-first-2-1', 'probe-width-short-narrow-first-2-4', 'probe-width-short-narrow-first-2-5', 'probe-width-short-narrow-first-2-9', 'probe-width-short-wide-first-1-1', 'probe-width-short-wide-first-1-4', 'probe-width-short-wide-first-1-5', 'probe-width-short-wide-first-1-9', 'probe-width-short-wide-first-2-1', 'probe-width-short-wide-first-2-4', 'probe-width-short-wide-first-2-5', 'probe-width-short-wide-first-2-9', 'probe-width-single-auto-0-pct-2500', 'probe-width-single-dxa-2400-dxa-2000', 'probe-width-unequal-auto-0-pct-2500', 'probe-width-unequal-pct-2500-pct-2500', 'probe-width-unequal-pct-2500-pct-5000', 'probe-width-unequal-pct-5000-pct-2500', 'ruby-grid-mac', 'ruby-nogrid-mac', 'ruby-wide-grid-mac', 'ruby-wide-nogrid-mac', 'run-styles-mac', 'script-position-mac', 'section-break-types-mac', 'sections-mac', 'story-inline-picture-metrics-mac', 'table-bidi-alignment-mac', 'table-bidi-visual-mac', 'table-border-conflicts-mac', 'table-boundary-cant-split-mac', 'table-cell-fit-text-mac', 'table-diagonal-borders-mac', 'table-flow-continuous-start-column-1-mac', 'table-flow-continuous-vertical-merge-start-column-2-mac', 'table-flow-split-rows-start-column-1-mac', 'table-hidden-rows-mac', 'table-hide-mark-mac', 'table-legacy-hmerge-mac', 'table-oversized-row-after-spacing-fresh-fit', 'table-repeating-header-mac', 'table-row-after-spacing-short-5pt', 'table-vertical-merge-page-break-mac', 'table3x2merged-mac', 'tabs-geometry-mac', 'tabs-mac', 'textbox-body-properties-mac', 'textbox-exact-line-matrix-mac', 'textbox-fixed-pitch-matrix-mac', 'textbox-tall-header-overlap-mac', 'toc-instrtext-edge-cases-mac', 'toc-sequence-page-number-mac', 'underline-kinds-mac', 'unequal-columns-mac', 'vert-align-sweep-2-browser-mac', 'vert-align-sweep-browser-mac', 'widow-control-mac', 'word-compat-comprehensive-mac', 'word-mac-probe-distribute-single', 'word-mac-probe-float-lookahead', 'word-mac-probe-floating-horizontal-14', 'word-mac-probe-floating-horizontal-15', 'word-mac-probe-grid-line-unit', 'word-mac-probe-grid-line-unit-table', 'word-mac-probe-indent', 'word-mac-probe-numbering-label', 'word-mac-probe-numbering-label-faces', 'word-mac-probe-object-space-runs-unbalanced', 'word-mac-probe-pairs-kerned', 'word-mac-probe-squeeze-conditions-nocompress', 'word-mac-probe-squeeze-plain', 'word-mac-probe-vert-align-sweep-2', 'wrong-num-mac', 'probe-math-display-alignment-1', 'probe-math-display-rtl-wrap-1', 'probe-math-italic-advances-lowercase', 'probe-math-italic-advances-uppercase', 'probe-math-relation-wrap-after', 'probe-math-relation-wrap-before', 'probe-math-relation-wrap-repeat',
+                             'probe-width-single-pct-2500-pct-2500',
+                             'probe-width-unequal-dxa-2400-dxa-2000',
+                             'probe-width-unequal-pct-2500-auto-0',
+                             'probe-width-unequal-pct-2500-dxa-2000',
+}
+        required |= {'probe-complex-font-metrics-thonburi',
+                     'probe-complex-font-sweep-thonburi', 'probe-devanagari-line-box-devanagari', 'probe-mixed-sangam-matrix-240', 'probe-mixed-sangam-matrix-276'}
+        required |= {'numbering-textbox-full-matrix-mac', 'numbering-alignment-matrix-mac', 'numbering-legal-format-matrix-mac'}
+        required |= {'numbering-table-nested-list-mac', 'numbering-table-header-mac', 'numbering-table-matrix-mac'}
+        required |= {'header-tab-overflow-short-mac'}
+        required.add('fixed-table-width-matrix-mac')
+        required |= {'probe-unequal-variant-narrow-first-2-9-no-header', 'probe-unequal-variant-three-24-no-header', 'probe-unequal-continuation-border-0', 'probe-unequal-continuation-border-16', 'probe-unequal-continuation-border-4'}
+        required |= {'probe-unequal-variant-narrow-first-2-9-fixed', 'probe-unequal-variant-three-24-fixed'}
+        required |= {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
+        required |= {'probe-math-fraction-first-vs-prev',
+         'probe-math-fraction-larger-neighbors',
+         'probe-math-fraction-leading',
+         'probe-math-fraction-neighbors',
+         'probe-math-fraction-size-20',
+         'probe-math-fraction-size-24',
+         'probe-math-fraction-size-28',
+         'probe-math-fraction-size-32',
+         'probe-math-fraction-size-36',
+         'probe-math-fraction-size-40',
+         'probe-math-fraction-spacing-matrix',
+         'probe-math-repeat-bar-fraction-24',
+         'probe-math-repeat-bar-fraction-32',
+         'probe-math-repeat-fraction-20',
+         'probe-math-repeat-fraction-24',
+         'probe-math-repeat-fraction-28',
+         'probe-math-repeat-fraction-36',
+         'probe-math-repeat-fraction-40',
+         'probe-math-standalone-fractions-12',
+         'probe-math-standalone-fractions-explicit-sizes'}
+        required |= {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
+         'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
+         'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
+        required |= {'probe-math-paragraph-mark-size'}
+        required |= {'probe-math-display-alignment-0'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -611,7 +853,42 @@ class PlatformCoordinates(unittest.TestCase):
             manifest = check.read_json(check.checked_file(check.ROOT, case['mac_manifest']))
             if 'version' not in manifest['reference']:
                 missing.append(case['mac_case'])
-        self.assertEqual(set(missing), {'column-table-fixed-preferred-width-mac', 'column-table-fixed-preferred-width-smaller-mac', 'courier-new-line-metrics', 'courier-new-regular-adjacent', 'inline-image-rotation-table-picture-only-mac', 'latin-break-budget-620', 'latin-break-budget-638', 'latin-break-budget-645', 'latin-break-budget-652', 'latin-break-budget-659', 'nested-after-spacing-oversized-48-0', 'nested-after-spacing-repeat-header', 'nested-after-spacing-short-5pt', 'probe-column-fixed-dxa-4400', 'probe-column-fixed-dxa-6800', 'probe-continuous-column-explicit-break', 'probe-fixed-auto-table-grid-1000-cell-pct-2500', 'probe-fixed-auto-table-grid-2000-cell-pct-1250', 'probe-fixed-auto-table-grid-2000-cell-pct-5000', 'probe-fixed-auto-table-grid-4000-cell-pct-2500', 'probe-second-column-centered-table', 'probe-table-flow-cell-spacing-start-column-1', 'probe-table-flow-continuous-start-column-1', 'probe-table-flow-continuous-start-column-2', 'probe-table-flow-continuous-vertical-merge-start-column-1', 'probe-table-flow-continuous-vertical-merge-start-column-2', 'probe-table-flow-split-rows-continuous-start-column-1', 'probe-table-flow-split-rows-start-column-1', 'probe-table-flow-split-rows-start-column-2', 'probe-table-flow-start-column-1', 'probe-table-flow-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-1', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-2', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-3', 'probe-table-flow-unequal-right-start-column-1', 'probe-table-flow-unequal-right-start-column-2', 'probe-table-flow-unequal-start-column-1', 'probe-table-flow-unequal-start-column-2', 'probe-unequal-autofit-section-width-matrix', 'probe-unequal-autofit-wrapped-header', 'probe-unequal-center-narrow-first-1-1', 'probe-unequal-center-narrow-first-1-9', 'probe-unequal-center-narrow-first-2-9', 'probe-unequal-center-three-10', 'probe-unequal-center-three-13', 'probe-unequal-center-three-17', 'probe-unequal-center-three-24', 'probe-unequal-center-three-4', 'probe-unequal-center-wide-first-1-1', 'probe-unequal-center-wide-first-1-9', 'probe-unequal-center-wide-first-2-9', 'probe-unequal-control-1-16-with-tail', 'probe-unequal-control-1-16-without-tail', 'probe-unequal-control-1-21-with-tail', 'probe-unequal-control-1-21-without-tail', 'probe-unequal-control-1-22-with-tail', 'probe-unequal-control-1-22-without-tail', 'probe-unequal-control-1-23-with-tail', 'probe-unequal-control-1-23-without-tail', 'probe-unequal-control-1-24-without-tail', 'probe-unequal-control-2-12-with-tail', 'probe-unequal-control-2-12-without-tail', 'probe-unequal-control-2-19-with-tail', 'probe-unequal-control-2-19-without-tail', 'probe-unequal-control-3-14-with-tail', 'probe-unequal-control-3-14-without-tail', 'probe-unequal-control-3-8-with-tail', 'probe-unequal-control-3-8-without-tail', 'probe-unequal-explicit-paragraph-width-3300', 'probe-unequal-explicit-paragraph-width-3566', 'probe-unequal-explicit-paragraph-width-3800', 'probe-unequal-left-narrow-first-1-1', 'probe-unequal-left-narrow-first-1-9', 'probe-unequal-left-narrow-first-2-1', 'probe-unequal-left-narrow-first-2-9', 'probe-unequal-left-start-column-1', 'probe-unequal-left-wide-first-1-1', 'probe-unequal-left-wide-first-1-9', 'probe-unequal-left-wide-first-2-1', 'probe-unequal-left-wide-first-2-9', 'probe-unequal-right-narrow-first-1-1', 'probe-unequal-right-narrow-first-1-9', 'probe-unequal-right-narrow-first-2-9', 'probe-unequal-right-three-10', 'probe-unequal-right-three-17', 'probe-unequal-right-three-24', 'probe-unequal-right-three-4', 'probe-unequal-right-three-7', 'probe-unequal-right-wide-first-1-1', 'probe-unequal-right-wide-first-1-9', 'probe-unequal-right-wide-first-2-9', 'probe-unequal-variant-narrow-first-2-9-center', 'probe-unequal-variant-narrow-first-2-9-dxa', 'probe-unequal-variant-narrow-first-2-9-left', 'probe-unequal-variant-narrow-first-2-9-long', 'probe-unequal-variant-narrow-first-2-9-right', 'probe-unequal-variant-three-24-center', 'probe-unequal-variant-three-24-dxa', 'probe-unequal-variant-three-24-left', 'probe-unequal-variant-three-24-long', 'probe-unequal-variant-three-24-right', 'probe-width-equal-auto-0-pct-2500', 'probe-width-equal-pct-2500-auto-0', 'probe-width-equal-pct-2500-dxa-2000', 'probe-width-equal-pct-2500-pct-2500', 'probe-width-equal-pct-2500-pct-5000', 'probe-width-equal-pct-5000-pct-2500', 'probe-width-short-narrow-first-1-1', 'probe-width-short-narrow-first-1-4', 'probe-width-short-narrow-first-1-5', 'probe-width-short-narrow-first-1-9', 'probe-width-short-narrow-first-2-1', 'probe-width-short-narrow-first-2-4', 'probe-width-short-narrow-first-2-5', 'probe-width-short-narrow-first-2-9', 'probe-width-short-wide-first-1-1', 'probe-width-short-wide-first-1-4', 'probe-width-short-wide-first-1-5', 'probe-width-short-wide-first-1-9', 'probe-width-short-wide-first-2-1', 'probe-width-short-wide-first-2-4', 'probe-width-short-wide-first-2-5', 'probe-width-short-wide-first-2-9', 'probe-width-single-auto-0-pct-2500', 'probe-width-single-dxa-2400-dxa-2000', 'probe-width-unequal-auto-0-pct-2500', 'probe-width-unequal-pct-2500-pct-2500', 'probe-width-unequal-pct-2500-pct-5000', 'probe-width-unequal-pct-5000-pct-2500', 'table-flow-continuous-start-column-1-mac', 'table-flow-continuous-vertical-merge-start-column-2-mac', 'table-flow-split-rows-start-column-1-mac', 'table-oversized-row-after-spacing-fresh-fit', 'table-row-after-spacing-short-5pt', 'textbox-exact-line-matrix-mac', 'vert-align-sweep-browser-mac'})
+        self.assertEqual(set(missing), {'fixed-table-width-matrix-mac', 'column-table-fixed-preferred-width-mac', 'column-table-fixed-preferred-width-smaller-mac', 'courier-new-line-metrics', 'courier-new-regular-adjacent', 'inline-image-rotation-table-picture-only-mac', 'latin-break-budget-620', 'latin-break-budget-638', 'latin-break-budget-645', 'latin-break-budget-652', 'latin-break-budget-659', 'nested-after-spacing-oversized-48-0', 'nested-after-spacing-repeat-header', 'nested-after-spacing-short-5pt', 'probe-column-fixed-dxa-4400', 'probe-column-fixed-dxa-6800', 'probe-continuous-column-explicit-break', 'probe-fixed-auto-table-grid-1000-cell-pct-2500', 'probe-fixed-auto-table-grid-2000-cell-pct-1250', 'probe-fixed-auto-table-grid-2000-cell-pct-5000', 'probe-fixed-auto-table-grid-4000-cell-pct-2500', 'probe-second-column-centered-table', 'probe-table-flow-cell-spacing-start-column-1', 'probe-table-flow-continuous-start-column-1', 'probe-table-flow-continuous-start-column-2', 'probe-table-flow-continuous-vertical-merge-start-column-1', 'probe-table-flow-continuous-vertical-merge-start-column-2', 'probe-table-flow-split-rows-continuous-start-column-1', 'probe-table-flow-split-rows-start-column-1', 'probe-table-flow-split-rows-start-column-2', 'probe-table-flow-start-column-1', 'probe-table-flow-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-1800-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2160-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-header-2460-twips-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-start-column-3', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-1', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-2', 'probe-table-flow-unequal-automatic-grid-split-rows-continuous-right-three-columns-rtl-section-tall-header-start-column-3', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-1', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-2', 'probe-table-flow-unequal-continuous-right-three-columns-start-column-3', 'probe-table-flow-unequal-right-start-column-1', 'probe-table-flow-unequal-right-start-column-2', 'probe-table-flow-unequal-start-column-1', 'probe-table-flow-unequal-start-column-2', 'probe-unequal-autofit-section-width-matrix', 'probe-unequal-autofit-wrapped-header', 'probe-unequal-center-narrow-first-1-1', 'probe-unequal-center-narrow-first-1-9', 'probe-unequal-center-narrow-first-2-9', 'probe-unequal-center-three-10', 'probe-unequal-center-three-13', 'probe-unequal-center-three-17', 'probe-unequal-center-three-24', 'probe-unequal-center-three-4', 'probe-unequal-center-wide-first-1-1', 'probe-unequal-center-wide-first-1-9', 'probe-unequal-center-wide-first-2-9', 'probe-unequal-control-1-16-with-tail', 'probe-unequal-control-1-16-without-tail', 'probe-unequal-control-1-21-with-tail', 'probe-unequal-control-1-21-without-tail', 'probe-unequal-control-1-22-with-tail', 'probe-unequal-control-1-22-without-tail', 'probe-unequal-control-1-23-with-tail', 'probe-unequal-control-1-23-without-tail', 'probe-unequal-control-1-24-without-tail', 'probe-unequal-control-2-12-with-tail', 'probe-unequal-control-2-12-without-tail', 'probe-unequal-control-2-19-with-tail', 'probe-unequal-control-2-19-without-tail', 'probe-unequal-control-3-14-with-tail', 'probe-unequal-control-3-14-without-tail', 'probe-unequal-control-3-8-with-tail', 'probe-unequal-control-3-8-without-tail', 'probe-unequal-explicit-paragraph-width-3300', 'probe-unequal-explicit-paragraph-width-3566', 'probe-unequal-explicit-paragraph-width-3800', 'probe-unequal-left-narrow-first-1-1', 'probe-unequal-left-narrow-first-1-9', 'probe-unequal-left-narrow-first-2-1', 'probe-unequal-left-narrow-first-2-9', 'probe-unequal-left-start-column-1', 'probe-unequal-left-wide-first-1-1', 'probe-unequal-left-wide-first-1-9', 'probe-unequal-left-wide-first-2-1', 'probe-unequal-left-wide-first-2-9', 'probe-unequal-right-narrow-first-1-1', 'probe-unequal-right-narrow-first-1-9', 'probe-unequal-right-narrow-first-2-9', 'probe-unequal-right-three-10', 'probe-unequal-right-three-17', 'probe-unequal-right-three-24', 'probe-unequal-right-three-4', 'probe-unequal-right-three-7', 'probe-unequal-right-wide-first-1-1', 'probe-unequal-right-wide-first-1-9', 'probe-unequal-right-wide-first-2-9', 'probe-unequal-variant-narrow-first-2-9-center', 'probe-unequal-variant-narrow-first-2-9-dxa', 'probe-unequal-variant-narrow-first-2-9-left', 'probe-unequal-variant-narrow-first-2-9-long', 'probe-unequal-variant-narrow-first-2-9-right', 'probe-unequal-variant-three-24-center', 'probe-unequal-variant-three-24-dxa', 'probe-unequal-variant-three-24-left', 'probe-unequal-variant-three-24-long', 'probe-unequal-variant-three-24-right', 'probe-width-equal-auto-0-pct-2500', 'probe-width-equal-pct-2500-auto-0', 'probe-width-equal-pct-2500-dxa-2000', 'probe-width-equal-pct-2500-pct-2500', 'probe-width-equal-pct-2500-pct-5000', 'probe-width-equal-pct-5000-pct-2500', 'probe-width-short-narrow-first-1-1', 'probe-width-short-narrow-first-1-4', 'probe-width-short-narrow-first-1-5', 'probe-width-short-narrow-first-1-9', 'probe-width-short-narrow-first-2-1', 'probe-width-short-narrow-first-2-4', 'probe-width-short-narrow-first-2-5', 'probe-width-short-narrow-first-2-9', 'probe-width-short-wide-first-1-1', 'probe-width-short-wide-first-1-4', 'probe-width-short-wide-first-1-5', 'probe-width-short-wide-first-1-9', 'probe-width-short-wide-first-2-1', 'probe-width-short-wide-first-2-4', 'probe-width-short-wide-first-2-5', 'probe-width-short-wide-first-2-9', 'probe-width-single-auto-0-pct-2500', 'probe-width-single-dxa-2400-dxa-2000', 'probe-width-unequal-auto-0-pct-2500', 'probe-width-unequal-pct-2500-pct-2500', 'probe-width-unequal-pct-2500-pct-5000', 'probe-width-unequal-pct-5000-pct-2500', 'table-flow-continuous-start-column-1-mac', 'table-flow-continuous-vertical-merge-start-column-2-mac', 'table-flow-split-rows-start-column-1-mac', 'table-oversized-row-after-spacing-fresh-fit', 'table-row-after-spacing-short-5pt', 'textbox-exact-line-matrix-mac', 'vert-align-sweep-browser-mac', 'probe-math-display-alignment-1', 'probe-math-display-rtl-wrap-1', 'probe-math-italic-advances-lowercase', 'probe-math-italic-advances-uppercase', 'probe-math-relation-wrap-after', 'probe-math-relation-wrap-before', 'probe-math-relation-wrap-repeat', 'probe-complex-font-metrics-thonburi', 'probe-complex-font-sweep-thonburi', 'probe-devanagari-line-box-devanagari', 'probe-mixed-sangam-matrix-240', 'probe-mixed-sangam-matrix-276',
+            'probe-unequal-variant-narrow-first-2-9-no-header',
+            'probe-unequal-variant-three-24-no-header',
+            'probe-unequal-continuation-border-0',
+            'probe-unequal-continuation-border-16',
+            'probe-unequal-continuation-border-4',
+            'probe-unequal-variant-narrow-first-2-9-fixed',
+            'probe-unequal-variant-three-24-fixed',
+            'probe-table-flow-unequal-automatic-grid-start-column-1',
+            'probe-table-flow-unequal-automatic-grid-start-column-2',
+                             'probe-width-single-pct-2500-pct-2500',
+                             'probe-width-unequal-dxa-2400-dxa-2000',
+                             'probe-width-unequal-pct-2500-auto-0',
+                             'probe-width-unequal-pct-2500-dxa-2000',
+} | {'probe-math-fraction-first-vs-prev',
+ 'probe-math-fraction-larger-neighbors',
+ 'probe-math-fraction-leading',
+ 'probe-math-fraction-neighbors',
+ 'probe-math-fraction-size-20',
+ 'probe-math-fraction-size-24',
+ 'probe-math-fraction-size-28',
+ 'probe-math-fraction-size-32',
+ 'probe-math-fraction-size-36',
+ 'probe-math-fraction-size-40',
+ 'probe-math-fraction-spacing-matrix',
+ 'probe-math-repeat-bar-fraction-24',
+ 'probe-math-repeat-bar-fraction-32',
+ 'probe-math-repeat-fraction-20',
+ 'probe-math-repeat-fraction-24',
+ 'probe-math-repeat-fraction-28',
+ 'probe-math-repeat-fraction-36',
+ 'probe-math-repeat-fraction-40',
+ 'probe-math-standalone-fractions-12',
+ 'probe-math-standalone-fractions-explicit-sizes'} | {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word

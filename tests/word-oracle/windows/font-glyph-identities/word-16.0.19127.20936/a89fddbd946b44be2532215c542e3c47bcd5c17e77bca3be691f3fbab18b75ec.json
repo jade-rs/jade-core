@@ -1,0 +1,61 @@
+{
+  "schema": 1,
+  "platform": "windows",
+  "source_sha256": "a89fddbd946b44be2532215c542e3c47bcd5c17e77bca3be691f3fbab18b75ec",
+  "capture_sha256": "df54004bfae4f26d6f825a72fbf45fbda3654f66858a3bc255cbf6ba058be5a1",
+  "word": {
+    "product_version": "16.0.19127.20936",
+    "file_version": "16.0.19127.20936",
+    "application_version": "16.0",
+    "application_build": "16.0.19127",
+    "executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312"
+  },
+  "original_pdf_sha256": "2bf9ac18ab1e4da6d76439220bc97fd13e4bc43b8a8bea41880a86882cbb2c79",
+  "fonts": [
+    {
+      "family": "Leelawadee UI",
+      "weight": 400,
+      "italic": false,
+      "original_pdf_font_sha256": "c541265cd031970e30a0061d90d4bf8bd6e3d3548c9e61373802ce0980279a30",
+      "inspected_full_font_sha256": "ca9a670f12d0e47c20441012a22f78ab17c1b126818e0e887ef7db6ecf5e76b4",
+      "font_revision": 6.0,
+      "glyph_count": 1055,
+      "glyphs": [
+        {
+          "glyph_index": 251,
+          "unicode_scalar": 3585,
+          "outline_sha256": "3822da419b3ea478faea96dec72ad5cf0f821aa3feb76e0eb3fb07dd58625896",
+          "advance_and_bearing": [
+            1175,
+            116
+          ]
+        },
+        {
+          "glyph_index": 287,
+          "unicode_scalar": 3621,
+          "outline_sha256": "7f7a687cedbf5c1036fa2e0d2bce79378d8ecc097698b88c0af2a5d62d47191e",
+          "advance_and_bearing": [
+            1104,
+            123
+          ]
+        },
+        {
+          "glyph_index": 300,
+          "unicode_scalar": 3634,
+          "outline_sha256": "790d30ee9555f8fd58cdb95d88552b665988d68506e31c53f7c8f067516f0ba7",
+          "advance_and_bearing": [
+            932,
+            20
+          ]
+        }
+      ]
+    }
+  ],
+  "derivation": {
+    "mapping": "unique original Word PDF font cmap",
+    "index_identity": "same-index glyph outlines and hmtx verified against installed full face",
+    "raw_capture_unchanged": true,
+    "coordinate_data": false,
+    "specification": "https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-exttextoutw"
+  }
+}

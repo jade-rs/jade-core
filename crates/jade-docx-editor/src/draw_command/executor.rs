@@ -13,6 +13,7 @@ use rustc_hash::FxHashMap;
 use unicode_script::{Script as UnicodeScriptKind, UnicodeScript};
 use unicode_segmentation::UnicodeSegmentation;
 
+mod windows_control_text;
 pub(crate) mod windows_pdf_text;
 
 /// Maximum number of entries in the grapheme width cache.
@@ -877,12 +878,16 @@ fn execute_cached_text_run_with_font_state<P: Painter>(
     execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 
+pub(crate) fn is_windows_unpositioned_nonprinting_run(text: &str, style: &TextStyle) -> bool {
+    windows_control_text::is_unpositioned_nonprinting_run(text, style)
+}
+
 #[cold]
 #[inline(never)]
 #[allow(clippy::too_many_arguments)]
 fn execute_windows_control_text<P: Painter>(
     context: &P,
-    text: &str,
+    text: &CommandText,
     x: f64,
     y: f64,
     style: &TextStyle,
@@ -894,9 +899,14 @@ fn execute_windows_control_text<P: Painter>(
     // Word paints only the separate line-end dash when that break is used.
     // Passing U+00AD to Skia's glyph batch paints its font glyph as another
     // dash, including on lines where no discretionary break was taken.
+    let has_soft_hyphen = text.has_soft_hyphen();
+    let has_zero_width_controls = text.has_zero_width_controls();
+    let text: &str = text;
     let visible_glyphs;
     let literal_text;
-    let (text, glyphs) = if style.literal_soft_hyphen {
+    let (text, glyphs) = if !has_soft_hyphen {
+        (text, glyphs)
+    } else if style.literal_soft_hyphen {
         // Normalize only the temporary paint buffer. Editable text, cached
         // source ranges, font choices and positioned origins stay intact.
         // Browser shaping and effects otherwise hide this format character.
@@ -931,6 +941,14 @@ fn execute_windows_control_text<P: Painter>(
             .collect::<Vec<_>>();
         (text, visible_glyphs.as_slice())
     };
+    if has_zero_width_controls {
+        font_state.set_fill_style_rc_if_changed(context, &style.fill_color);
+        font_state.ensure_text_baseline_alphabetic(context);
+        if windows_control_text::try_draw(context, text, x, y, style, fonts, glyphs, font_state)? {
+            record_replay_fallback_run(glyphs.len() as u64);
+            return Ok(());
+        }
+    }
     execute_text_run_with_font_state(context, text, x, y, style, fonts, glyphs, font_state)
 }
 

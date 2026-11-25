@@ -1,0 +1,243 @@
+use super::{windows_pdf_text, FontStateTracker, TextStyle};
+use crate::draw_command::GlyphRunStep;
+use jade_painter::Painter;
+use std::rc::Rc;
+
+fn plain_captured_latin(descriptor: &str) -> bool {
+    let descriptor = jade_painter::font_features::strip(descriptor);
+    for token in descriptor.split_whitespace() {
+        let Some(number) = token
+            .strip_suffix("pt")
+            .or_else(|| token.strip_suffix("px"))
+        else {
+            continue;
+        };
+        let Ok(size) = number.parse::<f64>() else {
+            return false;
+        };
+        if !size.is_finite() || size <= 0.0 {
+            return false;
+        }
+        let Some(at) = descriptor.find(token) else {
+            return false;
+        };
+        let prefix = descriptor[..at].trim();
+        let family = descriptor[at + token.len()..]
+            .split(',')
+            .next()
+            .unwrap_or_default()
+            .trim()
+            .trim_matches(['\'', '"']);
+        return (prefix.is_empty() || prefix.eq_ignore_ascii_case("normal"))
+            && [
+                "Arial",
+                "ArialMT",
+                "Verdana",
+                "Courier New",
+                "CourierNewPSMT",
+            ]
+            .iter()
+            .any(|known| family.eq_ignore_ascii_case(known));
+    }
+    false
+}
+
+fn nonjoining_features(descriptor: &str) -> bool {
+    if !jade_painter::font_features::has_features(descriptor) {
+        return true;
+    }
+    let features = jade_painter::font_features::parse(descriptor);
+    !features.is_empty()
+        && features
+            .iter()
+            .all(|f| f.value == 0 || (f.tag == *b"kern" && f.value == 1))
+}
+
+fn plain_windows_style(text: &str, style: &TextStyle) -> bool {
+    jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && super::CommandText::text_has_zero_width_controls(text)
+        && (style.text_scale_x - 1.0).abs() <= f64::EPSILON
+        && !style.outline
+        && !style.shadow
+        && !style.emboss
+        && !style.imprint
+        && style.effects.is_none()
+        && plain_captured_latin(&style.font_descriptor_latin_ascii)
+        && nonjoining_features(&style.font_descriptor_latin_ascii)
+}
+
+fn visible_piece(text: &str) -> Option<&str> {
+    if !text.is_empty()
+        && text
+            .chars()
+            .all(|c| matches!(c, '\u{200b}' | '\u{200c}' | '\u{200d}'))
+    {
+        return Some("");
+    }
+    let mut chars = text.chars();
+    let first = chars.next()?;
+    if !(' '..='~').contains(&first) {
+        return None;
+    }
+    if chars.clone().next().is_none() {
+        return Some(text);
+    }
+    (first.is_ascii_alphabetic() && chars.all(|c| matches!(c, '\u{200c}' | '\u{200d}')))
+        .then_some(&text[..first.len_utf8()])
+}
+
+// A table run may contain only a control swallowed by a preceding run's
+// grapheme. Its empty positioned plan must not trigger raw .notdef paint.
+pub(super) fn is_unpositioned_nonprinting_run(text: &str, style: &TextStyle) -> bool {
+    plain_windows_style(text, style) && visible_piece(text) == Some("")
+}
+
+// Source ranges and all precomputed origins remain intact. Only the painted
+// payload omits measured Word nonprinting controls, so an original PDF font
+// subset without their cmap entries cannot paint .notdef boxes.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn try_draw<P: Painter>(
+    context: &P,
+    text: &str,
+    x: f64,
+    y: f64,
+    style: &TextStyle,
+    fonts: &[Rc<str>],
+    glyphs: &[GlyphRunStep],
+    font_state: &mut FontStateTracker,
+) -> Result<bool, P::Error> {
+    if !plain_windows_style(text, style)
+        || fonts.is_empty()
+        || fonts.iter().any(|font| !nonjoining_features(font))
+    {
+        return Ok(false);
+    }
+    let mut cursor = 0;
+    let mut changed = false;
+    for glyph in glyphs {
+        let start = glyph.text_start as usize;
+        let end = glyph.text_end as usize;
+        if start != cursor
+            || end <= start
+            || !glyph.x_offset.is_finite()
+            || glyph.font_index as usize >= fonts.len()
+        {
+            return Ok(false);
+        }
+        let Some(part) = text.get(start..end) else {
+            return Ok(false);
+        };
+        let Some(visible) = visible_piece(part) else {
+            return Ok(false);
+        };
+        if !visible.is_empty() && !plain_captured_latin(&fonts[glyph.font_index as usize]) {
+            return Ok(false);
+        }
+        changed |= visible != part;
+        cursor = end;
+    }
+    if cursor != text.len() || !changed {
+        return Ok(false);
+    }
+    for glyph in glyphs {
+        let part = glyph.text(text).expect("validated complete UTF8 range");
+        let visible = visible_piece(part).expect("validated source piece");
+        if visible.is_empty() {
+            continue;
+        }
+        let physical = windows_pdf_text::single_scalar_font(context, visible, style);
+        let font = physical
+            .as_ref()
+            .unwrap_or(&fonts[glyph.font_index as usize]);
+        font_state.set_font_rc_if_changed(context, font);
+        context.fill_text(visible, x + glyph.x_offset, y)?;
+    }
+    Ok(true)
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn unpositioned_run_suppression_preserves_visible_complex_and_mac_text() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
+        let style = super::TextStyle {
+            font_descriptor_latin_ascii: std::rc::Rc::from("10.5pt Arial"),
+            ..Default::default()
+        };
+        for family in [
+            "Arial",
+            "ArialMT",
+            "Verdana",
+            "Courier New",
+            "CourierNewPSMT",
+        ] {
+            let mut captured = style.clone();
+            captured.font_descriptor_latin_ascii = std::rc::Rc::from(format!("10.5pt '{family}'"));
+            for platform in [WordLayoutPlatform::Windows, WordLayoutPlatform::Mac] {
+                set_word_layout_platform(platform);
+                for text in ["\u{200b}", "\u{200c}", "\u{200d}", "\u{200c}\u{200d}"] {
+                    assert_eq!(
+                        super::is_unpositioned_nonprinting_run(text, &captured),
+                        platform == WordLayoutPlatform::Windows
+                    );
+                }
+                for text in [
+                    "",
+                    "A",
+                    "A\u{200d}",
+                    "1\u{200c}",
+                    "क\u{200d}",
+                    "A\u{301}\u{200d}",
+                    "👩\u{200d}💻",
+                ] {
+                    assert!(!super::is_unpositioned_nonprinting_run(text, &captured));
+                }
+            }
+        }
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for kind in [
+            "outline",
+            "shadow",
+            "emboss",
+            "imprint",
+            "scale",
+            "other-font",
+        ] {
+            let mut unsupported = style.clone();
+            match kind {
+                "outline" => unsupported.outline = true,
+                "shadow" => unsupported.shadow = true,
+                "emboss" => unsupported.emboss = true,
+                "imprint" => unsupported.imprint = true,
+                "scale" => unsupported.text_scale_x = 0.8,
+                _ => {
+                    unsupported.font_descriptor_latin_ascii = std::rc::Rc::from("10.5pt Nirmala UI")
+                }
+            }
+            assert!(
+                !super::is_unpositioned_nonprinting_run("\u{200d}", &unsupported),
+                "{kind}"
+            );
+        }
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn only_measured_latin_controls_project_to_a_painted_letter() {
+        assert_eq!(super::visible_piece("A\u{200c}\u{200d}"), Some("A"));
+        assert_eq!(super::visible_piece("\u{200b}\u{200d}"), Some(""));
+        for text in [
+            "ا\u{200d}",
+            "क\u{200d}",
+            "A\u{301}\u{200d}",
+            "fi\u{200d}",
+            "1\u{200d}",
+        ] {
+            assert!(super::visible_piece(text).is_none());
+        }
+    }
+}

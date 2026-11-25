@@ -6,12 +6,45 @@ import check_mac_captured_source as check
 
 
 class CapturedMacOriginalTests(unittest.TestCase):
+    def test_unclipped_table_originals_preserve_projection_and_reject_drift(self):
+        refs = check.UNCLIPPED_TABLE_LAYOUT_ORIGINALS
+        rows = check.shared_originals(references=refs)
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(sum(r[5] for r in rows), 1554)
+        for name, case, source, manifest, expected, count in rows:
+            self.assertIn('includes clipped text origins', manifest['reference']['extractor'])
+            self.assertNotIn('version', manifest['reference'])
+            good = dict(copy.deepcopy(expected), input_sha256=case['source']['sha256'])
+            self.assertEqual(check.assert_layout(expected, good, case['source']['sha256'], name), count)
+            moved = copy.deepcopy(good)
+            moved['glyphs'][0][2] += .376
+            for actual in [moved, dict(good, glyphs=[]), dict(good, page_count=good['page_count']+1)]:
+                with self.subTest(case=name), self.assertRaises(ValueError):
+                    check.assert_layout(expected, actual, case['source']['sha256'], name)
+        path = check.ROOT/'tests/word-oracle/platform-coordinates.json'
+        registry = copy.deepcopy(check.read_json(path))
+        registry['fixtures'] = [r for r in registry['fixtures'] if r['mac_case'] != rows[0][0]]
+        read = check.read_json
+        with patch.object(check, 'read_json', side_effect=lambda p: registry if p == path else read(p)):
+            with self.assertRaisesRegex(ValueError, 'missing or duplicate shared Mac original'):
+                check.shared_originals(references=refs)
+
+    def test_math_original_coverage_and_motion_rejection(self):
+        rows = check.shared_originals(references=check.MATH_LAYOUT_ORIGINALS)
+        self.assertEqual(len(rows), 25)
+        self.assertEqual(sum(r[5] for r in rows), 7939)
+        for name, case, source, manifest, expected, count in rows:
+            actual = dict(copy.deepcopy(expected), input_sha256=case['source']['sha256'])
+            actual['glyphs'][0][2] += .376
+            with self.subTest(case=name), self.assertRaises(ValueError):
+                check.assert_layout(expected, actual, case['source']['sha256'], name)
+
     def test_shared_mac_originals_keep_independent_sources_and_coverage(self):
         rows = check.shared_originals()
         self.assertEqual({r[0] for r in rows}, set(check.SHARED_ORIGINALS))
-        self.assertEqual(len(rows), 141)
-        self.assertEqual(sum(r[5] for r in rows), 44677)
-        self.assertEqual([r[4]['page_count'] for r in rows], [4, 4, 2, 2, 3, 1, 8, 8, 8, 9, 9, 9, 10, 10, 10, 6, 6, 7, 12, 12, 12, 3, 3, 3, 3, 2, 2, 3, 8, 2, 1, 2, 2, 8, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 8, 2, 5, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 3, 4, 4, 4, 2, 2, 2, 3, 4, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 2, 2, 2, 1, 1])
+        self.assertEqual(len(rows), 161)
+        self.assertEqual(sum(r[5] for r in rows), 51810)
+        self.assertEqual([r[4]['page_count'] for r in rows], [4, 4, 2, 2, 3, 1, 8, 8, 8, 9, 9, 9, 10, 10, 10, 6, 6, 7, 12, 12, 12, 3, 3, 3, 3, 2, 2, 3, 8, 2, 1, 2, 2, 8, 1, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 8, 2, 5, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 3, 2, 2, 2, 2, 2, 2, 3, 4, 4, 4, 2, 2, 2, 3, 4, 2, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 1, 2, 1, 1, 2, 1, 2, 2, 1, 1, 1, 1, 2, 2, 2, 1, 1, 3, 2, 2, 2, 1, 1, 1, 2, 1, 8, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2])
         for name, case, source, manifest, expected, count in rows:
             with self.subTest(case=name):
                 self.assertEqual(manifest['reference']['platform'], 'mac')

@@ -20,10 +20,22 @@ from extract_windows_emf import extract, emf_glyphs
 
 ROOT = Path(__file__).resolve().parents[2]
 INDEX = Path('tests/word-oracle/platform-coordinates.json')
+PREFERRED_GRID_BORDER_CASES = {
+    'probe-width-single-pct-2500-pct-2500',
+    'probe-width-unequal-dxa-2400-dxa-2000',
+    'probe-width-unequal-pct-2500-auto-0',
+    'probe-width-unequal-pct-2500-dxa-2000',
+}
 # Original physical font face/size and per-glyph XY are fully supported here.
 # Keep this separate from logical EMF coordinates: Windows print realization
 # can differ from screen metrics. Every case retains its own Word PDF.
 PHYSICAL_FONT_CASES = {
+    'probe-mixed-sangam-matrix-240',
+    'probe-mixed-sangam-matrix-276',
+
+    'probe-devanagari-line-box-devanagari',
+    'probe-complex-font-sweep-thonburi',
+    'probe-complex-font-metrics-thonburi',
     '2col-mac',
     'align-center-mac',
     'alignment-mac',
@@ -280,8 +292,102 @@ PHYSICAL_FONT_CASES = {
     'probe-unequal-variant-narrow-first-2-9-right',
     'table-legacy-hmerge-mac',
     'table-cell-fit-text-mac',
+    'probe-math-display-alignment-1',
+    'probe-math-display-rtl-wrap-1',
+    'probe-math-italic-advances-lowercase',
+    'probe-math-italic-advances-uppercase',
+    'probe-math-relation-wrap-after',
+    'probe-math-relation-wrap-before',
+    'probe-math-relation-wrap-repeat',
 }
+NUMBERING_LAYOUT_CASES = {
+    'numbering-alignment-matrix-mac',
+    'numbering-legal-format-matrix-mac',
+    'numbering-table-header-mac',
+    'numbering-table-nested-list-mac',
+    'numbering-table-matrix-mac',
+    'numbering-textbox-full-matrix-mac',
+}
+HEADER_TAB_CASES = {'header-tab-overflow-short-mac', 'header-tab-overflow-long-mac'}
+FIXED_WIDTH_MATRIX_CASES = {'fixed-table-width-matrix-mac'}
+LEGACY_AUTOMATIC_GRID_CASES = {'probe-table-flow-unequal-automatic-grid-start-column-1', 'probe-table-flow-unequal-automatic-grid-start-column-2'}
+LEGACY_FIXED_PERCENTAGE_COLUMN_CASES = {'probe-unequal-variant-narrow-first-2-9-fixed', 'probe-unequal-variant-three-24-fixed'}
+PREFERRED_GRID_BORDER_CASES |= LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
+LEGACY_VISIBLE_AUTOFIT_CASES = {'probe-unequal-variant-narrow-first-2-9-no-header', 'probe-unequal-variant-three-24-no-header', 'probe-unequal-continuation-border-0', 'probe-unequal-continuation-border-16', 'probe-unequal-continuation-border-4'}
+BORDERLESS_GRID_CASES = {'probe-unequal-continuation-border-0'}
+PREFERRED_GRID_BORDER_CASES |= LEGACY_VISIBLE_AUTOFIT_CASES - BORDERLESS_GRID_CASES
+PHYSICAL_FONT_CASES |= PREFERRED_GRID_BORDER_CASES | NUMBERING_LAYOUT_CASES | HEADER_TAB_CASES | FIXED_WIDTH_MATRIX_CASES | LEGACY_AUTOMATIC_GRID_CASES | LEGACY_VISIBLE_AUTOFIT_CASES | LEGACY_FIXED_PERCENTAGE_COLUMN_CASES
+MATH_FRACTION_RULE_CASES = {'probe-math-fraction-size-20',
+ 'probe-math-fraction-size-24',
+ 'probe-math-fraction-size-28',
+ 'probe-math-fraction-size-32',
+ 'probe-math-fraction-size-36',
+ 'probe-math-fraction-size-40',
+ 'probe-math-fraction-spacing-matrix',
+ 'probe-math-repeat-bar-fraction-24',
+ 'probe-math-repeat-bar-fraction-32',
+ 'probe-math-standalone-fractions-12',
+ 'probe-math-standalone-fractions-explicit-sizes'}
+BORDERLESS_MATH_CASES = {'probe-math-fraction-first-vs-prev',
+ 'probe-math-fraction-larger-neighbors',
+ 'probe-math-fraction-leading',
+ 'probe-math-fraction-neighbors',
+ 'probe-math-repeat-fraction-20',
+ 'probe-math-repeat-fraction-24',
+ 'probe-math-repeat-fraction-28',
+ 'probe-math-repeat-fraction-36',
+ 'probe-math-repeat-fraction-40'}
+INHERITED_RIGHT_MATH_CASES = {'probe-math-display-alignment-0'}
+PHYSICAL_FONT_CASES |= INHERITED_RIGHT_MATH_CASES
+PARAGRAPH_MARK_MATH_CASES = {'probe-math-paragraph-mark-size'}
+PHYSICAL_FONT_CASES |= MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES
+RTL_MERGED_PERCENTAGE_CASES = {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
+PHYSICAL_FONT_CASES |= RTL_MERGED_PERCENTAGE_CASES
 REQUIRED_CAPTURES = {
+    'probe-math-display-alignment-0': '20261114T004747969Z-36728554',
+    'probe-math-paragraph-mark-size': '20261114T004417585Z-59a68986',
+    'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1': '20261114T020625597Z-2761cea8',
+    'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2': '20261114T020627365Z-1088d320',
+    'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3': '20261114T020631298Z-7877fbf1',
+
+    'probe-math-fraction-first-vs-prev': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-larger-neighbors': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-leading': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-neighbors': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-20': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-24': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-28': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-32': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-36': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-size-40': '20261114T004417585Z-59a68986',
+    'probe-math-fraction-spacing-matrix': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-bar-fraction-24': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-bar-fraction-32': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-fraction-20': '20261114T004417585Z-59a68986',
+    'probe-math-repeat-fraction-24': '20261114T004434269Z-e27596ca',
+    'probe-math-repeat-fraction-28': '20261114T004434269Z-e27596ca',
+    'probe-math-repeat-fraction-36': '20261114T004434269Z-e27596ca',
+    'probe-math-repeat-fraction-40': '20261114T004434269Z-e27596ca',
+    'probe-math-standalone-fractions-12': '20261114T004434269Z-e27596ca',
+    'probe-math-standalone-fractions-explicit-sizes': '20261114T004434269Z-e27596ca',
+
+    'probe-unequal-variant-narrow-first-2-9-no-header': '20261114T004559814Z-c5e13cee',
+    'probe-unequal-variant-three-24-no-header': '20261114T004559814Z-c5e13cee',
+    'probe-unequal-continuation-border-0': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-continuation-border-16': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-continuation-border-4': '20261114T004519313Z-65bdf3a6',
+    'probe-unequal-variant-narrow-first-2-9-fixed': '20261114T004559814Z-c5e13cee',
+    'probe-unequal-variant-three-24-fixed': '20261114T004559814Z-c5e13cee',
+    'probe-table-flow-unequal-automatic-grid-start-column-1': '20261114T004450252Z-ac1d5d7d',
+    'probe-table-flow-unequal-automatic-grid-start-column-2': '20261114T004450252Z-ac1d5d7d',
+    'probe-mixed-sangam-matrix-240': '20261114T004434269Z-e27596ca',
+    'probe-mixed-sangam-matrix-276': '20261114T004434269Z-e27596ca',
+
+    'probe-devanagari-line-box-devanagari': '20261114T004402030Z-30b8d3b5',
+    'probe-complex-font-sweep-thonburi': '20261114T004402030Z-30b8d3b5',
+    'probe-complex-font-metrics-thonburi': '20261114T004402030Z-30b8d3b5',
     'courier-new-line-metrics': '20261114T004252975Z-a999e8fb',
     'courier-new-regular-adjacent': '20261114T004252975Z-a999e8fb',
     'probe-column-fixed-dxa-4400': '20261114T004402030Z-30b8d3b5',
@@ -538,6 +644,29 @@ REQUIRED_CAPTURES = {
     'probe-unequal-variant-narrow-first-2-9-right': '20261114T004559814Z-c5e13cee',
     'table-legacy-hmerge-mac': '20261114T020815305Z-ab0cdcfa',
     'table-cell-fit-text-mac': '20261114T004633221Z-54077165',
+    'probe-math-display-alignment-1': '20261114T004747969Z-36728554',
+    'probe-math-display-rtl-wrap-1': '20261114T004747969Z-36728554',
+    'probe-math-italic-advances-lowercase': '20261114T004417585Z-59a68986',
+    'probe-math-italic-advances-uppercase': '20261114T004417585Z-59a68986',
+    'probe-math-relation-wrap-after': '20261114T004417585Z-59a68986',
+    'probe-math-relation-wrap-before': '20261114T004417585Z-59a68986',
+    'probe-math-relation-wrap-repeat': '20261114T004417585Z-59a68986',
+
+    'probe-width-single-pct-2500-pct-2500': '20261114T004612020Z-5d981186',
+    'probe-width-unequal-dxa-2400-dxa-2000': '20261114T020653579Z-a7f517aa',
+    'probe-width-unequal-pct-2500-auto-0': '20261114T020656594Z-92d3b2ca',
+    'probe-width-unequal-pct-2500-dxa-2000': '20261114T020700519Z-4ca7ac7c',
+
+    'numbering-alignment-matrix-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-legal-format-matrix-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-textbox-full-matrix-mac': '20261114T004334255Z-b74a0cd3',
+
+    'numbering-table-header-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-table-nested-list-mac': '20261114T004334255Z-b74a0cd3',
+    'numbering-table-matrix-mac': '20261114T004334255Z-b74a0cd3',
+
+    'header-tab-overflow-short-mac': '20261114T020256534Z-0729bfd7',
+    'fixed-table-width-matrix-mac': '20261114T020447264Z-b8062685',
 }
 
 # These original inputs have distinct screen and print origins in Windows
@@ -823,12 +952,21 @@ def archive_reference(root, case, windows):
         pages = document['metafiles']
         require([p['page'] for p in pages] == list(range(1, document['pages'] + 1)),
                 'Archived Word page coverage changed')
+        glyph_resolver = None
+        if 'glyph_index_fonts' in windows:
+            from windows_emf_font_maps import original_pdf_glyph_index_resolver
+            identity = read_json(checked_file(root, windows['glyph_index_fonts']))
+            glyph_resolver = original_pdf_glyph_index_resolver(
+                bundle.read(document['pdf']), identity,
+                source_sha256=document['sha256'], capture_sha256=windows['capture_sha256'],
+                word=capture['word'])
         glyphs = []
         for page in pages:
             data = bundle.read(page['file'])
             require(hashlib.sha256(data).hexdigest() == page['sha256'],
                     'Original archived Windows Word EMF changed')
-            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt']))
+            glyphs.extend(emf_glyphs(data, page['page'], page['width_pt'], page['height_pt'],
+                                     glyph_index_resolver=glyph_resolver))
         drawing = dict(page_count=document['pages'], glyphs=glyphs)
         require(capture.get('table_glyph_projection', 'visible') in ('visible', 'unclipped'),
                 'Unknown archived drawing projection')
@@ -972,9 +1110,31 @@ def check_windows(executable, output, root=ROOT):
                 compare(pdf_origins(original_pdf, unclipped, font_metrics=True),
                         pdf_origins(painted_path, unclipped, font_metrics=True),
                         name + '/physical-font-metrics', font_metrics=True)
+        if name in PREFERRED_GRID_BORDER_CASES | BORDERLESS_GRID_CASES | MATH_FRACTION_RULE_CASES | BORDERLESS_MATH_CASES | RTL_MERGED_PERCENTAGE_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES:
+            borders = assert_original_vector_borders(
+                original_pdf, painted_path, name, expected_empty=name in BORDERLESS_GRID_CASES | BORDERLESS_MATH_CASES | PARAGRAPH_MARK_MATH_CASES | INHERITED_RIGHT_MATH_CASES)
+            proof = dict(source_sha256=actual['input_sha256'], word=capture['word'],
+                         capture_id=capture['capture_id'],
+                         original_pdf_sha256=hashlib.sha256(original_pdf.read_bytes()).hexdigest(),
+                         native_pdf_sha256=hashlib.sha256(painted_path.read_bytes()).hexdigest(),
+                         border_tolerance_pt=.375, pages=borders)
+            (target / 'versioned-vector-borders.json').write_text(
+                json.dumps(proof, indent=2) + '\n', encoding='utf8')
         print(f'{name}: {document["pages"]} pages, {len(drawing["glyphs"])} glyphs, '
               f'Windows Word {capture["word"]["product_version"]}: PASS', flush=True)
     return checked
+
+
+def assert_original_vector_borders(word_pdf, painted_pdf, label, *, expected_empty=False):
+    from compare_windows_borders import TOLERANCE_PT, compare as compare_borders
+    require(TOLERANCE_PT == .375, 'Original vector border tolerance changed')
+    results = compare_borders(word_pdf, painted_pdf)
+    require(bool(results) and all(
+        (page['word_rectangles'] == page['native_rectangles'] == 0
+         if expected_empty else page['word_rectangles'] > 0 and page['native_rectangles'] > 0)
+        and page['word_uncovered_count'] == page['native_uncovered_count'] == 0
+        for page in results), label + '/original-vector-borders: ' + repr(results))
+    return results
 
 
 def assert_independent_outputs(drawing, screen, snapshot, screen_png, snapshot_png,

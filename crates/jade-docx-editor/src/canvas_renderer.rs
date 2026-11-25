@@ -22263,8 +22263,9 @@ where
                                 picture,
                             });
                         }
-                        if paragraph_style.word_platform
-                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+                        if !paragraph_style.bidi
+                            || paragraph_style.word_platform
+                                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
                         {
                             paragraph_style.tab_origin_offset -= x - tab_base_x;
                         }
@@ -26521,6 +26522,18 @@ where
                 {
                     let mut previous: Option<(usize, usize, &str, f64)> = None;
                     for (segment_index, prepared) in prepared_segments.iter().enumerate() {
+                        if paragraph_style.word_platform
+                            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+                            && wrapped_line
+                                .tab_stops
+                                .iter()
+                                .any(|tab| tab.end_offset == prepared.segment.start)
+                        {
+                            // A resolved tab anchors the following text. Its
+                            // surrounding glyphs are not adjacent gaps to
+                            // widen when justifying the line.
+                            previous = None;
+                        }
                         let em = points_to_px(prepared.style.font_size_pt);
                         for (glyph_index, step) in prepared.glyph_steps.iter().enumerate() {
                             let text = step.text(&prepared.segment.text);
@@ -33027,7 +33040,9 @@ where
                     .as_ref()
                     .map(|level| (level.tabs.as_slice(), props.tabs.as_slice())),
             );
-        if paragraph_style.word_platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
+        if !paragraph_style.bidi
+            || paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
         {
             paragraph_style.tab_origin_offset -= x - tab_base_x;
         }
@@ -37401,7 +37416,8 @@ where
             || text_style.emboss
             || text_style.imprint
             || text_style.effects.is_some()
-            || (has_soft_hyphen
+            || ((has_soft_hyphen
+                || crate::draw_command::CommandText::text_has_zero_width_controls(segment_text))
                 && jade_docx_layout::line_metrics::word_layout_platform()
                     == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows)
             || crate::draw_command::executor::windows_pdf_text::eligible(
@@ -38429,9 +38445,7 @@ where
         alignment: Option<&str>,
         paragraph_style: &ParagraphStyle,
     ) -> f64 {
-        if paragraph_style.word_platform != jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            || paragraph_style.bidi
-        {
+        if paragraph_style.bidi {
             return anchor_x;
         }
         match alignment {
@@ -38446,11 +38460,7 @@ where
         suffix: Option<&str>,
         paragraph_style: &ParagraphStyle,
     ) -> &'a str {
-        if suffix == Some("tab")
-            && paragraph_style.word_platform
-                == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac
-            && !paragraph_style.bidi
-        {
+        if suffix == Some("tab") && !paragraph_style.bidi {
             // The reader appends a display space for an explicit tab suffix.
             // Word chooses the stop from the label's end before that space.
             return text.strip_suffix(' ').unwrap_or(text);
@@ -41217,24 +41227,34 @@ where
         if jade_docx_layout::line_metrics::word_layout_platform()
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
         {
-            // Windows Word drops before spacing after a paragraph-final
-            // manual break. pageBreakBefore and section starts retain it.
+            let page_break_before = paragraph
+                .properties
+                .as_ref()
+                .is_some_and(|properties| properties.page_break_before == Some(true));
+            // Word 2013+ omits before spacing for pageBreakBefore. Legacy
+            // compatibility modes retain it, as do section starts. Read the
+            // declared mode: the East Asian shaping fallback is mode 12
+            // even for modern, minimal documents with no compatSetting.
             if at_flow_start
                 && body_element_index != section_start
-                && paragraph
-                    .properties
-                    .as_ref()
-                    .is_none_or(|properties| properties.page_break_before != Some(true))
                 && !paragraph
                     .runs
                     .iter()
                     .any(|run| run.text.contains(PAGE_BREAK_CHAR))
-                && self.last_document.as_deref().is_some_and(|document| {
-                    jade_docx_layout::text_extract::body_follows_manual_page_break(
-                        document,
-                        body_element_index,
-                    )
-                })
+                && ((page_break_before
+                    && self
+                        .last_document
+                        .as_deref()
+                        .and_then(|document| document.compat.setting("compatibilityMode"))
+                        .and_then(|mode| mode.parse::<u32>().ok())
+                        .is_none_or(|mode| mode >= 15))
+                    || (!page_break_before
+                        && self.last_document.as_deref().is_some_and(|document| {
+                            jade_docx_layout::text_extract::body_follows_manual_page_break(
+                                document,
+                                body_element_index,
+                            )
+                        })))
             {
                 return 0.0;
             }
@@ -54371,12 +54391,17 @@ mod tests {
     #[cfg(feature = "opentype-math")]
     #[test]
     fn boxed_math_inherits_paragraph_font_size_and_word_script_scales() {
-        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="30"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:pStyle w:val="Equation"/><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="20"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
         let document = jade_docx_reader::DocumentParser::new()
             .parse_document_xml(xml)
             .unwrap();
         let blocks = document.body.unwrap().elements;
         let (mut renderer, _) = recording_renderer();
+        // Equation size comes from the paragraph style; its independently
+        // sized paragraph mark must not resize the equation or its scripts.
+        renderer.styles_part = Some(Rc::new(StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Equation"><w:rPr><w:sz w:val="30"/></w:rPr></w:style></w:styles>"#
+        ).unwrap()));
         renderer
             .register_math_font(
                 "Host Math".into(),
@@ -54518,63 +54543,86 @@ mod tests {
 
     #[test]
     fn display_math_without_special_defaults_uses_paragraph_alignment_in_body_and_boxes() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
         use jade_docx_layout::math_layout::styled::MathJustification;
-        use jade_docx_layout::math_layout::MathParagraphAlignment;
-        for (paragraph_alignment, bidi, expected) in [
-            ("left", false, MathParagraphAlignment::Left),
-            ("center", false, MathParagraphAlignment::Center),
-            ("right", false, MathParagraphAlignment::Right),
-            ("start", true, MathParagraphAlignment::Right),
-            ("end", true, MathParagraphAlignment::Left),
-        ] {
-            for explicit in [false, true] {
-                let math_jc = if explicit {
-                    r#"<m:jc m:val="center"/>"#
-                } else {
-                    ""
-                };
-                let bidi = if bidi { "<w:bidi/>" } else { "" };
-                let xml = format!(
-                    r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:jc w:val="{paragraph_alignment}"/>{bidi}</w:pPr><m:oMathPara><m:oMathParaPr>{math_jc}</m:oMathParaPr><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
-                );
-                let document = jade_docx_reader::DocumentParser::new()
-                    .parse_document_xml(&xml)
-                    .unwrap();
-                let blocks = &document.body.as_ref().unwrap().elements;
-                let BodyElement::Math(math) = &blocks[0] else {
-                    panic!("missing math")
-                };
-                let (mut renderer, _) = recording_renderer();
-                renderer.math_settings =
-                    math::settings_from(&jade_docx_reader::settings::MathProperties {
-                        display_default: Some(false),
-                        default_justification: Some("right".into()),
-                        wrap_indent: Some(1440.0),
-                        wrap_right: Some(true),
-                        ..Default::default()
-                    });
-                let settings = renderer.display_math_style().display_math_settings(math);
-                assert_eq!(settings.wrap_indent_px, 0.0);
-                assert!(!settings.wrap_right);
-                if paragraph_alignment == "center" {
-                    assert_eq!(settings.default_justification, MathJustification::Center);
+        use jade_docx_layout::math_layout::MathParagraphAlignment::{Center, Left, Right};
+        struct Restore(WordLayoutPlatform);
+        impl Drop for Restore {
+            fn drop(&mut self) {
+                set_word_layout_platform(self.0);
+            }
+        }
+        let _restore = Restore(word_layout_platform());
+        // The original32-equation display-alignment-0 probe establishes the
+        // physical left/right and inherited-right precedence in both directions.
+        // Preserve that matrix on both body and boxed equation surfaces.
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for (paragraph_alignment, bidi, expected_cases) in [
+                ("left", false, [Left, Left, Center, Right]),
+                ("center", false, [Center, Left, Center, Right]),
+                ("right", false, [Right, Right, Right, Right]),
+                ("start", false, [Left, Left, Center, Right]),
+                ("end", false, [Right, Right, Right, Right]),
+                ("left", true, [Left, Left, Center, Right]),
+                ("right", true, [Right, Right, Right, Right]),
+                ("start", true, [Left, Left, Center, Right]),
+                ("end", true, [Right, Right, Right, Right]),
+            ] {
+                for (math_alignment, expected) in
+                    [None, Some("left"), Some("center"), Some("right")]
+                        .into_iter()
+                        .zip(expected_cases)
+                {
+                    let math_jc = math_alignment
+                        .map(|value| format!(r#"<m:jc m:val="{value}"/>"#))
+                        .unwrap_or_default();
+                    let bidi_xml = if bidi { "<w:bidi/>" } else { "" };
+                    let xml = format!(
+                        r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:jc w:val="{paragraph_alignment}"/>{bidi_xml}</w:pPr><m:oMathPara><m:oMathParaPr>{math_jc}</m:oMathParaPr><m:oMath><m:r><m:t>x</m:t></m:r></m:oMath></m:oMathPara></w:p></w:body></w:document>"#
+                    );
+                    let document = jade_docx_reader::DocumentParser::new()
+                        .parse_document_xml(&xml)
+                        .unwrap();
+                    let blocks = &document.body.as_ref().unwrap().elements;
+                    let BodyElement::Math(math) = &blocks[0] else {
+                        panic!("missing math")
+                    };
+                    let (mut renderer, _) = recording_renderer();
+                    renderer.math_settings =
+                        math::settings_from(&jade_docx_reader::settings::MathProperties {
+                            display_default: Some(false),
+                            default_justification: Some("right".into()),
+                            wrap_indent: Some(1440.0),
+                            wrap_right: Some(true),
+                            ..Default::default()
+                        });
+                    let settings = renderer.display_math_style().display_math_settings(math);
+                    assert_eq!(settings.wrap_indent_px, 0.0);
+                    assert!(!settings.wrap_right);
+                    if paragraph_alignment == "center" {
+                        assert_eq!(settings.default_justification, MathJustification::Center);
+                    }
+                    let measured = renderer
+                        .measure_text_box_blocks(blocks, 10.0, 210.0, &mut NumberingCounter::new())
+                        .unwrap();
+                    assert_eq!(
+                        measured.math_plans[0].alignment, expected,
+                        "{platform:?}/{paragraph_alignment}/bidi={bidi}/{math_alignment:?}"
+                    );
+                    renderer.current_y = 100.0;
+                    let left = renderer.current_column_x();
+                    let width = renderer.current_column_width();
+                    renderer.render_math_block(math).unwrap();
+                    let lines = renderer.layout_debug_lines();
+                    let advance = lines[0].fragments[0].width;
+                    assert!(
+                        (lines[0].start_x - expected.x(left, width, advance)).abs() < 1e-5,
+                        "{platform:?}/{paragraph_alignment}/bidi={bidi}/{math_alignment:?}"
+                    );
                 }
-                let measured = renderer
-                    .measure_text_box_blocks(blocks, 10.0, 210.0, &mut NumberingCounter::new())
-                    .unwrap();
-                let expected = if explicit {
-                    MathParagraphAlignment::Center
-                } else {
-                    expected
-                };
-                assert_eq!(measured.math_plans[0].alignment, expected);
-                renderer.current_y = 100.0;
-                let left = renderer.current_column_x();
-                let width = renderer.current_column_width();
-                renderer.render_math_block(math).unwrap();
-                let lines = renderer.layout_debug_lines();
-                let advance = lines[0].fragments[0].width;
-                assert!((lines[0].start_x - expected.x(left, width, advance)).abs() < 1e-5);
             }
         }
     }
@@ -54599,7 +54647,7 @@ mod tests {
                 r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
                 Some("Child"),
                 None,
-                MathParagraphAlignment::Left,
+                MathParagraphAlignment::Right,
             ),
             (
                 r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
@@ -82626,5 +82674,75 @@ mod tests {
         // The renderer default face is Times New Roman, whose single line
         // Word sets 2355/2048 em tall (see `word_latin_font_line_height_em`).
         assert!((heights[&sized_key] - points_to_px(24.0 * 2355.0 / 2048.0)).abs() < 1e-4);
+    }
+    #[test]
+    fn windows_justification_keeps_the_resolved_tab_anchor_and_line_end() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        use jade_painter::recording::RecordingPainter;
+
+        let _restore = RestoreWordPlatform(word_layout_platform());
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let text = format!("1．\t{}", "漢字仮名交じり文".repeat(32));
+        let mut document = doc_with_paragraph_texts(&[&text]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.properties = Some(ParagraphProperties {
+            alignment: Some("both".into()),
+            indent: Some(Indent {
+                right: Some(0.13),
+                ..Default::default()
+            }),
+            tabs: vec![TabStop {
+                kind: Some("left".into()),
+                position: Some(36.0),
+                leader: None,
+            }],
+            ..Default::default()
+        });
+        paragraph.runs[0].properties = Some(RunProperties {
+            font_size: Some(12.0),
+            font_family: Some("Uninstalled Geometry Test Face".into()),
+            ..Default::default()
+        });
+        let painter = RecordingPainter::with_width_per_char(7.3);
+        let mut renderer =
+            CanvasRenderer::with_host(Box::new(NonCanvasHost { painter }), false).unwrap();
+        for pass in 0..2 {
+            renderer.render(&document, &Options::default()).unwrap();
+            let lines = renderer.layout_debug_lines();
+            assert!(lines.len() > 1, "the first line must be justified");
+            let line = &lines[0];
+            let tab = line.tab_stops.first().expect("resolved tab");
+            let (fragment, glyph) = line
+                .fragments
+                .iter()
+                .flat_map(|fragment| fragment.glyphs.iter().map(move |glyph| (fragment, glyph)))
+                .find(|(_, glyph)| glyph.start == tab.end_offset)
+                .expect("first character after the tab");
+            let first = fragment.x + glyph.x - 2.0 * line.report_x_offset;
+            assert!(
+                (first - tab.end_x).abs() < 1e-6,
+                "pass {pass}: justification moved the fixed tab: {first} != {}",
+                tab.end_x
+            );
+            let end = line
+                .fragments
+                .iter()
+                .flat_map(|fragment| {
+                    fragment.glyphs.iter().map(move |glyph| {
+                        fragment.x + glyph.x + glyph.width - 2.0 * line.report_x_offset
+                    })
+                })
+                .fold(f64::NEG_INFINITY, f64::max);
+            assert!(
+                (end - (renderer.page_width - renderer.margin_right - points_to_px(0.13))).abs()
+                    < 1e-6,
+                "pass {pass}: excluding a cross-tab gap lost line slack"
+            );
+        }
     }
 }

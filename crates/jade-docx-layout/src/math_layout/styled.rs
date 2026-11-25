@@ -403,12 +403,10 @@ impl MathLayoutOptions<'_> {
         self.settings.word_mac_rtl_paragraph && self.display
     }
 
-    fn word_mac_inherited_before_wrap(&self) -> bool {
+    fn word_inherited_before_wrap(&self) -> bool {
         self.display
             && !self.settings.use_display_defaults
             && self.settings.break_binary == BreakBinary::Before
-            && crate::line_metrics::word_layout_platform()
-                == crate::line_metrics::WordLayoutPlatform::Mac
     }
 
     pub fn inline() -> Self {
@@ -647,14 +645,12 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
         .iter()
         .find_map(paragraph_justification)
         .unwrap_or(options.settings.default_justification);
-    // Word for Mac keeps equations on the right when inheriting a
-    // right-aligned paragraph, even with an explicit left or center m:jc.
-    let inherits_mac_right = options.display
+    // Word keeps inherited right-aligned equations on the right even with
+    // an explicit left or center m:jc, on both Windows and Mac.
+    let inherits_paragraph_right = options.display
         && !options.settings.use_display_defaults
-        && options.settings.default_justification == MathJustification::Right
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac;
-    if options.word_mac_rtl() || inherits_mac_right {
+        && options.settings.default_justification == MathJustification::Right;
+    if options.word_mac_rtl() || inherits_paragraph_right {
         alignment = MathParagraphAlignment::Right;
         justify = MathJustification::Right;
     }
@@ -704,7 +700,7 @@ pub(crate) struct Builder<'c, 'a, C> {
     pub(crate) style: MathTextStyle<'a>,
     /// The size scripts are scaled from: the run size at the top level.
     pub(crate) base_size: f64,
-    /// Word Mac uses the opening run size for spacing a display fraction.
+    /// Word uses the opening run size for spacing a display fraction.
     fraction_equation_size: Option<f64>,
     word_fraction_line_metrics: bool,
     pub(crate) level: u32,
@@ -822,12 +818,29 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
 
     fn line_metrics(&self, ink: MathMetrics) -> MathMetrics {
         #[cfg(feature = "opentype-math")]
-        if let Some(font) = self
-            .context
-            .font_parameters(self.style)
-            .filter(|_| !self.word_fraction_line_metrics)
         {
-            return font.line_metrics(ink);
+            let windows_fraction = self.word_fraction_line_metrics
+                && crate::line_metrics::word_layout_platform()
+                    == crate::line_metrics::WordLayoutPlatform::Windows;
+            let mut style = self.style;
+            if windows_fraction {
+                // The MATH leading follows the explicit equation run size,
+                // just as its fraction shifts and inter-atom spacing do.
+                if let Some(glyph) = self.plan.glyphs.iter().find(|glyph| {
+                    glyph.visible
+                        && glyph.baseline == 0.0
+                        && glyph.style.family.eq_ignore_ascii_case("Cambria Math")
+                }) {
+                    style.size_px = glyph.style.size_px;
+                }
+            }
+            if let Some(font) = self
+                .context
+                .font_parameters(style)
+                .filter(|_| !self.word_fraction_line_metrics || windows_fraction)
+            {
+                return font.line_metrics(ink);
+            }
         }
         ink
     }
@@ -1082,8 +1095,9 @@ impl<'a, C: StyledMathMeasure> Builder<'_, 'a, C> {
         if let Some(candidate) = self.breaks.as_mut().and_then(|breaks| breaks.last_mut()) {
             if (candidate.class == AtomClass::Bin
                 || candidate.class == AtomClass::Rel
-                    && crate::line_metrics::word_layout_platform()
-                        == crate::line_metrics::WordLayoutPlatform::Mac)
+                    && (crate::line_metrics::word_layout_platform()
+                        == crate::line_metrics::WordLayoutPlatform::Mac
+                        || self.style.family.eq_ignore_ascii_case("Cambria Math")))
                 && !candidate.manual
                 && candidate.mark.glyphs + 1 == glyphs
             {

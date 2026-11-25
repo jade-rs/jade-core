@@ -250,6 +250,90 @@ jobs:
         run: |
           cargo build --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --example word_coordinates
           python3 scripts/word-oracle/check_mac_captured_source.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory crates/jade-docx-native-render/target/word-mac-coordinates/captured-original
+      - name: Upload original Mac fixed-percentage column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-fixed-percentage-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-narrow-first-2-9-fixed
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-fixed
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac unclipped merged-column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-unclipped-merged-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/unclipped-table-layout-originals
+            !crates/jade-docx-native-render/target/word-mac-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac visible-autofit column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-visible-autofit-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-narrow-first-2-9-no-header
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-variant-three-24-no-header
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-0
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-16
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-unequal-continuation-border-4
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac automatic-grid column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-automatic-grid-column-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-table-flow-unequal-automatic-grid-start-column-1
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/probe-table-flow-unequal-automatic-grid-start-column-2
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac table-numbering matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-table-numbering-matrix-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/numbering-table-matrix-mac
+            !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Mac fixed-table matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-fixed-table-matrix-coordinates
+          path: |
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/fixed-table-width-matrix-mac
+            !crates/jade-docx-native-render/target/word-mac-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Assert original Mac header-story coordinates and preserved Word versions
+        run: |
+          python3 -m unittest discover -s scripts/word-oracle -p test_mac_header_coordinates.py
+          python3 scripts/word-oracle/check_mac_header_coordinates.py --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory target/mac-header-originals
+      - name: Upload original Mac header-coordinate results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-header-original-coordinates
+          path: |
+            target/mac-header-originals
+            !target/mac-header-originals/**/fonts/**
+          if-no-files-found: ignore
+      - name: Assert original Mac ZWNJ table coordinates
+        run: |
+          python3 scripts/word-oracle/test_zwnj_table_coordinates.py
+          python3 scripts/word-oracle/check_zwnj_table_coordinates.py --platform mac --require-macos --native-executable target/word-mac-coordinates/debug/examples/word_coordinates --output-directory target/mac-zwnj-table-coordinates
+      - name: Upload original Mac ZWNJ table results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mac-zwnj-table-coordinates
+          path: target/mac-zwnj-table-coordinates
+          if-no-files-found: ignore
       - name: Upload coordinate differences
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -391,6 +475,127 @@ jobs:
           python -m unittest discover -s scripts/word-oracle -p test_windows_calibri_title_tracking_probes.py
           python -m unittest discover -s scripts/word-oracle -p test_windows_ms_auto_spacing_probes.py
           python scripts/word-oracle/check_platform_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe
+      - name: Upload versioned preferred-grid coordinates and original vector borders
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-preferred-grid-coordinate-results
+          path: |
+            target/platform-word-coordinates/probe-width-single-pct-2500-pct-2500
+            target/platform-word-coordinates/probe-width-unequal-dxa-2400-dxa-2000
+            target/platform-word-coordinates/probe-width-unequal-pct-2500-auto-0
+            target/platform-word-coordinates/probe-width-unequal-pct-2500-dxa-2000
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows fixed-percentage column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-fixed-percentage-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-fixed
+            target/platform-word-coordinates/probe-unequal-variant-three-24-fixed
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows RTL merged-column coordinates and rules
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-rtl-merged-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows fraction coordinates and vector rules
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-math-fraction-coordinates
+          path: |
+            target/platform-word-coordinates/probe-math-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows visible-autofit column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-visible-autofit-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-unequal-variant-narrow-first-2-9-no-header
+            target/platform-word-coordinates/probe-unequal-variant-three-24-no-header
+            target/platform-word-coordinates/probe-unequal-continuation-border-0
+            target/platform-word-coordinates/probe-unequal-continuation-border-16
+            target/platform-word-coordinates/probe-unequal-continuation-border-4
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows automatic-grid column coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-automatic-grid-column-coordinates
+          path: |
+            target/platform-word-coordinates/probe-table-flow-unequal-automatic-grid-start-column-1
+            target/platform-word-coordinates/probe-table-flow-unequal-automatic-grid-start-column-2
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload original Windows table-numbering matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-table-numbering-matrix-coordinates
+          path: |
+            target/platform-word-coordinates/numbering-table-matrix-mac
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows fixed-table matrix coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-fixed-table-matrix-coordinates
+          path: |
+            target/platform-word-coordinates/fixed-table-width-matrix-mac
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned Windows header-tab coordinates
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-header-tab-coordinates
+          path: |
+            target/platform-word-coordinates/header-tab-overflow-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Upload versioned numbering coordinate comparisons
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-numbering-coordinate-results
+          path: |
+            target/platform-word-coordinates/numbering-*
+            !target/platform-word-coordinates/**/fonts/**
+          if-no-files-found: ignore
+      - name: Assert versioned Windows control-character coordinates and absence of extra ink
+        run: |
+          python -m unittest discover -s scripts/word-oracle -p test_windows_control_coordinates.py
+          python scripts/word-oracle/check_windows_control_coordinates.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-control-coordinates
+      - name: Upload versioned Windows control-character results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-control-coordinates
+          path: target/windows-control-coordinates
+          if-no-files-found: ignore
+      - name: Assert versioned Windows ZWNJ table coordinates and clipped text
+        run: |
+          python scripts/word-oracle/test_zwnj_table_coordinates.py
+          python scripts/word-oracle/check_zwnj_table_coordinates.py --platform windows --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-zwnj-table-coordinates
+      - name: Upload versioned Windows ZWNJ table results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-zwnj-table-coordinates
+          path: target/windows-zwnj-table-coordinates
+          if-no-files-found: ignore
       - name: Reconstruct versioned Windows script metrics from original Word output
         run: |
           python -m unittest discover -s scripts/word-oracle -p test_windows_script_metrics.py

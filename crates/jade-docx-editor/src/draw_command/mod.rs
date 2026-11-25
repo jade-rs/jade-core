@@ -48,7 +48,12 @@ impl CommandText {
     }
 
     #[inline]
-    pub(crate) fn has_soft_hyphen(&self) -> bool {
+    pub(crate) fn text_has_zero_width_controls(text: &str) -> bool {
+        text.as_bytes().contains(&0xe2) && text.contains(['\u{200b}', '\u{200c}', '\u{200d}'])
+    }
+
+    #[inline]
+    fn control_flags(&self) -> u8 {
         // SAFETY: from_plan always appends one ASCII flag byte, including for
         // empty text. The private allocation is immutable; cloning and string
         // deserialization preserve that nonempty representation.
@@ -57,8 +62,17 @@ impl CommandText {
                 .encoded
                 .as_bytes()
                 .get_unchecked(self.encoded.len() - 1)
-                == 1
         }
+    }
+
+    #[inline]
+    pub(crate) fn has_soft_hyphen(&self) -> bool {
+        self.control_flags() & 1 != 0
+    }
+
+    #[inline]
+    pub(crate) fn has_zero_width_controls(&self) -> bool {
+        self.control_flags() & 2 != 0
     }
 
     pub(crate) fn from_plan(text: &str, has_soft_hyphen: bool) -> Self {
@@ -66,9 +80,11 @@ impl CommandText {
         let mut encoded = Rc::<[u8]>::new_uninit_slice(length);
         let buffer = Rc::get_mut(&mut encoded).expect("new command text must be unique");
         buffer[..text.len()].write_copy_of_slice(text.as_bytes());
-        buffer[text.len()].write(u8::from(has_soft_hyphen));
+        let flags =
+            u8::from(has_soft_hyphen) | (u8::from(Self::text_has_zero_width_controls(text)) << 1);
+        buffer[text.len()].write(flags);
         // SAFETY: every byte was initialized above, including the cached suffix.
-        // The source is valid UTF-8 and the suffix is ASCII (0 or 1), so the
+        // The source is valid UTF-8 and the two flag bits are ASCII (0..=3), so the
         // complete allocation is also valid UTF-8. Both DSTs have the same
         // byte length/alignment. into_raw transfers this single Rc ownership
         // exactly once to from_raw; no alias is created or allocation copied.
@@ -81,7 +97,7 @@ impl CommandText {
 
     #[inline]
     pub(crate) fn requires_windows_control_paint(&self) -> bool {
-        self.has_soft_hyphen()
+        self.control_flags() != 0
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
     }

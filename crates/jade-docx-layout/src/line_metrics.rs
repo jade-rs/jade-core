@@ -3933,6 +3933,11 @@ fn word_latin_font_vertical_units(
         "Devanagari Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2180.0, 874.0))
         }
+        // Original Windows Devanagari probes select Nirmala UI 1.46.
+        // Its embedded hhea and OS/2 Win metrics agree at 2210/514.
+        "Devanagari Sangam MN" if word_layout_platform() == WordLayoutPlatform::Windows => {
+            Some((2210.0, 514.0))
+        }
         "Tamil Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((1340.0, 717.0))
         }
@@ -3948,6 +3953,13 @@ fn word_latin_font_vertical_units(
         // Oriya Sangam MN has a 1747-unit em.
         "Oriya Sangam MN" if word_layout_platform() == WordLayoutPlatform::Mac => {
             Some((2009.0 * 2048.0 / 1747.0, 611.0 * 2048.0 / 1747.0))
+        }
+        // Retained Windows Word Thai probes requested in Thonburi select
+        // Leelawadee UI. Its original embedded program has identical hhea
+        // and OS/2 Win boxes: 2210/514 at 2048 units per em. Keep Mac's
+        // separately observed Angsana substitution unchanged.
+        "Thonburi" if word_layout_platform() == WordLayoutPlatform::Windows => {
+            Some((2210.0, 514.0))
         }
         "Times New Roman" => Some((1912.0, 443.0)),
         "Century" => Some((2019.0, 443.0)),
@@ -4052,6 +4064,73 @@ pub fn word_windows_note_rule_metrics_px(font_descriptor: &str) -> Option<(f64, 
     let (ascent, _) = word_font_vertical_metrics_px(font_descriptor)?;
     let scale = f64::from(size_pt) * 96.0 / 72.0 / units;
     Some((ascent - position * scale, thickness * scale))
+}
+/// Regular Latin faces whose legacy Windows control wrapping is captured.
+/// This eligibility does not select a line box; control metrics stay separate.
+pub(crate) fn word_windows_latin_control_font(font_descriptor: &str) -> bool {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return false;
+    }
+    let Some((size_pt, family)) = split_font_descriptor(font_descriptor) else {
+        return false;
+    };
+    let family = family.trim_matches(['\'', '"']).trim();
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    !bold
+        && !italic
+        && size_pt.is_finite()
+        && size_pt > 0.0
+        && [
+            "Arial",
+            "ArialMT",
+            "Verdana",
+            "Courier New",
+            "CourierNewPSMT",
+        ]
+        .iter()
+        .any(|known| family.eq_ignore_ascii_case(known))
+}
+
+/// The retained 8-page Windows Verdana/Courier source gives isolated ZWNJ
+/// a 2400/2048-em line box on the same 600dpi physical font grid.
+pub(crate) fn word_windows_zwnj_line_height_px(font_descriptor: &str) -> Option<f64> {
+    if !word_windows_latin_control_font(font_descriptor) {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim_matches(['\'', '"']).trim();
+    if !["Verdana", "Courier New", "CourierNewPSMT"]
+        .iter()
+        .any(|known| family.eq_ignore_ascii_case(known))
+    {
+        return None;
+    }
+    let device_em = (f64::from(size_pt) * 600.0 / 72.0).round();
+    (device_em > 0.0).then_some(device_em * 96.0 / 600.0 * 2400.0 / 2048.0)
+}
+
+/// Arial ZWJ-only line height measured from the versioned Windows Word control
+/// fixture. Keep its nonprinting line box independent of Mac's control metrics.
+pub(crate) fn word_windows_join_control_line_height_px(font_descriptor: &str) -> Option<f64> {
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+    let (size_pt, family) = split_font_descriptor(font_descriptor)?;
+    let family = family.trim_matches(['\'', '"']).trim();
+    let (bold, italic) = font_descriptor_style(font_descriptor);
+    if bold
+        || italic
+        || !(family.eq_ignore_ascii_case("Arial") || family.eq_ignore_ascii_case("ArialMT"))
+        || !size_pt.is_finite()
+        || size_pt <= 0.0
+    {
+        return None;
+    }
+    // The retained Word PDF realizes 10.5pt Arial as 10.56pt on its
+    // 600dpi font grid. The invisible line box uses that same physical em;
+    // using the nominal em accumulates vertical drift across soft lines.
+    let device_em = (f64::from(size_pt) * 600.0 / 72.0).round();
+    (device_em > 0.0).then_some(device_em * 96.0 / 600.0 * 1.2)
 }
 
 pub(crate) fn word_mac_join_control_line_height_px(
@@ -5092,6 +5171,73 @@ mod monospace_tests;
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_control_line_box_preserves_platform_and_regular_face_boundaries() {
+        use super::*;
+        let previous = word_layout_platform();
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        for face in ["14pt Arial", "14pt ARIAL", "14pt 'ArialMT'"] {
+            let height = word_windows_join_control_line_height_px(face).expect("regular Arial");
+            // Original Word realizes the requested 14pt em as 14.04pt.
+            assert!((height - 22.464).abs() < 1e-9);
+        }
+        // Original source16 uses 10.5pt Arial, printed at 10.56pt.
+        assert!(
+            (word_windows_join_control_line_height_px("10.5pt Arial").unwrap() - 16.896).abs()
+                < 1e-9
+        );
+        for face in [
+            "bold 14pt Arial",
+            "italic 14pt Arial",
+            "14pt Calibri",
+            "0pt Arial",
+            "0.001pt Arial",
+        ] {
+            assert!(
+                word_windows_join_control_line_height_px(face).is_none(),
+                "{face}"
+            );
+        }
+        set_word_layout_platform(WordLayoutPlatform::Mac);
+        assert!(word_windows_join_control_line_height_px("14pt Arial").is_none());
+        set_word_layout_platform(previous);
+    }
+
+    #[test]
+    fn isolated_windows_zwnj_metrics_keep_mac_and_unmeasured_faces_unchanged() {
+        use super::*;
+        let previous = word_layout_platform();
+        for platform in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows] {
+            set_word_layout_platform(platform);
+            for face in [
+                "10.5pt Verdana",
+                "18pt Verdana",
+                "14pt 'Courier New'",
+                "48pt 'Courier New'",
+            ] {
+                assert_eq!(
+                    word_windows_zwnj_line_height_px(face).is_some(),
+                    platform == WordLayoutPlatform::Windows,
+                    "{platform:?} {face}"
+                );
+            }
+            for face in [
+                "10.5pt Arial",
+                "bold 18pt Verdana",
+                "italic 14pt 'Courier New'",
+                "14pt 'Nirmala UI'",
+                "0pt Verdana",
+                "0.001pt Verdana",
+            ] {
+                assert!(
+                    word_windows_zwnj_line_height_px(face).is_none(),
+                    "{platform:?} {face}"
+                );
+            }
+        }
+        set_word_layout_platform(previous);
+    }
+
     #[test]
     fn explicit_text_box_multiple_uses_the_font_box_without_changing_windows_body_policy() {
         use super::*;

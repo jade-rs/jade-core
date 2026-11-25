@@ -251,6 +251,7 @@ struct SharedSurface {
     /// Interior mutability so faces can be registered through a clone; the
     /// renderer only ever reads them.
     fonts: RefCell<Vec<RegisteredTypeface>>,
+    outline_text_programs: RefCell<HashMap<u32, std::sync::Arc<[u8]>>>,
     images: RefCell<HashMap<String, skia_safe::Image>>,
     fill_text_calls: std::cell::Cell<u64>,
     effect_text: RefCell<Vec<pdf_text::RecordedText>>,
@@ -424,6 +425,7 @@ impl SkiaPainter {
                 stack: RefCell::new(Vec::new()),
                 path: RefCell::new(Path::new()),
                 fonts: RefCell::new(Vec::new()),
+                outline_text_programs: RefCell::new(HashMap::new()),
                 images: RefCell::new(HashMap::new()),
                 fill_text_calls: std::cell::Cell::new(0),
                 effect_text: RefCell::new(Vec::new()),
@@ -815,6 +817,90 @@ impl SkiaPainter {
         (info.glyph_id != 0).then_some(info.glyph_id as u16)
     }
 
+    // Canvas quickReject uses an outward-rounded device clip. A glyph can
+    // overlap that conservative box while its actual outline lies wholly
+    // beyond a fractional PDF cell edge. Retain that culled text too, using
+    // the existing clipped/invisible text layer, without changing any ink.
+    fn exact_ink_outside_pdf_clip(
+        &self,
+        canvas: &skia_safe::Canvas,
+        font: &Font,
+        glyphs: &[u16],
+        origin: (f32, f32),
+        bounds: &Rect,
+    ) -> bool {
+        let Some(clip) = self.shared.style.borrow().pdf_rect_clip else {
+            return false;
+        };
+        let Some([a, b, c, d, e, f]) = canvas.local_to_device_as_3x3().to_affine() else {
+            return false;
+        };
+        if ![a, b, c, d, e, f].iter().all(|v| v.is_finite()) {
+            return false;
+        }
+        let mapped = |rect: Rect| {
+            let mut left = f32::INFINITY;
+            let mut top = f32::INFINITY;
+            let mut right = f32::NEG_INFINITY;
+            let mut bottom = f32::NEG_INFINITY;
+            for (x, y) in [
+                (rect.left(), rect.top()),
+                (rect.right(), rect.top()),
+                (rect.left(), rect.bottom()),
+                (rect.right(), rect.bottom()),
+            ] {
+                let x = x + origin.0;
+                let y = y + origin.1;
+                let px = a * x + c * y + e;
+                let py = b * x + d * y + f;
+                left = left.min(px);
+                top = top.min(py);
+                right = right.max(px);
+                bottom = bottom.max(py);
+            }
+            Rect::from_ltrb(left, top, right, bottom)
+        };
+        let conservative = mapped(*bounds);
+        if conservative.left() >= clip.left()
+            && conservative.top() >= clip.top()
+            && conservative.right() <= clip.right()
+            && conservative.bottom() <= clip.bottom()
+        {
+            return false;
+        }
+        let mut widths = vec![0.0; glyphs.len()];
+        font.get_widths(glyphs, &mut widths);
+        let mut ink: Option<Rect> = None;
+        let mut advance = 0.0;
+        for (&glyph, width) in glyphs.iter().zip(widths) {
+            let Some(path) = font.get_path(glyph) else {
+                return false;
+            };
+            if !path.is_empty() {
+                let next = path.bounds().with_offset((advance, 0.0));
+                ink = Some(ink.map_or(next, |old| {
+                    Rect::from_ltrb(
+                        old.left().min(next.left()),
+                        old.top().min(next.top()),
+                        old.right().max(next.right()),
+                        old.bottom().max(next.bottom()),
+                    )
+                }));
+            }
+            advance += width;
+        }
+        let Some(ink) = ink.map(mapped) else {
+            return false;
+        };
+        [ink.left(), ink.top(), ink.right(), ink.bottom()]
+            .iter()
+            .all(|v| v.is_finite())
+            && (ink.right() <= clip.left()
+                || ink.left() >= clip.right()
+                || ink.bottom() <= clip.top()
+                || ink.top() >= clip.bottom())
+    }
+
     fn draw_glyphs(&self, text: &str, glyphs: &[u16], font: &Font, x: f32, y: f32, paint: &Paint) {
         let mut builder = skia_safe::TextBlobBuilder::new();
         if matches!(&*self.shared.surface.borrow(), PaintSurface::Raster(_)) {
@@ -885,7 +971,14 @@ impl SkiaPainter {
                     && !self.shared.style.borrow().decorative_text
                     && glyphs.len() == text.chars().count()
                     && !text.chars().all(char::is_whitespace)
-                    && canvas.quick_reject(&blob.bounds().with_offset((x, y)))
+                    && (canvas.quick_reject(&blob.bounds().with_offset((x, y)))
+                        || self.exact_ink_outside_pdf_clip(
+                            canvas,
+                            font,
+                            glyphs,
+                            (x, y),
+                            blob.bounds(),
+                        ))
                 {
                     let clip = self.shared.style.borrow().pdf_rect_clip;
                     let typeface = font.typeface();
@@ -942,6 +1035,14 @@ impl SkiaPainter {
                     .borrow_mut()
                     .push(pdf_text::RecordedText {
                         text: text.to_string(),
+                        // Native Word enables output DPI only for Windows vector export.
+                        // Preserve the actual selected face, not a requested font alias.
+                        postscript_name: self.shared.text_output_dpi.get().map(|_| {
+                            let typeface = font.typeface();
+                            typeface
+                                .post_script_name()
+                                .unwrap_or_else(|| typeface.family_name())
+                        }),
                         font_size: font.size(),
                         widths: if glyphs.len() == 1 && text.chars().count() > 1 {
                             let mut scalar_widths = vec![0.0; text.chars().count()];
@@ -1971,6 +2072,79 @@ impl Painter for SkiaPainter {
         self.shared.text_output_dpi.get()
     }
 
+    fn supports_font_glyphs(&self) -> bool {
+        matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                ..
+            }
+        )
+    }
+
+    fn try_fill_font_glyph(
+        &self,
+        text: &str,
+        program: &std::sync::Arc<[u8]>,
+        glyph: u16,
+        font_units_scale: f64,
+        origin: (f64, f64),
+    ) -> Result<bool, Self::Error> {
+        if !matches!(
+            &*self.shared.surface.borrow(),
+            PaintSurface::Recording {
+                raster_scale: None,
+                ..
+            }
+        ) || text.chars().count() != 1
+            || glyph == 0
+            || !font_units_scale.is_finite()
+            || font_units_scale <= 0.0
+            || !origin.0.is_finite()
+            || !origin.1.is_finite()
+        {
+            return Ok(false);
+        }
+        let mut font = self.font();
+        let typeface = font.typeface();
+        if font.str_to_glyphs_vec(text) != [glyph] {
+            return Ok(false);
+        }
+        let Some(data) = Self::shaping_data(&typeface) else {
+            return Ok(false);
+        };
+        let id = typeface.unique_id();
+        let mut verified = self.shared.outline_text_programs.borrow_mut();
+        let same_program = verified
+            .get(&id)
+            .is_some_and(|cached| std::sync::Arc::ptr_eq(cached, program));
+        if !same_program {
+            if data.1 != 0 || data.0.as_slice() != program.as_ref() {
+                return Ok(false);
+            }
+            if verified.len() >= 32 {
+                verified.clear();
+            }
+            verified.insert(id, std::sync::Arc::clone(program));
+        }
+        drop(verified);
+        let Some(face) = rustybuzz::Face::from_slice(program, 0) else {
+            return Ok(false);
+        };
+        font.set_size((font_units_scale * f64::from(face.units_per_em())) as f32);
+        font.set_skew_x(0.0);
+        font.set_embolden(false);
+        self.draw_glyphs(
+            text,
+            &[glyph],
+            &font,
+            origin.0 as f32,
+            origin.1 as f32,
+            &self.fill_paint(),
+        );
+        Ok(true)
+    }
+
     fn fill_text(&self, text: &str, x: f64, y: f64) -> Result<(), Self::Error> {
         self.shared
             .fill_text_calls
@@ -2489,6 +2663,49 @@ mod print_target_tests {
             .unwrap()
             .set_pdf_page_size_points(Some((6.0, 6.0)))
             .is_err());
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn prepared_font_text_requires_exact_bytes_and_preserves_capture_fallback() {
+        let program: std::sync::Arc<[u8]> = std::fs::read(
+            std::path::PathBuf::from(std::env::var_os("WINDIR").unwrap()).join("Fonts/arial.ttf"),
+        )
+        .unwrap()
+        .into();
+        let painter = SkiaPainter::new_recording(96.0, 96.0).unwrap();
+        painter.register_font_bytes("Arial", 400, &program).unwrap();
+        painter.set_font("24px 'Arial'");
+        let glyph = painter.font().str_to_glyphs_vec("A")[0];
+        let scale = 24.0
+            / f64::from(
+                rustybuzz::Face::from_slice(&program, 0)
+                    .unwrap()
+                    .units_per_em(),
+            );
+        let mut different = program.to_vec();
+        let last = different.len() - 1;
+        different[last] ^= 1;
+        let wrong: std::sync::Arc<[u8]> = different.into();
+        let direct = RoutedPainter::direct(painter.clone());
+        assert!(!direct
+            .try_fill_font_glyph("A", &wrong, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        assert!(!direct
+            .try_fill_font_glyph("B", &program, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        let sink = Rc::new(RefCell::new(Vec::new()));
+        let captured = RoutedPainter::new(painter.clone(), Some(sink.clone()));
+        assert!(!captured
+            .try_fill_font_glyph("A", &program, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        assert!(sink.borrow().is_empty());
+        assert!(direct
+            .try_fill_font_glyph("A", &program, glyph, scale, (12.0, 30.0))
+            .unwrap());
+        let bytes = SkiaPainter::encode_pdf(&[painter]).unwrap();
+        let pdf = lopdf::Document::load_mem(&bytes).unwrap();
+        assert_eq!(pdf.extract_text(&[1]).unwrap().trim(), "A");
     }
 
     #[cfg(target_os = "windows")]
