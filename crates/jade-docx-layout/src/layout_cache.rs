@@ -1013,6 +1013,14 @@ pub struct ParagraphLayoutResult {
     pub trailing_spacing_after_consumed: f64,
     /// Height of this paragraph.
     pub height: f64,
+    /// Vertical extent, relative to `start_y`, of the erasure a line of this
+    /// paragraph painted behind its overflow past the right edge, when one
+    /// did. The erasure follows the line's clip, past its ink, so a band
+    /// redraw of the paragraph must cover it.
+    pub overflow_erasure: Option<(f64, f64)>,
+    /// Whether the paragraph painted marks below its lines' measured ink: a
+    /// wave underline's crests or an under-dot emphasis mark.
+    pub ink_below_lines: bool,
 }
 
 impl ParagraphLayoutResult {
@@ -1046,6 +1054,8 @@ impl ParagraphLayoutResult {
             trailing_spacing_after: None,
             trailing_spacing_after_consumed: f64::NAN,
             height: end_y - start_y,
+            overflow_erasure: None,
+            ink_below_lines: false,
         }
     }
 

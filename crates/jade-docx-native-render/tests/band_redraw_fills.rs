@@ -56,6 +56,10 @@ fn paragraphs_on_first_page(document: &mut Doc, count: usize) -> Vec<usize> {
 enum Edit<'a> {
     Insert(&'a str),
     Delete(usize),
+    /// A paragraph break at offset 3 of paragraph 0, which moves every later
+    /// paragraph down an index; later edits address the edited paragraph's
+    /// new index.
+    SplitFirst,
     /// A whole repaint between keystrokes, as a scroll or a resize makes.
     RepaintAll,
 }
@@ -71,14 +75,19 @@ fn check_edits(name: &str, bytes: &[u8], paragraph: usize, edits: &[Edit]) -> u6
     let mut actual = open_bytes(bytes);
     let mut reference = open_bytes(bytes);
     let taken = band_taken(&actual);
+    let mut paragraph = paragraph;
     for (step, edit) in edits.iter().enumerate() {
         for (document, bound) in [(&mut actual, 1), (&mut reference, usize::MAX)] {
             match *edit {
                 Edit::Insert(text) => document.insert_text(paragraph, 0, text, bound),
                 Edit::Delete(count) => document.delete_text(paragraph, 0, false, count, bound),
+                Edit::SplitFirst => document.insert_paragraph_break(0, 3),
                 Edit::RepaintAll => document.repaint_all(),
             }
             .expect("edit");
+        }
+        if matches!(edit, Edit::SplitFirst) {
+            paragraph += 1;
         }
         reference.repaint_all().expect("full repaint");
         assert_eq!(
@@ -132,10 +141,13 @@ fn with_document(bytes: &[u8], edit: impl Fn(&str) -> String) -> Vec<u8> {
     out
 }
 
-/// A Letter package around `body`.
-fn package(body: &str) -> Vec<u8> {
+/// A Letter package around `body`, with `styles` in its style part.
+fn package(body: &str, styles: &str) -> Vec<u8> {
     let document = format!(
         r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}"><w:body>{body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
+    );
+    let styles = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="{W}">{styles}</w:styles>"#
     );
     let mut bytes = Vec::new();
     {
@@ -144,8 +156,13 @@ fn package(body: &str) -> Vec<u8> {
         for (name, content) in [
             (
                 "[Content_Types].xml",
-                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#.to_string(),
+                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>"#.to_string(),
             ),
+            (
+                "word/_rels/document.xml.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>"#.to_string(),
+            ),
+            ("word/styles.xml", styles),
             (
                 "_rels/.rels",
                 r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.to_string(),
@@ -194,7 +211,56 @@ fn typing_in_a_bordered_heading_matches_a_full_repaint() {
             r#"<w:p>{border}<w:r><w:t xml:space="preserve">{index} Heading or body text with descenders, gypsy</w:t></w:r></w:p>"#
         ));
     }
-    check_typing("bordered headings", &package(&body), 6);
+    check_typing("bordered headings", &package(&body, ""), 6);
+}
+
+/// Eight paragraphs, each given `ppr` and `rpr` when `on(index)`.
+fn paragraphs(ppr: &str, rpr: &str, on: impl Fn(usize) -> bool) -> String {
+    (0..8)
+        .map(|index| {
+            let (ppr, rpr) = if on(index) { (ppr, rpr) } else { ("", "") };
+            format!(
+                r#"<w:p><w:pPr>{ppr}</w:pPr><w:r><w:rPr>{rpr}</w:rPr><w:t xml:space="preserve">{index} Body text with descenders, gypsy quay</w:t></w:r></w:p>"#
+            )
+        })
+        .collect()
+}
+
+/// A wave underline's crests and an under-dot emphasis mark fall below the
+/// descent the line ink guard measures, whether set directly or by a style.
+#[test]
+fn typing_over_marks_below_the_line_matches_a_full_repaint() {
+    let styles = r#"<w:style w:type="character" w:styleId="Wave"><w:name w:val="Wave"/><w:rPr><w:u w:val="wave"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Dots"><w:name w:val="Dots"/><w:rPr><w:em w:val="underDot"/></w:rPr></w:style>"#;
+    for (name, ppr, rpr) in [
+        ("wave", "", r#"<w:u w:val="wave"/>"#),
+        ("wave style", "", r#"<w:rStyle w:val="Wave"/>"#),
+        ("under-dot style", r#"<w:pStyle w:val="Dots"/>"#, ""),
+    ] {
+        for odd in [false, true] {
+            let body = paragraphs(ppr, rpr, |index| !odd || index % 2 == 1);
+            check_typing(name, &package(&body, styles), 6);
+        }
+    }
+}
+
+/// `w:between` draws a rule under every paragraph of a border box but the
+/// last; side borders run beside every line of the box.
+#[test]
+fn typing_in_and_beside_border_boxes_matches_a_full_repaint() {
+    let edge =
+        |side: &str| format!(r#"<w:{side} w:val="single" w:sz="8" w:space="4" w:color="FF0000"/>"#);
+    let between = format!("<w:pBdr>{}</w:pBdr>", edge("between"));
+    let sides = format!("<w:pBdr>{}{}</w:pBdr>", edge("left"), edge("right"));
+    check_typing(
+        "between",
+        &package(&paragraphs(&between, "", |_| true), ""),
+        6,
+    );
+    check_typing(
+        "boxes either side",
+        &package(&paragraphs(&sides, "", |index| index % 2 == 0), ""),
+        6,
+    );
 }
 
 /// Sixty characters make the last line on the page overflow its right edge.
@@ -210,6 +276,25 @@ fn an_overflowing_line_on_the_band_matches_a_full_repaint() {
         &fixture(name),
         28,
         &[Edit::Insert(&long), Edit::Delete(60), Edit::Insert("a")],
+    );
+}
+
+/// The overflow is recorded with the paragraph's layout, so it follows the
+/// paragraph to its new index when a break above it shifts the indexes.
+#[test]
+fn an_overflow_moved_down_an_index_matches_a_full_repaint() {
+    let long = "wrap ".repeat(12);
+    let name = "word-mac-probe-ruby-wide-grid";
+    check_edits(
+        name,
+        &fixture(name),
+        27,
+        &[
+            Edit::Insert(&long),
+            Edit::SplitFirst,
+            Edit::Delete(60),
+            Edit::Insert("a"),
+        ],
     );
 }
 
