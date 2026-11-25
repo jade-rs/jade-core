@@ -500,3 +500,198 @@ fn endnote_position_change_then_seek_matches_a_from_start_render() {
     }
     assert!(failures.is_empty(), "{failures:#?}");
 }
+
+/// Lays `before` out, switches to `after` with the bounded repaint a host
+/// settings dialog runs (`prepare_hf_edit_rerender`: a full repaint of the
+/// window at page 2, no layout invalidation), then follows with a scroll,
+/// a page bitmap or a layout extension to the page holding element 220.
+/// That page must paint like a render of `after` from the document start.
+fn bounded_setting_case(before: &Document, after: &Document, follow: usize) -> Option<String> {
+    let options = roptions();
+    let (mut renderer, pages) = rrenderer();
+    renderer
+        .render_with_numbering(before, &options, None, None, None, None)
+        .unwrap();
+    renderer.clear_dirty_regions();
+    let deepest = renderer
+        .page_start_seek_cache_by_page
+        .borrow()
+        .values()
+        .max_by_key(|snapshot| snapshot.page_number)
+        .cloned()
+        .expect("a seek snapshot past the window");
+    let near = 2;
+    renderer.set_visible_page_range(Some(near..=near));
+    renderer.set_layout_page_limit(Some(near + 1));
+    renderer.mark_full_repaint();
+    renderer
+        .render_with_numbering(after, &options, None, None, None, None)
+        .unwrap();
+    renderer.clear_dirty_regions();
+    // Snapshots laid out under the old setting must not seed a seek.
+    let mut problems = Vec::new();
+    if renderer.seek_snapshot_notes_are_current(&deepest, &options) {
+        problems.push(format!(
+            "follow {follow}: the page {} snapshot from before the change is still accepted",
+            deepest.page_number
+        ));
+    }
+    if let Some(stale) = renderer
+        .page_start_seek_cache_by_page
+        .borrow()
+        .values()
+        .find(|snapshot| snapshot.page_number > near + 1)
+    {
+        problems.push(format!(
+            "follow {follow}: a page {} snapshot past the repainted window survived",
+            stale.page_number
+        ));
+    }
+    let (mut whole, _) = rrenderer();
+    whole
+        .render_with_numbering(after, &options, None, None, None, None)
+        .unwrap();
+    let deep = whole
+        .cached_paragraph_start_page(rsurface(after, 220))
+        .unwrap();
+    renderer.set_visible_page_range(Some(deep..=deep));
+    renderer.skip_change_detection_once();
+    match follow {
+        0 => {
+            renderer.set_layout_page_limit(Some(deep + 1));
+            renderer.prefer_visible_window_seek_once();
+        }
+        1 => {
+            renderer.set_layout_page_limit(Some(deep + 1));
+            renderer.try_prepare_rerender_for_page(deep - 1);
+        }
+        _ => {
+            let previous = renderer.layout_page_limit();
+            renderer.set_layout_page_limit(Some(deep + 1));
+            renderer.prepare_layout_extension_seek(previous, deep + 1, &options);
+            renderer
+                .render_layout_with_numbering_rc(
+                    Rc::new(after.clone()),
+                    &options,
+                    None,
+                    None,
+                    None,
+                    None,
+                )
+                .unwrap();
+            renderer.skip_change_detection_once();
+            renderer.prefer_visible_window_seek_once();
+        }
+    }
+    renderer
+        .render_with_numbering(after, &options, None, None, None, None)
+        .unwrap();
+    let (mut fresh, fresh_pages) = rrenderer();
+    fresh.set_visible_page_range(Some(deep..=deep));
+    fresh.set_layout_page_limit(Some(deep + 1));
+    fresh
+        .render_with_numbering(after, &options, None, None, None, None)
+        .unwrap();
+    let (ours, full) = (
+        final_paint(&pages[deep - 1]),
+        final_paint(&fresh_pages[deep - 1]),
+    );
+    if ours != full {
+        problems.push(format!(
+            "follow {follow}: page {deep}: {}",
+            describe_diff(&ours, &full)
+        ));
+    }
+    (!problems.is_empty()).then(|| problems.join(" | "))
+}
+
+/// Short footnotes on the first pages and one long enough to continue onto
+/// the next page. The bounded repaint lays all of them out again, so the
+/// note maps reach every later snapshot.
+fn early_footnotes() -> Document {
+    rdoc(
+        &[
+            (2, "1", 300),
+            (5, "2", 4),
+            (9, "3", 4),
+            (14, "4", 4),
+            (20, "5", 4),
+            (25, "6", 4),
+        ],
+        Some(150),
+        None,
+    )
+}
+
+fn with_word_platform<T>(
+    platform: jade_docx_layout::line_metrics::WordLayoutPlatform,
+    body: impl FnOnce() -> T,
+) -> T {
+    use jade_docx_layout::line_metrics::{set_word_layout_platform, word_layout_platform};
+    struct Restore(jade_docx_layout::line_metrics::WordLayoutPlatform);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            set_word_layout_platform(self.0);
+        }
+    }
+    let _restore = Restore(word_layout_platform());
+    set_word_layout_platform(platform);
+    body()
+}
+
+/// `w:footnotePr/w:pos`: Word for Mac sizes the separator differently for
+/// notes beneath the text, so every page with notes reflows.
+#[test]
+fn footnote_position_change_then_seek_matches_a_from_start_render() {
+    with_word_platform(
+        jade_docx_layout::line_metrics::WordLayoutPlatform::Mac,
+        || {
+            let bottom = early_footnotes();
+            let mut beneath = bottom.clone();
+            for section in &mut beneath.sections {
+                section.properties.as_mut().unwrap().footnote_beneath_text = Some(true);
+            }
+            let failures: Vec<_> = [(&bottom, &beneath), (&beneath, &bottom)]
+                .into_iter()
+                .flat_map(|(before, after)| {
+                    (0..3).filter_map(move |follow| bounded_setting_case(before, after, follow))
+                })
+                .collect();
+            assert!(failures.is_empty(), "{failures:#?}");
+        },
+    );
+}
+
+/// The footnote separator story sets the height of every note area
+/// (Word for Windows lays an authored separator out).
+#[test]
+fn footnote_separator_change_then_seek_matches_a_from_start_render() {
+    with_word_platform(
+        jade_docx_layout::line_metrics::WordLayoutPlatform::Windows,
+        || {
+            let separator = |lines: usize| Note {
+                id: "-1".into(),
+                note_type: Some("separator".into()),
+                body: (0..lines)
+                    .map(|line| {
+                        BodyElement::from_paragraph(note_test_paragraph(
+                            &format!("separator line {line}"),
+                            None,
+                        ))
+                    })
+                    .collect(),
+            };
+            let mut short = early_footnotes();
+            short.footnotes.insert("-1".into(), separator(1));
+            let mut tall = short.clone();
+            tall.footnotes.insert("-1".into(), separator(12));
+            let failures: Vec<_> = [(&short, &tall), (&tall, &short)]
+                .into_iter()
+                .flat_map(|(before, after)| {
+                    (0..3).filter_map(move |follow| bounded_setting_case(before, after, follow))
+                })
+                .collect();
+            assert!(failures.is_empty(), "{failures:#?}");
+        },
+    );
+}
