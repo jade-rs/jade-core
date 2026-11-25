@@ -139,7 +139,7 @@ fn break_lines<'a, C: StyledMathMeasure>(
     };
     let max_width = b.options.max_width.filter(|w| *w > 0.0);
     let settings = b.options.settings;
-    let inherited_wrap = b.options.word_mac_inherited_before_wrap();
+    let inherited_wrap = b.options.word_inherited_before_wrap();
     let ignore_manual = inherited_wrap && max_width.is_none_or(|width| metrics.width <= width);
     // One candidate per glyph; a manual break wins.
     let mut candidates: Vec<BreakCandidate> = Vec::new();
@@ -165,7 +165,7 @@ fn break_lines<'a, C: StyledMathMeasure>(
         }
     }
     let word_mac_rtl = b.options.word_mac_rtl();
-    let inherited_wrap = b.options.word_mac_inherited_before_wrap();
+    let inherited_wrap = b.options.word_inherited_before_wrap();
     let word_windows_cambria = b.style.family.eq_ignore_ascii_case("Cambria Math")
         && crate::line_metrics::word_layout_platform()
             == crate::line_metrics::WordLayoutPlatform::Windows;
@@ -616,7 +616,12 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
                 && crate::line_metrics::word_layout_platform()
                     == crate::line_metrics::WordLayoutPlatform::Windows;
             let min_gap = interval_size
-                * if word_mac_cambria || windows_cambria {
+                * if windows_cambria && !b.options.settings.use_display_defaults {
+                    // The original Cambria Math hhea table gives ascent1595,
+                    // descent455 and lineGap353 at2048 UPM. Keep the full
+                    // baseline pitch; rounding each interval accumulates drift.
+                    (1595.0 + 455.0 + 353.0) / 2048.0
+                } else if word_mac_cambria || windows_cambria {
                     1.175
                 } else {
                     1.2
@@ -633,7 +638,7 @@ pub(crate) fn stack<'a, C: StyledMathMeasure>(
         };
         let x = match justification {
             MathJustification::Right
-                if b.options.word_mac_rtl() || b.options.word_mac_inherited_before_wrap() =>
+                if b.options.word_mac_rtl() || b.options.word_inherited_before_wrap() =>
             {
                 width - line.metrics.width
             }

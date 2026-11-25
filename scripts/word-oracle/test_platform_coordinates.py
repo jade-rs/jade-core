@@ -12,6 +12,66 @@ import check_platform_coordinates as check
 
 
 class PlatformCoordinates(unittest.TestCase):
+    def test_inherited_right_original_retains_complete_authoring_matrix_and_word_build(self):
+        name = 'probe-math-display-alignment-0'
+        self.assertEqual(check.INHERITED_RIGHT_MATH_CASES, {name})
+        self.assertLessEqual(check.INHERITED_RIGHT_MATH_CASES, check.PHYSICAL_FONT_CASES)
+        row, = [r for r in check.verify() if r[0] == name]
+        _, source, archive, document, drawing, font_source = row
+        self.assertEqual(font_source, 'original-word-pdf')
+        with ZipFile(archive) as bundle:
+            capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+        self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+        self.assertEqual(capture['word']['executable_sha256'],
+            '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        self.assertEqual(capture['capture_id'], check.REQUIRED_CAPTURES[name])
+        import xml.etree.ElementTree as ET
+        from itertools import product
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+              'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+        with ZipFile(source) as bundle:
+            xml = ET.fromstring(bundle.read('word/document.xml'))
+            settings = ET.fromstring(bundle.read('word/settings.xml'))
+        self.assertEqual(settings.find('.//m:dispDef', ns).get('{'+ns['m']+'}val'), '0')
+        cases = []
+        for paragraph in xml.findall('.//w:p', ns):
+            math = paragraph.find('m:oMathPara', ns)
+            if math is None:
+                continue
+            bidi = paragraph.find('w:pPr/w:bidi', ns).get('{'+ns['w']+'}val')
+            alignment = paragraph.find('w:pPr/w:jc', ns).get('{'+ns['w']+'}val')
+            explicit = math.find('m:oMathParaPr/m:jc', ns)
+            cases.append((bidi, alignment, None if explicit is None else
+                          explicit.get('{'+ns['m']+'}val')))
+        self.assertEqual(len(cases), 32)
+        self.assertEqual(set(cases), set(product(('0', '1'),
+            ('left', 'right', 'start', 'end'), (None, 'left', 'center', 'right'))))
+
+    def test_paragraph_mark_math_preserves_original_word_version_and_font_gate(self):
+        name = 'probe-math-paragraph-mark-size'
+        self.assertEqual(check.PARAGRAPH_MARK_MATH_CASES, {name})
+        self.assertLessEqual(check.PARAGRAPH_MARK_MATH_CASES, check.PHYSICAL_FONT_CASES)
+        row, = [r for r in check.verify() if r[0] == name]
+        _, source, archive, document, drawing, font_source = row
+        self.assertEqual(font_source, 'original-word-pdf')
+        self.assertEqual(check.REQUIRED_CAPTURES[name], '20261114T004417585Z-59a68986')
+        with ZipFile(archive) as bundle:
+            capture = json.loads(bundle.read('capture.json').decode('utf-8-sig'))
+        self.assertEqual(capture['word']['product_version'], '16.0.19127.20936')
+        self.assertEqual(capture['word']['executable_sha256'],
+            '7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312')
+        import xml.etree.ElementTree as ET
+        with ZipFile(source) as bundle:
+            xml = ET.fromstring(bundle.read('word/document.xml'))
+        ns = {'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+              'm': 'http://schemas.openxmlformats.org/officeDocument/2006/math'}
+        paragraphs = [p for p in xml.findall('.//w:p', ns)
+                      if p.find('m:oMathPara', ns) is not None]
+        marks = [p.find('w:pPr/w:rPr/w:sz', ns) for p in paragraphs]
+        self.assertEqual([None if m is None else m.get('{'+ns['w']+'}val')
+                          for m in marks], [None, None, '20', '20', '32', '32'])
+        self.assertFalse(xml.findall('.//m:f', ns))
+
     def test_rtl_merged_originals_require_each_word_build_fonts_and_vector_rules(self):
         self.assertEqual(len(check.RTL_MERGED_PERCENTAGE_CASES), 3)
         self.assertLessEqual(check.RTL_MERGED_PERCENTAGE_CASES, check.PHYSICAL_FONT_CASES)
@@ -257,6 +317,8 @@ class PlatformCoordinates(unittest.TestCase):
         required |= {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
          'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
          'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'}
+        required |= {'probe-math-paragraph-mark-size'}
+        required |= {'probe-math-display-alignment-0'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -826,7 +888,7 @@ class PlatformCoordinates(unittest.TestCase):
  'probe-math-standalone-fractions-12',
  'probe-math-standalone-fractions-explicit-sizes'} | {'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-1',
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
- 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'})
+ 'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word

@@ -31,8 +31,8 @@ class CapturedMacOriginalTests(unittest.TestCase):
 
     def test_math_original_coverage_and_motion_rejection(self):
         rows = check.shared_originals(references=check.MATH_LAYOUT_ORIGINALS)
-        self.assertEqual(len(rows), 24)
-        self.assertEqual(sum(r[5] for r in rows), 7755)
+        self.assertEqual(len(rows), 25)
+        self.assertEqual(sum(r[5] for r in rows), 7939)
         for name, case, source, manifest, expected, count in rows:
             actual = dict(copy.deepcopy(expected), input_sha256=case['source']['sha256'])
             actual['glyphs'][0][2] += .376
