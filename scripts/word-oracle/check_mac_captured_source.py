@@ -636,6 +636,27 @@ SHARED_ORIGINALS.update({'table-oversized-row-after-spacing-continuation-fit': (
                                                       2,
                                                       1291)})
 
+SHARED_ORIGINALS.update({'nested-after-spacing-double-nested': ('cd2c66f1674e00e177c62cb5f2841c6d66a706c5fb32c06e822d1b753ff1502b',
+                                        '4c83394e4fd05f1e32b47106ef47d4d307c34cd9dfdcafb390f8b8e16a6a12b4',
+                                        'b34a0ef25b6d9246b1285abd99c68bdcd7bfa7f792ff1929f2511c2b9e867183',
+                                        2,
+                                        1291),
+ 'nested-after-spacing-oversized-49-0': ('9611461eea4a4d0fddcf28c1747ff2e97af4857f55de13fbcbcfccdbf9dbf4c1',
+                                         'fe650bfd287b8c0d03e7669c553b7e103e7006073c792935753b3189f7f29fcb',
+                                         'b34a0ef25b6d9246b1285abd99c68bdcd7bfa7f792ff1929f2511c2b9e867183',
+                                         2,
+                                         1291),
+ 'nested-after-spacing-oversized-50-1': ('63accf1227385f2421aa2fe700d077348dcdaaf74d512e5655e0ec8ae53bcfa3',
+                                         '9399db7c230a2e1b46acb25de1ff236e39998853394172b3b8e6765a8dcb1529',
+                                         '36d6218b4dd180ad717d0dbd8334095c6c66e5e75b86a7af7145fd8e360dfcd5',
+                                         3,
+                                         1338),
+ 'nested-after-spacing-short-10pt': ('73f7e28a27c4db6f4174edbdc20482717d5aad5c38073b0e0d9ecc1354738fd9',
+                                     '8f77c823caaeb6cc197e8fb6d4448e9250a97d6609346cb16a85751ae054930e',
+                                     '56870c2d30e3c8d248d5beec4f981616e154842b4cfed2bfbc3507baa0c7c807',
+                                     2,
+                                     59)})
+
 MATH_LAYOUT_ORIGINALS = {'probe-math-display-alignment-1': ('bc9962ebc9e6cf31110e0fcb818f3fe360459aa1c7f55c995f054cc23e697643',
                                     '5939a0071a6003f3a93605300809cb7a6966dcbd82efa0b7a461d4d44fc1f92d',
                                     '1b6331ba2466c1721cafb8ea5f386b9993de89bd4585d863ae3e10c4e1264a01',
@@ -875,9 +896,9 @@ def check_shared_originals(executable, output, root=ROOT):
                             font_program_provider_archive=provider['archive'],
                             glyphs=glyphs, page_count=expected['page_count'],
                             native_table_glyph_projection=actual['table_glyph_projection']))
-    require(len(results) == 164 and sum(r['glyphs'] for r in results) == 55751,
+    require(len(results) == 168 and sum(r['glyphs'] for r in results) == 59730,
             'Shared Mac original coverage changed')
-    print('164 shared Mac originals55751: layout and painted-PDF PASS', flush=True)
+    print('168 shared Mac originals59730: layout and painted-PDF PASS', flush=True)
     return results
 
 
@@ -1071,7 +1092,7 @@ def check_native(executable, output, root=ROOT, *, require_macos=False):
                   actual_native_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),results=results,
                   shared_originals=shared_results, math_layout_originals=math_results,
                   thai_layout_originals=thai_results, unclipped_table_layout_originals=unclipped_results,
-                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 164 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
+                  scope='Actual distinct original and normalized Mac renders, each against1070 unchanged original Word glyphs plus real painted PDF on both clipping paths. The 168 shared originals retain all layout and painted-PDF gates. Two Thai originals additionally assert345 unchanged Mac glyph origins. Three further table originals assert1554 genuine unclipped logical origins without claiming a painted-PDF original. 25 math originals additionally assert7939 genuine Mac UI origins; their existing outline-only PDF text output is unchanged. Font programs from retained Windows Word PDF; original Mac PDF bytes not retained, original raw coordinates/digest preserved. No Word launch, fabricated expected positions, or snapshot update.')
     (output/'result.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')
     print('Captured Mac original1070 and normalized control1070: layout/painted-PDF/PNG PASS',flush=True)
     return result

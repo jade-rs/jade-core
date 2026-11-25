@@ -257,6 +257,7 @@ jobs:
           name: mac-oversized-manual-break-row-coordinates
           path: |
             crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/table-oversized-row-after-spacing-*
+            crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/nested-after-spacing-*
             !crates/jade-docx-native-render/target/word-mac-coordinates/captured-original/shared-originals/**/fonts/**
           if-no-files-found: ignore
       - name: Upload original Mac fixed-percentage column coordinates
@@ -522,6 +523,8 @@ jobs:
           name: windows-oversized-manual-break-row-coordinates
           path: |
             target/platform-word-coordinates/table-oversized-row-after-spacing-*
+            target/platform-word-coordinates/nested-after-spacing-*
+            target/platform-word-coordinates/table-row-without-headings-mac
             !target/platform-word-coordinates/**/fonts/**
           if-no-files-found: ignore
       - name: Upload versioned Windows fraction coordinates and vector rules

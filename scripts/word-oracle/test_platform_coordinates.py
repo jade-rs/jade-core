@@ -322,6 +322,11 @@ class PlatformCoordinates(unittest.TestCase):
         required |= {'table-oversized-row-after-spacing-continuation-fit',
          'table-oversized-row-after-spacing-continuation-overflow',
          'table-oversized-row-after-spacing-fresh-overflow'}
+        required |= {'nested-after-spacing-double-nested',
+         'nested-after-spacing-oversized-49-0',
+         'nested-after-spacing-oversized-50-1',
+         'nested-after-spacing-short-10pt',
+         'table-row-without-headings-mac'}
         self.assertEqual(required, check.PHYSICAL_FONT_CASES)
         self.assertEqual(check.PHYSICAL_FONT_CASES, {row[0] for row in check.verify()})
 
@@ -893,7 +898,11 @@ class PlatformCoordinates(unittest.TestCase):
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-2',
  'probe-table-flow-unequal-continuous-vertical-merge-three-columns-rtl-section-start-column-3'} | {'probe-math-paragraph-mark-size'} | {'probe-math-display-alignment-0'} | {'table-oversized-row-after-spacing-continuation-fit',
  'table-oversized-row-after-spacing-continuation-overflow',
- 'table-oversized-row-after-spacing-fresh-overflow'})
+ 'table-oversized-row-after-spacing-fresh-overflow'} | {'nested-after-spacing-double-nested',
+ 'nested-after-spacing-oversized-49-0',
+ 'nested-after-spacing-oversized-50-1',
+ 'nested-after-spacing-short-10pt',
+ 'table-row-without-headings-mac'})
 
     def test_original_word_platform_differences_are_not_regressions(self):
         # This identical DOCX has different origins in the two actual Word

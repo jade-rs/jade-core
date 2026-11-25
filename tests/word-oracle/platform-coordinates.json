@@ -7977,6 +7977,131 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "nested-after-spacing-double-nested",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-double-nested/source.docx",
+        "sha256": "cd2c66f1674e00e177c62cb5f2841c6d66a706c5fb32c06e822d1b753ff1502b"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-double-nested/manifest.json",
+        "sha256": "4c83394e4fd05f1e32b47106ef47d4d307c34cd9dfdcafb390f8b8e16a6a12b4"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004322231Z-e7a4d03f",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004322231Z-e7a4d03f.zip",
+            "sha256": "6db9fe587c96ffd300c52d301b17e32969897e9a6aae47bd39fefbc27e2ed02c"
+          },
+          "capture_sha256": "ab0f43673e464f82218c30daca03d10157b430a0e02c5eafd47b16f16c4fa582",
+          "fixture": "ww14-nested-after-spacing-double-nested-cd2c66f1",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "nested-after-spacing-oversized-49-0",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-oversized-49-0/source.docx",
+        "sha256": "9611461eea4a4d0fddcf28c1747ff2e97af4857f55de13fbcbcfccdbf9dbf4c1"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-oversized-49-0/manifest.json",
+        "sha256": "fe650bfd287b8c0d03e7669c553b7e103e7006073c792935753b3189f7f29fcb"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004322231Z-e7a4d03f",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004322231Z-e7a4d03f.zip",
+            "sha256": "6db9fe587c96ffd300c52d301b17e32969897e9a6aae47bd39fefbc27e2ed02c"
+          },
+          "capture_sha256": "ab0f43673e464f82218c30daca03d10157b430a0e02c5eafd47b16f16c4fa582",
+          "fixture": "ww14-nested-after-spacing-oversized-49-0-9611461e",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "nested-after-spacing-oversized-50-1",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-oversized-50-1/source.docx",
+        "sha256": "63accf1227385f2421aa2fe700d077348dcdaaf74d512e5655e0ec8ae53bcfa3"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-oversized-50-1/manifest.json",
+        "sha256": "9399db7c230a2e1b46acb25de1ff236e39998853394172b3b8e6765a8dcb1529"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004322231Z-e7a4d03f",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004322231Z-e7a4d03f.zip",
+            "sha256": "6db9fe587c96ffd300c52d301b17e32969897e9a6aae47bd39fefbc27e2ed02c"
+          },
+          "capture_sha256": "ab0f43673e464f82218c30daca03d10157b430a0e02c5eafd47b16f16c4fa582",
+          "fixture": "ww14-nested-after-spacing-oversized-50-1-63accf12",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "nested-after-spacing-short-10pt",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-short-10pt/source.docx",
+        "sha256": "73f7e28a27c4db6f4174edbdc20482717d5aad5c38073b0e0d9ecc1354738fd9"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/nested-after-spacing-short-10pt/manifest.json",
+        "sha256": "8f77c823caaeb6cc197e8fb6d4448e9250a97d6609346cb16a85751ae054930e"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004334255Z-b74a0cd3",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004334255Z-b74a0cd3.zip",
+            "sha256": "4cb3ab74a1b569ea256083826986d7c0c2c0ead7163b7c1cc5f99dacf254c4ce"
+          },
+          "capture_sha256": "20b41f69b31e3aafcb1b3751c26819a7419cf95cebd0d30ec474830b996a7b65",
+          "fixture": "ww14-nested-after-spacing-short-10pt-73f7e28a",
+          "font_source": "original-word-pdf"
+        }
+      ]
+    },
+    {
+      "mac_case": "table-row-without-headings-mac",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-row-without-headings-mac/source.docx",
+        "sha256": "fb9d80ff410d5b75dcf5818ac47225da94b088373b983065e840dcc813a8d94e"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/table-row-without-headings-mac/manifest.json",
+        "sha256": "23a00031879515c5f5e9f65f9e84ceebdd6cbe7b9123a8877e186dc4bf7ab6e4"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004647940Z-877c5941",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004647940Z-877c5941.zip",
+            "sha256": "e35196f6410d8476a08c9416e54ca5607d7ee0ebb55e173f97d58681d3024f61"
+          },
+          "capture_sha256": "a72f90369270772b355b1e4a2437ce736ad7c405199ff3ec128c4d1fe4b8e222",
+          "fixture": "ww14-table-row-without-headings-mac-fb9d80ff",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
