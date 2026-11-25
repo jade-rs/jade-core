@@ -302,6 +302,12 @@ pub trait WordToc: WordSession {
             // page displays at the last layout, as Word writes it. A
             // session without that layout keeps the generated "1"
             // placeholders, which the renderer resolves on screen.
+            //
+            // Known limit: the session cannot lay the rebuilt document out
+            // again inside this edit, so these are the pages from before
+            // the rebuild. When the table's new length moves headings to
+            // other pages, the numbers are stale until the next update of
+            // page numbers (Word lays out again first).
             let labels = self.paragraph_page_labels();
             let before = self.word_document().tables_of_contents()[index].clone();
             return edit_document(

@@ -566,3 +566,77 @@ fn rebuilding_a_toc_without_labels_keeps_its_placeholders() {
         .expect("an entry for the heading");
     assert!(entry.ends_with("\t1"), "{paragraphs:?}");
 }
+
+/// Section A, then a continuous section B in lower-roman numerals from 7
+/// that starts on page 2 (shared with A). A TOC entry and a PAGEREF point
+/// at B's first paragraph, which holds a PAGE field. After a full layout,
+/// a pixel-only rerender of page 1 stops its walk on page 2 while still in
+/// A.
+fn session_after_rerender() -> LaidOutSession {
+    let filler: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
+        .collect();
+    let tail: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
+        .collect();
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T(</w:t></w:r><w:bookmarkEnd w:id="0"/>{}<w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
+        complex_field("PAGEREF target \\h", "9"),
+        section_properties("nextPage", ""),
+        complex_field("PAGE", "9"),
+        section_properties(
+            "continuous",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+    );
+    let mut session = laid_out_session(&body);
+    let labels = |session: &LaidOutSession| -> Vec<String> {
+        session
+            .renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    assert_eq!(labels(&session), ["1", "vii", "viii", "ix"]);
+    let model = session.document.document.clone().expect("document");
+    session.renderer.set_visible_page_range(Some(1..=1));
+    session.renderer.set_layout_page_limit(Some(1));
+    session.renderer.prepare_rerender_for_page(0);
+    session.renderer.freeze_selection_for_pixel_rerender();
+    session
+        .renderer
+        .render(&model, &Options::default())
+        .expect("pixel rerender");
+    assert_eq!(labels(&session), ["1", "vii", "viii", "ix"]);
+    session
+}
+
+/// A pixel-only rerender leaves the labels the last full layout recorded,
+/// so updating a TOC's page numbers still writes "vii", not "2".
+#[test]
+fn a_toc_update_after_a_pixel_rerender_writes_the_laid_out_label() {
+    use crate::word::references::toc::WordToc;
+    let mut session = session_after_rerender();
+    session.update_toc(true).expect("update the page numbers");
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tvii");
+}
+
+/// The same holds for F9: the PAGE field on the shared page shows "vii".
+#[test]
+fn f9_after_a_pixel_rerender_writes_the_laid_out_label() {
+    use crate::word::fields::{FieldHost, WordFields};
+    let mut session = session_after_rerender();
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(
+        paragraphs.iter().any(|text| text == "T(vii)"),
+        "{paragraphs:?}"
+    );
+}

@@ -4316,6 +4316,11 @@ where
     auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
     auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
+    /// Each page's label as the last paginating pass left it, page 1 first
+    /// (`displayed_page_labels`, multi-section documents). A label read
+    /// live from a later pixel-only or bounded rerender would take the
+    /// section where that walk stopped for its last page.
+    page_label_snapshot: Vec<crate::fields::PageLabel>,
     measuring_keep_next: bool,
     /// A multi-column section ended by a continuous break is balanced on
     /// its last page, as Word balances it: on `page`, a column moves on to
@@ -10504,6 +10509,7 @@ where
             auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
             auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
+            page_label_snapshot: Vec::new(),
             measuring_keep_next: false,
             column_balance: None,
             column_separators_drawn: None,
@@ -18093,6 +18099,7 @@ where
                         .truncate(self.active_section_index + 1);
                     self.invalidate_page_number_table();
                 }
+                self.record_page_label_snapshot();
             }
         }
 
@@ -44390,14 +44397,30 @@ where
             let start = self.page_number_start.unwrap_or(1) as usize;
             return start + physical_page.saturating_sub(1);
         }
+        // Deliberately the plain pre-table loop, not `page_number_walk`, so
+        // the cross-check catches a bug in the shared walk too.
         let page = physical_page.max(1);
         let section = self.numbering_section_for_page(page);
-        self.page_number_walk(0, (1, 1), section, page, |index| {
-            self.page_section_indices
-                .iter()
-                .position(|owner| *owner == index)
-                .map(|position| position + 1)
-        })
+        let mut number_at_section_start = 1usize;
+        let mut first_page_of_section = 1usize;
+        for index in 0..=section {
+            let first_page = self
+                .first_page_of_section_index_reference(index)
+                .unwrap_or(page);
+            if index > 0 {
+                number_at_section_start += first_page.saturating_sub(first_page_of_section);
+            }
+            first_page_of_section = first_page;
+            if let Some(start) = self
+                .section_page_numbering
+                .get(index)
+                .and_then(|numbering| numbering.as_ref())
+                .and_then(|numbering| numbering.start)
+            {
+                number_at_section_start = start as usize;
+            }
+        }
+        number_at_section_start + page.saturating_sub(first_page_of_section)
     }
 
     fn displayed_page_number(&self, physical_page: usize) -> String {
@@ -44474,10 +44497,46 @@ where
     /// What a PAGE field on each laid-out page shows, its section's
     /// restart and numeral format applied: what a PAGEREF to the page shows
     /// and what Word writes when it updates a table of contents' numbers.
+    ///
+    /// With several sections these are the labels the last paginating pass
+    /// recorded: a pixel-only or bounded rerender stops partway, and the
+    /// page it stops on would read the section it stopped in.
     pub fn displayed_page_labels(&self) -> Vec<crate::fields::PageLabel> {
+        if self.section_page_numbering.len() > 1 {
+            return self.page_label_snapshot.clone();
+        }
         (1..=self.resolved_total_page_count())
             .map(|page| self.page_label(page))
             .collect()
+    }
+
+    /// Records the labels of the pages this paginating pass finished: all
+    /// of them when it reached the end of the document, else those before
+    /// the page it stopped on (later ones keep the last pass's labels).
+    /// Single-section documents read their labels live, as they do not
+    /// depend on where a walk stopped.
+    fn record_page_label_snapshot(&mut self) {
+        if self.section_page_numbering.len() <= 1 {
+            self.page_label_snapshot.clear();
+            return;
+        }
+        let finished = if self.last_layout_complete {
+            self.current_page_number
+        } else {
+            self.current_page_number.saturating_sub(1)
+        };
+        let labels: Vec<_> = (1..=finished).map(|page| self.page_label(page)).collect();
+        if self.last_layout_complete {
+            self.page_label_snapshot = labels;
+        } else {
+            let keep = if self.page_label_snapshot.len() > finished {
+                self.page_label_snapshot.split_off(finished)
+            } else {
+                Vec::new()
+            };
+            self.page_label_snapshot = labels;
+            self.page_label_snapshot.extend(keep);
+        }
     }
 
     /// Each laid-out page's section (from 0) and the number its `PAGE`
@@ -44607,6 +44666,27 @@ where
             });
         }
         self.laid_out_first_page_of_section(section).or_else(|| {
+            (section == self.active_section_index).then_some(self.current_page_number.max(1))
+        })
+    }
+
+    /// `first_page_of_section_index` without the visit count, for the
+    /// reference algorithm.
+    #[cfg(test)]
+    fn first_page_of_section_index_reference(&self, section: usize) -> Option<usize> {
+        if let Some(start) = self.mid_page_start(section) {
+            return Some(if self.mid_page_start_has_content(start) {
+                start.page
+            } else {
+                start.page + 1
+            });
+        }
+        let laid_out = self
+            .page_section_indices
+            .iter()
+            .position(|owner| *owner == section)
+            .map(|index| index + 1);
+        laid_out.or_else(|| {
             (section == self.active_section_index).then_some(self.current_page_number.max(1))
         })
     }
