@@ -315,7 +315,11 @@ fn apply_tracking_formatting(
 /// Builds the round-trip tree a deferred load left out before a command
 /// touches the document: saving patches the tree, so an edit made without it
 /// would reach the model and never the file.
+#[inline]
 fn ensure_roundtrip_xml(ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+    if ctx.document.raw_document.is_some() {
+        return Ok(());
+    }
     ctx.document
         .ensure_roundtrip_xml()
         .map(|_| ())

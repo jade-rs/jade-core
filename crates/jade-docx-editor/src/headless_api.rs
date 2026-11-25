@@ -2115,7 +2115,11 @@ pub fn apply_protected_headless_commands_with_executor_to_document(
 
 /// Builds the round-trip tree a deferred load left out: saving patches it,
 /// so an edit made without it would reach the model and never the file.
+#[inline]
 fn ensure_roundtrip_xml(word_doc: &mut WordDocument) -> Result<(), HeadlessApiApplyError> {
+    if word_doc.raw_document.is_some() {
+        return Ok(());
+    }
     word_doc
         .ensure_roundtrip_xml()
         .map(|_| ())

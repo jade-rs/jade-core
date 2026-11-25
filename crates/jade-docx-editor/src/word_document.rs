@@ -3160,10 +3160,19 @@ impl WordDocument {
 
     /// Materializes the preservation-oriented XML tree and links its node IDs
     /// to the already parsed semantic document. This is idempotent.
+    #[inline]
     pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
+        // Every edit asks; once built, the answer must cost no more than
+        // this check, and the build stays out of the caller's code.
         if self.raw_document.is_some() {
             return Ok(false);
         }
+        self.build_deferred_roundtrip_xml()
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn build_deferred_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
         // A document built in memory, or a package without a main part, has
         // no source XML to build a tree from.
         if self.document_part.is_none() {
