@@ -18245,6 +18245,10 @@ where
             )?;
         }
 
+        // Whether this walk reached the end of the document. The stable-edit
+        // path below sets `last_layout_complete` back to what the pass before
+        // it reached, which says nothing about this walk.
+        let mut walk_reached_end = self.last_layout_complete;
         if !self.pageless_mode {
             // When rendering with cached paragraph replay, we may defer drawing draw-commands
             // for cache-hit paragraphs on pages that were not considered dirty for this render.
@@ -18283,6 +18287,7 @@ where
                 self.force_page_break()?;
                 self.render_footer_simple()?;
             }
+            walk_reached_end = self.last_layout_complete;
             let preserve_pagination = preserve_pixel_pagination
                 || (preserve_stable_edit_pagination && self.last_fast_replay_stable);
             if preserve_pagination {
@@ -18619,22 +18624,35 @@ where
         // looked up only on the pages drawn, so the style ids are replaced
         // only by a pass that drew every page.
         let whole_walk = walks_from_start
-            && self.last_layout_complete
+            && walk_reached_end
             && !preserve_pixel_pagination
             && !self.pageless_mode;
-        let header_paragraphs = std::mem::take(self.repeated_header_paragraphs_this_pass.get_mut());
+        // Swapped rather than moved, and untouched when there is nothing to
+        // record: a document without repeating header rows or STYLEREF
+        // fields pays two emptiness checks a pass.
+        let (kept, this_pass) = (
+            self.repeated_header_paragraphs.get_mut(),
+            self.repeated_header_paragraphs_this_pass.get_mut(),
+        );
         if whole_walk {
-            *self.repeated_header_paragraphs.get_mut() = header_paragraphs;
-        } else {
-            self.repeated_header_paragraphs
-                .get_mut()
-                .extend(header_paragraphs);
+            if !kept.is_empty() || !this_pass.is_empty() {
+                std::mem::swap(kept, this_pass);
+                this_pass.clear();
+            }
+        } else if !this_pass.is_empty() {
+            kept.append(this_pass);
         }
-        let style_ids = std::mem::take(self.style_ref_style_ids_this_pass.get_mut());
+        let (kept, this_pass) = (
+            self.style_ref_style_ids.get_mut(),
+            self.style_ref_style_ids_this_pass.get_mut(),
+        );
         if whole_walk && self.visible_page_range.is_none() && !self.render_skip_draw {
-            *self.style_ref_style_ids.get_mut() = style_ids;
-        } else {
-            self.style_ref_style_ids.get_mut().extend(style_ids);
+            if !kept.is_empty() || !this_pass.is_empty() {
+                std::mem::swap(kept, this_pass);
+                this_pass.clear();
+            }
+        } else if !this_pass.is_empty() {
+            kept.extend(this_pass.drain());
         }
 
         // Clear per-render dirty state.
