@@ -75,6 +75,7 @@ impl PerfPainter {
     }
 }
 
+#[inline]
 fn batch_accepted(text: &str, positions: usize) -> bool {
     let len = text.encode_utf16().count();
     len >= MIN_GLYPH_RUN_BATCH_LEN && positions == len
@@ -175,6 +176,7 @@ impl Painter for PerfPainter {
     fn clip(&self) {}
     fn use_fill_style_for_stroke(&self) {}
 
+    #[inline]
     fn try_fill_glyph_run_batch(
         &self,
         text: &str,
@@ -184,6 +186,7 @@ impl Painter for PerfPainter {
         Ok(batch_accepted(text, x_positions.len()))
     }
 
+    #[inline]
     fn try_fill_glyph_run_batch_multi_font(
         &self,
         text: &str,
