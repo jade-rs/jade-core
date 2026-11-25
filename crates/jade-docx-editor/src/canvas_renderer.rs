@@ -70248,6 +70248,8 @@ mod tests {
     {
         let mut renderer = test_renderer();
         renderer.pageless_mode = false;
+        // The laid-out pages' owners, which a resumed walk keeps.
+        renderer.page_section_indices = vec![0; 60];
         // Pages 1..=40 were laid out under limit 40; page 41 is where the next
         // chunk (limit 42) starts. Snapshots exist for pages 2, 30 and 41, plus a
         // later one (50, stale from a shrunk limit) that must not be chosen, and
@@ -70312,6 +70314,8 @@ mod tests {
     fn prepare_layout_extension_seek_consumes_spanning_snapshot_when_it_resumes_nearer() {
         let mut renderer = test_renderer();
         renderer.pageless_mode = false;
+        // The laid-out pages' owners, which a resumed walk keeps.
+        renderer.page_section_indices = vec![0; 60];
         assert!(renderer.span_seek_enabled());
         // Page-top snapshot far back (page 30) and a spanning snapshot keyed at
         // page 41 whose paragraph starts on page 40: the spanning one resumes
@@ -70657,6 +70661,8 @@ mod tests {
     fn prepare_layout_extension_seek_snapshots_carry_the_table_counter() {
         let mut renderer = test_renderer();
         renderer.pageless_mode = false;
+        // The laid-out pages' owners, which a resumed walk keeps.
+        renderer.page_section_indices = vec![0; 60];
         let mut snapshot = page_top_snapshot(&renderer, 41);
         snapshot.table_counter = 3;
         renderer
@@ -70679,6 +70685,8 @@ mod tests {
     fn prepare_layout_extension_seek_falls_back_when_not_an_extension_or_no_valid_snapshot() {
         let mut renderer = test_renderer();
         renderer.pageless_mode = false;
+        // The laid-out pages' owners, which a resumed walk keeps.
+        renderer.page_section_indices = vec![0; 60];
         renderer
             .page_start_seek_cache_by_page
             .borrow_mut()
