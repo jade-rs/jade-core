@@ -970,6 +970,7 @@ impl NativeDocument {
             }
             .ok_or_else(|| "header/footer history went missing".to_string())?;
             self.word_document.restore_snapshot(edit.previous);
+            self.renderer.note_style_reference_edit();
             if backwards {
                 self.history.pop();
                 self.redo_history.push(HistoryStep::HeaderFooter);
@@ -3287,6 +3288,7 @@ impl NativeDocument {
             "an edit ran before ensure_roundtrip_xml"
         );
         self.renderer.drop_document_cache();
+        self.renderer.note_style_reference_edit();
         let result = edit(self);
         if let Some(document) = &self.word_document.document {
             self.renderer.restore_document_cache(Rc::clone(document));

@@ -370,3 +370,37 @@ fn footer_band(document: &Doc, page: usize) -> Vec<u8> {
     let bottom_margin_rows = 96 * width as usize * 4;
     pixels[pixels.len() - bottom_margin_rows..].to_vec()
 }
+
+/// A header showing only `STYLEREF "heading 1" \l` above a heading A, filler
+/// and a long heading B kept together: showing B, the header wraps and
+/// pushes B to the next page, where the header shows A, shrinks, and lets B
+/// back. No value is right; the passes that draw it stop all the same.
+#[test]
+fn a_styleref_that_moves_its_own_heading_stops_repainting() {
+    let header = r#"<w:fldSimple w:instr=" STYLEREF &quot;heading 1&quot; \l "><w:r><w:t>stale</w:t></w:r></w:fldSimple>"#;
+    for filler in 10..34 {
+        let mut body = String::from(
+            r#"<w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:r><w:t>A</w:t></w:r></w:p>"#,
+        );
+        for index in 0..filler {
+            body.push_str(&format!("<w:p><w:r><w:t>Line {index}</w:t></w:r></w:p>"));
+        }
+        body.push_str(&format!(
+            r#"<w:p><w:pPr><w:pStyle w:val="Heading1"/><w:keepLines/></w:pPr><w:r><w:t>B {FILLER} {FILLER} {FILLER} {FILLER}</w:t></w:r></w:p><w:p><w:r><w:t>After</w:t></w:r></w:p>"#
+        ));
+        let mut document = open_bytes(&docx(&body, header));
+        for edit in 0..2 {
+            let mut rounds = 0;
+            while document.has_stale_pages() {
+                assert!(
+                    rounds < 4,
+                    "filler {filler}, after edit {edit}: still stale after {rounds} paints"
+                );
+                document.paint_stale_pages(0..usize::MAX).unwrap();
+                rounds += 1;
+            }
+            // An edit starts the count again, and ends the same way.
+            document.insert_text(1, 0, "z", usize::MAX).unwrap();
+        }
+    }
+}

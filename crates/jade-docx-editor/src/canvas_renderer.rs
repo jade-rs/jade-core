@@ -4932,12 +4932,12 @@ where
     /// Pages (0-based) whose STYLEREF a pass drew other than its own layout
     /// shows. See [`Self::take_style_reference_wrong_pages`].
     style_ref_wrong_pages: std::collections::BTreeSet<usize>,
-    /// What the last pass drew wrong, and how many passes in a row drew the
-    /// same thing wrong. A STYLEREF whose text moves the heading it shows
-    /// has no right value; the count stops the repaints, while edits that
-    /// each leave other pages wrong are not counted together.
-    style_ref_last_wrong: Vec<(StyleRefShown, String)>,
-    style_ref_repeated_passes: u8,
+    /// Passes since the last edit (see [`Self::note_style_reference_edit`])
+    /// that drew a STYLEREF wrong. A STYLEREF whose text moves the heading
+    /// it shows (a header line that wraps and pushes it to the next page)
+    /// has no right value, and each pass would draw it wrong again; the
+    /// count stops the repaints, while each edit starts it again.
+    style_ref_flagged_passes: u8,
     /// Paragraphs of table header rows (`w:tblHeader`), which repeat at the
     /// top of every page a table continues onto, each with the
     /// [`Self::record_pass`] that last drew it there. A pass that walks the
@@ -11044,8 +11044,7 @@ where
             style_refs_shown: RefCell::default(),
             style_ref_story: 0,
             style_ref_wrong_pages: std::collections::BTreeSet::new(),
-            style_ref_last_wrong: Vec::new(),
-            style_ref_repeated_passes: 0,
+            style_ref_flagged_passes: 0,
             repeated_header_paragraphs: RefCell::default(),
             record_pass: 0,
             active_section_index: 0,
@@ -45718,39 +45717,41 @@ where
     fn settle_shown_style_references(&mut self) {
         let shown = std::mem::take(self.style_refs_shown.get_mut());
         let mut wrong = Vec::new();
-        for (key, text) in shown {
-            let (page, _, wanted, from_bottom) = &key;
+        for ((page, _, wanted, from_bottom), text) in shown {
             let page_0idx = page.saturating_sub(1);
             if self
-                .style_reference_text(*page, wanted, *from_bottom)
+                .style_reference_text(page, &wanted, from_bottom)
                 .unwrap_or_default()
                 != text
             {
-                wrong.push((key, text));
+                wrong.push(page_0idx);
             } else {
                 self.style_ref_wrong_pages.remove(&page_0idx);
             }
         }
         if wrong.is_empty() {
-            self.style_ref_last_wrong.clear();
-            self.style_ref_repeated_passes = 0;
             return;
         }
-        // Only a pass that draws what the one before it drew wrong, the same
-        // way, repeats it; another edit's wrong pages start the count again.
-        if wrong == self.style_ref_last_wrong {
-            self.style_ref_repeated_passes = self.style_ref_repeated_passes.saturating_add(1);
-        } else {
-            self.style_ref_repeated_passes = 0;
+        let flag = self.style_ref_flagged_passes < MAX_FLAGGED_PAGE_TOTAL_PASSES;
+        if flag {
+            self.style_ref_flagged_passes += 1;
         }
-        for ((page, ..), _) in &wrong {
-            if self.style_ref_repeated_passes < MAX_FLAGGED_PAGE_TOTAL_PASSES {
-                self.style_ref_wrong_pages.insert(page.saturating_sub(1));
+        for page in wrong {
+            if flag {
+                self.style_ref_wrong_pages.insert(page);
             } else {
-                self.style_ref_wrong_pages.remove(&page.saturating_sub(1));
+                self.style_ref_wrong_pages.remove(&page);
             }
         }
-        self.style_ref_last_wrong = wrong;
+    }
+
+    /// Starts the count of passes that drew a STYLEREF wrong again: the
+    /// document changed, so what its passes draw wrong is new. A host calls
+    /// it on every edit; without it, the passes after the first few that
+    /// draw a STYLEREF wrong leave no page stale.
+    #[inline]
+    pub fn note_style_reference_edit(&mut self) {
+        self.style_ref_flagged_passes = 0;
     }
 
     /// Whether a pass drew a STYLEREF its own layout shows otherwise, so
