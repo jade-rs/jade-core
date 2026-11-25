@@ -4349,6 +4349,14 @@ where
     auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
     auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
+    /// The section owning each physical page as the last paginating pass
+    /// left it, page 1 first, for the labels a TOC update, F9 and print
+    /// ranges read in a multi-section document (`label_page_owners`). The
+    /// live owner of the page a pixel-only or bounded walk stopped on is
+    /// the section it stopped in; labels are numbered from these owners
+    /// with the current `w:pgNumType`, so a numbering change applies to
+    /// every page.
+    label_page_owners: Vec<usize>,
     measuring_keep_next: bool,
     /// A multi-column section ended by a continuous break is balanced on
     /// its last page, as Word balances it: on `page`, a column moves on to
@@ -4651,8 +4659,11 @@ where
     /// ([`collapsed_spacing_before`]); anything drawn in between (a table, a
     /// page break) moves the cursor and so leaves both in full.
     trailing_spacing_after: Option<(usize, usize, f64, f64)>,
-    header_lines: Option<Vec<HeaderLine>>,
-    footer_lines: Option<Vec<HeaderLine>>,
+    /// Shared so a render handed the same lines again (a page-bitmap fetch,
+    /// a keystroke) keeps them instead of copying them; see
+    /// [`Self::adopt_header_footer_lines`].
+    header_lines: Option<Rc<[HeaderLine]>>,
+    footer_lines: Option<Rc<[HeaderLine]>>,
     /// Variant shown on the first page of the section when `title_page` is
     /// true. Falls back to the default when None.
     header_lines_first: Option<Vec<HeaderLine>>,
@@ -4875,7 +4886,9 @@ where
     selection: SelectionManager,
     paragraph_counter: usize,
     page_offset_y: f64,
-    comment_store: HashMap<String, DocumentComment>,
+    /// Shared so a render handed the same comments again keeps them instead
+    /// of copying every comment; see [`Self::adopt_comment_store`].
+    comment_store: Rc<HashMap<String, DocumentComment>>,
     comment_annotations: CommentAnnotations,
     hyperlink_regions: Vec<HyperlinkRegion>,
     /// The front of `hyperlink_regions` kept from the previous render.
@@ -10649,6 +10662,7 @@ where
             auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
             auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
+            label_page_owners: Vec::new(),
             measuring_keep_next: false,
             column_balance: None,
             column_separators_drawn: None,
@@ -10841,7 +10855,7 @@ where
             selection: SelectionManager::new(),
             paragraph_counter: 0,
             page_offset_y: 0.0,
-            comment_store: HashMap::new(),
+            comment_store: Rc::default(),
             comment_annotations: CommentAnnotations::default(),
             hyperlink_regions: Vec::new(),
             hyperlink_retained: RetainedHyperlinks::default(),
@@ -12732,6 +12746,7 @@ where
         &mut self,
         document: Rc<Document>,
         options: &Options,
+        comments: Option<&HashMap<String, DocumentComment>>,
         visible_end_page_1idx: usize,
     ) -> Result<(), JsValue> {
         self.render_bounded_to_page_with_parts(
@@ -12740,6 +12755,7 @@ where
             None,
             None,
             None,
+            comments,
             visible_end_page_1idx,
         )
     }
@@ -12749,7 +12765,10 @@ where
     /// Numbering, headers and footers live outside the body, and a render
     /// without them produces a document with no page furniture and unnumbered
     /// lists — which reads as a layout difference rather than as parts left
-    /// behind.
+    /// behind. The comments are one of those parts: with comments shown, a
+    /// render without them replaces the comment store with an empty one, and
+    /// the comment marks on the repainted pages lose their author and text.
+    #[allow(clippy::too_many_arguments)]
     pub fn render_bounded_to_page_with_parts(
         &mut self,
         document: Rc<Document>,
@@ -12757,6 +12776,7 @@ where
         numbering_part: Option<&NumberingPart>,
         header_lines: Option<&[HeaderLine]>,
         footer_lines: Option<&[HeaderLine]>,
+        comments: Option<&HashMap<String, DocumentComment>>,
         visible_end_page_1idx: usize,
     ) -> Result<(), JsValue> {
         let previous_limit = self.layout_page_limit();
@@ -12767,7 +12787,7 @@ where
             numbering_part,
             header_lines,
             footer_lines,
-            None,
+            comments,
         );
         self.set_layout_page_limit(previous_limit);
         result
@@ -17257,11 +17277,11 @@ where
         self.hyperlink_retained =
             RetainedHyperlinks::capture(incremental_dirty_from, &self.hyperlink_regions);
         self.invalidate_hyperlink_regions_js_cache();
-        if options.render_comments {
-            self.comment_store = comments.cloned().unwrap_or_default();
+        self.adopt_comment_store(if options.render_comments {
+            comments
         } else {
-            self.comment_store.clear();
-        }
+            None
+        });
         self.image_debug_regions.borrow_mut().clear();
         self.text_box_debug_regions.borrow_mut().clear();
         self.grouped_shape_text_regions.borrow_mut().clear();
@@ -17497,8 +17517,8 @@ where
         };
         self.last_line_baseline = self.current_y;
         self.trailing_spacing_after = None;
-        self.header_lines = header_lines.map(|lines| lines.to_vec());
-        self.footer_lines = footer_lines.map(|lines| lines.to_vec());
+        Self::adopt_header_footer_lines(&mut self.header_lines, header_lines);
+        Self::adopt_header_footer_lines(&mut self.footer_lines, footer_lines);
         self.header_drawn = false;
         self.footer_drawn = false;
 
@@ -18282,6 +18302,7 @@ where
                         .truncate(self.active_section_index + 1);
                     self.invalidate_page_number_table();
                 }
+                self.record_label_page_owners();
             }
         }
 
@@ -19390,10 +19411,11 @@ where
 
         let numbering_part = self.last_numbering_part.clone();
         let numbering_part_ref = numbering_part.as_deref();
+        // Handles, not copies: the render sees its own stores handed back and
+        // keeps them (`adopt_comment_store`, `adopt_header_footer_lines`).
         let header = self.header_lines.clone();
         let footer = self.footer_lines.clone();
-
-        let stored_comments = self.comment_store.clone();
+        let stored_comments = Rc::clone(&self.comment_store);
 
         // Use the _rc variant to avoid cloning the document again.
         self.render_with_numbering_rc(
@@ -19404,6 +19426,39 @@ where
             footer.as_deref(),
             Some(&stored_comments),
         )
+    }
+
+    /// Makes `comments` the comment store, copying them only when they differ
+    /// from the store already held.
+    ///
+    /// The store is handed back on every page-bitmap fetch
+    /// ([`Self::rerender_with_cached_state`]) and the caller's own map on
+    /// every edit, so most renders pass what the store already holds. The
+    /// address is checked first; equal contents from another map (the
+    /// caller's) are kept too, which compares without allocating.
+    fn adopt_comment_store(&mut self, comments: Option<&HashMap<String, DocumentComment>>) {
+        match comments {
+            Some(comments)
+                if std::ptr::eq(&*self.comment_store, comments)
+                    || *self.comment_store == *comments => {}
+            Some(comments) => self.comment_store = Rc::new(comments.clone()),
+            None if self.comment_store.is_empty() => {}
+            None => self.comment_store = Rc::default(),
+        }
+    }
+
+    /// Makes `lines` the header or footer lines held in `slot`, copying them
+    /// only when they differ from the lines already there (see
+    /// [`Self::adopt_comment_store`]).
+    fn adopt_header_footer_lines(
+        slot: &mut Option<Rc<[HeaderLine]>>,
+        lines: Option<&[HeaderLine]>,
+    ) {
+        match (slot.as_deref(), lines) {
+            (None, None) => {}
+            (Some(held), Some(lines)) if std::ptr::eq(held, lines) || held == lines => {}
+            (_, lines) => *slot = lines.map(Rc::from),
+        }
     }
 
     fn apply_document_page_settings(&mut self, document: &Document) -> Result<(), JsValue> {
@@ -42808,7 +42863,12 @@ where
     /// placed content there restarts the page's number although the page
     /// shows the chrome of the section at its top.
     fn numbering_section_for_page(&self, page: usize) -> usize {
-        let mut section = self.body_section_for_page(page);
+        self.numbering_section_from(page, self.body_section_for_page(page))
+    }
+
+    /// Steps back from `section`, the last section with body content on
+    /// `page`, past mid-page sections that placed nothing there.
+    fn numbering_section_from(&self, page: usize, mut section: usize) -> usize {
         while section > 0
             && self
                 .mid_page_start(section)
@@ -44493,9 +44553,9 @@ where
         // must not renumber the sections before it.
         if section == 0 {
             // Single-section documents never need the table.
-            let first_page = self.first_page_of_section_index(0).unwrap_or(page);
-            let start = self.section_page_number_start(0).unwrap_or(1);
-            return start + page.saturating_sub(first_page);
+            return self.page_number_walk(0, (1, 1), 0, page, |index| {
+                self.laid_out_first_page_of_section(index)
+            });
         }
         let mut cached = self.page_number_table.borrow_mut();
         let table = cached.get_or_insert_with(|| self.build_page_number_table());
@@ -44504,29 +44564,64 @@ where
         }
         // Sections from the first one whose start depends on the page being
         // laid out: usually none or one.
-        let (mut number_at_section_start, mut first_page_of_section) =
-            table.sections.last().copied().unwrap_or((1, 1));
-        for index in table.sections.len()..=section {
+        let state = table.sections.last().copied().unwrap_or((1, 1));
+        self.page_number_walk(table.sections.len(), state, section, page, |index| {
+            table.laid_out_first_page(index)
+        })
+    }
+
+    /// One step of the section walk behind a PAGE number: section `index`,
+    /// whose numbering starts on `first_page`, continues the count from
+    /// `(number, first_page)` of the section before (`(1, 1)` before the
+    /// first), unless its own `w:start` restarts it.
+    fn page_number_walk_step(
+        &self,
+        index: usize,
+        first_page: usize,
+        (number, previous_first_page): (usize, usize),
+    ) -> (usize, usize) {
+        let number = if index > 0 {
+            number + first_page.saturating_sub(previous_first_page)
+        } else {
+            number
+        };
+        (
+            self.section_page_number_start(index).unwrap_or(number),
+            first_page,
+        )
+    }
+
+    /// The number a PAGE field shows on a physical (1-based) `page` of
+    /// `section`, walking sections `from..=section` from `state`, the
+    /// `(number, first_page)` of section `from - 1` (`(1, 1)` from 0).
+    ///
+    /// A section's numbering starts on its mid-page start page when it
+    /// placed content there and on the page after when not; otherwise on
+    /// the first page `laid_out_first_page` gives it. A section owning no
+    /// page yet starts on the page being laid out when it is the active
+    /// one, any other on `page` itself.
+    fn page_number_walk(
+        &self,
+        from: usize,
+        state: (usize, usize),
+        section: usize,
+        page: usize,
+        laid_out_first_page: impl Fn(usize) -> Option<usize>,
+    ) -> usize {
+        let (number, first_page) = (from..=section).fold(state, |state, index| {
             let first_page = match self.mid_page_start(index) {
                 Some(start) if self.mid_page_start_has_content(start) => start.page,
                 Some(start) => start.page + 1,
-                None => table
-                    .laid_out_first_page(index)
+                None => laid_out_first_page(index)
                     .or_else(|| {
                         (index == self.active_section_index)
                             .then_some(self.current_page_number.max(1))
                     })
                     .unwrap_or(page),
             };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-        }
-        number_at_section_start + page.saturating_sub(first_page_of_section)
+            self.page_number_walk_step(index, first_page, state)
+        });
+        number + page.saturating_sub(first_page)
     }
 
     /// Section `index`'s `w:pgNumType w:start`.
@@ -44560,8 +44655,7 @@ where
             first_pages,
             sections: Vec::new(),
         };
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
+        let mut state = (1, 1);
         for index in 0.. {
             let first_page = match self.mid_page_start(index) {
                 Some(start) => match start.content {
@@ -44577,16 +44671,8 @@ where
                     None => break,
                 },
             };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-            table
-                .sections
-                .push((number_at_section_start, first_page_of_section));
+            state = self.page_number_walk_step(index, first_page, state);
+            table.sections.push(state);
         }
         table
     }
@@ -44598,6 +44684,8 @@ where
             let start = self.page_number_start.unwrap_or(1) as usize;
             return start + physical_page.saturating_sub(1);
         }
+        // Deliberately the plain pre-table loop, not `page_number_walk`, so
+        // the cross-check catches a bug in the shared walk too.
         let page = physical_page.max(1);
         let section = self.numbering_section_for_page(page);
         let mut number_at_section_start = 1usize;
@@ -44639,12 +44727,39 @@ where
     /// (a table of contents before its entries) takes its section from the
     /// previous pass, which laid out the page the target was cached on.
     fn page_reference_number(&self, physical_page: usize) -> String {
+        self.page_label(physical_page).text
+    }
+
+    /// [`Self::page_reference_number`] with the PAGE value before its
+    /// numeral format.
+    fn page_label(&self, physical_page: usize) -> crate::fields::PageLabel {
+        if self.section_page_numbering.is_empty() {
+            let value =
+                self.page_number_start.unwrap_or(1) as usize + physical_page.saturating_sub(1);
+            return crate::fields::PageLabel {
+                value,
+                text: format_page_number(value, self.page_number_format.as_deref()),
+            };
+        }
+        let (section, value) = self.page_reference_value(physical_page.max(1));
+        crate::fields::PageLabel {
+            value,
+            text: self.page_number_with_format(physical_page.max(1), section, value),
+        }
+    }
+
+    /// The numbering section of a physical (1-based) page and the PAGE
+    /// value on it, for a page the walk has not reached yet as well.
+    fn page_reference_value(&self, physical_page: usize) -> (usize, usize) {
         let laid_out = self.page_section_indices.len();
         if self.section_page_numbering.len() <= 1
             || physical_page <= laid_out.max(self.current_page_number)
             || physical_page > self.page_sections_before_pass.len()
         {
-            return self.displayed_page_number(physical_page);
+            return (
+                self.numbering_section_for_page(physical_page),
+                self.page_number_value(physical_page),
+            );
         }
         let owner = |page: usize| {
             self.page_section_indices
@@ -44653,50 +44768,120 @@ where
                 .copied()
                 .unwrap_or(self.active_section_index)
         };
-        let mut section = owner(physical_page);
-        while section > 0
-            && self.mid_page_start(section).is_some_and(|start| {
-                start.page == physical_page && !self.mid_page_start_has_content(start)
-            })
-        {
-            section -= 1;
-        }
+        let section = self.numbering_section_from(physical_page, owner(physical_page));
         let mut first_pages: Vec<Option<usize>> = vec![None; section + 1];
         for page in 1..=physical_page {
             if let Some(first) = first_pages.get_mut(owner(page)) {
                 first.get_or_insert(page);
             }
         }
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
-        for (index, first) in first_pages.iter().enumerate() {
-            let first_page = match self.mid_page_start(index) {
-                Some(start) if self.mid_page_start_has_content(start) => start.page,
-                Some(start) => start.page + 1,
-                None => first.unwrap_or(first_page_of_section),
-            };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
+        let value = self.page_number_walk(0, (1, 1), section, physical_page, |index| {
+            first_pages[index]
+        });
+        (section, value)
+    }
+
+    /// What a PAGE field on each laid-out page shows, its section's
+    /// restart and numeral format applied: what a PAGEREF to the page shows
+    /// and what Word writes when it updates a table of contents' numbers.
+    ///
+    /// With several sections these are numbered from the page owners the
+    /// last paginating pass recorded (`label_page_owners`): a pixel-only or
+    /// bounded rerender stops partway, and the page it stops on would read
+    /// the section it stopped in.
+    pub fn displayed_page_labels(&self) -> Vec<crate::fields::PageLabel> {
+        if self.labels_follow_recorded_owners() {
+            return self
+                .labels_from_recorded_owners(self.label_page_owners.len())
+                .into_iter()
+                .enumerate()
+                .map(|(index, (section, value))| crate::fields::PageLabel {
+                    value,
+                    text: self.page_number_with_format(index + 1, section, value),
+                })
+                .collect();
         }
-        let displayed =
-            number_at_section_start + physical_page.saturating_sub(first_page_of_section);
-        self.page_number_with_format(physical_page, section, displayed)
+        (1..=self.resolved_total_page_count())
+            .map(|page| self.page_label(page))
+            .collect()
+    }
+
+    /// Whether labels come from `label_page_owners`: a multi-section
+    /// document a paginating pass has laid out. A single section's labels
+    /// do not depend on where a walk stopped, and are read live.
+    fn labels_follow_recorded_owners(&self) -> bool {
+        self.section_page_numbering.len() > 1 && !self.label_page_owners.is_empty()
+    }
+
+    /// Records each page's owner at the end of a paginating pass: this
+    /// pass's for the pages it finished (all of them when it reached the end
+    /// of the document), the last pass's for the page it stopped on and
+    /// those after it.
+    fn record_label_page_owners(&mut self) {
+        if self.section_page_numbering.len() <= 1 {
+            self.label_page_owners.clear();
+            return;
+        }
+        let finished = if self.last_layout_complete {
+            self.current_page_number
+        } else {
+            self.current_page_number.saturating_sub(1)
+        }
+        .min(self.page_section_indices.len());
+        let previous = if self.label_page_owners.is_empty() {
+            &self.page_sections_before_pass
+        } else {
+            &self.label_page_owners
+        };
+        let tail = if self.last_layout_complete {
+            Vec::new()
+        } else {
+            previous.get(finished..).unwrap_or_default().to_vec()
+        };
+        let mut owners = self.page_section_indices[..finished].to_vec();
+        owners.extend(tail);
+        self.label_page_owners = owners;
+    }
+
+    /// The numbering section and PAGE value of pages `1..=count`, numbered
+    /// from `label_page_owners` with the current section numbering.
+    fn labels_from_recorded_owners(&self, count: usize) -> Vec<(usize, usize)> {
+        let owners = &self.label_page_owners;
+        let count = count.min(owners.len());
+        let mut first_pages: Vec<Option<usize>> = Vec::new();
+        for (index, &owner) in owners[..count].iter().enumerate() {
+            if first_pages.len() <= owner {
+                first_pages.resize(owner + 1, None);
+            }
+            first_pages[owner].get_or_insert(index + 1);
+        }
+        (1..=count)
+            .map(|page| {
+                let section = self.numbering_section_from(page, owners[page - 1]);
+                let value = self.page_number_walk(0, (1, 1), section, page, |index| {
+                    first_pages.get(index).copied().flatten()
+                });
+                (section, value)
+            })
+            .collect()
     }
 
     /// Each laid-out page's section (from 0) and the number its `PAGE`
-    /// field shows, as a number: what a print range's `p2s3` names.
+    /// field shows, as a number: what a print range's `p2s3` names. In a
+    /// multi-section document these come from the owners the last
+    /// paginating pass recorded, as `displayed_page_labels` does.
     pub fn page_labels(&self) -> Vec<(usize, usize)> {
-        (1..=self.page_count())
-            .map(|page| {
-                let section = self.numbering_section_for_page(page);
-                (section, self.page_number_value(page))
-            })
-            .collect()
+        let count = self.page_count();
+        let mut labels = if self.labels_follow_recorded_owners() {
+            self.labels_from_recorded_owners(count)
+        } else {
+            Vec::new()
+        };
+        labels.extend((labels.len() + 1..=count).map(|page| {
+            let section = self.numbering_section_for_page(page);
+            (section, self.page_number_value(page))
+        }));
+        labels
     }
 
     fn page_number_with_format(&self, page: usize, section: usize, displayed: usize) -> String {
@@ -44806,7 +44991,9 @@ where
     /// body content. A mid-page section that placed content on its shared
     /// page starts there; one whose content moved on to the next page starts
     /// on that page. Otherwise the first page laid out for the section (the
-    /// page being laid out counts as the active section's).
+    /// page being laid out counts as the active section's). The tests'
+    /// view of what `page_number_walk` starts each section on.
+    #[cfg(test)]
     fn first_page_of_section_index(&self, section: usize) -> Option<usize> {
         if let Some(start) = self.mid_page_start(section) {
             return Some(if self.mid_page_start_has_content(start) {
@@ -44815,17 +45002,7 @@ where
                 start.page + 1
             });
         }
-        let laid_out = self
-            .page_section_indices
-            .iter()
-            .position(|owner| *owner == section)
-            .map(|index| index + 1);
-        #[cfg(test)]
-        self.page_number_page_visits.set(
-            self.page_number_page_visits.get()
-                + laid_out.unwrap_or(self.page_section_indices.len()),
-        );
-        laid_out.or_else(|| {
+        self.laid_out_first_page_of_section(section).or_else(|| {
             (section == self.active_section_index).then_some(self.current_page_number.max(1))
         })
     }
@@ -44849,6 +45026,21 @@ where
         laid_out.or_else(|| {
             (section == self.active_section_index).then_some(self.current_page_number.max(1))
         })
+    }
+
+    /// The first page `page_section_indices` gives `section`.
+    fn laid_out_first_page_of_section(&self, section: usize) -> Option<usize> {
+        let laid_out = self
+            .page_section_indices
+            .iter()
+            .position(|owner| *owner == section)
+            .map(|index| index + 1);
+        #[cfg(test)]
+        self.page_number_page_visits.set(
+            self.page_number_page_visits.get()
+                + laid_out.unwrap_or(self.page_section_indices.len()),
+        );
+        laid_out
     }
 
     pub fn table_order_for(&self, table_id: usize) -> Option<usize> {
@@ -48695,6 +48887,7 @@ mod tests {
                 None,
                 None,
                 None,
+                None,
                 1,
             )
             .unwrap();
@@ -48786,6 +48979,7 @@ mod tests {
                     None,
                     None,
                     None,
+                    None,
                     1,
                 )
                 .unwrap();
@@ -48809,6 +49003,7 @@ mod tests {
                 .render_bounded_to_page_with_parts(
                     Rc::clone(model.document.as_ref().unwrap()),
                     &options,
+                    None,
                     None,
                     None,
                     None,
@@ -66644,6 +66839,151 @@ mod tests {
         assert!(renderer.can_use_unchecked_cache_replay(&options));
     }
 
+    fn commented_paragraph_document(text: &str) -> Document {
+        let mut document = doc_with_paragraph_texts(&[text, "next paragraph"]);
+        let BodyElement::Paragraph(paragraph) = &mut document.body.as_mut().unwrap().elements[0]
+        else {
+            unreachable!()
+        };
+        paragraph.comment_ranges.push(CommentRange {
+            id: "1".into(),
+            start: 0,
+            end: 9,
+        });
+        paragraph.comment_markers.push(CommentMarker {
+            id: "1".into(),
+            position: 9,
+        });
+        document
+    }
+
+    fn review_comments() -> HashMap<String, DocumentComment> {
+        HashMap::from([(
+            "1".into(),
+            DocumentComment {
+                id: "1".into(),
+                text: "review text".into(),
+                author: Some("reviewer".into()),
+                ..Default::default()
+            },
+        )])
+    }
+
+    #[test]
+    fn bounded_repaint_keeps_comment_metadata() {
+        let (mut renderer, _) = recording_renderer();
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let comments = review_comments();
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                None,
+                None,
+                Some(&comments),
+            )
+            .unwrap();
+        // Typing next to the commented range repaints its page bounded.
+        let edited = Rc::new(commented_paragraph_document("commented bodyx"));
+        renderer.prepare_incremental_repaint(0, 1);
+        renderer
+            .render_bounded_to_page_with_parts(
+                edited,
+                &options,
+                None,
+                None,
+                None,
+                Some(&comments),
+                1,
+            )
+            .unwrap();
+        let annotations = renderer.comment_annotations();
+        assert!(!annotations.is_empty());
+        for annotation in annotations {
+            assert_eq!(annotation.page, 1);
+            assert_eq!(annotation.text, "review text");
+            assert_eq!(annotation.author.as_deref(), Some("reviewer"));
+        }
+    }
+
+    #[test]
+    fn cached_rerender_keeps_comment_and_header_stores() {
+        let (mut renderer, _) = recording_renderer();
+        let mut options = options_for_seek_tests();
+        options.render_comments = true;
+        let comments = review_comments();
+        let header = vec![HeaderLine {
+            center: Some("header".into()),
+            ..Default::default()
+        }];
+        let footer = vec![HeaderLine {
+            center: Some("footer".into()),
+            ..Default::default()
+        }];
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                Some(&header),
+                Some(&footer),
+                Some(&comments),
+            )
+            .unwrap();
+        let store = Rc::clone(&renderer.comment_store);
+        let header_lines = renderer.header_lines.clone().unwrap();
+        let footer_lines = renderer.footer_lines.clone().unwrap();
+        for _ in 0..10 {
+            renderer.rerender_with_cached_state().unwrap();
+            assert!(Rc::ptr_eq(&store, &renderer.comment_store));
+            assert!(Rc::ptr_eq(
+                &header_lines,
+                renderer.header_lines.as_ref().unwrap()
+            ));
+            assert!(Rc::ptr_eq(
+                &footer_lines,
+                renderer.footer_lines.as_ref().unwrap()
+            ));
+        }
+        // The caller's own maps with the same contents are kept too.
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                Some(&header.clone()),
+                Some(&footer.clone()),
+                Some(&comments.clone()),
+            )
+            .unwrap();
+        assert!(Rc::ptr_eq(&store, &renderer.comment_store));
+        assert!(Rc::ptr_eq(
+            &header_lines,
+            renderer.header_lines.as_ref().unwrap()
+        ));
+        // Different contents replace them.
+        let mut changed = comments.clone();
+        changed.get_mut("1").unwrap().text = "edited".into();
+        renderer
+            .render_with_numbering(
+                &commented_paragraph_document("commented body"),
+                &options,
+                None,
+                None,
+                Some(&footer),
+                Some(&changed),
+            )
+            .unwrap();
+        assert_eq!(renderer.comment_store.get("1").unwrap().text, "edited");
+        assert!(renderer.header_lines.is_none());
+        assert!(renderer
+            .comment_annotations()
+            .iter()
+            .all(|annotation| annotation.text == "edited"));
+    }
+
     fn check_anchored_comment_window_edits(
         visible: usize,
         replacements: &[String],
@@ -74819,10 +75159,10 @@ mod tests {
         renderer
             .render(&doc_with_paragraph_texts(&["body"]), &Options::default())
             .expect("initial render");
-        renderer.header_lines = Some(vec![HeaderLine {
+        renderer.header_lines = Some(Rc::from(vec![HeaderLine {
             left: Some("legacy header".to_string()),
             ..Default::default()
-        }]);
+        }]));
         let mut document = note_test_document();
         let body = document.body.as_mut().expect("body");
         let BodyElement::Paragraph(paragraph) = &mut body.elements[0] else {
@@ -79241,7 +79581,7 @@ mod tests {
     fn footer_content_inside_bottom_margin_does_not_move_body() {
         let mut renderer = test_renderer();
         renderer.current_page_number = 1;
-        renderer.footer_lines = Some(vec![hl("one line")]);
+        renderer.footer_lines = Some(Rc::from(vec![hl("one line")]));
         assert_eq!(
             renderer.effective_body_bottom(),
             renderer.page_height - renderer.margin_bottom
@@ -79351,7 +79691,7 @@ mod tests {
     #[test]
     fn without_section_stories_the_document_wide_lines_still_apply() {
         let mut renderer = test_renderer();
-        renderer.header_lines = Some(vec![hl("doc")]);
+        renderer.header_lines = Some(Rc::from(vec![hl("doc")]));
         renderer.page_section_indices = vec![0, 1];
         renderer.current_page_number = 2;
         renderer.active_section_index = 1;

@@ -27,6 +27,16 @@ mod write;
 
 pub use properties::{CustomProperty, CustomValue, DocumentProperties};
 
+/// What a PAGE field shows on one laid-out page: its section's `w:start`
+/// applied (`value`, which a field's own numeric switches format), and
+/// that section's numeral format and chapter prefix applied too (`text`),
+/// which PAGEREF and a table of contents show.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PageLabel {
+    pub value: usize,
+    pub text: String,
+}
+
 use crate::commands::{Command, CommandContext, CommandError, CommandResult};
 use crate::docx_xml::{DocxXmlDocument, XmlElement, XmlNode, XmlNodeId};
 use crate::word::references::citations::{self, BibliographyStyle};
@@ -63,6 +73,10 @@ pub struct FieldEnvironment {
     pub page_count: Option<usize>,
     /// The page (1-based) each paragraph starts on, by paragraph index.
     pub paragraph_pages: HashMap<usize, usize>,
+    /// What a PAGE field on each physical page shows at the last layout,
+    /// page 1 first. Empty without a layout: PAGE and PAGEREF then number
+    /// from the physical page and the story's section starts.
+    pub page_labels: Vec<PageLabel>,
     /// Answers to ASK and FILLIN prompts, by [`FieldPrompt::key`].
     pub prompt_answers: HashMap<String, String>,
     /// Reads a local file a field names (INCLUDETEXT), relative to the
@@ -98,6 +112,7 @@ impl Default for FieldEnvironment {
             file_size: None,
             page_count: None,
             paragraph_pages: HashMap::new(),
+            page_labels: Vec::new(),
             prompt_answers: HashMap::new(),
             read_file: None,
             japanese: true,

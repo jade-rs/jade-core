@@ -30,6 +30,7 @@ fn repaint(
             model.numbering_part.as_ref(),
             model.header_lines.as_deref(),
             model.footer_lines.as_deref(),
+            None,
             1,
         )
         .expect("repaint");
