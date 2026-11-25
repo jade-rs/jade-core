@@ -325,3 +325,187 @@ fn numpages_survives_a_page_box_change() {
     let edited = document.export_docx().unwrap();
     assert_footers_read_of(&document, &edited, document.page_count());
 }
+
+#[test]
+fn numpages_settles_after_typing_onto_a_new_page_and_deleting_it_again() {
+    // Just enough to run onto a fourth page.
+    let typed = (1..80)
+        .map(|count| "overflowing words ".repeat(count * 5))
+        .find(|typed| {
+            let mut document = open(&three_pages(&field_footer()), None);
+            document
+                .insert_text(3, "Page Four".len(), typed, 3)
+                .unwrap();
+            document.page_count() == 4
+        })
+        .expect("text that runs onto page 4");
+    for (window, drain_between) in [
+        (None, true),
+        (None, false),
+        (Some(0..3), true),
+        (Some(0..3), false),
+    ] {
+        let mut document = open(&three_pages(&field_footer()), window.clone());
+        // A few words at a time, as typing does, at the end of the
+        // paragraph, each repaint bounded to page 3.
+        let mut at = "Page Four".len();
+        for chunk in typed.as_bytes().chunks(90) {
+            let chunk = std::str::from_utf8(chunk).unwrap();
+            document.insert_text(3, at, chunk, 3).unwrap();
+            at += chunk.len();
+        }
+        if drain_between {
+            drain(&mut document);
+        }
+        assert_eq!(
+            document.page_count(),
+            4,
+            "window {window:?}, drained {drain_between}"
+        );
+        // Taken back, bounded to the page it was typed on.
+        // Taken back the same way.
+        let mut left = typed.chars().count();
+        while left > 0 {
+            let word = left.min(90);
+            document
+                .delete_text(3, "Page Four".len() + left, true, word, 3)
+                .unwrap();
+            left -= word;
+        }
+        drain(&mut document);
+        assert_eq!(document.page_count(), 3, "window {window:?}");
+        let edited = document.export_docx().unwrap();
+        assert_footers_read_of(&document, &edited, 3);
+    }
+}
+
+/// Tight margins, so a header that wraps to a second line pushes the body
+/// down; `body` is the body before the last section properties.
+fn roman_package(header_runs: &str, body: &str) -> Vec<u8> {
+    let header = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="{W}" xmlns:r="{R}"><w:p><w:pPr><w:spacing w:after="0"/></w:pPr>{header_runs}</w:p></w:hdr>"#
+    );
+    package(body, "", &field_footer(), Some(&header)).pipe_margins()
+}
+
+trait PipeMargins {
+    fn pipe_margins(self) -> Vec<u8>;
+}
+
+impl PipeMargins for Vec<u8> {
+    /// The header sits 0.5" from the top and the body starts 0.7" down: one
+    /// header line fits above it, a second pushes it down.
+    fn pipe_margins(self) -> Vec<u8> {
+        rewrite_part(&self, "word/document.xml", |xml| {
+            xml.replace(r#"w:top="1440""#, r#"w:top="1008""#)
+        })
+    }
+}
+
+fn rewrite_part(docx: &[u8], part: &str, edit: impl Fn(String) -> String) -> Vec<u8> {
+    let mut input = zip::ZipArchive::new(Cursor::new(docx)).unwrap();
+    let mut output = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for index in 0..input.len() {
+        let mut entry = input.by_index(index).unwrap();
+        let name = entry.name().unwrap().into_owned();
+        let mut data = Vec::new();
+        entry.read_to_end(&mut data).unwrap();
+        if name == part {
+            data = edit(String::from_utf8(data).unwrap()).into_bytes();
+        }
+        output
+            .start_file(name, zip::write::SimpleFileOptions::default())
+            .unwrap();
+        output.write_all(&data).unwrap();
+    }
+    output.finish().unwrap().into_inner()
+}
+
+/// Seven pages of one line each, then `lines` lines.
+fn roman_body(lines: usize) -> String {
+    let mut body = String::new();
+    for page in 0..7 {
+        let break_before = if page == 0 {
+            ""
+        } else {
+            "<w:pPr><w:pageBreakBefore/></w:pPr>"
+        };
+        body.push_str(&format!(
+            "<w:p>{break_before}<w:r><w:t>Page {page}</w:t></w:r></w:p>"
+        ));
+    }
+    for line in 0..lines {
+        let break_before = if line == 0 {
+            "<w:pPr><w:pageBreakBefore/></w:pPr>"
+        } else {
+            ""
+        };
+        body.push_str(&format!(
+            "<w:p>{break_before}<w:r><w:t>Line {line}</w:t></w:r></w:p>"
+        ));
+    }
+    body
+}
+
+fn literal_header(prefix: &str, total: &str) -> String {
+    format!(r#"<w:r><w:t xml:space="preserve">{prefix}{total}</w:t></w:r>"#)
+}
+
+/// Where the body's first line is, which a two-line header moves down.
+fn body_top(bytes: &[u8]) -> f64 {
+    let mut document = open(bytes, None);
+    document.place_caret(0, 0).unwrap().document_y
+}
+
+/// The page count follows the header's NUMPAGES: `VIII` wraps the header
+/// onto a second line and pushes a line onto a ninth page; `IX` fits on one
+/// and the document has eight. No total is right, so the shell must stop
+/// repainting after a pass or two instead of spinning.
+#[test]
+fn an_oscillating_page_count_stops_repainting() {
+    // The shortest prefix that wraps `VIII` but leaves `IX` on one line.
+    let one_line = body_top(&roman_package(&literal_header("", "VIII"), &roman_body(1)));
+    let wraps = |prefix: &str, total: &str| {
+        body_top(&roman_package(
+            &literal_header(prefix, total),
+            &roman_body(1),
+        )) > one_line + 1.0
+    };
+    let prefix = (1..400)
+        .map(|count| "Header ".repeat(count / 7) + &"x".repeat(count % 7))
+        .find(|prefix| wraps(prefix, "VIII"))
+        .expect("a prefix that wraps");
+    assert!(!wraps(&prefix, "IX"), "IX fits where VIII wraps");
+    // The most lines page 8 holds under a one-line header.
+    let pages = |total: &str, lines: usize| {
+        open(
+            &roman_package(&literal_header(&prefix, total), &roman_body(lines)),
+            None,
+        )
+        .page_count()
+    };
+    let lines = (1..120)
+        .take_while(|&lines| pages("IX", lines) == 8)
+        .last()
+        .expect("page 8 holds a line");
+    assert_eq!(
+        pages("VIII", lines),
+        9,
+        "a second header line spills a line"
+    );
+
+    let header = format!(
+        r#"<w:r><w:t xml:space="preserve">{prefix}</w:t></w:r>{}"#,
+        field("NUMPAGES \\* ROMAN", "VIII"),
+    );
+    let bytes = roman_package(&header, &roman_body(lines));
+    for window in [None, Some(0..1)] {
+        let before = surface_document_renders();
+        let mut document = open(&bytes, window.clone());
+        drain(&mut document);
+        document.repaint_all().unwrap();
+        drain(&mut document);
+        let renders = surface_document_renders() - before;
+        assert!(renders <= 8, "window {window:?}: {renders} renders");
+    }
+}

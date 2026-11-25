@@ -4821,6 +4821,10 @@ where
     /// Whether the last completed layout drew a total its own end proved
     /// wrong. See [`Self::take_page_totals_changed`].
     page_totals_changed: bool,
+    /// Completed passes in a row that raised `page_totals_changed`. A total
+    /// that changes the page count it counts (a roman NUMPAGES that wraps
+    /// its header line) has no right value; the count stops the repaints.
+    page_totals_flagged_passes: u8,
     /// Elements of `page_section_indices` visited while resolving page
     /// numbers, so tests can prove no lookup scans the pages.
     #[cfg(test)]
@@ -10832,6 +10836,7 @@ where
             settled_page_totals: None,
             page_totals_shown: RefCell::default(),
             page_totals_changed: false,
+            page_totals_flagged_passes: 0,
             parity_filler_pages: std::collections::BTreeSet::new(),
             mid_page_section_starts: Vec::new(),
             page_number_table: RefCell::new(None),
@@ -44526,6 +44531,14 @@ where
     fn settle_page_totals(&mut self, pages: usize) {
         let shown = std::mem::take(self.page_totals_shown.get_mut());
         if !self.last_layout_complete {
+            // A bounded pass that ran onto a new page knows of it from the
+            // host, though it settles nothing else.
+            let host_pages = self.host.page_count();
+            if let Some(totals) = self.settled_page_totals.as_mut() {
+                totals.pages = totals.pages.max(host_pages);
+            }
+            // Passes that ask for a paint are only counted back to back.
+            self.page_totals_flagged_passes = 0;
             return;
         }
         // Sections are counted once a document has shown a SECTIONPAGES,
@@ -44555,14 +44568,21 @@ where
         // settled one on every pass; raising the flag for it would repaint
         // forever.
         let moved = self.settled_page_totals.as_ref() != Some(&totals);
-        self.page_totals_changed |= moved
-            && shown.iter().any(|&(section, value)| {
-                value
-                    != match section {
-                        None => totals.pages,
-                        Some(section) => totals.section_pages.get(section).copied().unwrap_or(0),
-                    }
-            });
+        let drew_other_totals = shown.iter().any(|&(section, value)| {
+            value
+                != match section {
+                    None => totals.pages,
+                    Some(section) => totals.section_pages.get(section).copied().unwrap_or(0),
+                }
+        });
+        if !drew_other_totals {
+            // This pass drew the totals it ended with: nothing waits.
+            self.page_totals_changed = false;
+            self.page_totals_flagged_passes = 0;
+        } else if moved && self.page_totals_flagged_passes < MAX_FLAGGED_PAGE_TOTAL_PASSES {
+            self.page_totals_changed = true;
+            self.page_totals_flagged_passes += 1;
+        }
         self.settled_page_totals = Some(totals);
     }
 
@@ -44573,6 +44593,7 @@ where
         self.settled_page_totals = None;
         self.page_totals_shown.get_mut().clear();
         self.page_totals_changed = false;
+        self.page_totals_flagged_passes = 0;
     }
 
     /// The section whose header and footer a recorded physical (1-based)
@@ -45943,6 +45964,11 @@ fn section_page_count(
     let settled = settled.get(section).copied().unwrap_or(0);
     Some((section, laid_out.max(settled)))
 }
+
+/// How many completed passes in a row may ask for another paint because
+/// they drew totals other than the ones they ended with. See
+/// `CanvasRenderer::page_totals_flagged_passes`.
+const MAX_FLAGGED_PAGE_TOTAL_PASSES: u8 = 2;
 
 /// See `CanvasRenderer::settled_page_totals`.
 #[derive(Debug, PartialEq)]
@@ -80257,21 +80283,29 @@ mod tests {
     fn page_totals_flag_only_totals_that_moved() {
         let mut renderer = test_renderer();
         renderer.last_layout_complete = true;
-        renderer.page_section_indices = vec![0, 0];
-        renderer.show_page_total(None, 1);
-        renderer.settle_page_totals(2);
-        assert!(renderer.take_page_totals_changed(), "the first pass");
-        renderer.show_page_total(Some(0), 1);
-        renderer.show_page_total(None, 2);
-        renderer.settle_page_totals(2);
-        assert!(renderer.take_page_totals_changed(), "sections counted now");
-        renderer.show_page_total(Some(0), 1);
-        renderer.settle_page_totals(2);
-        assert!(!renderer.take_page_totals_changed(), "nothing moved");
-        renderer.page_section_indices = vec![0, 0, 0];
-        renderer.show_page_total(None, 2);
-        renderer.settle_page_totals(3);
-        assert!(renderer.take_page_totals_changed(), "a page added");
+        let mut pass = |pages: usize, shown: &[(Option<usize>, usize)]| {
+            renderer.page_section_indices = vec![0; pages];
+            for &(section, value) in shown {
+                renderer.show_page_total(section, value);
+            }
+            renderer.settle_page_totals(pages);
+            renderer.take_page_totals_changed()
+        };
+        assert!(pass(2, &[(None, 1)]), "the first pass");
+        assert!(pass(2, &[(Some(0), 1), (None, 2)]), "sections counted now");
+        assert!(!pass(2, &[(Some(0), 2), (None, 2)]), "drew its own totals");
+        assert!(pass(3, &[(None, 2), (Some(0), 2)]), "a page added");
+        assert!(!pass(3, &[(None, 3), (Some(0), 2)]), "nothing moved");
+        assert!(!pass(3, &[(None, 3), (Some(0), 3)]), "settled");
+        // A count that flips with its own value stops asking after two
+        // passes in a row.
+        for (index, pages) in [8, 9, 8, 9, 8].into_iter().enumerate() {
+            let flagged = pass(pages, &[(None, 17 - pages), (Some(0), pages)]);
+            assert_eq!(flagged, index < 2, "pass {index}");
+        }
+        // A pass that draws its own totals ends the run.
+        assert!(!pass(8, &[(None, 8), (Some(0), 8)]));
+        assert!(pass(9, &[(None, 8), (Some(0), 9)]), "counting starts again");
         renderer.reset_page_totals();
         assert!(renderer.settled_page_totals.is_none());
     }
