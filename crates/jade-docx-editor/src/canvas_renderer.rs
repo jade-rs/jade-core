@@ -54330,12 +54330,17 @@ mod tests {
     #[cfg(feature = "opentype-math")]
     #[test]
     fn boxed_math_inherits_paragraph_font_size_and_word_script_scales() {
-        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="30"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
+        let xml = r#"<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:body><w:p><w:pPr><w:pStyle w:val="Equation"/><w:rPr><w:rFonts w:ascii="Host Math"/><w:sz w:val="20"/></w:rPr></w:pPr><m:oMathPara><m:oMath><m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e><m:sup><m:r><m:t>x</m:t></m:r></m:sup></m:sSup></m:oMath></m:oMathPara></w:p></w:body></w:document>"#;
         let document = jade_docx_reader::DocumentParser::new()
             .parse_document_xml(xml)
             .unwrap();
         let blocks = document.body.unwrap().elements;
         let (mut renderer, _) = recording_renderer();
+        // Equation size comes from the paragraph style; its independently
+        // sized paragraph mark must not resize the equation or its scripts.
+        renderer.styles_part = Some(Rc::new(StylesPart::from_xml(
+            r#"<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Equation"><w:rPr><w:sz w:val="30"/></w:rPr></w:style></w:styles>"#
+        ).unwrap()));
         renderer
             .register_math_font(
                 "Host Math".into(),
@@ -54483,8 +54488,10 @@ mod tests {
             ("left", false, MathParagraphAlignment::Left),
             ("center", false, MathParagraphAlignment::Center),
             ("right", false, MathParagraphAlignment::Right),
-            ("start", true, MathParagraphAlignment::Right),
-            ("end", true, MathParagraphAlignment::Left),
+            ("start", false, MathParagraphAlignment::Left),
+            ("end", false, MathParagraphAlignment::Right),
+            ("start", true, MathParagraphAlignment::Left),
+            ("end", true, MathParagraphAlignment::Right),
         ] {
             for explicit in [false, true] {
                 let math_jc = if explicit {
@@ -54558,7 +54565,7 @@ mod tests {
                 r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
                 Some("Child"),
                 None,
-                MathParagraphAlignment::Left,
+                MathParagraphAlignment::Right,
             ),
             (
                 r#"<w:style w:type="paragraph" w:styleId="Base"><w:pPr><w:bidi/><w:jc w:val="end"/></w:pPr></w:style><w:style w:type="paragraph" w:styleId="Child"><w:basedOn w:val="Base"/></w:style>"#,
