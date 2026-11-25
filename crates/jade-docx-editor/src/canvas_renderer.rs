@@ -705,6 +705,102 @@ fn band_clip_overlaps_neighbor_ink(
         || next_ink_top.is_some_and(|top| aligned_bottom > top)
 }
 
+/// Page-local vertical extent `(top, bottom)` of what a recorded draw command
+/// paints other than glyphs: shading, highlights, revision marks, rules, and
+/// the erasure behind an overflowing line. `None` for glyphs and state
+/// changes.
+///
+/// A band repaint keeps glyphs exact under its clip, but not these. A fill
+/// that only partly reaches the band is rasterised from the clipped piece,
+/// whose antialiased corners round differently from the whole fill's; and a
+/// fill of a paragraph the band clears but does not repaint is simply lost.
+/// Rules are recorded at their text's baseline; their geometry follows the
+/// executor's (`stroke_underline_with_kind`, `execute_strike_through`), with
+/// room for the joins of a wave.
+fn draw_command_fill_extent(command: &DrawCommand) -> Option<(f64, f64)> {
+    match command {
+        DrawCommand::FillRect { y, height, .. }
+        | DrawCommand::FillVectorRect { y, height, .. }
+        | DrawCommand::ClearRect { y, height, .. }
+        | DrawCommand::CommentHighlight { y, height, .. }
+        | DrawCommand::RevisionHighlight { y, height, .. } => Some((*y, *y + height.max(0.0))),
+        DrawCommand::Underline {
+            y,
+            font_size_pt,
+            kind,
+            ..
+        } => {
+            let font_px = points_to_px(*font_size_pt);
+            let rule = *y + font_px * 0.15;
+            let base = (font_px * 0.05).max(1.0);
+            let kind = kind.as_deref().unwrap_or("single");
+            let width = if kind.ends_with("Heavy") || kind == "thick" {
+                base * 2.0
+            } else {
+                base
+            };
+            Some(match kind {
+                "wave" | "wavyHeavy" | "wavyDouble" => {
+                    let reach = (font_px * 0.10).clamp(1.0, 3.0) + width * 3.0;
+                    let second = if kind == "wavyDouble" {
+                        width * 2.5
+                    } else {
+                        0.0
+                    };
+                    (rule - reach, rule + second + reach)
+                }
+                "double" => (rule - width / 2.0, rule + width * 1.5 + base * 2.0),
+                _ => (rule - width / 2.0, rule + width / 2.0),
+            })
+        }
+        DrawCommand::StrikeThrough {
+            y,
+            font_size_pt,
+            double,
+            ..
+        } => {
+            let font_px = points_to_px(*font_size_pt);
+            let rule = *y - font_px * 0.3;
+            let half = (font_px * 0.05).max(1.0) / 2.0;
+            let gap = if *double {
+                (font_px * 0.06).max(1.0)
+            } else {
+                0.0
+            };
+            Some((rule - gap - half, rule + gap + half))
+        }
+        DrawCommand::SquigglyUnderline {
+            y, font_size_pt, ..
+        } => {
+            let font_px = points_to_px(*font_size_pt);
+            let rule = *y + font_px * 0.20;
+            let reach = (font_px * 0.10).clamp(1.0, 3.0) + (font_px * 0.05).max(1.0) * 3.0;
+            Some((rule - reach, rule + reach))
+        }
+        DrawCommand::EmphasisMark { y, radius, .. } => Some((*y - radius - 1.0, *y + radius + 1.0)),
+        DrawCommand::StrokePolyline {
+            points, line_width, ..
+        } => {
+            let half = line_width.max(1.0);
+            points
+                .iter()
+                .map(|&(_, y)| (y - half, y + half))
+                .reduce(|(top, bottom), (t, b)| (top.min(t), bottom.max(b)))
+        }
+        DrawCommand::TextRun { .. }
+        | DrawCommand::Text { .. }
+        | DrawCommand::TextWithSpacing { .. }
+        | DrawCommand::TabLeader { .. }
+        | DrawCommand::ControlMark { .. }
+        | DrawCommand::SelectionHighlight { .. }
+        | DrawCommand::Save
+        | DrawCommand::ClipRect { .. }
+        | DrawCommand::Restore
+        | DrawCommand::SetFillStyle { .. }
+        | DrawCommand::SetFont { .. } => None,
+    }
+}
+
 /// A band plan is indexed by paragraph number, so its cached last baseline must
 /// still identify the same paragraph as the pre-edit selection layout. Structural
 /// edits shift paragraph indexes; a stale cache slot can otherwise clear a valid
@@ -3365,6 +3461,52 @@ fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
         .any(|run| run.image.is_some() || run.text_box.is_some() || run.math.is_some())
 }
 
+/// How far (CSS px) a paragraph border can be drawn from the line it
+/// borders: the largest `w:space` (31 pt) and a thick border line.
+const BAND_BORDER_REACH_PX: f64 = 31.0 * 96.0 / 72.0 + 8.0;
+
+/// What a paragraph's paint drew past its lines' measured ink, kept on its
+/// layout cache entry for a later band redraw of it.
+#[derive(Clone, Copy, Debug, Default)]
+struct BandPaintMarks {
+    /// Absolute vertical extent of the erasure behind a line overflowing the
+    /// right edge, which follows the line's clip.
+    overflow_erasure: Option<(f64, f64)>,
+    /// A wave underline or an under-dot emphasis mark.
+    ink_below_lines: bool,
+}
+
+/// Whether paragraph borders draw anything, `w:between` included.
+fn paragraph_borders_paint(borders: &jade_docx_reader::document::ParagraphBorders) -> bool {
+    [
+        &borders.top,
+        &borders.bottom,
+        &borders.left,
+        &borders.right,
+        &borders.between,
+        &borders.bar,
+    ]
+    .into_iter()
+    .any(|edge| edge.as_ref().is_some_and(|edge| edge.is_visible()))
+}
+
+/// Whether paragraph borders draw a vertical edge beside the lines.
+fn paragraph_borders_paint_sides(borders: &jade_docx_reader::document::ParagraphBorders) -> bool {
+    [&borders.left, &borders.right, &borders.bar]
+        .into_iter()
+        .any(|edge| edge.as_ref().is_some_and(|edge| edge.is_visible()))
+}
+
+/// Normalised `rrggbb` form of a CSS colour the renderer writes for fills
+/// and the page, or the colour lower-cased when it is in another form.
+fn normalized_fill_color(color: &str) -> String {
+    let color = color.trim().to_ascii_lowercase();
+    match color.as_str() {
+        "white" | "rgb(255,255,255)" | "rgb(255, 255, 255)" | "#fff" => "ffffff".to_string(),
+        _ => color.trim_start_matches('#').to_string(),
+    }
+}
+
 /// Float exclusions are accumulated while walking body elements. Seek replay
 /// cannot currently restore that state, so documents that need horizontal
 /// wrapping conservatively render their prefix until exclusions are added to
@@ -5042,6 +5184,9 @@ where
     revision_debug_regions: RefCell<Vec<RevisionDebugInfo>>,
     numbering_debug_regions: RefCell<Vec<NumberingDebugInfo>>,
     line_overflow_debug_regions: RefCell<Vec<LineOverflowDebugInfo>>,
+    /// What the paragraph being painted drew that a band redraw of it must
+    /// know about later; stored on its layout cache entry when it ends.
+    band_paint_marks: Cell<BandPaintMarks>,
     pending_image_promises: RefCell<Vec<Promise>>,
     /// Caches decoded `ImageBitmap`s keyed by relationship id or data URI to
     /// avoid repeatedly requesting the same image during rapid re-renders.
@@ -10990,6 +11135,7 @@ where
             revision_debug_regions: RefCell::new(Vec::new()),
             numbering_debug_regions: RefCell::new(Vec::new()),
             line_overflow_debug_regions: RefCell::new(Vec::new()),
+            band_paint_marks: Cell::new(BandPaintMarks::default()),
             pending_image_promises: RefCell::new(Vec::new()),
             image_cache: Rc::new(RefCell::new(HashMap::new())),
             table_layouts: Vec::new(),
@@ -15182,9 +15328,13 @@ where
                 Err(()) => Some(f64::NEG_INFINITY),
             }
         });
+        let next_fill_top = self
+            .band_paragraph_fill_extent(paragraph_at(next), next, &layout)
+            .map(|(top, _)| top);
         let next_ink_top = next_line_ink_top
             .into_iter()
             .chain(next_marker_top)
+            .chain(next_fill_top)
             .reduce(f64::min);
         let dpr = self.host.device_pixel_ratio();
         if !self.band_preceding_lines_repaint(paragraph_at, edited, &layout, local_top, dpr) {
@@ -15228,11 +15378,236 @@ where
                 .set(self.band_redraw_fallback_floating.get() + 1);
             return None;
         }
+        // Gate 4c: what the band clip cuts but cannot repaint whole.
+        let (clip_top, clip_height) =
+            Self::device_aligned_vertical_clip_rect_for_dpr(local_top, local_bottom, dpr);
+        let clip_bottom = clip_top + clip_height;
+        // The edited paragraph's borders are drawn outside its line boxes,
+        // past the band, and so were marks its last paint drew below its
+        // lines' measured ink (a wave underline, an under-dot emphasis).
+        let bordered = paragraph
+            .properties
+            .as_ref()
+            .and_then(|props| props.borders.as_ref())
+            .is_some_and(paragraph_borders_paint);
+        if bordered || layout.ink_below_lines {
+            self.band_redraw_fallback_ink_overflow
+                .set(self.band_redraw_fallback_ink_overflow.get() + 1);
+            return None;
+        }
+        // The erasure behind a line of it that overflowed the right edge
+        // follows that line's clip; the part past the band would stay.
+        if layout.overflow_erasure.is_some_and(|(top, bottom)| {
+            let top = layout.start_y + top - layout.start_page_offset_y;
+            let bottom = layout.start_y + bottom - layout.start_page_offset_y;
+            top < clip_top || bottom > clip_bottom
+        }) {
+            self.band_redraw_fallback_ink_overflow
+                .set(self.band_redraw_fallback_ink_overflow.get() + 1);
+            return None;
+        }
+        if self.band_clip_cuts_revision_marks(
+            paragraph_at,
+            first..first + 2 * RADIUS + 1,
+            edited,
+            &layout,
+            clip_top,
+            clip_bottom,
+        ) {
+            self.band_redraw_fallback_neighbor_ink
+                .set(self.band_redraw_fallback_neighbor_ink.get() + 1);
+            return None;
+        }
         Some(BandRedrawPlan {
             page,
             local_top,
             local_bottom,
             paint_bottom,
+        })
+    }
+
+    /// Notes that the paragraph being painted draws below its lines' measured
+    /// ink (see [`BandPaintMarks`]).
+    fn mark_band_ink_below_lines(&self) {
+        let mut marks = self.band_paint_marks.get();
+        marks.ink_below_lines = true;
+        self.band_paint_marks.set(marks);
+    }
+
+    /// Whether `color` is the paper's: a fill in it paints nothing a band
+    /// clear does not restore.
+    fn color_is_paper(&self, color: &str) -> bool {
+        if self.page_background_fill.is_some() {
+            return false;
+        }
+        let paper = self.page_background_color.as_deref().unwrap_or("#FFFFFF");
+        normalized_fill_color(color) == normalized_fill_color(paper)
+    }
+
+    /// The draw commands paragraph `index` recorded where it still lies, on
+    /// the band's page (`layout` is the edited paragraph's), or `None` when
+    /// it has none there: formatting marks keep paragraphs out of the cache.
+    fn band_recorded_commands(
+        &self,
+        index: usize,
+        layout: &ParagraphLayoutResult,
+    ) -> Option<Rc<[DrawCommand]>> {
+        const EPS: f64 = 0.001;
+        let page = layout.start_page;
+        let layouts = self.paragraph_layout_cache.borrow();
+        let own = layouts
+            .get_entry(index)
+            .filter(|own| own.start_page == page && own.end_page == page)?;
+        let renders = self.paragraph_render_cache.borrow();
+        renders
+            .entries
+            .get(index)
+            .and_then(Option::as_ref)
+            .filter(|entry| {
+                entry.start_page == page + 1
+                    && (own.start_y - own.start_page_offset_y - entry.start_y).abs() < EPS
+            })
+            .map(|entry| Rc::clone(&entry.commands))
+    }
+
+    /// Page-local vertical extent on the band's page of the fills paragraph
+    /// `index` paints in a colour other than the paper's (shading, borders,
+    /// highlights, tracked-change marks, rules), or `None` when it paints
+    /// none. A band clip that reaches this extent must repaint the paragraph,
+    /// as it does a neighbour's glyphs. Without recorded commands the extent
+    /// is read from the model: its line boxes when it is shaded, highlighted
+    /// or tracked, grown by a border's reach when it is bordered.
+    fn band_paragraph_fill_extent(
+        &self,
+        paragraph: Option<&Paragraph>,
+        index: usize,
+        layout: &ParagraphLayoutResult,
+    ) -> Option<(f64, f64)> {
+        let union = |(top, bottom): (f64, f64), (t, b): (f64, f64)| (top.min(t), bottom.max(b));
+        if let Some(commands) = self.band_recorded_commands(index, layout) {
+            return commands
+                .iter()
+                .filter(|command| match command {
+                    DrawCommand::FillRect { color, .. }
+                    | DrawCommand::FillVectorRect { color, .. } => !self.color_is_paper(color),
+                    _ => true,
+                })
+                .filter_map(draw_command_fill_extent)
+                .reduce(union);
+        }
+        let paragraph = paragraph?;
+        let paints = |shading: &jade_docx_reader::document::Shading| {
+            ShadingPaint::of(shading, |color| !self.color_is_paper(color)).is_some()
+        };
+        let properties = paragraph.properties.as_ref();
+        let filled = properties
+            .and_then(|props| props.shading.as_ref())
+            .is_some_and(paints)
+            || paragraph.runs.iter().any(|run| {
+                run.revision.is_some()
+                    || run.properties.as_ref().is_some_and(|props| {
+                        props
+                            .highlight
+                            .as_deref()
+                            .is_some_and(|highlight| !highlight.eq_ignore_ascii_case("none"))
+                            || props.shading.as_ref().is_some_and(paints)
+                    })
+            });
+        let bordered = properties
+            .and_then(|props| props.borders.as_ref())
+            .is_some_and(paragraph_borders_paint);
+        if !filled && !bordered {
+            return None;
+        }
+        let reach = if bordered { BAND_BORDER_REACH_PX } else { 0.0 };
+        let offset = layout.start_page_offset_y;
+        self.selection
+            .paragraphs()
+            .get(index)?
+            .lines
+            .iter()
+            .filter_map(|line| {
+                let (top, bottom) = self.band_neighbor_line_bounds(line, layout)?;
+                let content_top = line.absolute_content_top - offset;
+                Some((
+                    top.min(content_top) - reach,
+                    bottom.max(content_top + line.content_height) + reach,
+                ))
+            })
+            .reduce(union)
+    }
+
+    /// Whether the band clip cuts a neighbour's tracked-change or comment
+    /// highlight, its wave underline or its side border. The pass repaints a
+    /// neighbour it reaches, but Skia rasterises the clipped piece of these
+    /// with edges off the whole one's. Without recorded commands, a
+    /// neighbour with tracked changes, or whose last paint drew below its
+    /// lines (a wave underline), counts as marking its line boxes.
+    fn band_clip_cuts_revision_marks<'a>(
+        &self,
+        paragraph_at: impl Fn(usize) -> Option<&'a Paragraph>,
+        window: std::ops::Range<usize>,
+        edited: usize,
+        layout: &ParagraphLayoutResult,
+        clip_top: f64,
+        clip_bottom: f64,
+    ) -> bool {
+        let cut = |(top, bottom): (f64, f64)| {
+            bottom > clip_top && top < clip_bottom && (top < clip_top || bottom > clip_bottom)
+        };
+        let paragraphs = self.selection.paragraphs();
+        let layouts = self.paragraph_layout_cache.borrow();
+        let offset = layout.start_page_offset_y;
+        let lines_cut = |index: usize| {
+            paragraphs.get(index).is_some_and(|paragraph| {
+                paragraph.lines.iter().any(|line| {
+                    self.band_neighbor_line_bounds(line, layout)
+                        .is_some_and(|(top, bottom)| {
+                            let content_top = line.absolute_content_top - offset;
+                            cut((
+                                top.min(content_top),
+                                bottom.max(content_top + line.content_height),
+                            ))
+                        })
+                })
+            })
+        };
+        window.filter(|&index| index != edited).any(|index| {
+            let paragraph = paragraph_at(index);
+            // Side borders run the height of each line, as shading does, but
+            // their clipped piece rasterises a few pixels off.
+            let sides = paragraph.is_some_and(|paragraph| {
+                paragraph
+                    .properties
+                    .as_ref()
+                    .and_then(|props| props.borders.as_ref())
+                    .is_some_and(paragraph_borders_paint_sides)
+            });
+            if sides && lines_cut(index) {
+                return true;
+            }
+            if let Some(commands) = self.band_recorded_commands(index, layout) {
+                return commands.iter().any(|command| match command {
+                    DrawCommand::RevisionHighlight { y, height, .. }
+                    | DrawCommand::CommentHighlight { y, height, .. } => cut((*y, *y + height)),
+                    DrawCommand::Underline { kind, .. }
+                        if kind.as_deref().is_some_and(|kind| kind.starts_with("wav")) =>
+                    {
+                        draw_command_fill_extent(command).is_some_and(cut)
+                    }
+                    DrawCommand::SquigglyUnderline { .. } => {
+                        draw_command_fill_extent(command).is_some_and(cut)
+                    }
+                    _ => false,
+                });
+            }
+            let marked = layouts
+                .get_entry(index)
+                .is_some_and(|own| own.ink_below_lines)
+                || paragraph.is_some_and(|paragraph| {
+                    paragraph.runs.iter().any(|run| run.revision.is_some())
+                });
+            marked && lines_cut(index)
         })
     }
 
@@ -15258,13 +15633,18 @@ where
 
     /// Lines of paragraph `index` whose ink the band clip reaches, where
     /// `reaches(top, bottom)` tests page-local ink. A reached numbering
-    /// marker reaches the first line, which paints it. `None` when the
-    /// paragraph has no recorded lines or its marker's ink is unknown.
+    /// marker reaches the first line, which paints it. A paragraph that
+    /// paints fills ([`Self::band_paragraph_fill_extent`]) inks its whole
+    /// line boxes, and fills reaching the clip beyond every line (a border)
+    /// reach the line nearest the band: its first when it lies `below` the
+    /// band, its last otherwise. `None` when the paragraph has no recorded
+    /// lines or its marker's ink is unknown.
     fn band_neighbor_reached_lines(
         &self,
         paragraph: Option<&Paragraph>,
         index: usize,
         layout: &ParagraphLayoutResult,
+        below: bool,
         reaches: impl Fn(f64, f64) -> bool,
     ) -> Option<Vec<&jade_docx_layout::selection::LineLayout>> {
         let lines = &self.selection.paragraphs().get(index)?.lines;
@@ -15275,21 +15655,31 @@ where
                 .is_some_and(|(top, bottom)| reaches(top, bottom)),
             None => false,
         };
+        let fill = self.band_paragraph_fill_extent(paragraph, index, layout);
         let offset = layout.start_page_offset_y;
-        Some(
-            lines
-                .iter()
-                .enumerate()
-                .filter(|(line_index, line)| {
-                    (*line_index == 0 && marker_reached)
-                        || reaches(
-                            line.absolute_content_top - offset,
-                            line.absolute_content_top + line.content_height - offset,
-                        )
-                })
-                .map(|(_, line)| line)
-                .collect(),
-        )
+        let mut reached: Vec<_> = lines
+            .iter()
+            .enumerate()
+            .filter(|(line_index, line)| {
+                let content_top = line.absolute_content_top - offset;
+                let content_bottom = content_top + line.content_height;
+                let (top, bottom) = if fill.is_some() {
+                    let box_top = line.absolute_top - offset;
+                    (
+                        content_top.min(box_top),
+                        content_bottom.max(box_top + line.height),
+                    )
+                } else {
+                    (content_top, content_bottom)
+                };
+                (*line_index == 0 && marker_reached) || reaches(top, bottom)
+            })
+            .map(|(_, line)| line)
+            .collect();
+        if reached.is_empty() && fill.is_some_and(|(top, bottom)| reaches(top, bottom)) {
+            reached.extend(if below { lines.first() } else { lines.last() });
+        }
+        Some(reached)
     }
 
     /// Page-local vertical ink extent `(top, bottom)` of the numbering marker
@@ -15412,6 +15802,33 @@ where
         }
     }
 
+    /// Band-mode guard for a fill the edited paragraph paints outside its
+    /// line's own clip, spanning page-local `top..bottom`: the band clip keeps
+    /// whatever part of it lies past the band from being painted, so such a
+    /// fill escalates the render to a full repaint.
+    fn band_guard_edited_fill(&mut self, paragraph_index: usize, top: f64, bottom: f64) {
+        let Some(plan) = self.band_redraw_plan else {
+            return;
+        };
+        if self.band_redraw_escalate
+            || self.rendering_header_footer_story
+            || self.band_redraw_edited_paragraph != Some(paragraph_index)
+            || self.current_page_number != plan.page
+        {
+            return;
+        }
+        let (clip_top, clip_height) = Self::device_aligned_vertical_clip_rect_for_dpr(
+            plan.local_top,
+            plan.local_bottom,
+            self.host.device_pixel_ratio(),
+        );
+        if band_ink_escapes_band(clip_top, clip_top + clip_height, top, bottom) {
+            self.band_redraw_escalate = true;
+            self.band_redraw_fallback_ink_overflow
+                .set(self.band_redraw_fallback_ink_overflow.get() + 1);
+        }
+    }
+
     /// Page-local `(top, bottom)` of `line` when it lies in the band's page and
     /// column, which the band page's pass draws; `None` otherwise.
     fn band_neighbor_line_bounds(
@@ -15442,7 +15859,7 @@ where
         for index in edited + 1..=edited + BAND_MAX_REPAINTED_NEIGHBORS + 1 {
             let paragraph = paragraph_at(index);
             let reached =
-                self.band_neighbor_reached_lines(paragraph, index, layout, |top, _| {
+                self.band_neighbor_reached_lines(paragraph, index, layout, true, |top, _| {
                     band_clip_overlaps_neighbor_ink(
                         0.0,
                         local_bottom,
@@ -15482,7 +15899,7 @@ where
         for (step, index) in (0..edited).rev().enumerate() {
             let paragraph = paragraph_at(index);
             let Some(reached) =
-                self.band_neighbor_reached_lines(paragraph, index, layout, |_, bottom| {
+                self.band_neighbor_reached_lines(paragraph, index, layout, false, |_, bottom| {
                     band_clip_overlaps_neighbor_ink(
                         local_top,
                         local_top,
@@ -20800,6 +21217,7 @@ where
         let layout_cache_start_last_line_baseline_abs =
             self.last_line_baseline + self.page_offset_y;
         let cache_start_y = self.current_y;
+        self.band_paint_marks.set(BandPaintMarks::default());
         let cache_spacing_after_input =
             self.paragraph_spacing_after_input(paragraph, body_element_index, section_index);
         let cache_line_number_state = self.has_any_line_numbering().then_some(LineNumberState {
@@ -24549,6 +24967,11 @@ where
                 self.trailing_spacing_after.map(|(_, _, _, amount)| amount);
             result.trailing_spacing_after_consumed =
                 self.current_spacing_after_consumed().unwrap_or(f64::NAN);
+            let marks = self.band_paint_marks.take();
+            result.overflow_erasure = marks
+                .overflow_erasure
+                .map(|(top, bottom)| (top - result.start_y, bottom - result.start_y));
+            result.ink_below_lines = marks.ink_below_lines;
             self.paragraph_layout_cache
                 .borrow_mut()
                 .insert(paragraph_index, result);
@@ -29138,6 +29561,21 @@ where
                 {
                     let clear_x = right_limit.floor();
                     let clear_width = (overflow_visual_end_x.ceil() - clear_x).max(1.0);
+                    // This erasure follows the line's clip, which reaches a
+                    // device pixel past the line's ink and so can pass the
+                    // band: the band clip would keep its rows below or above
+                    // from being erased, as a full repaint erases them.
+                    self.band_guard_edited_fill(paragraph_index, clip_top, clip_top + clip_height);
+                    let mut marks = self.band_paint_marks.get();
+                    let erasure = (
+                        self.page_offset_y + clip_top,
+                        self.page_offset_y + clip_top + clip_height,
+                    );
+                    marks.overflow_erasure = Some(match marks.overflow_erasure {
+                        Some((top, bottom)) => (top.min(erasure.0), bottom.max(erasure.1)),
+                        None => erasure,
+                    });
+                    self.band_paint_marks.set(marks);
                     if draw_enabled {
                         context.clear_rect(clear_x, clip_top, clear_width, clip_height);
                     }
@@ -39436,6 +39874,9 @@ where
             baseline_y + top_offset - radius - gap
         };
         let filled = mark.is_filled();
+        if mark.is_below() {
+            self.mark_band_ink_below_lines();
+        }
         let draw_now = self.should_draw_current_page_for_render();
         let two_pi = std::f64::consts::PI * 2.0;
 
@@ -39807,6 +40248,9 @@ where
     ) -> Result<(), P::Error> {
         if width <= 0.0 {
             return Ok(());
+        }
+        if kind.is_some_and(|kind| kind.starts_with("wav")) {
+            self.mark_band_ink_below_lines();
         }
         if !self.should_draw_current_page_for_render() {
             return Ok(());
