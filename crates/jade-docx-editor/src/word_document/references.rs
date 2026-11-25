@@ -2039,7 +2039,13 @@ impl WordDocument {
                         previous = None;
                         continue;
                     };
-                    let RunFieldKind::PageRef { name, .. } = &field.kind else {
+                    // A `\p` result is relative text, not a page number.
+                    let RunFieldKind::PageRef {
+                        name,
+                        relative_position: false,
+                        ..
+                    } = &field.kind
+                    else {
                         previous = None;
                         continue;
                     };

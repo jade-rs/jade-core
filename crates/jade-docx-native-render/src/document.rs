@@ -276,6 +276,13 @@ pub struct NativeDocument {
     /// whole-document layout. While it has, [`Self::paint_stale_pages`] lays
     /// the document out from the start rather than resuming at a page.
     bounded_pass_since_full_layout: bool,
+    /// The round-trip tree was built after the layout the pages show, which
+    /// has no node ids for tables and links: the next whole repaint gives
+    /// them theirs, and a bounded edit runs one first.
+    roundtrip_relayout_pending: bool,
+    /// Why the round-trip tree could not be built, kept so it is not
+    /// parsed again on every edit.
+    roundtrip_xml_error: Option<String>,
 }
 
 /// How far before the first stale page [`NativeDocument::paint_stale_pages`]
@@ -308,6 +315,21 @@ fn count_surface_document_render() {
 #[doc(hidden)]
 pub fn surface_document_renders() -> usize {
     SURFACE_DOCUMENT_RENDERS.with(std::cell::Cell::get)
+}
+
+thread_local! {
+    static ROUNDTRIP_XML_BUILDS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// How many times a [`NativeDocument`] on this thread has built the
+/// round-trip XML tree that saving patches, after opening. Opening builds
+/// none (a document whose first paint needs it is loaded with it,
+/// uncounted), nor does export; the first edit or an explicit
+/// [`NativeDocument::ensure_roundtrip_xml`] builds one. A diagnostic for
+/// tests that pin how much work an operation does.
+#[doc(hidden)]
+pub fn roundtrip_xml_builds() -> usize {
+    ROUNDTRIP_XML_BUILDS.with(std::cell::Cell::get)
 }
 
 /// Binds only the selected math faces, so each family uses its own MATH
@@ -408,7 +430,11 @@ impl NativeDocument {
         let window = window.filter(|window| !window.is_empty());
         let mut options = Options::default();
 
-        let word_document = block_on(WordDocument::load(docx_bytes, &options))
+        // The model alone, as the browser opens: the round-trip XML tree that
+        // saving patches is a second pass over `document.xml` the first paint
+        // does not need. The shell builds it in idle time, and every edit
+        // builds it first if it comes sooner (see `Self::ensure_roundtrip_xml`).
+        let word_document = block_on(WordDocument::load_for_initial_render(docx_bytes, &options))
             .map_err(|err| format!("parse failed: {err}"))?;
         let Some(document) = word_document.document.as_ref() else {
             return Err("no main document part".to_string());
@@ -506,6 +532,8 @@ impl NativeDocument {
             paint_window: window,
             stale_pages,
             bounded_pass_since_full_layout: false,
+            roundtrip_relayout_pending: false,
+            roundtrip_xml_error: None,
         };
         // Should layout end on a box the section properties did not predict,
         // the host is built again to it, drawing the same window.
@@ -596,8 +624,9 @@ impl NativeDocument {
         // A bounded pass since the last whole layout (an edit, a selection)
         // stops at its bound: the snapshots, the line registry hit-testing
         // reads and the regions after it may belong to a layout that no
-        // longer exists, and only a whole layout rebuilds them.
-        if self.bounded_pass_since_full_layout {
+        // longer exists, and only a whole layout rebuilds them. So may a
+        // layout from before the round-trip tree gave the model its node ids.
+        if self.bounded_pass_since_full_layout || self.roundtrip_relayout_pending {
             return Ok(false);
         }
         // With a selection showing, a seek drew some highlighted pages
@@ -862,6 +891,7 @@ impl NativeDocument {
     }
 
     fn step_history(&mut self, backwards: bool) -> Result<Option<(usize, usize)>, String> {
+        self.build_roundtrip_xml()?;
         // Header and footer edits are on their own stack, so undo has to pop
         // whichever stack the last step came from.
         let step = if backwards {
@@ -996,6 +1026,7 @@ impl NativeDocument {
         if let Some(error) = self.renderer.take_render_error() {
             return Err(error);
         }
+        self.roundtrip_relayout_pending = false;
         let pages = self.page_count().max(pages_before);
         match &drawn {
             Some(drawn) => {
@@ -1302,6 +1333,7 @@ impl NativeDocument {
         paragraph: usize,
         text: &str,
     ) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         let previous = self
             .word_document
             .snapshot_including_package()
@@ -1395,6 +1427,7 @@ impl NativeDocument {
         replace_previous: bool,
         bound_to_page: Option<usize>,
     ) -> Result<(), String> {
+        self.ensure_roundtrip_xml()?;
         let (x, y, width, height) = rect;
         if replace_previous {
             // Rolled back without a repaint: the transform below redraws, and
@@ -2018,6 +2051,7 @@ impl NativeDocument {
     /// Shows the codes of the fields `view` names (⌥F9 every field, ⇧F9 the
     /// selected ones) and repaints.
     pub fn set_field_code_view(&mut self, view: FieldCodeView) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         self.field_codes = view;
         self.renderer.set_field_code_display(None);
         self.repaint_all().map(|_| ())
@@ -3072,6 +3106,14 @@ impl NativeDocument {
 
     /// The document model, for reading what a command needs to address —
     /// styles, numbering, table dimensions.
+    ///
+    /// Until the round-trip tree is built (the first edit or
+    /// [`Self::ensure_roundtrip_xml`]), readers backed by the XML — content
+    /// controls, legacy form fields, fields, tables of contents,
+    /// cross-reference targets, revisions, headings collapsed by default,
+    /// editable ranges, alt text, rendered paragraph lengths, the XML half of
+    /// paragraph and table formats — are empty or wrong. Callers that read
+    /// those call [`Self::ensure_roundtrip_xml`] first.
     pub fn word_document(&self) -> &WordDocument {
         &self.word_document
     }
@@ -3144,6 +3186,7 @@ impl NativeDocument {
         command: HeadlessCommand,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let after = self.edit_in_place(|this| {
@@ -3176,12 +3219,78 @@ impl NativeDocument {
     /// also forgets the paragraph hashes the renderer keys by address, which
     /// an edit in place would otherwise leave stale; the copy forgot them too.
     fn edit_in_place<R>(&mut self, edit: impl FnOnce(&mut Self) -> R) -> R {
+        debug_assert!(
+            self.word_document.raw_document.is_some(),
+            "an edit ran before ensure_roundtrip_xml"
+        );
         self.renderer.drop_document_cache();
         let result = edit(self);
         if let Some(document) = &self.word_document.document {
             self.renderer.restore_document_cache(Rc::clone(document));
         }
         result
+    }
+
+    /// Builds the round-trip XML tree that saving patches, which opening
+    /// leaves out, and repaints once so the layouts carry the node ids it
+    /// attaches. The first paint needs only the model, and the tree is a
+    /// second pass over `document.xml`; every edit and undo builds it first,
+    /// and a shell calls this in idle time after the first frame so the first
+    /// keystroke does not pay for it. Returns whether it did anything — built
+    /// the tree or laid the document out again — so a shell knows whether
+    /// the model's readers or the page images it holds may have changed. The
+    /// pixels do not: the pages are drawn again, none is left stale. Does
+    /// nothing once built; a tree that failed to parse fails again without
+    /// being parsed again.
+    ///
+    /// Until it runs, readers of [`Self::word_document`] backed by the tree
+    /// see nothing of it: content controls, legacy form fields, fields,
+    /// tables of contents, cross-reference targets, revisions, headings
+    /// collapsed by default, editable ranges, alt text, rendered paragraph
+    /// lengths, and the XML half of paragraph and table formats. A caller
+    /// that reads those, or reads anything the open set from them, calls
+    /// this first.
+    pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, String> {
+        let built = self.build_roundtrip_xml()?;
+        if !self.roundtrip_relayout_pending {
+            return Ok(built);
+        }
+        // Only node ids changed, so the pages left stale and those not are
+        // as they were: lay everything out, draw the window, mark nothing.
+        self.repaint_all_drawing(self.paint_window.clone(), false)?;
+        self.bounded_pass_since_full_layout = false;
+        Ok(true)
+    }
+
+    /// [`Self::ensure_roundtrip_xml`] without the repaint, for an edit that
+    /// repaints the whole document after it anyway.
+    fn build_roundtrip_xml(&mut self) -> Result<bool, String> {
+        if self.word_document.raw_document.is_some() {
+            return Ok(false);
+        }
+        if let Some(error) = &self.roundtrip_xml_error {
+            return Err(error.clone());
+        }
+        // Attaching node ids writes to the model; with the renderer still
+        // holding it, that would copy the whole document first.
+        self.renderer.drop_document_cache();
+        let built = self.word_document.ensure_roundtrip_xml();
+        if let Some(document) = &self.word_document.document {
+            self.renderer.restore_document_cache(Rc::clone(document));
+        }
+        match built {
+            Ok(true) => {
+                ROUNDTRIP_XML_BUILDS.with(|builds| builds.set(builds.get() + 1));
+                self.roundtrip_relayout_pending = true;
+                Ok(true)
+            }
+            Ok(false) => Ok(false),
+            Err(error) => {
+                let error = format!("round-trip XML failed: {error}");
+                self.roundtrip_xml_error = Some(error.clone());
+                Err(error)
+            }
+        }
     }
 
     /// [`Self::apply_command`] for several commands that are one action — a
@@ -3197,6 +3306,7 @@ impl NativeDocument {
         if commands.is_empty() {
             return Ok(());
         }
+        self.build_roundtrip_xml()?;
         let before = self.selection;
         let recorded = self.executor.history_revision();
         self.executor.begin_group();
@@ -3239,6 +3349,7 @@ impl NativeDocument {
         command: Box<dyn Command>,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.build_roundtrip_xml()?;
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let mut selection = self.selection;
@@ -3299,6 +3410,7 @@ impl NativeDocument {
         visible_end_page_1idx: usize,
         executor_steps: usize,
     ) -> Result<Duration, String> {
+        self.ensure_roundtrip_xml()?;
         // IME updates replace the previous marked text in the same paragraph.
         // Capture the same reuse candidates as typing; the recorded command's
         // footprint below must still prove that no other paragraph/part changed.

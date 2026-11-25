@@ -8,10 +8,14 @@ use proptest::prelude::*;
 const INITIAL: &str = "日本😀abc";
 
 fn open() -> Doc {
-    open_bytes(&package(
+    let mut document = open_bytes(&package(
         &format!("<w:p><w:r><w:t>{INITIAL}</w:t></w:r></w:p>"),
         "",
-    ))
+    ));
+    // As the shell's idle pass leaves it: building the round-trip tree
+    // repaints, which a rejected first edit would otherwise be blamed for.
+    document.ensure_roundtrip_xml().unwrap();
+    document
 }
 
 fn insert(paragraph: usize, offset: usize, text: &str) -> HeadlessCommand {

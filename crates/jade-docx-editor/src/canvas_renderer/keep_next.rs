@@ -172,6 +172,11 @@ where
         measurer
             .mid_page_section_starts
             .clone_from(&self.mid_page_section_starts);
+        // A forward PAGEREF reads the previous pass's page sections, as
+        // the body does when it paints the chain.
+        measurer
+            .page_sections_before_pass
+            .clone_from(&self.page_sections_before_pass);
         measurer
             .section_page_numbering
             .clone_from(&self.section_page_numbering);

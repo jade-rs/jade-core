@@ -1752,6 +1752,7 @@ pub fn apply_snapshot_headless_commands_with_executor_to_document(
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
+    ensure_roundtrip_xml(word_doc)?;
     refuse_locked_edits(word_doc, &request.commands)?;
     if let Some(selection) =
         type_over_placeholder(word_doc, command_executor, selection, &request.commands)?
@@ -2112,6 +2113,22 @@ pub fn apply_protected_headless_commands_with_executor_to_document(
     apply_headless_commands(word_doc, command_executor, selection, request, true)
 }
 
+/// Builds the round-trip tree a deferred load left out: saving patches it,
+/// so an edit made without it would reach the model and never the file.
+#[inline]
+fn ensure_roundtrip_xml(word_doc: &mut WordDocument) -> Result<(), HeadlessApiApplyError> {
+    if word_doc.raw_document.is_some() {
+        return Ok(());
+    }
+    word_doc
+        .ensure_roundtrip_xml()
+        .map(|_| ())
+        .map_err(|error| HeadlessApiApplyError::Command {
+            index: 0,
+            source: CommandError::Custom(error.to_string()),
+        })
+}
+
 fn apply_headless_commands(
     word_doc: &mut WordDocument,
     command_executor: &mut CommandExecutor,
@@ -2122,6 +2139,7 @@ fn apply_headless_commands(
     if request.commands.is_empty() {
         return Err(HeadlessApiApplyError::EmptyCommands);
     }
+    ensure_roundtrip_xml(word_doc)?;
     refuse_locked_edits(word_doc, &request.commands)?;
     if !protected {
         if let Some(selection) =

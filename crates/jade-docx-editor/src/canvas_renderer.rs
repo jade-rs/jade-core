@@ -4349,6 +4349,14 @@ where
     auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
     auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
+    /// The section owning each physical page as the last paginating pass
+    /// left it, page 1 first, for the labels a TOC update, F9 and print
+    /// ranges read in a multi-section document (`label_page_owners`). The
+    /// live owner of the page a pixel-only or bounded walk stopped on is
+    /// the section it stopped in; labels are numbered from these owners
+    /// with the current `w:pgNumType`, so a numbering change applies to
+    /// every page.
+    label_page_owners: Vec<usize>,
     measuring_keep_next: bool,
     /// A multi-column section ended by a continuous break is balanced on
     /// its last page, as Word balances it: on `page`, a column moves on to
@@ -10649,6 +10657,7 @@ where
             auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
             auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
+            label_page_owners: Vec::new(),
             measuring_keep_next: false,
             column_balance: None,
             column_separators_drawn: None,
@@ -18274,6 +18283,7 @@ where
                         .truncate(self.active_section_index + 1);
                     self.invalidate_page_number_table();
                 }
+                self.record_label_page_owners();
             }
         }
 
@@ -42800,7 +42810,12 @@ where
     /// placed content there restarts the page's number although the page
     /// shows the chrome of the section at its top.
     fn numbering_section_for_page(&self, page: usize) -> usize {
-        let mut section = self.body_section_for_page(page);
+        self.numbering_section_from(page, self.body_section_for_page(page))
+    }
+
+    /// Steps back from `section`, the last section with body content on
+    /// `page`, past mid-page sections that placed nothing there.
+    fn numbering_section_from(&self, page: usize, mut section: usize) -> usize {
         while section > 0
             && self
                 .mid_page_start(section)
@@ -44485,9 +44500,9 @@ where
         // must not renumber the sections before it.
         if section == 0 {
             // Single-section documents never need the table.
-            let first_page = self.first_page_of_section_index(0).unwrap_or(page);
-            let start = self.section_page_number_start(0).unwrap_or(1);
-            return start + page.saturating_sub(first_page);
+            return self.page_number_walk(0, (1, 1), 0, page, |index| {
+                self.laid_out_first_page_of_section(index)
+            });
         }
         let mut cached = self.page_number_table.borrow_mut();
         let table = cached.get_or_insert_with(|| self.build_page_number_table());
@@ -44496,29 +44511,64 @@ where
         }
         // Sections from the first one whose start depends on the page being
         // laid out: usually none or one.
-        let (mut number_at_section_start, mut first_page_of_section) =
-            table.sections.last().copied().unwrap_or((1, 1));
-        for index in table.sections.len()..=section {
+        let state = table.sections.last().copied().unwrap_or((1, 1));
+        self.page_number_walk(table.sections.len(), state, section, page, |index| {
+            table.laid_out_first_page(index)
+        })
+    }
+
+    /// One step of the section walk behind a PAGE number: section `index`,
+    /// whose numbering starts on `first_page`, continues the count from
+    /// `(number, first_page)` of the section before (`(1, 1)` before the
+    /// first), unless its own `w:start` restarts it.
+    fn page_number_walk_step(
+        &self,
+        index: usize,
+        first_page: usize,
+        (number, previous_first_page): (usize, usize),
+    ) -> (usize, usize) {
+        let number = if index > 0 {
+            number + first_page.saturating_sub(previous_first_page)
+        } else {
+            number
+        };
+        (
+            self.section_page_number_start(index).unwrap_or(number),
+            first_page,
+        )
+    }
+
+    /// The number a PAGE field shows on a physical (1-based) `page` of
+    /// `section`, walking sections `from..=section` from `state`, the
+    /// `(number, first_page)` of section `from - 1` (`(1, 1)` from 0).
+    ///
+    /// A section's numbering starts on its mid-page start page when it
+    /// placed content there and on the page after when not; otherwise on
+    /// the first page `laid_out_first_page` gives it. A section owning no
+    /// page yet starts on the page being laid out when it is the active
+    /// one, any other on `page` itself.
+    fn page_number_walk(
+        &self,
+        from: usize,
+        state: (usize, usize),
+        section: usize,
+        page: usize,
+        laid_out_first_page: impl Fn(usize) -> Option<usize>,
+    ) -> usize {
+        let (number, first_page) = (from..=section).fold(state, |state, index| {
             let first_page = match self.mid_page_start(index) {
                 Some(start) if self.mid_page_start_has_content(start) => start.page,
                 Some(start) => start.page + 1,
-                None => table
-                    .laid_out_first_page(index)
+                None => laid_out_first_page(index)
                     .or_else(|| {
                         (index == self.active_section_index)
                             .then_some(self.current_page_number.max(1))
                     })
                     .unwrap_or(page),
             };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-        }
-        number_at_section_start + page.saturating_sub(first_page_of_section)
+            self.page_number_walk_step(index, first_page, state)
+        });
+        number + page.saturating_sub(first_page)
     }
 
     /// Section `index`'s `w:pgNumType w:start`.
@@ -44552,8 +44602,7 @@ where
             first_pages,
             sections: Vec::new(),
         };
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
+        let mut state = (1, 1);
         for index in 0.. {
             let first_page = match self.mid_page_start(index) {
                 Some(start) => match start.content {
@@ -44569,16 +44618,8 @@ where
                     None => break,
                 },
             };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
-            table
-                .sections
-                .push((number_at_section_start, first_page_of_section));
+            state = self.page_number_walk_step(index, first_page, state);
+            table.sections.push(state);
         }
         table
     }
@@ -44590,6 +44631,8 @@ where
             let start = self.page_number_start.unwrap_or(1) as usize;
             return start + physical_page.saturating_sub(1);
         }
+        // Deliberately the plain pre-table loop, not `page_number_walk`, so
+        // the cross-check catches a bug in the shared walk too.
         let page = physical_page.max(1);
         let section = self.numbering_section_for_page(page);
         let mut number_at_section_start = 1usize;
@@ -44631,12 +44674,39 @@ where
     /// (a table of contents before its entries) takes its section from the
     /// previous pass, which laid out the page the target was cached on.
     fn page_reference_number(&self, physical_page: usize) -> String {
+        self.page_label(physical_page).text
+    }
+
+    /// [`Self::page_reference_number`] with the PAGE value before its
+    /// numeral format.
+    fn page_label(&self, physical_page: usize) -> crate::fields::PageLabel {
+        if self.section_page_numbering.is_empty() {
+            let value =
+                self.page_number_start.unwrap_or(1) as usize + physical_page.saturating_sub(1);
+            return crate::fields::PageLabel {
+                value,
+                text: format_page_number(value, self.page_number_format.as_deref()),
+            };
+        }
+        let (section, value) = self.page_reference_value(physical_page.max(1));
+        crate::fields::PageLabel {
+            value,
+            text: self.page_number_with_format(physical_page.max(1), section, value),
+        }
+    }
+
+    /// The numbering section of a physical (1-based) page and the PAGE
+    /// value on it, for a page the walk has not reached yet as well.
+    fn page_reference_value(&self, physical_page: usize) -> (usize, usize) {
         let laid_out = self.page_section_indices.len();
         if self.section_page_numbering.len() <= 1
             || physical_page <= laid_out.max(self.current_page_number)
             || physical_page > self.page_sections_before_pass.len()
         {
-            return self.displayed_page_number(physical_page);
+            return (
+                self.numbering_section_for_page(physical_page),
+                self.page_number_value(physical_page),
+            );
         }
         let owner = |page: usize| {
             self.page_section_indices
@@ -44645,50 +44715,120 @@ where
                 .copied()
                 .unwrap_or(self.active_section_index)
         };
-        let mut section = owner(physical_page);
-        while section > 0
-            && self.mid_page_start(section).is_some_and(|start| {
-                start.page == physical_page && !self.mid_page_start_has_content(start)
-            })
-        {
-            section -= 1;
-        }
+        let section = self.numbering_section_from(physical_page, owner(physical_page));
         let mut first_pages: Vec<Option<usize>> = vec![None; section + 1];
         for page in 1..=physical_page {
             if let Some(first) = first_pages.get_mut(owner(page)) {
                 first.get_or_insert(page);
             }
         }
-        let mut number_at_section_start = 1usize;
-        let mut first_page_of_section = 1usize;
-        for (index, first) in first_pages.iter().enumerate() {
-            let first_page = match self.mid_page_start(index) {
-                Some(start) if self.mid_page_start_has_content(start) => start.page,
-                Some(start) => start.page + 1,
-                None => first.unwrap_or(first_page_of_section),
-            };
-            if index > 0 {
-                number_at_section_start += first_page.saturating_sub(first_page_of_section);
-            }
-            first_page_of_section = first_page;
-            if let Some(start) = self.section_page_number_start(index) {
-                number_at_section_start = start;
-            }
+        let value = self.page_number_walk(0, (1, 1), section, physical_page, |index| {
+            first_pages[index]
+        });
+        (section, value)
+    }
+
+    /// What a PAGE field on each laid-out page shows, its section's
+    /// restart and numeral format applied: what a PAGEREF to the page shows
+    /// and what Word writes when it updates a table of contents' numbers.
+    ///
+    /// With several sections these are numbered from the page owners the
+    /// last paginating pass recorded (`label_page_owners`): a pixel-only or
+    /// bounded rerender stops partway, and the page it stops on would read
+    /// the section it stopped in.
+    pub fn displayed_page_labels(&self) -> Vec<crate::fields::PageLabel> {
+        if self.labels_follow_recorded_owners() {
+            return self
+                .labels_from_recorded_owners(self.label_page_owners.len())
+                .into_iter()
+                .enumerate()
+                .map(|(index, (section, value))| crate::fields::PageLabel {
+                    value,
+                    text: self.page_number_with_format(index + 1, section, value),
+                })
+                .collect();
         }
-        let displayed =
-            number_at_section_start + physical_page.saturating_sub(first_page_of_section);
-        self.page_number_with_format(physical_page, section, displayed)
+        (1..=self.resolved_total_page_count())
+            .map(|page| self.page_label(page))
+            .collect()
+    }
+
+    /// Whether labels come from `label_page_owners`: a multi-section
+    /// document a paginating pass has laid out. A single section's labels
+    /// do not depend on where a walk stopped, and are read live.
+    fn labels_follow_recorded_owners(&self) -> bool {
+        self.section_page_numbering.len() > 1 && !self.label_page_owners.is_empty()
+    }
+
+    /// Records each page's owner at the end of a paginating pass: this
+    /// pass's for the pages it finished (all of them when it reached the end
+    /// of the document), the last pass's for the page it stopped on and
+    /// those after it.
+    fn record_label_page_owners(&mut self) {
+        if self.section_page_numbering.len() <= 1 {
+            self.label_page_owners.clear();
+            return;
+        }
+        let finished = if self.last_layout_complete {
+            self.current_page_number
+        } else {
+            self.current_page_number.saturating_sub(1)
+        }
+        .min(self.page_section_indices.len());
+        let previous = if self.label_page_owners.is_empty() {
+            &self.page_sections_before_pass
+        } else {
+            &self.label_page_owners
+        };
+        let tail = if self.last_layout_complete {
+            Vec::new()
+        } else {
+            previous.get(finished..).unwrap_or_default().to_vec()
+        };
+        let mut owners = self.page_section_indices[..finished].to_vec();
+        owners.extend(tail);
+        self.label_page_owners = owners;
+    }
+
+    /// The numbering section and PAGE value of pages `1..=count`, numbered
+    /// from `label_page_owners` with the current section numbering.
+    fn labels_from_recorded_owners(&self, count: usize) -> Vec<(usize, usize)> {
+        let owners = &self.label_page_owners;
+        let count = count.min(owners.len());
+        let mut first_pages: Vec<Option<usize>> = Vec::new();
+        for (index, &owner) in owners[..count].iter().enumerate() {
+            if first_pages.len() <= owner {
+                first_pages.resize(owner + 1, None);
+            }
+            first_pages[owner].get_or_insert(index + 1);
+        }
+        (1..=count)
+            .map(|page| {
+                let section = self.numbering_section_from(page, owners[page - 1]);
+                let value = self.page_number_walk(0, (1, 1), section, page, |index| {
+                    first_pages.get(index).copied().flatten()
+                });
+                (section, value)
+            })
+            .collect()
     }
 
     /// Each laid-out page's section (from 0) and the number its `PAGE`
-    /// field shows, as a number: what a print range's `p2s3` names.
+    /// field shows, as a number: what a print range's `p2s3` names. In a
+    /// multi-section document these come from the owners the last
+    /// paginating pass recorded, as `displayed_page_labels` does.
     pub fn page_labels(&self) -> Vec<(usize, usize)> {
-        (1..=self.page_count())
-            .map(|page| {
-                let section = self.numbering_section_for_page(page);
-                (section, self.page_number_value(page))
-            })
-            .collect()
+        let count = self.page_count();
+        let mut labels = if self.labels_follow_recorded_owners() {
+            self.labels_from_recorded_owners(count)
+        } else {
+            Vec::new()
+        };
+        labels.extend((labels.len() + 1..=count).map(|page| {
+            let section = self.numbering_section_for_page(page);
+            (section, self.page_number_value(page))
+        }));
+        labels
     }
 
     fn page_number_with_format(&self, page: usize, section: usize, displayed: usize) -> String {
@@ -44798,7 +44938,9 @@ where
     /// body content. A mid-page section that placed content on its shared
     /// page starts there; one whose content moved on to the next page starts
     /// on that page. Otherwise the first page laid out for the section (the
-    /// page being laid out counts as the active section's).
+    /// page being laid out counts as the active section's). The tests'
+    /// view of what `page_number_walk` starts each section on.
+    #[cfg(test)]
     fn first_page_of_section_index(&self, section: usize) -> Option<usize> {
         if let Some(start) = self.mid_page_start(section) {
             return Some(if self.mid_page_start_has_content(start) {
@@ -44807,17 +44949,7 @@ where
                 start.page + 1
             });
         }
-        let laid_out = self
-            .page_section_indices
-            .iter()
-            .position(|owner| *owner == section)
-            .map(|index| index + 1);
-        #[cfg(test)]
-        self.page_number_page_visits.set(
-            self.page_number_page_visits.get()
-                + laid_out.unwrap_or(self.page_section_indices.len()),
-        );
-        laid_out.or_else(|| {
+        self.laid_out_first_page_of_section(section).or_else(|| {
             (section == self.active_section_index).then_some(self.current_page_number.max(1))
         })
     }
@@ -44841,6 +44973,21 @@ where
         laid_out.or_else(|| {
             (section == self.active_section_index).then_some(self.current_page_number.max(1))
         })
+    }
+
+    /// The first page `page_section_indices` gives `section`.
+    fn laid_out_first_page_of_section(&self, section: usize) -> Option<usize> {
+        let laid_out = self
+            .page_section_indices
+            .iter()
+            .position(|owner| *owner == section)
+            .map(|index| index + 1);
+        #[cfg(test)]
+        self.page_number_page_visits.set(
+            self.page_number_page_visits.get()
+                + laid_out.unwrap_or(self.page_section_indices.len()),
+        );
+        laid_out
     }
 
     pub fn table_order_for(&self, table_id: usize) -> Option<usize> {

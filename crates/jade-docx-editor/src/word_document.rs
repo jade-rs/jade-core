@@ -2576,6 +2576,16 @@ impl WordDocument {
 
     /// Loads the semantic model needed for initial rendering while deferring the
     /// preservation-oriented XML tree until the first edit or export.
+    ///
+    /// Until [`Self::ensure_roundtrip_xml`] runs, readers backed by the tree
+    /// see nothing of it: content controls, legacy form fields, fields,
+    /// tables of contents, cross-reference targets, paragraph-mark revisions,
+    /// headings collapsed by default, editable ranges, alt text, rendered
+    /// paragraph lengths, and the XML half of paragraph and table formats.
+    /// Edits through the headless API, the command executor and story
+    /// replacement build the tree first; [`Self::export_docx`] before it
+    /// writes the document as loaded. A document whose first paint depends
+    /// on the tree (a legacy check box, an HTML altChunk) gets it here.
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all, fields(data_len = data.len())))]
     pub async fn load_for_initial_render(
         data: &[u8],
@@ -2680,6 +2690,13 @@ impl WordDocument {
             // When the raw tree is needed, one tokenization feeds both the
             // layout model and the lossless tree patched on save. Initial
             // rendering can defer building that tree until the first edit.
+            // Some parts of the first paint come from the tree, or are spliced
+            // into the body before node ids are attached by position, so a
+            // document with them builds the tree now: a legacy check box draws
+            // its box from a result only the tree supplies, and an HTML
+            // altChunk inserts paragraphs that a later attach would misalign.
+            let parse_roundtrip_xml =
+                parse_roundtrip_xml || Self::first_paint_needs_roundtrip_xml(&doc_part.content);
             let mut parsed_doc = if parse_roundtrip_xml {
                 let (parsed_doc, raw_document) =
                     parser.parse_document_xml_with_raw_tree(&doc_part.content)?;
@@ -3143,8 +3160,22 @@ impl WordDocument {
 
     /// Materializes the preservation-oriented XML tree and links its node IDs
     /// to the already parsed semantic document. This is idempotent.
+    #[inline]
     pub fn ensure_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
+        // Every edit asks; once built, the answer must cost no more than
+        // this check, and the build stays out of the caller's code.
         if self.raw_document.is_some() {
+            return Ok(false);
+        }
+        self.build_deferred_roundtrip_xml()
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn build_deferred_roundtrip_xml(&mut self) -> Result<bool, Box<dyn std::error::Error>> {
+        // A document built in memory, or a package without a main part, has
+        // no source XML to build a tree from.
+        if self.document_part.is_none() {
             return Ok(false);
         }
         let doc_part = self
@@ -3154,6 +3185,12 @@ impl WordDocument {
         let raw_xml = DocxXmlDocument::parse(&doc_part.content)?;
         self.attach_roundtrip_xml(raw_xml)?;
         Ok(true)
+    }
+
+    /// Whether `document.xml` holds something the deferred tree would get
+    /// wrong: see [`Self::load_for_initial_render`].
+    fn first_paint_needs_roundtrip_xml(document_xml: &str) -> bool {
+        document_xml.contains("FORMCHECKBOX") || document_xml.contains("altChunk")
     }
 
     pub(crate) fn attach_roundtrip_xml(
@@ -3179,6 +3216,9 @@ impl WordDocument {
         let text_metrics_cache = self.text_metrics_cache.get_mut().clone();
         self.rebuild_paragraph_surfaces();
         *self.text_metrics_cache.get_mut() = text_metrics_cache;
+        // The counter was read at load from a tree that was not there, so
+        // the next tracked change would reuse the ids the file already has.
+        self.refresh_revision_counter();
         Ok(())
     }
 
@@ -12393,10 +12433,23 @@ impl WordDocument {
             .package
             .as_ref()
             .ok_or(DocxExportError::MissingPackage)?;
-        let raw_document = self
-            .raw_document
-            .as_ref()
-            .ok_or(DocxExportError::MissingRawDocument)?;
+        // A deferred load that has not built its tree has not been edited
+        // either (edits need the tree), so the source XML parsed afresh is the
+        // tree it would have.
+        let deferred_tree;
+        let raw_document = match self.raw_document.as_ref() {
+            Some(raw) => raw,
+            None => {
+                let content = &self
+                    .document_part
+                    .as_ref()
+                    .ok_or(DocxExportError::MissingRawDocument)?
+                    .content;
+                deferred_tree = DocxXmlDocument::parse(content)
+                    .map_err(|_| DocxExportError::MissingRawDocument)?;
+                &deferred_tree
+            }
+        };
 
         let xml = raw_document.to_string()?;
         let mut overrides = HashMap::new();
@@ -68489,6 +68542,118 @@ mod tests {
             exported_xml.contains("<w:t>Hallo</w:t><w:lastRenderedPageBreak/><w:t>World</w:t>"),
             "marker should retain its logical offset: {exported_xml}"
         );
+    }
+
+    #[test]
+    fn deferred_roundtrip_xml_continues_revision_ids_after_the_file() {
+        let data = std::fs::read(fixture_path("review-kinds.docx")).expect("read fixture");
+        let options = Options::default();
+        let eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        deferred
+            .ensure_roundtrip_xml()
+            .expect("prepare round-trip XML");
+        assert!(
+            eager.next_revision_id > 1,
+            "the fixture has tracked changes"
+        );
+        assert_eq!(deferred.next_revision_id, eager.next_revision_id);
+    }
+
+    #[test]
+    fn deferred_load_builds_the_tree_when_the_first_paint_needs_it() {
+        let alt_chunk = std::fs::read(fixture_path("alt-chunk-html.docx")).expect("read fixture");
+        let check_box = build_document_docx(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:fldChar w:fldCharType="begin"><w:ffData><w:checkBox><w:default w:val="1"/></w:checkBox></w:ffData></w:fldChar></w:r><w:r><w:instrText> FORMCHECKBOX </w:instrText></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p></w:body></w:document>"#,
+        );
+        for (name, data) in [("alt chunk", alt_chunk), ("check box", check_box)] {
+            let deferred = executor::block_on(WordDocument::load_for_initial_render(
+                &data,
+                &Options::default(),
+            ))
+            .expect("deferred");
+            assert!(deferred.raw_document.is_some(), "{name}");
+        }
+    }
+
+    #[test]
+    fn deferred_load_headless_edits_save_as_an_eager_load_does() {
+        use crate::headless_api::apply_headless_commands_to_document;
+        use jade_docx_headless_api::{HeadlessCommand, HeadlessEditRequest};
+        let edits = || HeadlessEditRequest {
+            commands: vec![
+                HeadlessCommand::InsertText {
+                    paragraph: 0,
+                    offset: 0,
+                    text: "Edited ".to_string(),
+                },
+                HeadlessCommand::SetHeaderParagraphText {
+                    paragraph: 0,
+                    text: "Header".to_string(),
+                },
+                HeadlessCommand::InsertBlankPage {
+                    start_paragraph: 1,
+                    start_offset: 0,
+                    end_paragraph: 1,
+                    end_offset: 0,
+                },
+            ],
+        };
+        let data =
+            std::fs::read(fixture_path("word-compat-comprehensive.docx")).expect("read fixture");
+        let options = Options::default();
+        let mut eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        apply_headless_commands_to_document(&mut eager, &edits()).expect("eager edit");
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        apply_headless_commands_to_document(&mut deferred, &edits()).expect("deferred edit");
+        assert!(deferred.raw_document.is_some(), "the edit built the tree");
+        assert!(
+            deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+            "a headless edit on a deferred load saved differently"
+        );
+    }
+
+    #[test]
+    fn deferred_load_story_replacement_saves_as_an_eager_load_does() {
+        let data = std::fs::read(fixture_path("contract.docx")).expect("read fixture");
+        let story = std::fs::read(fixture_path("hello.docx")).expect("read story");
+        let options = Options::default();
+        let mut eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+        assert!(eager
+            .replace_story_from_docx(0, "header", "default", &story)
+            .expect("eager replace"));
+        let mut deferred =
+            executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                .expect("deferred");
+        assert!(deferred
+            .replace_story_from_docx(0, "header", "default", &story)
+            .expect("deferred replace"));
+        assert!(
+            deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+            "a story replacement on a deferred load saved differently"
+        );
+    }
+
+    #[test]
+    fn deferred_load_exports_as_loaded_before_the_tree() {
+        for fixture in ["contract.docx", "review-kinds.docx"] {
+            let data = std::fs::read(fixture_path(fixture)).expect("read fixture");
+            let options = Options::default();
+            let eager = executor::block_on(WordDocument::load(&data, &options)).expect("eager");
+            let deferred =
+                executor::block_on(WordDocument::load_for_initial_render(&data, &options))
+                    .expect("deferred");
+            assert!(deferred.raw_document.is_none(), "{fixture}");
+            assert!(
+                deferred.export_docx().expect("export") == eager.export_docx().expect("export"),
+                "{fixture}"
+            );
+        }
     }
 
     #[test]
