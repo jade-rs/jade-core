@@ -640,3 +640,120 @@ fn f9_after_a_pixel_rerender_writes_the_laid_out_label() {
         "{paragraphs:?}"
     );
 }
+
+/// Three sections over about eight pages: A in decimal, B in lower-roman
+/// from 7, C from 50. A TOC entry in A points at C's first paragraph,
+/// which holds a PAGE field. After a full layout, sections B and C switch
+/// to upper-case letters from 3, and one pass lays out only the first
+/// three pages. Labels past the page that pass stopped on come from the
+/// last full layout's page owners, numbered with the new formats.
+fn session_after_numbering_edit() -> LaidOutSession {
+    let paragraphs = |prefix: &str, count: usize| -> String {
+        (0..count)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T(</w:t></w:r><w:bookmarkEnd w:id="0"/>{}<w:r><w:t>)</w:t></w:r></w:p>{}{}"#,
+        complex_field("PAGEREF target \\h", "9"),
+        paragraphs("a", 60),
+        section_properties("nextPage", ""),
+        paragraphs("b", 120),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+        complex_field("PAGE", "9"),
+        paragraphs("c", 70),
+        section_properties("nextPage", r#"<w:pgNumType w:start="50"/>"#),
+    );
+    let mut session = laid_out_session(&body);
+    let labels = |session: &LaidOutSession| -> Vec<String> {
+        session
+            .renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    let before = labels(&session);
+    let c_first = before
+        .iter()
+        .position(|label| label == "50")
+        .expect("C starts at 50");
+    for section in [1, 2] {
+        session
+            .document
+            .set_page_number_format("upperLetter", Some(3), Some(section))
+            .expect("renumber the section");
+    }
+    let model = session.document.document.clone().expect("document");
+    session.renderer.set_layout_page_limit(Some(3));
+    session
+        .renderer
+        .render(&model, &Options::default())
+        .expect("a pass over the first three pages");
+    session.renderer.set_layout_page_limit(None);
+    assert!(!session.renderer.last_layout_complete);
+    let after = labels(&session);
+    assert_eq!(after.len(), before.len(), "{after:?}");
+    assert_eq!(after[c_first], "C", "{after:?}");
+    assert!(
+        after
+            .iter()
+            .all(|label| !label.chars().any(|c| c.is_ascii_digit())
+                || label == "1"
+                || label == "2"),
+        "only A's pages are decimal: {after:?}"
+    );
+    session
+}
+
+/// After a numbering-only edit and an incomplete pass, updating the TOC's
+/// page numbers writes C's new first number, not the old "50".
+#[test]
+fn a_toc_update_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
+    use crate::word::references::toc::WordToc;
+    let mut session = session_after_numbering_edit();
+    session.update_toc(true).expect("update the page numbers");
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tC");
+}
+
+/// The same for F9: the PAGE field on C's first page shows "C".
+#[test]
+fn f9_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
+    use crate::word::fields::{FieldHost, WordFields};
+    let mut session = session_after_numbering_edit();
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(
+        paragraphs.iter().any(|text| text == "T(C)"),
+        "{paragraphs:?}"
+    );
+}
+
+/// Print ranges and the TOC read the same labels after a pixel rerender.
+#[test]
+fn print_range_labels_agree_with_displayed_labels_after_a_rerender() {
+    let session = session_after_rerender();
+    let displayed: Vec<usize> = session
+        .renderer
+        .displayed_page_labels()
+        .into_iter()
+        .map(|label| label.value)
+        .collect();
+    let printed: Vec<usize> = session
+        .renderer
+        .labels_from_recorded_owners(displayed.len())
+        .into_iter()
+        .map(|(_, value)| value)
+        .collect();
+    assert_eq!(printed, displayed);
+    assert_eq!(displayed, [1, 7, 8, 9]);
+}

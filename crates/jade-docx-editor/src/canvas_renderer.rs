@@ -4316,11 +4316,14 @@ where
     auxiliary_story_base_cache: RefCell<AuxiliaryStoryBaseCache>,
     auxiliary_story_surface_scans: std::cell::Cell<u64>,
     keep_next_measurer: Option<Box<Self>>,
-    /// Each page's label as the last paginating pass left it, page 1 first
-    /// (`displayed_page_labels`, multi-section documents). A label read
-    /// live from a later pixel-only or bounded rerender would take the
-    /// section where that walk stopped for its last page.
-    page_label_snapshot: Vec<crate::fields::PageLabel>,
+    /// The section owning each physical page as the last paginating pass
+    /// left it, page 1 first, for the labels a TOC update, F9 and print
+    /// ranges read in a multi-section document (`label_page_owners`). The
+    /// live owner of the page a pixel-only or bounded walk stopped on is
+    /// the section it stopped in; labels are numbered from these owners
+    /// with the current `w:pgNumType`, so a numbering change applies to
+    /// every page.
+    label_page_owners: Vec<usize>,
     measuring_keep_next: bool,
     /// A multi-column section ended by a continuous break is balanced on
     /// its last page, as Word balances it: on `page`, a column moves on to
@@ -10509,7 +10512,7 @@ where
             auxiliary_story_base_cache: RefCell::new(AuxiliaryStoryBaseCache::default()),
             auxiliary_story_surface_scans: std::cell::Cell::new(0),
             keep_next_measurer: None,
-            page_label_snapshot: Vec::new(),
+            label_page_owners: Vec::new(),
             measuring_keep_next: false,
             column_balance: None,
             column_separators_drawn: None,
@@ -18099,7 +18102,7 @@ where
                         .truncate(self.active_section_index + 1);
                     self.invalidate_page_number_table();
                 }
-                self.record_page_label_snapshot();
+                self.record_label_page_owners();
             }
         }
 
@@ -44498,56 +44501,103 @@ where
     /// restart and numeral format applied: what a PAGEREF to the page shows
     /// and what Word writes when it updates a table of contents' numbers.
     ///
-    /// With several sections these are the labels the last paginating pass
-    /// recorded: a pixel-only or bounded rerender stops partway, and the
-    /// page it stops on would read the section it stopped in.
+    /// With several sections these are numbered from the page owners the
+    /// last paginating pass recorded (`label_page_owners`): a pixel-only or
+    /// bounded rerender stops partway, and the page it stops on would read
+    /// the section it stopped in.
     pub fn displayed_page_labels(&self) -> Vec<crate::fields::PageLabel> {
-        if self.section_page_numbering.len() > 1 {
-            return self.page_label_snapshot.clone();
+        if self.labels_follow_recorded_owners() {
+            return self
+                .labels_from_recorded_owners(self.label_page_owners.len())
+                .into_iter()
+                .enumerate()
+                .map(|(index, (section, value))| crate::fields::PageLabel {
+                    value,
+                    text: self.page_number_with_format(index + 1, section, value),
+                })
+                .collect();
         }
         (1..=self.resolved_total_page_count())
             .map(|page| self.page_label(page))
             .collect()
     }
 
-    /// Records the labels of the pages this paginating pass finished: all
-    /// of them when it reached the end of the document, else those before
-    /// the page it stopped on (later ones keep the last pass's labels).
-    /// Single-section documents read their labels live, as they do not
-    /// depend on where a walk stopped.
-    fn record_page_label_snapshot(&mut self) {
+    /// Whether labels come from `label_page_owners`: a multi-section
+    /// document a paginating pass has laid out. A single section's labels
+    /// do not depend on where a walk stopped, and are read live.
+    fn labels_follow_recorded_owners(&self) -> bool {
+        self.section_page_numbering.len() > 1 && !self.label_page_owners.is_empty()
+    }
+
+    /// Records each page's owner at the end of a paginating pass: this
+    /// pass's for the pages it finished (all of them when it reached the end
+    /// of the document), the last pass's for the page it stopped on and
+    /// those after it.
+    fn record_label_page_owners(&mut self) {
         if self.section_page_numbering.len() <= 1 {
-            self.page_label_snapshot.clear();
+            self.label_page_owners.clear();
             return;
         }
         let finished = if self.last_layout_complete {
             self.current_page_number
         } else {
             self.current_page_number.saturating_sub(1)
-        };
-        let labels: Vec<_> = (1..=finished).map(|page| self.page_label(page)).collect();
-        if self.last_layout_complete {
-            self.page_label_snapshot = labels;
-        } else {
-            let keep = if self.page_label_snapshot.len() > finished {
-                self.page_label_snapshot.split_off(finished)
-            } else {
-                Vec::new()
-            };
-            self.page_label_snapshot = labels;
-            self.page_label_snapshot.extend(keep);
         }
+        .min(self.page_section_indices.len());
+        let previous = if self.label_page_owners.is_empty() {
+            &self.page_sections_before_pass
+        } else {
+            &self.label_page_owners
+        };
+        let tail = if self.last_layout_complete {
+            Vec::new()
+        } else {
+            previous.get(finished..).unwrap_or_default().to_vec()
+        };
+        let mut owners = self.page_section_indices[..finished].to_vec();
+        owners.extend(tail);
+        self.label_page_owners = owners;
+    }
+
+    /// The numbering section and PAGE value of pages `1..=count`, numbered
+    /// from `label_page_owners` with the current section numbering.
+    fn labels_from_recorded_owners(&self, count: usize) -> Vec<(usize, usize)> {
+        let owners = &self.label_page_owners;
+        let count = count.min(owners.len());
+        let mut first_pages: Vec<Option<usize>> = Vec::new();
+        for (index, &owner) in owners[..count].iter().enumerate() {
+            if first_pages.len() <= owner {
+                first_pages.resize(owner + 1, None);
+            }
+            first_pages[owner].get_or_insert(index + 1);
+        }
+        (1..=count)
+            .map(|page| {
+                let section = self.numbering_section_from(page, owners[page - 1]);
+                let value = self.page_number_walk(0, (1, 1), section, page, |index| {
+                    first_pages.get(index).copied().flatten()
+                });
+                (section, value)
+            })
+            .collect()
     }
 
     /// Each laid-out page's section (from 0) and the number its `PAGE`
-    /// field shows, as a number: what a print range's `p2s3` names.
+    /// field shows, as a number: what a print range's `p2s3` names. In a
+    /// multi-section document these come from the owners the last
+    /// paginating pass recorded, as `displayed_page_labels` does.
     pub fn page_labels(&self) -> Vec<(usize, usize)> {
-        (1..=self.page_count())
-            .map(|page| {
-                let section = self.numbering_section_for_page(page);
-                (section, self.page_number_value(page))
-            })
-            .collect()
+        let count = self.page_count();
+        let mut labels = if self.labels_follow_recorded_owners() {
+            self.labels_from_recorded_owners(count)
+        } else {
+            Vec::new()
+        };
+        labels.extend((labels.len() + 1..=count).map(|page| {
+            let section = self.numbering_section_for_page(page);
+            (section, self.page_number_value(page))
+        }));
+        labels
     }
 
     fn page_number_with_format(&self, page: usize, section: usize, displayed: usize) -> String {
