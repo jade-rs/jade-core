@@ -17965,12 +17965,23 @@ where
         // the restore below reinstates them. Only the dirty-paragraph seek and
         // prefix replay stay off for those documents (replayed paragraphs do
         // not re-register their floats).
+        // A seek keeps the owners of the pages it skips from the list the
+        // last pass left. When that list stops short of them, the skipped
+        // pages would take the resume page's section (and its headers,
+        // footers and page numbers): such a seek is not taken, and the walk
+        // starts from the top. A pixel-only pass restores the authoritative
+        // list at its end.
+        let owners_cover = |seek: &PageStartSeekSnapshot| {
+            preserve_pixel_pagination
+                || previous_page_sections.len() >= seek.page_number.saturating_sub(1)
+        };
         let window_seek_snapshot = if self.prefer_visible_window_seek_once && !explicit_disable {
             if let Some(snapshot) = band_retry_seek.as_ref() {
                 self.try_prepare_visible_window_page_seek_with_band_retry(options, Some(snapshot))
             } else {
                 self.try_prepare_visible_window_page_seek(options)
             }
+            .filter(|seek| owners_cover(seek))
         } else {
             None
         };
@@ -17983,7 +17994,8 @@ where
             None
         } else {
             self.forced_seek_snapshot.take().filter(|snapshot| {
-                self.seek_snapshot_geometry_is_valid(snapshot)
+                owners_cover(snapshot)
+                    && self.seek_snapshot_geometry_is_valid(snapshot)
                     && self.seek_snapshot_notes_are_current(snapshot, options)
             })
         };
@@ -18031,6 +18043,9 @@ where
                     .and_then(|dirty_from| self.try_prepare_seek_start(dirty_from, options))
             })
         };
+        // Filtered before `walks_from_start`: a seek rejected here walks
+        // from the top.
+        let seek_snapshot = seek_snapshot.filter(|seek| owners_cover(seek));
         // Neither skipped nor replayed from cache: every table and header
         // this pass reaches records itself again.
         let walks_from_start = seek_snapshot.is_none() && self.prefix_replay_until.is_none();
@@ -18799,6 +18814,18 @@ where
                     preserve_stable_edit_pagination && self.last_fast_replay_stable;
                 self.settle_page_totals(authoritative_page_count);
             } else {
+                // A pass that stopped on a proven-stable fast replay changed
+                // no page: the pages after the one it stopped on keep the
+                // owners the last pass recorded, so a later seek past them
+                // restores the right sections.
+                if self.last_fast_replay_stable && !self.last_layout_complete {
+                    let kept = self.page_section_indices.len();
+                    if self.page_sections_before_pass.len() > kept {
+                        self.page_section_indices
+                            .extend_from_slice(&self.page_sections_before_pass[kept..]);
+                        self.invalidate_page_number_table();
+                    }
+                }
                 self.host
                     .finish_pagination(self.current_page_number, self.last_layout_complete)?;
                 self.page_origins.truncate(self.current_page_number);

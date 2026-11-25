@@ -1024,3 +1024,115 @@ fn completing_a_lazy_layout_after_a_stable_edit_labels_every_page_right() {
     assert!(renderer.last_layout_complete());
     assert_eq!(texts(&renderer), truth);
 }
+
+/// From the review's probe: 17 pages in four sections. A stable edit on
+/// page 1 (a bare fast-replay trigger) stops its walk there; typing
+/// further down then goes through the lazy view's window seek, and the
+/// layout is completed with the extension seek. The page owners, and so
+/// the labels F9 writes, must match a fresh layout's: the stable pass
+/// keeps the owners of the pages it did not reach, and no seek resumes
+/// past owners it cannot restore.
+#[test]
+fn typing_after_a_stable_edit_keeps_every_page_owner() {
+    let paragraphs = |prefix: &str, count: usize| -> String {
+        (0..count)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = format!(
+        "{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}",
+        paragraphs("a", 60),
+        section_properties("nextPage", ""),
+        paragraphs("b", 120),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+        paragraphs("c", 200),
+        section_properties("continuous", r#"<w:pgNumType w:start="50"/>"#),
+        paragraphs("d", 90),
+        section_properties("nextPage", r#"<w:pgNumType w:fmt="upperLetter"/>"#),
+    );
+    let options = Options::default();
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let word_doc = futures::executor::block_on(WordDocument::load(&data, &options)).expect("load");
+    let base: Document = (**word_doc.document.as_ref().expect("document")).clone();
+    let edit = |document: &Document, index: usize, text: &str| -> Document {
+        let mut edited = document.clone();
+        if let Some(body) = edited.body.as_mut() {
+            if let BodyElement::Paragraph(paragraph) = &mut body.elements[index] {
+                paragraph.runs.first_mut().expect("run").text.push_str(text);
+            }
+        }
+        edited
+    };
+    let texts = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<String> {
+        renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    let grow = "word ".repeat(1800);
+    for target in [300usize, 420] {
+        for text in ["x", grow.as_str()] {
+            let mut renderer = recording_renderer();
+            renderer.sync_word_document(&word_doc);
+            for _ in 0..2 {
+                renderer.render(&base, &options).expect("render");
+            }
+            renderer.clear_dirty_regions();
+            // A stable edit on page 1.
+            let first = edit(&base, 2, "x");
+            let height = renderer.cached_paragraph_height(2).expect("laid out");
+            renderer.set_incremental_dirty_from(2);
+            renderer.mark_paragraph_dirty(2);
+            renderer.set_fast_replay_trigger(2, height);
+            renderer.render(&first, &options).expect("stable edit");
+            renderer.clear_dirty_regions();
+            // Typing further down, as the lazy typing path arms it.
+            let page = renderer
+                .cached_paragraph_start_page(target)
+                .expect("laid out");
+            let height = renderer.cached_paragraph_height(target).expect("laid out");
+            let second = edit(&first, target, text);
+            renderer.set_visible_page_range(Some(page..=page + 1));
+            renderer.set_layout_page_limit(Some(page + 1));
+            renderer.prefer_visible_window_seek_once();
+            renderer.set_incremental_dirty_from(target);
+            if !renderer.prepare_completed_pagination_edit(target, height) {
+                renderer.invalidate_layout_from(target);
+            }
+            renderer.set_fast_replay_trigger(target, height);
+            renderer.render(&second, &options).expect("typing");
+            renderer.clear_dirty_regions();
+            // Complete the layout as `complete_layout` does.
+            if !renderer.last_layout_complete() {
+                let previous_limit = renderer.layout_page_limit();
+                renderer.set_layout_page_limit(None);
+                renderer.prepare_layout_extension_seek(previous_limit, usize::MAX, &options);
+                renderer
+                    .render_layout_with_numbering_rc(
+                        Rc::new(second.clone()),
+                        &options,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .expect("complete the layout");
+            }
+            let mut fresh = recording_renderer();
+            fresh.sync_word_document(&word_doc);
+            for _ in 0..2 {
+                fresh.render(&second, &options).expect("fresh");
+            }
+            let case = format!("typing {} chars at {target} (page {page})", text.len());
+            assert_eq!(
+                renderer.page_section_indices, fresh.page_section_indices,
+                "{case}"
+            );
+            assert_eq!(texts(&renderer), texts(&fresh), "{case}");
+        }
+    }
+}
