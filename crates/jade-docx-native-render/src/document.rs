@@ -3634,9 +3634,16 @@ impl NativeDocument {
             stood
         });
         if shown_elsewhere {
+            // A STYLEREF also shows the text on the paragraph's own page, or
+            // on the pages before it, in a header the pass did not draw again.
             let count = self.page_count();
-            self.stale_pages
-                .extend(visible_end_page_1idx.min(count)..count);
+            let from = self
+                .renderer
+                .first_page_showing_style_ref_of(paragraph)
+                .map_or(visible_end_page_1idx, |page| {
+                    page.min(visible_end_page_1idx)
+                });
+            self.stale_pages.extend(from.min(count)..count);
         } else {
             self.mark_pages_past_bound_stale(visible_end_page_1idx, downstream_stood);
         }

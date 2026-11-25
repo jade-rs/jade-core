@@ -7675,6 +7675,37 @@ where
                 .is_some_and(|style| referenced.contains(&style.to_lowercase()))
     }
 
+    /// When a header's or footer's STYLEREF looks up `paragraph`'s style,
+    /// the first page (0-based) whose STYLEREF may show its text: the page it
+    /// starts on, which the pass that edits it draws again but whose header
+    /// the band does not, or the first page when no earlier paragraph has the
+    /// style (a page before the first one in a style shows the first one
+    /// after it). `None` when no STYLEREF looks the style up.
+    pub fn first_page_showing_style_ref_of(&self, paragraph: usize) -> Option<usize> {
+        let referenced = self.style_ref_style_ids.borrow();
+        if referenced.is_empty() {
+            return None;
+        }
+        let (page, style, _) = self.styled_paragraphs.get(&paragraph)?;
+        let style = style.as_deref()?;
+        if !referenced.contains(&style.to_lowercase()) {
+            return None;
+        }
+        let earlier_in_style =
+            self.styled_paragraphs
+                .range(..paragraph)
+                .any(|(_, (_, other, _))| {
+                    other
+                        .as_deref()
+                        .is_some_and(|other| other.eq_ignore_ascii_case(style))
+                });
+        Some(if earlier_in_style {
+            page.saturating_sub(1)
+        } else {
+            0
+        })
+    }
+
     /// Puts back what [`Self::set_aside_edit_downstream`] set aside, over
     /// whatever the pass registered again for the same paragraphs.
     pub fn restore_edit_downstream(&mut self, saved: EditDownstream) {
