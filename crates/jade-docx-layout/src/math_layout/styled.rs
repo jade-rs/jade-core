@@ -645,14 +645,12 @@ pub fn layout_styled_elements<'a, C: StyledMathMeasure>(
         .iter()
         .find_map(paragraph_justification)
         .unwrap_or(options.settings.default_justification);
-    // Word for Mac keeps equations on the right when inheriting a
-    // right-aligned paragraph, even with an explicit left or center m:jc.
-    let inherits_mac_right = options.display
+    // Word keeps inherited right-aligned equations on the right even with
+    // an explicit left or center m:jc, on both Windows and Mac.
+    let inherits_paragraph_right = options.display
         && !options.settings.use_display_defaults
-        && options.settings.default_justification == MathJustification::Right
-        && crate::line_metrics::word_layout_platform()
-            == crate::line_metrics::WordLayoutPlatform::Mac;
-    if options.word_mac_rtl() || inherits_mac_right {
+        && options.settings.default_justification == MathJustification::Right;
+    if options.word_mac_rtl() || inherits_paragraph_right {
         alignment = MathParagraphAlignment::Right;
         justify = MathJustification::Right;
     }

@@ -7877,6 +7877,31 @@
           "font_source": "original-word-pdf"
         }
       ]
+    },
+    {
+      "mac_case": "probe-math-display-alignment-0",
+      "source": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-display-alignment-0/source.docx",
+        "sha256": "c2601482d738d5cf426efa3a03b02aa53ce086c0d7ee9e8f66759281bb41cc96"
+      },
+      "mac_manifest": {
+        "file": "tests/word-oracle/mac-elsa-synthetic/probe-math-display-alignment-0/manifest.json",
+        "sha256": "e4f084fb689fb0bd3a5ca142035021671461c7b0490478fbfb9020da277bb8d9"
+      },
+      "windows": [
+        {
+          "word_product_version": "16.0.19127.20936",
+          "word_executable_sha256": "7cdd5aac841376d950db492b3a8f026d422844dc7a07787b6d0240f606501312",
+          "capture_id": "20261114T004747969Z-36728554",
+          "archive": {
+            "file": "tests/word-oracle/windows/observations/word-16.0.19127.20936/20261114T004747969Z-36728554.zip",
+            "sha256": "55ea3bcbde2b6b9b44290c4e50ef31812e966089abfeb48f952e098fd74e375f"
+          },
+          "capture_sha256": "83f5f70f5c8f98ca4db3bbb45707a699877cf6fe062a54e0cc501a6c63789ec2",
+          "fixture": "ww14-math-display-alignment-0-c2601482",
+          "font_source": "original-word-pdf"
+        }
+      ]
     }
   ]
 }
