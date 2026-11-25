@@ -11524,6 +11524,79 @@ impl OffscreenDocumentView {
         })
     }
 
+    /// Lays the document out, without drawing, through `end_page` (1-based;
+    /// `None`: to its end), resuming from the last valid page-top snapshot
+    /// where one qualifies, and records the table-resize metadata. Returns
+    /// the image loads the pass started when `drain_images` (for the caller
+    /// to wait on; otherwise the next render drains them), the page count
+    /// and whether the layout reached the end of the document. Shared by
+    /// `ensureLayoutThroughPage` and `complete_layout`.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn extend_layout(
+        &self,
+        end_page: Option<usize>,
+        drain_images: bool,
+        options: &Options,
+        document: Option<Rc<jade_docx_reader::document::Document>>,
+        numbering_part: Option<jade_docx_reader::numbering::NumberingPart>,
+        header_lines: Option<Vec<HeaderLine>>,
+        footer_lines: Option<Vec<HeaderLine>>,
+        comments: std::collections::HashMap<String, jade_docx_reader::document::DocumentComment>,
+    ) -> Result<(Option<js_sys::Promise>, usize, bool), JsValue> {
+        let (pending, page_count, complete, table_resize_metadata) = {
+            let mut renderer_mut = self.renderer.borrow_mut();
+            let previous_visible_range = renderer_mut.visible_page_range();
+            // IMPORTANT:
+            // Do NOT clear the selection here.
+            //
+            // `ensureLayoutThroughPage` may run in the background while the user is typing.
+            // If we clear selection, subsequent edit commands (e.g. insert_text) can observe
+            // `selection_range() == None` and fall back to `TextPosition::default()` (0,0),
+            // which manifests as "caret jumps to the beginning while typing".
+            let previous_limit = renderer_mut.layout_page_limit();
+            renderer_mut.set_layout_page_limit(end_page);
+            // Preserve the current viewport window while extending layout in the background.
+            // Expanding the visible range to `1..=end_page` makes later edit renders treat the
+            // whole laid-out prefix as visible, which causes avoidable tail bitmap churn.
+            renderer_mut.set_visible_page_range(previous_visible_range.clone());
+            // Resume the layout-only walk from the last valid page-top snapshot
+            // instead of re-walking every laid-out page; falls back to the
+            // from-start walk when no snapshot qualifies.
+            renderer_mut.prepare_layout_extension_seek(
+                previous_limit,
+                end_page.unwrap_or(usize::MAX),
+                options,
+            );
+
+            if let Some(document) = document.as_ref() {
+                renderer_mut
+                    .render_layout_with_numbering_rc(
+                        Rc::clone(document),
+                        options,
+                        numbering_part.as_ref(),
+                        header_lines.as_deref(),
+                        footer_lines.as_deref(),
+                        Some(&comments),
+                    )
+                    .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+            }
+            // Layout expansion should not leave dirty regions that can slow subsequent renders.
+            renderer_mut.clear_dirty_regions();
+
+            let pending = if drain_images {
+                renderer_mut.drain_pending_image_promises()
+            } else {
+                None
+            };
+            let page_count = renderer_mut.page_count();
+            let complete = renderer_mut.last_layout_complete();
+            let table_resize_metadata = renderer_mut.table_resize_metadata();
+            (pending, page_count, complete, table_resize_metadata)
+        };
+        self.state.borrow_mut().table_resize = table_resize_metadata;
+        Ok((pending, page_count, complete))
+    }
+
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
     async fn ensure_layout_through_page_async(
         &self,
@@ -11546,58 +11619,21 @@ impl OffscreenDocumentView {
             )
         };
 
-        let (pending_images, page_count, complete, table_resize_metadata) = {
-            let mut renderer_mut = self.renderer.borrow_mut();
-            let previous_visible_range = renderer_mut.visible_page_range();
-            // IMPORTANT:
-            // Do NOT clear the selection here.
-            //
-            // `ensureLayoutThroughPage` may run in the background while the user is typing.
-            // If we clear selection, subsequent edit commands (e.g. insert_text) can observe
-            // `selection_range() == None` and fall back to `TextPosition::default()` (0,0),
-            // which manifests as "caret jumps to the beginning while typing".
-            let previous_limit = renderer_mut.layout_page_limit();
-            renderer_mut.set_layout_page_limit(Some(end_page));
-            // Preserve the current viewport window while extending layout in the background.
-            // Expanding the visible range to `1..=end_page` makes later edit renders treat the
-            // whole laid-out prefix as visible, which causes avoidable tail bitmap churn.
-            renderer_mut.set_visible_page_range(previous_visible_range.clone());
-            // Resume the layout-only walk from the last valid page-top snapshot
-            // instead of re-walking every laid-out page; falls back to the
-            // from-start walk when no snapshot qualifies.
-            renderer_mut.prepare_layout_extension_seek(previous_limit, end_page, &options);
-
-            if let Some(document) = document.as_ref() {
-                renderer_mut
-                    .render_layout_with_numbering_rc(
-                        Rc::clone(document),
-                        &options,
-                        numbering_part.as_ref(),
-                        header_lines.as_deref(),
-                        footer_lines.as_deref(),
-                        Some(&comments),
-                    )
-                    .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
-            }
-            // Layout expansion should not leave dirty regions that can slow subsequent renders.
-            renderer_mut.clear_dirty_regions();
-
-            let pending = renderer_mut.drain_pending_image_promises();
-            let page_count = renderer_mut.page_count();
-            let complete = renderer_mut.last_layout_complete();
-            let table_resize_metadata = renderer_mut.table_resize_metadata();
-            (pending, page_count, complete, table_resize_metadata)
-        };
+        let (pending_images, page_count, complete) = self.extend_layout(
+            Some(end_page),
+            true,
+            &options,
+            document,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            comments,
+        )?;
 
         if let Some(wait) = pending_images {
             if let Err(err) = JsFuture::from(wait).await {
                 web_sys::console::error_1(&err);
             }
-        }
-
-        {
-            let mut state_mut = self.state.borrow_mut();
-            state_mut.table_resize = table_resize_metadata;
         }
 
         let result = Object::new();

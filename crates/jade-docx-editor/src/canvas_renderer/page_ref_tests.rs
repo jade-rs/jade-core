@@ -948,3 +948,79 @@ fn labels_after_a_structural_edit_and_a_limited_pass_are_a_prefix_of_the_truth()
         }
     }
 }
+
+/// From the review's probe: a lazily laid out document (three of eight
+/// pages), a height-neutral edit on page 1 armed as a stable fast replay,
+/// then the layout completed as `complete_layout` does, with the
+/// layout-extension seek. The stable pass cut the page owners to page 1,
+/// so the seek may not resume past it: every label must match a fresh
+/// layout's.
+#[test]
+fn completing_a_lazy_layout_after_a_stable_edit_labels_every_page_right() {
+    let paragraphs = |prefix: &str, count: usize| -> String {
+        (0..count)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = format!(
+        "{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}",
+        paragraphs("a", 60),
+        section_properties("nextPage", ""),
+        paragraphs("b", 120),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+        paragraphs("c", 70),
+        section_properties("nextPage", r#"<w:pgNumType w:start="50"/>"#),
+    );
+    let options = Options::default();
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let word_doc = futures::executor::block_on(WordDocument::load(&data, &options)).expect("load");
+    let base = word_doc.document.clone().expect("document");
+    let texts = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<String> {
+        renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+
+    let mut edited: Document = (*base).clone();
+    if let Some(body) = edited.body.as_mut() {
+        if let BodyElement::Paragraph(paragraph) = &mut body.elements[1] {
+            paragraph.runs.first_mut().expect("run").text.push('x');
+        }
+    }
+    let edited = Rc::new(edited);
+    let mut fresh = recording_renderer();
+    fresh.sync_word_document(&word_doc);
+    for _ in 0..2 {
+        fresh.render(&edited, &options).expect("fresh");
+    }
+    let truth = texts(&fresh);
+    assert!(truth.len() > 3, "{truth:?}");
+
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&word_doc);
+    renderer.set_layout_page_limit(Some(3));
+    for _ in 0..2 {
+        renderer.render(&base, &options).expect("lazy layout");
+    }
+    assert!(!renderer.last_layout_complete());
+    let height = renderer.cached_paragraph_height(1).expect("laid out");
+    renderer.clear_dirty_regions();
+    renderer.set_incremental_dirty_from(1);
+    renderer.set_fast_replay_trigger(1, height);
+    renderer.render(&edited, &options).expect("the edit");
+    assert!(renderer.last_fast_replay_stable());
+
+    let previous_limit = renderer.layout_page_limit();
+    renderer.set_layout_page_limit(None);
+    renderer.prepare_layout_extension_seek(previous_limit, usize::MAX, &options);
+    renderer
+        .render_layout_with_numbering_rc(Rc::clone(&edited), &options, None, None, None, None)
+        .expect("complete the layout");
+    assert!(renderer.last_layout_complete());
+    assert_eq!(texts(&renderer), truth);
+}

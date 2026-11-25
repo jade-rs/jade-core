@@ -220,27 +220,25 @@ impl OffscreenDocumentView {
                 word_doc.comments.clone(),
             )
         };
-        let Some(document) = document else {
-            return Ok(false);
-        };
-        let mut renderer = self.renderer.borrow_mut();
-        let previous_visible_range = renderer.visible_page_range();
-        let previous_limit = renderer.layout_page_limit();
-        renderer.set_layout_page_limit(None);
-        renderer.set_visible_page_range(previous_visible_range);
-        renderer.prepare_layout_extension_seek(previous_limit, usize::MAX, &options);
-        renderer
-            .render_layout_with_numbering_rc(
-                document,
-                &options,
-                numbering_part.as_ref(),
-                header_lines.as_deref(),
-                footer_lines.as_deref(),
-                Some(&comments),
-            )
-            .map_err(|error| JsValue::from_str(&format!("{error:?}")))?;
-        renderer.clear_dirty_regions();
-        Ok(renderer.last_layout_complete())
+        let previous_limit = self.renderer.borrow().layout_page_limit();
+        // The command that follows repaints, and its render waits for the
+        // images this pass started, as `ensureLayoutThroughPage`'s caller
+        // waits for them.
+        let (_, _, complete) = self.extend_layout(
+            None,
+            false,
+            &options,
+            document,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            comments,
+        )?;
+        // The host's lazy-layout limit stays its own.
+        self.renderer
+            .borrow_mut()
+            .set_layout_page_limit(previous_limit);
+        Ok(complete)
     }
 
     /// Reads from the document as a session: what a dialog opens on.

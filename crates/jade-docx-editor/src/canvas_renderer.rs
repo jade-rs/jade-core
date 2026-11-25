@@ -6225,6 +6225,15 @@ where
             });
             return false;
         };
+        // The resumed walk keeps the owners of the pages it skips from
+        // `page_section_indices`. A pass that stopped early (a stable edit's
+        // fast replay) may have cut that list short of the resume page; the
+        // skipped pages would then take the resume page's section, and with
+        // it its headers, footers and page numbers. Walk from the start.
+        if self.page_section_indices.len() < snapshot.page_number.saturating_sub(1) {
+            count_miss("page_sections_short");
+            return false;
+        }
         if snapshot.spanning {
             self.span_seek_consumed
                 .set(self.span_seek_consumed.get() + 1);
