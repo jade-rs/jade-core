@@ -645,8 +645,8 @@ fn f9_after_a_pixel_rerender_writes_the_laid_out_label() {
 /// from 7, C from 50. A TOC entry in A points at C's first paragraph,
 /// which holds a PAGE field. After a full layout, sections B and C switch
 /// to upper-case letters from 3, and one pass lays out only the first
-/// three pages. Labels past the page that pass stopped on come from the
-/// last full layout's page owners, numbered with the new formats.
+/// three pages. Only the pages that pass finished have labels, numbered
+/// with the new formats; later pages have none until a pass reaches them.
 fn session_after_numbering_edit() -> LaidOutSession {
     let paragraphs = |prefix: &str, count: usize| -> String {
         (0..count)
@@ -696,32 +696,28 @@ fn session_after_numbering_edit() -> LaidOutSession {
     session.renderer.set_layout_page_limit(None);
     assert!(!session.renderer.last_layout_complete);
     let after = labels(&session);
-    assert_eq!(after.len(), before.len(), "{after:?}");
-    assert_eq!(after[c_first], "C", "{after:?}");
-    assert!(
-        after
-            .iter()
-            .all(|label| !label.chars().any(|c| c.is_ascii_digit())
-                || label == "1"
-                || label == "2"),
-        "only A's pages are decimal: {after:?}"
-    );
+    let truth = ["1", "2", "C", "D", "E", "F", "C", "D"];
+    assert_eq!(before.len(), truth.len(), "{before:?}");
+    assert!(after.len() < c_first, "{after:?}");
+    assert_eq!(after, truth[..after.len()], "{after:?}");
+    assert!(!after.is_empty());
     session
 }
 
 /// After a numbering-only edit and an incomplete pass, updating the TOC's
-/// page numbers writes C's new first number, not the old "50".
+/// page numbers leaves the entry for a page past the stop as it was: no
+/// old "50", and no guess either.
 #[test]
-fn a_toc_update_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
+fn a_toc_update_after_a_limited_pass_leaves_unfinished_pages_alone() {
     use crate::word::references::toc::WordToc;
     let mut session = session_after_numbering_edit();
     session.update_toc(true).expect("update the page numbers");
-    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tC");
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t9");
 }
 
-/// The same for F9: the PAGE field on C's first page shows "C".
+/// The same for F9: the PAGE field on C's first page keeps its result.
 #[test]
-fn f9_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
+fn f9_after_a_limited_pass_leaves_unfinished_pages_alone() {
     use crate::word::fields::{FieldHost, WordFields};
     let mut session = session_after_numbering_edit();
     session
@@ -733,7 +729,7 @@ fn f9_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
         .expect("update the fields");
     let paragraphs = exported_paragraphs(&session.document);
     assert!(
-        paragraphs.iter().any(|text| text == "T(C)"),
+        paragraphs.iter().any(|text| text == "T(9)"),
         "{paragraphs:?}"
     );
 }
@@ -756,4 +752,86 @@ fn print_range_labels_agree_with_displayed_labels_after_a_rerender() {
         .collect();
     assert_eq!(printed, displayed);
     assert_eq!(displayed, [1, 7, 8, 9]);
+}
+
+/// From the review's probe: a section is added or removed before the
+/// stop, then a pass lays out one or three pages (with and without a
+/// dirty hint). The labels it leaves are a prefix of what a fresh full
+/// layout gives: nothing provisional is handed out for later pages.
+#[test]
+fn labels_after_a_structural_edit_and_a_limited_pass_are_a_prefix_of_the_truth() {
+    let paragraphs = |prefix: &str, from: usize, to: usize| -> String {
+        (from..to)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = |split: bool, break_b: &str| -> String {
+        let a = if split {
+            format!(
+                "{}<w:p><w:pPr>{}</w:pPr><w:r><w:t>a10</w:t></w:r></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>",
+                paragraphs("a", 0, 10),
+                section_properties("nextPage", ""),
+                paragraphs("a", 11, 60),
+                section_properties("continuous", ""),
+            )
+        } else {
+            format!(
+                "{}<w:p><w:pPr>{}</w:pPr></w:p>",
+                paragraphs("a", 0, 60),
+                section_properties("nextPage", ""),
+            )
+        };
+        format!(
+            "{a}{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}",
+            paragraphs("b", 0, 120),
+            section_properties(break_b, r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#),
+            paragraphs("c", 0, 70),
+            section_properties("nextPage", r#"<w:pgNumType w:start="50"/>"#),
+        )
+    };
+    let options = Options::default();
+    let texts = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<String> {
+        renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    for break_b in ["nextPage", "continuous"] {
+        let load = |split: bool| {
+            let data = package(&body(split, break_b), "<w:r><w:t>F</w:t></w:r>");
+            futures::executor::block_on(WordDocument::load(&data, &options)).expect("load")
+        };
+        let (plain, split) = (load(false), load(true));
+        for (first, second) in [(&plain, &split), (&split, &plain)] {
+            let first_doc = first.document.clone().expect("document");
+            let second_doc = second.document.clone().expect("document");
+            let mut fresh = recording_renderer();
+            fresh.sync_word_document(second);
+            for _ in 0..2 {
+                fresh.render(&second_doc, &options).expect("fresh");
+            }
+            let truth = texts(&fresh);
+            for (hint, limit) in [(false, 1usize), (true, 1), (false, 3), (true, 3)] {
+                let mut renderer = recording_renderer();
+                renderer.sync_word_document(first);
+                for _ in 0..2 {
+                    renderer.render(&first_doc, &options).expect("render");
+                }
+                if hint {
+                    renderer.set_incremental_dirty_from(10);
+                }
+                renderer.set_layout_page_limit(Some(limit));
+                renderer.render(&second_doc, &options).expect("bounded");
+                let labels = texts(&renderer);
+                assert!(
+                    labels.len() <= limit && truth.starts_with(&labels),
+                    "{break_b} hint={hint} limit {limit}: {labels:?} vs {truth:?}"
+                );
+                renderer.set_layout_page_limit(None);
+                renderer.render(&second_doc, &options).expect("full");
+                assert_eq!(texts(&renderer), truth, "{break_b} then full");
+            }
+        }
+    }
 }

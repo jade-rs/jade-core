@@ -1108,11 +1108,15 @@ pub trait WordFields: WordSession {
                 paragraph_pages.insert(paragraph, page);
             }
         }
-        // Every page's label, or none: a partial list would number some
-        // pages from the layout and others from the story.
+        // The labels of the pages the last layout finished, page 1 first.
+        // Evaluation leaves a PAGE or PAGEREF on a later page as it is.
         let page_labels = self
             .page_count()
-            .and_then(|count| (1..=count).map(|page| self.page_label(page)).collect())
+            .map(|count| {
+                (1..=count)
+                    .map_while(|page| self.page_label(page))
+                    .collect()
+            })
             .unwrap_or_default();
         let folder = host
             .file

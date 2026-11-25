@@ -398,6 +398,10 @@ impl<'a> Evaluation<'a> {
         if let Some(label) = self.page_label(physical) {
             return Some(PageNumber::Label(label.clone()));
         }
+        if !self.env.page_labels.is_empty() {
+            // Past the pages the layout finished: not known yet.
+            return None;
+        }
         let section = self.story.paragraphs.get(paragraph)?.section;
         let numbering = self.story.sections.get(section);
         let start = numbering.and_then(|numbering| numbering.start);

@@ -75,7 +75,9 @@ pub struct FieldEnvironment {
     pub paragraph_pages: HashMap<usize, usize>,
     /// What a PAGE field on each physical page shows at the last layout,
     /// page 1 first. Empty without a layout: PAGE and PAGEREF then number
-    /// from the physical page and the story's section starts.
+    /// from the physical page and the story's section starts. A list that
+    /// ends early (a layout that stopped partway) leaves a PAGE or PAGEREF
+    /// on a later page as it is.
     pub page_labels: Vec<PageLabel>,
     /// Answers to ASK and FILLIN prompts, by [`FieldPrompt::key`].
     pub prompt_answers: HashMap<String, String>,

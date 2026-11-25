@@ -344,16 +344,20 @@ pub trait WordToc: WordSession {
         }
         // Each entry's bookmark, and the number the page its paragraph is on
         // now displays (its section's restart and format, as Word writes;
-        // the physical page without a layout's labels).
+        // the physical page without a layout's labels). An entry on a page
+        // past those a partway layout finished is left as it is.
         let document = self.word_document();
         let block = document.tables_of_contents()[index].clone();
+        let labelled = self.page_label(1).is_some();
         let pages = toc_page_references(document, &block)
             .into_iter()
             .filter_map(|(name, paragraph)| {
                 let page = self.paragraph_page(paragraph)?;
-                let label = self
-                    .page_label(page)
-                    .map_or_else(|| page.to_string(), |label| label.text);
+                let label = match self.page_label(page) {
+                    Some(label) => label.text,
+                    None if labelled => return None,
+                    None => page.to_string(),
+                };
                 Some((name, label))
             })
             .collect();
