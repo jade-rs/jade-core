@@ -367,3 +367,107 @@ fn a_keystroke_in_a_repeated_header_row_leaves_the_later_pages_stale_or_right() 
         );
     }
 }
+
+const W: &str = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+
+const FILLER: &str = "The quick brown fox jumps over the lazy dog while the band \
+     redraw keeps every other pixel of the page exactly as it was painted.";
+
+fn zip_docx(body: &str) -> Vec<u8> {
+    use std::io::Write;
+    let document = format!(
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{W}"><w:body>{body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>"#
+    );
+    let mut bytes = Vec::new();
+    {
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut bytes));
+        let options = zip::write::SimpleFileOptions::default();
+        for (name, content) in [
+            (
+                "[Content_Types].xml",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>"#.to_string(),
+            ),
+            (
+                "_rels/.rels",
+                r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>"#.to_string(),
+            ),
+            ("word/document.xml", document),
+        ] {
+            zip.start_file(name, options).expect("zip entry");
+            zip.write_all(content.as_bytes()).expect("zip write");
+        }
+        zip.finish().expect("zip");
+    }
+    bytes
+}
+
+/// Five paragraphs, then a three-column table of `rows` rows whose first
+/// row is a repeating header (paragraphs 5..8), then 200 paragraphs.
+fn header_table_docx(rows: usize) -> Vec<u8> {
+    let mut body = String::new();
+    for index in 0..5 {
+        body.push_str(&format!(
+            "<w:p><w:r><w:t>intro paragraph {index} with some words</w:t></w:r></w:p>"
+        ));
+    }
+    body.push_str(r#"<w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/><w:gridCol w:w="3000"/></w:tblGrid>"#);
+    for row in 0..rows {
+        let header = if row == 0 {
+            "<w:trPr><w:tblHeader/></w:trPr>"
+        } else {
+            ""
+        };
+        body.push_str(&format!("<w:tr>{header}"));
+        for column in 0..3 {
+            body.push_str(&format!(
+                r#"<w:tc><w:tcPr><w:tcW w:w="3000" w:type="dxa"/></w:tcPr><w:p><w:r><w:t>r{row}c{column}</w:t></w:r></w:p></w:tc>"#
+            ));
+        }
+        body.push_str("</w:tr>");
+    }
+    body.push_str("</w:tbl>");
+    for index in 0..200 {
+        body.push_str(&format!(
+            "<w:p><w:r><w:t>{index} {FILLER}</w:t></w:r></w:p>"
+        ));
+    }
+    zip_docx(&body)
+}
+
+/// The header row's paragraphs move with the paragraphs added above the
+/// table; the indices they had before are not kept as header rows.
+#[test]
+fn a_header_row_is_known_by_where_it_is_now() {
+    let mut document = open_bytes(&header_table_docx(150));
+    assert!(document.renderer().paragraph_text_shows_elsewhere(5));
+    assert!(!document.renderer().paragraph_text_shows_elsewhere(8));
+    for _ in 0..6 {
+        document.insert_paragraph_break(1, 3).unwrap();
+    }
+    document.paint_stale_pages(0..usize::MAX).unwrap();
+    let header = (0..document.paragraph_count())
+        .find(|&paragraph| document.paragraph_text(paragraph).as_deref() == Some("r0c0"))
+        .unwrap();
+    assert_eq!(header, 11);
+    let flagged: Vec<usize> = (0..header + 6)
+        .filter(|&paragraph| {
+            document
+                .renderer()
+                .paragraph_text_shows_elsewhere(paragraph)
+        })
+        .collect();
+    assert_eq!(flagged, vec![header, header + 1, header + 2]);
+    // Paragraph 5 is an ordinary paragraph now: a letter there marks nothing.
+    document.insert_text(5, 0, "a", 1).unwrap();
+    assert!(!document.has_stale_pages());
+}
+
+/// A header row on a table that fits on one page is drawn once.
+#[test]
+fn a_header_row_that_does_not_repeat_marks_nothing() {
+    let mut document = open_bytes(&header_table_docx(4));
+    assert!(document.page_count() > 2);
+    assert!(!document.renderer().paragraph_text_shows_elsewhere(5));
+    document.insert_text(5, 0, "a", 1).unwrap();
+    assert!(!document.has_stale_pages());
+}
