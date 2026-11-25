@@ -147,6 +147,111 @@ fn rewrites_notes_by_id(command: &HeadlessCommand) -> bool {
     )
 }
 
+/// Whether a body command batch is dirty from the document start, whatever
+/// the selection: a cover page goes before everything, and a note command
+/// by id can move notes and references on any page.
+fn headless_edit_is_dirty_from_document_start(commands: &[HeadlessCommand]) -> bool {
+    commands.iter().any(|command| {
+        matches!(command, HeadlessCommand::InsertCoverPage { .. }) || rewrites_notes_by_id(command)
+    })
+}
+
+/// Whether a body command reshapes layout beyond the edited paragraph's own
+/// height, so the edit drops the layout from its dirty paragraph and
+/// repaints fully instead of arming fast replay (see the call site).
+fn headless_command_is_structural(command: &HeadlessCommand) -> bool {
+    matches!(
+        command,
+        HeadlessCommand::InsertTable { .. }
+        | HeadlessCommand::InsertTableOfContents { .. }
+        | HeadlessCommand::InsertCaption { .. }
+        | HeadlessCommand::InsertBibliography { .. }
+        | HeadlessCommand::InsertBlankPage { .. }
+        | HeadlessCommand::InsertCoverPage { .. }
+        | HeadlessCommand::InsertField { .. }
+        | HeadlessCommand::InsertEquation { .. }
+        | HeadlessCommand::ReplaceEquation { .. }
+        | HeadlessCommand::InsertDateTimeField { .. }
+        | HeadlessCommand::InsertEnclosedCharacter { .. }
+        | HeadlessCommand::InsertTableFormula { .. }
+        | HeadlessCommand::UpdateTableFormulas
+        | HeadlessCommand::InsertIndex { .. }
+        | HeadlessCommand::UpdateTableOfContents
+        | HeadlessCommand::SetParagraphStyle { .. }
+        | HeadlessCommand::SetCharacterStyle { .. }
+        | HeadlessCommand::SetDropCap { .. }
+        | HeadlessCommand::SetHeaderFooterVariants { .. }
+        | HeadlessCommand::SetHeaderFooterLink { .. }
+        // The Office-parity dialogs: each reflows past the edited
+        // paragraph (pagination, typography, grid snapping, ruby line
+        // height) or reshapes the body (sections, tables).
+        | HeadlessCommand::SetParagraphOptions { .. }
+        | HeadlessCommand::SetParagraphPagination { .. }
+        | HeadlessCommand::SetParagraphTypography { .. }
+        | HeadlessCommand::SetParagraphSnapToGrid { .. }
+        | HeadlessCommand::SetJapaneseTypography { .. }
+        | HeadlessCommand::SetRuby { .. }
+        | HeadlessCommand::SetSectionLayout { .. }
+        | HeadlessCommand::SetHyphenation { .. }
+        | HeadlessCommand::SetTableCellSpacing { .. }
+        | HeadlessCommand::SetTableCellTextDirection { .. }
+        | HeadlessCommand::SetTableIndent { .. }
+        | HeadlessCommand::SetTablePosition { .. }
+        | HeadlessCommand::ConvertTextToTable { .. }
+        | HeadlessCommand::ConvertTableToText { .. }
+        | HeadlessCommand::SortTable { .. }
+        | HeadlessCommand::InsertTableRow { .. }
+        | HeadlessCommand::DeleteTableRow { .. }
+        | HeadlessCommand::InsertTableColumn { .. }
+        | HeadlessCommand::DeleteTableColumn { .. }
+        | HeadlessCommand::DeleteTableCell { .. }
+        | HeadlessCommand::InsertTableCell { .. }
+        | HeadlessCommand::DeleteTable { .. }
+        // Accepting/rejecting revisions rewrites runs across the whole
+        // document (deleted runs vanish, inserted runs stay), reflowing
+        // every paragraph after the change. Treat it as a structural
+        // edit so the full document is re-laid-out and re-snapshotted
+        // rather than fast-replayed from the caret paragraph.
+        | HeadlessCommand::AcceptRevisions { .. }
+        | HeadlessCommand::RejectRevisions { .. }
+        // Page size/orientation/margins change the body box geometry,
+        // so every page must be re-laid-out and re-snapshotted.
+        | HeadlessCommand::SetPageOrientation { .. }
+        | HeadlessCommand::SetPageSize { .. }
+        | HeadlessCommand::SetPageMargins { .. }
+        | HeadlessCommand::SetPageColumns { .. }
+        | HeadlessCommand::SetPageBorders { .. }
+        | HeadlessCommand::SetWatermark { .. }
+        | HeadlessCommand::SetDocumentTheme { .. }
+        | HeadlessCommand::InsertSectionBreak { .. }
+        | HeadlessCommand::SetPageBackgroundColor { .. }
+        // Comment add/update/delete/resolve change comment ranges and
+        // markers within paragraphs; re-lay-out and re-snapshot the
+        // whole document so the highlight bands update everywhere.
+        | HeadlessCommand::AddComment { .. }
+        | HeadlessCommand::UpdateComment { .. }
+        | HeadlessCommand::DeleteComment { .. }
+        | HeadlessCommand::ResolveComment { .. }
+        // Line spacing changes the height of every selected paragraph,
+        // so downstream content reflows — re-lay-out, don't fast-replay
+        // off the focus paragraph's height alone.
+        | HeadlessCommand::SetParagraphLineSpacing { .. }
+        | HeadlessCommand::SetParagraphMetrics { .. }
+        // A pasted line break adds a paragraph after the anchor, and a
+        // replacement across paragraphs removes some; neither shows in
+        // the anchor paragraph's height.
+        | HeadlessCommand::InsertParagraphBreak { .. }
+    ) || rewrites_notes_by_id(command)
+        || matches!(
+            command,
+            HeadlessCommand::ReplaceRange {
+                start_paragraph,
+                end_paragraph,
+                ..
+            } if start_paragraph != end_paragraph
+        )
+}
+
 fn note_kind_is_footnote(kind: &str) -> Result<bool, JsValue> {
     match kind {
         "footnote" => Ok(true),
@@ -12748,8 +12853,7 @@ impl OffscreenDocumentView {
         let inserts_cover_at_start = commands
             .iter()
             .any(|command| matches!(command, HeadlessCommand::InsertCoverPage { .. }));
-        let mutates_notes_globally = commands.iter().any(rewrites_notes_by_id);
-        if inserts_cover_at_start || mutates_notes_globally {
+        if headless_edit_is_dirty_from_document_start(&commands) {
             dirty_from = 0;
         }
         // Structural inserts (e.g. InsertTable) add brand-new body elements
@@ -12784,98 +12888,7 @@ impl OffscreenDocumentView {
         // remove body paragraphs inside the table without touching the
         // anchor paragraph's own height, so they need the same full-repaint
         // treatment as `InsertTable`.
-        let is_structural_insert = commands.iter().any(|command| {
-            matches!(
-                command,
-                HeadlessCommand::InsertTable { .. }
-                | HeadlessCommand::InsertTableOfContents { .. }
-                | HeadlessCommand::InsertCaption { .. }
-                | HeadlessCommand::InsertBibliography { .. }
-                | HeadlessCommand::InsertBlankPage { .. }
-                | HeadlessCommand::InsertCoverPage { .. }
-                | HeadlessCommand::InsertField { .. }
-                | HeadlessCommand::InsertEquation { .. }
-                | HeadlessCommand::ReplaceEquation { .. }
-                | HeadlessCommand::InsertDateTimeField { .. }
-                | HeadlessCommand::InsertEnclosedCharacter { .. }
-                | HeadlessCommand::InsertTableFormula { .. }
-                | HeadlessCommand::UpdateTableFormulas
-                | HeadlessCommand::InsertIndex { .. }
-                | HeadlessCommand::UpdateTableOfContents
-                | HeadlessCommand::SetParagraphStyle { .. }
-                | HeadlessCommand::SetCharacterStyle { .. }
-                | HeadlessCommand::SetDropCap { .. }
-                | HeadlessCommand::SetHeaderFooterVariants { .. }
-                | HeadlessCommand::SetHeaderFooterLink { .. }
-                // The Office-parity dialogs: each reflows past the edited
-                // paragraph (pagination, typography, grid snapping, ruby line
-                // height) or reshapes the body (sections, tables).
-                | HeadlessCommand::SetParagraphOptions { .. }
-                | HeadlessCommand::SetParagraphPagination { .. }
-                | HeadlessCommand::SetParagraphTypography { .. }
-                | HeadlessCommand::SetParagraphSnapToGrid { .. }
-                | HeadlessCommand::SetJapaneseTypography { .. }
-                | HeadlessCommand::SetRuby { .. }
-                | HeadlessCommand::SetSectionLayout { .. }
-                | HeadlessCommand::SetHyphenation { .. }
-                | HeadlessCommand::SetTableCellSpacing { .. }
-                | HeadlessCommand::SetTableCellTextDirection { .. }
-                | HeadlessCommand::SetTableIndent { .. }
-                | HeadlessCommand::SetTablePosition { .. }
-                | HeadlessCommand::ConvertTextToTable { .. }
-                | HeadlessCommand::ConvertTableToText { .. }
-                | HeadlessCommand::SortTable { .. }
-                | HeadlessCommand::InsertTableRow { .. }
-                | HeadlessCommand::DeleteTableRow { .. }
-                | HeadlessCommand::InsertTableColumn { .. }
-                | HeadlessCommand::DeleteTableColumn { .. }
-                | HeadlessCommand::DeleteTableCell { .. }
-                | HeadlessCommand::InsertTableCell { .. }
-                | HeadlessCommand::DeleteTable { .. }
-                // Accepting/rejecting revisions rewrites runs across the whole
-                // document (deleted runs vanish, inserted runs stay), reflowing
-                // every paragraph after the change. Treat it as a structural
-                // edit so the full document is re-laid-out and re-snapshotted
-                // rather than fast-replayed from the caret paragraph.
-                | HeadlessCommand::AcceptRevisions { .. }
-                | HeadlessCommand::RejectRevisions { .. }
-                // Page size/orientation/margins change the body box geometry,
-                // so every page must be re-laid-out and re-snapshotted.
-                | HeadlessCommand::SetPageOrientation { .. }
-                | HeadlessCommand::SetPageSize { .. }
-                | HeadlessCommand::SetPageMargins { .. }
-                | HeadlessCommand::SetPageColumns { .. }
-                | HeadlessCommand::SetPageBorders { .. }
-                | HeadlessCommand::SetWatermark { .. }
-                | HeadlessCommand::SetDocumentTheme { .. }
-                | HeadlessCommand::InsertSectionBreak { .. }
-                | HeadlessCommand::SetPageBackgroundColor { .. }
-                // Comment add/update/delete/resolve change comment ranges and
-                // markers within paragraphs; re-lay-out and re-snapshot the
-                // whole document so the highlight bands update everywhere.
-                | HeadlessCommand::AddComment { .. }
-                | HeadlessCommand::UpdateComment { .. }
-                | HeadlessCommand::DeleteComment { .. }
-                | HeadlessCommand::ResolveComment { .. }
-                // Line spacing changes the height of every selected paragraph,
-                // so downstream content reflows — re-lay-out, don't fast-replay
-                // off the focus paragraph's height alone.
-                | HeadlessCommand::SetParagraphLineSpacing { .. }
-                | HeadlessCommand::SetParagraphMetrics { .. }
-                // A pasted line break adds a paragraph after the anchor, and a
-                // replacement across paragraphs removes some; neither shows in
-                // the anchor paragraph's height.
-                | HeadlessCommand::InsertParagraphBreak { .. }
-            ) || rewrites_notes_by_id(command)
-                || matches!(
-                    command,
-                    HeadlessCommand::ReplaceRange {
-                        start_paragraph,
-                        end_paragraph,
-                        ..
-                    } if start_paragraph != end_paragraph
-                )
-        });
+        let is_structural_insert = commands.iter().any(headless_command_is_structural);
         // Every list item after the edited paragraphs takes its number from
         // the ones before it, so adding, removing or re-levelling an item
         // renumbers paragraphs whose own content and height are unchanged —
@@ -22586,6 +22599,11 @@ include!("crdt_live_view.rs");
 
 #[cfg(test)]
 mod tests {
+    /// The host decisions for a note command by id: it is dirty from the
+    /// document start and structural (the layout is dropped and fully
+    /// repainted, never fast-replayed off the caret paragraph's height).
+    /// Deleting a footnote from the notes list with fast replay armed left
+    /// later pages stale.
     #[test]
     fn note_commands_by_id_are_dirty_from_the_document_start() {
         use jade_docx_headless_api::HeadlessCommand;
@@ -22604,14 +22622,33 @@ mod tests {
             HeadlessCommand::DeleteEndnote {
                 endnote_id: "2".into(),
             },
+            HeadlessCommand::ConvertFootnoteToEndnote {
+                footnote_id: "2".into(),
+            },
+            HeadlessCommand::ConvertEndnoteToFootnote {
+                endnote_id: "2".into(),
+            },
         ] {
             assert!(super::rewrites_notes_by_id(&command), "{command:?}");
+            assert!(
+                super::headless_edit_is_dirty_from_document_start(std::slice::from_ref(&command)),
+                "{command:?}"
+            );
+            assert!(
+                super::headless_command_is_structural(&command),
+                "{command:?}"
+            );
         }
-        assert!(!super::rewrites_notes_by_id(&HeadlessCommand::InsertText {
-            paragraph: 0,
+        let typing = HeadlessCommand::InsertText {
+            paragraph: 3,
             offset: 0,
             text: "a".into(),
-        }));
+        };
+        assert!(!super::rewrites_notes_by_id(&typing));
+        assert!(!super::headless_edit_is_dirty_from_document_start(
+            std::slice::from_ref(&typing)
+        ));
+        assert!(!super::headless_command_is_structural(&typing));
     }
 
     /// A drag keeps a cell object's anchor, and does not move a body object

@@ -333,6 +333,39 @@ struct NoteSeekState {
     epoch: u32,
 }
 
+/// A hash of the footnote and endnote separator, continuation separator and
+/// continuation notice stories, which set the note area height. They are a
+/// few short paragraphs, hashed through their serialized form without
+/// allocating.
+fn note_separator_fingerprint(document: &Document) -> u64 {
+    use std::hash::Hasher;
+    struct HashWriter(rustc_hash::FxHasher);
+    impl std::io::Write for HashWriter {
+        fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+            self.0.write(buf);
+            Ok(buf.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = HashWriter(rustc_hash::FxHasher::default());
+    for (kind, notes) in [(0u8, &document.footnotes), (1, &document.endnotes)] {
+        for (id, note) in notes {
+            if matches!(
+                note.note_type.as_deref(),
+                Some("separator" | "continuationSeparator" | "continuationNotice")
+            ) {
+                writer.0.write_u8(kind);
+                writer.0.write(id.as_bytes());
+                // Serializing plain document data into a hasher cannot fail.
+                let _ = serde_json::to_writer(&mut writer, &note.body);
+            }
+        }
+    }
+    writer.0.finish()
+}
+
 const NOTE_SEEK_FOOTNOTES: u8 = 1;
 const NOTE_SEEK_ENDNOTES: u8 = 2;
 /// Pageless passes number notes without pages; their maps cannot seed a
@@ -4949,6 +4982,11 @@ where
     note_settings_epoch: u32,
     /// Resolved endnote position: the document default, then each section.
     section_endnote_positions: Vec<jade_docx_reader::document::EndnotePosition>,
+    /// Resolved `w:footnotePr/w:pos` beneath text: the default, then each
+    /// section.
+    section_footnote_beneath_text: Vec<bool>,
+    /// [`note_separator_fingerprint`] of the last document laying out notes.
+    note_separator_fingerprint: Option<u64>,
     column_layout: ColumnLayout,
     column_index: usize,
     image_debug_regions: RefCell<Vec<ImageDebugInfo>>,
@@ -10850,6 +10888,8 @@ where
             note_order_flags: None,
             note_settings_epoch: 0,
             section_endnote_positions: Vec::new(),
+            section_footnote_beneath_text: Vec::new(),
+            note_separator_fingerprint: None,
             column_layout: ColumnLayout::single(page_width - 2.0 * margin, margin),
             column_index: 0,
             image_debug_regions: RefCell::new(Vec::new()),
@@ -19564,11 +19604,31 @@ where
             (0..document.sections.len())
                 .map(|index| document.resolved_endnote_position(Some(index))),
         );
+        // Whether each section's footnotes sit beneath the text or at the page
+        // bottom (`w:footnotePr/w:pos`): the default, then each section.
+        let footnote_beneath_before = std::mem::take(&mut self.section_footnote_beneath_text);
+        self.section_footnote_beneath_text
+            .push(document.resolved_footnote_beneath_text(None));
+        self.section_footnote_beneath_text.extend(
+            (0..document.sections.len())
+                .map(|index| document.resolved_footnote_beneath_text(Some(index))),
+        );
+        // The separator and continuation notes set the note area height.
+        // Only documents laying out notes compare them.
+        let separators_changed = if self.document_has_notes {
+            let fingerprint = note_separator_fingerprint(document);
+            self.note_separator_fingerprint
+                .replace(fingerprint)
+                .is_some_and(|before| before != fingerprint)
+        } else {
+            false
+        };
         // A host can change these settings and repaint only a bounded window
         // (`setNoteNumbering`, `setEndnotePosition`). Everything laid out
         // under the old settings is stale past it: note marks change width
-        // and number, and endnotes move between section ends and the
-        // document end. Drop it, and refuse snapshots recorded before.
+        // and number, endnotes move between section ends and the document
+        // end, and the note area changes height. Drop it, and refuse
+        // snapshots recorded before.
         let note_settings_changed = note_numbering_before.0 != self.section_footnote_numbering
             || note_numbering_before.1 != self.section_endnote_numbering
             || note_numbering_before.2.format != self.footnote_number_format
@@ -19577,9 +19637,10 @@ where
             || note_numbering_before.3.format != self.endnote_number_format
             || note_numbering_before.3.start != self.endnote_number_start
             || note_numbering_before.3.restart != self.endnote_number_restart
-            || endnote_positions_before != self.section_endnote_positions;
+            || endnote_positions_before != self.section_endnote_positions
+            || footnote_beneath_before != self.section_footnote_beneath_text;
         // The first pass compares against nothing laid out.
-        if note_settings_changed && !endnote_positions_before.is_empty() {
+        if (note_settings_changed && !endnote_positions_before.is_empty()) || separators_changed {
             self.bump_note_settings_epoch();
             self.invalidate_layout_from(0);
         }
