@@ -755,9 +755,9 @@ impl NativeDocument {
     pub fn export_docx(&self) -> Result<Vec<u8>, String> {
         let grids = if Self::has_windows_nested_body_tables(&self.word_document) {
             if !self.can_reuse_table_layout() {
-                return self.export_docx_with_fresh_autofit_grids();
+                return self.export_docx_with_fresh_table_grids();
             }
-            self.renderer.autofit_grids_for_docx()
+            self.renderer.resolved_table_grids_for_docx()
         } else {
             Vec::new()
         };
@@ -795,7 +795,7 @@ impl NativeDocument {
             && self.options.collapsed_blocks().is_empty()
     }
 
-    fn export_docx_with_fresh_autofit_grids(&self) -> Result<Vec<u8>, String> {
+    fn export_docx_with_fresh_table_grids(&self) -> Result<Vec<u8>, String> {
         // Layout may be bounded to the edited pages, or the opening pass
         // may still carry no round-trip IDs. Keep this save pass independent
         // of the live document, renderer and history.
@@ -815,7 +815,7 @@ impl NativeDocument {
             &self.options,
         )?;
         document
-            .export_docx_with_table_grids(&renderer.autofit_grids_for_docx())
+            .export_docx_with_table_grids(&renderer.resolved_table_grids_for_docx())
             .map_err(|err| format!("export failed: {err:?}"))
     }
 

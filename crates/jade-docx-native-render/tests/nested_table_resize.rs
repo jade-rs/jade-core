@@ -412,6 +412,53 @@ fn autofit_nested_grid_saves_within_the_windows_word_text_frame() {
 
 #[cfg(windows)]
 #[test]
+fn fixed_nested_grids_match_windows_word_on_render_and_export() {
+    use futures::executor::block_on;
+    use jade_docx_editor::Options;
+
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let (mut archive, manifest) = load_word_capture("nested-fixed-grid-fit");
+    let cases = manifest["documents"].as_array().unwrap();
+    let options = Options::default();
+    assert_eq!(cases.len(), 252);
+    for case in cases {
+        let name = case["name"].as_str().unwrap();
+        let (input, expected) = read_word_save(&mut archive, case);
+        let word = block_on(WordDocument::load(&expected, &options)).unwrap();
+        let jade = open_with_windows_fonts(&input);
+        let exported = jade.export_docx().unwrap();
+        let saved = block_on(WordDocument::load(&exported, &options)).unwrap();
+
+        let layout = jade.renderer().table_resize_metadata();
+        assert_eq!(layout.tables.len(), 2, "{name}");
+        let expected_child = widths_at(&word, 1);
+        let expected_grid: Vec<_> = expected_child
+            .grid
+            .iter()
+            .map(|width| (f64::from(width.unwrap()) * 20.0).round() as i32)
+            .collect();
+        let child = layout.tables.iter().find(|table| table.order == 1).unwrap();
+        let rendered_grid: Vec<_> = child
+            .column_widths
+            .iter()
+            .map(|width| (width * 15.0).round() as i32)
+            .collect();
+        assert_eq!(rendered_grid, expected_grid, "{name}: rendered child grid");
+        assert_eq!(
+            widths_at(&saved, 1),
+            expected_child,
+            "{name}: exported child"
+        );
+        assert_eq!(
+            widths_at(&saved, 0),
+            widths_at(&word, 0),
+            "{name}: exported parent"
+        );
+    }
+}
+
+#[cfg(windows)]
+#[test]
 fn capped_autofit_grids_preserve_windows_word_cell_margins() {
     use futures::executor::block_on;
     use jade_docx_editor::Options;

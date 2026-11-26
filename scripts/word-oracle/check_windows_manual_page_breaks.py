@@ -183,6 +183,18 @@ def nested_fixed_parent_width_cases():
     return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
 
 
+def nested_fixed_grid_fit_cases():
+    shapes = ('equal', 'unequal', 'descending', 'middle-largest')
+    margins = ('table', 'individual')
+    return ({f'baseline-{shape}-{budget}' for shape in shapes for budget in (2801, 2903, 3001, 3103)}
+            | {f'margins-{shape}-{margin}-{budget}' for shape in shapes for margin in margins
+               for budget in (2800, 2903, 3103)}
+            | {f'host-{shape}-{margin}-{padding}' for shape in ('unequal', 'middle-largest')
+               for margin in margins for padding in ('0-0', '20-35')}
+            | {f'width-{columns}-{kind}-{budget}' for columns in (2, 3, 4)
+               for kind in ('full', 'percentage', 'absolute') for budget in (2800, 2904, 3000, 3104)})
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -263,6 +275,8 @@ CAPTURES = (
      'word-windows-edge-nested-fixed-advance-', nested_table_advance_cases, ('--unclipped-tables',)),
     ('nested-fixed-parent-widths', '88c2b573ec528d89c9797815aef9c6b1373b1b4f53985fc2420cc02f4d379595',
      'word-windows-edge-nested-fixed-floor-', nested_fixed_parent_width_cases, ('--unclipped-tables',)),
+    ('nested-fixed-grid-fit', 'dd83a184031b57208324f102eb1797f37a7e2d4dcdd54bb1c416514d0045a756',
+     'word-windows-edge-nested-fixed-grid-fit-', nested_fixed_grid_fit_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -307,7 +321,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-autofit-cell-margin-weights', 'nested-autofit-three-column-clamp',
         'nested-autofit-host-first', 'nested-autofit-child-margins',
         'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
-        'nested-fixed-advances', 'nested-fixed-parent-widths',
+        'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
