@@ -9,7 +9,8 @@ from zipfile import ZipFile
 import pymupdf
 
 from check_platform_coordinates import (
-    ROOT, assert_pending_pdf_text, compare, emf_glyphs, extract_fonts, pdf_origins, require,
+    ROOT, assert_original_vector_borders, assert_pending_pdf_text, compare, emf_glyphs,
+    extract_fonts, pdf_origins, require,
 )
 from check_windows_font_coordinates import require_original_font_programs_registered
 from generate_windows_floating_table_break_cases import (
@@ -20,6 +21,9 @@ from generate_windows_floating_table_continuation_cases import (
 )
 from generate_windows_floating_table_overlap_cases import (
     PREFIX as FLOATING_OVERLAP_PREFIX, cases as floating_overlap_cases,
+)
+from generate_windows_floating_table_word_wrap_cases import (
+    PREFIX as FLOATING_WORD_WRAP_PREFIX, cases as floating_word_wrap_cases,
 )
 from generate_windows_floating_table_wrap_cases import (
     PREFIX as FLOATING_WRAP_PREFIX, cases as floating_wrap_cases,
@@ -34,6 +38,11 @@ from generate_windows_vertical_table_break_cases import (
 WORD_VERSION = '16.0.19127.20936'
 FIXTURES = ROOT / 'public/fixtures'
 CAPTURE_ROOT = ROOT / 'tests/word-oracle/windows'
+FLOATING_RULE_CASES = {
+    f'{FLOATING_OVERLAP_PREFIX}right-{rule}-compat{mode}'
+    for rule in ('left-rule', 'right-rule', 'border', 'asymmetric-rules')
+    for mode in MODES
+}
 CAPTURES = (
     ('manual-page-breaks', 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb',
      'word-windows-edge-page-break-', manual_cases, ()),
@@ -49,8 +58,10 @@ CAPTURES = (
      FLOATING_CONTINUATION_PREFIX, floating_continuation_cases, ('--painted-table-headers',)),
     ('floating-table-wrap', 'd0de67e96a9f4085373fddb908b350544f3a98a174ba77ed9a429f278b01e497',
      FLOATING_WRAP_PREFIX, floating_wrap_cases, ('--painted-table-headers',)),
-    ('floating-table-overlap', '3948a1997ca5de5477d026869a7ba404afa09e3f8eeebbd8238f0d2965fd3236',
+    ('floating-table-overlap', '32d44eaed9065a08a61c4fd5a4f19f8eafb6b8bd5288316da32292228c306cc2',
      FLOATING_OVERLAP_PREFIX, floating_overlap_cases, ('--painted-table-headers',)),
+    ('floating-table-word-wrap', 'b69afb991ee5fa5d2ca8983aee7597978a1e1e77f5ca3c3266ec383dcb7a5e1a',
+     FLOATING_WORD_WRAP_PREFIX, floating_word_wrap_cases, ('--painted-table-headers',)),
 )
 
 
@@ -70,7 +81,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     fixtures = pages = glyphs = 0
     check_screen = capture_path.parent.name in (
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
-        'floating-table-overlap',
+        'floating-table-overlap', 'floating-table-word-wrap',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
@@ -148,6 +159,8 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
                 else:
                     assert_pending_pdf_text(word, painted, f'{name} vector PDF')
                 compare(word, painted, f'{name} vector PDF')
+                if name in FLOATING_RULE_CASES:
+                    assert_original_vector_borders(word_pdf, native_pdf, name)
             except (ValueError, subprocess.SubprocessError) as error:
                 failures.append(str(error))
     require(not remaining, f'Missing Word captures: {sorted(remaining)}')

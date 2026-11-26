@@ -5582,7 +5582,8 @@ fn line_available_segment_with_contour_bottom(
         cursor = cursor.max(*r);
     }
     let trailing = content_right - cursor;
-    if trailing > best_width {
+    // If the gaps are equal up to rounding, keep the first one.
+    if trailing > best_width && (best_width == 0.0 || trailing - best_width > 1.0e-7) {
         best_width = trailing;
         best_start = cursor;
     }

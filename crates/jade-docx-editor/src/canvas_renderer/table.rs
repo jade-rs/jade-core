@@ -2134,6 +2134,7 @@ struct TableLineWrapContext<'a, P: Painter> {
     ascii_measure_memo: RefCell<FxHashMap<(u32, u32), f64>>,
     wrap_cache: Option<Rc<RefCell<ParagraphWrapCache>>>,
     math: Option<TableMathContext>,
+    floating_border_insets_table: Option<&'a Table>,
 }
 
 impl<'a, P: Painter> TableLineWrapContext<'a, P> {
@@ -2161,6 +2162,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
             ascii_measure_memo: RefCell::new(FxHashMap::default()),
             wrap_cache: None,
             math: None,
+            floating_border_insets_table: None,
         };
         result.style = Rc::new(result.attach_font_ids((*result.style).clone()));
         result
@@ -2890,6 +2892,15 @@ where
         } else {
             TableLineWrapContext::new(&painter)
         };
+        let floating_border_insets = !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+            && floating_table_uses_cell_border_insets(
+                table,
+                self.document_east_asian_rules.compatibility_mode,
+            );
+        table_wrap_context.floating_border_insets_table = floating_border_insets.then_some(table);
         table_wrap_context.arabic_cluster_measurer = self.host.arabic_cluster_measurer();
         if self.table_autofit_cache_enabled {
             table_wrap_context.wrap_cache = Some(Rc::clone(&self.paragraph_wrap_cache));
@@ -3486,7 +3497,14 @@ where
         );
         let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let floating_paint_shift = floating_table_x.map_or(0.0, |_| {
-            windows_modern_floating_table_paint_shift(table, compatibility_mode)
+            let shift = windows_modern_floating_table_paint_shift(table, compatibility_mode);
+            if floating_border_insets {
+                // Paint the grid on the center of the stroke. Each cell
+                // then insets its own text by half its actual border.
+                shift - leading_cell_border_half_px(table, false)
+            } else {
+                shift
+            }
         });
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
@@ -11184,6 +11202,29 @@ fn compute_floating_body_table_x(
     Some(x - padding.left)
 }
 
+fn floating_table_uses_cell_border_insets(table: &Table, mode: Option<u32>) -> bool {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    word_layout_platform() == WordLayoutPlatform::Windows
+        && matches!(mode, Some(12 | 14..))
+        && table_floats(table)
+        && !table.bidi_visual
+        && table.cell_spacing.is_none_or(|spacing| spacing == 0.0)
+        && table
+            .style
+            .get("table-position-horizontal-anchor")
+            .is_none_or(|anchor| {
+                anchor.trim().eq_ignore_ascii_case("margin")
+                    || anchor.trim().eq_ignore_ascii_case("page")
+            })
+        && table
+            .style
+            .get("table-position-x-align")
+            .is_some_and(|align| {
+                align.trim().eq_ignore_ascii_case("right")
+                    || align.trim().eq_ignore_ascii_case("center")
+            })
+}
+
 fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -> f64 {
     if jade_docx_layout::line_metrics::word_layout_platform()
         != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
@@ -17062,6 +17103,13 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                 left + right
             }
         } else {
+            if wrap_context
+                .floating_border_insets_table
+                .is_some_and(|body_table| std::ptr::eq(body_table, table))
+            {
+                padding.left += visible_border_width(&border_left) * 0.5;
+                padding.right += visible_border_width(&border_right) * 0.5;
+            }
             0.0
         };
 
