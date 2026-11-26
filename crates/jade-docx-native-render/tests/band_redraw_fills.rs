@@ -353,3 +353,102 @@ fn typing_in_white_shaded_paragraphs_takes_the_band() {
         now - taken
     );
 }
+
+/// A two-column table of `rows` rows, `shading` filling every cell, its
+/// rows exactly `height` twips tall, and its cell text `top` twips below
+/// each row's top.
+fn table(shading: &str, rows: usize, height: u32, top: u32) -> String {
+    let border =
+        |side: &str| format!(r#"<w:{side} w:val="single" w:sz="8" w:space="0" w:color="000000"/>"#);
+    let borders: String = ["top", "left", "bottom", "right", "insideH", "insideV"]
+        .into_iter()
+        .map(border)
+        .collect();
+    let cell = |text: String| {
+        format!(
+            r#"<w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="{shading}"/></w:tcPr><w:p><w:r><w:t xml:space="preserve">{text}</w:t></w:r></w:p></w:tc>"#
+        )
+    };
+    let rows: String = (0..rows)
+        .map(|row| {
+            format!(
+                r#"<w:tr><w:trPr><w:trHeight w:val="{height}" w:hRule="exact"/></w:trPr>{}{}</w:tr>"#,
+                cell(format!("cell {row} a, gypsy")),
+                cell(format!("cell {row} b, quay")),
+            )
+        })
+        .collect();
+    format!(
+        r#"<w:tbl><w:tblPr><w:tblW w:w="8000" w:type="dxa"/><w:tblBorders>{borders}</w:tblBorders><w:tblCellMar><w:top w:w="{top}" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="4000"/><w:gridCol w:w="4000"/></w:tblGrid>{rows}</w:tbl>"#
+    )
+}
+
+/// An exact line `line` twips high, without spacing before or after.
+fn exact(line: u32) -> String {
+    format!(r#"<w:spacing w:before="0" w:after="0" w:line="{line}" w:lineRule="exact"/>"#)
+}
+
+/// Eight edits at the start of `paragraph`.
+const TYPING: [Edit<'static>; 8] = [
+    Edit::Insert("a"),
+    Edit::Delete(1),
+    Edit::Insert("a"),
+    Edit::Insert("bb"),
+    Edit::Delete(2),
+    Edit::Insert("W"),
+    Edit::Delete(1),
+    Edit::Insert("g"),
+];
+
+/// A tall exact-height paragraph ends a section at a thin continuous
+/// section break, and a table starts the next section on the same page.
+/// The band's clip reaches through the break into the table's top border
+/// and shading. The table paints by row, culled by the row's top, which
+/// lies below the break's line: the walk past the break must stop at the
+/// table's top edge, not at its cells' text.
+#[test]
+fn typing_above_a_section_break_and_a_table_matches_a_full_repaint() {
+    let continuous = r#"<w:sectPr><w:type w:val="continuous"/><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>"#;
+    let body = format!(
+        r#"{}<w:p><w:pPr>{}</w:pPr><w:r><w:t xml:space="preserve">Tall exact line, gypsy quay</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:before="0" w:after="2" w:line="1" w:lineRule="exact"/>{continuous}</w:pPr></w:p>{}{}"#,
+        text_paragraph("", "0 Body text before, gypsy"),
+        exact(1200),
+        table("D9E2F3", 2, 1140, 300),
+        text_paragraph("", "after the table"),
+    );
+    let bytes = with_document(&package(&body, ""), |xml| {
+        xml.replace(
+            "<w:sectPr><w:pgSz",
+            r#"<w:sectPr><w:type w:val="continuous"/><w:pgSz"#,
+        )
+    });
+    check_edits("exact line above a section break", &bytes, 1, &TYPING);
+}
+
+/// A shaded table above a 1 pt exact-height spacer paragraph, with rows
+/// taller than the band's slack above it. The band of the paragraph under
+/// the spacer reaches through the spacer into the last row's shading and
+/// bottom border, but the row is culled by its top and not repainted.
+#[test]
+fn typing_below_a_spacer_under_a_table_matches_a_full_repaint() {
+    let body = format!(
+        "{}{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}{}{}",
+        text_paragraph("", "0 Body text before, gypsy"),
+        table("D9E2F3", 2, 2400, 0),
+        exact(20),
+        text_paragraph("", "after the spacer, gypsy quay"),
+        text_paragraph("", "and the next paragraph"),
+        text_paragraph("", "and two more"),
+        text_paragraph("", "paragraphs under them"),
+    );
+    let bytes = package(&body, "");
+    // The paragraph under the spacer, then the one under that, which the
+    // band still takes.
+    check_edits("spacer under a table", &bytes, 6, &TYPING);
+    let taken = check_edits("spacer under a table", &bytes, 7, &TYPING);
+    assert!(taken > 0, "a paragraph away from the table keeps the band");
+}
+
+fn text_paragraph(ppr: &str, text: &str) -> String {
+    format!(r#"<w:p><w:pPr>{ppr}</w:pPr><w:r><w:t xml:space="preserve">{text}</w:t></w:r></w:p>"#)
+}
