@@ -3359,7 +3359,7 @@ impl NativeDocument {
         command: HeadlessCommand,
         keep_selection: bool,
     ) -> Result<(), String> {
-        self.apply_commands(vec![command], keep_selection)
+        self.apply_headless_edit(vec![command], keep_selection, false)
     }
 
     /// Runs `edit` on the document with the renderer's hold on it let go,
@@ -3457,6 +3457,15 @@ impl NativeDocument {
         commands: Vec<HeadlessCommand>,
         keep_selection: bool,
     ) -> Result<(), String> {
+        self.apply_headless_edit(commands, keep_selection, true)
+    }
+
+    fn apply_headless_edit(
+        &mut self,
+        commands: Vec<HeadlessCommand>,
+        keep_selection: bool,
+        grouped: bool,
+    ) -> Result<(), String> {
         if commands.is_empty() {
             return Ok(());
         }
@@ -3464,7 +3473,9 @@ impl NativeDocument {
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let reuse_first_layout = self.can_reuse_table_layout();
-        self.executor.begin_group();
+        if grouped {
+            self.executor.begin_group();
+        }
         let after = self.edit_in_place(|this| {
             let mut measure = |document: &WordDocument, index, table_order| {
                 let Some(id) = document
@@ -3497,6 +3508,9 @@ impl NativeDocument {
                 &HeadlessEditRequest { commands },
                 &mut measure,
             );
+            if !grouped {
+                return result;
+            }
             match result {
                 Ok(after) => {
                     this.executor.end_group();
@@ -3514,7 +3528,9 @@ impl NativeDocument {
             Ok(after) => after,
             Err(err) => {
                 self.selection = before;
-                self.repaint_all()?;
+                if grouped {
+                    self.repaint_all()?;
+                }
                 return Err(format!("edit failed: {err:?}"));
             }
         };
