@@ -3,10 +3,11 @@ use super::insert_text::InsertTextCommand;
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
 use crate::word_document::{WordDocument, WordDocumentSnapshot};
 use jade_docx_headless_api::HeadlessCommand;
+use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
 use jade_docx_reader::PAGE_BREAK_STR;
 
-/// Word inserts a dedicated paragraph for the ribbon/keyboard page break.
+/// Windows Word inserts a dedicated paragraph for the ribbon/keyboard page break.
 pub struct InsertManualPageBreakCommand {
     range: SelectionRange,
     before: Option<(WordDocumentSnapshot, Option<SelectionRange>)>,
@@ -20,8 +21,11 @@ impl InsertManualPageBreakCommand {
         }
     }
 
-    /// Whether the selection has a supported body paragraph or table anchor.
+    /// Whether Windows Word's page-break command supports this selection.
     pub fn supports(document: &WordDocument, range: SelectionRange) -> bool {
+        if word_layout_platform() != WordLayoutPlatform::Windows {
+            return false;
+        }
         let (start, end) = range.normalized();
         let start = document.manual_page_break_anchor(start.paragraph);
         let end = document.manual_page_break_anchor(end.paragraph);
