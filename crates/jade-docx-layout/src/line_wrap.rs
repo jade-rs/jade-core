@@ -218,6 +218,8 @@ pub struct ParagraphStyle {
     /// Windows Word keeps page and column controls in the editable cell text
     /// without letting them end a line.
     pub ignore_page_and_column_breaks: bool,
+    /// Fit the text to the advances used by the table's AutoFit minimum.
+    pub fit_on_glyph_advances: bool,
     pub first_line_available_adjustment: f64,
     pub continuation_available_adjustment: f64,
     pub right_indent: f64,
@@ -339,6 +341,7 @@ impl Default for ParagraphStyle {
             first_line_indent: 0.0,
             leading_page_breaks: 0,
             ignore_page_and_column_breaks: false,
+            fit_on_glyph_advances: false,
             first_line_available_adjustment: 0.0,
             continuation_available_adjustment: 0.0,
             right_indent: 0.0,
@@ -9483,6 +9486,7 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                     None => isolated_width.max(0.0),
                 };
                 let trailing_overhang = if computed.monospace_cell
+                    || paragraph_style.fit_on_glyph_advances
                     || !crate::line_metrics::word_wraps_on_trailing_ink(
                         paragraph_style.word_platform,
                     ) {

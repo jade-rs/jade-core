@@ -7537,7 +7537,17 @@ impl OffscreenDocumentView {
         }
         let resize = match drag {
             PointerDragState::ColumnResize(state) => {
-                Self::column_resize_command(state)?.map(|command| Resize::Column(Box::new(command)))
+                Self::column_resize_command(state)?.map(|command| {
+                    let geometry = self
+                        .renderer
+                        .borrow()
+                        .nested_column_resize_geometry(state.table_order_index);
+                    let command = match geometry {
+                        Some(geometry) => command.with_nested_geometry(geometry),
+                        None => command,
+                    };
+                    Resize::Column(Box::new(command))
+                })
             }
             PointerDragState::RowResize(state) => {
                 Self::row_resize_command(state).map(|command| Resize::Row(Box::new(command)))

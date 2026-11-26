@@ -2,6 +2,82 @@ use super::table_structure::TableStructureBackup;
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{TableColumn, TableLayoutMode};
 use crate::word_document::{whole_twips, WordDocument, MIN_TABLE_COLUMN_WIDTH_PT};
+use std::rc::Rc;
+
+/// Measured widths of a nested table within its parent's AutoFit grid.
+#[derive(Debug)]
+pub struct NestedColumnResizeGeometry {
+    pub(crate) displayed_widths: Vec<f32>,
+    pub(crate) minimum_widths: Vec<f64>,
+    pub(crate) frame_width: f32,
+}
+
+pub(crate) fn fit_nested_columns_to_content(
+    widths: &mut [f64],
+    preferred: &[f64],
+    floors: &[f64],
+    twips_per_unit: f64,
+) {
+    let budget: f64 = widths.iter().sum();
+    let preferred_total: f64 = preferred.iter().sum();
+    let nearest_twip = |value: f64| (value * twips_per_unit).round() / twips_per_unit;
+    let budget = nearest_twip(budget);
+    if budget >= preferred_total - 1e-8
+        && widths
+            .iter()
+            .zip(floors)
+            .all(|(width, floor)| width + 1e-8 >= *floor)
+    {
+        // When a scaled grid divides a whole twip, the trailing column
+        // receives the remainder.
+        let mut ideal_boundary = 0.0;
+        let mut previous_boundary = 0.0;
+        let last = widths.len() - 1;
+        for (index, width) in widths.iter_mut().enumerate() {
+            ideal_boundary += *width;
+            let boundary = if index == last {
+                budget
+            } else {
+                ((ideal_boundary * twips_per_unit + 1e-8).floor() / twips_per_unit)
+                    .max(previous_boundary + floors[index])
+            };
+            *width = boundary - previous_boundary;
+            previous_boundary = boundary;
+        }
+        return;
+    }
+    let floor_total: f64 = floors.iter().sum();
+    if budget <= floor_total {
+        widths.copy_from_slice(floors);
+        return;
+    }
+    // Each column takes the same fraction of the distance from its
+    // unbreakable text width to its authored preference.
+    let slack: f64 = preferred
+        .iter()
+        .zip(floors)
+        .map(|(preferred, floor)| (preferred - floor).max(0.0))
+        .sum();
+    let mut ideal_boundary = 0.0;
+    let mut previous_boundary = 0.0;
+    let last = widths.len() - 1;
+    for (index, width) in widths.iter_mut().enumerate() {
+        ideal_boundary += floors[index]
+            + (budget - floor_total)
+                * if slack > f64::EPSILON {
+                    (preferred[index] - floors[index]).max(0.0) / slack
+                } else {
+                    preferred[index] / preferred_total
+                };
+        let boundary = if index == last {
+            budget
+        } else {
+            nearest_twip(ideal_boundary)
+        };
+        *width = boundary - previous_boundary;
+        previous_boundary = boundary;
+    }
+}
 
 pub struct ResizeTableColumnCommand {
     table_order_index: usize,
@@ -14,6 +90,7 @@ pub struct ResizeTableColumnCommand {
     previous_columns: Option<Vec<TableColumn>>,
     previous_layout: Option<Option<TableLayoutMode>>,
     previous_rendered_width: Option<f32>,
+    nested_geometry: Option<Rc<NestedColumnResizeGeometry>>,
     nested_backup: Option<TableStructureBackup>,
 }
 
@@ -35,6 +112,7 @@ impl ResizeTableColumnCommand {
             previous_columns: None,
             previous_layout: None,
             previous_rendered_width: None,
+            nested_geometry: None,
             nested_backup: None,
         }
     }
@@ -51,6 +129,7 @@ impl ResizeTableColumnCommand {
             previous_columns: None,
             previous_layout: None,
             previous_rendered_width: None,
+            nested_geometry: None,
             nested_backup: None,
         }
     }
@@ -68,6 +147,7 @@ impl ResizeTableColumnCommand {
             previous_columns: None,
             previous_layout: None,
             previous_rendered_width: None,
+            nested_geometry: None,
             nested_backup: None,
         }
     }
@@ -83,6 +163,11 @@ impl ResizeTableColumnCommand {
 
     pub fn with_previous_rendered_width(mut self, width_points: f32) -> Self {
         self.previous_rendered_width = Some(width_points);
+        self
+    }
+
+    pub fn with_nested_geometry(mut self, geometry: Rc<NestedColumnResizeGeometry>) -> Self {
+        self.nested_geometry = Some(geometry);
         self
     }
 
@@ -141,7 +226,14 @@ impl Command for ResizeTableColumnCommand {
             .transpose()?;
 
         let order = self.table_order_index;
-        let sizing = ctx.document.nested_resize_column_grid(order);
+        let geometry = self.nested_geometry.as_ref().filter(|geometry| {
+            ctx.document.table_by_order(order).is_some_and(|table| {
+                WordDocument::resolved_table_column_count(table) == geometry.displayed_widths.len()
+            })
+        });
+        let sizing = geometry
+            .map(|geometry| (geometry.displayed_widths.clone(), geometry.frame_width))
+            .or_else(|| ctx.document.nested_resize_column_grid(order));
         let backup = sizing
             .as_ref()
             .map(|_| TableStructureBackup::capture(ctx.document, order))
@@ -242,9 +334,39 @@ impl Command for ResizeTableColumnCommand {
                     .sync_table_cell_widths(order)
                     .map_err(CommandError::Custom)?;
                 if let Some((_, frame)) = sizing {
+                    let previous_rendered_width =
+                        self.previous_rendered_width.filter(|_| geometry.is_none());
                     ctx.document
-                        .sync_resized_nested_table_width(order, frame, self.previous_rendered_width)
+                        .sync_resized_nested_table_width(order, frame, previous_rendered_width)
                         .map_err(CommandError::Custom)?;
+                    if let Some(geometry) = geometry {
+                        let preferred: Vec<_> = columns_snapshot
+                            .iter()
+                            .map(|column| {
+                                (f64::from(column.width.unwrap_or(0.0)) * 20.0).round() / 20.0
+                            })
+                            .collect();
+                        let mut actual = preferred.clone();
+                        fit_nested_columns_to_content(
+                            &mut actual,
+                            &preferred,
+                            &geometry.minimum_widths,
+                            20.0,
+                        );
+                        let columns: Vec<_> = actual
+                            .into_iter()
+                            .map(|width| TableColumn {
+                                width: Some(whole_twips(width as f32)),
+                            })
+                            .collect();
+                        ctx.document
+                            .sync_table_grid(table_id, &columns)
+                            .map_err(|err| CommandError::Custom(err.to_string()))?;
+                        ctx.document
+                            .table_mut_by_order(order)
+                            .ok_or_else(|| CommandError::Custom("target table not found".into()))?
+                            .columns = columns;
+                    }
                 } else {
                     ctx.document
                         .sync_table_layout(table_id, Some(TableLayoutMode::Fixed))

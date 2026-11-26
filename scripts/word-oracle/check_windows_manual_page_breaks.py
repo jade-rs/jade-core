@@ -76,6 +76,24 @@ def spaced_border_content_cases():
     return {f'{phase}-{rule}' for phase in ('before', 'resized') for rule in rules}
 
 
+def nested_autofit_advance_cases():
+    samples = ('arial-a', 'arial-av', 'arial-f', 'arial-w', 'calibri-w', 'times-w')
+    return {f'{phase}-{sample}-{weight}' for phase in ('before', 'after')
+            for sample in samples for weight in ('regular', 'italic')}
+
+
+def nested_autofit_resize_cases():
+    bases = {f'n{length}-{sample}' for length in (22, 23, 24)
+             for sample in ('edge', 'rightedge')}
+    return ({f'before-{base}' for base in bases}
+            | {f'after-{base}-w{width}' for base in bases for width in (55, 65, 75, 90)})
+
+
+def nested_autofit_floor_cases():
+    widths = (8000, 8200, 8280, 8340, 8380, 8400, 8410, 8420, 8440, 8460, 8480, 8500)
+    return {f'{sample}-{width}' for sample in ('edge', 'rightedge') for width in widths}
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -112,6 +130,12 @@ CAPTURES = (
      'word-windows-edge-nested-percent-resized-', nested_percent_resize_cases, ('--unclipped-tables',)),
     ('spaced-table-border-content', '2ae9c231f0f24f1db3ffb1dcf4d2750e0cd26d1532db6875e3478bba55f5732b',
      'word-windows-edge-spaced-border-content-', spaced_border_content_cases, ('--unclipped-tables',)),
+    ('nested-autofit-advances', 'f9c1d198abd4127a2b18565b9a5ed3c0d6d6bbec3a8127750afb3dbd08255d30',
+     'word-windows-edge-nested-autofit-advance-', nested_autofit_advance_cases, ('--unclipped-tables',)),
+    ('nested-autofit-resize', 'ff433fbc065d00c29fedcf9b4883aed2315360573e697f3a9628b0ad41b4cdce',
+     'word-windows-edge-nested-autofit-resize-', nested_autofit_resize_cases, ('--unclipped-tables',)),
+    ('nested-autofit-floors', '1cee360c6106b320e55b1bee7305b65690d451635396683b3d28b346ba4ce173',
+     'word-windows-edge-nested-autofit-floor-', nested_autofit_floor_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -147,6 +171,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
         'nested-table-resize', 'table-cell-border-content', 'nested-table-percent-resize',
         'spaced-table-border-content',
+        'nested-autofit-advances', 'nested-autofit-resize', 'nested-autofit-floors',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
