@@ -547,10 +547,10 @@ fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> Nativ
         let compare_parent = capture.starts_with("nested-autofit-");
         let mut jade = open(&source);
         let original = widths(jade.word_document());
-        let original_saved = compare_parent.then(|| {
+        let original_saved = {
             let saved = jade.export_docx().unwrap();
             widths(open(&saved).word_document())
-        });
+        };
         let resize = HeadlessCommand::ResizeTableColumnRightEdge {
             table_order_index: 1,
             column_index: 1,
@@ -591,7 +591,7 @@ fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> Nativ
         let saved = jade.export_docx().unwrap();
         assert_eq!(
             widths(open(&saved).word_document()),
-            original_saved.unwrap_or(original),
+            original_saved,
             "{after}: undo"
         );
         jade.redo().unwrap();
