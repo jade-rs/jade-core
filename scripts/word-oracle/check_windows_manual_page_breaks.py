@@ -59,6 +59,13 @@ FLOATING_RULE_CASES = {
     for rule in ('left-rule', 'right-rule', 'border', 'asymmetric-rules')
     for mode in MODES
 }
+
+
+def nested_resized_cases():
+    return {f'{layout}-{width}' for layout in ('autofit', 'fixed')
+            for width in ('absolute', 'auto', 'full')}
+
+
 CAPTURES = (
     ('manual-page-breaks', 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb',
      'word-windows-edge-page-break-', manual_cases, ()),
@@ -78,6 +85,8 @@ CAPTURES = (
      NESTED_DEPTH_PREFIX, nested_depth_cases, ('--unclipped-tables',)),
     ('nested-table-preferred-widths', '1ee621a881cba218780c9423e1566b9db830d72e0cca1e8675e630e870e2681d',
      NESTED_PREFERRED_PREFIX, nested_preferred_cases, ('--unclipped-tables',)),
+    ('nested-table-resize', '40be43660a428dc8783e2b16dbbc26f6883c73342cdda3762c00fa7ee5d62bfa',
+     'word-windows-edge-nested-resized-', nested_resized_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -110,6 +119,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     check_screen = capture_path.parent.name in (
         'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
+        'nested-table-resize',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
@@ -123,6 +133,10 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
             source = FIXTURES / f'{name}.docx'
             require(sha256(source.read_bytes()) == original['input_sha256'],
                     f'{name}: Word measured different DOCX bytes')
+            if 'before_fixture' in original:
+                before = FIXTURES / f'{original["before_fixture"]}.docx'
+                require(sha256(before.read_bytes()) == original['before_input_sha256'],
+                        f'{name}: Word edited different DOCX bytes')
             pdf_bytes = bundle.read(f'word/{name}.pdf')
             require(sha256(pdf_bytes) == original['pdf_sha256'], f'{name}: Word PDF changed')
             case_dir = output_dir / name

@@ -7486,10 +7486,12 @@ impl OffscreenDocumentView {
                 resized_widths[state.column_index] = state.current_left_width;
             }
         }
-        Ok(Some(ResizeTableColumnCommand::rendered_columns(
+        let command = ResizeTableColumnCommand::rendered_columns(
             state.table_order_index,
             resized_widths.into_iter().map(Self::px_to_points).collect(),
-        )))
+        )
+        .with_previous_rendered_width(Self::px_to_points(state.initial_column_widths.iter().sum()));
+        Ok(Some(command))
     }
 
     /// The command that applies a row drag's current heights, or `None`

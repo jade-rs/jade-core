@@ -1710,13 +1710,10 @@ pub trait WordTables: WordSession {
             .windows(2)
             .map(|pair| ((pair[1] - pair[0]) * PT_PER_PX) as f32)
             .collect();
-        self.execute_command(
-            Box::new(ResizeTableColumnCommand::rendered_columns(
-                table_order_index,
-                widths,
-            )),
-            true,
-        )
+        let initial_width = ((geometry.columns[last] - geometry.columns[0]) * PT_PER_PX) as f32;
+        let command = ResizeTableColumnCommand::rendered_columns(table_order_index, widths)
+            .with_previous_rendered_width(initial_width);
+        self.execute_command(Box::new(command), true)
     }
 
     /// A row border dragged to `y`: the row above takes the new height.

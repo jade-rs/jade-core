@@ -16951,6 +16951,66 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
     Ok(cells)
 }
 
+fn table_row_slot_scale(
+    table: &Table,
+    row: &TableRow,
+    row_index: usize,
+    row_count: usize,
+    column_widths: &[f64],
+) -> f64 {
+    if !row_uses_separate_cell_borders(row, table) {
+        return 1.0;
+    }
+    let cell_spacing = resolve_cell_spacing_px(row, table);
+    let edge_width = |index: usize, name, side| {
+        row.cells
+            .get(index)
+            .map(|cell| {
+                let format = table.table_style_cell_format(table_style_cell_position(
+                    row, row_index, row_count, index,
+                ));
+                visible_border_width(&resolve_cell_border_side(
+                    cell,
+                    row,
+                    table,
+                    &format,
+                    name,
+                    side,
+                    [false; 4],
+                    cell_spacing,
+                ))
+            })
+            .unwrap_or(0.0)
+    };
+    let (leading, trailing) = if table.bidi_visual {
+        (
+            edge_width(0, "right", TableBorderSide::Right),
+            edge_width(
+                row.cells.len().saturating_sub(1),
+                "left",
+                TableBorderSide::Left,
+            ),
+        )
+    } else {
+        (
+            edge_width(0, "left", TableBorderSide::Left),
+            edge_width(
+                row.cells.len().saturating_sub(1),
+                "right",
+                TableBorderSide::Right,
+            ),
+        )
+    };
+    spacing_slot_scale(
+        column_widths.iter().sum(),
+        cell_spacing,
+        leading,
+        trailing,
+        spacing_frame_width(row, table, TableBorderSide::Left),
+        spacing_frame_width(row, table, TableBorderSide::Right),
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 fn prepare_row_cells<P: Painter<Error: PainterError>>(
     wrap_context: &TableLineWrapContext<'_, P>,
@@ -16974,57 +17034,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
     let cell_spacing = resolve_cell_spacing_px(row, table);
     let separated = row_uses_separate_cell_borders(row, table);
     let total_columns = column_widths.len();
-    let slot_scale = if separated {
-        let edge_width = |index: usize, name, side| {
-            row.cells
-                .get(index)
-                .map(|cell| {
-                    let format = table.table_style_cell_format(table_style_cell_position(
-                        row, row_index, row_count, index,
-                    ));
-                    visible_border_width(&resolve_cell_border_side(
-                        cell,
-                        row,
-                        table,
-                        &format,
-                        name,
-                        side,
-                        [false; 4],
-                        cell_spacing,
-                    ))
-                })
-                .unwrap_or(0.0)
-        };
-        let (leading, trailing) = if table.bidi_visual {
-            (
-                edge_width(0, "right", TableBorderSide::Right),
-                edge_width(
-                    row.cells.len().saturating_sub(1),
-                    "left",
-                    TableBorderSide::Left,
-                ),
-            )
-        } else {
-            (
-                edge_width(0, "left", TableBorderSide::Left),
-                edge_width(
-                    row.cells.len().saturating_sub(1),
-                    "right",
-                    TableBorderSide::Right,
-                ),
-            )
-        };
-        spacing_slot_scale(
-            column_widths.iter().sum(),
-            cell_spacing,
-            leading,
-            trailing,
-            spacing_frame_width(row, table, TableBorderSide::Left),
-            spacing_frame_width(row, table, TableBorderSide::Right),
-        )
-    } else {
-        1.0
-    };
+    let slot_scale = table_row_slot_scale(table, row, row_index, row_count, column_widths);
     if column_index > total_columns {
         column_index = total_columns;
     }
@@ -17869,6 +17879,124 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
         }
     }
     Ok(layouts)
+}
+
+/// Returns the prior grid and the percentage reference frame in points for
+/// a column edit inside a table cell.
+pub(crate) fn windows_nested_resize_grid(
+    elements: &[BodyElement],
+    target: &Table,
+    text_width: f32,
+    compatibility_mode: Option<u32>,
+) -> Option<(Vec<f32>, f32)> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+
+    fn containing_cells<'a>(
+        elements: &'a [BodyElement],
+        target: &Table,
+        path: &mut Vec<(&'a Table, usize, usize)>,
+    ) -> bool {
+        for element in elements {
+            if let BodyElement::Table(table) = element {
+                if std::ptr::eq(table.as_ref(), target) {
+                    return true;
+                }
+                for (row_index, row) in table.rows.iter().enumerate() {
+                    for (cell_index, cell) in row.cells.iter().enumerate() {
+                        path.push((table, row_index, cell_index));
+                        if containing_cells(&cell.blocks, target, path) {
+                            return true;
+                        }
+                        path.pop();
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    let mut path = Vec::new();
+    if !containing_cells(elements, target, &mut path) || path.is_empty() {
+        return None;
+    }
+    let mut available = points_to_px(text_width);
+    for (depth, (table, row_index, cell_index)) in path.into_iter().enumerate() {
+        let count = compute_column_count(table).max(1);
+        let widths = if depth == 0 {
+            compute_column_widths(table, count, available)
+        } else {
+            word_windows_nested_grid(table, count, available)
+                .unwrap_or_else(|| compute_column_widths(table, count, available))
+        };
+        let row = &table.rows[row_index];
+        let cell = &row.cells[cell_index];
+        let start = row.grid_before.unwrap_or(0) as usize
+            + row.cells[..cell_index]
+                .iter()
+                .map(|cell| cell.span.unwrap_or(1).max(1) as usize)
+                .sum::<usize>();
+        let end = start + cell.span.unwrap_or(1).max(1) as usize;
+        let cell_width: f64 = widths.get(start..end)?.iter().sum();
+        let spacing = resolve_cell_spacing_px(row, table);
+        let default_x = table_default_horizontal_padding_px(table, WordLayoutPlatform::Windows);
+        let padding = resolve_cell_padding(
+            cell.margins.as_ref(),
+            row.cell_margins.as_ref(),
+            table.effective_cell_margins(),
+            false,
+            default_x,
+            0.0,
+        );
+        let separated = row_uses_separate_cell_borders(row, table);
+        let mut inset = 0.0;
+        let mut slot_scale = 1.0;
+        if separated || word_modern_nested_border_frame_enabled(compatibility_mode) {
+            let edges = [
+                row_index == 0,
+                row_index + 1 == table.rows.len(),
+                if table.bidi_visual {
+                    end == count
+                } else {
+                    start == 0
+                },
+                if table.bidi_visual {
+                    start == 0
+                } else {
+                    end == count
+                },
+            ];
+            let format = table.table_style_cell_format(table_style_cell_position(
+                row,
+                row_index,
+                table.rows.len(),
+                cell_index,
+            ));
+            let border_width = |name, side| {
+                visible_border_width(&resolve_cell_border_side(
+                    cell, row, table, &format, name, side, edges, spacing,
+                ))
+            };
+            inset = (border_width("left", TableBorderSide::Left)
+                + border_width("right", TableBorderSide::Right))
+                * if separated && spacing > 0.0 { 1.0 } else { 0.5 };
+            if separated {
+                slot_scale = table_row_slot_scale(table, row, row_index, table.rows.len(), &widths);
+            }
+        }
+        available =
+            (cell_width * slot_scale - 2.0 * spacing - padding.horizontal() - inset).max(1.0);
+    }
+    let widths = word_windows_nested_grid(target, compute_column_count(target).max(1), available)?;
+    Some((
+        widths
+            .into_iter()
+            .map(|width| (width * 0.75) as f32)
+            .collect(),
+        (available * 0.75) as f32,
+    ))
 }
 
 fn word_windows_nested_grid(

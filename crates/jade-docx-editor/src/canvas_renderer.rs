@@ -579,6 +579,7 @@ mod run_style_key;
 mod section_tests;
 mod structure;
 mod table;
+pub(crate) use table::windows_nested_resize_grid;
 #[cfg(test)]
 mod table_footer_tests;
 #[cfg(test)]
