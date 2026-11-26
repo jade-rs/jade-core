@@ -2006,9 +2006,114 @@ impl RetainedHyperlinks {
     }
 }
 
+/// The hyperlink registry a stable edit's pass sets aside whole, when it is
+/// ordered by paragraph around the edit: the regions of the paragraphs
+/// before the retained point, then those up to the edited paragraph's end,
+/// then the rest.
+///
+/// The pass starts from the first part, which a partition would copy out and
+/// the rest after it, on every keystroke. Set aside whole, it is not copied;
+/// the pass registers into an empty registry, and its regions take the place
+/// of the middle part (in place, when there are as many) or follow the first
+/// part, as they would have followed it.
+#[derive(Debug)]
+struct HyperlinksAside {
+    regions: Vec<HyperlinkRegion>,
+    /// `regions[..kept]`: the paragraphs before the retained point.
+    kept: usize,
+    /// `regions[tail..]`: the paragraphs from `from` on.
+    tail: usize,
+    from: usize,
+}
+
+impl HyperlinksAside {
+    /// Sets `regions` aside, leaving it empty, when every region of a
+    /// paragraph before `kept_before` comes first and every one from `from`
+    /// on comes last. `None`, leaving it as it is, otherwise.
+    fn set_aside(
+        regions: &mut Vec<HyperlinkRegion>,
+        kept_before: usize,
+        from: usize,
+    ) -> Option<Self> {
+        let kept = regions
+            .iter()
+            .position(|region| region.paragraph >= kept_before)
+            .unwrap_or(regions.len());
+        let tail = kept
+            + regions[kept..]
+                .iter()
+                .position(|region| region.paragraph >= from)
+                .unwrap_or(regions.len() - kept);
+        let ordered = regions[kept..tail]
+            .iter()
+            .all(|region| region.paragraph >= kept_before)
+            && regions[tail..]
+                .iter()
+                .all(|region| region.paragraph >= from);
+        ordered.then(|| Self {
+            regions: std::mem::take(regions),
+            kept,
+            tail,
+            from,
+        })
+    }
+
+    /// The regions the pass starts from.
+    fn kept(&self) -> &[HyperlinkRegion] {
+        &self.regions[..self.kept]
+    }
+
+    /// The layout after the edit stood: the first part, the pass's regions
+    /// before `from`, then the rest as it was.
+    fn finish_stable(self, registry: &mut Vec<HyperlinkRegion>) {
+        let Self {
+            mut regions,
+            kept,
+            tail,
+            from,
+        } = self;
+        let walked: Vec<HyperlinkRegion> = std::mem::take(registry)
+            .into_iter()
+            .filter(|region| region.paragraph < from)
+            .collect();
+        if walked.len() == tail - kept {
+            for (slot, region) in regions[kept..tail].iter_mut().zip(walked) {
+                *slot = region;
+            }
+        } else {
+            regions.splice(kept..tail, walked);
+        }
+        *registry = regions;
+    }
+
+    /// The layout after the edit did not stand: the first part, then the
+    /// pass's regions. Returns the regions from `from` on when `keep_rest`.
+    fn finish_unstable(
+        self,
+        registry: &mut Vec<HyperlinkRegion>,
+        keep_rest: bool,
+    ) -> Vec<HyperlinkRegion> {
+        let Self {
+            mut regions,
+            kept,
+            tail,
+            ..
+        } = self;
+        let rest = if keep_rest {
+            regions.split_off(tail)
+        } else {
+            Vec::new()
+        };
+        regions.truncate(kept);
+        regions.append(registry);
+        *registry = regions;
+        rest
+    }
+}
+
 #[cfg(test)]
 mod retained_hyperlinks_tests {
-    use super::{HyperlinkRegion, RetainedHyperlinks};
+    use super::{HyperlinkRegion, HyperlinksAside, RetainedHyperlinks};
 
     fn region(paragraph: usize, y: f64) -> HyperlinkRegion {
         HyperlinkRegion {
@@ -2026,6 +2131,101 @@ mod retained_hyperlinks_tests {
             tooltip: None,
             target_frame: None,
         }
+    }
+
+    /// Every registry of up to five regions over four paragraphs, as
+    /// `(paragraph, y)` with `y` telling the regions apart.
+    fn registries() -> Vec<Vec<(usize, f64)>> {
+        let mut all = vec![Vec::new()];
+        let mut last = vec![Vec::new()];
+        for _ in 0..5 {
+            last = last
+                .iter()
+                .flat_map(|registry: &Vec<(usize, f64)>| {
+                    (0..4).map(move |paragraph| {
+                        let mut next = registry.clone();
+                        next.push((paragraph, next.len() as f64));
+                        next
+                    })
+                })
+                .collect();
+            all.extend(last.iter().cloned());
+        }
+        all
+    }
+
+    fn keys(regions: &[HyperlinkRegion]) -> Vec<(usize, f64)> {
+        regions.iter().map(|r| (r.paragraph, r.y)).collect()
+    }
+
+    /// Setting the registry aside ends as partitioning it did: the stable
+    /// edit's walk keeps what it registered before `from` and the regions
+    /// from `from` on follow; otherwise the walk's regions follow the kept
+    /// ones, and those from `from` on are handed over.
+    #[test]
+    fn setting_regions_aside_matches_partitioning_them() {
+        let walks: [&[usize]; 4] = [&[], &[1], &[1, 2], &[2, 1, 3]];
+        let mut set_aside = 0;
+        for registry in registries() {
+            for from in 0..5 {
+                for dirty_from in [None, Some(0), Some(1), Some(2), Some(4)] {
+                    let kept_before = dirty_from.map_or(0, |d: usize| d.min(from));
+                    for walk in walks {
+                        let walk: Vec<HyperlinkRegion> =
+                            walk.iter().map(|&p| region(p, 100.0 + p as f64)).collect();
+                        let before: Vec<HyperlinkRegion> =
+                            registry.iter().map(|&(p, y)| region(p, y)).collect();
+                        // The partition.
+                        let (mut kept, suffix): (Vec<_>, Vec<_>) =
+                            before.clone().into_iter().partition(|r| r.paragraph < from);
+                        match dirty_from {
+                            Some(d) => kept.retain(|r| r.paragraph < d),
+                            None => kept.clear(),
+                        }
+                        let mut unstable = kept.clone();
+                        unstable.extend(walk.iter().cloned());
+                        let mut stable = unstable.clone();
+                        stable.retain(|r| r.paragraph < from);
+                        stable.extend(suffix.iter().cloned());
+
+                        let mut regions = before.clone();
+                        let Some(aside) =
+                            HyperlinksAside::set_aside(&mut regions, kept_before, from)
+                        else {
+                            assert_eq!(keys(&regions), keys(&before));
+                            continue;
+                        };
+                        set_aside += 1;
+                        assert!(regions.is_empty());
+                        assert_eq!(keys(aside.kept()), keys(&kept));
+                        for outcome in 0..3 {
+                            let aside = HyperlinksAside {
+                                regions: aside.regions.clone(),
+                                ..aside
+                            };
+                            let mut registry = walk.clone();
+                            match outcome {
+                                0 => {
+                                    aside.finish_stable(&mut registry);
+                                    assert_eq!(keys(&registry), keys(&stable));
+                                }
+                                1 => {
+                                    let rest = aside.finish_unstable(&mut registry, true);
+                                    assert_eq!(keys(&registry), keys(&unstable));
+                                    assert_eq!(keys(&rest), keys(&suffix));
+                                }
+                                _ => {
+                                    let rest = aside.finish_unstable(&mut registry, false);
+                                    assert_eq!(keys(&registry), keys(&unstable));
+                                    assert!(rest.is_empty());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(set_aside > 0);
     }
 
     #[test]
@@ -5078,6 +5278,9 @@ where
     hyperlink_regions: Vec<HyperlinkRegion>,
     /// The front of `hyperlink_regions` kept from the previous render.
     hyperlink_retained: RetainedHyperlinks,
+    /// The regions a stable edit's pass set aside whole, while the pass
+    /// registers into an empty `hyperlink_regions`; see [`HyperlinksAside`].
+    hyperlinks_aside: Option<HyperlinksAside>,
     hyperlink_regions_js_cache: RefCell<Option<JsValue>>,
     footnote_counter: usize,
     footnote_display_map: HashMap<String, usize>,
@@ -11108,6 +11311,7 @@ where
             comment_annotations: CommentAnnotations::default(),
             hyperlink_regions: Vec::new(),
             hyperlink_retained: RetainedHyperlinks::default(),
+            hyperlinks_aside: None,
             hyperlink_regions_js_cache: RefCell::new(None),
             footnote_counter: 0,
             footnote_display_map: HashMap::new(),
@@ -17454,6 +17658,12 @@ where
             // The failed pass may have replaced last_options without rebuilding
             // every cached paragraph. Require hash checks on the next render.
             self.last_options = None;
+            // A stable edit's pass set its downstream aside and then failed:
+            // it is dropped, as an unstable edit drops it.
+            if let Some(aside) = self.hyperlinks_aside.take() {
+                aside.finish_unstable(&mut self.hyperlink_regions, false);
+            }
+            self.selection.discard_parked_selection_suffix();
         }
         result
     }
@@ -17725,7 +17935,7 @@ where
             .filter(|_| incremental_dirty_from.is_some() || preserve_stable_edit_pagination)
             .map(|(paragraph, _)| {
                 let from = paragraph.saturating_add(1);
-                (from, self.selection.take_selection_suffix(from))
+                (from, self.selection.park_selection_suffix(from))
             });
         self.edit_downstream =
             edit_downstream_parts.map(|(from, cells, hyperlinks, objects, page_origins)| {
@@ -17781,13 +17991,22 @@ where
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
         // than dropping them; PDF export reads them per page.
-        let mut hyperlink_suffix = selection_suffix.as_ref().map(|&(from, _)| {
-            let (kept, suffix) = std::mem::take(&mut self.hyperlink_regions)
-                .into_iter()
-                .partition(|region| region.paragraph < from);
-            self.hyperlink_regions = kept;
-            (from, suffix)
-        });
+        // Ordered by paragraph around the edit, as a walk registers them, the
+        // regions are set aside whole instead, without moving any.
+        self.hyperlinks_aside = None;
+        let mut hyperlink_suffix = None;
+        if let Some(&(from, _)) = selection_suffix.as_ref() {
+            let kept_before = incremental_dirty_from.map_or(0, |dirty_from| dirty_from.min(from));
+            self.hyperlinks_aside =
+                HyperlinksAside::set_aside(&mut self.hyperlink_regions, kept_before, from);
+            if self.hyperlinks_aside.is_none() {
+                let (kept, suffix) = std::mem::take(&mut self.hyperlink_regions)
+                    .into_iter()
+                    .partition(|region| region.paragraph < from);
+                self.hyperlink_regions = kept;
+                hyperlink_suffix = Some((from, suffix));
+            }
+        }
         // Incremental hyperlink region update: keep regions for paragraphs
         // before the dirty point, only rebuild from dirty_from onwards.
         if let Some(dirty_from) = incremental_dirty_from {
@@ -17798,8 +18017,12 @@ where
         }
         // Paragraphs before the dirty point keep their regions; a replay of
         // one this render must not register them a second time.
-        self.hyperlink_retained =
-            RetainedHyperlinks::capture(incremental_dirty_from, &self.hyperlink_regions);
+        self.hyperlink_retained = RetainedHyperlinks::capture(
+            incremental_dirty_from,
+            self.hyperlinks_aside
+                .as_ref()
+                .map_or(&self.hyperlink_regions, HyperlinksAside::kept),
+        );
         self.invalidate_hyperlink_regions_js_cache();
         self.adopt_comment_store(if options.render_comments {
             comments
@@ -18944,14 +19167,18 @@ where
             if let (Some((from, selection)), Some(cells)) =
                 (selection_suffix.take(), stable_cells.take())
             {
-                self.edit_downstream = Some(EditDownstream {
-                    from,
-                    selection,
-                    cells,
-                    hyperlinks: hyperlink_suffix
+                let hyperlinks = match self.hyperlinks_aside.take() {
+                    Some(aside) => aside.finish_unstable(&mut self.hyperlink_regions, true),
+                    None => hyperlink_suffix
                         .take()
                         .map(|(_, suffix)| suffix)
                         .unwrap_or_default(),
+                };
+                self.edit_downstream = Some(EditDownstream {
+                    from,
+                    selection: self.selection.detach_selection_suffix(selection),
+                    cells,
+                    hyperlinks,
                     objects: stable_edit_metadata
                         .as_ref()
                         .map(|(_, metadata)| {
@@ -18973,6 +19200,10 @@ where
             }
             // As with the selection tail, the saved regions are authoritative
             // for any paragraph after the edited one that the walk re-recorded.
+            if let Some(aside) = self.hyperlinks_aside.take() {
+                aside.finish_stable(&mut self.hyperlink_regions);
+                self.invalidate_hyperlink_regions_js_cache();
+            }
             if let Some((from, suffix)) = hyperlink_suffix {
                 self.hyperlink_regions
                     .retain(|region: &HyperlinkRegion| region.paragraph < from);
@@ -18993,6 +19224,14 @@ where
                     self.image_debug_regions.get_mut(),
                     self.object_debug_regions.get_mut(),
                 );
+            }
+        } else {
+            // Not handed over above: dropped, as when it was moved out.
+            if let Some((_, suffix)) = selection_suffix {
+                self.selection.discard_selection_suffix(suffix);
+            }
+            if let Some(aside) = self.hyperlinks_aside.take() {
+                aside.finish_unstable(&mut self.hyperlink_regions, false);
             }
         }
         if preserve_pixel_pagination
