@@ -1,0 +1,95 @@
+"""Compare manual page-break DOCX layout and vector PDF with Windows Word."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+from zipfile import ZipFile
+
+from check_platform_coordinates import (
+    ROOT, assert_pending_pdf_text, compare, extract_fonts, pdf_origins, require,
+)
+from check_windows_font_coordinates import require_original_font_programs_registered
+from generate_windows_page_break_cases import cases
+
+WORD_VERSION = '16.0.19127.20936'
+CAPTURE = ROOT / 'tests/word-oracle/windows/manual-page-breaks' / f'word-{WORD_VERSION}.zip'
+CAPTURE_SHA256 = 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb'
+FIXTURES = ROOT / 'public/fixtures'
+MODES = (12, 14, 15)
+
+
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def check(output_dir, native_executable, system_fonts):
+    require(sha256(CAPTURE.read_bytes()) == CAPTURE_SHA256, 'Word capture changed')
+    remaining = {f'word-windows-edge-page-break-{name}-compat{mode}'
+                 for name in cases() for mode in MODES}
+    failures = []
+    fixtures = pages = glyphs = 0
+    with ZipFile(CAPTURE) as bundle:
+        capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
+        require(capture['product_version'] == WORD_VERSION, 'Incorrect Word version')
+        for original in capture['documents']:
+            name = original['name']
+            require(name in remaining, f'{name}: unknown or duplicate fixture')
+            remaining.remove(name)
+            source = FIXTURES / f'{name}.docx'
+            require(sha256(source.read_bytes()) == original['input_sha256'],
+                    f'{name}: Word measured different DOCX bytes')
+            pdf_bytes = bundle.read(f'word/{name}.pdf')
+            require(sha256(pdf_bytes) == original['pdf_sha256'], f'{name}: Word PDF changed')
+            case_dir = output_dir / name
+            case_dir.mkdir(parents=True, exist_ok=True)
+            word_pdf = case_dir / 'word.pdf'
+            word_pdf.write_bytes(pdf_bytes)
+            word = pdf_origins(word_pdf)
+            require(word['page_count'] == original['page_count'],
+                    f'{name}: Word PDF and Word page counts differ')
+            fixtures += 1
+            pages += word['page_count']
+            glyphs += len(word['glyphs'])
+            if native_executable is None:
+                continue
+
+            native_json = case_dir / 'native.json'
+            native_pdf = case_dir / 'native.pdf'
+            argv = [str(native_executable), str(source), str(native_json), 'windows',
+                    str(native_pdf)]
+            if not system_fonts:
+                fonts_dir = case_dir / 'word-fonts'
+                if not fonts_dir.exists():
+                    extract_fonts(word_pdf, fonts_dir)
+                argv.extend(['--fonts-directory', str(fonts_dir)])
+            try:
+                subprocess.run(argv, check=True, timeout=60)
+                snapshot = json.loads(native_json.read_bytes())
+                require(snapshot['input_sha256'] == original['input_sha256'],
+                        f'{name}: renderer opened different DOCX bytes')
+                if not system_fonts:
+                    require_original_font_programs_registered(fonts_dir, snapshot)
+                require(native_pdf.read_bytes() != pdf_bytes, f'{name}: Word self-comparison')
+                painted = pdf_origins(native_pdf)
+                # The snapshot stores list labels in a separate collection.
+                # Match its complete glyph set by page and origin. The vector
+                # PDF also carries the visible reading order.
+                compare(word, snapshot, f'{name} layout origins')
+                assert_pending_pdf_text(word, painted, f'{name} vector PDF')
+                compare(word, painted, f'{name} vector PDF')
+            except (ValueError, subprocess.SubprocessError) as error:
+                failures.append(str(error))
+    require(not remaining, f'Missing Word captures: {sorted(remaining)}')
+    require(not failures, '\n'.join(failures))
+    print(f'{fixtures} fixtures, {pages} pages, {glyphs} glyphs from Word {WORD_VERSION}')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--native-executable', type=Path)
+    parser.add_argument('--output-directory', type=Path, required=True)
+    parser.add_argument('--system-fonts', action='store_true')
+    args = parser.parse_args()
+    check(args.output_directory.resolve(),
+          args.native_executable.resolve() if args.native_executable else None, args.system_fonts)

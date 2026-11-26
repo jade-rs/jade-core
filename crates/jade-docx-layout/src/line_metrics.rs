@@ -259,6 +259,15 @@ pub fn collapsed_spacing_before(before: f64, preceding_after: f64) -> f64 {
     (before - preceding_after.max(0.0)).max(0.0)
 }
 
+/// Windows Word keeps legacy paragraph spacing collapse across pageBreakBefore.
+pub fn preserves_spacing_at_page_break_before(document: &jade_docx_reader::Document) -> bool {
+    document
+        .compat
+        .setting("compatibilityMode")
+        .and_then(|mode| mode.parse::<u32>().ok())
+        .is_some_and(|mode| mode < 15)
+}
+
 /// Select the preceding paragraph's already-consumed after spacing. Section
 /// starts retain before spacing, so their adjacent after/before pair still
 /// collapses across the section's page/column transition. Mac Word 16.114 and
