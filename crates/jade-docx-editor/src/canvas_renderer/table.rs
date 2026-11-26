@@ -3373,7 +3373,9 @@ where
                 || windows_legacy_autofit_column_table
                 || windows_legacy_fixed_percentage_table
             {
-                let leading = pre_2013_table_text_inset_px(table, sizing_compatibility_mode);
+                // The section percentage uses the authored margins and gaps.
+                // Placement charges the spaced leading rule to a saved indent.
+                let leading = pre_2013_table_text_inset_px(table, sizing_compatibility_mode, false);
                 if leading > 0.0 {
                     width + leading + pre_2013_table_trailing_text_inset_px(table)
                 } else {
@@ -3572,7 +3574,7 @@ where
                 shift
             }
         });
-        let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
+        let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode, true)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
         let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>, opening_page| {
             let (left, width) = if use_column_frame {
@@ -3661,6 +3663,7 @@ where
                 pre_2013_table_text_inset_px(
                     table,
                     self.document_east_asian_rules.compatibility_mode,
+                    true,
                 ),
                 self.document_east_asian_rules.compatibility_mode,
                 false,
@@ -10696,7 +10699,7 @@ fn word_pre_2013_table_sizing_width_px(
     {
         return available_width;
     }
-    let leading = pre_2013_table_text_inset_px(table, compatibility_mode);
+    let leading = pre_2013_table_text_inset_px(table, compatibility_mode, false);
     if leading <= 0.0 {
         return available_width;
     }
@@ -10736,7 +10739,11 @@ fn pre_2013_table_trailing_text_inset_px(table: &Table) -> f64 {
         })
 }
 
-fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) -> f64 {
+fn pre_2013_table_text_inset_px(
+    table: &Table,
+    compatibility_mode: Option<u32>,
+    include_spaced_rule: bool,
+) -> f64 {
     if compatibility_mode.is_none_or(|mode| mode >= 15) {
         return 0.0;
     }
@@ -10788,7 +10795,8 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
     outer_spacing
         + if table.bidi_visual {
             padding.right
-        } else if windows_ltr_spaced_slots(table)
+        } else if include_spaced_rule
+            && windows_ltr_spaced_slots(table)
             && resolve_cell_spacing_px(row, table) > f64::EPSILON
         {
             padding.left + 2.0 * leading_cell_border_half_px(table, true)
@@ -29262,6 +29270,10 @@ mod tests {
 
     #[test]
     fn modern_border_content_width_uses_the_neighbouring_winner_before_wrap() {
+        use jade_docx_layout::line_metrics::{
+            set_word_layout_platform, word_layout_platform, WordLayoutPlatform,
+        };
+        let previous = word_layout_platform();
         let painter = RecordingPainter::with_width_per_char(7.0);
         let context = TableLineWrapContext::new(&painter);
         let mut config = LayoutConfig {
@@ -29288,7 +29300,12 @@ mod tests {
             styles_part: None,
             theme_part: None,
         };
-        for bidi in [false, true] {
+        for (platform, bidi) in [WordLayoutPlatform::Mac, WordLayoutPlatform::Windows]
+            .into_iter()
+            .flat_map(|platform| [(platform, false), (platform, true)])
+        {
+            set_word_layout_platform(platform);
+            let windows = platform == WordLayoutPlatform::Windows;
             let mut row = TableRow::default();
             for index in 0..2 {
                 let mut cell = TableCell {
@@ -29355,14 +29372,17 @@ mod tests {
                     cell.padding.left
                 }
             };
-            assert_eq!(inset(&cells[0], true), 0.0);
-            assert_eq!(inset(&cells[1], false), 0.0);
+            // Windows reserves the winning rule when it fits the cell text.
+            let expected_inset = if windows { 6.0 } else { 0.0 };
+            assert_eq!(inset(&cells[0], true), expected_inset);
+            assert_eq!(inset(&cells[1], false), expected_inset);
             let line_count = |cell: &PreparedCell| match &cell.blocks[0].kind {
                 CellBlockKind::Paragraph(paragraph) => paragraph.lines.len(),
                 _ => panic!("paragraph"),
             };
-            assert_eq!(line_count(&cells[0]), 1);
-            assert_eq!(line_count(&cells[1]), 1);
+            let expected_lines = if windows { 2 } else { 1 };
+            assert_eq!(line_count(&cells[0]), expected_lines);
+            assert_eq!(line_count(&cells[1]), expected_lines);
             let nested = |cell: &PreparedCell| match &cell.blocks[1].kind {
                 CellBlockKind::Table(table) => (table.width, line_count(&table.rows[0].cells[0])),
                 _ => panic!("nested table"),
@@ -29371,11 +29391,14 @@ mod tests {
             assert_eq!(nested(&cells[1]), (34.0, 2));
             config.word_modern_border_insets = false;
             let legacy = prepare(&config, &row);
-            assert_eq!(inset(&legacy[0], true), 0.0);
+            assert_eq!(inset(&legacy[0], true), expected_inset);
             assert_eq!(inset(&legacy[1], false), 0.0);
-            assert_eq!(line_count(&legacy[0]), 1);
+            assert_eq!(line_count(&legacy[0]), expected_lines);
             assert_eq!(line_count(&legacy[1]), 1);
-            assert_eq!(nested(&legacy[0]), (40.0, 1));
+            assert_eq!(
+                nested(&legacy[0]),
+                if windows { (34.0, 2) } else { (40.0, 1) }
+            );
             assert_eq!(nested(&legacy[1]), (40.0, 1));
             config.word_modern_border_insets = true;
             row.cell_spacing = Some(1.0);
@@ -29383,6 +29406,7 @@ mod tests {
             assert_eq!(inset(&spaced[1], false), 0.0);
             assert!((nested(&spaced[1]).0 - (40.0 - 3.0 * points_to_px(1.0))).abs() < 1e-6);
         }
+        set_word_layout_platform(previous);
     }
 
     #[test]
@@ -30266,10 +30290,10 @@ mod tests {
             }],
             ..Table::default()
         };
-        let inset = pre_2013_table_text_inset_px(&table, Some(12));
+        let inset = pre_2013_table_text_inset_px(&table, Some(12), true);
         assert!((inset - points_to_px(0.5)).abs() < 1e-9);
-        assert_eq!(pre_2013_table_text_inset_px(&table, Some(15)), 0.0);
-        assert_eq!(pre_2013_table_text_inset_px(&table, None), 0.0);
+        assert_eq!(pre_2013_table_text_inset_px(&table, Some(15), true), 0.0);
+        assert_eq!(pre_2013_table_text_inset_px(&table, None, true), 0.0);
         table
             .style
             .insert("margin-left".to_string(), "0.5pt".to_string());
@@ -30551,7 +30575,7 @@ mod tests {
             table
                 .style
                 .insert("table-indent-width-type".into(), kind.into());
-            assert_eq!(pre_2013_table_text_inset_px(&table, Some(14)), 0.0);
+            assert_eq!(pre_2013_table_text_inset_px(&table, Some(14), true), 0.0);
         }
     }
 
