@@ -838,21 +838,18 @@ impl SelectionManager {
 
     fn ensure_paragraph_internal(&mut self, index: usize) -> &mut ParagraphLayout {
         *self.paragraph_bounds_index.get_mut() = None;
-        if self.paragraphs.len() <= index {
-            let render_pass = self.render_pass;
-            self.paragraphs.resize_with(index + 1, || ParagraphLayout {
-                render_pass,
-                ..ParagraphLayout::default()
-            });
-        }
-        let paragraph = &mut self.paragraphs[index];
-        if paragraph.render_pass != self.render_pass {
+        let render_pass = self.render_pass;
+        let paragraph = self.paragraphs.grow_to(index, || ParagraphLayout {
+            render_pass,
+            ..ParagraphLayout::default()
+        });
+        if paragraph.render_pass != render_pass {
             // First touch in this pass of a paragraph kept from an earlier
             // one: it is being registered afresh, so drop the old copy.
             paragraph.text.clear();
             paragraph.lines.clear();
             paragraph.invalidate_bounding_box();
-            paragraph.render_pass = self.render_pass;
+            paragraph.render_pass = render_pass;
         }
         paragraph
     }

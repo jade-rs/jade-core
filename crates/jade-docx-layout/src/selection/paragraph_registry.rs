@@ -24,6 +24,9 @@ pub(super) struct ParagraphRegistry {
     len: usize,
     parked: Option<Parked>,
     next_park: u64,
+    /// An emptied `displaced` kept for the next park, so that each
+    /// keystroke's park does not allocate it again.
+    spare: Vec<ParagraphLayout>,
 }
 
 #[derive(Clone, Debug)]
@@ -55,12 +58,14 @@ enum Place {
 impl Deref for ParagraphRegistry {
     type Target = [ParagraphLayout];
 
+    #[inline]
     fn deref(&self) -> &[ParagraphLayout] {
         &self.items[..self.len]
     }
 }
 
 impl DerefMut for ParagraphRegistry {
+    #[inline]
     fn deref_mut(&mut self) -> &mut [ParagraphLayout] {
         &mut self.items[..self.len]
     }
@@ -79,7 +84,25 @@ impl ParagraphRegistry {
         }
     }
 
+    /// Nothing is parked in place: `items` holds the registered paragraphs
+    /// only, and the vector's own operations apply.
+    #[inline]
+    fn plain(&self) -> bool {
+        self.parked.is_none()
+    }
+
+    #[inline]
     pub(super) fn truncate(&mut self, len: usize) {
+        if self.plain() {
+            self.items.truncate(len);
+            self.len = self.items.len();
+        } else {
+            self.truncate_parked(len);
+        }
+    }
+
+    #[cold]
+    fn truncate_parked(&mut self, len: usize) {
         if len >= self.len {
             return;
         }
@@ -97,11 +120,22 @@ impl ParagraphRegistry {
         self.len = len;
     }
 
+    #[inline]
     pub(super) fn clear(&mut self) {
         self.truncate(0);
     }
 
+    #[inline]
     pub(super) fn push(&mut self, paragraph: ParagraphLayout) {
+        if self.plain() {
+            self.items.push(paragraph);
+            self.len += 1;
+        } else {
+            self.push_parked(paragraph);
+        }
+    }
+
+    fn push_parked(&mut self, paragraph: ParagraphLayout) {
         let index = self.len;
         if index < self.items.len() {
             match &mut self.parked {
@@ -121,7 +155,13 @@ impl ParagraphRegistry {
         self.len += 1;
     }
 
+    #[inline]
     pub(super) fn resize_with(&mut self, len: usize, mut fill: impl FnMut() -> ParagraphLayout) {
+        if self.plain() {
+            self.items.resize_with(len, fill);
+            self.len = len;
+            return;
+        }
         if len <= self.len {
             self.truncate(len);
             return;
@@ -132,9 +172,27 @@ impl ParagraphRegistry {
     }
 
     pub(super) fn extend(&mut self, paragraphs: impl IntoIterator<Item = ParagraphLayout>) {
+        if self.plain() {
+            self.items.extend(paragraphs);
+            self.len = self.items.len();
+            return;
+        }
         for paragraph in paragraphs {
             self.push(paragraph);
         }
+    }
+
+    /// The paragraph at `index`, the registry first grown to it with `fill`.
+    #[inline]
+    pub(super) fn grow_to(
+        &mut self,
+        index: usize,
+        fill: impl FnMut() -> ParagraphLayout,
+    ) -> &mut ParagraphLayout {
+        if self.len <= index {
+            self.resize_with(index + 1, fill);
+        }
+        &mut self.items[index]
     }
 
     pub(super) fn insert(&mut self, index: usize, paragraph: ParagraphLayout) {
@@ -190,7 +248,7 @@ impl ParagraphRegistry {
             from,
             place: Place::InPlace {
                 end: self.len,
-                displaced: Vec::new(),
+                displaced: std::mem::take(&mut self.spare),
             },
         });
         self.len = from;
@@ -224,7 +282,7 @@ impl ParagraphRegistry {
             return;
         }
         let Some(Parked {
-            place: Place::InPlace { end, displaced },
+            place: Place::InPlace { end, mut displaced },
             ..
         }) = self.parked.take()
         else {
@@ -232,9 +290,10 @@ impl ParagraphRegistry {
         };
         // Every registered paragraph from `from` on shares a slot below
         // `from + displaced.len()`, or lies past `end`.
-        for (slot, paragraph) in self.items[from..].iter_mut().zip(displaced) {
+        for (slot, paragraph) in self.items[from..].iter_mut().zip(displaced.drain(..)) {
             *slot = paragraph;
         }
+        self.spare = displaced;
         self.items.truncate(end);
         self.len = end;
     }
