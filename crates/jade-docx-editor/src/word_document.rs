@@ -48973,6 +48973,46 @@ mod tests {
         }
     }
 
+    /// `wp:effectExtent` survives an edit verbatim and reloads as the space
+    /// the picture's effects reserve.
+    #[test]
+    fn edited_image_keeps_its_effect_extent() {
+        use crate::commands::{insert_text::InsertTextCommand, CommandContext, CommandExecutor};
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+
+        const EFFECT: &str = r#"<wp:effectExtent l="19050" t="9525" r="57150" b="76200"/>"#;
+        let xml = single_image_document_xml().replace(
+            r#"<wp:extent cx="914400" cy="609600"/>"#,
+            &format!(r#"<wp:extent cx="914400" cy="609600"/>{EFFECT}"#),
+        );
+        let data = build_document_docx(&xml);
+        let mut word_doc = executor::block_on(WordDocument::load(&data, &Options::default()))
+            .expect("load image docx");
+        let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+        let mut selection = Some(range);
+        CommandExecutor::new()
+            .execute(
+                Box::new(InsertTextCommand::new(range, "X".to_string(), None)),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("insert text");
+        let exported = word_doc.export_docx().expect("export image docx");
+        let xml = read_document_xml_from_docx(&exported);
+        assert!(xml.contains(EFFECT), "lost the effect extent: {xml}");
+
+        let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+            .expect("reload image docx");
+        let extent = reloaded
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.image.as_ref()))
+            .and_then(|image| image.layout.options().effect_extent)
+            .expect("effect extent");
+        assert_eq!(
+            (extent.left, extent.top, extent.right, extent.bottom),
+            (2.0, 1.0, 6.0, 8.0)
+        );
+    }
+
     #[test]
     fn edited_image_drawingml_exports_and_round_trips_layout_and_crop() {
         let data = build_document_docx(single_image_document_xml());

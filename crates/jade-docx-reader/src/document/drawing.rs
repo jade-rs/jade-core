@@ -433,9 +433,23 @@ pub struct AnchorOptions {
     /// `wp:anchor@layoutInCell` (表のセル内に配置する).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub layout_in_cell: Option<bool>,
-    /// Space below an inline drawing's extent reserved by `wp:effectExtent@b`.
+    /// `wp:effectExtent`: the space a drawing reserves beyond `wp:extent`
+    /// for its effects (ECMA-376 Part 1 §20.4.2.6); `None` when every edge
+    /// is zero.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub inline_effect_bottom: Option<f64>,
+    pub effect_extent: Option<EffectExtent>,
+}
+
+/// The extra extent added to each edge of a drawing's `wp:extent` "to
+/// compensate for any drawing effects applied" (ECMA-376 Part 1
+/// §20.4.2.6): shadows, outlines, glow and the bounding box of a rotation.
+/// CSS pixels; an edge is negative where a rotation narrows the box.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
+pub struct EffectExtent {
+    pub left: f64,
+    pub top: f64,
+    pub right: f64,
+    pub bottom: f64,
 }
 
 static NO_PICTURE_FORMAT: std::sync::OnceLock<PictureFormat> = std::sync::OnceLock::new();

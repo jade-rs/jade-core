@@ -8172,16 +8172,22 @@ impl DocumentParser {
                     *has_embed = true;
                 }
             }
-            b"wp:effectExtent" if image.layout.kind == RunImageKind::Inline => {
-                if let Some(bottom) = element
-                    .attributes()
-                    .flatten()
-                    .find(|attr| attr.key.as_ref() == b"b")
-                    .and_then(|attr| Self::parse_f64_attr(&attr))
-                    .filter(|value| value.is_finite() && *value > 0.0)
-                    .map(Self::emu_to_px)
-                {
-                    image.layout.options_mut().inline_effect_bottom = Some(bottom);
+            b"wp:effectExtent" => {
+                let mut extent = EffectExtent::default();
+                for attr in element.attributes().flatten() {
+                    let edge = match attr.key.as_ref() {
+                        b"l" => &mut extent.left,
+                        b"t" => &mut extent.top,
+                        b"r" => &mut extent.right,
+                        b"b" => &mut extent.bottom,
+                        _ => continue,
+                    };
+                    if let Some(value) = Self::parse_f64_attr(&attr) {
+                        *edge = Self::emu_to_px(value);
+                    }
+                }
+                if extent != EffectExtent::default() {
+                    image.layout.options_mut().effect_extent = Some(extent);
                 }
             }
             b"wp:extent" | b"a:ext" => {
