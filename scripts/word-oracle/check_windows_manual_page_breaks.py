@@ -95,6 +95,16 @@ def floating_table_default_frame_cases():
             for gap in (0, 10, 20, 80, 180)}
 
 
+def floating_table_terminal_mark_cases():
+    return {f'left-{mark}-gap-{gap}' for mark in ('dot', 'comma', 'none', 'colon', 'bang', 'question')
+            for gap in (70, 80, 90, 100)}
+
+
+def floating_table_terminal_gap_cases():
+    return {f'{side}-{rule}-gap-{gap}' for side in ('left', 'right')
+            for rule in ('plain', 'ruled') for gap in range(0, 200, 10)}
+
+
 def nested_resized_cases():
     return {f'{layout}-{width}' for layout in ('autofit', 'fixed')
             for width in ('absolute', 'auto', 'full')}
@@ -421,6 +431,10 @@ CAPTURES = (
      'word-windows-edge-floating-table-text-frame-', floating_table_text_frame_cases, ('--unclipped-tables',)),
     ('floating-table-default-frame', '605055e1099ce91926835c34fe3ac6734f977cbd0fe48a5584ff1b819957cc88',
      'word-windows-edge-floating-table-default-frame-', floating_table_default_frame_cases, ('--unclipped-tables',)),
+    ('floating-table-terminal-marks', '3a38c61d8b911ce1bef1493979e96deb202172aa0a4001a8d251de95d05d0a78',
+     'word-windows-edge-floating-line-fit-probe-', floating_table_terminal_mark_cases, ('--unclipped-tables',)),
+    ('floating-table-terminal-gap-sweep', 'af31201fd38e9b9596442037e2160dafbc40e861a51d1be8a0296689e6fb113c',
+     'word-windows-edge-floating-legacy-gap-sweep-', floating_table_terminal_gap_cases, ('--unclipped-tables',)),
 )
 
 
@@ -457,7 +471,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-fixed-mixed-widths', 'nested-fixed-percent-limits', 'nested-fixed-minimum-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap', 'floating-table-text-frames',
-        'floating-table-default-frame',
+        'floating-table-default-frame', 'floating-table-terminal-marks', 'floating-table-terminal-gap-sweep',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))

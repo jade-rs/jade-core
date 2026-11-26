@@ -29202,6 +29202,26 @@ where
             } else {
                 segment_line_width
             };
+            let hanging_float_mark = wrapped_line.hanging_windows_float_mark_width_px(
+                paragraph_style,
+                default_base_width,
+                line_index,
+                line_width,
+                available_for_line,
+            );
+            line_layout.allowed_trailing_overflow_width = line_layout
+                .allowed_trailing_overflow_width
+                .max(hanging_float_mark);
+            let alignment_width = if trim_mac_soft_spaces {
+                wrapped_line.soft_line_alignment_width_px(line_width)
+            } else {
+                wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform)
+            };
+            let alignment_width = if hanging_float_mark > 0.0 {
+                alignment_width.min(available_for_line)
+            } else {
+                alignment_width
+            };
             let line_start_x = Self::resolve_line_start(
                 paragraph_style.alignment.as_str(),
                 paragraph_style.bidi,
@@ -29210,11 +29230,7 @@ where
                 right_limit,
                 current_column_right,
                 paragraph_style.right_indent,
-                if trim_mac_soft_spaces {
-                    wrapped_line.soft_line_alignment_width_px(line_width)
-                } else {
-                    wrapped_line.alignment_width_px(line_width, paragraph_style.word_platform)
-                },
+                alignment_width,
                 justify,
             );
             line_layout.start_x = line_start_x;
