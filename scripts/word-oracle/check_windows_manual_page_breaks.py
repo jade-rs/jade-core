@@ -96,6 +96,7 @@ def floating_table_default_frame_cases():
 
 
 def floating_table_terminal_mark_cases():
+    # The dot is in a separate run in an explicitly left-aligned paragraph.
     return {f'left-{mark}-gap-{gap}' for mark in ('dot', 'comma', 'none', 'colon', 'bang', 'question')
             for gap in (70, 80, 90, 100)}
 
@@ -431,7 +432,7 @@ CAPTURES = (
      'word-windows-edge-floating-table-text-frame-', floating_table_text_frame_cases, ('--unclipped-tables',)),
     ('floating-table-default-frame', '605055e1099ce91926835c34fe3ac6734f977cbd0fe48a5584ff1b819957cc88',
      'word-windows-edge-floating-table-default-frame-', floating_table_default_frame_cases, ('--unclipped-tables',)),
-    ('floating-table-terminal-marks', '3a38c61d8b911ce1bef1493979e96deb202172aa0a4001a8d251de95d05d0a78',
+    ('floating-table-terminal-marks', '4a9ac48862fb89029417df090f03f30b575c943a6bed38d935924a9f817ee81f',
      'word-windows-edge-floating-line-fit-probe-', floating_table_terminal_mark_cases, ('--unclipped-tables',)),
     ('floating-table-terminal-gap-sweep', 'af31201fd38e9b9596442037e2160dafbc40e861a51d1be8a0296689e6fb113c',
      'word-windows-edge-floating-legacy-gap-sweep-', floating_table_terminal_gap_cases, ('--unclipped-tables',)),

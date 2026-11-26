@@ -39137,51 +39137,51 @@
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-100-compat12",
-      "docx_sha256": "e133c6ff3d048e18e7de8ad4425ae1e171836067f8a78357ca93e4a6a37b64d4"
+      "docx_sha256": "35d4e16705d2d9976b7bc208d8b0320cce4c7e05c7f2147b11a98ad247c6cddc"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-100-compat14",
-      "docx_sha256": "65fc987d874e896dbba5aceeae8330c323dcb6179ea2de38699b0e9fe259ddbd"
+      "docx_sha256": "08c827eeb60f9ea49165ec833be93aa6375664b5f379de724b1294280a4cab6a"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-100-compat15",
-      "docx_sha256": "52bdf3212b30391bc2ed48f178376a9b724b26c3d673fb48301585b017f55bdb"
+      "docx_sha256": "4d2b209924fa67e33f96f25aff03a9f0fc77ff6e57d7e4c93c1b03ee2e061fb8"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-70-compat12",
-      "docx_sha256": "19844f28dcd9118455b71cc8102e057478a5c5deb0799dd64a67e64a1881061e"
+      "docx_sha256": "546fbaffad69226197f604e69f210ef207b439a7da38cc5dc3d4a43424263def"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-70-compat14",
-      "docx_sha256": "5c2b3066e3dcadb7be7b850bac1ba10e7409ca94da91cab301e6015e8e9df793"
+      "docx_sha256": "21d24e11711b0fa342ce9f799588cf539e36ca618777d24525a9a55226f5748a"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-70-compat15",
-      "docx_sha256": "8982eb9592d57f8ee10c70e2cd6516bdeef6d80702bc33daca9aa7475cd2e50e"
+      "docx_sha256": "0491faa1a488358dbc96d65c52d03f1ee3dfc5d40d48cdec3f95c361802fed72"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-80-compat12",
-      "docx_sha256": "ef4316c2aeb67e77df2e1c2b9a7e822aac3c80c9f99a87e2009fc3708ee8431d"
+      "docx_sha256": "4307adefc4e0ff3e3c4b4ab8b8913b5f54928609d21d9257a49eaaee7d89c0af"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-80-compat14",
-      "docx_sha256": "f7c479d4d364c3aef60b89dcad3b1a788bc3af35c7843be54104f59bb993ccbe"
+      "docx_sha256": "64df4073cdba70e8b558d5f2b92a7ff45ef455a17e431d8c73b76655882ac488"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-80-compat15",
-      "docx_sha256": "e257c0cccbb49070ddefba37598d4dcbfa7e6c4fed0ec5bdece6b1ec4cb1a129"
+      "docx_sha256": "1cacf9c245abed316dc8952afd6f46359bb1030883cbcb2f86a08c5121d97eb4"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-90-compat12",
-      "docx_sha256": "66872af3f6d885aac9289fde9fd0f924fb0fa86ed7dec7f481afd267f531d273"
+      "docx_sha256": "a68d738c49e74ad82530384abe996730279ee8bc9c4c4705af4b65068d4292db"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-90-compat14",
-      "docx_sha256": "9cc937e65a7afd1b1bfdfdafd2206a9e03a6bbe9e1049bcae2a07faaad9fe827"
+      "docx_sha256": "06f8dcdb0a3edceb1fecc1d6be05ee195c40f26ec2f8d042f92de190a411d197"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-dot-gap-90-compat15",
-      "docx_sha256": "bf9240703fbc4755526b6929b62dfba9001c472f20c19524c0d50479f5839343"
+      "docx_sha256": "bc218424e3b9e055058e14c6438930ef2ba9e7429e4533f5abe3bd1dee5067a2"
     },
     {
       "fixture": "word-windows-edge-floating-line-fit-probe-left-none-gap-100-compat12",
