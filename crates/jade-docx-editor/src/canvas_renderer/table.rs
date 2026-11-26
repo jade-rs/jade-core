@@ -94,7 +94,7 @@ const HIDDEN_BORDER_COLOR: &str = "#9A9A9A";
 const DARK_MODE_HIDDEN_BORDER_COLOR: &str = "#94A3B8";
 /// Horizontal padding (in points) applied on both sides of table cell content.
 const CELL_HORIZONTAL_PADDING_PT: f32 = 6.0;
-const MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT: f32 = 0.5;
+const UNSTYLED_CELL_HORIZONTAL_PADDING_PT: f32 = 0.5;
 /// Vertical padding (in points) applied above and below table cell content.
 const CELL_VERTICAL_PADDING_PT: f32 = DEFAULT_VERTICAL_CELL_MARGIN_PT;
 /// Word leaves a tiny visual gap between a table border and following paragraph.
@@ -2195,6 +2195,19 @@ impl<P: Painter<Error: PainterError>> TableLineWrapContext<'_, P> {
         base_offset: usize,
         max_width: f64,
     ) -> Result<Rc<[WrappedLine]>, JsValue> {
+        let mut cell_style;
+        let paragraph_style = if paragraph_style.word_platform
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && text.contains([
+                jade_docx_reader::PAGE_BREAK_CHAR,
+                jade_docx_reader::COLUMN_BREAK_CHAR,
+            ]) {
+            cell_style = paragraph_style.clone();
+            cell_style.ignore_page_and_column_breaks = true;
+            &cell_style
+        } else {
+            paragraph_style
+        };
         // Offset-specific oracle widths retain the uncached path. Table
         // placement coordinates do not enter this content/width cache.
         let cache = self
@@ -3412,7 +3425,7 @@ where
             .map(|_| {
                 let mut widths = column_widths.clone();
                 widths[0] = (widths[0]
-                    - points_to_px(2.0 * (5.4 - MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT)))
+                    - points_to_px(2.0 * (5.4 - UNSTYLED_CELL_HORIZONTAL_PADDING_PT)))
                 .max(1.0);
                 widths
             });
@@ -3805,6 +3818,41 @@ where
             None
         };
 
+        let styles = self.styles_part.clone();
+        let honor_row_page_breaks = !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && !self.measuring_keep_next
+            && !is_floating_table
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+        let row_page_break_before = |row_index: usize| {
+            honor_row_page_breaks
+                && jade_docx_layout::text_extract::windows_table_row_page_break_before(
+                    &table.rows[row_index],
+                    row_index,
+                    header_row_count,
+                    compatibility_mode,
+                    styles.as_deref(),
+                )
+        };
+        // Modern Word moves the leading header block to a fresh page when
+        // the first body row starts a new page. The body row still advances
+        // again and gets its repeated header on that page.
+        if header_row_count != 0
+            && compatibility_mode.is_some_and(|mode| mode >= 15)
+            && (self.column_index != 0 || !at_table_frame_top(self))
+            && hidden_rows
+                .iter()
+                .enumerate()
+                .skip(header_row_count)
+                .find_map(|(index, &hidden)| (!hidden).then_some(index))
+                .is_some_and(row_page_break_before)
+        {
+            self.force_table_page_break()?;
+            self.configure_table_context();
+        }
+
         let table_start_page = self.current_page_number;
         let windows_fixed_header_alignment = windows_fixed_preferred_width
             && use_column_frame
@@ -4069,6 +4117,8 @@ where
             let mut pending_height = original_row_height;
             let mut row_start = true;
             let mut fresh_page_segment = None;
+            let mut row_requires_page_break = row_page_break_before(row_index)
+                && (self.column_index != 0 || !at_table_frame_top(self));
             let mut row_notes_registered = (!options.render_footnotes && !options.render_endnotes)
                 || !table_row_has_note_references(row);
 
@@ -4152,6 +4202,7 @@ where
 
                     if pending_height > available_height
                         && !disallow_split
+                        && !row_requires_page_break
                         && available_height > MIN_ROW_HEIGHT_PX
                     {
                         let tail_has_header =
@@ -4414,7 +4465,10 @@ where
                             > self.effective_body_top()
                                 + self.current_page_valign_offset()
                                 + ROW_SPLIT_EPSILON);
-                if can_advance && self.table_row_needs_page_break(required_height) {
+                let force_page_break = std::mem::take(&mut row_requires_page_break);
+                if force_page_break
+                    || (can_advance && self.table_row_needs_page_break(required_height))
+                {
                     if let Some((previous_row, page, bottom)) = previous_spaced_frame {
                         if page == self.current_page_number {
                             self.draw_spaced_table_frame_segment(
@@ -4433,7 +4487,12 @@ where
                         }
                     }
                 }
-                if can_advance && self.ensure_table_row_space(required_height, use_column_frame)? {
+                let advanced = if force_page_break {
+                    self.force_table_page_break()?
+                } else {
+                    can_advance && self.ensure_table_row_space(required_height, use_column_frame)?
+                };
+                if advanced {
                     let repeat_header =
                         should_repeat_header_before_row(header_row_count, row_index, true)
                             && header_height <= self.table_full_page_content_height();
@@ -10084,19 +10143,22 @@ where
     }
 }
 
-/// Word for Mac uses the package table style when present. An authored
-/// table without one uses the half-point inset of Word's implicit style.
+/// Authored tables without a package table style use Word's implicit
+/// half-point inset. Explicit cell, row and table margins take precedence.
 fn table_default_horizontal_padding_px(
     table: &Table,
     platform: jade_docx_layout::line_metrics::WordLayoutPlatform,
 ) -> f64 {
-    if platform == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac {
-        if table.resolved_style.is_some() {
-            return 0.0;
-        }
-        if table.node_id.is_some() {
-            return points_to_px(MAC_UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
-        }
+    use jade_docx_layout::line_metrics::WordLayoutPlatform;
+    let authored = match platform {
+        WordLayoutPlatform::Mac => table.node_id.is_some(),
+        WordLayoutPlatform::Windows => table.style.contains_key("ooxml-table"),
+    };
+    if table.resolved_style.is_none() && authored {
+        return points_to_px(UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
+    }
+    if platform == WordLayoutPlatform::Mac && table.resolved_style.is_some() {
+        return 0.0;
     }
     points_to_px(CELL_HORIZONTAL_PADDING_PT)
 }

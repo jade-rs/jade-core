@@ -215,6 +215,9 @@ pub struct ParagraphStyle {
     /// Physical break-only lines before the first content line of a Windows
     /// body paragraph. They advance pages without using its first-line indent.
     pub leading_page_breaks: usize,
+    /// Windows Word keeps page and column controls in the editable cell text
+    /// without letting them end a line.
+    pub ignore_page_and_column_breaks: bool,
     pub first_line_available_adjustment: f64,
     pub continuation_available_adjustment: f64,
     pub right_indent: f64,
@@ -335,6 +338,7 @@ impl Default for ParagraphStyle {
             bidi: false,
             first_line_indent: 0.0,
             leading_page_breaks: 0,
+            ignore_page_and_column_breaks: false,
             first_line_available_adjustment: 0.0,
             continuation_available_adjustment: 0.0,
             right_indent: 0.0,
@@ -9053,6 +9057,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 buffer_is_whitespace = None;
                 pending_leading_width = 0.0;
 
+                if paragraph_style.ignore_page_and_column_breaks {
+                    // Flush at the control so the visible segments keep their
+                    // original byte ranges on either side of it.
+                    buffer_start_abs = grapheme_end_abs;
+                    continue;
+                }
+
                 lines.push(WrappedLine {
                     segments: std::mem::take(&mut current_line),
                     break_kind: page_or_column,
@@ -17685,6 +17696,32 @@ mod tests {
                 LineBreakKind::ParagraphEnd,
             ]
         );
+    }
+
+    #[test]
+    fn cell_page_and_column_controls_leave_visible_text_at_its_original_offsets() {
+        let context = TestContext::new(10.0);
+        let text = "\u{000c}AB\u{000e}C\nD\u{000c}";
+        let runs = [RunStyle {
+            start: 0,
+            end: text.len(),
+            ..make_run("")
+        }];
+        let style = ParagraphStyle {
+            ignore_page_and_column_breaks: true,
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&context, text, &runs, 0.0, &style, 0, 400.0).unwrap();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].break_kind, LineBreakKind::Hard);
+        assert_eq!(lines[0].break_range, Some((5, 6)));
+        assert_eq!(lines[1].break_kind, LineBreakKind::ParagraphEnd);
+        let spans = lines
+            .iter()
+            .flat_map(|line| &line.segments)
+            .map(|segment| (segment.start, segment.end, segment.text.as_str()))
+            .collect::<Vec<_>>();
+        assert_eq!(spans, [(1, 3, "AB"), (4, 5, "C"), (6, 7, "D")]);
     }
 
     proptest! {

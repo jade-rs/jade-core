@@ -1,4 +1,4 @@
-"""Compare manual page-break DOCX layout and vector PDF with Windows Word."""
+"""Compare DOCX page-break layout and vector PDF with Windows Word."""
 import argparse
 import hashlib
 import json
@@ -14,15 +14,18 @@ from check_platform_coordinates import (
 from check_windows_font_coordinates import require_original_font_programs_registered
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
+from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
 
 WORD_VERSION = '16.0.19127.20936'
 FIXTURES = ROOT / 'public/fixtures'
 CAPTURE_ROOT = ROOT / 'tests/word-oracle/windows'
 CAPTURES = (
     ('manual-page-breaks', 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb',
-     'word-windows-edge-page-break-', manual_cases),
+     'word-windows-edge-page-break-', manual_cases, ()),
     ('styled-page-breaks', '686f4826e19a1af9dbd12296388bb672364e2a6da71f4d0f207d180247785883',
-     STYLED_PREFIX, styled_cases),
+     STYLED_PREFIX, styled_cases, ()),
+    ('table-page-breaks', '4ef3859c6fffd2a75cc1a2249c892b6e8bdeebe5d70cc6b7f0df31faf2af8d93',
+     TABLE_PREFIX, table_cases, ('--painted-table-headers',)),
 )
 
 
@@ -35,7 +38,8 @@ def pdf_page_sizes(path):
         return [(page.rect.width, page.rect.height) for page in pdf]
 
 
-def check_capture(capture_path, capture_hash, remaining, output_dir, native_executable, system_fonts):
+def check_capture(capture_path, capture_hash, remaining, output_dir,
+                  native_executable, system_fonts, native_options):
     require(sha256(capture_path.read_bytes()) == capture_hash, f'{capture_path}: Word capture changed')
     failures = []
     fixtures = pages = glyphs = 0
@@ -67,7 +71,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir, native_exec
             native_json = case_dir / 'native.json'
             native_pdf = case_dir / 'native.pdf'
             argv = [str(native_executable), str(source), str(native_json), 'windows',
-                    str(native_pdf), '--without-formatting-marks']
+                    str(native_pdf), '--without-formatting-marks', *native_options]
             if not system_fonts:
                 fonts_dir = case_dir / 'word-fonts'
                 if not fonts_dir.exists():
@@ -99,11 +103,11 @@ def check_capture(capture_path, capture_hash, remaining, output_dir, native_exec
 
 
 def check(output_dir, native_executable, system_fonts):
-    for cohort, digest, prefix, cases in CAPTURES:
+    for cohort, digest, prefix, cases, native_options in CAPTURES:
         expected = {f'{prefix}{name}-compat{mode}' for name in cases() for mode in MODES}
         check_capture(
             CAPTURE_ROOT / cohort / f'word-{WORD_VERSION}.zip', digest, expected,
-            output_dir, native_executable, system_fonts,
+            output_dir, native_executable, system_fonts, native_options,
         )
 
 

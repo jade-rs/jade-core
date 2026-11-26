@@ -12461,6 +12461,11 @@ where
         if paragraph_style.leading_page_breaks != 0 {
             paragraph_style.leading_page_breaks.hash(&mut hasher);
         }
+        if paragraph_style.ignore_page_and_column_breaks {
+            paragraph_style
+                .ignore_page_and_column_breaks
+                .hash(&mut hasher);
+        }
         let word_metric_policy = u8::from(paragraph_style.word_east_asian_font_line_box)
             | (u8::from(
                 paragraph_style.word_platform
