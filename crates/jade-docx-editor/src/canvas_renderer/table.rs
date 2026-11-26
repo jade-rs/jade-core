@@ -3816,6 +3816,11 @@ where
             Vec::new()
         };
         let repeated_floating_rows = (floating_fragments.len() > 1).then(|| prepared_rows.clone());
+        let wrap_before_table = floating_breaks
+            && body_element_index != usize::MAX
+            && !floating_first_row_breaks
+            && repeated_floating_rows.is_none()
+            && windows_float_may_wrap_before(table, compatibility_mode);
         let floating_table_frame = if is_floating_table {
             let table_height = row_heights.iter().sum::<f64>();
             let margin_height = (self.page_height - self.margin_top - self.margin_bottom).max(0.0);
@@ -3831,9 +3836,17 @@ where
                 .unwrap_or(renderer.current_y)
             };
             let before_anchor = requested_y(self) + ROW_SPLIT_EPSILON < self.current_y;
+            // Word 2013 and later moves the whole table when it fits a
+            // fresh page, but runs out of room at its logical anchor.
+            let fits_next_anchor = wrap_before_table
+                && before_anchor
+                && table_height <= self.table_full_page_content_height() + ROW_SPLIT_EPSILON
+                && self.table_row_needs_page_break(table_height);
             let move_anchor = floating_first_row_breaks
                 || modern
-                    && (first_body_row_breaks || before_anchor && repeated_floating_rows.is_some());
+                    && (first_body_row_breaks
+                        || before_anchor && repeated_floating_rows.is_some()
+                        || fits_next_anchor);
             if floating_breaks
                 && move_anchor
                 && (self.column_index != 0 || !at_table_frame_top(self))
@@ -3843,7 +3856,14 @@ where
                 self.configure_table_context();
             }
             let logical_y = self.current_y;
-            let requested_y = requested_y(self);
+            let requested_y = if wrap_before_table {
+                self.floating_table_wrap
+                    .as_ref()
+                    .and_then(|wrap| wrap.pinned_top(body_element_index, self.current_page_number))
+                    .unwrap_or_else(|| requested_y(self))
+            } else {
+                requested_y(self)
+            };
             let prevents_overlap = table
                 .style
                 .get("table-overlap")
@@ -3858,7 +3878,7 @@ where
             };
             let resolved_y = resolve_floating_table_overlap_y(
                 requested_frame,
-                if modern && floating_breaks && move_anchor {
+                if wrap_before_table || modern && floating_breaks && move_anchor {
                     requested_y
                 } else {
                     logical_y
@@ -4118,6 +4138,7 @@ where
         let table_paragraph_start = self.paragraph_counter;
         let mut last_visible_row_index = None;
         let mut previous_spaced_frame: Option<(usize, usize, f64)> = None;
+        let mut first_floating_fragment_bottom = None;
         for row_index in 0..prepared_rows.len() {
             let row = &table.rows[row_index];
             if let Some(contained) = contained_row_heights
@@ -4185,13 +4206,17 @@ where
             loop {
                 // Word uses the body height for layout when a floating
                 // table starts above the top margin.
-                let floating_top_offset = floating_table_frame
-                    .filter(|(frame, _)| {
-                        floating_breaks && frame.page_number == self.current_page_number
-                    })
-                    .map_or(0.0, |(frame, _)| {
-                        (self.effective_body_top() - frame.top).max(0.0)
-                    });
+                let opening_float = floating_table_frame.filter(|(frame, _)| {
+                    floating_breaks && frame.page_number == self.current_page_number
+                });
+                let floating_top_offset = opening_float.map_or(0.0, |(frame, logical)| {
+                    let layout_top = if wrap_before_table {
+                        logical.max(self.effective_body_top())
+                    } else {
+                        self.effective_body_top()
+                    };
+                    (layout_top - frame.top).max(0.0)
+                });
                 // A row that fits but whose notes would not start below it
                 // moves on with them (one page; it is then placed there).
                 let move_for_notes = !row_notes_registered
@@ -4465,7 +4490,11 @@ where
                                 },
                             )?;
                             self.current_y += split.head_height;
+                            let closing_y = self.current_y;
                             if self.advance_table_flow(use_column_frame)? {
+                                if wrap_before_table && opening_float.is_some() {
+                                    first_floating_fragment_bottom = Some(closing_y);
+                                }
                                 let repeat_header = should_repeat_header_before_row(
                                     header_row_count,
                                     row_index,
@@ -4518,6 +4547,13 @@ where
                                 + self.current_page_valign_offset()
                                 + ROW_SPLIT_EPSILON);
                 let force_page_break = std::mem::take(&mut row_requires_page_break);
+                let legacy_first_floating_row = wrap_before_table
+                    && !modern
+                    && opening_float.is_some()
+                    && floating_top_offset > 0.0
+                    && first_visible_row == Some(row_index)
+                    && row_start;
+                let can_advance = can_advance && !legacy_first_floating_row;
                 if force_page_break
                     || (can_advance && self.table_row_needs_page_break(required_height))
                 {
@@ -4539,12 +4575,16 @@ where
                         }
                     }
                 }
+                let closing_y = self.current_y;
                 let advanced = if force_page_break {
                     self.force_table_page_break()?
                 } else {
                     can_advance && self.ensure_table_row_space(required_height, use_column_frame)?
                 };
                 if advanced {
+                    if wrap_before_table && opening_float.is_some() {
+                        first_floating_fragment_bottom = Some(closing_y);
+                    }
                     let repeat_header =
                         should_repeat_header_before_row(header_row_count, row_index, true)
                             && header_height <= self.table_full_page_content_height();
@@ -4836,6 +4876,19 @@ where
         }
 
         if let Some((frame, logical_floor)) = floating_table_frame {
+            if wrap_before_table && frame.top + ROW_SPLIT_EPSILON < logical_floor {
+                if let Some(wrap) = self.floating_table_wrap.as_mut() {
+                    let measured = FloatingTableFrame {
+                        bottom: first_floating_fragment_bottom.unwrap_or(frame.bottom),
+                        ..frame
+                    };
+                    wrap.record(
+                        body_element_index,
+                        measured,
+                        windows_floating_table_text_exclusion(table, measured),
+                    );
+                }
+            }
             if let Some(rows) = repeated_floating_rows {
                 self.record_repeated_header_paragraphs(
                     table_paragraph_start..self.paragraph_counter,
@@ -4876,7 +4929,17 @@ where
                 // A floating table paints at its absolute frame but does not
                 // consume the body cursor. Following paragraphs use the shared
                 // jade-docx-layout exclusion plan to flow beside/below it.
-                self.current_y = logical_floor;
+                self.current_y = if wrap_before_table
+                    && !modern
+                    && frame.top < logical_floor
+                    && logical_floor + table_end_y - frame.top > self.table_row_bottom_limit()
+                {
+                    // The first row can paint above its logical anchor even
+                    // when the following text needs a fresh page.
+                    self.table_row_bottom_limit()
+                } else {
+                    logical_floor
+                };
                 self.active_float_exclusions.push(PageFloatExclusion {
                     is_table: true,
                     page_number: frame.page_number,
@@ -14087,6 +14150,33 @@ pub(super) fn table_floats(table: &Table) -> bool {
         && !(table.style.contains_key("table-position-before-style")
             && jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac)
+}
+
+pub(super) fn windows_float_may_wrap_before(table: &Table, mode: Option<u32>) -> bool {
+    if !table_floats(table) || table.rows.is_empty() {
+        return false;
+    }
+    let anchor = table
+        .style
+        .get("table-position-vertical-anchor")
+        .map_or("page", |value| value.as_str());
+    let offset = table
+        .style
+        .get("table-position-y")
+        .and_then(|value| parse_length_to_px(value))
+        .unwrap_or(0.0);
+    if anchor.eq_ignore_ascii_case("text") {
+        return offset < 0.0;
+    }
+    if !(anchor.eq_ignore_ascii_case("page") || anchor.eq_ignore_ascii_case("margin")) {
+        return false;
+    }
+    if let Some(align) = table.style.get("table-position-y-align") {
+        return !align.trim().eq_ignore_ascii_case("inline");
+    }
+    // Word's legacy formats treat an omitted or zero displacement as the
+    // logical text anchor. An explicit alignment or even one twip is absolute.
+    offset != 0.0 || mode.is_some_and(|mode| mode >= 15)
 }
 
 /// For each cell of a `w:vMerge` region, whether the region goes on below

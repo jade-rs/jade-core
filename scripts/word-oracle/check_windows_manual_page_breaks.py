@@ -18,6 +18,9 @@ from generate_windows_floating_table_break_cases import (
 from generate_windows_floating_table_continuation_cases import (
     PREFIX as FLOATING_CONTINUATION_PREFIX, cases as floating_continuation_cases,
 )
+from generate_windows_floating_table_wrap_cases import (
+    PREFIX as FLOATING_WRAP_PREFIX, cases as floating_wrap_cases,
+)
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
@@ -41,6 +44,8 @@ CAPTURES = (
      FLOATING_PREFIX, floating_cases, ('--painted-table-headers',)),
     ('floating-table-continuations', '7218048a1b7352bc06dd1d97af0d31ec9b3baf05ae96a5c8ccf499717baf3d26',
      FLOATING_CONTINUATION_PREFIX, floating_continuation_cases, ('--painted-table-headers',)),
+    ('floating-table-wrap', '513935d60ed2cdae9ae65e842d212ce3ae76c59e5a2f72ef8d8c0a06f4bc27d9',
+     FLOATING_WRAP_PREFIX, floating_wrap_cases, ('--painted-table-headers',)),
 )
 
 
@@ -59,7 +64,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     failures = []
     fixtures = pages = glyphs = 0
     check_screen = capture_path.parent.name in (
-        'floating-table-breaks', 'floating-table-continuations',
+        'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
@@ -147,7 +152,11 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
 
 def check(output_dir, native_executable, system_fonts):
     for cohort, digest, prefix, cases, native_options in CAPTURES:
-        expected = {f'{prefix}{name}-compat{mode}' for name in cases() for mode in MODES}
+        expected = {
+            f'{prefix}{name}-compat{mode}'
+            for mode in MODES
+            for name in (cases(mode) if prefix == FLOATING_WRAP_PREFIX else cases())
+        }
         check_capture(
             CAPTURE_ROOT / cohort / f'word-{WORD_VERSION}.zip', digest, expected,
             output_dir, native_executable, system_fonts, native_options,
