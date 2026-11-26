@@ -229,6 +229,34 @@ def nested_fixed_mixed_width_cases():
                for order in ('', '-reversed') for budget in range(2697, 2707)})
 
 
+def nested_fixed_percent_limit_cases():
+    probes = (
+        ('before', ('all-no-zero', 'clipped-margins-no-zero', 'clipped-no-zero', 'mixed-no-zero',
+                    'mixed-reversed-no-zero', 'tie-abs-first'),
+         (2697, 2699, 2701, 2702, 2703, 2705, 2770, 2903, 3099, 3101, 3102, 3103, 3105, 3701)),
+        ('columns', ('four-above-total', 'four-mixed', 'four-mixed-margins', 'four-near-total',
+                     'four-one-pct', 'four-pct', 'four-zeroed-pct', 'two-auto', 'two-exact-total',
+                     'two-mixed', 'two-mixed-reversed', 'two-near-total'), (2701, 2702, 2903, 3103, 3701)),
+        ('limits', ('near-abs-first', 'near-abs-last', 'near-equal', 'near-margins', 'near-middle-reversed',
+                    'near-unequal', 'near-width-boundary', 'zero-all-percentage', 'zero-different-margins',
+                    'zero-first', 'zero-last', 'zero-vs-auto', 'zero-vs-percentage', 'zero-vs-width'),
+         (2697, 2702, 2770, 2903, 3102, 3701)),
+        ('limits', ('near-middle',), (2697, 2770, 3102)),
+        ('limits', ('zero-middle',), (2697, 3102)),
+        ('sweep', ('clipped-high-margins',), (2697, 2701, 2703, 2705, 3099, 3101, 3102, 3105)),
+        ('sweep', ('half-tie-reversed-three', 'half-tie-three', 'zero-small-margins'),
+         (2697, 2699, 2701, 2702, 2703, 2705, 3099, 3101, 3102, 3103, 3105, 3701)),
+        ('sweep', ('half-tie-two',), (2697, 2699, 2703, 2705, 3099, 3101, 3102, 3105)),
+        ('sweep', ('zero-high-margins',), (2699, 2701, 2703, 2705, 3099, 3101, 3103, 3105)),
+        ('sweep', ('zero-sweep',), (2701, 2703, 2705, 3099, 3101, 3105)),
+        ('zero', ('zero-abs-first', 'zero-authored', 'zero-balanced', 'zero-both-percent',
+                  'zero-margins', 'zero-single-positive'), (2699, 2702, 2770, 2903, 3103, 3701)),
+        ('zero', ('zero-control',), (2699, 2770)),
+    )
+    return {f'{group}-{case}-full-{budget}' for group, cases, budgets in probes
+            for case in cases for budget in budgets}
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -315,6 +343,8 @@ CAPTURES = (
      'word-windows-edge-nested-fixed-variable-rows-', nested_fixed_variable_row_cases, ('--unclipped-tables',)),
     ('nested-fixed-mixed-widths', 'fefe9c0be201338ccf623e6ed759a03df23a83a4fb38e352de36b84993e9b183',
      'word-windows-edge-nested-fixed-mixed-widths-', nested_fixed_mixed_width_cases, ('--unclipped-tables',)),
+    ('nested-fixed-percent-limits', '8ce176a4901a66104751f232c08cb999536c7476458b71059f2bd1d25054142f',
+     'word-windows-edge-nested-fixed-percent-limits-', nested_fixed_percent_limit_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -360,7 +390,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-autofit-host-first', 'nested-autofit-child-margins',
         'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
         'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
-        'nested-fixed-mixed-widths',
+        'nested-fixed-mixed-widths', 'nested-fixed-percent-limits',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
