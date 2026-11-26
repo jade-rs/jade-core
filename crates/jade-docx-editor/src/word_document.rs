@@ -2101,6 +2101,19 @@ struct HfStoryCacheEntry {
     body: Rc<Body>,
     /// The story flattened to `HeaderLine`s, built on first use.
     lines: Option<Vec<HeaderLine>>,
+    /// The text watermark the part's XML carries, read on first use. The
+    /// part's XML and its parse change together, so a fresh entry's answer
+    /// is the part's.
+    watermark: Option<Option<Rc<HeaderWatermark>>>,
+}
+
+/// A text watermark as one header part draws it: Word keeps it as a VML
+/// `v:textpath` shape inside that header, so it belongs to the pages showing
+/// that header and no others.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeaderWatermark {
+    pub text: String,
+    pub style: jade_docx_reader::document::WatermarkStyle,
 }
 
 /// Header/footer stories of one section after Word's "link to previous"
@@ -2123,6 +2136,12 @@ pub struct SectionHeaderFooters {
     pub footer_body_first: Option<Rc<Body>>,
     pub header_body_even: Option<Rc<Body>>,
     pub footer_body_even: Option<Rc<Body>>,
+    /// The text watermark each header variant carries, resolved through
+    /// "link to previous" like the stories: a section whose header has none
+    /// shows none, whatever another section's header holds.
+    pub header_watermark: Option<Rc<HeaderWatermark>>,
+    pub header_watermark_first: Option<Rc<HeaderWatermark>>,
+    pub header_watermark_even: Option<Rc<HeaderWatermark>>,
     pub title_page: bool,
 }
 
@@ -2382,6 +2401,7 @@ impl WordDocument {
                     source: Rc::clone(source),
                     body: Rc::new(body),
                     lines: None,
+                    watermark: None,
                 },
             );
         }
@@ -2393,6 +2413,47 @@ impl WordDocument {
                 .clone()
         });
         Some((Rc::clone(&entry.body), lines))
+    }
+
+    /// The text watermark the header part `relationship_id` points at
+    /// carries, if any. Answered from the story cache while the part is
+    /// unchanged, so the part's XML is read once per edit of it.
+    fn header_watermark_for_reference(&self, relationship_id: &str) -> Option<Rc<HeaderWatermark>> {
+        let path = self.hf_part_path_for_reference(relationship_id)?;
+        if let Some(part) = self.parts.get(&path) {
+            if let Some(source) = part.parsed_document.as_ref() {
+                if self
+                    .header_footer_story_for_reference(relationship_id, false)
+                    .is_some()
+                {
+                    let mut cache = self.hf_story_cache.borrow_mut();
+                    if let Some(entry) = cache
+                        .get_mut(&path)
+                        .filter(|entry| Rc::ptr_eq(&entry.source, source))
+                    {
+                        return entry
+                            .watermark
+                            .get_or_insert_with(|| Self::header_watermark_from_xml(&part.content))
+                            .clone();
+                    }
+                }
+            }
+            // Not memoised: a loaded header always has its parse, so this is
+            // a part just written and not yet reparsed, whose XML may change
+            // again; the `textpath` check keeps headers without a watermark
+            // from being parsed at all.
+            return Self::header_watermark_from_xml(&part.content);
+        }
+        let content = self.read_xml_part_content(&path)?;
+        Self::header_watermark_from_xml(&content)
+    }
+
+    fn header_watermark_from_xml(xml: &str) -> Option<Rc<HeaderWatermark>> {
+        // Most headers have no text path: skip parsing them.
+        if !xml.contains("textpath") {
+            return None;
+        }
+        Self::watermark_from_xml(xml).map(|(text, style)| Rc::new(HeaderWatermark { text, style }))
     }
 
     /// The package path of the header/footer part a main-document
@@ -2544,6 +2605,13 @@ impl WordDocument {
                 story(HeaderFooterRole::Header, HeaderFooterVariant::Even);
             let (footer_even, footer_body_even) =
                 story(HeaderFooterRole::Footer, HeaderFooterVariant::Even);
+            let watermark = |variant| {
+                hf_reference_for_section(document, index, HeaderFooterRole::Header, variant)
+                    .and_then(|reference| self.header_watermark_for_reference(&reference))
+            };
+            let header_watermark = watermark(HeaderFooterVariant::Default);
+            let header_watermark_first = watermark(HeaderFooterVariant::First);
+            let header_watermark_even = watermark(HeaderFooterVariant::Even);
             let title_page = document
                 .sections
                 .get(index)
@@ -2563,6 +2631,9 @@ impl WordDocument {
                 footer_body_first,
                 header_body_even,
                 footer_body_even,
+                header_watermark,
+                header_watermark_first,
+                header_watermark_even,
                 title_page,
             });
         }
@@ -10468,25 +10539,22 @@ impl WordDocument {
             return Ok(false);
         }
 
+        // Word's 透かし command writes every header of every section: a
+        // section with its own (unlinked) header shows the watermark too,
+        // and a header a page shows but the package lacks is created.
         if normalized.is_some() {
-            self.ensure_hf_part_for_edit(HeaderFooterRole::Header, HeaderFooterVariant::Default)?;
+            for (section, variant) in self.missing_watermark_header_slots() {
+                let previous = std::mem::replace(&mut self.hf_edit_section, section);
+                let created = self.ensure_hf_part_for_edit(HeaderFooterRole::Header, variant);
+                self.hf_edit_section = previous;
+                created?;
+            }
         }
 
-        for variant in [
-            HeaderFooterVariant::Default,
-            HeaderFooterVariant::First,
-            HeaderFooterVariant::Even,
-        ] {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| {
-                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
-                })
-                .is_some();
-            if present {
-                self.sync_watermark_to_header_variant(variant, normalized.as_ref())?;
-            }
+        for reference in self.watermark_header_references() {
+            let path =
+                self.resolve_header_footer_reference_path(HeaderFooterRole::Header, &reference)?;
+            self.sync_watermark_to_header_part(&path, normalized.as_ref())?;
         }
 
         if let Some(document) = self.document_mut() {
@@ -10588,23 +10656,12 @@ impl WordDocument {
         &mut self,
         expected: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> bool {
-        for variant in [
-            HeaderFooterVariant::Default,
-            HeaderFooterVariant::First,
-            HeaderFooterVariant::Even,
-        ] {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| {
-                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
-                })
-                .is_some();
-            if !present {
-                continue;
-            }
+        if expected.is_some() && !self.missing_watermark_header_slots().is_empty() {
+            return false;
+        }
+        for reference in self.watermark_header_references() {
             let Ok(path) =
-                self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)
+                self.resolve_header_footer_reference_path(HeaderFooterRole::Header, &reference)
             else {
                 return false;
             };
@@ -10624,6 +10681,84 @@ impl WordDocument {
             }
         }
         true
+    }
+
+    /// Every header part a page of the document can show: each section's
+    /// default, first-page and even-page header after "link to previous",
+    /// each part once, in document order.
+    fn watermark_header_references(&self) -> Vec<String> {
+        let Some(document) = self.document.as_deref() else {
+            return Vec::new();
+        };
+        let mut references: Vec<String> = Vec::new();
+        for section in 0..document.sections.len().max(1) {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                if let Some(reference) =
+                    hf_reference_for_section(document, section, HeaderFooterRole::Header, variant)
+                {
+                    if !references.contains(&reference) {
+                        references.push(reference);
+                    }
+                }
+            }
+        }
+        references
+    }
+
+    /// The headers pages show blank because no section up to theirs
+    /// declares one: the default header, the first-page header of a section
+    /// with a title page, and the even-page header with different odd and
+    /// even pages. Setting a watermark creates them, as Word's command does.
+    /// A header created for the first section lacking one serves the linked
+    /// sections after it, so each kind is listed once, with the section to
+    /// create it in (`None`: the document-wide section of a document without
+    /// section ranges). Kinds no page shows are not created.
+    fn missing_watermark_header_slots(&self) -> Vec<(Option<usize>, HeaderFooterVariant)> {
+        let Some(document) = self.document.as_deref() else {
+            return Vec::new();
+        };
+        let mut slots = Vec::new();
+        for variant in [
+            HeaderFooterVariant::Default,
+            HeaderFooterVariant::First,
+            HeaderFooterVariant::Even,
+        ] {
+            let in_use = |title_page: bool| match variant {
+                HeaderFooterVariant::Default => true,
+                HeaderFooterVariant::First => title_page,
+                HeaderFooterVariant::Even => self.even_and_odd_headers,
+            };
+            if document.sections.is_empty() {
+                if in_use(self.title_page)
+                    && pick_hf_reference(document, HeaderFooterRole::Header, variant).is_none()
+                {
+                    slots.push((None, variant));
+                }
+                continue;
+            }
+            let first_in_use = (0..document.sections.len()).find(|&section| {
+                let title_page = document.sections[section]
+                    .properties
+                    .as_ref()
+                    .is_some_and(|properties| properties.title_page);
+                in_use(title_page)
+                    && hf_reference_for_section(
+                        document,
+                        section,
+                        HeaderFooterRole::Header,
+                        variant,
+                    )
+                    .is_none()
+            });
+            if let Some(section) = first_in_use {
+                slots.push((Some(section), variant));
+            }
+        }
+        slots
     }
 
     fn watermark_from_loaded_headers(
@@ -10765,9 +10900,18 @@ impl WordDocument {
         variant: HeaderFooterVariant,
         watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> Result<(), String> {
-        let text = watermark.map(|(text, _)| text.as_str());
         let part_path =
             self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)?;
+        self.sync_watermark_to_header_part(&part_path, watermark)
+    }
+
+    fn sync_watermark_to_header_part(
+        &mut self,
+        part_path: &str,
+        watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
+    ) -> Result<(), String> {
+        let text = watermark.map(|(text, _)| text.as_str());
+        let part_path = part_path.to_string();
         let existing = self
             .read_xml_part_content(&part_path)
             .ok_or_else(|| format!("missing {part_path}"))?;
@@ -10845,7 +10989,14 @@ impl WordDocument {
 
         let serialized = xml.to_string().map_err(|error| error.to_string())?;
         self.upsert_xml_part_content(&part_path, serialized);
-        self.refresh_header_footer_lines_for(HeaderFooterRole::Header, variant, &part_path)
+        // One part can serve several variants and sections. The refresh
+        // reparses the part and updates every variant that shows it, so the
+        // variant passed here is never read (its parameter is unused).
+        self.refresh_header_footer_lines_for(
+            HeaderFooterRole::Header,
+            HeaderFooterVariant::Default,
+            &part_path,
+        )
     }
 
     fn build_watermark_run(
@@ -16590,8 +16741,10 @@ impl WordDocument {
         image.relationship_id = Some(relationship.id);
         image.data_uri = Some(data_uri);
         image.placeholder_label = None;
+        let previous = (image.width_px, image.height_px, image.layout.rotation_deg);
         image.width_px = next_width;
         image.height_px = next_height;
+        image.refit_effect_extent(previous);
 
         self.sync_paragraph_text(target.paragraph_index);
         self.rebuild_paragraph_surfaces();
@@ -39045,6 +39198,35 @@ impl WordDocument {
         }
         let mut graphic = graphic.expect("the container was chosen for its graphic");
 
+        // `wp:effectExtent` follows the model, never with a negative edge;
+        // an unchanged one is kept verbatim.
+        let effect = layout.options().effect_extent.unwrap_or_default().clamped();
+        let effect_emu = [effect.left, effect.top, effect.right, effect.bottom].map(px_to_emu);
+        let existing_effect = kept
+            .iter()
+            .position(|element| element.name == "wp:effectExtent");
+        let written_emu = existing_effect.map(|index| {
+            ["l", "t", "r", "b"].map(|name| {
+                get_attr(&kept[index], name)
+                    .and_then(|value| value.trim().parse::<i64>().ok())
+                    .unwrap_or(0)
+            })
+        });
+        if written_emu != Some(effect_emu) && (existing_effect.is_some() || effect_emu != [0; 4]) {
+            if let Some(index) = existing_effect {
+                kept.remove(index);
+            }
+            let [l, t, r, b] = effect_emu;
+            kept.insert(
+                0,
+                doc.create_element(
+                    "wp:effectExtent",
+                    vec![attr("l", l), attr("t", t), attr("r", r), attr("b", b)],
+                    Vec::new(),
+                ),
+            );
+        }
+
         // The graphic: size, rotation, flips, crop, picture.
         if let Some(graphic_data) = child_mut(&mut graphic, "a:graphicData") {
             if let Some(picture) = child_mut(graphic_data, "pic:pic") {
@@ -49092,6 +49274,202 @@ mod tests {
                 assert!(!xml.contains("<a:picLocks"), "invented picture locks: {xml}");
             }
         }
+    }
+
+    /// `wp:effectExtent` survives an edit verbatim and reloads as the space
+    /// the picture's effects reserve.
+    #[test]
+    fn edited_image_keeps_its_effect_extent() {
+        use crate::commands::{insert_text::InsertTextCommand, CommandContext, CommandExecutor};
+        use jade_docx_layout::selection::{SelectionRange, TextPosition};
+
+        const EFFECT: &str = r#"<wp:effectExtent l="19050" t="9525" r="57150" b="76200"/>"#;
+        let xml = single_image_document_xml().replace(
+            r#"<wp:extent cx="914400" cy="609600"/>"#,
+            &format!(r#"<wp:extent cx="914400" cy="609600"/>{EFFECT}"#),
+        );
+        let data = build_document_docx(&xml);
+        let mut word_doc = executor::block_on(WordDocument::load(&data, &Options::default()))
+            .expect("load image docx");
+        let range = SelectionRange::collapsed(TextPosition::new(0, 0));
+        let mut selection = Some(range);
+        CommandExecutor::new()
+            .execute(
+                Box::new(InsertTextCommand::new(range, "X".to_string(), None)),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("insert text");
+        let exported = word_doc.export_docx().expect("export image docx");
+        let xml = read_document_xml_from_docx(&exported);
+        assert!(xml.contains(EFFECT), "lost the effect extent: {xml}");
+
+        let reloaded = executor::block_on(WordDocument::load(&exported, &Options::default()))
+            .expect("reload image docx");
+        let extent = reloaded
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.image.as_ref()))
+            .and_then(|image| image.layout.options().effect_extent)
+            .expect("effect extent");
+        assert_eq!(
+            (extent.left, extent.top, extent.right, extent.bottom),
+            (2.0, 1.0, 6.0, 8.0)
+        );
+    }
+
+    /// A picture with `effect` (EMU) around its 914400 by 609600 extent,
+    /// rotated by `rotation_deg`, floating when `floating`.
+    fn effect_extent_image_docx(effect: [i64; 4], rotation_deg: f64, floating: bool) -> Vec<u8> {
+        let [l, t, r, b] = effect;
+        let rot = (rotation_deg * 60_000.0).round() as i64;
+        let xml = single_image_document_xml()
+            .replace(
+                r#"<wp:extent cx="914400" cy="609600"/>"#,
+                &format!(
+                    r#"<wp:extent cx="914400" cy="609600"/><wp:effectExtent l="{l}" t="{t}" r="{r}" b="{b}"/>"#
+                ),
+            )
+            .replace("<a:xfrm>", &format!(r#"<a:xfrm rot="{rot}">"#));
+        let xml = if floating {
+            xml.replace(
+                r#"<wp:inline distT="0" distB="0" distL="0" distR="0">"#,
+                r#"<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="1" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>"#,
+            )
+            .replace("</wp:inline>", "</wp:anchor>")
+            .replace("<wp:docPr", "<wp:wrapSquare wrapText=\"bothSides\"/><wp:docPr")
+        } else {
+            xml
+        };
+        build_document_docx(&xml)
+    }
+
+    fn picture_target() -> FloatingObjectTarget {
+        FloatingObjectTarget {
+            paragraph_index: 0,
+            run_index: 0,
+            kind: FloatingObjectKind::Image,
+        }
+    }
+
+    fn effect_extent_of(word_doc: &WordDocument) -> Option<[f64; 4]> {
+        word_doc
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.image.as_ref()))
+            .and_then(|image| image.layout.options().effect_extent)
+            .map(|extent| [extent.left, extent.top, extent.right, extent.bottom])
+    }
+
+    fn assert_edges_near(actual: Option<[f64; 4]>, expected: [f64; 4], what: &str) {
+        let actual = actual.unwrap_or([0.0; 4]);
+        for (a, e) in actual.iter().zip(expected) {
+            assert!(
+                (a - e).abs() < 0.001,
+                "{what}: expected {expected:?}, got {actual:?}"
+            );
+        }
+    }
+
+    /// Export, reload: the reloaded picture carries the same effect extent.
+    fn reloaded_effect_extent(word_doc: &WordDocument) -> (String, Option<[f64; 4]>) {
+        let exported = word_doc.export_docx().expect("export");
+        let xml = read_document_xml_from_docx(&exported);
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        (xml, effect_extent_of(&reloaded))
+    }
+
+    /// Rotating a picture keeps its effect insets and adds nothing for the
+    /// rotation; a negative edge from the file is written as 0.
+    #[test]
+    fn rotating_a_picture_keeps_its_effect_insets_without_negative_edges() {
+        use crate::commands::format_image::{FormatImageCommand, ImageFormatSpec};
+        use crate::commands::{CommandContext, CommandExecutor};
+
+        for floating in [false, true] {
+            let data = effect_extent_image_docx([72105, 111543, -9525, 111543], 30.0, floating);
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            let expected = [72105.0 / 9525.0, 111543.0 / 9525.0, 0.0, 111543.0 / 9525.0];
+            assert_edges_near(effect_extent_of(&word_doc), expected, "loaded");
+            let mut selection = None;
+            CommandExecutor::new()
+                .execute(
+                    Box::new(FormatImageCommand::new(
+                        picture_target(),
+                        ImageFormatSpec {
+                            rotation_deg: Some(0.0),
+                            ..Default::default()
+                        },
+                    )),
+                    &mut CommandContext::new(&mut word_doc, &mut selection),
+                )
+                .expect("rotate upright");
+            assert_edges_near(effect_extent_of(&word_doc), expected, "upright");
+            let (xml, reloaded) = reloaded_effect_extent(&word_doc);
+            assert!(
+                xml.contains(r#"<wp:effectExtent l="72105" t="111543" r="0" b="111543"/>"#),
+                "floating {floating}: written without a negative edge: {xml}"
+            );
+            assert_edges_near(reloaded, expected, "reloaded");
+        }
+    }
+
+    /// Resizing or rotating a picture with a shadow keeps the shadow's
+    /// insets.
+    #[test]
+    fn resizing_a_shadowed_picture_keeps_its_effect_insets() {
+        use crate::commands::transform_object::TransformObjectCommand;
+        use crate::commands::{CommandContext, CommandExecutor};
+
+        // A shadow of 2, 1, 6 and 8 px.
+        let shadow = [19050, 9525, 57150, 76200];
+        let data = effect_extent_image_docx(shadow, 0.0, true);
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+        let mut selection = None;
+        CommandExecutor::new()
+            .execute(
+                Box::new(TransformObjectCommand::new(
+                    picture_target(),
+                    FloatingObjectTransform {
+                        x: 10.0,
+                        y: 10.0,
+                        width: 192.0,
+                        height: 128.0,
+                        rotation_deg: 0.0,
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("resize");
+        assert_edges_near(effect_extent_of(&word_doc), [2.0, 1.0, 6.0, 8.0], "resized");
+        let (xml, reloaded) = reloaded_effect_extent(&word_doc);
+        assert!(
+            xml.contains(r#"<wp:effectExtent l="19050" t="9525" r="57150" b="76200"/>"#),
+            "the shadow is written unchanged: {xml}"
+        );
+        assert_edges_near(reloaded, [2.0, 1.0, 6.0, 8.0], "reloaded");
+
+        // Rotated 90° as well: the shadow stays as it is, and nothing is
+        // added for the rotation.
+        CommandExecutor::new()
+            .execute(
+                Box::new(TransformObjectCommand::new(
+                    picture_target(),
+                    FloatingObjectTransform {
+                        x: 10.0,
+                        y: 10.0,
+                        width: 192.0,
+                        height: 128.0,
+                        rotation_deg: 90.0,
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("rotate");
+        let expected = [2.0, 1.0, 6.0, 8.0];
+        assert_edges_near(effect_extent_of(&word_doc), expected, "rotated");
+        let (_, reloaded) = reloaded_effect_extent(&word_doc);
+        assert_edges_near(reloaded, expected, "rotated and reloaded");
     }
 
     #[test]

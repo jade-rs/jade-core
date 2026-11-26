@@ -411,3 +411,97 @@ fn stale_page_paint_timing() {
         "yokohama ({pages} pages): paint 3 stale pages near the end: median {time:?}, {walked} body elements walked"
     );
 }
+
+/// A header part holding `text` and, when given, a Word text watermark.
+fn watermark_header(text: &str, watermark: &str) -> String {
+    format!(
+        r##"<w:hdr xmlns:w="{W}" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><w:p><w:r><w:pict><v:shape id="PowerPlusWaterMarkObject1" type="#_x0000_t136" style="position:absolute;margin-left:0;margin-top:0;width:412.4pt;height:247.45pt;rotation:315;z-index:-251657216;mso-position-horizontal:center;mso-position-horizontal-relative:margin;mso-position-vertical:center;mso-position-vertical-relative:margin" fillcolor="silver" stroked="f"><v:fill opacity=".5"/><v:textpath style="font-family:&quot;Noto Sans JP&quot;;font-size:1pt" string="{watermark}"/></v:shape></w:pict></w:r><w:r><w:t>{text}</w:t></w:r></w:p></w:hdr>"##
+    )
+}
+
+/// Section 1 fills page 1 down to a continuous break near its bottom;
+/// section 2, with a title page (first-page watermark FIRST, default TWO)
+/// and borders on its first page only, starts on page 2 because its first
+/// paragraph does not fit on page 1.
+fn continuous_title_page_docx() -> Vec<u8> {
+    use std::io::Write;
+    const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    let geometry = r#"<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>"#;
+    let tall = |text: &str, points: u32| {
+        format!(
+            r#"<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="{}" w:lineRule="exact"/></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>"#,
+            points * 20
+        )
+    };
+    let document = format!(
+        r#"<w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{}<w:p><w:pPr><w:sectPr><w:headerReference w:type="default" r:id="rH1"/><w:type w:val="nextPage"/>{geometry}</w:sectPr></w:pPr></w:p>{}<w:p><w:r><w:br w:type="page"/></w:r></w:p>{}<w:sectPr><w:headerReference w:type="default" r:id="rH2"/><w:headerReference w:type="first" r:id="rH2F"/><w:type w:val="continuous"/>{geometry}<w:pgBorders w:display="firstPage" w:offsetFrom="text"><w:top w:val="single" w:sz="8" w:space="4" w:color="FF0000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="FF0000"/></w:pgBorders><w:titlePg/></w:sectPr></w:body></w:document>"#,
+        tall("one", 600),
+        tall("three", 72),
+        tall("four", 72),
+    );
+    let headers = [
+        ("rH1", "header1.xml", watermark_header("H1", "ONE")),
+        ("rH2", "header2.xml", watermark_header("H2", "TWO")),
+        ("rH2F", "header3.xml", watermark_header("H2-first", "FIRST")),
+    ];
+    let header_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml";
+    let mut rels = String::new();
+    let mut overrides = String::new();
+    for (id, target, _) in &headers {
+        rels.push_str(&format!(
+            r#"<Relationship Id="{id}" Type="{R}/header" Target="{target}"/>"#
+        ));
+        overrides.push_str(&format!(
+            r#"<Override PartName="/word/{target}" ContentType="{header_type}"/>"#
+        ));
+    }
+    let mut parts = vec![
+        (
+            "[Content_Types].xml".to_string(),
+            format!(
+                r#"<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>{overrides}</Types>"#
+            ),
+        ),
+        (
+            "_rels/.rels".to_string(),
+            format!(
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="{R}/officeDocument" Target="word/document.xml"/></Relationships>"#
+            ),
+        ),
+        (
+            "word/_rels/document.xml.rels".to_string(),
+            format!(
+                r#"<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{rels}</Relationships>"#
+            ),
+        ),
+        ("word/document.xml".to_string(), document),
+    ];
+    for (_, target, content) in headers {
+        parts.push((format!("word/{target}"), content));
+    }
+    let mut bytes = Vec::new();
+    {
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut bytes));
+        let options = zip::write::SimpleFileOptions::default();
+        for (name, content) in parts {
+            zip.start_file(name, options).expect("zip entry");
+            zip.write_all(content.as_bytes()).expect("zip write");
+        }
+        zip.finish().expect("zip");
+    }
+    bytes
+}
+
+/// A page whose watermark and first-page borders depend on whether a
+/// continuous section starts on it is painted the same drawn late, from a
+/// windowed open, as a plain open paints it.
+#[test]
+fn a_continuous_title_page_section_paints_the_same_drawn_late() {
+    let bytes = continuous_title_page_docx();
+    for window in [0..1, 2..3] {
+        let (full, mut windowed) = open_both(&bytes, window.clone());
+        assert_eq!(full.page_count(), 3, "three pages");
+        paint_one_by_one(&mut windowed);
+        assert_same(&format!("window {window:?}"), &windowed, &full);
+    }
+}

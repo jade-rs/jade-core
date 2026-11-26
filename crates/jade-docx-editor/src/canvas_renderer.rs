@@ -532,6 +532,8 @@ mod continuous_chrome_tests;
 #[cfg(test)]
 mod control_mark_font_tests;
 #[cfg(test)]
+mod effect_extent_tests;
+#[cfg(test)]
 mod float_anchor_tests;
 mod float_lookahead;
 mod floating_table_wrap;
@@ -583,6 +585,8 @@ mod table_footer_tests;
 mod table_row_clone_tests;
 #[cfg(test)]
 mod valign_justified_tests;
+#[cfg(test)]
+mod watermark_section_tests;
 
 // Word for Mac treats left and right as leading and trailing in bidi paragraphs.
 fn word_bidi_alignment(alignment: &str, bidi: bool, mac: bool) -> &str {
@@ -2007,9 +2011,114 @@ impl RetainedHyperlinks {
     }
 }
 
+/// The hyperlink registry a stable edit's pass sets aside whole, when it is
+/// ordered by paragraph around the edit: the regions of the paragraphs
+/// before the retained point, then those up to the edited paragraph's end,
+/// then the rest.
+///
+/// The pass starts from the first part, which a partition would copy out and
+/// the rest after it, on every keystroke. Set aside whole, it is not copied;
+/// the pass registers into an empty registry, and its regions take the place
+/// of the middle part (in place, when there are as many) or follow the first
+/// part, as they would have followed it.
+#[derive(Debug)]
+struct HyperlinksAside {
+    regions: Vec<HyperlinkRegion>,
+    /// `regions[..kept]`: the paragraphs before the retained point.
+    kept: usize,
+    /// `regions[tail..]`: the paragraphs from `from` on.
+    tail: usize,
+    from: usize,
+}
+
+impl HyperlinksAside {
+    /// Sets `regions` aside, leaving it empty, when every region of a
+    /// paragraph before `kept_before` comes first and every one from `from`
+    /// on comes last. `None`, leaving it as it is, otherwise.
+    fn set_aside(
+        regions: &mut Vec<HyperlinkRegion>,
+        kept_before: usize,
+        from: usize,
+    ) -> Option<Self> {
+        let kept = regions
+            .iter()
+            .position(|region| region.paragraph >= kept_before)
+            .unwrap_or(regions.len());
+        let tail = kept
+            + regions[kept..]
+                .iter()
+                .position(|region| region.paragraph >= from)
+                .unwrap_or(regions.len() - kept);
+        let ordered = regions[kept..tail]
+            .iter()
+            .all(|region| region.paragraph >= kept_before)
+            && regions[tail..]
+                .iter()
+                .all(|region| region.paragraph >= from);
+        ordered.then(|| Self {
+            regions: std::mem::take(regions),
+            kept,
+            tail,
+            from,
+        })
+    }
+
+    /// The regions the pass starts from.
+    fn kept(&self) -> &[HyperlinkRegion] {
+        &self.regions[..self.kept]
+    }
+
+    /// The layout after the edit stood: the first part, the pass's regions
+    /// before `from`, then the rest as it was.
+    fn finish_stable(self, registry: &mut Vec<HyperlinkRegion>) {
+        let Self {
+            mut regions,
+            kept,
+            tail,
+            from,
+        } = self;
+        let walked: Vec<HyperlinkRegion> = std::mem::take(registry)
+            .into_iter()
+            .filter(|region| region.paragraph < from)
+            .collect();
+        if walked.len() == tail - kept {
+            for (slot, region) in regions[kept..tail].iter_mut().zip(walked) {
+                *slot = region;
+            }
+        } else {
+            regions.splice(kept..tail, walked);
+        }
+        *registry = regions;
+    }
+
+    /// The layout after the edit did not stand: the first part, then the
+    /// pass's regions. Returns the regions from `from` on when `keep_rest`.
+    fn finish_unstable(
+        self,
+        registry: &mut Vec<HyperlinkRegion>,
+        keep_rest: bool,
+    ) -> Vec<HyperlinkRegion> {
+        let Self {
+            mut regions,
+            kept,
+            tail,
+            ..
+        } = self;
+        let rest = if keep_rest {
+            regions.split_off(tail)
+        } else {
+            Vec::new()
+        };
+        regions.truncate(kept);
+        regions.append(registry);
+        *registry = regions;
+        rest
+    }
+}
+
 #[cfg(test)]
 mod retained_hyperlinks_tests {
-    use super::{HyperlinkRegion, RetainedHyperlinks};
+    use super::{HyperlinkRegion, HyperlinksAside, RetainedHyperlinks};
 
     fn region(paragraph: usize, y: f64) -> HyperlinkRegion {
         HyperlinkRegion {
@@ -2027,6 +2136,101 @@ mod retained_hyperlinks_tests {
             tooltip: None,
             target_frame: None,
         }
+    }
+
+    /// Every registry of up to five regions over four paragraphs, as
+    /// `(paragraph, y)` with `y` telling the regions apart.
+    fn registries() -> Vec<Vec<(usize, f64)>> {
+        let mut all = vec![Vec::new()];
+        let mut last = vec![Vec::new()];
+        for _ in 0..5 {
+            last = last
+                .iter()
+                .flat_map(|registry: &Vec<(usize, f64)>| {
+                    (0..4).map(move |paragraph| {
+                        let mut next = registry.clone();
+                        next.push((paragraph, next.len() as f64));
+                        next
+                    })
+                })
+                .collect();
+            all.extend(last.iter().cloned());
+        }
+        all
+    }
+
+    fn keys(regions: &[HyperlinkRegion]) -> Vec<(usize, f64)> {
+        regions.iter().map(|r| (r.paragraph, r.y)).collect()
+    }
+
+    /// Setting the registry aside ends as partitioning it did: the stable
+    /// edit's walk keeps what it registered before `from` and the regions
+    /// from `from` on follow; otherwise the walk's regions follow the kept
+    /// ones, and those from `from` on are handed over.
+    #[test]
+    fn setting_regions_aside_matches_partitioning_them() {
+        let walks: [&[usize]; 4] = [&[], &[1], &[1, 2], &[2, 1, 3]];
+        let mut set_aside = 0;
+        for registry in registries() {
+            for from in 0..5 {
+                for dirty_from in [None, Some(0), Some(1), Some(2), Some(4)] {
+                    let kept_before = dirty_from.map_or(0, |d: usize| d.min(from));
+                    for walk in walks {
+                        let walk: Vec<HyperlinkRegion> =
+                            walk.iter().map(|&p| region(p, 100.0 + p as f64)).collect();
+                        let before: Vec<HyperlinkRegion> =
+                            registry.iter().map(|&(p, y)| region(p, y)).collect();
+                        // The partition.
+                        let (mut kept, suffix): (Vec<_>, Vec<_>) =
+                            before.clone().into_iter().partition(|r| r.paragraph < from);
+                        match dirty_from {
+                            Some(d) => kept.retain(|r| r.paragraph < d),
+                            None => kept.clear(),
+                        }
+                        let mut unstable = kept.clone();
+                        unstable.extend(walk.iter().cloned());
+                        let mut stable = unstable.clone();
+                        stable.retain(|r| r.paragraph < from);
+                        stable.extend(suffix.iter().cloned());
+
+                        let mut regions = before.clone();
+                        let Some(aside) =
+                            HyperlinksAside::set_aside(&mut regions, kept_before, from)
+                        else {
+                            assert_eq!(keys(&regions), keys(&before));
+                            continue;
+                        };
+                        set_aside += 1;
+                        assert!(regions.is_empty());
+                        assert_eq!(keys(aside.kept()), keys(&kept));
+                        for outcome in 0..3 {
+                            let aside = HyperlinksAside {
+                                regions: aside.regions.clone(),
+                                ..aside
+                            };
+                            let mut registry = walk.clone();
+                            match outcome {
+                                0 => {
+                                    aside.finish_stable(&mut registry);
+                                    assert_eq!(keys(&registry), keys(&stable));
+                                }
+                                1 => {
+                                    let rest = aside.finish_unstable(&mut registry, true);
+                                    assert_eq!(keys(&registry), keys(&unstable));
+                                    assert_eq!(keys(&rest), keys(&suffix));
+                                }
+                                _ => {
+                                    let rest = aside.finish_unstable(&mut registry, false);
+                                    assert_eq!(keys(&registry), keys(&unstable));
+                                    assert!(rest.is_empty());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(set_aside > 0);
     }
 
     #[test]
@@ -4347,16 +4551,45 @@ fn mac_inline_picture_swaps_extents(image: &RunImage) -> bool {
             .is_some_and(|angle| angle.rem_euclid(180.0) == 90.0)
 }
 
+/// The `wp:effectExtent` of a drawing: the space DrawingML reserves beyond
+/// `wp:extent` for its effects (shadow, glow, outline), as insets that are
+/// never negative. Rotation is modelled from the drawing's own transform,
+/// not from this extent.
+fn effect_extent(layout: &RunImageLayout) -> Option<jade_docx_reader::document::EffectExtent> {
+    layout
+        .options
+        .as_deref()
+        .and_then(|options| options.effect_extent)
+        .map(|extent| extent.clamped())
+}
+
+/// An inline picture's effect insets `(left, top, right, bottom)`: its
+/// `wp:effectExtent` (ECMA-376 Part 1 §20.4.2.6), each edge at least 0.
+fn inline_picture_insets(image: &RunImage) -> (f64, f64, f64, f64) {
+    effect_extent(&image.layout).map_or((0.0, 0.0, 0.0, 0.0), |extent| {
+        (extent.left, extent.top, extent.right, extent.bottom)
+    })
+}
+
+/// The box an inline picture reserves in its line: its extent (swapped at
+/// a Word for Mac quarter turn) grown by its effect insets.
 fn inline_picture_size(image: &RunImage, fallback: f64) -> (f64, f64) {
     let width = image.width_px.unwrap_or(fallback).max(1.0);
     let height = image.height_px.unwrap_or(fallback).max(1.0);
+    let (left, top, right, bottom) = inline_picture_insets(image);
     if mac_inline_picture_swaps_extents(image) {
-        (height, width)
+        (height + left + right, width + top + bottom)
     } else {
-        (width, height)
+        (
+            (width + left + right).max(1.0),
+            (height + top + bottom).max(1.0),
+        )
     }
 }
 
+/// Where an inline picture that reserves the `width` by `height` box at
+/// `(x, y)` ([`inline_picture_size`]) draws its extent: inset by its effects,
+/// and centred in a Word for Mac quarter turn's swapped box.
 fn inline_picture_draw_rect(
     image: &RunImage,
     x: f64,
@@ -4364,6 +4597,9 @@ fn inline_picture_draw_rect(
     width: f64,
     height: f64,
 ) -> (f64, f64, f64, f64) {
+    let (left, top, right, bottom) = inline_picture_insets(image);
+    let (x, y) = (x + left, y + top);
+    let (width, height) = (width - left - right, height - top - bottom);
     if mac_inline_picture_swaps_extents(image) {
         (
             x + (width - height) / 2.0,
@@ -4372,7 +4608,7 @@ fn inline_picture_draw_rect(
             width,
         )
     } else {
-        (x, y, width, height)
+        (x, y, width.max(1.0), height.max(1.0))
     }
 }
 
@@ -5079,6 +5315,9 @@ where
     hyperlink_regions: Vec<HyperlinkRegion>,
     /// The front of `hyperlink_regions` kept from the previous render.
     hyperlink_retained: RetainedHyperlinks,
+    /// The regions a stable edit's pass set aside whole, while the pass
+    /// registers into an empty `hyperlink_regions`; see [`HyperlinksAside`].
+    hyperlinks_aside: Option<HyperlinksAside>,
     hyperlink_regions_js_cache: RefCell<Option<JsValue>>,
     footnote_counter: usize,
     footnote_display_map: HashMap<String, usize>,
@@ -11110,6 +11349,7 @@ where
             comment_annotations: CommentAnnotations::default(),
             hyperlink_regions: Vec::new(),
             hyperlink_retained: RetainedHyperlinks::default(),
+            hyperlinks_aside: None,
             hyperlink_regions_js_cache: RefCell::new(None),
             footnote_counter: 0,
             footnote_display_map: HashMap::new(),
@@ -13420,6 +13660,40 @@ where
         Ok(())
     }
 
+    /// The text watermark `page` shows. Word keeps it in a header part, so
+    /// with per-section stories installed it is the one in the header the
+    /// page shows — that section's (after "link to previous") and that
+    /// variant's, picked as the header story is: a title page whose
+    /// first-page header has none, or a section whose own header has none,
+    /// shows none. Without them every page shows the document-wide one.
+    fn watermark_for_page(
+        &self,
+        page: usize,
+    ) -> Option<(&str, Option<&jade_docx_reader::document::WatermarkStyle>)> {
+        if self.section_header_footers.is_empty() {
+            return self
+                .watermark_text
+                .as_deref()
+                .map(|text| (text, self.watermark_style.as_ref()));
+        }
+        let section_index = self.section_index_for_page(page);
+        let section = self.section_header_footers.get(section_index)?;
+        // While a page's backing is created the walk has not moved onto it
+        // yet; `page_starts_border_section` reads the previous page as
+        // recorded then, as `is_first_page_of_section` does once it has.
+        let first_page_of_section = self.page_starts_border_section(page, section_index);
+        select_header_footer_variant_for_page(
+            page,
+            first_page_of_section,
+            section.title_page,
+            self.even_and_odd_headers,
+            section.header_watermark.as_deref(),
+            section.header_watermark_first.as_deref(),
+            section.header_watermark_even.as_deref(),
+        )
+        .map(|watermark| (watermark.text.as_str(), Some(&watermark.style)))
+    }
+
     /// Paints the normalized VML text watermark behind all document content.
     /// The operation intentionally redraws the whole shape even during a band
     /// repaint: the active canvas clip limits it to the erased band, restoring
@@ -13428,14 +13702,14 @@ where
         if self.pageless_mode || self.parity_filler_pages.contains(&page) {
             return Ok(());
         }
-        let Some(text) = self.watermark_text.as_deref() else {
+        let Some((text, style)) = self.watermark_for_page(page) else {
             return Ok(());
         };
         if text.is_empty() {
             return Ok(());
         }
 
-        let style = self.watermark_style.clone().unwrap_or_default();
+        let style = style.cloned().unwrap_or_default();
         let context = self.host.painter();
         let painter = self.host.painter();
         // Word centres the shape on the margin box
@@ -13704,10 +13978,20 @@ where
             Some(start) if start.page == previous => start.page_top_section,
             _ => previous_last,
         };
+        // While the next page's backing is created, a paragraph only started
+        // on the current page is moving onto the next one: it placed nothing
+        // here, so the next page still starts the section.
+        let placed_content = |start: MidPageSectionStart| {
+            if previous == self.current_page_number {
+                start.content == MidPageContent::Placed
+            } else {
+                self.mid_page_start_has_content(start)
+            }
+        };
         previous_top != section
             && !self
                 .mid_page_start(section)
-                .is_some_and(|start| start.page < page && self.mid_page_start_has_content(start))
+                .is_some_and(|start| start.page < page && placed_content(start))
     }
 
     /// Strokes the current page's settled page borders when they belong to
@@ -17479,6 +17763,12 @@ where
             // The failed pass may have replaced last_options without rebuilding
             // every cached paragraph. Require hash checks on the next render.
             self.last_options = None;
+            // A stable edit's pass set its downstream aside and then failed:
+            // it is dropped, as an unstable edit drops it.
+            if let Some(aside) = self.hyperlinks_aside.take() {
+                aside.finish_unstable(&mut self.hyperlink_regions, false);
+            }
+            self.selection.discard_parked_selection_suffix();
         }
         result
     }
@@ -17750,7 +18040,7 @@ where
             .filter(|_| incremental_dirty_from.is_some() || preserve_stable_edit_pagination)
             .map(|(paragraph, _)| {
                 let from = paragraph.saturating_add(1);
-                (from, self.selection.take_selection_suffix(from))
+                (from, self.selection.park_selection_suffix(from))
             });
         self.edit_downstream =
             edit_downstream_parts.map(|(from, cells, hyperlinks, objects, page_origins)| {
@@ -17806,13 +18096,22 @@ where
         // The stable-edit exit leaves the paragraphs after the edited one
         // unwalked, so set their regions aside with the selection tail rather
         // than dropping them; PDF export reads them per page.
-        let mut hyperlink_suffix = selection_suffix.as_ref().map(|&(from, _)| {
-            let (kept, suffix) = std::mem::take(&mut self.hyperlink_regions)
-                .into_iter()
-                .partition(|region| region.paragraph < from);
-            self.hyperlink_regions = kept;
-            (from, suffix)
-        });
+        // Ordered by paragraph around the edit, as a walk registers them, the
+        // regions are set aside whole instead, without moving any.
+        self.hyperlinks_aside = None;
+        let mut hyperlink_suffix = None;
+        if let Some(&(from, _)) = selection_suffix.as_ref() {
+            let kept_before = incremental_dirty_from.map_or(0, |dirty_from| dirty_from.min(from));
+            self.hyperlinks_aside =
+                HyperlinksAside::set_aside(&mut self.hyperlink_regions, kept_before, from);
+            if self.hyperlinks_aside.is_none() {
+                let (kept, suffix) = std::mem::take(&mut self.hyperlink_regions)
+                    .into_iter()
+                    .partition(|region| region.paragraph < from);
+                self.hyperlink_regions = kept;
+                hyperlink_suffix = Some((from, suffix));
+            }
+        }
         // Incremental hyperlink region update: keep regions for paragraphs
         // before the dirty point, only rebuild from dirty_from onwards.
         if let Some(dirty_from) = incremental_dirty_from {
@@ -17823,8 +18122,12 @@ where
         }
         // Paragraphs before the dirty point keep their regions; a replay of
         // one this render must not register them a second time.
-        self.hyperlink_retained =
-            RetainedHyperlinks::capture(incremental_dirty_from, &self.hyperlink_regions);
+        self.hyperlink_retained = RetainedHyperlinks::capture(
+            incremental_dirty_from,
+            self.hyperlinks_aside
+                .as_ref()
+                .map_or(&self.hyperlink_regions, HyperlinksAside::kept),
+        );
         self.invalidate_hyperlink_regions_js_cache();
         self.adopt_comment_store(if options.render_comments {
             comments
@@ -18969,14 +19272,18 @@ where
             if let (Some((from, selection)), Some(cells)) =
                 (selection_suffix.take(), stable_cells.take())
             {
-                self.edit_downstream = Some(EditDownstream {
-                    from,
-                    selection,
-                    cells,
-                    hyperlinks: hyperlink_suffix
+                let hyperlinks = match self.hyperlinks_aside.take() {
+                    Some(aside) => aside.finish_unstable(&mut self.hyperlink_regions, true),
+                    None => hyperlink_suffix
                         .take()
                         .map(|(_, suffix)| suffix)
                         .unwrap_or_default(),
+                };
+                self.edit_downstream = Some(EditDownstream {
+                    from,
+                    selection: self.selection.detach_selection_suffix(selection),
+                    cells,
+                    hyperlinks,
                     objects: stable_edit_metadata
                         .as_ref()
                         .map(|(_, metadata)| {
@@ -18998,6 +19305,10 @@ where
             }
             // As with the selection tail, the saved regions are authoritative
             // for any paragraph after the edited one that the walk re-recorded.
+            if let Some(aside) = self.hyperlinks_aside.take() {
+                aside.finish_stable(&mut self.hyperlink_regions);
+                self.invalidate_hyperlink_regions_js_cache();
+            }
             if let Some((from, suffix)) = hyperlink_suffix {
                 self.hyperlink_regions
                     .retain(|region: &HyperlinkRegion| region.paragraph < from);
@@ -19018,6 +19329,14 @@ where
                     self.image_debug_regions.get_mut(),
                     self.object_debug_regions.get_mut(),
                 );
+            }
+        } else {
+            // Not handed over above: dropped, as when it was moved out.
+            if let Some((_, suffix)) = selection_suffix {
+                self.selection.discard_selection_suffix(suffix);
+            }
+            if let Some(aside) = self.hyperlinks_aside.take() {
+                aside.finish_unstable(&mut self.hyperlink_regions, false);
             }
         }
         if preserve_pixel_pagination
@@ -24416,7 +24735,12 @@ where
                     if let (Some(object), Some((_, image))) =
                         (&mut style.inline_object, inline_images.get(&style.start))
                     {
-                        object.descent = image.layout.options().inline_effect_bottom.unwrap_or(0.0);
+                        // Word for Mac hangs the bottom effect below the
+                        // baseline of a line of pictures at a minimum height.
+                        let bottom = effect_extent(&image.layout)
+                            .map_or(0.0, |extent| extent.bottom.max(0.0));
+                        object.height = (object.height - bottom).max(1.0);
+                        object.descent = bottom;
                     }
                 }
             }
@@ -28837,7 +29161,7 @@ where
                                     + picture_offset
                                     + story_offset,
                                 object.width.max(1.0),
-                                object.height.max(1.0),
+                                (object.height + object.descent).max(1.0),
                             );
                             inline_image_draws.push((*run_index, *image, x, y, width, height));
                         }
@@ -42826,6 +43150,13 @@ where
         self.host.page_dimensions(page_index)
     }
 
+    /// Records that page `page_index`'s (0-based) backing no longer shows
+    /// the current layout, so [`Self::page_has_rendered_pixels`] reports
+    /// `false` until a render draws it again.
+    pub fn forget_page_pixels(&mut self, page_index: usize) {
+        self.host.forget_page_pixels(page_index);
+    }
+
     /// Returns whether the page's backing store currently holds rendered pixels.
     /// Pages whose backing was shrunk to free memory (lazy/windowed mode) return
     /// `false` so the bitmap pipeline re-renders them before snapshotting.
@@ -43023,10 +43354,30 @@ where
             transform.width * radians.sin().abs() + transform.height * radians.cos().abs();
         let center_x = transform.x + transform.width / 2.0;
         let center_y = transform.y + transform.height / 2.0;
+        // A picture's effects (`wp:effectExtent`) keep text clear as its
+        // rotated bounds do. Word likely writes a rotation's growth into the
+        // extent too, so each edge reaches the farther of the two, not their
+        // sum (unverified against Word).
+        let (left, top, right, bottom) = effect_extent(layout)
+            .filter(|_| target.kind == FloatingObjectKind::Image)
+            .map_or((0.0, 0.0, 0.0, 0.0), |extent| {
+                (extent.left, extent.top, extent.right, extent.bottom)
+            });
+        // On an axis the rotation widens, the extent is measured from the
+        // unrotated box; on one it narrows, it is added to the rotated
+        // bounds. No extent leaves the rotated bounds exactly.
+        let reach = |extent: f64, half: f64, rotated_half: f64| {
+            rotated_half.max(half.min(rotated_half) + extent)
+        };
+        let (half_width, half_height) = (transform.width / 2.0, transform.height / 2.0);
+        let box_left = center_x - reach(left, half_width, rotated_width / 2.0);
+        let box_top = center_y - reach(top, half_height, rotated_height / 2.0);
+        let box_right = center_x + reach(right, half_width, rotated_width / 2.0);
+        let box_bottom = center_y + reach(bottom, half_height, rotated_height / 2.0);
         if layout.wrap == WrapMode::TopAndBottom {
             return Some(FloatExclusion {
-                top: center_y - rotated_height / 2.0 - layout.dist_top.unwrap_or(0.0),
-                bottom: center_y + rotated_height / 2.0 + layout.dist_bottom.unwrap_or(0.0),
+                top: box_top - layout.dist_top.unwrap_or(0.0),
+                bottom: box_bottom + layout.dist_bottom.unwrap_or(0.0),
                 left: f64::NEG_INFINITY,
                 right: f64::INFINITY,
                 wrap_text: WrapTextSide::BothSides,
@@ -43095,12 +43446,8 @@ where
                 .reduce(f64::max)?;
             (right > left && bottom > top).then_some((left, right, top, bottom))
         });
-        let (object_left, object_right, object_top, object_bottom) = polygon_bounds.unwrap_or((
-            center_x - rotated_width / 2.0,
-            center_x + rotated_width / 2.0,
-            center_y - rotated_height / 2.0,
-            center_y + rotated_height / 2.0,
-        ));
+        let (object_left, object_right, object_top, object_bottom) =
+            polygon_bounds.unwrap_or((box_left, box_right, box_top, box_bottom));
         Some(FloatExclusion {
             top: object_top - layout.dist_top.unwrap_or(0.0),
             bottom: object_bottom + layout.dist_bottom.unwrap_or(0.0),
@@ -45390,7 +45737,6 @@ where
     /// Ends a pass that paginated to `pages`: a completed layout settles the
     /// totals the next pass shows, and notes whether this one drew others.
     fn settle_page_totals(&mut self, pages: usize) {
-        let shown = std::mem::take(self.page_totals_shown.get_mut());
         if !self.last_layout_complete {
             // A bounded pass that ran onto a new page knows of it from the
             // host, though it settles nothing else.
@@ -45400,8 +45746,13 @@ where
             }
             // Passes that ask for a paint are only counted back to back.
             self.page_totals_flagged_passes = 0;
+            // What it drew stays recorded for the pass that completes the
+            // layout to check: a lazily opened document draws its first
+            // pages on a bounded pass, and the layout-only passes that reach
+            // its end draw none of them again.
             return;
         }
+        let shown = std::mem::take(self.page_totals_shown.get_mut());
         // Sections are counted once a document has shown a SECTIONPAGES,
         // and kept counted, so a pass that draws none (a bounded edit off
         // the header) does not forget them.

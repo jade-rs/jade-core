@@ -11786,6 +11786,10 @@
     {
       "fixture": "word-windows-edge-floating-table-wrap-whole-word-word-7-compat15",
       "docx_sha256": "64bfe7a57f9b6f5b5cdc1bd980bc5661d9b0fc87e32d2a423f537a6efa75324d"
+    },
+    {
+      "fixture": "watermark-per-section",
+      "docx_sha256": "bb9cb6f9ab0b1555406ff8f9a0d9172a55d8d9cefe2dc7ab4b5451fc2cc31e34"
     }
   ]
 }

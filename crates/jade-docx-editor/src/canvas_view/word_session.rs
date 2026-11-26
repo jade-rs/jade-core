@@ -156,6 +156,266 @@ impl WordSession for DetachedSession<'_> {
     }
 }
 
+/// The most extra paints one host pass makes to settle what it drew, as the
+/// renderer counts them: it raises a NUMPAGES or STYLEREF flag on at most
+/// `MAX_FLAGGED_PAGE_TOTAL_PASSES` (2) passes in a row, so a total or
+/// heading with no right value (one that moves the page it counts) stops
+/// all the same. The native host draws its window once more at open and
+/// leaves the pages stale after an edit; the browser has no idle paint of
+/// its own, so it draws them here.
+pub(super) const MAX_SETTLE_PAINTS: usize = 2;
+
+/// What [`settle_drawn_pages`] did.
+#[derive(Debug, Default)]
+pub(super) struct Settled {
+    /// Pages (0-based) drawn with a NUMPAGES total or a STYLEREF the pass
+    /// proved wrong. The main thread fetches their bitmaps again; those in
+    /// the visible range are drawn again already.
+    pub(super) pages: std::collections::BTreeSet<usize>,
+    /// The extra paints made, at most [`MAX_SETTLE_PAINTS`].
+    pub(super) paints: usize,
+}
+
+/// The pages the pass just run drew a NUMPAGES or SECTIONPAGES total or a
+/// STYLEREF on other than it ended with — every page for a total, as the
+/// native host leaves them stale — and clears both flags. Empty, and
+/// allocation-free, after a pass that drew them right, as every keystroke's
+/// does.
+#[inline]
+fn take_wrong_pages<P>(renderer: &mut CanvasRenderer<P>) -> std::collections::BTreeSet<usize>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    let totals = renderer.take_page_totals_changed();
+    if !totals && !renderer.has_style_reference_wrong_pages() {
+        return std::collections::BTreeSet::new();
+    }
+    take_wrong_pages_cold(renderer, totals)
+}
+
+#[cold]
+#[inline(never)]
+fn take_wrong_pages_cold<P>(
+    renderer: &mut CanvasRenderer<P>,
+    totals: bool,
+) -> std::collections::BTreeSet<usize>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    let count = renderer.page_count();
+    let mut pages = if renderer.has_style_reference_wrong_pages() {
+        renderer.take_style_reference_wrong_pages()
+    } else {
+        std::collections::BTreeSet::new()
+    };
+    if totals {
+        pages.extend(0..count);
+    }
+    pages.retain(|&page| page < count);
+    pages
+}
+
+/// Whole-page dirty rectangles for `pages` (0-based), as an edit's payload
+/// reports a repainted page.
+pub(super) fn whole_page_rects<P>(
+    renderer: &CanvasRenderer<P>,
+    pages: &std::collections::BTreeSet<usize>,
+) -> Vec<DirtyRect>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    pages
+        .iter()
+        .filter_map(|&page| {
+            let (width, height) = renderer.page_dimensions(page)?;
+            Some(DirtyRect {
+                page,
+                x: 0.0,
+                y: renderer.page_top_y(page),
+                width,
+                height,
+            })
+        })
+        .collect()
+}
+
+/// Draws again the pages the pass just run drew a NUMPAGES total or a
+/// STYLEREF on other than it ended with, as the native host's
+/// `redraw_wrong_page_totals` does: the renderer shows the settled values
+/// the second time. Only pages in the visible range are drawn; the rest
+/// draw the settled values whenever they are drawn next. Each wrong page is
+/// left a whole-page dirty rectangle, for the payload, and listed.
+///
+/// A pass that drew them right — typing that leaves the page count as it
+/// was — costs two flag reads and paints nothing.
+pub(super) fn settle_drawn_pages<P>(renderer: &mut CanvasRenderer<P>) -> Result<Settled, JsValue>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    let mut settled = Settled::default();
+    loop {
+        let wrong = take_wrong_pages(renderer);
+        if wrong.is_empty() {
+            break;
+        }
+        for rect in whole_page_rects(renderer, &wrong) {
+            renderer.mark_dirty_rect(rect);
+        }
+        let visible = renderer.visible_page_range();
+        let in_window = |page: usize| {
+            visible
+                .as_ref()
+                .is_none_or(|range| range.contains(&(page + 1)))
+        };
+        // A page outside the window is not drawn here: its pixels are left
+        // stale, so the next fetch of its bitmap draws it with the settled
+        // values instead of handing out the old ones.
+        for &page in wrong.iter().filter(|&&page| !in_window(page)) {
+            renderer.forget_page_pixels(page);
+        }
+        let any_drawn = wrong.iter().any(|&page| in_window(page));
+        settled.pages.extend(wrong);
+        // Past the cap the pages stay as the last pass drew them: their
+        // flags are taken above, so the next pass does not paint for them.
+        if !any_drawn || settled.paints == MAX_SETTLE_PAINTS {
+            break;
+        }
+        renderer.skip_change_detection_once();
+        renderer.rerender_with_cached_state()?;
+        settled.paints += 1;
+    }
+    Ok(settled)
+}
+
+/// Pages (0-based) a pass settled that no payload has reported yet: a
+/// caller that drops its dirty regions keeps them here, outside the dirty
+/// tracker, so a capture that clears the tracker without reporting it
+/// (another unreported one) does not lose them. The next payload that is
+/// reported takes them ([`report_kept_pages`]).
+pub(super) type KeptPages = std::collections::BTreeSet<usize>;
+
+/// Keeps `pages` (0-based) for the next reported payload, for a caller that
+/// settled them but reports no dirty regions itself.
+pub(super) fn keep_for_next_payload(
+    kept: &mut KeptPages,
+    pages: &std::collections::BTreeSet<usize>,
+) {
+    kept.extend(pages);
+}
+
+/// Hands the kept pages to the payload being built: each becomes a
+/// whole-page dirty rectangle (pages past the end are dropped), and `kept`
+/// is left empty.
+pub(super) fn report_kept_pages<P>(renderer: &mut CanvasRenderer<P>, kept: &mut KeptPages)
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    if kept.is_empty() {
+        return;
+    }
+    let pages = std::mem::take(kept);
+    for rect in whole_page_rects(renderer, &pages) {
+        renderer.mark_dirty_rect(rect);
+    }
+}
+
+/// The dirty regions of a lazy-mode edit's payload, which the main thread
+/// fetches bitmaps for on demand: the pass's own, the pages
+/// [`settle_drawn_pages`] draws again, and the `kept` pages earlier
+/// unreported passes settled. Clears them all.
+pub(super) fn take_lazy_payload_dirty_regions<P>(
+    renderer: &mut CanvasRenderer<P>,
+    kept: &mut KeptPages,
+) -> Result<Vec<DirtyRect>, JsValue>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    settle_drawn_pages(renderer)?;
+    report_kept_pages(renderer, kept);
+    renderer.coalesce_dirty_regions();
+    let dirty_regions = renderer.dirty_regions();
+    renderer.clear_dirty_regions();
+    Ok(dirty_regions)
+}
+
+/// [`OffscreenDocumentView::extend_layout`]'s layout: lays the document out,
+/// without drawing, through `end_page` (1-based; `None`: to its end),
+/// resuming from the last valid page-top snapshot where one qualifies, and
+/// then settles what earlier passes drew ([`settle_drawn_pages`]): the pass
+/// that reaches the last page is the one that learns the page count. The
+/// side tables are read from `word_doc` in place.
+pub(super) fn extend_renderer_layout<P>(
+    renderer: &mut CanvasRenderer<P>,
+    end_page: Option<usize>,
+    options: &Options,
+    word_doc: &WordDocument,
+) -> Result<Settled, JsValue>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    let previous_visible_range = renderer.visible_page_range();
+    let previous_limit = renderer.layout_page_limit();
+    renderer.set_layout_page_limit(end_page);
+    // Preserve the current viewport window while extending layout in the
+    // background. Expanding the visible range to `1..=end_page` makes later
+    // edit renders treat the whole laid-out prefix as visible, which causes
+    // avoidable tail bitmap churn.
+    renderer.set_visible_page_range(previous_visible_range);
+    // Resume the layout-only walk from the last valid page-top snapshot
+    // instead of re-walking every laid-out page; falls back to the
+    // from-start walk when no snapshot qualifies.
+    renderer.prepare_layout_extension_seek(previous_limit, end_page.unwrap_or(usize::MAX), options);
+    if let Some(document) = word_doc.document.as_ref() {
+        renderer
+            .render_layout_with_numbering_rc(
+                Rc::clone(document),
+                options,
+                word_doc.numbering_part.as_ref(),
+                word_doc.header_lines.as_deref(),
+                word_doc.footer_lines.as_deref(),
+                Some(&word_doc.comments),
+            )
+            .map_err(|e| JsValue::from_str(&format!("{e:?}")))?;
+    }
+    // Layout expansion should not leave dirty regions that can slow
+    // subsequent renders; the caller reports the settled pages itself.
+    renderer.clear_dirty_regions();
+    let settled = settle_drawn_pages(renderer)?;
+    renderer.clear_dirty_regions();
+    Ok(settled)
+}
+
+/// [`OffscreenDocumentView::complete_layout`]'s layout: lays the document
+/// out through its end when the last layout stopped short, keeping the
+/// host's lazy-layout limit, and settles what earlier passes drew. Returns
+/// whether the layout is complete, and what was settled.
+pub(super) fn complete_renderer_layout<P>(
+    renderer: &mut CanvasRenderer<P>,
+    options: &Options,
+    word_doc: &WordDocument,
+) -> Result<(bool, Settled), JsValue>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    if renderer.last_layout_complete() {
+        return Ok((true, Settled::default()));
+    }
+    let previous_limit = renderer.layout_page_limit();
+    let settled = extend_renderer_layout(renderer, None, options, word_doc)?;
+    let complete = renderer.last_layout_complete();
+    // The host's lazy-layout limit stays its own.
+    renderer.set_layout_page_limit(previous_limit);
+    Ok((complete, settled))
+}
+
 impl OffscreenDocumentView {
     /// What the last layout knew, for a detached session.
     pub(super) fn layout_facts(&self) -> LayoutFacts {
@@ -206,38 +466,24 @@ impl OffscreenDocumentView {
         if self.renderer.borrow().last_layout_complete() {
             return Ok(true);
         }
-        let (options, document, numbering_part, header_lines, footer_lines, comments) = {
+        let (complete, metadata, settled) = {
             let state = self.state.borrow();
             let Some(word_doc) = state.word_doc.as_ref() else {
                 return Ok(false);
             };
-            (
-                state.options.clone(),
-                word_doc.document.as_ref().map(Rc::clone),
-                word_doc.numbering_part.clone(),
-                word_doc.header_lines.clone(),
-                word_doc.footer_lines.clone(),
-                word_doc.comments.clone(),
-            )
+            let mut renderer = self.renderer.borrow_mut();
+            // The command that follows repaints, and its render waits for
+            // the images this pass started, as `ensureLayoutThroughPage`'s
+            // caller waits for them.
+            let (complete, settled) =
+                complete_renderer_layout(&mut renderer, &state.options, word_doc)?;
+            (complete, renderer.table_resize_metadata(), settled)
         };
-        let previous_limit = self.renderer.borrow().layout_page_limit();
-        // The command that follows repaints, and its render waits for the
-        // images this pass started, as `ensureLayoutThroughPage`'s caller
-        // waits for them.
-        let (_, _, complete) = self.extend_layout(
-            None,
-            false,
-            &options,
-            document,
-            numbering_part,
-            header_lines,
-            footer_lines,
-            comments,
-        )?;
-        // The host's lazy-layout limit stays its own.
-        self.renderer
-            .borrow_mut()
-            .set_layout_page_limit(previous_limit);
+        let mut state = self.state.borrow_mut();
+        state.table_resize = metadata;
+        // The pages the pass proved wrong go out with the payload of the
+        // command that follows.
+        keep_for_next_payload(&mut state.kept_settled_pages, &settled.pages);
         Ok(complete)
     }
 
@@ -387,6 +633,10 @@ impl crate::word::markup::WordMarkupDisplay for DetachedSession<'_> {
         Err("markup is the view's own".to_string())
     }
 }
+
+#[cfg(test)]
+#[path = "word_session_settle_tests.rs"]
+mod settle_tests;
 
 #[cfg(test)]
 mod tests {

@@ -157,6 +157,7 @@ impl Command for FormatImageCommand {
             .as_mut()
             .ok_or_else(|| CommandError::Custom("target run does not contain image".into()))?;
 
+        let previous = (image.width_px, image.height_px, image.layout.rotation_deg);
         if let Some(width) = self.spec.width_px {
             image.width_px = Some(width);
         }
@@ -171,6 +172,7 @@ impl Command for FormatImageCommand {
         if let Some(rotation) = self.spec.rotation_deg {
             image.layout.rotation_deg = Some(rotation);
         }
+        image.refit_effect_extent(previous);
         if let Some(flip_horizontal) = self.spec.flip_horizontal {
             image.layout.flip_horizontal = flip_horizontal;
         }
