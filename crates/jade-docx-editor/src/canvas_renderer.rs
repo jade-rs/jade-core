@@ -5610,6 +5610,9 @@ where
     /// The fonts of the formatting marks the paragraph being painted drew,
     /// kept on its layout cache entry like [`BandPaintMarks`].
     band_control_mark_fonts: RefCell<Vec<ControlMarkFont>>,
+    /// Whether the paragraph being painted has exact line spacing, whose
+    /// formatting marks [`Self::note_control_mark_font`] notes.
+    band_note_control_marks: Cell<bool>,
     /// Cache for trailing ink overhang keyed by a hash of (font descriptor, text).
     ///
     /// `measure_trailing_overhang` is invoked once per grapheme during wrapping
@@ -11501,6 +11504,7 @@ where
             text_measure_cache: RefCell::new(TextMeasureCache::default()),
             font_vertical_metrics_cache: RefCell::new(FxHashMap::default()),
             band_control_mark_fonts: RefCell::new(Vec::new()),
+            band_note_control_marks: Cell::new(false),
             trailing_overhang_cache: RefCell::new(FxHashMap::default()),
             font_line_box_height_cache: RefCell::new(FxHashMap::default()),
             paragraph_wrap_cache: Rc::new(RefCell::new(ParagraphWrapCache::default())),
@@ -21848,6 +21852,7 @@ where
         let cache_start_y = self.current_y;
         self.band_paint_marks.set(BandPaintMarks::default());
         self.band_control_mark_fonts.borrow_mut().clear();
+        self.band_note_control_marks.set(false);
         let cache_spacing_after_input =
             self.paragraph_spacing_after_input(paragraph, body_element_index, section_index);
         let cache_line_number_state = self.has_any_line_numbering().then_some(LineNumberState {
@@ -23234,6 +23239,10 @@ where
             spacing_ref.and_then(|spacing| spacing.line_rule.as_deref()),
             Some("exact" | "exactly")
         );
+        // Only an exact line clips its ink to its box, so only there can its
+        // formatting marks, drawn past that clip, reach past its ink.
+        self.band_note_control_marks
+            .set(paragraph_style.exact_line_spacing);
         let snap_to_grid = self.resolve_paragraph_snap_to_grid(paragraph);
         // The line-height prepass also measures the implicit line box, which
         // synchronizes the renderer's tracked font/fill with the canvas before
@@ -41373,6 +41382,11 @@ where
     /// for [`Self::band_control_mark_ink`] to measure. Nothing is measured
     /// here: the paint must not touch the painter for it.
     fn note_control_mark_font(&self, style: &AppliedRunStyle) {
+        // A line that does not clip its ink measures the mark's font in its
+        // ink box: the mark, smaller and at the same baseline, stays inside.
+        if !self.band_note_control_marks.get() {
+            return;
+        }
         let descriptors = [
             ResolvedFontSlot::LatinAscii,
             ResolvedFontSlot::LatinHansi,
