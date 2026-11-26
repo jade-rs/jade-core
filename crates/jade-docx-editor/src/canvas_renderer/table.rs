@@ -18554,6 +18554,17 @@ fn round_windows_fixed_nested_grid(
         }
     }
 
+    let minimum_widths: Vec<_> = preferences.iter().map(|&(_, _, padding)| padding).collect();
+    let minimum_width = minimum_widths.iter().sum::<f64>();
+    if budget <= minimum_width && preferences.iter().any(|(_, units, _)| units.is_some()) {
+        return Some(
+            minimum_widths
+                .into_iter()
+                .map(|width| width / 15.0)
+                .collect(),
+        );
+    }
+
     let mut absolute = Vec::new();
     let mut percentage = Vec::new();
     let mut zero_percentage = Vec::new();
@@ -18573,7 +18584,14 @@ fn round_windows_fixed_nested_grid(
     }
 
     let mut widths = vec![0.0; column_count];
-    if percentage.is_empty() {
+    if percentage.is_empty() && !zero_percentage.is_empty() {
+        fit_windows_fixed_nested_without_positive_percentages(
+            &mut widths,
+            &mut absolute,
+            &zero_percentage,
+            budget,
+        )?;
+    } else if percentage.is_empty() {
         fit_windows_fixed_nested_absolute_columns(&mut widths, &absolute, budget)?;
     } else {
         let reference_units = if absolute.is_empty() {
@@ -18603,8 +18621,8 @@ fn round_windows_fixed_nested_grid(
             // percentage units before projecting those columns back to twips.
             let reserved = (absolute_budget * reference_units / budget).round();
             let reduction = (percent_total - (reference_units - reserved)) / percent_total;
-            for &(index, units) in &percentage {
-                let correction = units * reduction;
+            for (_, units) in &mut percentage {
+                let correction = *units * reduction;
                 let correction = if minimum > remainder {
                     (correction + 1e-8).round()
                 } else {
@@ -18613,7 +18631,29 @@ fn round_windows_fixed_nested_grid(
                     // balance instead of charging both columns that unit.
                     correction.signum() * (correction.abs() + 0.5 - 1e-8).floor()
                 };
-                widths[index] = to_twips(units - correction);
+                *units -= correction;
+            }
+            if minimum > remainder
+                && zero_percentage.is_empty()
+                && absolute.len() > 1
+                && percentage.len() == 2
+            {
+                // Balance the rounded percentage units before projecting the
+                // grid when several absolute columns require their insets.
+                let allotted: f64 = percentage.iter().map(|(_, units)| units).sum();
+                let balance = reference_units - reserved - allotted;
+                if balance > 0.0 {
+                    for (_, units) in percentage.iter_mut().rev().take(balance as usize) {
+                        *units += 1.0;
+                    }
+                } else {
+                    for (_, units) in percentage.iter_mut().take(-balance as usize) {
+                        *units -= 1.0;
+                    }
+                }
+            }
+            for &(index, units) in &percentage {
+                widths[index] = to_twips(units);
             }
             if minimum > remainder && zero_percentage.is_empty() {
                 // Keep the insets that forced the absolute group to grow.
@@ -18629,14 +18669,14 @@ fn round_windows_fixed_nested_grid(
 
     if zero_percentage.is_empty() {
         widths[0] = budget - widths[1..].iter().sum::<f64>();
-    } else {
-        reserve_windows_zero_percentage_padding(
-            &mut widths,
-            &absolute,
-            &percentage,
-            &zero_percentage,
-            budget,
-        )?;
+    }
+    if !percentage.is_empty()
+        && widths
+            .iter()
+            .zip(&minimum_widths)
+            .any(|(width, inset)| width < inset)
+    {
+        reserve_windows_fixed_column_insets(&mut widths, &minimum_widths, budget)?;
     }
     if widths
         .iter()
@@ -18648,41 +18688,107 @@ fn round_windows_fixed_nested_grid(
     Some(widths)
 }
 
-fn reserve_windows_zero_percentage_padding(
+fn fit_windows_fixed_nested_without_positive_percentages(
     widths: &mut [f64],
-    absolute: &[(usize, f64, f64)],
-    percentage: &[(usize, f64)],
+    absolute: &mut [(usize, f64, f64)],
     zero_percentage: &[(usize, f64)],
     budget: f64,
 ) -> Option<()> {
-    // A zero percentage still needs the column's insets. Word divides that
-    // cost between the percentage columns and the absolute columns that
-    // have room above their own insets.
-    let mut movable: Vec<_> = percentage.iter().map(|&(index, _)| index).collect();
-    movable.extend(
-        absolute
-            .iter()
-            .filter_map(|&(index, _, padding)| (widths[index] > padding).then_some(index)),
-    );
-    movable.sort_unstable();
-    let &first = movable.first()?;
-    let last = *movable.last().unwrap_or(&first);
     let padding: f64 = zero_percentage.iter().map(|&(_, padding)| padding).sum();
-    let share = (padding / movable.len() as f64).round();
     for &(index, padding) in zero_percentage {
         widths[index] = padding;
     }
+    let available = budget - padding;
+    if absolute.is_empty() {
+        // With every column set to zero percent, divide space above the
+        // insets equally and give the extra twips to the leading columns.
+        let share = (available / widths.len() as f64).floor();
+        let extra = (available - share * widths.len() as f64) as usize;
+        for (index, width) in widths.iter_mut().enumerate() {
+            *width += share + if index < extra { 1.0 } else { 0.0 };
+        }
+    } else {
+        for (_, width, padding) in &mut *absolute {
+            *width = width.max(*padding);
+        }
+        fit_windows_fixed_nested_absolute_columns(widths, absolute, available)?;
+        let balance = budget - widths.iter().sum::<f64>();
+        if balance >= 0.0 {
+            widths[0] += balance;
+        } else {
+            let mut excess = -balance;
+            for &(index, _, padding) in &*absolute {
+                if excess == 0.0 {
+                    break;
+                }
+                if widths[index] > padding {
+                    widths[index] -= 1.0;
+                    excess -= 1.0;
+                }
+            }
+        }
+    }
+    Some(())
+}
+
+fn reserve_windows_fixed_column_insets(
+    widths: &mut [f64],
+    minimum_widths: &[f64],
+    budget: f64,
+) -> Option<()> {
+    // Reserve insets even when a percentage leaves a column with little or no
+    // room. Spread the cost across columns that can still give up width.
+    let mut cost = 0.0;
+    let mut movable = Vec::new();
+    for (index, (width, &minimum)) in widths.iter_mut().zip(minimum_widths).enumerate() {
+        if *width > minimum {
+            movable.push(index);
+        } else {
+            cost += minimum - *width;
+            *width = minimum;
+        }
+    }
+    let share = loop {
+        let count = movable.len();
+        if count == 0 {
+            return None;
+        }
+        let share = (cost / count as f64).round();
+        movable.retain(|&index| {
+            let capacity = widths[index] - minimum_widths[index];
+            if capacity >= share {
+                true
+            } else {
+                cost -= capacity;
+                widths[index] = minimum_widths[index];
+                false
+            }
+        });
+        if movable.len() == count {
+            break share;
+        }
+    };
+    let &last = movable.last()?;
     for &index in &movable {
         widths[index] -= share;
     }
     let mut residual = budget - widths.iter().sum::<f64>();
     // Distribute excess rounding from the left and unused width from the right.
     if residual < 0.0 {
-        for &index in movable.iter().take(-residual as usize) {
-            widths[index] -= 1.0;
-            residual += 1.0;
+        for &index in &movable {
+            if residual == 0.0 {
+                break;
+            }
+            if widths[index] > minimum_widths[index] {
+                widths[index] -= 1.0;
+                residual += 1.0;
+            }
         }
-        widths[first] += residual;
+        for &index in &movable {
+            let correction = (-residual).min(widths[index] - minimum_widths[index]);
+            widths[index] -= correction;
+            residual += correction;
+        }
     } else {
         for &index in movable.iter().rev().take(residual as usize) {
             widths[index] += 1.0;
@@ -18704,7 +18810,7 @@ fn fit_windows_fixed_nested_absolute_columns(
     }
     if budget < total {
         let minimum: f64 = absolute.iter().map(|(_, _, padding)| padding).sum();
-        if budget < minimum || absolute.iter().any(|(_, width, padding)| width <= padding) {
+        if budget < minimum || absolute.iter().any(|(_, width, padding)| width < padding) {
             return None;
         }
         let reduction = (total - budget) / (total - minimum);

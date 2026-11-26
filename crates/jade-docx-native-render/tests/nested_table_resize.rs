@@ -459,6 +459,24 @@ fn fixed_percentage_limits_match_windows_word_in_compat15() {
 }
 
 #[cfg(windows)]
+#[test]
+fn fixed_minimum_width_grids_match_windows_word_in_compat12() {
+    verify_fixed_nested_grids("nested-fixed-minimum-widths", 545, Some("-compat12"));
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_minimum_width_grids_match_windows_word_in_compat14() {
+    verify_fixed_nested_grids("nested-fixed-minimum-widths", 545, Some("-compat14"));
+}
+
+#[cfg(windows)]
+#[test]
+fn fixed_minimum_width_grids_match_windows_word_in_compat15() {
+    verify_fixed_nested_grids("nested-fixed-minimum-widths", 545, Some("-compat15"));
+}
+
+#[cfg(windows)]
 fn verify_fixed_nested_grids(cohort: &str, count: usize, suffix: Option<&str>) {
     use futures::executor::block_on;
     use jade_docx_editor::Options;

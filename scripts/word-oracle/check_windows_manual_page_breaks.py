@@ -61,6 +61,15 @@ FLOATING_RULE_CASES = {
 }
 
 
+def inline_page_break_cases():
+    return {
+        'hyperlink-one-run', 'hyperlink-three-runs', 'hyperlink-break-only',
+        'hyperlink-continues-after', 'hyperlink-begins-with-break', 'bookmark-break-only',
+        'inline-control-one-run', 'inline-control-three-runs', 'inline-control-break-only',
+        'inline-control-after-break',
+    }
+
+
 def nested_resized_cases():
     return {f'{layout}-{width}' for layout in ('autofit', 'fixed')
             for width in ('absolute', 'auto', 'full')}
@@ -257,6 +266,28 @@ def nested_fixed_percent_limit_cases():
             for case in cases for budget in budgets}
 
 
+def nested_fixed_minimum_width_cases():
+    floors = ('all-zero-two', 'all-zero-four', 'zero-absolute', 'zero-absolute-reversed',
+              'one-percent-leading', 'one-percent-trailing', 'one-positive',
+              'zero-overflowed-margin', 'large-absolute-insets', 'zero-leads-near-full',
+              'zero-naive-and-positive')
+    sweep = ('all-zero-margins', 'all-zero-crossed-margins', 'zero-dxa-padding',
+             'zero-dxa-padding-reversed', 'zero-dxa-below-padding', 'zero-dxa-three-columns',
+             'one-twentieth-percent-zero', 'two-percent-zero', 'one-unit-no-zero',
+             'two-percent-no-zero', 'abs-before-both', 'abs-after-both', 'abs-between-both',
+             'abs-interleaved')
+    wide = ('five-absolute-after', 'five-absolute-before', 'five-three-positive', 'five-small-positive',
+            'five-variable-rows', 'six-separated', 'six-four-absolute', 'six-unequal', 'six-zero-only',
+            'six-zero-and-absolute', 'six-zero-mid')
+    return ({f'floor-{case}-{width}-{budget}' for case in floors for width in ('full', 'absolute')
+             for budget in (120, 240, 420, 903, 2701)}
+            | {f'sweep-{case}-full-{budget}' for case in sweep
+               for budget in (110, 119, 120, 139, 159, 160, 161, 179, 180, 181, 223, 239, 240, 246,
+                              249, 319, 320, 321, 420, 903, 2699, 2701, 2702, 2703)}
+            | {f'wide-{case}-full-{budget}' for case in wide
+               for budget in (492, 900, 1300, 2699, 2700, 2701, 2702, 2703, 3103)})
+
+
 def collapsed_border_content_cases():
     regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
                'explicit-zero', 'explicit-small', 'explicit-large')
@@ -269,6 +300,8 @@ def collapsed_border_content_cases():
 CAPTURES = (
     ('manual-page-breaks', 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb',
      'word-windows-edge-page-break-', manual_cases, ()),
+    ('inline-page-breaks', '9be9220a6d45bd73b4f782e57fa8285caa2b34814868c412bea7420e40d7221f',
+     'word-windows-edge-inline-page-break-', inline_page_break_cases, ('--unclipped-tables',)),
     ('styled-page-breaks', '686f4826e19a1af9dbd12296388bb672364e2a6da71f4d0f207d180247785883',
      STYLED_PREFIX, styled_cases, ()),
     ('table-page-breaks', '4ef3859c6fffd2a75cc1a2249c892b6e8bdeebe5d70cc6b7f0df31faf2af8d93',
@@ -345,6 +378,8 @@ CAPTURES = (
      'word-windows-edge-nested-fixed-mixed-widths-', nested_fixed_mixed_width_cases, ('--unclipped-tables',)),
     ('nested-fixed-percent-limits', '8ce176a4901a66104751f232c08cb999536c7476458b71059f2bd1d25054142f',
      'word-windows-edge-nested-fixed-percent-limits-', nested_fixed_percent_limit_cases, ('--unclipped-tables',)),
+    ('nested-fixed-minimum-widths', '25158f06b4546dcb732232609e903b3391a192c5679bd979bb9ff7e7874798c2',
+     'word-windows-edge-nested-fixed-minimum-widths-', nested_fixed_minimum_width_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -376,7 +411,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     fixtures = pages = glyphs = 0
     check_spaced_borders = capture_path.parent.name == 'spaced-table-border-content'
     check_screen = capture_path.parent.name in (
-        'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
+        'inline-page-breaks', 'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
         'nested-table-resize', 'table-cell-border-content', 'nested-table-percent-resize',
         'spaced-table-border-content',
@@ -390,7 +425,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-autofit-host-first', 'nested-autofit-child-margins',
         'nested-autofit-four-column-margins', 'nested-autofit-two-nested-hosts',
         'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
-        'nested-fixed-mixed-widths', 'nested-fixed-percent-limits',
+        'nested-fixed-mixed-widths', 'nested-fixed-percent-limits', 'nested-fixed-minimum-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )
