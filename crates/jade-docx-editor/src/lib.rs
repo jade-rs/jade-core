@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 pub mod canvas_renderer;
+pub(crate) use canvas_renderer::windows_nested_resize_grid;
 pub mod canvas_view;
 pub(crate) mod chart;
 pub mod commands;

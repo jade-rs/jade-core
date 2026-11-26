@@ -7532,12 +7532,12 @@ impl OffscreenDocumentView {
     /// Returns whether it recorded a history entry.
     fn apply_table_resize_drag(&self, drag: &PointerDragState) -> Result<bool, JsValue> {
         enum Resize {
-            Column(ResizeTableColumnCommand),
+            Column(Box<ResizeTableColumnCommand>),
             Row(Box<HeadlessCommand>),
         }
         let resize = match drag {
             PointerDragState::ColumnResize(state) => {
-                Self::column_resize_command(state)?.map(Resize::Column)
+                Self::column_resize_command(state)?.map(|command| Resize::Column(Box::new(command)))
             }
             PointerDragState::RowResize(state) => {
                 Self::row_resize_command(state).map(|command| Resize::Row(Box::new(command)))
@@ -7568,7 +7568,7 @@ impl OffscreenDocumentView {
                 let mut selection_after = state_mut.selection;
                 let mut context = CommandContext::new(&mut word_doc, &mut selection_after);
                 command_executor
-                    .execute(Box::new(command), &mut context)
+                    .execute(command, &mut context)
                     .map(|()| selection_after)
                     .map_err(|err| JsValue::from_str(&err.to_string()))
             }

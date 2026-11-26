@@ -27435,7 +27435,7 @@ impl WordDocument {
     pub(crate) fn nested_resize_column_grid(&self, order: usize) -> Option<(Vec<f32>, f32)> {
         let document = self.document.as_ref()?;
         let table = self.table_by_order(order)?;
-        crate::canvas_renderer::windows_nested_resize_grid(
+        crate::windows_nested_resize_grid(
             &document.body.as_ref()?.elements,
             table,
             self.text_column_width(),
