@@ -512,19 +512,6 @@ pub trait WordToc: WordSession {
 
 impl<T: WordSession + ?Sized> WordToc for T {}
 
-/// 目次 from the headings with outline levels `min` to `max`, as the
-/// ribbon's button and `HeadlessCommand::InsertTableOfContents` build it:
-/// linked entries, page numbers shown, applied outline levels too.
-pub(crate) fn heading_toc_options(min: u8, max: u8) -> TocOptions {
-    TocOptions {
-        outline_min: min,
-        outline_max: max,
-        hyperlinks: true,
-        use_applied_outline_levels: true,
-        ..TocOptions::default()
-    }
-}
-
 /// Where a paragraph of the document after a table of contents was
 /// rebuilt (or inserted) as `after` was at the last layout: the table's
 /// own paragraphs are new (`None`), those after it moved by the change in

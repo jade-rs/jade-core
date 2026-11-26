@@ -200,8 +200,18 @@ impl OffscreenDocumentView {
         &self,
         command: impl FnOnce(SelectionRange) -> Box<dyn Command>,
     ) -> Result<JsValue, JsValue> {
+        self.apply_document_command_at(None, command)
+    }
+
+    /// [`Self::apply_document_command`] whose repaint keeps paragraph
+    /// `anchor`'s page in view (`apply_inline_style_anchored`).
+    pub(super) fn apply_document_command_at(
+        &self,
+        anchor: Option<usize>,
+        command: impl FnOnce(SelectionRange) -> Box<dyn Command>,
+    ) -> Result<JsValue, JsValue> {
         let command = RefCell::new(Some(command));
-        self.apply_inline_style_with_scope(
+        self.apply_inline_style_anchored(
             |_| {},
             |selection| {
                 let make = command
@@ -211,6 +221,7 @@ impl OffscreenDocumentView {
                 make(selection)
             },
             true,
+            anchor,
         )
     }
 

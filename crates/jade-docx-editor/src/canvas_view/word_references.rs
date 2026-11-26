@@ -115,7 +115,7 @@ impl OffscreenDocumentView {
         // The layout completed first and the entries labelled with the
         // number their heading's page displays (`WordToc::build_toc`).
         self.complete_layout()?;
-        self.run_word_session("insert_table_of_contents", move |session| {
+        self.run_word_session_at("insert_table_of_contents", Some(after), move |session| {
             use crate::word::references::toc::WordToc;
             session.build_toc("insert_table_of_contents", None, after, options, leader)
         })
@@ -156,8 +156,15 @@ impl OffscreenDocumentView {
         if !self.document_commands_allowed() {
             return Ok(JsValue::NULL);
         }
+        // The repaint keeps the table's page in view.
+        let at = self
+            .state
+            .borrow()
+            .word_doc
+            .as_ref()
+            .and_then(|document| document.tables_of_contents().get(index).map(|b| b.start));
         self.complete_layout()?;
-        self.run_word_session("replace_table_of_contents", move |session| {
+        self.run_word_session_at("replace_table_of_contents", at, move |session| {
             use crate::word::references::toc::WordToc;
             session.build_toc("replace_table_of_contents", Some(index), 0, options, leader)
         })

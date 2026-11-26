@@ -4260,8 +4260,7 @@ fn apply_headless_commands(
                 outline_min,
                 outline_max,
             } => {
-                let options =
-                    crate::word::references::toc::heading_toc_options(*outline_min, *outline_max);
+                let options = crate::document::TocOptions::headings(*outline_min, *outline_max);
                 let mut ctx = CommandContext::new(word_doc, &mut selection);
                 command_executor
                     .execute(

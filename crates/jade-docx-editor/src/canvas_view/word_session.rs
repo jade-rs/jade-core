@@ -320,6 +320,17 @@ impl OffscreenDocumentView {
         name: &'static str,
         action: impl FnOnce(&mut DetachedSession<'_>) -> Result<T, String> + 'static,
     ) -> Result<JsValue, JsValue> {
+        self.run_word_session_at(name, None, action)
+    }
+
+    /// [`Self::run_word_session`] whose repaint keeps paragraph `anchor`'s
+    /// page in view, as the headless path's does for an edit at the caret.
+    pub(super) fn run_word_session_at<T: serde::Serialize + 'static>(
+        &self,
+        name: &'static str,
+        anchor: Option<usize>,
+        action: impl FnOnce(&mut DetachedSession<'_>) -> Result<T, String> + 'static,
+    ) -> Result<JsValue, JsValue> {
         let facts = Rc::new(self.layout_facts());
         let selection = self.current_selection();
         // Models that edit the package (themes, styles, the glossary) need
@@ -337,7 +348,7 @@ impl OffscreenDocumentView {
         // than running the action (which may read the clock or the layout)
         // again.
         let after: RefCell<Option<crate::word_document::WordDocumentSnapshot>> = RefCell::new(None);
-        let payload = self.apply_document_command(move |_| {
+        let payload = self.apply_document_command_at(anchor, move |_| {
             Box::new(SnapshotEditCommand::new(name, move |document| {
                 let Some(action) = action.borrow_mut().take() else {
                     if let Some(snapshot) = after.borrow().clone() {

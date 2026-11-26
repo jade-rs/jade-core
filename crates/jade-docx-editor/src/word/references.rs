@@ -145,7 +145,7 @@ pub trait WordReferences: WordSession {
             "insert_table_of_contents",
             None,
             after_paragraph,
-            toc::heading_toc_options(1, 3),
+            crate::document::TocOptions::headings(1, 3),
             "dot".to_string(),
         )
     }
