@@ -825,6 +825,7 @@ struct VerticalTextLayout {
     column_ranges: Vec<Range<usize>>,
     column_widths: Rc<[f64]>,
     section_column_pitch: Option<f64>,
+    turn_cell_text: bool,
     column_height: f64,
 }
 
@@ -1611,6 +1612,12 @@ fn vertical_block_placements(
                 .map_or(1, |layout| layout.column_ranges.len().max(1));
             let width = if block.height <= f64::EPSILON {
                 0.0
+            } else if let Some(layout) = paragraph
+                .vertical_layout
+                .as_ref()
+                .filter(|l| l.turn_cell_text)
+            {
+                layout.column_widths.iter().sum()
             } else {
                 count as f64 * paragraph.max_line_width.max(paragraph.line_height).max(1.0)
             };
@@ -5924,6 +5931,7 @@ where
                 column_ranges: std::iter::once(0..paragraph.lines.len()).collect(),
                 column_widths: Rc::from([]),
                 section_column_pitch: None,
+                turn_cell_text: false,
                 column_height: paragraph.height.max(line_height),
             });
             fallback_layout_holder.as_ref().unwrap()
@@ -5935,14 +5943,17 @@ where
             .section_column_pitch
             .unwrap_or_else(|| paragraph.vertical_column_pitch(line_height));
         let exact_section_pitch = section && paragraph.exact_line_spacing;
-        let centered_offset = |glyph_width| {
+        let centered_offset = |column_width: f64, glyph_width| {
             if exact_section_pitch {
                 column_width * 0.2 - glyph_width * 0.5
             } else {
                 (column_width - glyph_width) * 0.5
             }
         };
-        let total_width = column_count as f64 * column_width;
+        let column_widths = layout.turn_cell_text.then_some(&layout.column_widths);
+        let total_width = column_widths.map_or(column_count as f64 * column_width, |widths| {
+            widths.iter().sum()
+        });
         let content_left = x_start + padding_x;
         let content_right = (x_start + cell_width - padding_x).max(content_left);
         let available_width = (content_right - content_left).max(0.0);
@@ -5954,12 +5965,21 @@ where
             TextAlign::Right => base_x += horizontal_free,
         }
 
-        let column_height = layout.column_height.max(line_height);
+        let column_height = if layout.turn_cell_text {
+            layout.column_height
+        } else {
+            layout.column_height.max(line_height)
+        };
         let draw_rotated_columns = direction_uses_rotated_columns(direction, section);
         let turned_angle = if draw_rotated_columns {
             Some(direction_rotation_angle(direction))
         } else if section {
             None
+        } else if layout.turn_cell_text {
+            Some(match axis {
+                VerticalAxis::TopToBottom => FRAC_PI_2,
+                VerticalAxis::BottomToTop => -FRAC_PI_2,
+            })
         } else {
             match direction {
                 TextDirection::TbRl => Some(FRAC_PI_2),
@@ -5989,6 +6009,7 @@ where
             }
         };
 
+        let mut used_width = 0.0;
         for (col_idx, column_range) in layout.column_ranges.iter().enumerate() {
             let selection_column_start = selection_context.and_then(|(index, _)| {
                 self.selection
@@ -5996,20 +6017,29 @@ where
                     .get(index)
                     .map(|p| p.lines.len())
             });
-            let effective_index = match column_flow {
-                ColumnFlow::LeftToRight => col_idx,
-                ColumnFlow::RightToLeft => column_count - 1 - col_idx,
-            };
-            let column_x = base_x + (effective_index as f64) * column_width;
+            let column_width = column_widths
+                .and_then(|widths| widths.get(col_idx).copied())
+                .unwrap_or(column_width);
+            let column_x = base_x
+                + match column_flow {
+                    ColumnFlow::LeftToRight => used_width,
+                    ColumnFlow::RightToLeft => total_width - used_width - column_width,
+                };
+            used_width += column_width;
             if draw_enabled {
                 if let Some(background) = paragraph.background.as_deref() {
                     context.set_fill_style_str(background);
                     context.fill_rect(column_x, block_top, column_width, column_height);
                 }
             }
+            let column = &paragraph.lines[column_range.clone()];
+            let mixed_orientation = layout.turn_cell_text
+                && column
+                    .iter()
+                    .any(|line| windows_upright_table_glyph(direction, &line.text));
             // Turn the column once; per-glyph origins and font baselines stay
             // local to that transform, avoiding a save/rotate/restore per glyph.
-            let _turned_column_guard = if let Some(angle) = turned_angle.filter(|_| draw_enabled) {
+            let turn = |angle| -> Result<_, JsValue> {
                 let guard = StateGuard::new(context);
                 let origin_y = match axis {
                     VerticalAxis::TopToBottom => block_top,
@@ -6020,11 +6050,12 @@ where
                     .map_err(PainterError::into_js_value)?;
                 context.rotate(angle).map_err(PainterError::into_js_value)?;
                 context.set_text_baseline("alphabetic");
-                Some(guard)
-            } else {
-                None
+                Ok(guard)
             };
-            let column = &paragraph.lines[column_range.clone()];
+            let _turned_column_guard = turned_angle
+                .filter(|_| draw_enabled && !mixed_orientation)
+                .map(turn)
+                .transpose()?;
             if draw_enabled && draw_rotated_columns {
                 if let Some(line) = rotated_column_line(paragraph, column, vertical_cell_advance) {
                     let top = match axis {
@@ -6060,6 +6091,13 @@ where
             let mut consumed_before = column.first().map_or(0.0, |line| line.left_inset);
 
             for line in column {
+                let turned_angle = turned_angle.filter(|_| {
+                    !mixed_orientation || !windows_upright_table_glyph(direction, &line.text)
+                });
+                let _turned_glyph_guard = turned_angle
+                    .filter(|_| draw_enabled && mixed_orientation)
+                    .map(turn)
+                    .transpose()?;
                 // A vertical glyph advances by the same measured cell width
                 // used by layout. Painting, selection, hit testing, and the
                 // caret must walk the identical Y geometry; applying separate
@@ -6105,7 +6143,7 @@ where
                         .iter()
                         .map(|glyph| glyph.x + glyph.width)
                         .fold(0.0_f64, f64::max);
-                    let offset = centered_offset(glyph_width);
+                    let offset = centered_offset(column_width, glyph_width);
                     column_x
                         + if exact_section_pitch {
                             offset
@@ -6182,7 +6220,7 @@ where
                         // when it extends beyond the surrounding vertical column.
                         let _guard = StateGuard::new(context);
                         context
-                            .translate(column_x + centered_offset(width), paint_y)
+                            .translate(column_x + centered_offset(column_width, width), paint_y)
                             .map_err(PainterError::into_js_value)?;
                         context
                             .fill_text(&line.text, 0.0, 0.0)
@@ -6353,7 +6391,7 @@ where
                     ));
                 }
 
-                if turned_angle.is_none() {
+                if turned_angle.is_none() && !mixed_orientation {
                     self.draw_selection_highlight(paragraph_index, &selection_line)?;
                 }
                 self.selection.record_line(paragraph_index, selection_line);
@@ -16221,6 +16259,89 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
     cell_filter: Option<&[bool]>,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
 ) -> Result<Vec<PreparedCell>, JsValue> {
+    let prepare = |hint, filter: Option<&[bool]>, cache: &mut NaturalParagraphLayoutCache| {
+        prepare_row_cells(
+            wrap_context,
+            row,
+            table,
+            column_widths,
+            config,
+            hint,
+            row_index,
+            row_count,
+            cache,
+            filter,
+            field_value_for,
+        )
+    };
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        || row.height_rule == Some(TableRowHeightRule::Exact)
+        || !row
+            .cells
+            .iter()
+            .any(|cell| windows_vertical_cell(cell.text_direction))
+    {
+        return prepare(row_height_hint, cell_filter, natural_paragraph_layouts);
+    }
+
+    // Word sizes the row from its horizontal cells before wrapping vertical
+    // text up to that height. A row with only vertical cells uses one column
+    // pitch as its automatic height.
+    let horizontal: Vec<_> = row
+        .cells
+        .iter()
+        .map(|cell| {
+            !cell
+                .text_direction
+                .is_some_and(direction_requires_vertical_stack)
+        })
+        .collect();
+    let mut cells = prepare(
+        row_height_hint,
+        Some(&horizontal),
+        natural_paragraph_layouts,
+    )?;
+    let horizontal_height = cells
+        .iter()
+        .zip(&horizontal)
+        .filter(|(cell, horizontal)| **horizontal && !cell.skip_render)
+        .map(|(cell, _)| cell.height)
+        .reduce(f64::max);
+    let height = resolve_row_height(
+        horizontal_height.unwrap_or(windows_turned_cell_pitch(config.line_height)),
+        config.line_height,
+        row,
+        &cells,
+    );
+    let vertical: Vec<_> = horizontal
+        .iter()
+        .enumerate()
+        .map(|(index, horizontal)| !horizontal && cell_filter.is_none_or(|filter| filter[index]))
+        .collect();
+    let vertical_cells = prepare(Some(height), Some(&vertical), natural_paragraph_layouts)?;
+    for ((cell, vertical_cell), vertical) in cells.iter_mut().zip(vertical_cells).zip(vertical) {
+        if vertical {
+            *cell = vertical_cell;
+        }
+    }
+    Ok(cells)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn prepare_row_cells<P: Painter<Error: PainterError>>(
+    wrap_context: &TableLineWrapContext<'_, P>,
+    row: &TableRow,
+    table: &Table,
+    column_widths: &[f64],
+    config: &LayoutConfig,
+    row_height_hint: Option<f64>,
+    row_index: usize,
+    row_count: usize,
+    natural_paragraph_layouts: &mut NaturalParagraphLayoutCache,
+    cell_filter: Option<&[bool]>,
+    field_value_for: &dyn Fn(&RunField) -> Option<String>,
+) -> Result<Vec<PreparedCell>, JsValue> {
     let mut layouts: Vec<PreparedCell> = Vec::new();
     let mut prefetched_border: Option<(TableStyleCellFormat, CellBorderSpec)> = None;
     let content_height_hint =
@@ -16477,7 +16598,12 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                 .text_direction
                 .is_some_and(direction_requires_vertical_stack)
             {
-                row_height_hint
+                if windows_vertical_cell(cell.text_direction) {
+                    row_height_hint
+                        .map(|height| (height - 2.0 * cell_spacing - padding.vertical()).max(1.0))
+                } else {
+                    row_height_hint
+                }
             } else {
                 content_height_hint
             };
@@ -16876,6 +17002,8 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
                         // mandatory marker after a nested table.
                         let height = if terminal_marker == Some(block_index) {
                             0.0
+                        } else if windows_vertical_cell(cell.text_direction) {
+                            cell_paragraph.height
                         } else {
                             cell_paragraph.height.max(paragraph_line_height)
                                 + cell_paragraph.spacing_before
@@ -18314,7 +18442,21 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
             TextDirection::TbRlV | TextDirection::TbRl | TextDirection::BtLr | TextDirection::TbLrV
         ) {
             // tbLrV stacks like tbRlV; only its columns run left to right.
-            let result = if matches!(dir, TextDirection::TbRlV | TextDirection::TbLrV) {
+            let windows_turn = windows_vertical_cell(Some(dir))
+                && (dir != TextDirection::TbRlV
+                    || styled_runs.iter().all(|run| {
+                        run.properties
+                            .as_ref()
+                            .is_none_or(|properties| properties.east_asian_layout.is_none())
+                    }));
+            let upright =
+                matches!(dir, TextDirection::TbRlV | TextDirection::TbLrV) && !windows_turn;
+            let column_pitch = if windows_turn {
+                windows_turned_cell_pitch(line_height)
+            } else {
+                line_height
+            };
+            let result = if upright {
                 jade_docx_layout::line_wrap::layout_cell_text_vertically(
                     context,
                     text,
@@ -18338,18 +18480,24 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
                     context,
                     columns.to_vec(),
                     available_height,
-                    line_height,
+                    column_pitch,
                     start,
                     paragraph_style,
                 )?
             };
-            let mut lines = result
-                .layout
-                .lines
-                .iter()
-                .map(|wrapped| {
+            let mut lines = Vec::with_capacity(result.layout.lines.len());
+            for (index, range) in result.layout.column_ranges.iter().enumerate() {
+                let pitch = result
+                    .layout
+                    .column_widths
+                    .get(index)
+                    .copied()
+                    .filter(|_| windows_turn)
+                    .unwrap_or(column_pitch);
+                let first = lines.len();
+                for wrapped in &result.layout.lines[range.clone()] {
                     let mut line = build_line_layout_from_wrapped_line(wrapped);
-                    if matches!(dir, TextDirection::TbRlV | TextDirection::TbLrV) {
+                    if upright || windows_turn && windows_upright_table_glyph(dir, &line.text) {
                         line.word_baseline_offset =
                             jade_docx_layout::line_wrap::wrapped_line_max_font_ascent(wrapped);
                         for (glyph, cluster) in line.glyphs.iter_mut().zip(&wrapped.clusters) {
@@ -18361,32 +18509,31 @@ fn layout_paragraph_with_table_context<P: Painter<Error: PainterError>>(
                         line.word_baseline_offset =
                             jade_docx_layout::line_wrap::wrapped_line_turned_baseline_offset(
                                 wrapped,
-                                line_height,
-                                dir == TextDirection::TbRl,
+                                pitch,
+                                dir != TextDirection::BtLr,
                             );
                     }
-                    line
-                })
-                .collect::<Vec<_>>();
-            for (range, offset) in result
-                .layout
-                .column_ranges
-                .iter()
-                .zip(result.column_start_offsets)
-            {
-                lines[range.start].left_inset = offset;
+                    lines.push(line);
+                }
+                lines[first].left_inset = result.column_start_offsets[index];
             }
+            let column_height = if windows_vertical_cell(Some(dir)) {
+                available_height.unwrap_or(result.layout.column_height)
+            } else {
+                result.layout.column_height
+            };
             return Ok(CellParagraph {
                 text: text.to_string(),
                 lines: Rc::new(lines),
                 max_line_width: result.layout.max_line_width,
-                height: result.layout.column_height,
+                height: column_height,
                 line_height,
                 vertical_layout: Some(Box::new(VerticalTextLayout {
                     column_ranges: result.layout.column_ranges,
                     column_widths: result.layout.column_widths.into(),
                     section_column_pitch: None,
-                    column_height: result.layout.column_height,
+                    turn_cell_text: windows_turn,
+                    column_height,
                 })),
                 ..CellParagraph::default()
             });
@@ -18563,6 +18710,7 @@ fn layout_vertical_paragraph_on_grid<C: LineWrapContext>(
         column_ranges: wrapped.column_ranges,
         column_widths: wrapped.column_widths.into(),
         section_column_pitch: None,
+        turn_cell_text: false,
         column_height: wrapped.column_height,
     };
 
@@ -19121,6 +19269,26 @@ fn direction_requires_vertical_stack(direction: TextDirection) -> bool {
             | TextDirection::BtLrV
             | TextDirection::TbLrV
     )
+}
+
+fn windows_vertical_cell(direction: Option<TextDirection>) -> bool {
+    matches!(
+        direction,
+        Some(TextDirection::TbRl | TextDirection::TbRlV | TextDirection::BtLr)
+    ) && jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+}
+
+fn windows_upright_table_glyph(direction: TextDirection, text: &str) -> bool {
+    direction == TextDirection::TbRlV
+        && jade_docx_layout::line_wrap::classify_script(text)
+            == jade_docx_layout::line_wrap::ScriptCategory::EastAsia
+}
+
+fn windows_turned_cell_pitch(line_height: f64) -> f64 {
+    // The Windows Word vertical track has extra leading compared with its
+    // horizontal single-spaced line, across the measured Arial sizes.
+    line_height * 1.0275
 }
 
 fn direction_uses_rotated_columns(direction: TextDirection, section: bool) -> bool {

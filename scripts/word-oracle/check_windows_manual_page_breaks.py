@@ -15,6 +15,9 @@ from check_windows_font_coordinates import require_original_font_programs_regist
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
+from generate_windows_vertical_table_break_cases import (
+    PREFIX as VERTICAL_PREFIX, cases as vertical_cases,
+)
 
 WORD_VERSION = '16.0.19127.20936'
 FIXTURES = ROOT / 'public/fixtures'
@@ -26,6 +29,8 @@ CAPTURES = (
      STYLED_PREFIX, styled_cases, ()),
     ('table-page-breaks', '4ef3859c6fffd2a75cc1a2249c892b6e8bdeebe5d70cc6b7f0df31faf2af8d93',
      TABLE_PREFIX, table_cases, ('--painted-table-headers',)),
+    ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
+     VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
 )
 
 
@@ -91,7 +96,16 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
                 # The snapshot stores list labels in a separate collection.
                 # Match its complete glyph set by page and origin. The vector
                 # PDF also carries the visible reading order.
-                compare(word, snapshot, f'{name} layout origins')
+                if '--unclipped-tables' in native_options:
+                    full_word = pdf_origins(word_pdf, unclipped=True)
+                    compare(full_word, snapshot, f'{name} unclipped layout origins')
+                    full_painted = pdf_origins(native_pdf, unclipped=True)
+                    # Removing clip paths can change extraction order. Compare
+                    # those extra glyphs by page and origin, and assert the
+                    # printed reading order using the visible projection.
+                    compare(full_word, full_painted, f'{name} unclipped vector PDF')
+                else:
+                    compare(word, snapshot, f'{name} layout origins')
                 assert_pending_pdf_text(word, painted, f'{name} vector PDF')
                 compare(word, painted, f'{name} vector PDF')
             except (ValueError, subprocess.SubprocessError) as error:

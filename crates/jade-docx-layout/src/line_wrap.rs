@@ -6520,9 +6520,12 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
     let mut column_ranges = Vec::with_capacity(wrapped.len());
     let mut offsets = Vec::with_capacity(wrapped.len());
     let mut natural_height = line_height;
+    let windows = style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows;
+    let mut column_widths = Vec::new();
     let mut glyph_style: Option<Rc<ResolvedRunStyle>> = None;
     let mut glyph_properties: Option<Rc<RunProperties>> = None;
     for (column_index, column) in wrapped.iter_mut().enumerate() {
+        let mut column_pitch = None;
         let offset = start_indent + style.line_indent(column_index);
         natural_height = natural_height.max(
             offset + column.clusters.iter().map(|c| c.width).sum::<f64>() + style.right_indent,
@@ -6550,6 +6553,11 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
                 let resolved = glyph_style.as_ref().expect("resolved turned run");
                 let (descriptor, _, _) = resolved
                     .descriptor_key_for_grapheme(&cluster.text, classify_script(&cluster.text));
+                if windows {
+                    let pitch = crate::line_metrics::windows_word_turned_cell_pitch_px(descriptor)
+                        .unwrap_or(line_height);
+                    column_pitch = Some(column_pitch.map_or(pitch, |prior: f64| prior.max(pitch)));
+                }
                 if let (Some(layout), Some((ascent, descent))) = (
                     cluster.layout.as_mut(),
                     crate::line_metrics::word_vertical_glyph_metrics_px(descriptor),
@@ -6597,6 +6605,9 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
         }
         column_ranges.push(first..lines.len());
         offsets.push(offset);
+        if windows {
+            column_widths.push(column_pitch.unwrap_or(line_height));
+        }
     }
     Ok(VerticalCellLayout {
         layout: VerticalWrappedLayout {
@@ -6604,7 +6615,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
             column_ranges,
             column_height: available_height.unwrap_or(natural_height).max(line_height),
             max_line_width: line_height,
-            column_widths: Vec::new(),
+            column_widths,
         },
         column_start_offsets: offsets,
     })

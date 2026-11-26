@@ -4319,6 +4319,21 @@ pub fn word_vertical_glyph_metrics_px(font_descriptor: &str) -> Option<(f64, f64
     word_font_vertical_metrics_px(font_descriptor)
 }
 
+/// Windows Word's turned table columns include leading across the vertical
+/// writing axis. These face-specific em ratios are stable across point sizes.
+pub(crate) fn windows_word_turned_cell_pitch_px(font_descriptor: &str) -> Option<f64> {
+    let (_, family) = split_font_descriptor(font_descriptor)?;
+    let family = metric_family_for_platform(family.trim_matches(['\'', '"']));
+    let ratio = match family {
+        "Arial" | "Times New Roman" => 2420.0 / 2048.0,
+        "Aptos" | "Aptos Display" | "Calibri" => 2564.0 / 2048.0,
+        "MS Mincho" => 344.0 / 256.0,
+        "Yu Gothic" => 3510.0 / 2048.0,
+        _ => return None,
+    };
+    Some(font_em_px(font_descriptor)? * ratio)
+}
+
 /// [`word_latin_font_line_height_em`] for a CSS font shorthand, in points.
 pub fn word_latin_font_line_height_pt(font_descriptor: &str) -> Option<f32> {
     let (size_pt, family) = split_font_descriptor(font_descriptor)?;
