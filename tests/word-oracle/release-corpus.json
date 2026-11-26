@@ -12880,6 +12880,54 @@
       "docx_sha256": "e5130d21727c508135a106b9b871957491077e8c08dd523505d8ca6cdac3c52c"
     },
     {
+      "fixture": "word-windows-edge-nested-percent-resized-w2059-compat12",
+      "docx_sha256": "8fc80d7d2128c9fa8877ba2f58d7d40fce0869f35a5b0c604d7b8970dbf77fd6"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2059-compat14",
+      "docx_sha256": "85482fbf0d3c603a6f7952a65762dac06ccb9972c1c53088d71c03525ee78bf2"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2059-compat15",
+      "docx_sha256": "8395d1d42a1b7728585a29d71c3cbbde1ba25d889403132a56717b75215f030b"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2060-compat12",
+      "docx_sha256": "bf16bec54c18502aa7f62817a59623e30cbac7bdbdbc0b480079d1436609a1d8"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2060-compat14",
+      "docx_sha256": "caf37be815a8a6a2bebfb56ece86688dc74eb36980f726af083faabd86c29f25"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2060-compat15",
+      "docx_sha256": "52fc330cab7a52bd329806ce1c3bf1bd038a48c03409a227c5a218b60cbe64e3"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2061-compat12",
+      "docx_sha256": "7a69ed9ebdb3e9237090f2c9f29ebf2c1d56086b965209dae95b989e4588233a"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2061-compat14",
+      "docx_sha256": "958b645f3595afffced9a425584fcfc43c2e166eadb88140c2d4930d849c59c8"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2061-compat15",
+      "docx_sha256": "1b3ac732b6e66ccd1d67a58aad28cdec4e2f0cc146487898f51ed38a889b746d"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2160-compat12",
+      "docx_sha256": "e8c385fa1e118f8c7cc49f597052ecfc555fd95246d5750895a9a6c0c2284d33"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2160-compat14",
+      "docx_sha256": "9567f2a88e1c2e570758802f19ef0a06ca080e9a19e1de6141c49f865e801b77"
+    },
+    {
+      "fixture": "word-windows-edge-nested-percent-resized-w2160-compat15",
+      "docx_sha256": "50ccff7cd795be27f4f8a2a646cf3134b4784c4aa0c664e229f25e6426987c44"
+    },
+    {
       "fixture": "word-windows-edge-vertical-table-break-extended-latin-bottom-up-compat12",
       "docx_sha256": "b8f198f3e58e2d67a4ade56baea22668c2887b4dc71c87cd05c8fe4b66f88df3"
     },

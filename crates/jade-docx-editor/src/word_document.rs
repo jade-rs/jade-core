@@ -27460,15 +27460,19 @@ impl WordDocument {
         let resized = match Self::parse_table_width_spec(width) {
             Ok(TableWidthSpec::Points(_)) => format!("{total:.2}pt"),
             Ok(TableWidthSpec::Percent(percent)) => {
-                let resized = if let Some(previous) =
-                    previous_rendered_width.filter(|w| w.is_finite() && *w > 0.0)
-                {
-                    percent * total / previous
+                let frame = previous_rendered_width
+                    .filter(|_| percent > 0.0)
+                    .map(|previous| previous * 100.0 / percent)
+                    .filter(|width| width.is_finite() && *width > 0.0)
+                    .unwrap_or(cell_frame_width);
+                // Word saves an absolute width as soon as the new grid
+                // exceeds the enclosing cell's frame by a whole twip.
+                if (total * 20.0).round() > (frame * 20.0).round() {
+                    format!("{total:.2}pt")
                 } else {
-                    100.0 * total / cell_frame_width
-                };
-                // Use the same fiftieths of a percent as tblW in the model.
-                format!("{:.2}%", (resized * 50.0).round() / 50.0)
+                    // Use the same fiftieths of a percent as tblW in the model.
+                    format!("{:.2}%", (5000.0 * total / frame).round() / 50.0)
+                }
             }
             _ => return Ok(()),
         };

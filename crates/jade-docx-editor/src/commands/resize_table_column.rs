@@ -224,21 +224,32 @@ impl Command for ResizeTableColumnCommand {
             (table.node_id, table.columns.clone())
         };
 
+        // Word refreshes a stale saved grid even for a zero-distance resize,
+        // but keeps the independent cell and table width preferences.
+        let same_displayed_widths = sizing.as_ref().is_some_and(|(previous, _)| {
+            previous.len() == columns_snapshot.len()
+                && columns_snapshot
+                    .iter()
+                    .zip(previous)
+                    .all(|(column, width)| column.width == Some(whole_twips(*width)))
+        });
         let result = (|| {
             ctx.document
                 .sync_table_grid(table_id, &columns_snapshot)
                 .map_err(|err| CommandError::Custom(err.to_string()))?;
-            ctx.document
-                .sync_table_cell_widths(order)
-                .map_err(CommandError::Custom)?;
-            if let Some((_, frame)) = sizing {
+            if !same_displayed_widths {
                 ctx.document
-                    .sync_resized_nested_table_width(order, frame, self.previous_rendered_width)
+                    .sync_table_cell_widths(order)
                     .map_err(CommandError::Custom)?;
-            } else {
-                ctx.document
-                    .sync_table_layout(table_id, Some(TableLayoutMode::Fixed))
-                    .map_err(|err| CommandError::Custom(err.to_string()))?;
+                if let Some((_, frame)) = sizing {
+                    ctx.document
+                        .sync_resized_nested_table_width(order, frame, self.previous_rendered_width)
+                        .map_err(CommandError::Custom)?;
+                } else {
+                    ctx.document
+                        .sync_table_layout(table_id, Some(TableLayoutMode::Fixed))
+                        .map_err(|err| CommandError::Custom(err.to_string()))?;
+                }
             }
             Ok(())
         })();

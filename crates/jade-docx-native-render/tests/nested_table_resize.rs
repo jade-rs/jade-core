@@ -52,6 +52,7 @@ fn nested_right_edge_resize_matches_word_and_round_trips() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
     verify_resizes("nested-table-resize", 18);
     verify_resizes("table-cell-border-content", 39);
+    verify_resizes("nested-table-percent-resize", 12);
 }
 
 fn verify_resizes(capture: &str, expected_cases: usize) {
@@ -88,7 +89,7 @@ fn verify_resizes(capture: &str, expected_cases: usize) {
             HeadlessCommand::ResizeTableColumnRightEdge {
                 table_order_index: 1,
                 column_index: 1,
-                new_width: 65.0,
+                new_width: case["new_width_pt"].as_f64().unwrap_or(65.0) as f32,
             },
             false,
         )
