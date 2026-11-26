@@ -384,10 +384,14 @@ impl<'a> Evaluation<'a> {
 
     /// What a PAGE field shows for a physical page in a list (INDEX, TOA,
     /// PAGEREF `\p`): the layout's label, else the page itself.
-    fn page_text(&self, physical: usize) -> String {
-        self.page_label(physical)
-            .map(|label| label.text.clone())
-            .unwrap_or_else(|| physical.to_string())
+    /// `None` for a page past those a layout finished: the field keeps
+    /// its result, as PAGE and PAGEREF do.
+    fn page_text(&self, physical: usize) -> Option<String> {
+        match self.page_label(physical) {
+            Some(label) => Some(label.text.clone()),
+            None if self.env.page_labels_from_layout => None,
+            None => Some(physical.to_string()),
+        }
     }
 
     /// The PAGE value of `paragraph`'s page and how to show it: the
@@ -397,6 +401,10 @@ impl<'a> Evaluation<'a> {
         let physical = (self.page_of)(paragraph)?;
         if let Some(label) = self.page_label(physical) {
             return Some(PageNumber::Label(label.clone()));
+        }
+        if self.env.page_labels_from_layout {
+            // Past the pages the layout finished: not known yet.
+            return None;
         }
         let section = self.story.paragraphs.get(paragraph)?.section;
         let numbering = self.story.sections.get(section);
@@ -799,7 +807,9 @@ impl<'a> Evaluation<'a> {
                         if target == own {
                             return Evaluated::Final(self.relative_word(bookmark.paragraph < here));
                         }
-                        let target = self.page_text(target);
+                        let Some(target) = self.page_text(target) else {
+                            return Evaluated::Keep;
+                        };
                         return Evaluated::Final(if japanese {
                             format!("{target} ページ")
                         } else {
@@ -1540,11 +1550,14 @@ impl<'a> Evaluation<'a> {
         for ((_, main), sub, mut pages) in grouped {
             pages.sort_unstable();
             pages.dedup();
-            let pages = pages
+            let Some(pages) = pages
                 .iter()
                 .map(|page| self.page_text(*page))
-                .collect::<Vec<_>>()
-                .join(&list_separator);
+                .collect::<Option<Vec<_>>>()
+            else {
+                return Evaluated::Keep;
+            };
+            let pages = pages.join(&list_separator);
             match sub {
                 Some(sub) => {
                     if last_main.as_deref() != Some(main.as_str()) {
@@ -1616,13 +1629,17 @@ impl<'a> Evaluation<'a> {
                     pages
                         .iter()
                         .map(|page| self.page_text(*page))
-                        .collect::<Vec<_>>()
+                        .collect::<Option<Vec<_>>>()?
                         .join(", ")
                 };
-                format!("{name}{separator}{pages}")
+                Some(format!("{name}{separator}{pages}"))
             })
-            .collect();
-        Evaluated::Paragraphs(lines)
+            .collect::<Option<Vec<_>>>();
+        match lines {
+            Some(lines) => Evaluated::Paragraphs(lines),
+            // A page past those the layout finished: keep the table.
+            None => Evaluated::Keep,
+        }
     }
 }
 

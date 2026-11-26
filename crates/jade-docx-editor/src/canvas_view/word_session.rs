@@ -29,6 +29,10 @@ pub(super) struct LayoutFacts {
     paragraph_pages: HashMap<usize, usize>,
     /// `CanvasRenderer::displayed_page_labels`, page 1 first.
     page_labels: Vec<crate::fields::PageLabel>,
+    /// `CanvasRenderer::has_page_labels`.
+    has_page_labels: bool,
+    /// Whether the layout reached the end of the document.
+    layout_complete: bool,
 }
 
 /// Where an action left the selection, and what it returned.
@@ -139,6 +143,17 @@ impl WordSession for DetachedSession<'_> {
             .and_then(|index| self.facts.page_labels.get(index))
             .cloned()
     }
+
+    fn has_page_labels(&self) -> bool {
+        self.facts.has_page_labels
+    }
+
+    /// The facts were read before the action ran, and the session cannot
+    /// lay the document out itself: a host that runs a page-number command
+    /// completes the layout first (`OffscreenDocumentView::complete_layout`).
+    fn complete_layout(&mut self) -> bool {
+        self.facts.layout_complete
+    }
 }
 
 impl OffscreenDocumentView {
@@ -177,7 +192,53 @@ impl OffscreenDocumentView {
             page_count: Some(renderer.page_count()).filter(|count| *count > 0),
             paragraph_pages,
             page_labels: renderer.displayed_page_labels(),
+            has_page_labels: renderer.has_page_labels(),
+            layout_complete: renderer.last_layout_complete(),
         }
+    }
+
+    /// Lays the document out through its end, without drawing, when the last
+    /// layout stopped short (a lazily opened document lays out only what the
+    /// viewport needs): what F9 and a table of contents' page numbers read
+    /// first, so every page has its number. Returns whether the layout is
+    /// complete afterwards.
+    pub(super) fn complete_layout(&self) -> Result<bool, JsValue> {
+        if self.renderer.borrow().last_layout_complete() {
+            return Ok(true);
+        }
+        let (options, document, numbering_part, header_lines, footer_lines, comments) = {
+            let state = self.state.borrow();
+            let Some(word_doc) = state.word_doc.as_ref() else {
+                return Ok(false);
+            };
+            (
+                state.options.clone(),
+                word_doc.document.as_ref().map(Rc::clone),
+                word_doc.numbering_part.clone(),
+                word_doc.header_lines.clone(),
+                word_doc.footer_lines.clone(),
+                word_doc.comments.clone(),
+            )
+        };
+        let previous_limit = self.renderer.borrow().layout_page_limit();
+        // The command that follows repaints, and its render waits for the
+        // images this pass started, as `ensureLayoutThroughPage`'s caller
+        // waits for them.
+        let (_, _, complete) = self.extend_layout(
+            None,
+            false,
+            &options,
+            document,
+            numbering_part,
+            header_lines,
+            footer_lines,
+            comments,
+        )?;
+        // The host's lazy-layout limit stays its own.
+        self.renderer
+            .borrow_mut()
+            .set_layout_page_limit(previous_limit);
+        Ok(complete)
     }
 
     /// Reads from the document as a session: what a dialog opens on.

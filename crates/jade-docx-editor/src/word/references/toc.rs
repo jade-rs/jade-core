@@ -293,10 +293,18 @@ pub trait WordToc: WordSession {
     /// 目次の更新: the table at the caret (or the first) made again, or —
     /// `page_numbers_only` — its page numbers brought up to date with its
     /// entries left as they are. One undo step.
-    fn update_toc(&mut self, page_numbers_only: bool) -> Result<(), String> {
+    ///
+    /// The session lays the document out through its end first
+    /// ([`WordSession::complete_layout`]). Returns how many entries were
+    /// left without a page number because their page was still not laid
+    /// out (a session that cannot complete its layout): an update that
+    /// wrote every number returns 0.
+    fn update_toc(&mut self, page_numbers_only: bool) -> Result<usize, String> {
         let index = self
             .toc_to_update()
             .ok_or_else(|| "更新する目次がありません".to_string())?;
+        self.complete_layout();
+        let labelled = self.has_page_labels();
         if !page_numbers_only {
             // The rebuilt entries' PAGEREFs get the number their heading's
             // page displays at the last layout, as Word writes it. A
@@ -308,15 +316,22 @@ pub trait WordToc: WordSession {
             // the rebuild. When the table's new length moves headings to
             // other pages, the numbers are stale until the next update of
             // page numbers (Word lays out again first).
-            let labels = self.paragraph_page_labels();
+            let labels = if labelled {
+                self.paragraph_page_labels()
+            } else {
+                HashMap::new()
+            };
             let before = self.word_document().tables_of_contents()[index].clone();
-            return edit_document(
+            let skipped = std::rc::Rc::new(std::cell::Cell::new(0));
+            let counted = std::rc::Rc::clone(&skipped);
+            edit_document(
                 self,
                 "update_table_of_contents",
                 true,
                 move |document, _| {
                     document.update_table_of_contents_at(index)?;
-                    if labels.is_empty() {
+                    counted.set(0);
+                    if !labelled {
                         return Ok(());
                     }
                     let after = document.tables_of_contents()[index].clone();
@@ -331,39 +346,53 @@ pub trait WordToc: WordSession {
                             None
                         }
                     };
-                    let pages = toc_page_references(document, &after)
-                        .into_iter()
-                        .filter_map(|(name, paragraph)| {
-                            let label = labels.get(&laid_out_paragraph(paragraph)?)?;
-                            Some((name, label.clone()))
-                        })
-                        .collect();
+                    let mut pages = HashMap::new();
+                    for (name, paragraph) in toc_page_references(document, &after) {
+                        match laid_out_paragraph(paragraph).and_then(|p| labels.get(&p)) {
+                            Some(label) => {
+                                pages.insert(name, label.clone());
+                            }
+                            None => counted.set(counted.get() + 1),
+                        }
+                    }
                     document.refresh_toc_page_numbers(index, &pages).map(|_| ())
                 },
-            );
+            )?;
+            return Ok(skipped.get());
         }
         // Each entry's bookmark, and the number the page its paragraph is on
         // now displays (its section's restart and format, as Word writes;
-        // the physical page without a layout's labels).
+        // the physical page without a layout's labels). An entry on a page
+        // the layout did not reach is left as it is.
         let document = self.word_document();
         let block = document.tables_of_contents()[index].clone();
-        let pages = toc_page_references(document, &block)
-            .into_iter()
-            .filter_map(|(name, paragraph)| {
-                let page = self.paragraph_page(paragraph)?;
-                let label = self
-                    .page_label(page)
-                    .map_or_else(|| page.to_string(), |label| label.text);
-                Some((name, label))
-            })
-            .collect();
+        let mut skipped = 0;
+        let mut pages = HashMap::new();
+        for (name, paragraph) in toc_page_references(document, &block) {
+            let label = match self.paragraph_page(paragraph) {
+                Some(page) => match self.page_label(page) {
+                    Some(label) => Some(label.text),
+                    None if labelled => None,
+                    None => Some(page.to_string()),
+                },
+                None => None,
+            };
+            match label {
+                Some(label) => {
+                    pages.insert(name, label);
+                }
+                None if labelled => skipped += 1,
+                None => {}
+            }
+        }
         edit_document(self, "update_page_numbers", true, move |document, _| {
             document.refresh_toc_page_numbers(index, &pages).map(|_| ())
-        })
+        })?;
+        Ok(skipped)
     }
 
     /// The label of the page each laid-out paragraph starts on, by
-    /// paragraph index; empty when the session has no page labels.
+    /// paragraph index, for the paragraphs on labelled pages.
     fn paragraph_page_labels(&self) -> HashMap<usize, String> {
         let mut by_page: HashMap<usize, Option<String>> = HashMap::new();
         (0..self.word_document().paragraph_count())

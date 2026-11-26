@@ -183,6 +183,7 @@ impl OffscreenDocumentView {
             page_count: Some(renderer.page_count()).filter(|count| *count > 0),
             paragraph_pages,
             page_labels: renderer.displayed_page_labels(),
+            page_labels_from_layout: renderer.has_page_labels(),
             prompt_answers: answers,
             ..FieldEnvironment::default()
         }
@@ -276,6 +277,10 @@ impl OffscreenDocumentView {
             serde_wasm_bindgen::from_value(answers)
                 .map_err(|error| JsValue::from_str(&format!("invalid field answers: {error}")))?
         };
+        // Every page's number first: a lazily laid out document has only
+        // the pages the viewport needed. A page left unlaid keeps its
+        // fields' results.
+        self.complete_layout()?;
         let env = self.field_environment(answers);
         self.apply_document_command(move |_| Box::new(FieldCommand::update(scope, env)))
     }

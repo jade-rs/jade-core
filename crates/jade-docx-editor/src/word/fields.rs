@@ -1108,11 +1108,15 @@ pub trait WordFields: WordSession {
                 paragraph_pages.insert(paragraph, page);
             }
         }
-        // Every page's label, or none: a partial list would number some
-        // pages from the layout and others from the story.
+        // The labels of the pages the last layout finished, page 1 first.
+        // Evaluation leaves a PAGE or PAGEREF on a later page as it is.
         let page_labels = self
             .page_count()
-            .and_then(|count| (1..=count).map(|page| self.page_label(page)).collect())
+            .map(|count| {
+                (1..=count)
+                    .map_while(|page| self.page_label(page))
+                    .collect()
+            })
             .unwrap_or_default();
         let folder = host
             .file
@@ -1153,6 +1157,7 @@ pub trait WordFields: WordSession {
             page_count: self.page_count(),
             paragraph_pages,
             page_labels,
+            page_labels_from_layout: self.has_page_labels(),
             prompt_answers: answers,
             read_file,
             japanese: host.japanese,
@@ -1181,6 +1186,9 @@ pub trait WordFields: WordSession {
         host: &FieldHost,
         answers: HashMap<String, String>,
     ) -> Result<(), String> {
+        // Every page's number first; a page the session cannot lay out
+        // keeps its fields' results.
+        self.complete_layout();
         let environment = self.field_environment(host, answers);
         self.execute_command(Box::new(FieldCommand::update(scope, environment)), true)
     }

@@ -289,6 +289,10 @@ struct LaidOutSession {
     executor: crate::commands::CommandExecutor,
     /// Whether the session reports the renderer's page labels.
     labels: bool,
+    /// Whether `complete_layout` may lay the rest of the document out, as
+    /// a host with its renderer at hand can; a session over a snapshot of
+    /// the layout cannot.
+    can_layout: bool,
 }
 
 impl crate::word::WordSession for LaidOutSession {
@@ -361,6 +365,19 @@ impl crate::word::WordSession for LaidOutSession {
             .get(page.checked_sub(1)?)
             .cloned()
     }
+    fn has_page_labels(&self) -> bool {
+        self.labels && self.renderer.has_page_labels()
+    }
+    fn complete_layout(&mut self) -> bool {
+        if self.can_layout && !self.renderer.last_layout_complete() {
+            let model = self.document.document.clone().expect("document");
+            self.renderer.set_layout_page_limit(None);
+            self.renderer
+                .render(&model, &Options::default())
+                .expect("complete the layout");
+        }
+        self.renderer.last_layout_complete()
+    }
 }
 
 /// Updating a table of contents' page numbers writes the number the
@@ -397,6 +414,7 @@ fn updating_toc_page_numbers_writes_the_displayed_number() {
         )),
         executor: crate::commands::CommandExecutor::new(),
         labels: true,
+        can_layout: true,
     };
     assert_eq!(session.paragraph_page(3), Some(2));
     session.update_toc(true).expect("update the page numbers");
@@ -441,6 +459,7 @@ fn laid_out_session(body: &str) -> LaidOutSession {
         )),
         executor: crate::commands::CommandExecutor::new(),
         labels: true,
+        can_layout: true,
     }
 }
 
@@ -573,23 +592,7 @@ fn rebuilding_a_toc_without_labels_keeps_its_placeholders() {
 /// a pixel-only rerender of page 1 stops its walk on page 2 while still in
 /// A.
 fn session_after_rerender() -> LaidOutSession {
-    let filler: String = (0..60)
-        .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
-        .collect();
-    let tail: String = (0..60)
-        .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
-        .collect();
-    let body = format!(
-        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T(</w:t></w:r><w:bookmarkEnd w:id="0"/>{}<w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
-        complex_field("PAGEREF target \\h", "9"),
-        section_properties("nextPage", ""),
-        complex_field("PAGE", "9"),
-        section_properties(
-            "continuous",
-            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
-        ),
-    );
-    let mut session = laid_out_session(&body);
+    let mut session = laid_out_session(&shared_page_toc_body());
     let labels = |session: &LaidOutSession| -> Vec<String> {
         session
             .renderer
@@ -610,6 +613,28 @@ fn session_after_rerender() -> LaidOutSession {
         .expect("pixel rerender");
     assert_eq!(labels(&session), ["1", "vii", "viii", "ix"]);
     session
+}
+
+/// A TOC whose entry points at the first paragraph (with a PAGE field) of
+/// a continuous lower-roman section from 7 that starts on page 2, shared
+/// with the decimal section before it: labels 1, vii, viii, ix.
+fn shared_page_toc_body() -> String {
+    let filler: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
+        .collect();
+    let tail: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
+        .collect();
+    format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Chapter</w:t></w:r><w:r><w:tab/></w:r>{}<w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>T(</w:t></w:r><w:bookmarkEnd w:id="0"/>{}<w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
+        complex_field("PAGEREF target \\h", "9"),
+        section_properties("nextPage", ""),
+        complex_field("PAGE", "9"),
+        section_properties(
+            "continuous",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+    )
 }
 
 /// A pixel-only rerender leaves the labels the last full layout recorded,
@@ -645,8 +670,8 @@ fn f9_after_a_pixel_rerender_writes_the_laid_out_label() {
 /// from 7, C from 50. A TOC entry in A points at C's first paragraph,
 /// which holds a PAGE field. After a full layout, sections B and C switch
 /// to upper-case letters from 3, and one pass lays out only the first
-/// three pages. Labels past the page that pass stopped on come from the
-/// last full layout's page owners, numbered with the new formats.
+/// three pages. Only the pages that pass finished have labels, numbered
+/// with the new formats; later pages have none until a pass reaches them.
 fn session_after_numbering_edit() -> LaidOutSession {
     let paragraphs = |prefix: &str, count: usize| -> String {
         (0..count)
@@ -696,32 +721,28 @@ fn session_after_numbering_edit() -> LaidOutSession {
     session.renderer.set_layout_page_limit(None);
     assert!(!session.renderer.last_layout_complete);
     let after = labels(&session);
-    assert_eq!(after.len(), before.len(), "{after:?}");
-    assert_eq!(after[c_first], "C", "{after:?}");
-    assert!(
-        after
-            .iter()
-            .all(|label| !label.chars().any(|c| c.is_ascii_digit())
-                || label == "1"
-                || label == "2"),
-        "only A's pages are decimal: {after:?}"
-    );
+    let truth = ["1", "2", "C", "D", "E", "F", "C", "D"];
+    assert_eq!(before.len(), truth.len(), "{before:?}");
+    assert!(after.len() < c_first, "{after:?}");
+    assert_eq!(after, truth[..after.len()], "{after:?}");
+    assert!(!after.is_empty());
     session
 }
 
 /// After a numbering-only edit and an incomplete pass, updating the TOC's
-/// page numbers writes C's new first number, not the old "50".
+/// page numbers first lays the rest of the document out, so the entry on
+/// C's first page gets "C".
 #[test]
-fn a_toc_update_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
+fn a_toc_update_after_a_limited_pass_completes_the_layout_first() {
     use crate::word::references::toc::WordToc;
     let mut session = session_after_numbering_edit();
-    session.update_toc(true).expect("update the page numbers");
+    assert_eq!(session.update_toc(true), Ok(0));
     assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tC");
 }
 
 /// The same for F9: the PAGE field on C's first page shows "C".
 #[test]
-fn f9_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
+fn f9_after_a_limited_pass_completes_the_layout_first() {
     use crate::word::fields::{FieldHost, WordFields};
     let mut session = session_after_numbering_edit();
     session
@@ -736,6 +757,94 @@ fn f9_after_a_numbering_edit_and_a_limited_pass_writes_the_new_label() {
         paragraphs.iter().any(|text| text == "T(C)"),
         "{paragraphs:?}"
     );
+}
+
+/// A session that cannot lay out the rest leaves the entry and the field on
+/// the page past the stop as they were, and says how many it left.
+#[test]
+fn without_a_complete_layout_unfinished_pages_are_left_and_counted() {
+    use crate::word::fields::{FieldHost, WordFields};
+    use crate::word::references::toc::WordToc;
+    let mut session = session_after_numbering_edit();
+    session.can_layout = false;
+    assert_eq!(session.update_toc(true), Ok(1));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t9");
+    // F9 over the whole document also rebuilds the table (which finds no
+    // headings here); only the PAGE field matters below.
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(
+        paragraphs.iter().any(|text| text == "T(9)"),
+        "{paragraphs:?}"
+    );
+}
+
+/// From the review's probe: a stable one-character edit on page 1, armed
+/// as the lazy view arms stable-height commands, stops its walk on the
+/// edit page. It moved no page, so the labels stay, and a session that
+/// cannot lay out further still writes "vii".
+#[test]
+fn a_toc_update_after_a_stable_edit_on_page_one_writes_the_laid_out_label() {
+    use crate::word::references::toc::WordToc;
+    let mut session = laid_out_session(&shared_page_toc_body());
+    session.can_layout = false;
+    let mut model: Document = (**session.document.document.as_ref().expect("document")).clone();
+    if let Some(body) = model.body.as_mut() {
+        if let BodyElement::Paragraph(paragraph) = &mut body.elements[1] {
+            paragraph.runs.first_mut().expect("run").text.push('x');
+        }
+    }
+    let height = session
+        .renderer
+        .cached_paragraph_height(1)
+        .expect("laid out");
+    session.renderer.clear_dirty_regions();
+    session.renderer.set_incremental_dirty_from(1);
+    session.renderer.set_fast_replay_trigger(1, height);
+    session
+        .renderer
+        .render(&model, &Options::default())
+        .expect("the edit");
+    assert!(session.renderer.last_fast_replay_stable());
+    assert!(!session.renderer.last_layout_complete());
+    assert_eq!(session.update_toc(true), Ok(0));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tvii");
+}
+
+/// A lazily opened document laid out only through page 1: updating the
+/// TOC lays the rest out first and writes "vii" for the entry on page 2.
+#[test]
+fn a_toc_update_in_a_lazy_layout_completes_it_first() {
+    use crate::word::references::toc::WordToc;
+    let data = package(&shared_page_toc_body(), "<w:r><w:t>F</w:t></w:r>");
+    let document =
+        futures::executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&document);
+    let model = document.document.clone().expect("document");
+    renderer.set_layout_page_limit(Some(1));
+    renderer
+        .render(&model, &Options::default())
+        .expect("render page 1");
+    assert!(!renderer.last_layout_complete());
+    let mut session = LaidOutSession {
+        document,
+        renderer,
+        selection: Some(jade_selection::SelectionRange::collapsed(
+            jade_selection::TextPosition::new(0, 0),
+        )),
+        executor: crate::commands::CommandExecutor::new(),
+        labels: true,
+        can_layout: true,
+    };
+    assert_eq!(session.update_toc(true), Ok(0));
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\tvii");
 }
 
 /// Print ranges and the TOC read the same labels after a pixel rerender.
@@ -756,4 +865,274 @@ fn print_range_labels_agree_with_displayed_labels_after_a_rerender() {
         .collect();
     assert_eq!(printed, displayed);
     assert_eq!(displayed, [1, 7, 8, 9]);
+}
+
+/// From the review's probe: a section is added or removed before the
+/// stop, then a pass lays out one or three pages (with and without a
+/// dirty hint). The labels it leaves are a prefix of what a fresh full
+/// layout gives: nothing provisional is handed out for later pages.
+#[test]
+fn labels_after_a_structural_edit_and_a_limited_pass_are_a_prefix_of_the_truth() {
+    let paragraphs = |prefix: &str, from: usize, to: usize| -> String {
+        (from..to)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = |split: bool, break_b: &str| -> String {
+        let a = if split {
+            format!(
+                "{}<w:p><w:pPr>{}</w:pPr><w:r><w:t>a10</w:t></w:r></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>",
+                paragraphs("a", 0, 10),
+                section_properties("nextPage", ""),
+                paragraphs("a", 11, 60),
+                section_properties("continuous", ""),
+            )
+        } else {
+            format!(
+                "{}<w:p><w:pPr>{}</w:pPr></w:p>",
+                paragraphs("a", 0, 60),
+                section_properties("nextPage", ""),
+            )
+        };
+        format!(
+            "{a}{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}",
+            paragraphs("b", 0, 120),
+            section_properties(break_b, r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#),
+            paragraphs("c", 0, 70),
+            section_properties("nextPage", r#"<w:pgNumType w:start="50"/>"#),
+        )
+    };
+    let options = Options::default();
+    let texts = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<String> {
+        renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    for break_b in ["nextPage", "continuous"] {
+        let load = |split: bool| {
+            let data = package(&body(split, break_b), "<w:r><w:t>F</w:t></w:r>");
+            futures::executor::block_on(WordDocument::load(&data, &options)).expect("load")
+        };
+        let (plain, split) = (load(false), load(true));
+        for (first, second) in [(&plain, &split), (&split, &plain)] {
+            let first_doc = first.document.clone().expect("document");
+            let second_doc = second.document.clone().expect("document");
+            let mut fresh = recording_renderer();
+            fresh.sync_word_document(second);
+            for _ in 0..2 {
+                fresh.render(&second_doc, &options).expect("fresh");
+            }
+            let truth = texts(&fresh);
+            for (hint, limit) in [(false, 1usize), (true, 1), (false, 3), (true, 3)] {
+                let mut renderer = recording_renderer();
+                renderer.sync_word_document(first);
+                for _ in 0..2 {
+                    renderer.render(&first_doc, &options).expect("render");
+                }
+                if hint {
+                    renderer.set_incremental_dirty_from(10);
+                }
+                renderer.set_layout_page_limit(Some(limit));
+                renderer.render(&second_doc, &options).expect("bounded");
+                let labels = texts(&renderer);
+                assert!(
+                    labels.len() <= limit && truth.starts_with(&labels),
+                    "{break_b} hint={hint} limit {limit}: {labels:?} vs {truth:?}"
+                );
+                renderer.set_layout_page_limit(None);
+                renderer.render(&second_doc, &options).expect("full");
+                assert_eq!(texts(&renderer), truth, "{break_b} then full");
+            }
+        }
+    }
+}
+
+/// From the review's probe: a lazily laid out document (three of eight
+/// pages), a height-neutral edit on page 1 armed as a stable fast replay,
+/// then the layout completed as `complete_layout` does, with the
+/// layout-extension seek. The stable pass cut the page owners to page 1,
+/// so the seek may not resume past it: every label must match a fresh
+/// layout's.
+#[test]
+fn completing_a_lazy_layout_after_a_stable_edit_labels_every_page_right() {
+    let paragraphs = |prefix: &str, count: usize| -> String {
+        (0..count)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = format!(
+        "{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}",
+        paragraphs("a", 60),
+        section_properties("nextPage", ""),
+        paragraphs("b", 120),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+        paragraphs("c", 70),
+        section_properties("nextPage", r#"<w:pgNumType w:start="50"/>"#),
+    );
+    let options = Options::default();
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let word_doc = futures::executor::block_on(WordDocument::load(&data, &options)).expect("load");
+    let base = word_doc.document.clone().expect("document");
+    let texts = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<String> {
+        renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+
+    let mut edited: Document = (*base).clone();
+    if let Some(body) = edited.body.as_mut() {
+        if let BodyElement::Paragraph(paragraph) = &mut body.elements[1] {
+            paragraph.runs.first_mut().expect("run").text.push('x');
+        }
+    }
+    let edited = Rc::new(edited);
+    let mut fresh = recording_renderer();
+    fresh.sync_word_document(&word_doc);
+    for _ in 0..2 {
+        fresh.render(&edited, &options).expect("fresh");
+    }
+    let truth = texts(&fresh);
+    assert!(truth.len() > 3, "{truth:?}");
+
+    let mut renderer = recording_renderer();
+    renderer.sync_word_document(&word_doc);
+    renderer.set_layout_page_limit(Some(3));
+    for _ in 0..2 {
+        renderer.render(&base, &options).expect("lazy layout");
+    }
+    assert!(!renderer.last_layout_complete());
+    let height = renderer.cached_paragraph_height(1).expect("laid out");
+    renderer.clear_dirty_regions();
+    renderer.set_incremental_dirty_from(1);
+    renderer.set_fast_replay_trigger(1, height);
+    renderer.render(&edited, &options).expect("the edit");
+    assert!(renderer.last_fast_replay_stable());
+
+    let previous_limit = renderer.layout_page_limit();
+    renderer.set_layout_page_limit(None);
+    renderer.prepare_layout_extension_seek(previous_limit, usize::MAX, &options);
+    renderer
+        .render_layout_with_numbering_rc(Rc::clone(&edited), &options, None, None, None, None)
+        .expect("complete the layout");
+    assert!(renderer.last_layout_complete());
+    assert_eq!(texts(&renderer), truth);
+}
+
+/// From the review's probe: 17 pages in four sections. A stable edit on
+/// page 1 (a bare fast-replay trigger) stops its walk there; typing
+/// further down then goes through the lazy view's window seek, and the
+/// layout is completed with the extension seek. The page owners, and so
+/// the labels F9 writes, must match a fresh layout's: the stable pass
+/// keeps the owners of the pages it did not reach, and no seek resumes
+/// past owners it cannot restore.
+#[test]
+fn typing_after_a_stable_edit_keeps_every_page_owner() {
+    let paragraphs = |prefix: &str, count: usize| -> String {
+        (0..count)
+            .map(|index| format!("<w:p><w:r><w:t>{prefix}{index}</w:t></w:r></w:p>"))
+            .collect()
+    };
+    let body = format!(
+        "{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}<w:p><w:pPr>{}</w:pPr></w:p>{}{}",
+        paragraphs("a", 60),
+        section_properties("nextPage", ""),
+        paragraphs("b", 120),
+        section_properties(
+            "nextPage",
+            r#"<w:pgNumType w:fmt="lowerRoman" w:start="7"/>"#
+        ),
+        paragraphs("c", 200),
+        section_properties("continuous", r#"<w:pgNumType w:start="50"/>"#),
+        paragraphs("d", 90),
+        section_properties("nextPage", r#"<w:pgNumType w:fmt="upperLetter"/>"#),
+    );
+    let options = Options::default();
+    let data = package(&body, "<w:r><w:t>F</w:t></w:r>");
+    let word_doc = futures::executor::block_on(WordDocument::load(&data, &options)).expect("load");
+    let base: Document = (**word_doc.document.as_ref().expect("document")).clone();
+    let edit = |document: &Document, index: usize, text: &str| -> Document {
+        let mut edited = document.clone();
+        if let Some(body) = edited.body.as_mut() {
+            if let BodyElement::Paragraph(paragraph) = &mut body.elements[index] {
+                paragraph.runs.first_mut().expect("run").text.push_str(text);
+            }
+        }
+        edited
+    };
+    let texts = |renderer: &CanvasRenderer<RecordingPainter>| -> Vec<String> {
+        renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    let grow = "word ".repeat(1800);
+    for target in [300usize, 420] {
+        for text in ["x", grow.as_str()] {
+            let mut renderer = recording_renderer();
+            renderer.sync_word_document(&word_doc);
+            for _ in 0..2 {
+                renderer.render(&base, &options).expect("render");
+            }
+            renderer.clear_dirty_regions();
+            // A stable edit on page 1.
+            let first = edit(&base, 2, "x");
+            let height = renderer.cached_paragraph_height(2).expect("laid out");
+            renderer.set_incremental_dirty_from(2);
+            renderer.mark_paragraph_dirty(2);
+            renderer.set_fast_replay_trigger(2, height);
+            renderer.render(&first, &options).expect("stable edit");
+            renderer.clear_dirty_regions();
+            // Typing further down, as the lazy typing path arms it.
+            let page = renderer
+                .cached_paragraph_start_page(target)
+                .expect("laid out");
+            let height = renderer.cached_paragraph_height(target).expect("laid out");
+            let second = edit(&first, target, text);
+            renderer.set_visible_page_range(Some(page..=page + 1));
+            renderer.set_layout_page_limit(Some(page + 1));
+            renderer.prefer_visible_window_seek_once();
+            renderer.set_incremental_dirty_from(target);
+            if !renderer.prepare_completed_pagination_edit(target, height) {
+                renderer.invalidate_layout_from(target);
+            }
+            renderer.set_fast_replay_trigger(target, height);
+            renderer.render(&second, &options).expect("typing");
+            renderer.clear_dirty_regions();
+            // Complete the layout as `complete_layout` does.
+            if !renderer.last_layout_complete() {
+                let previous_limit = renderer.layout_page_limit();
+                renderer.set_layout_page_limit(None);
+                renderer.prepare_layout_extension_seek(previous_limit, usize::MAX, &options);
+                renderer
+                    .render_layout_with_numbering_rc(
+                        Rc::new(second.clone()),
+                        &options,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .expect("complete the layout");
+            }
+            let mut fresh = recording_renderer();
+            fresh.sync_word_document(&word_doc);
+            for _ in 0..2 {
+                fresh.render(&second, &options).expect("fresh");
+            }
+            let case = format!("typing {} chars at {target} (page {page})", text.len());
+            assert_eq!(
+                renderer.page_section_indices, fresh.page_section_indices,
+                "{case}"
+            );
+            assert_eq!(texts(&renderer), texts(&fresh), "{case}");
+        }
+    }
 }
