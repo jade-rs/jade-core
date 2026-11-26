@@ -628,6 +628,186 @@ fn set_watermark_on_sections_without_headers_creates_one_linked_header() {
     );
 }
 
+/// [`continuous_title_page_package`] with section 2 starting with a table
+/// of `rows` one-line rows `points` tall, followed by a paragraph and a
+/// page break to one more page of section 2.
+fn continuous_table_section_package(rows: usize, points: u32) -> Vec<u8> {
+    let paragraph = |text: &str, points: u32| {
+        format!(
+            r#"<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="{}" w:lineRule="exact"/></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>"#,
+            points * 20
+        )
+    };
+    let rows: String = (0..rows)
+        .map(|row| {
+            format!(
+                r#"<w:tr><w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>{}</w:tc></w:tr>"#,
+                paragraph(&format!("row{row}"), points)
+            )
+        })
+        .collect();
+    let s1 = paragraph("one", 600);
+    let s2 = format!(
+        r#"<w:tbl><w:tblPr><w:tblW w:w="4000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid>{rows}</w:tbl>{}{PAGE_BREAK}{}"#,
+        paragraph("three", points),
+        paragraph("four", 72),
+    );
+    package(&[
+        Section {
+            body: &s1,
+            headers: vec![(
+                "default",
+                Header {
+                    id: "rH1",
+                    text: "H1",
+                    watermark: Some("ONE"),
+                },
+            )],
+            title_page: false,
+            break_type: "nextPage",
+            extra: "",
+        },
+        Section {
+            body: &s2,
+            headers: vec![
+                (
+                    "default",
+                    Header {
+                        id: "rH2",
+                        text: "H2",
+                        watermark: Some("TWO"),
+                    },
+                ),
+                (
+                    "first",
+                    Header {
+                        id: "rH2F",
+                        text: "H2-first",
+                        watermark: Some("FIRST"),
+                    },
+                ),
+            ],
+            title_page: true,
+            break_type: "continuous",
+            extra: r#"<w:pgBorders w:display="firstPage" w:offsetFrom="text"><w:top w:val="single" w:sz="8" w:space="4" w:color="FF0000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="FF0000"/></w:pgBorders>"#,
+        },
+    ])
+}
+
+/// Whether a page strokes section 2's red first-page border.
+fn red_border(page: &[Op]) -> bool {
+    page.iter()
+        .any(|op| matches!(op, Op::SetStrokeStyle(stroke) if stroke.contains("FF0000")))
+}
+
+/// The text baseline each watermark is drawn on, following save and
+/// restore across the whole recording: a page created while a table is
+/// drawn inherits the table's `top` baseline unless the watermark sets its
+/// own.
+fn watermark_baselines(ops: &[Op]) -> Vec<String> {
+    let mut baseline = "alphabetic".to_string();
+    let mut saved = Vec::new();
+    let mut rotated = false;
+    let mut found = Vec::new();
+    for op in ops {
+        match op {
+            Op::Save => saved.push(baseline.clone()),
+            Op::Restore => {
+                rotated = false;
+                if let Some(previous) = saved.pop() {
+                    baseline = previous;
+                }
+            }
+            Op::SetTextBaseline(value) => baseline = value.clone(),
+            Op::Rotate(_) => rotated = true,
+            Op::FillText(..) if rotated => found.push(baseline.clone()),
+            _ => {}
+        }
+    }
+    found
+}
+
+fn render_ops(data: &[u8]) -> Vec<Op> {
+    let word_doc = load(data);
+    let document = word_doc.document.clone().expect("document");
+    let mut renderer = recording_renderer();
+    renderer.sync_document_header_footer_stories(&word_doc);
+    renderer
+        .render(&document, &Options::default())
+        .expect("render");
+    renderer.host.painter().inner().ops()
+}
+
+/// A table too tall for what is left of page 1 moves whole to page 2,
+/// which starts section 2: its first-page header, watermark and border.
+#[test]
+fn a_continuous_section_whose_table_moves_whole_starts_on_the_next_page() {
+    let pages = render(&continuous_table_section_package(1, 72));
+    assert_eq!(pages.len(), 3, "three pages");
+    assert!(!page_text(&pages[0]).contains("row0"), "the row moved on");
+    assert!(page_text(&pages[1]).contains("H2-first"));
+    assert_eq!(watermarks(&pages[1]), ["FIRST"], "page 2");
+    assert!(red_border(&pages[1]), "w:display=firstPage borders page 2");
+    assert!(page_text(&pages[2]).contains("H2") && !page_text(&pages[2]).contains("first"));
+    assert_eq!(watermarks(&pages[2]), ["TWO"], "page 3");
+    assert!(!red_border(&pages[0]) && !red_border(&pages[2]));
+}
+
+/// A table whose first rows fit on page 1 starts section 2 there: page 2
+/// is not its first page, so it shows the default header and watermark and
+/// no first-page border, as after a paragraph that starts on page 1.
+#[test]
+fn a_continuous_section_whose_table_splits_starts_on_the_break_page() {
+    let pages = render(&continuous_table_section_package(6, 14));
+    assert_eq!(pages.len(), 3, "three pages");
+    let page_one = page_text(&pages[0]);
+    assert!(page_one.contains("row0"), "page 1 holds rows: {page_one}");
+    let page_two = page_text(&pages[1]);
+    assert!(page_two.contains("row5"), "page 2 holds rows: {page_two}");
+    assert!(
+        page_two.contains("H2") && !page_two.contains("first"),
+        "page 2 header: {page_two}"
+    );
+    assert_eq!(watermarks(&pages[1]), ["TWO"], "page 2");
+    for (index, page) in pages.iter().enumerate() {
+        assert!(
+            !red_border(page),
+            "no first-page border on page {}",
+            index + 1
+        );
+    }
+}
+
+/// A table that fits on page 1 starts section 2 there; the page after the
+/// page break shows section 2's default header.
+#[test]
+fn a_continuous_section_whose_table_fits_starts_on_the_break_page() {
+    let pages = render(&continuous_table_section_package(1, 14));
+    assert_eq!(pages.len(), 2, "two pages");
+    assert!(page_text(&pages[0]).contains("row0"));
+    assert_eq!(watermarks(&pages[0]), ["ONE"], "page 1 keeps section 1's");
+    assert!(page_text(&pages[1]).contains("H2") && !page_text(&pages[1]).contains("first"));
+    assert_eq!(watermarks(&pages[1]), ["TWO"], "page 2");
+    assert!(pages.iter().all(|page| !red_border(page)));
+}
+
+/// A page created while a table is drawn paints its watermark on the
+/// alphabetic baseline, centred on the margin box as Word positions the
+/// shape, rather than on the `top` baseline the table set, which drew it
+/// lower and to the right of where every other paint path drew it.
+#[test]
+fn a_watermark_on_a_page_a_table_starts_keeps_its_baseline() {
+    for (rows, points) in [(1, 72), (6, 14), (1, 14)] {
+        let ops = render_ops(&continuous_table_section_package(rows, points));
+        let baselines = watermark_baselines(&ops);
+        assert!(!baselines.is_empty());
+        assert!(
+            baselines.iter().all(|baseline| baseline == "alphabetic"),
+            "{rows} rows of {points}pt: {baselines:?}"
+        );
+    }
+}
+
 #[test]
 #[ignore = "writes the committed fixture"]
 fn write_fixture() {

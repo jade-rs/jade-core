@@ -424,6 +424,21 @@ fn watermark_header(text: &str, watermark: &str) -> String {
 /// and borders on its first page only, starts on page 2 because its first
 /// paragraph does not fit on page 1.
 fn continuous_title_page_docx() -> Vec<u8> {
+    let tall = |text: &str, points: u32| {
+        format!(
+            r#"<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="{}" w:lineRule="exact"/></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>"#,
+            points * 20
+        )
+    };
+    continuous_title_page_docx_with(&format!(
+        r#"{}<w:p><w:r><w:br w:type="page"/></w:r></w:p>{}"#,
+        tall("three", 72),
+        tall("four", 72),
+    ))
+}
+
+/// [`continuous_title_page_docx`] with `section_two` as section 2's body.
+fn continuous_title_page_docx_with(section_two: &str) -> Vec<u8> {
     use std::io::Write;
     const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
     let geometry = r#"<w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/>"#;
@@ -434,10 +449,8 @@ fn continuous_title_page_docx() -> Vec<u8> {
         )
     };
     let document = format!(
-        r#"<w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{}<w:p><w:pPr><w:sectPr><w:headerReference w:type="default" r:id="rH1"/><w:type w:val="nextPage"/>{geometry}</w:sectPr></w:pPr></w:p>{}<w:p><w:r><w:br w:type="page"/></w:r></w:p>{}<w:sectPr><w:headerReference w:type="default" r:id="rH2"/><w:headerReference w:type="first" r:id="rH2F"/><w:type w:val="continuous"/>{geometry}<w:pgBorders w:display="firstPage" w:offsetFrom="text"><w:top w:val="single" w:sz="8" w:space="4" w:color="FF0000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="FF0000"/></w:pgBorders><w:titlePg/></w:sectPr></w:body></w:document>"#,
+        r#"<w:document xmlns:w="{W}" xmlns:r="{R}"><w:body>{}<w:p><w:pPr><w:sectPr><w:headerReference w:type="default" r:id="rH1"/><w:type w:val="nextPage"/>{geometry}</w:sectPr></w:pPr></w:p>{section_two}<w:sectPr><w:headerReference w:type="default" r:id="rH2"/><w:headerReference w:type="first" r:id="rH2F"/><w:type w:val="continuous"/>{geometry}<w:pgBorders w:display="firstPage" w:offsetFrom="text"><w:top w:val="single" w:sz="8" w:space="4" w:color="FF0000"/><w:bottom w:val="single" w:sz="8" w:space="4" w:color="FF0000"/></w:pgBorders><w:titlePg/></w:sectPr></w:body></w:document>"#,
         tall("one", 600),
-        tall("three", 72),
-        tall("four", 72),
     );
     let headers = [
         ("rH1", "header1.xml", watermark_header("H1", "ONE")),
@@ -503,5 +516,49 @@ fn a_continuous_title_page_section_paints_the_same_drawn_late() {
         assert_eq!(full.page_count(), 3, "three pages");
         paint_one_by_one(&mut windowed);
         assert_same(&format!("window {window:?}"), &windowed, &full);
+    }
+}
+
+/// Section 2 of [`continuous_title_page_docx_with`] starting with a table
+/// of `rows` one-line rows `points` tall, then a page break.
+fn continuous_table_docx(rows: usize, points: u32) -> Vec<u8> {
+    let paragraph = |text: &str| {
+        format!(
+            r#"<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="{}" w:lineRule="exact"/></w:pPr><w:r><w:t>{text}</w:t></w:r></w:p>"#,
+            points * 20
+        )
+    };
+    let rows: String = (0..rows)
+        .map(|row| {
+            format!(
+                r#"<w:tr><w:tc><w:tcPr><w:tcW w:w="4000" w:type="dxa"/></w:tcPr>{}</w:tc></w:tr>"#,
+                paragraph(&format!("row{row}"))
+            )
+        })
+        .collect();
+    continuous_title_page_docx_with(&format!(
+        r#"<w:tbl><w:tblPr><w:tblW w:w="4000" w:type="dxa"/></w:tblPr><w:tblGrid><w:gridCol w:w="4000"/></w:tblGrid>{rows}</w:tbl>{}<w:p><w:r><w:br w:type="page"/></w:r></w:p>{}"#,
+        paragraph("three"),
+        paragraph("four"),
+    ))
+}
+
+/// A continuous section starting with a table paints its pages the same
+/// from a plain open, drawn late from a windowed open, and repainted: the
+/// table pushed whole onto the next page, split across the break page, and
+/// fitting on it.
+#[test]
+fn a_continuous_section_starting_with_a_table_paints_the_same_every_way() {
+    for (name, rows, points) in [("pushed", 1, 72), ("split", 6, 14), ("fits", 1, 14)] {
+        let bytes = continuous_table_docx(rows, points);
+        for window in [0..1, 1..2] {
+            let (full, mut windowed) = open_both(&bytes, window.clone());
+            paint_one_by_one(&mut windowed);
+            assert_same(&format!("{name} window {window:?}"), &windowed, &full);
+        }
+        let plain = full(&bytes);
+        let mut repainted = full(&bytes);
+        repainted.repaint_all().unwrap();
+        assert_same(&format!("{name} repaint_all"), &repainted, &plain);
     }
 }
