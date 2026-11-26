@@ -10,6 +10,50 @@ initial layout and the input repaint, with the hidden-marks case as a control.
 That observation is compiled only for tests and adds no counters to the
 Callgrind binary.
 
+`keystroke-band` types the same 20 insertions into the same paragraph, the
+way `NativeDocument` does (`open` and `apply_and_repaint_grouped` in
+`jade-docx-native-render/src/document.rs`). The document is opened with its
+numbering, headers, footers and comments. Each keystroke then follows the
+native sequence:
+
+- it reads the text-edit cache with `local_text_edit_cache_for_paragraph`;
+- it hands the document back with `restore_document_cache` after the edit;
+- once the recorded command proves a single-paragraph edit, it enables band
+  redraw and calls `prepare_completed_pagination_edit` with the paragraph's
+  height from before the edit;
+- it sets the edit's downstream aside and calls `prepare_incremental_repaint`
+  and `set_visible_page_range` for the bounded pass;
+- it renders with `render_bounded_to_page_with_parts`, restores the downstream
+  when its lines stood, and calls `clear_dirty_regions`.
+
+The renderer repaints only the edited paragraph's band when
+`compute_band_redraw_plan` accepts it. `keystroke` and `keystroke-marks` never
+enable band redraw and measure the full-page fallback, so changes to the band
+plan, the band clip or the geometry stability check only show up in
+`keystroke-band`.
+
+What the 20 keystrokes take differs by fixture, and a unit test pins it
+keystroke by keystroke:
+
+- yokohama.docx and nda.docx take a band on every keystroke and keep the
+  completed pagination.
+- On contract.docx the fourth keystroke wraps the edited paragraph onto a
+  second line. That band is rejected as unstable and the page is repainted.
+  The other 19 keystrokes take bands, but after the wrap the completed
+  pagination is no longer offered for reuse, so contract's row mixes one page
+  repaint with band repaints that do not reuse pagination.
+
+Other tests check that `keystroke` takes no band, and that the edited
+paragraph's text reaches the painter in a band repaint that draws less than
+the page repaint does.
+
+`keystroke-band` is a diagnostic, outside the frozen 18-case gate
+(`scripts/perf/check_regressions.py`). The workflow measures it in its own step
+on base and head, into `perf/band/`, and appends that table, with the gated
+`keystroke` rows copied beside it, to the pull-request comment. The
+`run-callgrind.sh` default scenario list leaves it out; select it with
+`PERF_SCENARIOS=keystroke-band`.
+
 The CI grafts the same harness onto the base and head commits. Instruction
 counts measure engine work; they do not measure browser rasterization,
 composition previews, frame latency, or native macOS IME latency. They
