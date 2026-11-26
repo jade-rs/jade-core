@@ -25751,8 +25751,20 @@ where
                 .overflow_erasure
                 .map(|(top, bottom)| (top - result.start_y, bottom - result.start_y));
             result.ink_below_lines = marks.ink_below_lines;
-            let mark_fonts = std::mem::take(&mut *self.band_control_mark_fonts.borrow_mut());
-            result.control_mark_fonts = (!mark_fonts.is_empty()).then(|| Rc::from(mark_fonts));
+            // The fonts are kept from the paragraph's last paint when they are
+            // the same, as they are while typing, so that a paint allocates
+            // nothing for them.
+            let mut mark_fonts = self.band_control_mark_fonts.borrow_mut();
+            result.control_mark_fonts = (!mark_fonts.is_empty()).then(|| {
+                self.paragraph_layout_cache
+                    .borrow()
+                    .get_entry(paragraph_index)
+                    .and_then(|old| old.control_mark_fonts.clone())
+                    .filter(|old| **old == *mark_fonts)
+                    .unwrap_or_else(|| Rc::from(mark_fonts.as_slice()))
+            });
+            mark_fonts.clear();
+            drop(mark_fonts);
             self.paragraph_layout_cache
                 .borrow_mut()
                 .insert(paragraph_index, result);
@@ -41361,21 +41373,32 @@ where
     /// for [`Self::band_control_mark_ink`] to measure. Nothing is measured
     /// here: the paint must not touch the painter for it.
     fn note_control_mark_font(&self, style: &AppliedRunStyle) {
-        let font = ControlMarkFont {
-            descriptors: [
-                ResolvedFontSlot::LatinAscii,
-                ResolvedFontSlot::LatinHansi,
-                ResolvedFontSlot::EastAsia,
-                ResolvedFontSlot::Complex,
-            ]
-            .map(|slot| Rc::clone(style.resolved.descriptor_for_slot(slot))),
+        let descriptors = [
+            ResolvedFontSlot::LatinAscii,
+            ResolvedFontSlot::LatinHansi,
+            ResolvedFontSlot::EastAsia,
+            ResolvedFontSlot::Complex,
+        ]
+        .map(|slot| style.resolved.descriptor_for_slot(slot));
+        let mut fonts = self.band_control_mark_fonts.borrow_mut();
+        // A paragraph's marks are nearly always in one style: compare before
+        // cloning anything.
+        if fonts.iter().any(|font| {
+            font.font_size_pt.to_bits() == style.font_size_pt.to_bits()
+                && font.baseline_shift_px.to_bits() == style.baseline_shift_px.to_bits()
+                && font
+                    .descriptors
+                    .iter()
+                    .zip(descriptors)
+                    .all(|(noted, descriptor)| noted == descriptor)
+        }) {
+            return;
+        }
+        fonts.push(ControlMarkFont {
+            descriptors: descriptors.map(Rc::clone),
             font_size_pt: style.font_size_pt,
             baseline_shift_px: style.baseline_shift_px,
-        };
-        let mut fonts = self.band_control_mark_fonts.borrow_mut();
-        if !fonts.contains(&font) {
-            fonts.push(font);
-        }
+        });
     }
 
     fn draw_control_mark<P>(
