@@ -307,18 +307,40 @@ pub(super) fn keep_for_next_payload(
     kept.extend(pages);
 }
 
-/// Hands the kept pages to the payload being built: each becomes a
-/// whole-page dirty rectangle (pages past the end are dropped), and `kept`
-/// is left empty.
-pub(super) fn report_kept_pages<P>(renderer: &mut CanvasRenderer<P>, kept: &mut KeptPages)
+/// Takes the kept pages a payload can report now: those the renderer has
+/// a page box for. A page past the end of a complete layout no longer
+/// exists and is dropped; one past where a bounded pass stopped (a lazy
+/// edit, an `ensureLayoutThroughPage` chunk) still does, and stays kept
+/// for a payload that reaches it.
+pub(super) fn take_reportable_kept_pages<P>(
+    renderer: &CanvasRenderer<P>,
+    kept: &mut KeptPages,
+) -> std::collections::BTreeSet<usize>
 where
     P: jade_painter::Painter,
     P::Error: jade_canvas_painter::PainterError,
 {
     if kept.is_empty() {
-        return;
+        return std::collections::BTreeSet::new();
     }
-    let pages = std::mem::take(kept);
+    let complete = renderer.last_layout_complete();
+    let (reportable, unlaid): (std::collections::BTreeSet<usize>, _) = std::mem::take(kept)
+        .into_iter()
+        .partition(|&page| renderer.page_dimensions(page).is_some());
+    if !complete {
+        *kept = unlaid;
+    }
+    reportable
+}
+
+/// Hands the kept pages the payload being built can report to it, each a
+/// whole-page dirty rectangle ([`take_reportable_kept_pages`]).
+pub(super) fn report_kept_pages<P>(renderer: &mut CanvasRenderer<P>, kept: &mut KeptPages)
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    let pages = take_reportable_kept_pages(renderer, kept);
     for rect in whole_page_rects(renderer, &pages) {
         renderer.mark_dirty_rect(rect);
     }
@@ -327,7 +349,8 @@ where
 /// The dirty regions of a lazy-mode edit's payload, which the main thread
 /// fetches bitmaps for on demand: the pass's own, the pages
 /// [`settle_drawn_pages`] draws again, and the `kept` pages earlier
-/// unreported passes settled. Clears them all.
+/// unreported passes settled. Clears them, but for kept pages past where a
+/// bounded pass stopped. Should settling fail, `kept` is left as it was.
 pub(super) fn take_lazy_payload_dirty_regions<P>(
     renderer: &mut CanvasRenderer<P>,
     kept: &mut KeptPages,
@@ -566,6 +589,17 @@ impl OffscreenDocumentView {
         name: &'static str,
         action: impl FnOnce(&mut DetachedSession<'_>) -> Result<T, String> + 'static,
     ) -> Result<JsValue, JsValue> {
+        self.run_word_session_at(name, None, action)
+    }
+
+    /// [`Self::run_word_session`] whose repaint keeps paragraph `anchor`'s
+    /// page in view, as the headless path's does for an edit at the caret.
+    pub(super) fn run_word_session_at<T: serde::Serialize + 'static>(
+        &self,
+        name: &'static str,
+        anchor: Option<usize>,
+        action: impl FnOnce(&mut DetachedSession<'_>) -> Result<T, String> + 'static,
+    ) -> Result<JsValue, JsValue> {
         let facts = Rc::new(self.layout_facts());
         let selection = self.current_selection();
         // Models that edit the package (themes, styles, the glossary) need
@@ -583,7 +617,7 @@ impl OffscreenDocumentView {
         // than running the action (which may read the clock or the layout)
         // again.
         let after: RefCell<Option<crate::word_document::WordDocumentSnapshot>> = RefCell::new(None);
-        let payload = self.apply_document_command(move |_| {
+        let payload = self.apply_document_command_at(anchor, move |_| {
             Box::new(SnapshotEditCommand::new(name, move |document| {
                 let Some(action) = action.borrow_mut().take() else {
                     if let Some(snapshot) = after.borrow().clone() {

@@ -5277,6 +5277,10 @@ where
         slot_scale: f64,
         reserve_bottom: bool,
     ) -> Result<f64, JsValue> {
+        // A row placed on the page a mid-page section started on places the
+        // section there, as a committed paragraph line does: that page, not
+        // the next, is the section's first page.
+        self.note_mid_page_section_line(self.active_section_index);
         if segment_starts_page
             && row_start
             && jade_docx_layout::line_metrics::word_layout_platform()

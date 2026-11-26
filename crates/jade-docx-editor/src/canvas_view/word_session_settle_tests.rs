@@ -25,6 +25,8 @@ struct PagedRecordingHost {
     cursor: usize,
     /// Pages (0-based) whose pixels were forgotten and not drawn since.
     forgotten: Rc<RefCell<std::collections::BTreeSet<usize>>>,
+    /// While set, starting a page fails, as a lost canvas context does.
+    failing: Rc<std::cell::Cell<bool>>,
 }
 
 impl PagedRecordingHost {
@@ -78,6 +80,9 @@ impl crate::render_host::CanvasRenderHost for PagedRecordingHost {
         Ok(())
     }
     fn start_new_page(&mut self, _w: f64, _h: f64, _mt: f64) -> Result<(), JsValue> {
+        if self.failing.get() {
+            return Err(JsValue::NULL);
+        }
         self.cursor += 1;
         self.extra_pages = self.extra_pages.max(self.cursor);
         Ok(())
@@ -162,6 +167,7 @@ struct Shell {
     forgotten: Rc<RefCell<std::collections::BTreeSet<usize>>>,
     /// The view's kept pages ([`KeptPages`]).
     kept: KeptPages,
+    failing: Rc<std::cell::Cell<bool>>,
     options: Options,
 }
 
@@ -169,12 +175,14 @@ impl Shell {
     fn new() -> Self {
         let pages = Rc::new(RefCell::new(Vec::new()));
         let forgotten = Rc::new(RefCell::new(std::collections::BTreeSet::new()));
+        let failing = Rc::new(std::cell::Cell::new(false));
         let renderer = CanvasRenderer::with_host(
             Box::new(PagedRecordingHost {
                 pages: Rc::clone(&pages),
                 extra_pages: 0,
                 cursor: 0,
                 forgotten: Rc::clone(&forgotten),
+                failing: Rc::clone(&failing),
             }),
             false,
         )
@@ -184,6 +192,7 @@ impl Shell {
             pages,
             forgotten,
             kept: KeptPages::new(),
+            failing,
             options: Options::default(),
         }
     }
@@ -715,4 +724,96 @@ fn a_settled_page_outside_the_window_is_left_stale() {
     shell.render(&document);
     assert_eq!(page_of_total(&shell.page_text(0)), Some((1, 3)));
     assert!(shell.renderer.page_has_rendered_pixels(0));
+}
+
+/// A lazy edit's pass is bounded: the pages past where it stopped have no
+/// page box, though they still exist. Kept pages there stay kept, and the
+/// payload of a pass that reaches them reports them.
+#[test]
+fn kept_pages_past_a_bounded_pass_wait_for_a_payload_that_reaches_them() {
+    let document = page_of_numpages(3);
+    let mut shell = Shell::new();
+    shell.open_lazily(&document, 1);
+    let (complete, _) = shell.complete_layout(&document);
+    assert!(complete);
+    let _ = shell.lazy_payload();
+    keep_for_next_payload(&mut shell.kept, &(0..3).collect());
+
+    shell.renderer.set_layout_page_limit(Some(1));
+    shell.renderer.skip_change_detection_once();
+    shell.render(&document);
+    assert!(!shell.renderer.last_layout_complete());
+    assert!(
+        shell.renderer.page_count() < 3,
+        "the bounded pass stops short: {}",
+        shell.renderer.page_count()
+    );
+    let first = shell.lazy_payload();
+    assert!(first.contains(&0), "{first:?}");
+    assert!(!shell.kept.is_empty(), "pages past the bound stay kept");
+    assert!(first.is_disjoint(&shell.kept), "{first:?} {:?}", shell.kept);
+
+    shell.renderer.set_layout_page_limit(None);
+    shell.renderer.skip_change_detection_once();
+    shell.render(&document);
+    assert!(shell.renderer.last_layout_complete());
+    let second = shell.lazy_payload();
+    let reported: std::collections::BTreeSet<usize> = first.union(&second).copied().collect();
+    assert!(
+        (0..3).all(|page| reported.contains(&page)),
+        "{first:?} then {second:?}"
+    );
+    assert!(shell.kept.is_empty());
+}
+
+/// Past the end of a complete layout a kept page no longer exists: the
+/// payload drops it rather than keeping it for ever.
+#[test]
+fn a_kept_page_past_a_complete_layout_is_dropped() {
+    let document = page_of_numpages(3);
+    let mut shell = Shell::new();
+    shell.renderer.sync_word_document(&document);
+    shell.render(&document);
+    assert!(shell.renderer.last_layout_complete());
+    let _ = shell.lazy_payload();
+    keep_for_next_payload(&mut shell.kept, &[1, 7].into_iter().collect());
+    let reported = shell.lazy_payload();
+    assert!(reported.contains(&1), "{reported:?}");
+    assert!(!reported.contains(&7), "{reported:?}");
+    assert!(shell.kept.is_empty(), "{:?}", shell.kept);
+}
+
+/// A payload whose settling fails leaves the kept pages as they were, for
+/// the next payload to report.
+#[test]
+fn a_failed_settle_leaves_the_kept_pages() {
+    let document = page_of_numpages(3);
+    let mut shell = Shell::new();
+    shell.open_lazily(&document, 1);
+    keep_for_next_payload(&mut shell.kept, &[0].into_iter().collect());
+    // A layout-only pass to the end proves page 1's total wrong, which the
+    // next payload settles by drawing it again.
+    let options = shell.options.clone();
+    shell.renderer.set_layout_page_limit(None);
+    shell
+        .renderer
+        .render_layout_with_numbering_rc(
+            Rc::clone(document.document.as_ref().expect("document")),
+            &options,
+            document.numbering_part.as_ref(),
+            document.header_lines.as_deref(),
+            document.footer_lines.as_deref(),
+            Some(&document.comments),
+        )
+        .expect("layout");
+    shell.failing.set(true);
+    assert!(
+        take_lazy_payload_dirty_regions(&mut shell.renderer, &mut shell.kept).is_err(),
+        "the paint fails"
+    );
+    assert_eq!(shell.kept, [0].into_iter().collect::<KeptPages>());
+    shell.failing.set(false);
+    let reported = shell.lazy_payload();
+    assert!(reported.contains(&0), "{reported:?}");
+    assert!(shell.kept.is_empty());
 }

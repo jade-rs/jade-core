@@ -287,6 +287,19 @@ impl Default for TocOptions {
 }
 
 impl TocOptions {
+    /// 目次 from the headings with outline levels `min` to `max`, as the
+    /// ribbon's button and `HeadlessCommand::InsertTableOfContents` build
+    /// it: linked entries, page numbers shown, applied outline levels too.
+    pub fn headings(min: u8, max: u8) -> Self {
+        Self {
+            outline_min: min,
+            outline_max: max,
+            hyperlinks: true,
+            use_applied_outline_levels: true,
+            ..Self::default()
+        }
+    }
+
     pub fn hides_page_number_at_level(&self, level: u8) -> bool {
         self.hide_page_numbers
             || self

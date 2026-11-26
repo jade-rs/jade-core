@@ -1206,6 +1206,12 @@ pub trait WordFields: WordSession {
         if self.selection_range().is_none() {
             return Err("there is no insertion point".to_string());
         }
+        // Every page's number first, as F9, for a code that reads one: a
+        // PAGE or PAGEREF on a page the last (bounded) pass did not reach
+        // would otherwise get an empty result, which the saved file keeps.
+        if fields::code_reads_pages(code) {
+            self.complete_layout();
+        }
         let environment = self.field_environment(host, HashMap::new());
         self.execute_command(
             Box::new(FieldCommand::insert(code.to_string(), environment)),
@@ -1218,6 +1224,9 @@ pub trait WordFields: WordSession {
         let range = self
             .selection_range()
             .ok_or_else(|| "there is no field at the selection".to_string())?;
+        if fields::code_reads_pages(code) {
+            self.complete_layout();
+        }
         let environment = self.field_environment(host, HashMap::new());
         self.execute_command(
             Box::new(FieldCommand::edit(range, code.to_string(), environment)),
