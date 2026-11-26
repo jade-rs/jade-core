@@ -453,42 +453,14 @@ pub struct EffectExtent {
 }
 
 impl EffectExtent {
-    /// The part of an effect extent a rotation by `rotation_deg` accounts
-    /// for, as Word writes it: half of how far the `width` by `height`
-    /// drawing's rotated bounding box exceeds (or, on the narrowing axis,
-    /// falls short of) its extent, on each side of each axis.
-    pub fn of_rotation(width: f64, height: f64, rotation_deg: f64) -> Self {
-        let radians = rotation_deg.to_radians();
-        let (sin, cos) = (radians.sin().abs(), radians.cos().abs());
-        let grow_x = (width * cos + height * sin - width) / 2.0;
-        let grow_y = (width * sin + height * cos - height) / 2.0;
+    /// The extent with every edge at least 0. Word clips or drops drawings
+    /// with negative effect extents, and LibreOffice writes them as 0.
+    pub fn clamped(self) -> Self {
         Self {
-            left: grow_x,
-            top: grow_y,
-            right: grow_x,
-            bottom: grow_y,
-        }
-    }
-
-    /// Whether this extent already holds the box of `rotation`
-    /// ([`Self::of_rotation`]), as Word's do; synthetic files often leave a
-    /// rotated drawing's extent zero.
-    pub fn includes_rotation(&self, rotation: &Self) -> bool {
-        const TOLERANCE_PX: f64 = 0.01;
-        self.left + self.right >= rotation.left + rotation.right - TOLERANCE_PX
-            && self.top + self.bottom >= rotation.top + rotation.bottom - TOLERANCE_PX
-    }
-
-    fn edges(&self) -> [f64; 4] {
-        [self.left, self.top, self.right, self.bottom]
-    }
-
-    fn from_edges([left, top, right, bottom]: [f64; 4]) -> Self {
-        Self {
-            left,
-            top,
-            right,
-            bottom,
+            left: self.left.max(0.0),
+            top: self.top.max(0.0),
+            right: self.right.max(0.0),
+            bottom: self.bottom.max(0.0),
         }
     }
 }
@@ -498,46 +470,24 @@ static NO_SHAPE_EXTRAS: std::sync::OnceLock<ShapeExtras> = std::sync::OnceLock::
 static NO_ANCHOR_OPTIONS: std::sync::OnceLock<AnchorOptions> = std::sync::OnceLock::new();
 
 impl RunImage {
-    /// Re-derives `wp:effectExtent` after the picture's size or rotation
-    /// changed from `previous` (width, height and rotation), as Word does:
-    /// the effects' own insets (shadow, glow, outline) are kept, and the
-    /// rotation's part is worked out again from the new rotated bounds.
+    /// Keeps `wp:effectExtent` consistent after the picture's size or
+    /// rotation changed from `previous` (width, height and rotation): the
+    /// effects' insets (shadow, glow, outline) do not depend on either, so
+    /// they are kept, with no edge below 0. No part is derived from the
+    /// rotation; that has not been checked against Word.
     pub fn refit_effect_extent(&mut self, previous: (Option<f64>, Option<f64>, Option<f64>)) {
-        let (Some(old_width), Some(old_height)) = (previous.0, previous.1) else {
-            return;
-        };
-        let (Some(width), Some(height)) = (self.width_px, self.height_px) else {
-            return;
-        };
-        let old_rotation = previous.2.unwrap_or(0.0);
-        let rotation = self.layout.rotation_deg.unwrap_or(0.0);
-        if (old_width, old_height, old_rotation) == (width, height, rotation) {
+        if previous == (self.width_px, self.height_px, self.layout.rotation_deg) {
             return;
         }
-        let current = self.layout.options().effect_extent.unwrap_or_default();
-        let old_part = EffectExtent::of_rotation(old_width, old_height, old_rotation);
-        // An extent that leaves the rotation out holds only effects.
-        let rotation_held = current.includes_rotation(&old_part);
-        let new_part = EffectExtent::of_rotation(width, height, rotation).edges();
-        let mut edges = current.edges();
-        for (index, edge) in edges.iter_mut().enumerate() {
-            let effect = if rotation_held {
-                *edge - old_part.edges()[index]
-            } else {
-                *edge
-            };
-            // Kept to the EMU the extent is written in.
-            let value = effect.max(0.0) + new_part[index];
-            *edge = (value * 9525.0).round() / 9525.0;
-        }
-        let next = EffectExtent::from_edges(edges);
-        if next != EffectExtent::default() {
-            self.layout.options_mut().effect_extent = Some(next);
-        } else if let Some(options) = self.layout.options.as_deref_mut() {
-            options.effect_extent = None;
-            if *options == AnchorOptions::default() {
-                self.layout.options = None;
-            }
+        let Some(options) = self.layout.options.as_deref_mut() else {
+            return;
+        };
+        options.effect_extent = options
+            .effect_extent
+            .map(EffectExtent::clamped)
+            .filter(|extent| *extent != EffectExtent::default());
+        if *options == AnchorOptions::default() {
+            self.layout.options = None;
         }
     }
 

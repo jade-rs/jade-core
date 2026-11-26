@@ -4349,57 +4349,30 @@ fn mac_inline_picture_swaps_extents(image: &RunImage) -> bool {
 }
 
 /// The `wp:effectExtent` of a drawing: the space DrawingML reserves beyond
-/// `wp:extent` for shadows, outlines, glow and a rotation's bounding box.
+/// `wp:extent` for its effects (shadow, glow, outline), as insets that are
+/// never negative. Rotation is modelled from the drawing's own transform,
+/// not from this extent.
 fn effect_extent(layout: &RunImageLayout) -> Option<jade_docx_reader::document::EffectExtent> {
     layout
         .options
         .as_deref()
         .and_then(|options| options.effect_extent)
-}
-
-/// How far an effect box reaches beyond a `width` by `height` object on each
-/// edge `(left, top, right, bottom)`, given the `rotated_width` by
-/// `rotated_height` box the renderer itself lays the object out in. Word
-/// writes a rotation's bounding box into `wp:effectExtent`; a file that does
-/// not (as synthetic ones often do) still gets the rotated box, but never
-/// both at once.
-fn effect_box_insets(
-    extent: jade_docx_reader::document::EffectExtent,
-    width: f64,
-    height: f64,
-    rotated_width: f64,
-    rotated_height: f64,
-) -> (f64, f64, f64, f64) {
-    const TOLERANCE_PX: f64 = 0.01;
-    let grow_x = rotated_width - width;
-    let grow_y = rotated_height - height;
-    let includes_rotation = extent.left + extent.right >= grow_x - TOLERANCE_PX
-        && extent.top + extent.bottom >= grow_y - TOLERANCE_PX;
-    if includes_rotation {
-        (extent.left, extent.top, extent.right, extent.bottom)
-    } else {
-        (
-            extent.left + grow_x / 2.0,
-            extent.top + grow_y / 2.0,
-            extent.right + grow_x / 2.0,
-            extent.bottom + grow_y / 2.0,
-        )
-    }
+        .map(|extent| extent.clamped())
 }
 
 /// The insets `(left, top, right, bottom)` of an inline picture's extent in
 /// the box it reserves in the line: its `wp:effectExtent` (ECMA-376 Part 1
-/// §20.4.2.6), and the quarter-turned box Word for Mac lays it out in.
+/// §20.4.2.6), added to the quarter-turned box Word for Mac lays it out in.
 fn inline_picture_insets(image: &RunImage, width: f64, height: f64) -> (f64, f64, f64, f64) {
-    let swaps = mac_inline_picture_swaps_extents(image);
-    match effect_extent(&image.layout) {
-        Some(extent) if swaps => effect_box_insets(extent, width, height, height, width),
-        Some(extent) => (extent.left, extent.top, extent.right, extent.bottom),
-        None if swaps => {
-            let grow = (height - width) / 2.0;
-            (grow, -grow, grow, -grow)
-        }
-        None => (0.0, 0.0, 0.0, 0.0),
+    let (left, top, right, bottom) = effect_extent(&image.layout)
+        .map_or((0.0, 0.0, 0.0, 0.0), |extent| {
+            (extent.left, extent.top, extent.right, extent.bottom)
+        });
+    if mac_inline_picture_swaps_extents(image) {
+        let grow = (height - width) / 2.0;
+        (left + grow, top - grow, right + grow, bottom - grow)
+    } else {
+        (left, top, right, bottom)
     }
 }
 
@@ -42804,31 +42777,16 @@ where
         let center_x = transform.x + transform.width / 2.0;
         let center_y = transform.y + transform.height / 2.0;
         // A picture's effects (`wp:effectExtent`) keep text clear as its
-        // extent does.
-        let (box_left, box_top, box_right, box_bottom) =
-            match effect_extent(layout).filter(|_| target.kind == FloatingObjectKind::Image) {
-                Some(extent) => {
-                    let (left, top, right, bottom) = effect_box_insets(
-                        extent,
-                        transform.width,
-                        transform.height,
-                        rotated_width,
-                        rotated_height,
-                    );
-                    (
-                        center_x - transform.width / 2.0 - left,
-                        center_y - transform.height / 2.0 - top,
-                        center_x + transform.width / 2.0 + right,
-                        center_y + transform.height / 2.0 + bottom,
-                    )
-                }
-                None => (
-                    center_x - rotated_width / 2.0,
-                    center_y - rotated_height / 2.0,
-                    center_x + rotated_width / 2.0,
-                    center_y + rotated_height / 2.0,
-                ),
-            };
+        // rotated bounds do; each edge is at least 0.
+        let (left, top, right, bottom) = effect_extent(layout)
+            .filter(|_| target.kind == FloatingObjectKind::Image)
+            .map_or((0.0, 0.0, 0.0, 0.0), |extent| {
+                (extent.left, extent.top, extent.right, extent.bottom)
+            });
+        let box_left = center_x - rotated_width / 2.0 - left;
+        let box_top = center_y - rotated_height / 2.0 - top;
+        let box_right = center_x + rotated_width / 2.0 + right;
+        let box_bottom = center_y + rotated_height / 2.0 + bottom;
         if layout.wrap == WrapMode::TopAndBottom {
             return Some(FloatExclusion {
                 top: box_top - layout.dist_top.unwrap_or(0.0),

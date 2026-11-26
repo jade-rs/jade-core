@@ -12,8 +12,9 @@ inline-shadow-effect-extent.docx
     down by t + b.
 
 inline-rotation-30-effect-extent.docx
-    A 40pt by 20pt inline picture rotated 30 degrees, with the effect
-    extent Word writes for the rotated bounding box, between two lines.
+    A 40pt by 20pt inline picture rotated 30 degrees, with an effect extent
+    equal to its rotated bounding box's growth (a guess at what Word writes,
+    to be checked), between two lines.
 
 Both are synthetic and have not yet been opened in Word: capture them as the
 other Word oracle fixtures are (Save As > PDF on Mac, drawing origins on
@@ -79,8 +80,8 @@ def document(drawing):
 
 def shadow_probe():
     cx, cy = 40 * EMU_PER_PT, 30 * EMU_PER_PT
-    # Word's effect extent for this shadow: the blur on every side, offset
-    # by the shadow's distance towards the bottom right.
+    # An effect extent for this shadow: the blur on every side, offset by
+    # the shadow's distance towards the bottom right (to be checked in Word).
     return document(picture(1, cx, cy, (12700, 12700, 53975, 53975), shadow=True))
 
 

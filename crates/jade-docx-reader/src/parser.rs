@@ -8186,6 +8186,8 @@ impl DocumentParser {
                         *edge = Self::emu_to_px(value);
                     }
                 }
+                // Effect insets are never negative (see `EffectExtent::clamped`).
+                let extent = extent.clamped();
                 if extent != EffectExtent::default() {
                     image.layout.options_mut().effect_extent = Some(extent);
                 }

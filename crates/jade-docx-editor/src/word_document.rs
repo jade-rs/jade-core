@@ -38927,9 +38927,9 @@ impl WordDocument {
         }
         let mut graphic = graphic.expect("the container was chosen for its graphic");
 
-        // `wp:effectExtent` follows the model, which editing refits to a
-        // new size or rotation; an unchanged one is kept verbatim.
-        let effect = layout.options().effect_extent.unwrap_or_default();
+        // `wp:effectExtent` follows the model, never with a negative edge;
+        // an unchanged one is kept verbatim.
+        let effect = layout.options().effect_extent.unwrap_or_default().clamped();
         let effect_emu = [effect.left, effect.top, effect.right, effect.bottom].map(px_to_emu);
         let existing_effect = kept
             .iter()
@@ -49105,22 +49105,19 @@ mod tests {
         (xml, effect_extent_of(&reloaded))
     }
 
-    /// Word writes a 30° picture's rotated box into `wp:effectExtent`.
-    /// Rotating it back to 0° leaves no growth from the rotation.
+    /// Rotating a picture keeps its effect insets and adds nothing for the
+    /// rotation; a negative edge from the file is written as 0.
     #[test]
-    fn rotating_a_word_rotated_picture_upright_drops_its_rotation_extent() {
+    fn rotating_a_picture_keeps_its_effect_insets_without_negative_edges() {
         use crate::commands::format_image::{FormatImageCommand, ImageFormatSpec};
         use crate::commands::{CommandContext, CommandExecutor};
 
-        // 96 by 64 px at 30°: the rotated box grows 7.57 px on each side
-        // horizontally and 11.71 px vertically.
-        let rotation = jade_docx_reader::document::EffectExtent::of_rotation(96.0, 64.0, 30.0);
-        let emu = |px: f64| (px * 9525.0).round() as i64;
-        let effect = [rotation.left, rotation.top, rotation.right, rotation.bottom].map(emu);
         for floating in [false, true] {
-            let data = effect_extent_image_docx(effect, 30.0, floating);
+            let data = effect_extent_image_docx([72105, 111543, -9525, 111543], 30.0, floating);
             let mut word_doc =
                 executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            let expected = [72105.0 / 9525.0, 111543.0 / 9525.0, 0.0, 111543.0 / 9525.0];
+            assert_edges_near(effect_extent_of(&word_doc), expected, "loaded");
             let mut selection = None;
             CommandExecutor::new()
                 .execute(
@@ -49134,18 +49131,18 @@ mod tests {
                     &mut CommandContext::new(&mut word_doc, &mut selection),
                 )
                 .expect("rotate upright");
-            assert_eq!(effect_extent_of(&word_doc), None, "floating {floating}");
+            assert_edges_near(effect_extent_of(&word_doc), expected, "upright");
             let (xml, reloaded) = reloaded_effect_extent(&word_doc);
             assert!(
-                xml.contains(r#"<wp:effectExtent l="0" t="0" r="0" b="0"/>"#),
-                "the written extent drops the rotation: {xml}"
+                xml.contains(r#"<wp:effectExtent l="72105" t="111543" r="0" b="111543"/>"#),
+                "floating {floating}: written without a negative edge: {xml}"
             );
-            assert_eq!(reloaded, None);
+            assert_edges_near(reloaded, expected, "reloaded");
         }
     }
 
-    /// Resizing a picture with a shadow keeps the shadow's insets; a
-    /// rotation's part follows the new size.
+    /// Resizing or rotating a picture with a shadow keeps the shadow's
+    /// insets.
     #[test]
     fn resizing_a_shadowed_picture_keeps_its_effect_insets() {
         use crate::commands::transform_object::TransformObjectCommand;
@@ -49180,8 +49177,8 @@ mod tests {
         );
         assert_edges_near(reloaded, [2.0, 1.0, 6.0, 8.0], "reloaded");
 
-        // Rotated 90° as well: the shadow stays, and the rotation's part of
-        // the 192 by 128 picture is added on top of it.
+        // Rotated 90° as well: the shadow stays as it is, and nothing is
+        // added for the rotation.
         CommandExecutor::new()
             .execute(
                 Box::new(TransformObjectCommand::new(
@@ -49197,7 +49194,7 @@ mod tests {
                 &mut CommandContext::new(&mut word_doc, &mut selection),
             )
             .expect("rotate");
-        let expected = [2.0 - 32.0, 1.0 + 32.0, 6.0 - 32.0, 8.0 + 32.0];
+        let expected = [2.0, 1.0, 6.0, 8.0];
         assert_edges_near(effect_extent_of(&word_doc), expected, "rotated");
         let (_, reloaded) = reloaded_effect_extent(&word_doc);
         assert_edges_near(reloaded, expected, "rotated and reloaded");

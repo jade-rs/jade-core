@@ -165,107 +165,84 @@ fn an_inline_picture_reserves_its_effect_extent() {
     assert_near(height, 30.0, "the picture keeps its height");
 }
 
-/// A picture rotated 30° as Word writes it: `wp:effectExtent` holds the
-/// rotated bounding box, so the line reserves that box and the picture's
-/// centre stays in its middle.
+/// A rotated picture's effect extent is added as plain insets: the
+/// rotation itself is laid out as before (not at all for 30° inline), and
+/// nothing is assumed about what Word writes for it.
 #[test]
-fn an_inline_picture_reserves_the_rotated_box_word_writes() {
-    let (width, height) = (40.0_f64, 20.0_f64);
-    let radians = 30.0_f64.to_radians();
-    let rotated_width = width * radians.cos() + height * radians.sin();
-    let rotated_height = width * radians.sin() + height * radians.cos();
-    let (grow_x, grow_y) = (
-        (rotated_width - width) / 2.0,
-        (rotated_height - height) / 2.0,
-    );
-    let plain = inline_layout(&inline(width, height, 30.0, [0.0; 4]));
-    let rotated = inline_layout(&inline(
-        width,
-        height,
-        30.0,
-        [grow_x, grow_y, grow_x, grow_y],
-    ));
+fn a_rotated_inline_picture_adds_its_effect_extent_as_insets() {
+    let plain = inline_layout(&inline(40.0, 20.0, 30.0, [0.0; 4]));
+    let upright = inline_layout(&inline(40.0, 20.0, 0.0, [0.0; 4]));
+    let insets = inline_layout(&inline(40.0, 20.0, 30.0, [2.0, 3.0, 4.0, 5.0]));
     assert_near(
-        rotated.after.0 - plain.after.0,
-        2.0 * grow_x,
-        "the line reserves the rotated width",
+        plain.after.0,
+        upright.after.0,
+        "a 30° rotation still reserves the upright box",
     );
-    assert_near(
-        rotated.next_line.1 - plain.next_line.1,
-        2.0 * grow_y,
-        "the line reserves the rotated height",
-    );
-    assert_near(
-        rotated.picture.0 - plain.picture.0,
-        grow_x,
-        "the extent is centred in the rotated box",
-    );
+    assert_near(insets.after.0 - plain.after.0, 6.0, "l + r");
+    assert_near(insets.next_line.1 - plain.next_line.1, 8.0, "t + b");
+    assert_near(insets.picture.0 - plain.picture.0, 2.0, "inset by l");
+    assert_near(insets.picture.2, 40.0, "the picture keeps its width");
+    assert_near(insets.picture.3, 20.0, "the picture keeps its height");
 }
 
-/// Word for Mac lays a quarter-turned picture out in its rotated box. When
-/// the file's `wp:effectExtent` already holds that box, it is not added
-/// again; when it does not, the picture still gets it.
+/// Word for Mac lays a quarter-turned picture out in its swapped box, as
+/// before; effect insets are added to that box, and negative edges count as
+/// 0.
 #[test]
-fn a_mac_quarter_turn_counts_the_rotated_box_once() {
+fn a_mac_quarter_turn_adds_effect_insets_to_its_swapped_box() {
     use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
 
     set_word_layout_platform(WordLayoutPlatform::Mac);
-    let (width, height) = (40.0, 20.0);
-    let grow = (width - height) / 2.0;
-    let without = inline_layout(&inline(width, height, 90.0, [0.0; 4]));
-    let with = inline_layout(&inline(width, height, 90.0, [-grow, grow, -grow, grow]));
-    let shadowed = inline_layout(&inline(
-        width,
-        height,
-        90.0,
-        [-grow + 1.0, grow + 2.0, -grow + 3.0, grow + 4.0],
-    ));
+    let without = inline_layout(&inline(40.0, 20.0, 90.0, [0.0; 4]));
+    let negative = inline_layout(&inline(40.0, 20.0, 90.0, [-10.0, 10.0, -10.0, 10.0]));
+    let shadowed = inline_layout(&inline(40.0, 20.0, 90.0, [1.0, 2.0, 3.0, 4.0]));
     set_word_layout_platform(WordLayoutPlatform::Windows);
 
     assert_near(
         without.after.0 - without.before.0,
-        with.after.0 - with.before.0,
-        "the box is the same width either way",
+        negative.after.0 - negative.before.0 + 0.0,
+        "negative l and r count as 0",
     );
     assert_near(
-        without.next_line.1,
-        with.next_line.1,
-        "and the same height either way",
+        negative.next_line.1 - without.next_line.1,
+        20.0,
+        "the positive t and b are added",
     );
-    assert_eq!(without.picture, with.picture);
+    assert_near(shadowed.after.0 - without.after.0, 4.0, "l + r");
+    assert_near(shadowed.next_line.1 - without.next_line.1, 6.0, "t + b");
+    // The swapped box is 20 wide: the 40 by 20 picture draws centred in it,
+    // then inset by l.
     assert_near(
-        shadowed.after.0 - with.after.0,
-        4.0,
-        "a shadow on top of the rotation still adds its l + r",
+        shadowed.picture.0 - without.picture.0,
+        1.0,
+        "the picture is inset by l",
     );
+    assert_near(shadowed.picture.2, without.picture.2, "it keeps its size");
 }
 
 /// Square-wrapped text clears a floating picture's effects as it clears its
-/// extent.
+/// rotated bounds; a malformed negative edge cannot pull text over it.
 #[test]
 fn text_wraps_around_a_floating_pictures_effect_extent() {
-    let text_x = |effects: [f64; 4]| {
+    let text_x = |rotation_deg: f64, effects: [f64; 4]| {
         let renderer = render(&format!(
             r#"<w:p>{}<w:r><w:t>Host</w:t></w:r></w:p>"#,
-            floating(40.0, 30.0, 0.0, effects)
+            floating(40.0, 20.0, rotation_deg, effects)
         ));
         glyph(&renderer.host.painter().inner().ops(), "H").0
     };
-    let plain = text_x([0.0; 4]);
-    assert_near(text_x([2.0, 0.0, 8.0, 0.0]) - plain, 8.0, "text clears r");
-    // Rotated 90°: Word writes the rotated box, which must not be added to
-    // the rotated bounds the renderer already wraps around.
-    let rotated = |effects: [f64; 4]| {
-        let renderer = render(&format!(
-            r#"<w:p>{}<w:r><w:t>Host</w:t></w:r></w:p>"#,
-            floating(40.0, 20.0, 90.0, effects)
-        ));
-        glyph(&renderer.host.painter().inner().ops(), "H").0
-    };
+    let plain = text_x(0.0, [0.0; 4]);
     assert_near(
-        rotated([-10.0, 10.0, -10.0, 10.0]),
-        rotated([0.0; 4]),
-        "the rotated box is counted once",
+        text_x(0.0, [2.0, 0.0, 8.0, 0.0]) - plain,
+        8.0,
+        "text clears r",
+    );
+    assert_near(text_x(0.0, [0.0, 0.0, -30.0, 0.0]), plain, "r below 0 is 0");
+    let rotated = text_x(90.0, [0.0; 4]);
+    assert_near(
+        text_x(90.0, [0.0, 0.0, 5.0, 0.0]) - rotated,
+        5.0,
+        "r is added to the rotated bounds",
     );
 }
 
@@ -323,4 +300,22 @@ fn the_effect_extent_probes_reserve_their_effects() {
             &format!("{name}: the next line"),
         );
     }
+}
+
+/// An inline chart (`c:chart` in a graphic frame) is laid out as a picture
+/// is, and reserves its effect extent the same way.
+#[test]
+fn an_inline_chart_reserves_its_effect_extent() {
+    let chart = |effects: [f64; 4]| {
+        format!(
+            r#"<w:r><w:drawing><wp:inline {NAMESPACES} distT="0" distB="0" distL="0" distR="0"><wp:extent cx="{cx}" cy="{cy}"/>{effect}<wp:docPr id="1" name="Chart 1"/><wp:cNvGraphicFramePr/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId20"/></a:graphicData></a:graphic></wp:inline></w:drawing></w:r>"#,
+            cx = emu(40.0),
+            cy = emu(30.0),
+            effect = effect(effects),
+        )
+    };
+    let plain = inline_layout(&chart([0.0; 4]));
+    let framed = inline_layout(&chart([1.0, 2.0, 3.0, 4.0]));
+    assert_near(framed.after.0 - plain.after.0, 4.0, "l + r");
+    assert_near(framed.next_line.1 - plain.next_line.1, 6.0, "t + b");
 }
