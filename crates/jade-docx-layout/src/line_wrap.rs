@@ -215,6 +215,9 @@ pub struct ParagraphStyle {
     /// Physical break-only lines before the first content line of a Windows
     /// body paragraph. They advance pages without using its first-line indent.
     pub leading_page_breaks: usize,
+    /// Windows Word keeps page and column controls in the editable cell text
+    /// without letting them end a line.
+    pub ignore_page_and_column_breaks: bool,
     pub first_line_available_adjustment: f64,
     pub continuation_available_adjustment: f64,
     pub right_indent: f64,
@@ -335,6 +338,7 @@ impl Default for ParagraphStyle {
             bidi: false,
             first_line_indent: 0.0,
             leading_page_breaks: 0,
+            ignore_page_and_column_breaks: false,
             first_line_available_adjustment: 0.0,
             continuation_available_adjustment: 0.0,
             right_indent: 0.0,
@@ -4416,6 +4420,20 @@ pub struct LineHyphen {
 }
 
 impl WrappedLine {
+    /// Whether line fitting had to break inside a Latin word or number.
+    pub fn splits_latin_word_before(&self, text: &str, next: &Self) -> bool {
+        self.break_kind == LineBreakKind::Soft
+            && self.hyphen.is_none()
+            && self
+                .clusters
+                .len()
+                .checked_sub(1)
+                .is_some_and(|last| is_latin_word_cluster(self, last))
+            && (!next.clusters.is_empty() && is_latin_word_cluster(next, 0)
+                || closes_latin_word(self, next))
+            && line_break_splits_latin_word(text, self, next)
+    }
+
     /// The line's shared font box, excluding blank clusters when text is
     /// visible. Missing metrics retain the paragraph's conservative estimate.
     pub fn font_box_px(&self) -> Option<(f64, f64)> {
@@ -6516,9 +6534,12 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
     let mut column_ranges = Vec::with_capacity(wrapped.len());
     let mut offsets = Vec::with_capacity(wrapped.len());
     let mut natural_height = line_height;
+    let windows = style.word_platform == crate::line_metrics::WordLayoutPlatform::Windows;
+    let mut column_widths = Vec::new();
     let mut glyph_style: Option<Rc<ResolvedRunStyle>> = None;
     let mut glyph_properties: Option<Rc<RunProperties>> = None;
     for (column_index, column) in wrapped.iter_mut().enumerate() {
+        let mut column_pitch = None;
         let offset = start_indent + style.line_indent(column_index);
         natural_height = natural_height.max(
             offset + column.clusters.iter().map(|c| c.width).sum::<f64>() + style.right_indent,
@@ -6546,6 +6567,11 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
                 let resolved = glyph_style.as_ref().expect("resolved turned run");
                 let (descriptor, _, _) = resolved
                     .descriptor_key_for_grapheme(&cluster.text, classify_script(&cluster.text));
+                if windows {
+                    let pitch = crate::line_metrics::windows_word_turned_cell_pitch_px(descriptor)
+                        .unwrap_or(line_height);
+                    column_pitch = Some(column_pitch.map_or(pitch, |prior: f64| prior.max(pitch)));
+                }
                 if let (Some(layout), Some((ascent, descent))) = (
                     cluster.layout.as_mut(),
                     crate::line_metrics::word_vertical_glyph_metrics_px(descriptor),
@@ -6593,6 +6619,9 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
         }
         column_ranges.push(first..lines.len());
         offsets.push(offset);
+        if windows {
+            column_widths.push(column_pitch.unwrap_or(line_height));
+        }
     }
     Ok(VerticalCellLayout {
         layout: VerticalWrappedLayout {
@@ -6600,7 +6629,7 @@ pub fn project_cell_text_turned<C: LineWrapContext>(
             column_ranges,
             column_height: available_height.unwrap_or(natural_height).max(line_height),
             max_line_width: line_height,
-            column_widths: Vec::new(),
+            column_widths,
         },
         column_start_offsets: offsets,
     })
@@ -9052,6 +9081,13 @@ fn wrap_text_into_lines_with_terminal_candidate<C: LineWrapContext, const SHAPE_
                 }
                 buffer_is_whitespace = None;
                 pending_leading_width = 0.0;
+
+                if paragraph_style.ignore_page_and_column_breaks {
+                    // Flush at the control so the visible segments keep their
+                    // original byte ranges on either side of it.
+                    buffer_start_abs = grapheme_end_abs;
+                    continue;
+                }
 
                 lines.push(WrappedLine {
                     segments: std::mem::take(&mut current_line),
@@ -17685,6 +17721,32 @@ mod tests {
                 LineBreakKind::ParagraphEnd,
             ]
         );
+    }
+
+    #[test]
+    fn cell_page_and_column_controls_leave_visible_text_at_its_original_offsets() {
+        let context = TestContext::new(10.0);
+        let text = "\u{000c}AB\u{000e}C\nD\u{000c}";
+        let runs = [RunStyle {
+            start: 0,
+            end: text.len(),
+            ..make_run("")
+        }];
+        let style = ParagraphStyle {
+            ignore_page_and_column_breaks: true,
+            ..ParagraphStyle::default()
+        };
+        let lines = wrap_text_into_lines(&context, text, &runs, 0.0, &style, 0, 400.0).unwrap();
+        assert_eq!(lines.len(), 2);
+        assert_eq!(lines[0].break_kind, LineBreakKind::Hard);
+        assert_eq!(lines[0].break_range, Some((5, 6)));
+        assert_eq!(lines[1].break_kind, LineBreakKind::ParagraphEnd);
+        let spans = lines
+            .iter()
+            .flat_map(|line| &line.segments)
+            .map(|segment| (segment.start, segment.end, segment.text.as_str()))
+            .collect::<Vec<_>>();
+        assert_eq!(spans, [(1, 3, "AB"), (4, 5, "C"), (6, 7, "D")]);
     }
 
     proptest! {

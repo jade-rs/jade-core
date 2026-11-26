@@ -513,6 +513,20 @@ impl StylesPart {
                 display = merge_table_style_display(parent, display);
             }
         }
+        if crate::word_platform::word_layout_platform()
+            == crate::word_platform::WordLayoutPlatform::Windows
+            && is_word_normal_table_style(definition)
+        {
+            let margins = display
+                .cell_margins
+                .get_or_insert_with(TableCellMargins::default);
+            if margins.left.is_none() && margins.start.is_none() {
+                margins.left = Some(5.4);
+            }
+            if margins.right.is_none() && margins.end.is_none() {
+                margins.right = Some(5.4);
+            }
+        }
         Some((style_id.to_string(), display))
     }
 

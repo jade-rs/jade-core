@@ -737,6 +737,27 @@ fn paragraph_page_break_before(paragraph: &Paragraph, styles: Option<&StylesPart
         .unwrap_or(false)
 }
 
+/// Windows Word promotes the first paragraph of the first cell to a row
+/// page break. In modern compatibility modes only the first header row can
+/// start a new page this way.
+pub fn windows_table_row_page_break_before(
+    row: &jade_docx_reader::TableRow,
+    row_index: usize,
+    header_row_count: usize,
+    compatibility_mode: Option<u32>,
+    styles: Option<&StylesPart>,
+) -> bool {
+    !(row_index > 0
+        && row_index < header_row_count
+        && compatibility_mode.is_some_and(|mode| mode >= 15))
+        && row
+            .cells
+            .first()
+            .and_then(|cell| cell.blocks.first())
+            .and_then(BodyElement::as_paragraph)
+            .is_some_and(|paragraph| paragraph_page_break_before(paragraph, styles))
+}
+
 fn paragraph_allows_style_font_size_defaults(
     _document: &Document,
     _doc_grid: Option<&jade_docx_reader::DocGrid>,
@@ -1130,7 +1151,12 @@ fn build_paragraph_input<C: LineWrapContext>(
     }
 
     let mut base_x = content_left_x;
-    let mut paragraph_style = ParagraphStyle::default();
+    let mut paragraph_style = ParagraphStyle {
+        ignore_page_and_column_breaks: in_table_cell
+            && crate::line_metrics::word_layout_platform()
+                == crate::line_metrics::WordLayoutPlatform::Windows,
+        ..ParagraphStyle::default()
+    };
     if let Some(default_tab_stop) = document.default_tab_stop {
         paragraph_style.default_tab_width = points_to_px(default_tab_stop);
     }
@@ -1855,6 +1881,8 @@ struct TableLayoutBounds {
     content_top_y: f64,
     content_bottom_y: f64,
     section_content_height_pt: f32,
+    opening_column: usize,
+    nested: bool,
 }
 
 fn layout_table_lines<C: LineWrapContext>(
@@ -1874,11 +1902,59 @@ fn layout_table_lines<C: LineWrapContext>(
     let table_left = bounds.content_left_x + table_margin_left_px(table, available_width);
     let column_widths = table_column_widths_px(table, available_width);
 
-    for row in &table.rows {
+    let table_row_breaks = !bounds.nested
+        && !table
+            .style
+            .get("table-position")
+            .is_some_and(|value| value.eq_ignore_ascii_case("floating"))
+        && crate::line_metrics::word_layout_platform()
+            == crate::line_metrics::WordLayoutPlatform::Windows;
+    let opening_page = *current_page_0;
+    let starts_inside_page = |page, y| {
+        (page == opening_page && bounds.opening_column != 0) || y > bounds.content_top_y + EPS
+    };
+    let header_row_count = table.rows.iter().take_while(|row| row.is_header).count();
+    let compatibility_mode = layout_context
+        .document
+        .east_asian_line_breaking
+        .compatibility_mode;
+    let row_page_break_before = |index: usize| {
+        table_row_breaks
+            && windows_table_row_page_break_before(
+                &table.rows[index],
+                index,
+                header_row_count,
+                compatibility_mode,
+                layout_context.styles,
+            )
+    };
+    if header_row_count != 0
+        && header_row_count < table.rows.len()
+        && compatibility_mode.is_some_and(|mode| mode >= 15)
+        && starts_inside_page(*current_page_0, *current_y)
+        && row_page_break_before(header_row_count)
+    {
+        *current_page_0 += 1;
+        *current_y = bounds.content_top_y;
+    }
+    let mut header_height = 0.0;
+    for (row_index, row) in table.rows.iter().enumerate() {
         let row_height = row
             .height
             .map(points_to_px)
             .unwrap_or_else(|| points_to_px(12.0) * 1.2 + points_to_px(8.0));
+        if row_page_break_before(row_index) && starts_inside_page(*current_page_0, *current_y) {
+            *current_page_0 += 1;
+            *current_y = bounds.content_top_y;
+            if row_index >= header_row_count
+                && header_height + row_height <= bounds.content_bottom_y - bounds.content_top_y
+            {
+                *current_y += header_height;
+            }
+        }
+        if row_index < header_row_count {
+            header_height += row_height;
+        }
         let mut table_column = 0usize;
         ensure_vertical_space_in_columns(
             current_y,
@@ -2144,6 +2220,8 @@ fn layout_table_lines<C: LineWrapContext>(
                                 content_top_y: bounds.content_top_y,
                                 content_bottom_y: bounds.content_bottom_y,
                                 section_content_height_pt: bounds.section_content_height_pt,
+                                opening_column: 0,
+                                nested: true,
                             },
                         )?;
                     }
@@ -2332,6 +2410,7 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                 match element {
                     BodyElement::Table(table) => {
                         previous_element_was_math = false;
+                        let page_before_table = current_page_0;
                         layout_table_lines(
                             &layout_context,
                             table,
@@ -2345,8 +2424,16 @@ fn layout_document_lines_with_styles_and_oracle<C: LineWrapContext>(
                                 content_top_y,
                                 content_bottom_y,
                                 section_content_height_pt,
+                                opening_column: current_column,
+                                nested: false,
                             },
                         )?;
+                        if current_page_0 != page_before_table
+                            && crate::line_metrics::word_layout_platform()
+                                == crate::line_metrics::WordLayoutPlatform::Windows
+                        {
+                            current_column = 0;
+                        }
                     }
                     BodyElement::Math(math) => {
                         let paragraph_index = next_paragraph_index;
@@ -5166,6 +5253,37 @@ mod tests {
                     line.y
                 );
             }
+        }
+    }
+
+    #[test]
+    fn windows_table_page_breaks_follow_first_cell_and_header_rules() {
+        use crate::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+
+        set_word_layout_platform(WordLayoutPlatform::Windows);
+        let context = FixedWidthContext::new(10.0);
+        let fixtures = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../public/fixtures");
+        for (name, mode, text, page) in [
+            ("inline-same-run", 15, "PRETARGET", 1),
+            ("first-row-document-start", 15, "TARGET", 1),
+            ("first-cell-direct", 15, "TARGET", 2),
+            ("first-cell-inherited", 15, "TARGET", 2),
+            ("first-row-at-second-column-top", 15, "TARGET", 2),
+            ("first-cell-direct-off", 15, "TARGET", 1),
+            ("later-paragraph-after-empty", 15, "TARGET", 1),
+            ("second-cell-direct", 15, "TARGET", 1),
+            ("nested-first-cell", 15, "TARGET", 1),
+            ("repeated-header", 14, "TARGET", 2),
+            ("repeated-header", 15, "TARGET", 3),
+            ("second-header-has-break", 14, "TARGET", 2),
+            ("second-header-has-break", 15, "TARGET", 1),
+        ] {
+            let name = format!("word-windows-edge-table-page-break-{name}-compat{mode}.docx");
+            let bytes = fs::read(fixtures.join(&name)).unwrap();
+            let package = block_on(OpenXmlPackage::load(&bytes)).unwrap();
+            let layout = layout_docx_lines_from_package(&package, &context).unwrap();
+            let line = layout.get_lines().find(|line| line.text == text).unwrap();
+            assert_eq!(line.page, page, "{name}");
         }
     }
 

@@ -536,6 +536,7 @@ mod effect_extent_tests;
 #[cfg(test)]
 mod float_anchor_tests;
 mod float_lookahead;
+mod floating_table_wrap;
 #[cfg(test)]
 mod font_state_tests;
 #[cfg(test)]
@@ -5458,6 +5459,7 @@ where
     /// Text-wrap exclusions registered by floating drawings and tables during
     /// the current layout pass. Coordinates are page-local CSS pixels.
     active_float_exclusions: Vec<PageFloatExclusion>,
+    floating_table_wrap: Option<floating_table_wrap::FloatingTableWrap>,
     /// The `w:framePr` frame whose paragraphs are being placed, if any.
     paragraph_frame: Option<ActiveParagraphFrame>,
     /// `(left, width)` of the frame box while one of its paragraphs renders;
@@ -11416,6 +11418,7 @@ where
             table_counter: 0,
             floating_table_frames: Vec::new(),
             active_float_exclusions: Vec::new(),
+            floating_table_wrap: None,
             paragraph_frame: None,
             paragraph_frame_column: None,
             paragraph_frame_wrap_guard: None,
@@ -12700,6 +12703,11 @@ where
         paragraph_style.bidi.hash(&mut hasher);
         if paragraph_style.leading_page_breaks != 0 {
             paragraph_style.leading_page_breaks.hash(&mut hasher);
+        }
+        if paragraph_style.ignore_page_and_column_breaks {
+            paragraph_style
+                .ignore_page_and_column_breaks
+                .hash(&mut hasher);
         }
         let word_metric_policy = u8::from(paragraph_style.word_east_asian_font_line_box)
             | (u8::from(
@@ -17620,7 +17628,14 @@ where
             && has_vertical_alignment
             && (self.needs_full_repaint() || self.force_full_repaint_once || remeasure_alignment);
 
-        if measure_first {
+        let measure_floating_tables = !self.pageless_mode
+            && jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && self.horizontal_float_wrap_cache.get(&document_rc)
+            && floating_table_wrap::document_may_wrap_before_floating_tables(&document_rc);
+        self.floating_table_wrap =
+            measure_floating_tables.then(floating_table_wrap::FloatingTableWrap::start_measurement);
+        if measure_first || measure_floating_tables {
             let saved_skip_draw = self.render_skip_draw;
             self.render_skip_draw = true;
             self.force_full_repaint_once = true;
@@ -17630,7 +17645,7 @@ where
             // Justified gaps are measured on the natural flow: suspend (not
             // drop) the published ones, so pages past a bounded measurement
             // keep theirs.
-            self.valign_gaps_suspended = true;
+            self.valign_gaps_suspended = measure_first;
             let measured = self.render_with_numbering_rc_once(
                 Rc::clone(&document_rc),
                 options,
@@ -17641,7 +17656,16 @@ where
             );
             self.valign_gaps_suspended = false;
             self.render_skip_draw = saved_skip_draw;
-            measured?;
+            if let Err(error) = measured {
+                self.floating_table_wrap = None;
+                return Err(error);
+            }
+            if let Some(wrap) = self.floating_table_wrap.as_mut() {
+                wrap.finish_measurement();
+                self.clear_fast_replay();
+                self.preserve_completed_pagination_on_stable_edit = false;
+                self.disable_seek_replay_once = true;
+            }
             // The layout-only pass allocated page backings without pixels.
             // Force the immediately following pass to paint every page using
             // the offsets it just measured.
@@ -17702,6 +17726,7 @@ where
                 );
             }
         }
+        self.floating_table_wrap = None;
         result
     }
 
@@ -19720,6 +19745,7 @@ where
                 ) {
                     return Ok(());
                 }
+                let entry_page = self.current_page_number;
                 let result = self.render_paragraph_with_numbering(
                     paragraph,
                     options,
@@ -19730,6 +19756,30 @@ where
                     body_element_index,
                     section_index,
                 );
+                if self.floating_table_wrap.is_some()
+                    && entry_page < self.current_page_number
+                    && self.column_layout.count() == 1
+                    && !self.mirror_margins
+                    && !self.measuring_keep_next
+                {
+                    if let Some(line) = self
+                        .selection
+                        .paragraphs()
+                        .get(paragraph_index)
+                        .and_then(|layout| layout.lines.first())
+                    {
+                        let page = self.page_for_y(line.absolute_top);
+                        let top = line.absolute_top - self.page_top_y(page);
+                        if let Some(wrap) = self.floating_table_wrap.as_mut() {
+                            wrap.record_paragraph_page(
+                                body_element_index,
+                                entry_page,
+                                page + 1,
+                                top,
+                            );
+                        }
+                    }
+                }
                 // A first-referencing host paragraph is followed by its
                 // footnote's surfaces in the editable enumeration. Skip those
                 // reserved indices so later body paragraphs keep the same
@@ -21771,6 +21821,10 @@ where
             .shift_replay_from
             .map(|start| paragraph_index >= start)
             .unwrap_or(false);
+        let wraps_future_table = self
+            .floating_table_wrap
+            .as_ref()
+            .is_some_and(|wrap| wrap.may_wrap(body_element_index));
 
         // Try the cheapest path first: if we're in a replay window (prefix replay or fast replay),
         // attempt unchecked cache replay BEFORE scanning runs to decide cache eligibility.
@@ -21780,6 +21834,7 @@ where
         // be replayed incorrectly.
         if (prefix_replay || fast_replay || shift_replay)
             && self.active_float_exclusions.is_empty()
+            && !wraps_future_table
             && self.float_lookahead.is_none()
             && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
@@ -22146,6 +22201,7 @@ where
             && !self.rendering_page_footnotes
             && !continuing_note_paragraph
             && self.active_float_exclusions.is_empty()
+            && !wraps_future_table
             && self.float_lookahead.is_none()
             && self.float_lookahead_pin.is_none()
             && self.paragraph_frame_column.is_none()
@@ -24187,7 +24243,7 @@ where
         // and wraps only what follows it around the box.
         let mac = paragraph_style.word_platform
             == jade_docx_layout::line_metrics::WordLayoutPlatform::Mac;
-        let current_float_exclusions = paragraph_float_exclusions
+        let mut current_float_exclusions = paragraph_float_exclusions
             .iter()
             .filter_map(|(bounds, line_anchored)| {
                 if !(mac && *line_anchored) {
@@ -24200,6 +24256,26 @@ where
                 })
             })
             .collect::<Vec<_>>();
+        let mut future_table_exclusions = Vec::new();
+        if !self.measuring_keep_next
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+        {
+            if let Some(wrap) = &self.floating_table_wrap {
+                wrap.add_exclusions(
+                    body_element_index,
+                    self.current_page_number,
+                    self.current_y,
+                    self.column_layout.count() == 1
+                        && !self.mirror_margins
+                        && current_float_exclusions.is_empty()
+                        && self.active_float_exclusions.is_empty(),
+                    &mut future_table_exclusions,
+                );
+            }
+        }
+        current_float_exclusions.extend_from_slice(&future_table_exclusions);
         let paragraph_float_exclusions = paragraph_float_exclusions
             .into_iter()
             .map(|(bounds, _)| bounds)
@@ -24406,6 +24482,68 @@ where
                 )
             });
         let lookahead = self.float_lookahead.take().filter(|_| spacing_eligible);
+        if spacing_eligible
+            && !future_table_exclusions.is_empty()
+            && paragraph_style
+                .east_asian_rules
+                .compatibility_mode
+                .is_some_and(|mode| mode >= 15)
+        {
+            // Modern Word clears the floating table when its side cannot
+            // fit the next whole word. Keep any earlier lines beside it.
+            let content_right = column_right - paragraph_style.right_indent;
+            let numbering_ascent = pending_numbering
+                .as_ref()
+                .and_then(|numbering| self.numbering_first_line_ascent(numbering));
+            for _ in 0..future_table_exclusions.len() {
+                let lines = self.wrap_text_into_lines_cached(
+                    &layout_text,
+                    &run_styles,
+                    x,
+                    &paragraph_style,
+                    paragraph_offset,
+                    column_right,
+                )?;
+                let Some(mut line) = floating_table_wrap::first_word_between_float_edges(
+                    &layout_text,
+                    &lines,
+                    &paragraph_style,
+                    content_right - x,
+                ) else {
+                    break;
+                };
+                while paragraph_style.line_shares_float_band(line) {
+                    line -= 1;
+                }
+                let top = self.current_y
+                    + WrappedLine::physical_height_px(
+                        &lines[..line],
+                        &paragraph_style,
+                        line_height,
+                        paragraph_mark_font_box,
+                        object_line_extra_px,
+                        numbering_ascent,
+                    )
+                    + paragraph_style.skipped_float_height_before(line, line_height);
+                let Some(clearance) =
+                    floating_table_wrap::word_clearance(&future_table_exclusions, top, line_height)
+                else {
+                    break;
+                };
+                current_float_exclusions.push(clearance);
+                paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
+                    self.current_y,
+                    line_height,
+                    x,
+                    content_right,
+                    &current_float_exclusions,
+                    contour_font_box,
+                    paragraph_style.word_grid_line_sizing.is_none(),
+                    None,
+                    float_line_bottom_leading,
+                );
+            }
+        }
         if spacing_eligible && (lookahead.is_some() || table_space_after > 0.0) {
             let natural_lines = self.wrap_text_into_lines_cached(
                 &layout_text,
