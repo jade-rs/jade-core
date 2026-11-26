@@ -41,6 +41,9 @@ from generate_windows_nested_table_overflow_cases import (
 from generate_windows_nested_table_page_break_cases import (
     PREFIX as NESTED_TABLE_PREFIX, cases as nested_table_cases,
 )
+from generate_windows_nested_table_preferred_cases import (
+    PREFIX as NESTED_PREFERRED_PREFIX, cases as nested_preferred_cases,
+)
 from generate_windows_page_break_cases import MODES, cases as manual_cases
 from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 from generate_windows_table_page_break_cases import PREFIX as TABLE_PREFIX, cases as table_cases
@@ -73,6 +76,8 @@ CAPTURES = (
      NESTED_ALIGNMENT_PREFIX, nested_alignment_cases, ('--unclipped-tables',)),
     ('nested-table-depth', '9e02614367b540168a00c2f8f11a4d83396930696c5876a0a6f5f873ede50d42',
      NESTED_DEPTH_PREFIX, nested_depth_cases, ('--unclipped-tables',)),
+    ('nested-table-preferred-widths', '1ee621a881cba218780c9423e1566b9db830d72e0cca1e8675e630e870e2681d',
+     NESTED_PREFERRED_PREFIX, nested_preferred_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -104,7 +109,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     fixtures = pages = glyphs = 0
     check_screen = capture_path.parent.name in (
         'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
-        'nested-table-alignment', 'nested-table-depth',
+        'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )

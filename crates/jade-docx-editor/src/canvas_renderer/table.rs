@@ -1673,6 +1673,7 @@ struct NestedTableLayout {
     column_positions: Vec<f64>,
     rows: Vec<NestedRowLayout>,
     width: f64,
+    windows_preferred_grid: bool,
     height: f64,
     margin_top: f64,
     margin_bottom: f64,
@@ -1680,32 +1681,28 @@ struct NestedTableLayout {
 }
 
 impl NestedTableLayout {
-    fn windows_fixed_inline(&self) -> bool {
+    fn uses_windows_inline_placement(&self) -> bool {
         use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
-        word_layout_platform() == WordLayoutPlatform::Windows
-            && !table_floats(&self.table)
-            && resolve_table_layout_mode(&self.table) == TableLayoutMode::Fixed
-            && self
-                .table
-                .style
-                .get("width")
-                .and_then(|width| parse_length_to_px(width))
-                .is_some()
+        self.windows_preferred_grid
+            || (word_layout_platform() == WordLayoutPlatform::Windows
+                && !table_floats(&self.table)
+                && resolve_table_layout_mode(&self.table) == TableLayoutMode::Fixed
+                && absolute_table_width(&self.table).is_some())
     }
 
     fn x_in_cell(&self, content_left: f64, content_width: f64) -> f64 {
-        let windows_fixed = self.windows_fixed_inline();
+        let windows_placement = self.uses_windows_inline_placement();
         let left = compute_table_x_inner(
             content_left,
             content_width,
             self.width,
             &self.table,
             0.0,
-            windows_fixed,
+            windows_placement,
         );
-        // Word keeps a fixed inner table's aligned position even when its
+        // Word keeps the inner table's aligned position even when its
         // frame extends beyond the content area of the enclosing cell.
-        if !windows_fixed
+        if !windows_placement
             && !table_floats(&self.table)
             && left + self.width > content_left + content_width
         {
@@ -6260,9 +6257,10 @@ where
                     };
                     // An inner table can let its descendants paint past its
                     // own frame as well. Keep the row's vertical clip while
-                    // painting fixed nested tables in growing Windows rows.
+                    // painting nested tables in growing Windows rows.
                     let content_left = x_start + pad_left + border_left_inset;
-                    let overflow = allow_nested_overflow && nested_table.windows_fixed_inline();
+                    let overflow =
+                        allow_nested_overflow && nested_table.uses_windows_inline_placement();
                     let nested_clip = if overflow {
                         drop(clip_guard.take());
                         cell_clip(0.0, self.page_width)
@@ -7147,7 +7145,7 @@ where
                     cell_width - pad_horizontal - border_left_inset - border_right_inset;
                 if content_width > 0.0 {
                     let content_left = x_start + pad_left + border_left_inset;
-                    let overflow = allow_nested_overflow && nested.windows_fixed_inline();
+                    let overflow = allow_nested_overflow && nested.uses_windows_inline_placement();
                     let nested_clip = if overflow {
                         drop(clip_guard.take());
                         cell_clip(0.0, self.page_width)
@@ -9284,9 +9282,9 @@ where
         available_width: f64,
         ancestor_clip: TableProjectionClip,
     ) -> Result<f64, JsValue> {
-        let mut total_height = layout.margin_top + layout.margin_bottom;
+        let mut total_height = layout.margin_top;
         if layout.rows.is_empty() {
-            return Ok(total_height.max(layout.line_height));
+            return Ok((total_height + layout.margin_bottom).max(layout.line_height));
         }
 
         let painter = self.host.painter();
@@ -11152,7 +11150,7 @@ fn compute_table_x_inner(
     table_width: f64,
     table: &Table,
     leading_text_inset: f64,
-    windows_nested_fixed: bool,
+    windows_nested: bool,
 ) -> f64 {
     let (effective_indent, automatic_indent) = table_leading_indent(table);
     let indent = effective_indent.unwrap_or(0.0);
@@ -11200,9 +11198,9 @@ fn compute_table_x_inner(
         }
     };
 
-    // A fixed-width nested table in Windows Word accepts a nonnegative
+    // A nested table in Windows Word accepts a nonnegative
     // indent only at the leading edge of its parent cell.
-    let indent = if windows_nested_fixed {
+    let indent = if windows_nested {
         if leading {
             indent.max(0.0)
         } else {
@@ -17873,6 +17871,90 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
     Ok(layouts)
 }
 
+fn word_windows_nested_grid(
+    table: &Table,
+    column_count: usize,
+    available_width: f64,
+) -> Option<Vec<f64>> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if word_layout_platform() != WordLayoutPlatform::Windows || table_floats(table) {
+        return None;
+    }
+    let mut preferences = vec![(0.0_f64, 0.0_f64); column_count];
+    let mut rows = table.rows.iter().filter(|row| !table_row_is_hidden(row));
+    let first = rows.next()?;
+    for row in std::iter::once(first).chain(rows) {
+        if row.cells.len() != column_count
+            || row.grid_before.unwrap_or(0) != 0
+            || row.grid_after.unwrap_or(0) != 0
+        {
+            return None;
+        }
+        for (cell, (absolute, fraction)) in row.cells.iter().zip(&mut preferences) {
+            if cell.span.unwrap_or(1) != 1 || cell.vertical_merge.is_some() {
+                return None;
+            }
+            if let Some(width) = cell.style.get("width") {
+                if let Some(value) = preferred_width_px(width, 1.0) {
+                    if width.trim().ends_with('%') {
+                        *fraction = fraction.max(value);
+                    } else {
+                        *absolute = absolute.max(value);
+                    }
+                }
+            }
+        }
+    }
+
+    // The saved grid supplies columns without a cell preference. Word uses
+    // these same nested column boundaries with either tblLayout value.
+    for (index, (absolute, fraction)) in preferences.iter_mut().enumerate() {
+        if *fraction == 0.0 && *absolute == 0.0 {
+            *absolute = points_to_px(table.columns.get(index)?.width?);
+            if !absolute.is_finite() || *absolute <= 0.0 {
+                return None;
+            }
+        }
+    }
+    let fraction_total: f64 = preferences.iter().map(|(_, fraction)| fraction).sum();
+    let absolute_total: f64 = preferences
+        .iter()
+        .filter(|(_, fraction)| *fraction == 0.0)
+        .map(|(absolute, _)| absolute)
+        .sum();
+    let budget = table
+        .style
+        .get("width")
+        .and_then(|width| preferred_width_px(width, available_width))
+        .or_else(|| (fraction_total > 0.0).then_some(available_width))
+        .unwrap_or(absolute_total);
+    if !budget.is_finite() || budget <= 0.0 || (fraction_total >= 1.0 && absolute_total > 0.0) {
+        return None;
+    }
+    let fraction_scale = if absolute_total == 0.0 {
+        budget / fraction_total
+    } else {
+        budget
+    };
+    let absolute_scale = if absolute_total == 0.0 {
+        0.0
+    } else {
+        budget * (1.0 - fraction_total) / absolute_total
+    };
+    Some(
+        preferences
+            .into_iter()
+            .map(|(absolute, fraction)| {
+                if fraction > 0.0 {
+                    fraction * fraction_scale
+                } else {
+                    absolute * absolute_scale
+                }
+            })
+            .collect(),
+    )
+}
+
 fn layout_nested_table<P: Painter<Error: PainterError>>(
     wrap_context: &TableLineWrapContext<'_, P>,
     table: &Table,
@@ -17881,7 +17963,10 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
 ) -> Result<NestedTableLayout, JsValue> {
     let column_count = compute_column_count(table).max(1);
-    let mut column_widths = compute_column_widths(table, column_count, available_width);
+    let preferred_grid = word_windows_nested_grid(table, column_count, available_width);
+    let windows_preferred_grid = preferred_grid.is_some();
+    let mut column_widths = preferred_grid
+        .unwrap_or_else(|| compute_column_widths(table, column_count, available_width));
     // Word for Mac keeps the authored grid width of a single-column auto-width
     // nested table even when its parent cell is narrower.
     let available_width = match table.columns.as_slice() {
@@ -17898,18 +17983,28 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         }
         _ => available_width,
     };
-    let (_, mut natural_paragraph_layouts) = apply_table_layout_width_for_table_with_content(
-        wrap_context,
-        table,
-        &mut column_widths,
-        available_width,
-        config.padding_x,
-        &|paragraph| config.line_height_for(paragraph),
-        None,
-        field_value_for,
-        Some(config),
-        false,
-    )?;
+    let mut natural_paragraph_layouts = if windows_preferred_grid {
+        if let Some(grid) =
+            WindowsPositiveSpacingGrid::resolve(table, column_count, config.padding_x)
+        {
+            grid.adjust(&mut column_widths, None);
+        }
+        NaturalParagraphLayoutCache::default()
+    } else {
+        apply_table_layout_width_for_table_with_content(
+            wrap_context,
+            table,
+            &mut column_widths,
+            available_width,
+            config.padding_x,
+            &|paragraph| config.line_height_for(paragraph),
+            None,
+            field_value_for,
+            Some(config),
+            false,
+        )?
+        .1
+    };
 
     adjust_windows_negative_spacing_columns(table, &mut column_widths);
 
@@ -17930,7 +18025,18 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         .style
         .get("margin-bottom")
         .and_then(|v| parse_length_to_px(v))
-        .unwrap_or(0.0);
+        .unwrap_or(0.0)
+        + if windows_preferred_grid {
+            // Windows includes the last separated row's outer gutter in
+            // the nested table's height, before the next enclosing-cell block.
+            table
+                .rows
+                .iter()
+                .rfind(|row| !table_row_is_hidden(row))
+                .map_or(0.0, |row| resolve_cell_spacing_px(row, table).max(0.0))
+        } else {
+            0.0
+        };
 
     let mut rows = Vec::with_capacity(table.rows.len());
     let mut total_height = margin_top;
@@ -18042,6 +18148,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         column_positions,
         rows,
         width: table_width,
+        windows_preferred_grid,
         height: total_height.max(config.line_height),
         margin_top,
         margin_bottom,
@@ -26153,6 +26260,7 @@ mod tests {
             column_positions: Vec::new(),
             rows: Vec::new(),
             width: 0.0,
+            windows_preferred_grid: false,
             height: 0.0,
             margin_top: 0.0,
             margin_bottom: 0.0,
