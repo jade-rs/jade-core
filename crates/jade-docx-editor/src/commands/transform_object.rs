@@ -175,6 +175,7 @@ impl TransformObjectCommand {
                 let image = run.image.as_mut().ok_or_else(|| {
                     CommandError::Custom("target run does not contain image".into())
                 })?;
+                let previous = (image.width_px, image.height_px, image.layout.rotation_deg);
                 image.width_px = Some(transform.width.max(1.0));
                 image.height_px = Some(transform.height.max(1.0));
                 Self::apply_layout_transform(
@@ -184,6 +185,7 @@ impl TransformObjectCommand {
                     margins,
                     frame_origin,
                 );
+                image.refit_effect_extent(previous);
             }
             FloatingObjectKind::TextBox => {
                 let text_box = run.text_box.as_mut().ok_or_else(|| {
