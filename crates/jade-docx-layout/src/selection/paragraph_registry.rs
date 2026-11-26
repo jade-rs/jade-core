@@ -235,10 +235,10 @@ impl ParagraphRegistry {
 
     /// Sets the paragraphs from `from` on aside, as moving them out with
     /// `split_off` would, without moving them. `None` when there are none,
-    /// as `split_off` would return none. A tail parked before is dropped.
+    /// as `split_off` would return none, and when a tail is parked already:
+    /// the caller takes them then.
     pub(super) fn park(&mut self, from: usize) -> Option<u64> {
-        self.drop_parked();
-        if from >= self.len {
+        if self.parked.is_some() || from >= self.len {
             return None;
         }
         let id = self.next_park;
@@ -255,17 +255,12 @@ impl ParagraphRegistry {
         Some(id)
     }
 
-    fn take_parked(&mut self, id: u64) -> Option<Parked> {
-        if self.parked.as_ref().is_some_and(|parked| parked.id == id) {
-            self.parked.take()
-        } else {
-            debug_assert!(false, "parked paragraph tail {id} is gone");
-            None
-        }
-    }
-
     /// Puts back the tail parked as `id`, as truncating to `from` and
     /// extending with the tail would.
+    ///
+    /// The registry parks one tail at a time, so `id` is the parked one's.
+    /// Should it not be, the tail parked is put back rather than nothing, so
+    /// that no paragraph is lost.
     pub(super) fn restore_parked(&mut self, id: u64, from: usize) {
         let fast = self.parked.as_ref().is_some_and(|parked| {
             parked.id == id
@@ -274,7 +269,7 @@ impl ParagraphRegistry {
                 && matches!(parked.place, Place::InPlace { .. })
         });
         if !fast {
-            let tail = self.detach_parked(id);
+            let tail = self.detach_parked();
             if !tail.is_empty() {
                 self.truncate(from);
                 self.extend(tail);
@@ -298,24 +293,28 @@ impl ParagraphRegistry {
         self.len = end;
     }
 
-    /// Hands over the tail parked as `id`, the registered paragraphs staying
-    /// as they are.
-    pub(super) fn detach_parked(&mut self, id: u64) -> Vec<ParagraphLayout> {
-        if self.parked.as_ref().is_some_and(|parked| parked.id == id) {
-            self.detach();
-        }
-        match self.take_parked(id).map(|parked| parked.place) {
+    /// Hands over the tail parked, the registered paragraphs staying as they
+    /// are.
+    pub(super) fn detach_parked(&mut self) -> Vec<ParagraphLayout> {
+        self.detach();
+        match self.parked.take().map(|parked| parked.place) {
             Some(Place::Detached(tail)) => tail,
             _ => Vec::new(),
         }
     }
 
     /// Drops the tail parked as `id`, the registered paragraphs staying as
-    /// they are.
+    /// they are. Nothing when `id` is not the parked one's: that tail is
+    /// another suffix's.
     pub(super) fn discard_parked(&mut self, id: u64) {
-        if self.take_parked(id).is_some() {
-            self.items.truncate(self.len);
+        if self.parked.as_ref().is_some_and(|parked| parked.id == id) {
+            self.drop_parked();
         }
+    }
+
+    /// Whether a tail is parked.
+    pub(super) fn has_parked(&self) -> bool {
+        self.parked.is_some()
     }
 
     /// Drops whatever tail is parked, if one is.

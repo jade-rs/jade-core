@@ -107,7 +107,8 @@ proptest! {
     ) {
         let mut manager = SelectionManager::new();
         let mut paragraphs = Vec::<Paragraph>::new();
-        let mut saved = None;
+        #[allow(clippy::type_complexity)]
+        let mut saved: Option<(usize, SelectionSuffix, Vec<Paragraph>, Vec<usize>, Vec<(usize, usize)>)> = None;
         let mut excluded = HashSet::new();
         let mut caret_origins = HashSet::new();
         let mut pass = 0;
@@ -173,6 +174,12 @@ proptest! {
                     if frozen { manager.freeze(); } else { manager.unfreeze(); }
                 }
                 Command::TakeSuffix(from) | Command::ParkSuffix(from) => {
+                    // A suffix still held is ended first, as the renderer
+                    // ends every one it takes; dropping one unended would
+                    // keep its tail parked, and later parks would take.
+                    if let Some((_, tail, ..)) = saved.take() {
+                        manager.discard_selection_suffix(tail);
+                    }
                     let tail = if matches!(command, Command::ParkSuffix(_)) {
                         manager.park_selection_suffix(*from)
                     } else {
