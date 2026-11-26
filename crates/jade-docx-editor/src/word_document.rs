@@ -16588,8 +16588,10 @@ impl WordDocument {
         image.relationship_id = Some(relationship.id);
         image.data_uri = Some(data_uri);
         image.placeholder_label = None;
+        let previous = (image.width_px, image.height_px, image.layout.rotation_deg);
         image.width_px = next_width;
         image.height_px = next_height;
+        image.refit_effect_extent(previous);
 
         self.sync_paragraph_text(target.paragraph_index);
         self.rebuild_paragraph_surfaces();
@@ -38925,6 +38927,35 @@ impl WordDocument {
         }
         let mut graphic = graphic.expect("the container was chosen for its graphic");
 
+        // `wp:effectExtent` follows the model, which editing refits to a
+        // new size or rotation; an unchanged one is kept verbatim.
+        let effect = layout.options().effect_extent.unwrap_or_default();
+        let effect_emu = [effect.left, effect.top, effect.right, effect.bottom].map(px_to_emu);
+        let existing_effect = kept
+            .iter()
+            .position(|element| element.name == "wp:effectExtent");
+        let written_emu = existing_effect.map(|index| {
+            ["l", "t", "r", "b"].map(|name| {
+                get_attr(&kept[index], name)
+                    .and_then(|value| value.trim().parse::<i64>().ok())
+                    .unwrap_or(0)
+            })
+        });
+        if written_emu != Some(effect_emu) && (existing_effect.is_some() || effect_emu != [0; 4]) {
+            if let Some(index) = existing_effect {
+                kept.remove(index);
+            }
+            let [l, t, r, b] = effect_emu;
+            kept.insert(
+                0,
+                doc.create_element(
+                    "wp:effectExtent",
+                    vec![attr("l", l), attr("t", t), attr("r", r), attr("b", b)],
+                    Vec::new(),
+                ),
+            );
+        }
+
         // The graphic: size, rotation, flips, crop, picture.
         if let Some(graphic_data) = child_mut(&mut graphic, "a:graphicData") {
             if let Some(picture) = child_mut(graphic_data, "pic:pic") {
@@ -49011,6 +49042,165 @@ mod tests {
             (extent.left, extent.top, extent.right, extent.bottom),
             (2.0, 1.0, 6.0, 8.0)
         );
+    }
+
+    /// A picture with `effect` (EMU) around its 914400 by 609600 extent,
+    /// rotated by `rotation_deg`, floating when `floating`.
+    fn effect_extent_image_docx(effect: [i64; 4], rotation_deg: f64, floating: bool) -> Vec<u8> {
+        let [l, t, r, b] = effect;
+        let rot = (rotation_deg * 60_000.0).round() as i64;
+        let xml = single_image_document_xml()
+            .replace(
+                r#"<wp:extent cx="914400" cy="609600"/>"#,
+                &format!(
+                    r#"<wp:extent cx="914400" cy="609600"/><wp:effectExtent l="{l}" t="{t}" r="{r}" b="{b}"/>"#
+                ),
+            )
+            .replace("<a:xfrm>", &format!(r#"<a:xfrm rot="{rot}">"#));
+        let xml = if floating {
+            xml.replace(
+                r#"<wp:inline distT="0" distB="0" distL="0" distR="0">"#,
+                r#"<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="1" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1"><wp:simplePos x="0" y="0"/><wp:positionH relativeFrom="column"><wp:posOffset>0</wp:posOffset></wp:positionH><wp:positionV relativeFrom="paragraph"><wp:posOffset>0</wp:posOffset></wp:positionV>"#,
+            )
+            .replace("</wp:inline>", "</wp:anchor>")
+            .replace("<wp:docPr", "<wp:wrapSquare wrapText=\"bothSides\"/><wp:docPr")
+        } else {
+            xml
+        };
+        build_document_docx(&xml)
+    }
+
+    fn picture_target() -> FloatingObjectTarget {
+        FloatingObjectTarget {
+            paragraph_index: 0,
+            run_index: 0,
+            kind: FloatingObjectKind::Image,
+        }
+    }
+
+    fn effect_extent_of(word_doc: &WordDocument) -> Option<[f64; 4]> {
+        word_doc
+            .paragraph(0)
+            .and_then(|paragraph| paragraph.runs.iter().find_map(|run| run.image.as_ref()))
+            .and_then(|image| image.layout.options().effect_extent)
+            .map(|extent| [extent.left, extent.top, extent.right, extent.bottom])
+    }
+
+    fn assert_edges_near(actual: Option<[f64; 4]>, expected: [f64; 4], what: &str) {
+        let actual = actual.unwrap_or([0.0; 4]);
+        for (a, e) in actual.iter().zip(expected) {
+            assert!(
+                (a - e).abs() < 0.001,
+                "{what}: expected {expected:?}, got {actual:?}"
+            );
+        }
+    }
+
+    /// Export, reload: the reloaded picture carries the same effect extent.
+    fn reloaded_effect_extent(word_doc: &WordDocument) -> (String, Option<[f64; 4]>) {
+        let exported = word_doc.export_docx().expect("export");
+        let xml = read_document_xml_from_docx(&exported);
+        let reloaded =
+            executor::block_on(WordDocument::load(&exported, &Options::default())).expect("reload");
+        (xml, effect_extent_of(&reloaded))
+    }
+
+    /// Word writes a 30° picture's rotated box into `wp:effectExtent`.
+    /// Rotating it back to 0° leaves no growth from the rotation.
+    #[test]
+    fn rotating_a_word_rotated_picture_upright_drops_its_rotation_extent() {
+        use crate::commands::format_image::{FormatImageCommand, ImageFormatSpec};
+        use crate::commands::{CommandContext, CommandExecutor};
+
+        // 96 by 64 px at 30°: the rotated box grows 7.57 px on each side
+        // horizontally and 11.71 px vertically.
+        let rotation = jade_docx_reader::document::EffectExtent::of_rotation(96.0, 64.0, 30.0);
+        let emu = |px: f64| (px * 9525.0).round() as i64;
+        let effect = [rotation.left, rotation.top, rotation.right, rotation.bottom].map(emu);
+        for floating in [false, true] {
+            let data = effect_extent_image_docx(effect, 30.0, floating);
+            let mut word_doc =
+                executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+            let mut selection = None;
+            CommandExecutor::new()
+                .execute(
+                    Box::new(FormatImageCommand::new(
+                        picture_target(),
+                        ImageFormatSpec {
+                            rotation_deg: Some(0.0),
+                            ..Default::default()
+                        },
+                    )),
+                    &mut CommandContext::new(&mut word_doc, &mut selection),
+                )
+                .expect("rotate upright");
+            assert_eq!(effect_extent_of(&word_doc), None, "floating {floating}");
+            let (xml, reloaded) = reloaded_effect_extent(&word_doc);
+            assert!(
+                xml.contains(r#"<wp:effectExtent l="0" t="0" r="0" b="0"/>"#),
+                "the written extent drops the rotation: {xml}"
+            );
+            assert_eq!(reloaded, None);
+        }
+    }
+
+    /// Resizing a picture with a shadow keeps the shadow's insets; a
+    /// rotation's part follows the new size.
+    #[test]
+    fn resizing_a_shadowed_picture_keeps_its_effect_insets() {
+        use crate::commands::transform_object::TransformObjectCommand;
+        use crate::commands::{CommandContext, CommandExecutor};
+
+        // A shadow of 2, 1, 6 and 8 px.
+        let shadow = [19050, 9525, 57150, 76200];
+        let data = effect_extent_image_docx(shadow, 0.0, true);
+        let mut word_doc =
+            executor::block_on(WordDocument::load(&data, &Options::default())).expect("load");
+        let mut selection = None;
+        CommandExecutor::new()
+            .execute(
+                Box::new(TransformObjectCommand::new(
+                    picture_target(),
+                    FloatingObjectTransform {
+                        x: 10.0,
+                        y: 10.0,
+                        width: 192.0,
+                        height: 128.0,
+                        rotation_deg: 0.0,
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("resize");
+        assert_edges_near(effect_extent_of(&word_doc), [2.0, 1.0, 6.0, 8.0], "resized");
+        let (xml, reloaded) = reloaded_effect_extent(&word_doc);
+        assert!(
+            xml.contains(r#"<wp:effectExtent l="19050" t="9525" r="57150" b="76200"/>"#),
+            "the shadow is written unchanged: {xml}"
+        );
+        assert_edges_near(reloaded, [2.0, 1.0, 6.0, 8.0], "reloaded");
+
+        // Rotated 90° as well: the shadow stays, and the rotation's part of
+        // the 192 by 128 picture is added on top of it.
+        CommandExecutor::new()
+            .execute(
+                Box::new(TransformObjectCommand::new(
+                    picture_target(),
+                    FloatingObjectTransform {
+                        x: 10.0,
+                        y: 10.0,
+                        width: 192.0,
+                        height: 128.0,
+                        rotation_deg: 90.0,
+                    },
+                )),
+                &mut CommandContext::new(&mut word_doc, &mut selection),
+            )
+            .expect("rotate");
+        let expected = [2.0 - 32.0, 1.0 + 32.0, 6.0 - 32.0, 8.0 + 32.0];
+        assert_edges_near(effect_extent_of(&word_doc), expected, "rotated");
+        let (_, reloaded) = reloaded_effect_extent(&word_doc);
+        assert_edges_near(reloaded, expected, "rotated and reloaded");
     }
 
     #[test]
