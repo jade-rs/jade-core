@@ -23,6 +23,8 @@ struct PagedRecordingHost {
     /// Pages laid out after the first.
     extra_pages: usize,
     cursor: usize,
+    /// Pages (0-based) whose pixels were forgotten and not drawn since.
+    forgotten: Rc<RefCell<std::collections::BTreeSet<usize>>>,
 }
 
 impl PagedRecordingHost {
@@ -129,6 +131,15 @@ impl crate::render_host::CanvasRenderHost for PagedRecordingHost {
     fn measure_text_width(&self, text: &str) -> Result<f64, JsValue> {
         Ok(text.chars().count() as f64 * 10.0)
     }
+    fn page_has_rendered_pixels(&self, page_index: usize) -> bool {
+        !self.forgotten.borrow().contains(&page_index)
+    }
+    fn mark_page_rendered(&mut self, page_index: usize) {
+        self.forgotten.borrow_mut().remove(&page_index);
+    }
+    fn forget_page_pixels(&mut self, page_index: usize) {
+        self.forgotten.borrow_mut().insert(page_index);
+    }
     fn measure_text_metrics(&self, text: &str) -> Result<jade_painter::TextMetrics, JsValue> {
         let width = text.chars().count() as f64 * 10.0;
         Ok(jade_painter::TextMetrics {
@@ -148,17 +159,20 @@ impl crate::render_host::CanvasRenderHost for PagedRecordingHost {
 struct Shell {
     renderer: CanvasRenderer<RecordingPainter>,
     pages: Rc<RefCell<Vec<RecordingPainter>>>,
+    forgotten: Rc<RefCell<std::collections::BTreeSet<usize>>>,
     options: Options,
 }
 
 impl Shell {
     fn new() -> Self {
         let pages = Rc::new(RefCell::new(Vec::new()));
+        let forgotten = Rc::new(RefCell::new(std::collections::BTreeSet::new()));
         let renderer = CanvasRenderer::with_host(
             Box::new(PagedRecordingHost {
                 pages: Rc::clone(&pages),
                 extra_pages: 0,
                 cursor: 0,
+                forgotten: Rc::clone(&forgotten),
             }),
             false,
         )
@@ -166,6 +180,7 @@ impl Shell {
         Self {
             renderer,
             pages,
+            forgotten,
             options: Options::default(),
         }
     }
@@ -232,6 +247,18 @@ impl Shell {
         let settled = settle_drawn_pages(&mut self.renderer).expect("settle");
         self.renderer.clear_dirty_regions();
         settled
+    }
+
+    /// A lazy-mode edit: the render, then the dirty pages its payload
+    /// reports ([`take_lazy_payload_dirty_regions`]).
+    fn lazy_edit(&mut self, document: &WordDocument) -> std::collections::BTreeSet<usize> {
+        self.renderer.note_style_reference_edit();
+        self.render(document);
+        take_lazy_payload_dirty_regions(&mut self.renderer)
+            .expect("payload")
+            .into_iter()
+            .map(|rect| rect.page)
+            .collect()
     }
 
     fn complete_layout(&mut self, document: &WordDocument) -> (bool, Settled) {
@@ -567,4 +594,84 @@ fn the_sectionpages_fixture_settles_its_footers() {
         let text = shell.page_text(page);
         assert!(text.contains("of section 1"), "page {page}: {text:?}");
     }
+}
+
+/// A lazy-mode edit builds its payload from the dirty regions without a
+/// snapshot capture; it settles all the same. Moving Beta to the next page
+/// reports page 1, drawn again with its own last heading.
+#[test]
+fn a_lazy_edit_that_moves_a_styleref_heading_reports_its_page() {
+    let before = last_heading_header(false);
+    let after = last_heading_header(true);
+    let mut shell = Shell::new();
+    shell.open_lazily(&before, 3);
+    shell.complete_layout(&before);
+    shell.forget_drawing();
+    let dirty = shell.lazy_edit(&after);
+    assert!(dirty.contains(&0), "{dirty:?}");
+    assert_eq!(
+        header_heading(&shell.page_text(0)).as_deref(),
+        Some("Alpha"),
+        "{:?}",
+        shell.page_text(0)
+    );
+    assert!(!shell.renderer.has_dirty_regions());
+}
+
+/// A selection past the laid-out pages extends the layout without
+/// reporting it (`extend_layout_for_selection`): the `1 of N` page it
+/// settles is still reported, by the payload of the render that follows.
+#[test]
+fn a_page_settled_by_an_unreported_extension_is_reported_later() {
+    let document = page_of_numpages(3);
+    let mut shell = Shell::new();
+    shell.open_lazily(&document, 1);
+    let options = shell.options.clone();
+    let settled =
+        extend_renderer_layout(&mut shell.renderer, Some(3), &options, &document).expect("extend");
+    assert!(settled.pages.contains(&0), "{settled:?}");
+    keep_for_next_payload(&mut shell.renderer, &settled.pages);
+    assert_eq!(page_of_total(&shell.page_text(0)), Some((1, 3)));
+    // The extension leaves no dirty regions of its own; the next payload
+    // carries page 1 all the same.
+    let reported: std::collections::BTreeSet<usize> =
+        take_lazy_payload_dirty_regions(&mut shell.renderer)
+            .expect("payload")
+            .into_iter()
+            .map(|rect| rect.page)
+            .collect();
+    assert!(reported.contains(&0), "{reported:?}");
+}
+
+/// A page outside the visible range is not drawn when its total settles;
+/// its pixels are left stale, so a bitmap fetch draws it again rather than
+/// handing out `1 of 1`.
+#[test]
+fn a_settled_page_outside_the_window_is_left_stale() {
+    let document = page_of_numpages(3);
+    let mut shell = Shell::new();
+    shell.open_lazily(&document, 1);
+    assert!(shell.renderer.page_has_rendered_pixels(0));
+    // Scrolled to the last page before the layout completes.
+    shell.renderer.set_visible_page_range(Some(3..=3));
+    shell.forget_drawing();
+    let (complete, settled) = shell.complete_layout(&document);
+    assert!(complete);
+    assert!(settled.pages.contains(&0), "{settled:?}");
+    assert!(
+        shell.page_text(0).is_empty(),
+        "page 1 is outside the window"
+    );
+    assert!(
+        !shell.renderer.page_has_rendered_pixels(0),
+        "page 1 is stale: {:?}",
+        shell.forgotten.borrow()
+    );
+    // Drawn again when it is fetched, with the settled total.
+    shell.renderer.set_visible_page_range(Some(1..=1));
+    shell.renderer.skip_change_detection_once();
+    shell.renderer.mark_full_repaint();
+    shell.render(&document);
+    assert_eq!(page_of_total(&shell.page_text(0)), Some((1, 3)));
+    assert!(shell.renderer.page_has_rendered_pixels(0));
 }

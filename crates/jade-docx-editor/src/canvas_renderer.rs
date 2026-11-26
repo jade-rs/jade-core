@@ -42588,6 +42588,13 @@ where
         self.host.page_dimensions(page_index)
     }
 
+    /// Records that page `page_index`'s (0-based) backing no longer shows
+    /// the current layout, so [`Self::page_has_rendered_pixels`] reports
+    /// `false` until a render draws it again.
+    pub fn forget_page_pixels(&mut self, page_index: usize) {
+        self.host.forget_page_pixels(page_index);
+    }
+
     /// Returns whether the page's backing store currently holds rendered pixels.
     /// Pages whose backing was shrunk to free memory (lazy/windowed mode) return
     /// `false` so the bitmap pipeline re-renders them before snapshotting.

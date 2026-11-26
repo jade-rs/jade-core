@@ -266,11 +266,18 @@ where
             renderer.mark_dirty_rect(rect);
         }
         let visible = renderer.visible_page_range();
-        let any_drawn = wrong.iter().any(|&page| {
+        let in_window = |page: usize| {
             visible
                 .as_ref()
                 .is_none_or(|range| range.contains(&(page + 1)))
-        });
+        };
+        // A page outside the window is not drawn here: its pixels are left
+        // stale, so the next fetch of its bitmap draws it with the settled
+        // values instead of handing out the old ones.
+        for &page in wrong.iter().filter(|&&page| !in_window(page)) {
+            renderer.forget_page_pixels(page);
+        }
+        let any_drawn = wrong.iter().any(|&page| in_window(page));
         settled.pages.extend(wrong);
         // Past the cap the pages stay as the last pass drew them: their
         // flags are taken above, so the next pass does not paint for them.
@@ -282,6 +289,37 @@ where
         settled.paints += 1;
     }
     Ok(settled)
+}
+
+/// Leaves `pages` (0-based) dirty for the next payload to report, for a
+/// caller that settled them but reports no dirty regions itself.
+pub(super) fn keep_for_next_payload<P>(
+    renderer: &mut CanvasRenderer<P>,
+    pages: &std::collections::BTreeSet<usize>,
+) where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    for rect in whole_page_rects(renderer, pages) {
+        renderer.mark_dirty_rect(rect);
+    }
+}
+
+/// The dirty regions of a lazy-mode edit's payload, which the main thread
+/// fetches bitmaps for on demand: the pass's own, and the pages
+/// [`settle_drawn_pages`] draws again. Clears them.
+pub(super) fn take_lazy_payload_dirty_regions<P>(
+    renderer: &mut CanvasRenderer<P>,
+) -> Result<Vec<DirtyRect>, JsValue>
+where
+    P: jade_painter::Painter,
+    P::Error: jade_canvas_painter::PainterError,
+{
+    settle_drawn_pages(renderer)?;
+    renderer.coalesce_dirty_regions();
+    let dirty_regions = renderer.dirty_regions();
+    renderer.clear_dirty_regions();
+    Ok(dirty_regions)
 }
 
 /// [`OffscreenDocumentView::extend_layout`]'s layout: lays the document out,
@@ -419,9 +457,7 @@ impl OffscreenDocumentView {
                 complete_renderer_layout(&mut renderer, &state.options, word_doc)?;
             // The pages the pass proved wrong go out with the payload of the
             // command that follows.
-            for rect in whole_page_rects(&renderer, &settled.pages) {
-                renderer.mark_dirty_rect(rect);
-            }
+            keep_for_next_payload(&mut renderer, &settled.pages);
             (complete, renderer.table_resize_metadata())
         };
         self.state.borrow_mut().table_resize = metadata;

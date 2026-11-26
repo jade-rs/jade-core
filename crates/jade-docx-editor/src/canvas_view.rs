@@ -2013,8 +2013,7 @@ impl OffscreenDocumentView {
         }
         let snapshots = {
             let mut renderer_mut = self.renderer.borrow_mut();
-            let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-            snapshots
+            self.capture_paged_images_unreported(&mut renderer_mut)?
         };
         self.renderer
             .borrow_mut()
@@ -2095,7 +2094,7 @@ impl OffscreenDocumentView {
     async fn capture_pages_after_render(&self) -> Result<Option<Vec<JsValue>>, JsValue> {
         self.wait_for_pending_images().await?;
         let mut renderer_mut = self.renderer.borrow_mut();
-        let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
+        let snapshots = self.capture_paged_images_unreported(&mut renderer_mut)?;
         let metadata = renderer_mut.table_resize_metadata();
         drop(renderer_mut);
         {
@@ -5927,8 +5926,7 @@ impl OffscreenDocumentView {
             self.rerender_document()?;
             let snapshots = {
                 let mut renderer_mut = self.renderer.borrow_mut();
-                let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-                snapshots
+                self.capture_paged_images_unreported(&mut renderer_mut)?
             };
             self.store_paged_images(snapshots);
         }
@@ -6229,8 +6227,7 @@ impl OffscreenDocumentView {
             self.rerender_document()?;
             let snapshots = {
                 let mut renderer_mut = self.renderer.borrow_mut();
-                let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer_mut)?;
-                snapshots
+                self.capture_paged_images_unreported(&mut renderer_mut)?
             };
             self.store_paged_images(snapshots);
         }
@@ -7789,8 +7786,7 @@ impl OffscreenDocumentView {
                 }
                 renderer.layout_page_limit().unwrap_or(0).saturating_add(1)
             };
-            self.ensure_layout_through_page_async(next_page, true)
-                .await?;
+            self.extend_layout_for_selection(next_page).await?;
         }
 
         let range = SelectionRange::new(
@@ -8791,13 +8787,12 @@ impl OffscreenDocumentView {
 
             // Keep state (e.g. table resize metadata) updated and clear dirty markers.
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js = Self::dirty_regions_to_js(
+                    &word_session::take_lazy_payload_dirty_regions(&mut renderer_mut)?,
+                );
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             dirty_regions_js
@@ -9189,13 +9184,12 @@ impl OffscreenDocumentView {
         let (snapshots, dirty_regions_js) = if lazy_mode {
             self.wait_for_pending_images().await?;
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js = Self::dirty_regions_to_js(
+                    &word_session::take_lazy_payload_dirty_regions(&mut renderer_mut)?,
+                );
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             (None, dirty_regions_js)
@@ -9660,13 +9654,12 @@ impl OffscreenDocumentView {
         let (snapshots, dirty_regions) = if lazy_mode {
             self.wait_for_pending_images().await?;
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js = Self::dirty_regions_to_js(
+                    &word_session::take_lazy_payload_dirty_regions(&mut renderer_mut)?,
+                );
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             (None, dirty_regions_js)
@@ -9927,10 +9920,9 @@ impl OffscreenDocumentView {
         // In lazy mode, skip snapshotting to avoid expensive bitmap generation.
         let skip_snapshots = self.state.borrow().lazy_mode;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else if full_document {
             // Package imports can introduce uncached images. The async caller
@@ -10536,6 +10528,39 @@ impl OffscreenDocumentView {
         renderer: &mut CanvasRenderer,
         defer_snapshots: bool,
     ) -> Result<(Option<Vec<JsValue>>, JsValue), JsValue> {
+        // A pass that drew a NUMPAGES total or a STYLEREF its own end proved
+        // wrong (the first complete pass, an edit that moved the page count
+        // or a heading) draws those pages again, and leaves them dirty for
+        // the payload built below. A pass that drew them right paints
+        // nothing.
+        if !self.state.borrow().options.pageless() {
+            word_session::settle_drawn_pages(renderer)?;
+        }
+        self.capture_settled_paged_images(renderer, defer_snapshots)
+    }
+
+    /// [`Self::capture_paged_images`] for a caller that drops the dirty
+    /// regions: the pages the pass settled stay dirty, so the next payload
+    /// reports them.
+    fn capture_paged_images_unreported(
+        &self,
+        renderer: &mut CanvasRenderer,
+    ) -> Result<Option<Vec<JsValue>>, JsValue> {
+        let settled = if self.state.borrow().options.pageless() {
+            word_session::Settled::default()
+        } else {
+            word_session::settle_drawn_pages(renderer)?
+        };
+        let (snapshots, _dirty_regions) = self.capture_settled_paged_images(renderer, false)?;
+        word_session::keep_for_next_payload(renderer, &settled.pages);
+        Ok(snapshots)
+    }
+
+    fn capture_settled_paged_images(
+        &self,
+        renderer: &mut CanvasRenderer,
+        defer_snapshots: bool,
+    ) -> Result<(Option<Vec<JsValue>>, JsValue), JsValue> {
         // Keep table resize metadata in sync for all render paths, including
         // non-lazy snapshot capture. Frontend hit-testing fetches this state
         // asynchronously, so stale values can cause handler-coordinate drift.
@@ -10545,11 +10570,6 @@ impl OffscreenDocumentView {
         if self.state.borrow().options.pageless() {
             return Ok((None, Array::new().into()));
         }
-        // A pass that drew a NUMPAGES total or a STYLEREF its own end proved
-        // wrong (the first complete pass, an edit that moved the page count
-        // or a heading) draws those pages again, and leaves them dirty for
-        // the payload below. A pass that drew them right paints nothing.
-        word_session::settle_drawn_pages(renderer)?;
         // Page-level caching strategy:
         // - Only generate ImageBitmaps for dirty pages.
         // - Clean pages are left untouched on the main thread (canvas retains pixels).
@@ -11620,6 +11640,20 @@ impl OffscreenDocumentView {
         Ok((pending, page_count, complete, settled))
     }
 
+    /// `ensureLayoutThroughPage` for a selection that reaches past the laid-out
+    /// pages: nothing reports its result, so the pages it settles stay dirty
+    /// for the payload of the selection's render.
+    async fn extend_layout_for_selection(&self, end_page: usize) -> Result<(), JsValue> {
+        let (pending_images, _, _, settled) = self.extend_layout(Some(end_page), true)?;
+        word_session::keep_for_next_payload(&mut self.renderer.borrow_mut(), &settled);
+        if let Some(wait) = pending_images {
+            if let Err(err) = JsFuture::from(wait).await {
+                web_sys::console::error_1(&err);
+            }
+        }
+        Ok(())
+    }
+
     #[cfg_attr(feature = "otel", tracing::instrument(skip_all))]
     async fn ensure_layout_through_page_async(
         &self,
@@ -12185,13 +12219,12 @@ impl OffscreenDocumentView {
             // See insert_text_async: avoid accumulating in-flight async image draws.
             self.wait_for_pending_images().await?;
             let dirty_regions_js = {
-                let renderer_mut = self.renderer.borrow_mut();
-                renderer_mut.coalesce_dirty_regions();
-                let dirty_regions = renderer_mut.dirty_regions();
-                let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
+                let mut renderer_mut = self.renderer.borrow_mut();
+                let dirty_regions_js = Self::dirty_regions_to_js(
+                    &word_session::take_lazy_payload_dirty_regions(&mut renderer_mut)?,
+                );
                 renderer_mut
                     .copy_table_resize_metadata_into(&mut self.state.borrow_mut().table_resize);
-                renderer_mut.clear_dirty_regions();
                 dirty_regions_js
             };
             dirty_regions_js
@@ -13416,10 +13449,9 @@ impl OffscreenDocumentView {
         let caret_metrics = renderer.caret_metrics();
         let selection_after = renderer.selection_range();
         let (snapshots, dirty_regions_js) = if lazy_mode {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else {
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
@@ -13621,10 +13653,9 @@ impl OffscreenDocumentView {
         let caret_metrics = renderer.caret_metrics();
         let selection_after = renderer.selection_range();
         let (snapshots, dirty_regions_js) = if lazy_mode {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else {
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
@@ -16916,10 +16947,9 @@ impl OffscreenDocumentView {
         // incremental dirty regions.
         let skip_snapshots = self.state.borrow().lazy_mode && !merged_paragraphs;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else {
             self.capture_paged_images(&mut renderer)?
@@ -18550,10 +18580,11 @@ impl OffscreenDocumentView {
     pub fn rerender(&self) -> Result<(), JsValue> {
         let (metadata, snapshots) = {
             let mut renderer = self.renderer.borrow_mut();
+            renderer.note_style_reference_edit();
             renderer.skip_change_detection_once();
             renderer.rerender_with_cached_state()?;
             let metadata = renderer.table_resize_metadata();
-            let (snapshots, _dirty_regions) = self.capture_paged_images(&mut renderer)?;
+            let snapshots = self.capture_paged_images_unreported(&mut renderer)?;
             (metadata, snapshots)
         };
         self.store_paged_images(snapshots);
@@ -19886,6 +19917,7 @@ impl OffscreenDocumentView {
             let previous_limit = renderer.layout_page_limit();
             let previous_visible = renderer.visible_page_range();
             renderer.replace_render_host(Box::new(host), pageless)?;
+            renderer.note_style_reference_edit();
             renderer.set_band_redraw_paints_band_page_only(lazy);
             if lazy {
                 // A lazy session keeps laying out on demand; an eager one was
@@ -19903,6 +19935,9 @@ impl OffscreenDocumentView {
 
         self.rerender_document()?;
         if lazy {
+            // Every page is fetched after a switch; those it settles are
+            // drawn with the settled values.
+            word_session::settle_drawn_pages(&mut self.renderer.borrow_mut())?;
             return self.switch_renderer_lazy_result();
         }
         let (snapshots, dirty_regions, metadata, caret_metrics) = {
@@ -20083,6 +20118,9 @@ impl OffscreenDocumentView {
         let (metadata, snapshots, caret_metrics) = {
             let mut renderer = self.renderer.borrow_mut();
             prepare(&mut renderer);
+            // A view laid out otherwise may draw STYLEREFs wrong afresh, as
+            // the native host's `repaint_all` notes.
+            renderer.note_style_reference_edit();
             // Display preferences can change pixels without mutating document
             // content. Explicitly dirty the visible pages so the caller gets
             // replacement bitmaps even after prior dirty regions were consumed.
@@ -21685,10 +21723,9 @@ impl OffscreenDocumentView {
         let caret_metrics = renderer.caret_metrics();
         let selection_after = renderer.selection_range();
         let (snapshots, dirty_regions_js) = if lazy_mode {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else {
             let (snapshots, dirty_regions) = self.capture_paged_images(&mut renderer)?;
@@ -21993,10 +22030,9 @@ impl OffscreenDocumentView {
         let selection_after = renderer.selection_range();
         let skip_snapshots = lazy_mode;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else {
             self.capture_paged_images(&mut renderer)?
@@ -22177,10 +22213,9 @@ impl OffscreenDocumentView {
         let selection_after = renderer.selection_range();
         let skip_snapshots = lazy_mode;
         let (snapshots, dirty_regions) = if skip_snapshots {
-            renderer.coalesce_dirty_regions();
-            let dirty_regions = renderer.dirty_regions();
-            let dirty_regions_js = Self::dirty_regions_to_js(&dirty_regions);
-            renderer.clear_dirty_regions();
+            let dirty_regions_js = Self::dirty_regions_to_js(
+                &word_session::take_lazy_payload_dirty_regions(&mut renderer)?,
+            );
             (None, dirty_regions_js)
         } else {
             self.capture_paged_images(&mut renderer)?
