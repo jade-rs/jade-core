@@ -500,12 +500,12 @@ pub fn selection_docx(
 
 /// 印刷前にフィールドを更新する: the table of contents brought up to date
 /// (the fields the pages compute — PAGE, NUMPAGES, DATE — are computed as
-/// they are drawn). One undo step; nothing when there is no table of
-/// contents.
+/// they are drawn). As 目次の更新 does, the session lays the document out
+/// through its end first and the entries get the number their page
+/// displays. One undo step; nothing when there is no table of contents.
 pub fn update_fields(session: &mut dyn super::WordSession) {
-    session
-        .apply_command(HeadlessCommand::UpdateTableOfContents, true)
-        .ok();
+    use super::references::toc::WordToc;
+    session.update_toc_at(0, false).ok();
 }
 
 #[cfg(test)]

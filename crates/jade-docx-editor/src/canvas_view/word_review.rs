@@ -306,6 +306,10 @@ impl OffscreenDocumentView {
         if code.trim().is_empty() {
             return Err(JsValue::from_str("a field code must not be empty"));
         }
+        // Every page's number first, as `updateFields`: a PAGE or PAGEREF
+        // on a page the lazy layout has not reached would get an empty
+        // result, which the saved file keeps.
+        self.complete_layout()?;
         let env = self.field_environment(HashMap::new());
         self.apply_document_command(move |_| Box::new(FieldCommand::insert(code, env)))
     }
@@ -316,6 +320,10 @@ impl OffscreenDocumentView {
         if code.trim().is_empty() {
             return Err(JsValue::from_str("a field code must not be empty"));
         }
+        // Every page's number first, as `updateFields`: a PAGE or PAGEREF
+        // on a page the lazy layout has not reached would get an empty
+        // result, which the saved file keeps.
+        self.complete_layout()?;
         let env = self.field_environment(HashMap::new());
         self.apply_document_command(move |selection| {
             Box::new(FieldCommand::edit(selection, code, env))

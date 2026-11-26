@@ -1136,3 +1136,176 @@ fn typing_after_a_stable_edit_keeps_every_page_owner() {
         }
     }
 }
+
+/// A TOC (paragraph 0) over a lower-roman section of 60 paragraphs from
+/// i, then a section restarting at 5 in decimal whose heading "Chapter"
+/// (bookmark `target`, paragraph 62) is followed by "()" (paragraph 63).
+/// After a full layout, typing on page 1 and a pass bounded to page 1
+/// leave labels for page 1 only.
+fn session_after_typing_on_page_one() -> LaidOutSession {
+    let filler: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>a{index}</w:t></w:r></w:p>"))
+        .collect();
+    let tail: String = (0..60)
+        .map(|index| format!("<w:p><w:r><w:t>b{index}</w:t></w:r></w:p>"))
+        .collect();
+    let body = format!(
+        r#"<w:p><w:r><w:fldChar w:fldCharType="begin"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>stale</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>{filler}<w:p><w:pPr>{}</w:pPr></w:p><w:p><w:pPr><w:pStyle w:val="Heading1"/></w:pPr><w:bookmarkStart w:id="0" w:name="target"/><w:r><w:t>Chapter</w:t></w:r><w:bookmarkEnd w:id="0"/></w:p><w:p><w:r><w:t>(</w:t></w:r><w:r><w:t>)</w:t></w:r></w:p>{tail}{}"#,
+        section_properties("nextPage", ROMAN_RESTART),
+        section_properties("nextPage", r#"<w:pgNumType w:start="5"/>"#),
+    );
+    let mut session = laid_out_session(&body);
+    let labels = |session: &LaidOutSession| -> Vec<String> {
+        session
+            .renderer
+            .displayed_page_labels()
+            .into_iter()
+            .map(|label| label.text)
+            .collect()
+    };
+    let truth = labels(&session);
+    assert_eq!(session.renderer.cached_paragraph_start_page(62), Some(3));
+    assert_eq!(truth.get(2).map(String::as_str), Some("5"), "{truth:?}");
+    {
+        use crate::word::WordSession;
+        session
+            .execute_command(
+                Box::new(crate::commands::insert_text::InsertTextCommand::new(
+                    jade_selection::SelectionRange::collapsed(jade_selection::TextPosition::new(
+                        1, 0,
+                    )),
+                    "typed ".repeat(40),
+                    None,
+                )),
+                false,
+            )
+            .expect("type on page 1");
+    }
+    let model = session.document.document.clone().expect("document");
+    session.renderer.set_layout_page_limit(Some(1));
+    session
+        .renderer
+        .render(&model, &Options::default())
+        .expect("a pass bounded to page 1");
+    session.renderer.set_layout_page_limit(None);
+    assert!(!session.renderer.last_layout_complete());
+    let after = labels(&session);
+    assert!(after.len() < 3, "{after:?}");
+    session
+}
+
+/// 挿入 › フィールド of PAGE on page 3 after typing on page 1: the field
+/// gets the label its page displays ("5", the restarted section), not
+/// the empty result of a page the bounded pass did not reach.
+#[test]
+fn inserting_a_page_field_after_a_bounded_pass_writes_the_displayed_label() {
+    use crate::word::fields::{FieldHost, WordFields};
+    use crate::word::WordSession;
+    let mut session = session_after_typing_on_page_one();
+    session.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
+        jade_selection::TextPosition::new(63, 1),
+    )));
+    session
+        .insert_field_code("PAGE", &FieldHost::default())
+        .expect("insert the field");
+    assert_eq!(exported_paragraphs(&session.document)[63], "(5)");
+}
+
+/// The same for a PAGEREF inserted on page 1 to the heading on page 3, and
+/// for フィールドの編集 turning it into a PAGE on page 3.
+#[test]
+fn inserting_a_pageref_after_a_bounded_pass_writes_the_displayed_label() {
+    use crate::word::fields::{FieldHost, WordFields};
+    use crate::word::WordSession;
+    let mut session = session_after_typing_on_page_one();
+    session.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
+        jade_selection::TextPosition::new(63, 1),
+    )));
+    session
+        .insert_field_code("PAGEREF target \\h", &FieldHost::default())
+        .expect("insert the field");
+    assert_eq!(exported_paragraphs(&session.document)[63], "(5)");
+
+    let mut session = session_after_typing_on_page_one();
+    session.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
+        jade_selection::TextPosition::new(1, 0),
+    )));
+    session
+        .insert_field_code("PAGEREF target \\h", &FieldHost::default())
+        .expect("insert the field");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(paragraphs[1].starts_with("5typed"), "{:?}", paragraphs[1]);
+}
+
+/// フィールドの編集 after a bounded pass: the edited field is evaluated
+/// with every page's label.
+#[test]
+fn editing_a_field_after_a_bounded_pass_writes_the_displayed_label() {
+    use crate::word::fields::{FieldHost, WordFields};
+    use crate::word::WordSession;
+    let mut session = session_after_typing_on_page_one();
+    let caret = jade_selection::SelectionRange::collapsed(jade_selection::TextPosition::new(63, 1));
+    session.set_selection_range(Some(caret));
+    // Inserted with the layout complete, then a bounded pass again.
+    session
+        .insert_field_code("PAGE \\* roman", &FieldHost::default())
+        .expect("insert the field");
+    assert_eq!(exported_paragraphs(&session.document)[63], "(v)");
+    let model = session.document.document.clone().expect("document");
+    session.renderer.invalidate_layout_from(1);
+    session.renderer.set_layout_page_limit(Some(1));
+    session
+        .renderer
+        .render(&model, &Options::default())
+        .expect("a pass bounded to page 1");
+    session.renderer.set_layout_page_limit(None);
+    assert!(session.renderer.displayed_page_labels().len() < 3);
+    session.set_selection_range(Some(caret));
+    session
+        .edit_field_code("PAGE", &FieldHost::default())
+        .expect("edit the field");
+    assert_eq!(exported_paragraphs(&session.document)[63], "(5)");
+}
+
+/// F9 over the whole document rebuilds the TOC with the label the
+/// heading's page displays ("5"), as 目次の更新 does, not "1".
+#[test]
+fn f9_rebuilds_a_toc_with_the_displayed_labels() {
+    use crate::word::fields::{FieldHost, WordFields};
+    let mut session = session_after_typing_on_page_one();
+    session
+        .update_fields(
+            crate::fields::FieldScope::Document,
+            &FieldHost::default(),
+            HashMap::new(),
+        )
+        .expect("update the fields");
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t5");
+}
+
+/// Printing's 印刷前にフィールドを更新する and the 目次 dialog's insertion
+/// write the displayed label too.
+#[test]
+fn printing_and_inserting_a_toc_write_the_displayed_labels() {
+    use crate::word::references::toc::WordToc;
+    use crate::word::WordSession;
+    let mut session = session_after_typing_on_page_one();
+    crate::word::printing::update_fields(&mut session);
+    assert_eq!(exported_paragraphs(&session.document)[0], "Chapter\t5");
+
+    let mut session = session_after_typing_on_page_one();
+    session.set_selection_range(Some(jade_selection::SelectionRange::collapsed(
+        jade_selection::TextPosition::new(63, 0),
+    )));
+    let dialog = session.toc_dialog(None);
+    assert_eq!(dialog.replacing, None);
+    session.apply_toc_dialog(&dialog).expect("insert a table");
+    let paragraphs = exported_paragraphs(&session.document);
+    assert!(
+        paragraphs[64..]
+            .iter()
+            .any(|text| text.starts_with("Chapter") && text.ends_with("\t5")),
+        "{:?}",
+        &paragraphs[60..70]
+    );
+}
