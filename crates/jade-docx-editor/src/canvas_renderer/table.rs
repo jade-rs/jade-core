@@ -1,4 +1,7 @@
 use super::*;
+use crate::commands::resize_table_column::{
+    fit_nested_columns_to_content, NestedColumnResizeGeometry,
+};
 use crate::document::{
     resolve_cell_margin_edge_points, TableStyleCellFormat, TableStyleCellPosition, TextDirection,
     DEFAULT_VERTICAL_CELL_MARGIN_PT,
@@ -1674,6 +1677,7 @@ struct NestedTableLayout {
     /// Preorder model identity, independent of the order page fragments paint.
     order: Option<usize>,
     column_widths: Vec<f64>,
+    resize_geometry: Option<Rc<NestedColumnResizeGeometry>>,
     column_positions: Vec<f64>,
     rows: Vec<NestedRowLayout>,
     width: f64,
@@ -3476,6 +3480,7 @@ where
                     &|paragraph| layout_config.line_height_for(paragraph),
                     &|field| self.resolve_run_field(field),
                     Some(&layout_config),
+                    false,
                 )?
                 .preferred[0],
             )
@@ -3529,6 +3534,7 @@ where
             order: order_index,
             node_id: table.node_id.map(|id| id.raw()),
             column_widths: column_widths.clone(),
+            resize_geometry: None,
             row_heights: Vec::with_capacity(table.rows.len()),
         });
 
@@ -9341,6 +9347,7 @@ where
                     order,
                     node_id: layout.table.node_id.map(|id| id.raw()),
                     column_widths: layout.column_widths.clone(),
+                    resize_geometry: layout.resize_geometry.clone(),
                     row_heights: vec![0.0; layout.table.rows.len()],
                 });
                 index
@@ -12885,6 +12892,7 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
             line_height_for,
             field_value_for,
             config,
+            false,
         )?;
         if let (Some(cache), Some(signature)) = (cache, cache_signature) {
             cache.borrow_mut().insert(signature, measured.clone());
@@ -12958,6 +12966,31 @@ fn apply_table_layout_width_for_table_with_content<C: TableAutofitContext>(
         &content_widths.unbreakable,
     ) {
         return Ok((table_width, content_widths.natural_paragraph_layouts));
+    }
+    if !content_widths.natural_paragraph_layouts.nested.is_empty() {
+        if let Some(declared) = absolute_table_width(table) {
+            let floors: Vec<_> = content_widths
+                .minimums
+                .iter()
+                .zip(&content_widths.unbreakable)
+                .map(|(minimum, word)| minimum.max(*word))
+                .collect();
+            let total: f64 = column_widths.iter().sum();
+            if total > 0.0 {
+                for width in column_widths.iter_mut() {
+                    *width *= declared / total;
+                }
+            }
+            let budget = declared.min(available_width).max(floors.iter().sum());
+            let table_width = apply_table_layout_width_with_content_constraints(
+                column_widths,
+                budget,
+                mode,
+                &floors,
+                &content_widths.preferred,
+            );
+            return Ok((table_width, content_widths.natural_paragraph_layouts));
+        }
     }
     let table_width = apply_table_layout_width_with_content_constraints(
         column_widths,
@@ -13168,7 +13201,12 @@ struct NaturalParagraphLayout {
     styled_runs: Vec<StyledRunRange>,
 }
 
-type NaturalParagraphLayoutCache = Rc<Vec<NaturalParagraphLayout>>;
+#[derive(Clone, Debug, Default)]
+struct NaturalParagraphLayoutCache {
+    paragraphs: Rc<Vec<NaturalParagraphLayout>>,
+    nested: FxHashMap<*const Table, WindowsNestedAutofit>,
+    fit_on_glyph_advances: bool,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct TableAutofitCacheSignature {
@@ -13273,7 +13311,7 @@ impl TableAutofitCache {
     }
 
     fn insert(&mut self, signature: TableAutofitCacheSignature, widths: AutofitContentWidths) {
-        let paragraph_measure_count = widths.natural_paragraph_layouts.len() as u64;
+        let paragraph_measure_count = widths.natural_paragraph_layouts.paragraphs.len() as u64;
         self.lru.retain(|key| *key != signature.hash);
         self.lru.push_back(signature.hash);
         self.entries.insert(
@@ -13398,6 +13436,7 @@ fn take_fitting_natural_paragraph_layout(
     styled_runs: &[StyledRunRange],
 ) -> Option<CellParagraph> {
     layouts
+        .paragraphs
         .iter()
         .find(|cached| {
             cached.required_width <= available_width + f64::EPSILON
@@ -13421,6 +13460,7 @@ fn take_fitting_natural_paragraph_layout(
 /// must already be the per-paragraph ones.
 /// `field_value_for` supplies the same displayed text used by final row layout;
 /// stale saved page fields must not determine the natural width.
+#[allow(clippy::too_many_arguments)]
 fn autofit_content_widths<C: TableAutofitContext>(
     context: &C,
     table: &Table,
@@ -13429,7 +13469,10 @@ fn autofit_content_widths<C: TableAutofitContext>(
     line_height_for: &dyn Fn(&Paragraph) -> f64,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
     config: Option<&LayoutConfig>,
+    fit_nested_cell_text: bool,
 ) -> Result<AutofitContentWidths, C::Error> {
+    let fit_on_glyph_advances = windows_absolute_width_table(table)
+        && matches!(resolve_table_layout_mode(table), TableLayoutMode::Autofit);
     let mut minimums = no_wrap_absolute_minimum_widths(table, column_widths);
     let mut preferred = vec![0.0_f64; column_widths.len()];
     let mut explicit_width_columns = vec![false; column_widths.len()];
@@ -13451,6 +13494,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
     // Widest piece of content that cannot wrap, per column.
     let mut unbreakable_widths = vec![0.0_f64; column_widths.len()];
     let mut natural_paragraph_layouts = Vec::new();
+    let mut nested = FxHashMap::default();
     let row_count = table
         .rows
         .iter()
@@ -13460,6 +13504,8 @@ fn autofit_content_widths<C: TableAutofitContext>(
     for row in &table.rows {
         let mut column_index = row.grid_before.unwrap_or(0) as usize;
         for (cell_index, cell) in row.cells.iter().enumerate() {
+            let shaped_minimum = (fit_on_glyph_advances || fit_nested_cell_text)
+                && cell_has_absolute_preferred_width(cell);
             let style_format = table.table_style_cell_format(table_style_cell_position(
                 row, row_index, row_count, cell_index,
             ));
@@ -13493,6 +13539,24 @@ fn autofit_content_widths<C: TableAutofitContext>(
             let mut natural_content_width = 0.0_f64;
             let mut unbreakable_content_width = 0.0_f64;
             for block in &cell.blocks {
+                if let BodyElement::Table(child) = block {
+                    if shaped_minimum && resolve_cell_spacing_px(row, table) == 0.0 {
+                        if let Some(measured) = measure_windows_nested_autofit(
+                            context,
+                            child,
+                            default_padding_x,
+                            line_height_for,
+                            field_value_for,
+                            config,
+                        )? {
+                            let floor = measured.minimum_width(child);
+                            natural_content_width = natural_content_width.max(floor);
+                            unbreakable_content_width = unbreakable_content_width.max(floor);
+                            nested.insert(child.as_ref() as *const Table, measured);
+                        }
+                    }
+                    continue;
+                }
                 if let (BodyElement::Math(math), Some(config)) = (block, math_config) {
                     let (natural, minimum) = context.measure_display_math(math, config)?;
                     natural_content_width = natural_content_width.max(natural);
@@ -13534,13 +13598,17 @@ fn autofit_content_widths<C: TableAutofitContext>(
                     context.measure_inline_math(paragraph, config, &mut styled_runs)?;
                 }
                 let run_styles = styled_run_styles(&text, &styled_runs);
+                let natural_style = ParagraphStyle {
+                    ignore_page_and_column_breaks: shaped_minimum,
+                    ..ParagraphStyle::default()
+                };
                 let natural = layout_horizontal_paragraph_with_run_styles_context(
                     context,
                     &text,
                     1_000_000_000.0,
                     line_height_for(paragraph),
                     &run_styles,
-                    &ParagraphStyle::default(),
+                    &natural_style,
                 )?;
                 let overhang = paragraph_trailing_overhang(context, &text, &styled_runs)?;
                 // `max_line_width` never drops below the line height, which
@@ -13559,9 +13627,15 @@ fn autofit_content_widths<C: TableAutofitContext>(
                 };
                 let required_width = content_width + overhang;
                 natural_content_width = natural_content_width.max(required_width);
-                unbreakable_content_width = unbreakable_content_width.max(
-                    longest_unbreakable_width(context, &natural, &text, &run_styles, &styled_runs)?,
-                );
+                unbreakable_content_width =
+                    unbreakable_content_width.max(longest_unbreakable_width(
+                        context,
+                        &natural,
+                        &text,
+                        &run_styles,
+                        &styled_runs,
+                        !shaped_minimum,
+                    )?);
                 natural_paragraph_layouts.push(NaturalParagraphLayout {
                     layout: natural,
                     required_width,
@@ -13584,6 +13658,12 @@ fn autofit_content_widths<C: TableAutofitContext>(
             let chrome = padding.horizontal() + resolve_cell_spacing_px(row, table);
             let required_width = natural_content_width + chrome;
             let unbreakable_width = unbreakable_content_width + chrome;
+            let unbreakable_width = if shaped_minimum {
+                // Word rounds the minimum cell span up to a whole twip.
+                (unbreakable_width * 15.0 - 1e-8).ceil() / 15.0
+            } else {
+                unbreakable_width
+            };
             let current_span_width: f64 = column_widths[start..end].iter().sum();
             for index in start..end {
                 let span_share = if current_span_width > f64::EPSILON {
@@ -13630,7 +13710,11 @@ fn autofit_content_widths<C: TableAutofitContext>(
         minimums,
         unbreakable: unbreakable_widths.clone(),
         preferred,
-        natural_paragraph_layouts: Rc::new(natural_paragraph_layouts),
+        natural_paragraph_layouts: NaturalParagraphLayoutCache {
+            paragraphs: Rc::new(natural_paragraph_layouts),
+            nested,
+            fit_on_glyph_advances: fit_nested_cell_text,
+        },
     })
 }
 
@@ -13643,6 +13727,7 @@ fn longest_unbreakable_width<C: LineWrapContext>(
     text: &str,
     run_styles: &[RunStyle],
     styled_runs: &[StyledRunRange],
+    include_ink: bool,
 ) -> Result<f64, C::Error> {
     let mut widest = 0.0_f64;
     let mut equations = styled_runs
@@ -13679,29 +13764,33 @@ fn longest_unbreakable_width<C: LineWrapContext>(
                     continue;
                 }
             }
-            // Collected run styles are in source order. Retain the resolved
-            // style across adjacent glyphs instead of resolving it per glyph.
-            let index = run_styles
-                .partition_point(|style| style.start <= glyph.start)
-                .checked_sub(1)
-                .filter(|index| glyph.start < run_styles[*index].end);
-            if cached_style
-                .as_ref()
-                .is_none_or(|(previous, _)| *previous != index)
-            {
-                let properties = index.and_then(|index| run_styles[index].properties.as_deref());
-                cached_style = Some((index, context.resolve_run_style(properties)?));
-            }
-            let style = &cached_style.as_ref().unwrap().1;
-            let overhang = grapheme_trailing_overhang(context, grapheme, style)?;
+            let overhang = if include_ink {
+                // Retain the resolved style across adjacent glyphs.
+                let index = run_styles
+                    .partition_point(|style| style.start <= glyph.start)
+                    .checked_sub(1)
+                    .filter(|index| glyph.start < run_styles[*index].end);
+                if cached_style
+                    .as_ref()
+                    .is_none_or(|(previous, _)| *previous != index)
+                {
+                    let properties =
+                        index.and_then(|index| run_styles[index].properties.as_deref());
+                    cached_style = Some((index, context.resolve_run_style(properties)?));
+                }
+                let style = &cached_style.as_ref().unwrap().1;
+                grapheme_trailing_overhang(context, grapheme, style)?
+            } else {
+                0.0
+            };
             if breakable {
                 widest = widest.max(glyph.width + overhang);
             } else {
-                // Keep the previous advance floor, but also admit the ink at
-                // every prefix of this word. Shared glyph origins include
-                // pair spacing: summing advances alone loses that spacing
-                // and can leave the final glyph on a second line.
-                run += glyph.width;
+                // The Windows cell width follows the shaped positions,
+                // including negative pair spacing and excluding outline ink.
+                if include_ink {
+                    run += glyph.width;
+                }
                 origin = origin.min(glyph.x);
                 ink_right = ink_right.max(glyph.x + glyph.width + overhang);
             }
@@ -13709,6 +13798,12 @@ fn longest_unbreakable_width<C: LineWrapContext>(
         widest = widest.max(run).max(ink_right - origin);
     }
     Ok(widest)
+}
+
+fn windows_absolute_width_table(table: &Table) -> bool {
+    jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        && absolute_table_width(table).is_some()
 }
 
 /// Whether `cell` gives an absolute preferred width (`w:tcW w:type="dxa"`,
@@ -17170,6 +17265,8 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
     let cell_spacing = resolve_cell_spacing_px(row, table);
     let separated = row_uses_separate_cell_borders(row, table);
     let total_columns = column_widths.len();
+    let fit_on_glyph_advances =
+        windows_absolute_width_table(table) || natural_paragraph_layouts.fit_on_glyph_advances;
     let slot_scale = table_row_slot_scale(table, row, row_index, row_count, column_widths);
     if column_index > total_columns {
         column_index = total_columns;
@@ -17436,6 +17533,8 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                     BodyElement::Paragraph(paragraph) => {
                         let paragraph_line_height = config.line_height_for(paragraph);
                         let (left_inset, mut paragraph_style) = config.paragraph_style(paragraph);
+                        paragraph_style.fit_on_glyph_advances =
+                            fit_on_glyph_advances && cell_has_absolute_preferred_width(cell);
                         let numbering = config.paragraph_numbering(paragraph);
                         let math_context = wrap_context.math.as_ref().filter(|_| {
                             !cell
@@ -17851,6 +17950,9 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                             nested_width,
                             config,
                             field_value_for,
+                            natural_paragraph_layouts
+                                .nested
+                                .get(&(table.as_ref() as *const Table)),
                         )?;
                         let height = nested_layout.height.max(config.line_height); // ensure measurable height
                         blocks.push(CellBlock {
@@ -18270,12 +18372,81 @@ fn word_windows_nested_grid(
     )
 }
 
+#[derive(Clone, Debug)]
+struct WindowsNestedAutofit {
+    preferred: Vec<f64>,
+    floors: Vec<f64>,
+    layouts: NaturalParagraphLayoutCache,
+}
+
+impl WindowsNestedAutofit {
+    fn minimum_width(&self, table: &Table) -> f64 {
+        self.floors
+            .iter()
+            .sum::<f64>()
+            .max(absolute_table_width(table).unwrap_or(0.0))
+    }
+}
+
+fn measure_windows_nested_autofit<C: TableAutofitContext>(
+    context: &C,
+    table: &Table,
+    default_padding_x: f64,
+    line_height_for: &dyn Fn(&Paragraph) -> f64,
+    field_value_for: &dyn Fn(&RunField) -> Option<String>,
+    config: Option<&LayoutConfig>,
+) -> Result<Option<WindowsNestedAutofit>, C::Error> {
+    if table_floats(table) || table.bidi_visual || !table.style.contains_key("width") {
+        return Ok(None);
+    }
+    let column_count = compute_column_count(table);
+    let mut preferred = vec![0.0_f64; column_count];
+    for row in table.rows.iter().filter(|row| !table_row_is_hidden(row)) {
+        if row_uses_separate_cell_borders(row, table)
+            || row.cells.iter().any(|cell| cell.vertical_merge.is_some())
+        {
+            return Ok(None);
+        }
+        let Some(widths) = absolute_fixed_row_widths(row, column_count) else {
+            return Ok(None);
+        };
+        for (column, width) in preferred.iter_mut().zip(widths) {
+            *column = column.max(width);
+        }
+    }
+    if preferred.is_empty() || preferred.iter().any(|width| *width <= 0.0) {
+        return Ok(None);
+    }
+    let measured = autofit_content_widths(
+        context,
+        table,
+        &preferred,
+        default_padding_x,
+        line_height_for,
+        field_value_for,
+        config,
+        true,
+    )?;
+    let floors = measured
+        .unbreakable
+        .iter()
+        .zip(&measured.minimums)
+        .map(|(word, minimum)| word.max(*minimum))
+        .collect();
+    Ok(Some(WindowsNestedAutofit {
+        preferred,
+        floors,
+        layouts: measured.natural_paragraph_layouts,
+    }))
+}
+
 fn layout_nested_table<P: Painter<Error: PainterError>>(
     wrap_context: &TableLineWrapContext<'_, P>,
     table: &Table,
     available_width: f64,
     config: &LayoutConfig,
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
+    autofit: Option<&WindowsNestedAutofit>,
 ) -> Result<NestedTableLayout, JsValue> {
     let column_count = compute_column_count(table).max(1);
     let preferred_grid = word_windows_nested_grid(table, column_count, available_width);
@@ -18304,7 +18475,17 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         {
             grid.adjust(&mut column_widths, None);
         }
-        NaturalParagraphLayoutCache::default()
+        if let Some(autofit) = autofit {
+            fit_nested_columns_to_content(
+                &mut column_widths,
+                &autofit.preferred,
+                &autofit.floors,
+                15.0,
+            );
+            autofit.layouts.clone()
+        } else {
+            NaturalParagraphLayoutCache::default()
+        }
     } else {
         apply_table_layout_width_for_table_with_content(
             wrap_context,
@@ -18459,6 +18640,16 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
     Ok(NestedTableLayout {
         table: Box::new(table.clone()),
         order: None,
+        resize_geometry: autofit.filter(|_| windows_preferred_grid).map(|autofit| {
+            Rc::new(NestedColumnResizeGeometry {
+                displayed_widths: column_widths
+                    .iter()
+                    .map(|width| (width * 0.75) as f32)
+                    .collect(),
+                minimum_widths: autofit.floors.iter().map(|width| width * 0.75).collect(),
+                frame_width: (available_width * 0.75) as f32,
+            })
+        }),
         column_widths,
         column_positions,
         rows,
@@ -22051,6 +22242,7 @@ mod tests {
             &|_| 16.0,
             &|_| None,
             None,
+            false,
         )
         .unwrap()
     }
@@ -22895,10 +23087,18 @@ mod tests {
         };
         let mut widths = vec![300.0, 300.0];
         let context = FixedWidthWrapContext::new();
-        let minimums =
-            autofit_content_widths(&context, &table, &widths, 0.0, &|_| 16.0, &|_| None, None)
-                .expect("measure noWrap contents")
-                .minimums;
+        let minimums = autofit_content_widths(
+            &context,
+            &table,
+            &widths,
+            0.0,
+            &|_| 16.0,
+            &|_| None,
+            None,
+            false,
+        )
+        .expect("measure noWrap contents")
+        .minimums;
 
         let total = apply_table_layout_width_with_minimums(
             &mut widths,
@@ -22966,9 +23166,17 @@ mod tests {
         };
         let context = FixedWidthWrapContext::new();
         let mut widths = vec![300.0, 300.0];
-        let constraints =
-            autofit_content_widths(&context, &table, &widths, 0.0, &|_| 16.0, &|_| None, None)
-                .expect("measure ordinary cell contents");
+        let constraints = autofit_content_widths(
+            &context,
+            &table,
+            &widths,
+            0.0,
+            &|_| 16.0,
+            &|_| None,
+            None,
+            false,
+        )
+        .expect("measure ordinary cell contents");
 
         let total = apply_table_layout_width_with_content_constraints(
             &mut widths,
@@ -22986,17 +23194,24 @@ mod tests {
 
     #[test]
     fn natural_table_paragraph_layout_is_reused_only_when_it_fits() {
-        let mut layouts = Rc::new(vec![NaturalParagraphLayout {
-            layout: empty_cell_paragraph(16.0),
-            required_width: 120.0,
-            line_height: 16.0,
-            styled_runs: Vec::new(),
-        }]);
+        let mut layouts = NaturalParagraphLayoutCache {
+            paragraphs: Rc::new(vec![NaturalParagraphLayout {
+                layout: empty_cell_paragraph(16.0),
+                required_width: 120.0,
+                line_height: 16.0,
+                styled_runs: Vec::new(),
+            }]),
+            ..Default::default()
+        };
 
         assert!(
             take_fitting_natural_paragraph_layout(&mut layouts, 119.0, 16.0, "", &[],).is_none()
         );
-        assert_eq!(layouts.len(), 1, "a non-fitting layout remains available");
+        assert_eq!(
+            layouts.paragraphs.len(),
+            1,
+            "a non-fitting layout remains available"
+        );
         assert!(
             take_fitting_natural_paragraph_layout(&mut layouts, 120.0, 16.0, "different", &[],)
                 .is_none(),
@@ -23006,7 +23221,11 @@ mod tests {
         let reused = take_fitting_natural_paragraph_layout(&mut layouts, 120.0, 16.0, "", &[])
             .expect("an exactly fitting natural layout should be reused");
         assert_eq!(reused.lines.len(), 1);
-        assert_eq!(layouts.len(), 1, "reused layout remains available to twins");
+        assert_eq!(
+            layouts.paragraphs.len(),
+            1,
+            "reused layout remains available to twins"
+        );
     }
 
     #[test]
@@ -23056,12 +23275,15 @@ mod tests {
             minimums: vec![0.0],
             preferred: vec![50.0],
             unbreakable: vec![0.0],
-            natural_paragraph_layouts: Rc::new(vec![NaturalParagraphLayout {
-                layout: empty_cell_paragraph(16.0),
-                required_width: 50.0,
-                line_height: 16.0,
-                styled_runs: Vec::new(),
-            }]),
+            natural_paragraph_layouts: NaturalParagraphLayoutCache {
+                paragraphs: Rc::new(vec![NaturalParagraphLayout {
+                    layout: empty_cell_paragraph(16.0),
+                    required_width: 50.0,
+                    line_height: 16.0,
+                    styled_runs: Vec::new(),
+                }]),
+                ..Default::default()
+            },
         };
         let mut cache = TableAutofitCache::default();
         cache.insert(signature.clone(), measured);
@@ -23070,8 +23292,8 @@ mod tests {
         assert_eq!(hit.preferred, vec![50.0]);
         let next_hit = cache.get(&signature).expect("same table should hit again");
         assert!(Rc::ptr_eq(
-            &hit.natural_paragraph_layouts,
-            &next_hit.natural_paragraph_layouts,
+            &hit.natural_paragraph_layouts.paragraphs,
+            &next_hit.natural_paragraph_layouts.paragraphs,
         ));
         assert_eq!(cache.stats().saved_paragraph_measures, 2);
 
@@ -26142,7 +26364,8 @@ mod tests {
                 table_layout: Some(TableLayoutMode::Fixed),
                 ..Default::default()
             };
-            let nested = layout_nested_table(&context, &table, 100.0, &config, &|_| None).unwrap();
+            let nested =
+                layout_nested_table(&context, &table, 100.0, &config, &|_| None, None).unwrap();
             let expected = if exact_middle {
                 [22.0, 20.0, 21.0]
             } else {
@@ -26571,6 +26794,7 @@ mod tests {
     fn make_empty_nested_table_layout() -> NestedTableLayout {
         NestedTableLayout {
             table: Box::new(Table::default()),
+            resize_geometry: None,
             order: None,
             column_widths: Vec::new(),
             column_positions: Vec::new(),
@@ -28968,6 +29192,7 @@ mod tests {
             &|_| 16.0,
             &|_| None,
             None,
+            false,
         )
         .unwrap();
         let original = measured.positive_spacing_grid.clone().unwrap();
@@ -28996,6 +29221,7 @@ mod tests {
             &|_| 16.0,
             &|_| None,
             None,
+            false,
         )
         .unwrap();
         assert!(mac.positive_spacing_grid.is_none());
@@ -29476,7 +29702,8 @@ mod tests {
                 }],
                 ..Default::default()
             };
-            let layout = layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+            let layout =
+                layout_nested_table(&context, &table, 200.0, &config, &|_| None, None).unwrap();
             for repeated in [false, true] {
                 let painter = RecordingPainter::with_width_per_char(7.0);
                 let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
@@ -29632,7 +29859,7 @@ mod tests {
                     ..Default::default()
                 };
                 let layout =
-                    layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+                    layout_nested_table(&context, &table, 200.0, &config, &|_| None, None).unwrap();
                 let natural = autofit_content_widths(
                     &context,
                     &table,
@@ -29641,10 +29868,12 @@ mod tests {
                     &|_| 20.0,
                     &|_| None,
                     Some(&config),
+                    false,
                 )
                 .unwrap();
                 for (layout, expected) in natural
                     .natural_paragraph_layouts
+                    .paragraphs
                     .iter()
                     .zip([12.0, 8.0, 12.0])
                 {
@@ -29654,7 +29883,7 @@ mod tests {
                     );
                 }
                 assert_eq!(
-                    natural.natural_paragraph_layouts[0].styled_runs[0]
+                    natural.natural_paragraph_layouts.paragraphs[0].styled_runs[0]
                         .properties
                         .as_ref()
                         .unwrap()
@@ -29870,7 +30099,8 @@ mod tests {
                 }],
                 ..Default::default()
             };
-            let layout = layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+            let layout =
+                layout_nested_table(&context, &table, 200.0, &config, &|_| None, None).unwrap();
             for repeated in [false, true] {
                 let painter = RecordingPainter::with_width_per_char(7.0);
                 let mut renderer = super::super::tests::recording_table_renderer(painter.clone());
@@ -30040,7 +30270,8 @@ mod tests {
                     let mut table = table.clone();
                     table.rows[0].cells[0].text_direction = direction;
                     let layout =
-                        layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+                        layout_nested_table(&context, &table, 200.0, &config, &|_| None, None)
+                            .unwrap();
                     let painter = RecordingPainter::with_width_per_char(7.0);
                     let mut renderer =
                         super::super::tests::recording_table_renderer(painter.clone());
@@ -30173,7 +30404,8 @@ mod tests {
             }],
             ..Default::default()
         };
-        let layout = layout_nested_table(&context, &table, 200.0, &config, &|_| None).unwrap();
+        let layout =
+            layout_nested_table(&context, &table, 200.0, &config, &|_| None, None).unwrap();
         let text_positions = |ops: Vec<Op>| {
             ops.into_iter()
                 .filter_map(|op| match op {
@@ -30219,7 +30451,7 @@ mod tests {
             .cell_style
             .insert("background-color".into(), "#GAP".into());
         let spaced =
-            layout_nested_table(&context, &spaced_table, 200.0, &config, &|_| None).unwrap();
+            layout_nested_table(&context, &spaced_table, 200.0, &config, &|_| None, None).unwrap();
         let colored_rects = |ops: Vec<Op>| {
             let mut color = String::new();
             let mut rectangles = Vec::new();

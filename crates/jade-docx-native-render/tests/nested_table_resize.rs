@@ -6,6 +6,7 @@ use jade_docx_editor::document::TableLayoutMode;
 use jade_docx_editor::word_document::WordDocument;
 use jade_docx_headless_api::HeadlessCommand;
 use jade_docx_layout::line_metrics::{set_word_layout_platform, WordLayoutPlatform};
+use jade_docx_native_render::NativeDocument;
 use sha2::{Digest, Sha256};
 use std::io::Cursor;
 use zip::ZipArchive;
@@ -50,13 +51,31 @@ fn widths(document: &WordDocument) -> Widths {
 #[test]
 fn nested_right_edge_resize_matches_word_and_round_trips() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    verify_resizes("nested-table-resize", 18);
-    verify_resizes("table-cell-border-content", 39);
-    verify_resizes("nested-table-percent-resize", 12);
-    verify_resizes("spaced-table-border-content", 24);
+    verify_resizes("nested-table-resize", 18, open_bytes);
+    verify_resizes("table-cell-border-content", 39, open_bytes);
+    verify_resizes("nested-table-percent-resize", 12, open_bytes);
+    verify_resizes("spaced-table-border-content", 24, open_bytes);
 }
 
-fn verify_resizes(capture: &str, expected_cases: usize) {
+#[cfg(windows)]
+#[test]
+fn autofit_nested_resize_matches_word_font_metrics_and_round_trips() {
+    set_word_layout_platform(WordLayoutPlatform::Windows);
+    let open = |bytes: &[u8]| {
+        let faces = jade_docx_native_render::system_fonts::word_document_faces(bytes, &[]);
+        NativeDocument::open_with_font_faces(
+            bytes,
+            common::PAGE_WIDTH_PX,
+            common::PAGE_HEIGHT_PX,
+            &faces,
+        )
+        .expect("open the document with Windows fonts")
+    };
+    verify_resizes("nested-autofit-advances", 36, open);
+    verify_resizes("nested-autofit-resize", 72, open);
+}
+
+fn verify_resizes(capture: &str, expected_cases: usize, open: fn(&[u8]) -> NativeDocument) {
     let archive = std::fs::read(repo_path(&format!(
         "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",
     )))
@@ -83,8 +102,8 @@ fn verify_resizes(capture: &str, expected_cases: usize) {
             format!("{:x}", Sha256::digest(&source))
         );
         assert_eq!(case["input_sha256"], format!("{:x}", Sha256::digest(&word)));
-        let expected = widths(open_bytes(&word).word_document());
-        let mut jade = open_bytes(&source);
+        let expected = widths(open(&word).word_document());
+        let mut jade = open(&source);
         let original = widths(jade.word_document());
         jade.apply_command(
             HeadlessCommand::ResizeTableColumnRightEdge {
@@ -102,7 +121,7 @@ fn verify_resizes(capture: &str, expected_cases: usize) {
         );
         let saved = jade.export_docx().unwrap();
         assert_eq!(
-            widths(open_bytes(&saved).word_document()),
+            widths(open(&saved).word_document()),
             expected,
             "{after}: saved model"
         );
@@ -114,14 +133,14 @@ fn verify_resizes(capture: &str, expected_cases: usize) {
         jade.undo().unwrap();
         let saved = jade.export_docx().unwrap();
         assert_eq!(
-            widths(open_bytes(&saved).word_document()),
+            widths(open(&saved).word_document()),
             original,
             "{after}: undo"
         );
         jade.redo().unwrap();
         let saved = jade.export_docx().unwrap();
         assert_eq!(
-            widths(open_bytes(&saved).word_document()),
+            widths(open(&saved).word_document()),
             expected,
             "{after}: redo"
         );

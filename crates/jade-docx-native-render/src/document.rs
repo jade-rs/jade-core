@@ -9,6 +9,7 @@ use crate::SkiaRenderHost;
 use futures::executor::block_on;
 pub use jade_docx_editor::canvas_renderer::CaretAffinity;
 use jade_docx_editor::canvas_renderer::{CanvasRenderer, FieldShading, FullLayoutDebugSnapshot};
+use jade_docx_editor::commands::resize_table_column::ResizeTableColumnCommand;
 use jade_docx_editor::commands::transform_object::TransformObjectCommand;
 use jade_docx_editor::commands::{
     Command, CommandContext, CommandExecutor, HistoryRenderFootprint,
@@ -3255,6 +3256,44 @@ impl NativeDocument {
         keep_selection: bool,
     ) -> Result<(), String> {
         self.build_roundtrip_xml()?;
+        let resize = match &command {
+            HeadlessCommand::ResizeTableColumnRightEdge {
+                table_order_index,
+                column_index,
+                new_width,
+            } => self
+                .renderer
+                .nested_column_resize_geometry(*table_order_index)
+                .map(|geometry| {
+                    ResizeTableColumnCommand::table_right_edge(
+                        *table_order_index,
+                        *column_index,
+                        *new_width,
+                    )
+                    .with_nested_geometry(geometry)
+                }),
+            HeadlessCommand::ResizeTableColumnBetween {
+                table_order_index,
+                left_column_index,
+                new_left_width,
+                new_right_width,
+            } => self
+                .renderer
+                .nested_column_resize_geometry(*table_order_index)
+                .map(|geometry| {
+                    ResizeTableColumnCommand::between_columns(
+                        *table_order_index,
+                        *left_column_index,
+                        *new_left_width,
+                        *new_right_width,
+                    )
+                    .with_nested_geometry(geometry)
+                }),
+            _ => None,
+        };
+        if let Some(resize) = resize {
+            return self.execute_command(Box::new(resize), keep_selection);
+        }
         let before = self.selection;
         let recorded = self.executor.history_revision();
         let after = self.edit_in_place(|this| {
