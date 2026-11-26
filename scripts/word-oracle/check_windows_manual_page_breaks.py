@@ -141,6 +141,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     require(sha256(capture_path.read_bytes()) == capture_hash, f'{capture_path}: Word capture changed')
     failures = []
     fixtures = pages = glyphs = 0
+    check_spaced_borders = capture_path.parent.name == 'spaced-table-border-content'
     check_screen = capture_path.parent.name in (
         'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
@@ -229,8 +230,11 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
                 else:
                     assert_pending_pdf_text(word, painted, f'{name} vector PDF')
                 compare(word, painted, f'{name} vector PDF')
-                if name in FLOATING_RULE_CASES:
-                    assert_original_vector_borders(word_pdf, native_pdf, name)
+                if name in FLOATING_RULE_CASES or check_spaced_borders:
+                    assert_original_vector_borders(
+                        word_pdf, native_pdf, name,
+                        expected_empty=check_spaced_borders and '-no-rule-' in name,
+                    )
             except (ValueError, subprocess.SubprocessError) as error:
                 failures.append(str(error))
     require(not remaining, f'Missing Word captures: {sorted(remaining)}')
