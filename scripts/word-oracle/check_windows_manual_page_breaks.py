@@ -6,30 +6,40 @@ from pathlib import Path
 import subprocess
 from zipfile import ZipFile
 
+import pymupdf
+
 from check_platform_coordinates import (
     ROOT, assert_pending_pdf_text, compare, extract_fonts, pdf_origins, require,
 )
 from check_windows_font_coordinates import require_original_font_programs_registered
-from generate_windows_page_break_cases import cases
+from generate_windows_page_break_cases import MODES, cases as manual_cases
+from generate_windows_styled_page_break_cases import PREFIX as STYLED_PREFIX, cases as styled_cases
 
 WORD_VERSION = '16.0.19127.20936'
-CAPTURE = ROOT / 'tests/word-oracle/windows/manual-page-breaks' / f'word-{WORD_VERSION}.zip'
-CAPTURE_SHA256 = 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb'
 FIXTURES = ROOT / 'public/fixtures'
-MODES = (12, 14, 15)
+CAPTURE_ROOT = ROOT / 'tests/word-oracle/windows'
+CAPTURES = (
+    ('manual-page-breaks', 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb',
+     'word-windows-edge-page-break-', manual_cases),
+    ('styled-page-breaks', '686f4826e19a1af9dbd12296388bb672364e2a6da71f4d0f207d180247785883',
+     STYLED_PREFIX, styled_cases),
+)
 
 
 def sha256(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def check(output_dir, native_executable, system_fonts):
-    require(sha256(CAPTURE.read_bytes()) == CAPTURE_SHA256, 'Word capture changed')
-    remaining = {f'word-windows-edge-page-break-{name}-compat{mode}'
-                 for name in cases() for mode in MODES}
+def pdf_page_sizes(path):
+    with pymupdf.open(path) as pdf:
+        return [(page.rect.width, page.rect.height) for page in pdf]
+
+
+def check_capture(capture_path, capture_hash, remaining, output_dir, native_executable, system_fonts):
+    require(sha256(capture_path.read_bytes()) == capture_hash, f'{capture_path}: Word capture changed')
     failures = []
     fixtures = pages = glyphs = 0
-    with ZipFile(CAPTURE) as bundle:
+    with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
         require(capture['product_version'] == WORD_VERSION, 'Incorrect Word version')
         for original in capture['documents']:
@@ -57,7 +67,7 @@ def check(output_dir, native_executable, system_fonts):
             native_json = case_dir / 'native.json'
             native_pdf = case_dir / 'native.pdf'
             argv = [str(native_executable), str(source), str(native_json), 'windows',
-                    str(native_pdf)]
+                    str(native_pdf), '--without-formatting-marks']
             if not system_fonts:
                 fonts_dir = case_dir / 'word-fonts'
                 if not fonts_dir.exists():
@@ -72,6 +82,8 @@ def check(output_dir, native_executable, system_fonts):
                     require_original_font_programs_registered(fonts_dir, snapshot)
                 require(native_pdf.read_bytes() != pdf_bytes, f'{name}: Word self-comparison')
                 painted = pdf_origins(native_pdf)
+                require(pdf_page_sizes(word_pdf) == pdf_page_sizes(native_pdf),
+                        f'{name}: vector PDF page sizes differ from Word')
                 # The snapshot stores list labels in a separate collection.
                 # Match its complete glyph set by page and origin. The vector
                 # PDF also carries the visible reading order.
@@ -82,7 +94,17 @@ def check(output_dir, native_executable, system_fonts):
                 failures.append(str(error))
     require(not remaining, f'Missing Word captures: {sorted(remaining)}')
     require(not failures, '\n'.join(failures))
-    print(f'{fixtures} fixtures, {pages} pages, {glyphs} glyphs from Word {WORD_VERSION}')
+    print(f'{capture_path.parent.name}: {fixtures} fixtures, {pages} pages, '
+          f'{glyphs} glyphs from Word {WORD_VERSION}')
+
+
+def check(output_dir, native_executable, system_fonts):
+    for cohort, digest, prefix, cases in CAPTURES:
+        expected = {f'{prefix}{name}-compat{mode}' for name in cases() for mode in MODES}
+        check_capture(
+            CAPTURE_ROOT / cohort / f'word-{WORD_VERSION}.zip', digest, expected,
+            output_dir, native_executable, system_fonts,
+        )
 
 
 if __name__ == '__main__':

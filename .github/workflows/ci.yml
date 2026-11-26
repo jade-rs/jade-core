@@ -620,7 +620,7 @@ jobs:
         run: |
           python scripts/word-oracle/test_zwnj_table_coordinates.py
           python scripts/word-oracle/check_zwnj_table_coordinates.py --platform windows --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-zwnj-table-coordinates
-      - name: Assert versioned Windows manual page breaks
+      - name: Assert versioned Windows manual and styled page breaks
         run: |
           python scripts/word-oracle/check_windows_manual_page_breaks.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-manual-page-breaks
           cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test manual_page_break

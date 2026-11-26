@@ -118,6 +118,15 @@ impl SectionBreakType {
             Some("nextPage") | None | Some(_) => Self::NextPage,
         }
     }
+
+    /// A visible terminal manual break advances continuous and next-column
+    /// sections to column one of the next page.
+    pub fn after_manual_page_break(self) -> Self {
+        match self {
+            Self::Continuous | Self::NextColumn => Self::NextPage,
+            other => other,
+        }
+    }
 }
 
 /// Resolve the next flow container before laying out a section.

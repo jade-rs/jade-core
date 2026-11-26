@@ -15,7 +15,8 @@ def para(content, properties=''):
     return '<w:p><w:pPr><w:snapToGrid w:val="0"/>' + properties + '</w:pPr>' + content + '</w:p>'
 
 
-def write(name, body, compatibility_mode=15, *, section_properties=None, numbering=None):
+def write(name, body, compatibility_mode=15, *, section_properties=None, numbering=None,
+          paragraph_styles=''):
     if section_properties is None:
         section_properties = ('<w:pgSz w:w="12240" w:h="15840"/>'
                               '<w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>')
@@ -34,6 +35,10 @@ def write(name, body, compatibility_mode=15, *, section_properties=None, numberi
     }
     if numbering is not None:
         parts['word/numbering.xml'] = numbering
+    if paragraph_styles:
+        parts['word/styles.xml'] = parts['word/styles.xml'].replace(
+            '</w:styles>', paragraph_styles + '</w:styles>',
+        )
     target = ROOT / 'public/fixtures' / f'word-windows-edge-{name}.docx'
     with ZipFile(target, 'w') as archive:
         for path, xml in parts.items():
