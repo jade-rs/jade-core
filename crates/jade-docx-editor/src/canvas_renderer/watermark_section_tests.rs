@@ -175,12 +175,18 @@ fn two_section_package() -> Vec<u8> {
     ])
 }
 
+fn load(data: &[u8]) -> WordDocument {
+    futures::executor::block_on(WordDocument::load(data, &Options::default())).expect("load")
+}
+
 fn render(data: &[u8]) -> Vec<Vec<Op>> {
-    let word_doc =
-        futures::executor::block_on(WordDocument::load(data, &Options::default())).expect("load");
+    render_word(&load(data))
+}
+
+fn render_word(word_doc: &WordDocument) -> Vec<Vec<Op>> {
     let document = word_doc.document.clone().expect("document");
     let mut renderer = recording_renderer();
-    renderer.sync_document_header_footer_stories(&word_doc);
+    renderer.sync_document_header_footer_stories(word_doc);
     renderer
         .render(&document, &Options::default())
         .expect("render");
@@ -351,6 +357,120 @@ fn a_single_header_paints_its_watermark_on_every_page() {
         assert_eq!(watermarks(page), ["DRAFT"]);
         assert_eq!(watermark_ops(page), first);
     }
+}
+
+/// Two sections of two pages each, both with their own default header and
+/// no watermark.
+fn unlinked_two_section_package() -> Vec<u8> {
+    let s1 = format!(
+        r#"<w:p><w:r><w:t>one</w:t></w:r></w:p>{PAGE_BREAK}<w:p><w:r><w:t>two</w:t></w:r></w:p>"#
+    );
+    let s2 = format!(
+        r#"<w:p><w:r><w:t>three</w:t></w:r></w:p>{PAGE_BREAK}<w:p><w:r><w:t>four</w:t></w:r></w:p>"#
+    );
+    package(&[
+        Section {
+            body: &s1,
+            headers: vec![(
+                "default",
+                Header {
+                    id: "rH1",
+                    text: "H1",
+                    watermark: None,
+                },
+            )],
+            title_page: false,
+        },
+        Section {
+            body: &s2,
+            headers: vec![(
+                "default",
+                Header {
+                    id: "rH2",
+                    text: "H2",
+                    watermark: None,
+                },
+            )],
+            title_page: false,
+        },
+    ])
+}
+
+fn set_and_render(word_doc: &mut WordDocument, text: Option<&str>) -> Vec<Vec<Op>> {
+    assert!(word_doc.set_watermark_text(text).expect("set watermark"));
+    let pages = render_word(word_doc);
+    // The package says the same: a reload paints what the edit painted.
+    let reloaded = load(&word_doc.export_docx().expect("export"));
+    let reloaded_pages = render_word(&reloaded);
+    let watermarks_of = |pages: &[Vec<Op>]| -> Vec<Vec<String>> {
+        pages.iter().map(|page| watermarks(page)).collect()
+    };
+    assert_eq!(
+        watermarks_of(&pages),
+        watermarks_of(&reloaded_pages),
+        "reload"
+    );
+    pages
+}
+
+/// Word's 透かし command writes every section's headers: an earlier
+/// section with its own (unlinked) header shows the watermark too, and
+/// removing it takes it off every page.
+#[test]
+fn set_watermark_reaches_an_unlinked_earlier_section_and_removal_clears_every_page() {
+    let mut word_doc = load(&unlinked_two_section_package());
+    let pages = set_and_render(&mut word_doc, Some("DRAFT"));
+    assert_eq!(pages.len(), 4);
+    for (index, page) in pages.iter().enumerate() {
+        assert_eq!(watermarks(page), ["DRAFT"], "page {}", index + 1);
+    }
+    assert!(page_text(&pages[0]).contains("H1") && page_text(&pages[2]).contains("H2"));
+
+    let pages = set_and_render(&mut word_doc, None);
+    assert_eq!(pages.len(), 4);
+    for (index, page) in pages.iter().enumerate() {
+        assert!(watermarks(page).is_empty(), "page {}", index + 1);
+    }
+}
+
+/// Headers the pages show blank — a first section declaring none, and its
+/// title page's first-page header — are created to carry the watermark.
+#[test]
+fn set_watermark_creates_the_headers_pages_show_blank() {
+    let s1 = format!(
+        r#"<w:p><w:r><w:t>one</w:t></w:r></w:p>{PAGE_BREAK}<w:p><w:r><w:t>two</w:t></w:r></w:p>"#
+    );
+    let s2 = r#"<w:p><w:r><w:t>three</w:t></w:r></w:p>"#;
+    let mut word_doc = load(&package(&[
+        Section {
+            body: &s1,
+            headers: Vec::new(),
+            title_page: true,
+        },
+        Section {
+            body: s2,
+            headers: vec![(
+                "default",
+                Header {
+                    id: "rH2",
+                    text: "H2",
+                    watermark: None,
+                },
+            )],
+            title_page: false,
+        },
+    ]));
+    let pages = set_and_render(&mut word_doc, Some("DRAFT"));
+    assert_eq!(pages.len(), 3);
+    for (index, page) in pages.iter().enumerate() {
+        assert_eq!(watermarks(page), ["DRAFT"], "page {}", index + 1);
+    }
+    assert!(
+        !word_doc.set_watermark_text(Some("DRAFT")).expect("repeat"),
+        "setting it again is a no-op"
+    );
+    let pages = set_and_render(&mut word_doc, None);
+    assert!(pages.iter().all(|page| watermarks(page).is_empty()));
 }
 
 #[test]

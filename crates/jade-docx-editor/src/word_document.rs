@@ -10533,25 +10533,23 @@ impl WordDocument {
             return Ok(false);
         }
 
+        // Word's 透かし command writes every header of every section: a
+        // section with its own (unlinked) header shows the watermark too,
+        // and a header a page shows but the package lacks is created.
         if normalized.is_some() {
             self.ensure_hf_part_for_edit(HeaderFooterRole::Header, HeaderFooterVariant::Default)?;
+            for (section, variant) in self.missing_watermark_header_slots() {
+                let previous = self.hf_edit_section.replace(section);
+                let created = self.ensure_hf_part_for_edit(HeaderFooterRole::Header, variant);
+                self.hf_edit_section = previous;
+                created?;
+            }
         }
 
-        for variant in [
-            HeaderFooterVariant::Default,
-            HeaderFooterVariant::First,
-            HeaderFooterVariant::Even,
-        ] {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| {
-                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
-                })
-                .is_some();
-            if present {
-                self.sync_watermark_to_header_variant(variant, normalized.as_ref())?;
-            }
+        for reference in self.watermark_header_references() {
+            let path =
+                self.resolve_header_footer_reference_path(HeaderFooterRole::Header, &reference)?;
+            self.sync_watermark_to_header_part(&path, normalized.as_ref())?;
         }
 
         if let Some(document) = self.document_mut() {
@@ -10653,23 +10651,12 @@ impl WordDocument {
         &mut self,
         expected: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> bool {
-        for variant in [
-            HeaderFooterVariant::Default,
-            HeaderFooterVariant::First,
-            HeaderFooterVariant::Even,
-        ] {
-            let present = self
-                .document
-                .as_deref()
-                .and_then(|document| {
-                    document_wide_hf_reference(document, HeaderFooterRole::Header, variant)
-                })
-                .is_some();
-            if !present {
-                continue;
-            }
+        if expected.is_some() && !self.missing_watermark_header_slots().is_empty() {
+            return false;
+        }
+        for reference in self.watermark_header_references() {
             let Ok(path) =
-                self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)
+                self.resolve_header_footer_reference_path(HeaderFooterRole::Header, &reference)
             else {
                 return false;
             };
@@ -10689,6 +10676,73 @@ impl WordDocument {
             }
         }
         true
+    }
+
+    /// Every header part a page of the document can show: each section's
+    /// default, first-page and even-page header after "link to previous",
+    /// each part once, in document order.
+    fn watermark_header_references(&self) -> Vec<String> {
+        let Some(document) = self.document.as_deref() else {
+            return Vec::new();
+        };
+        let mut references: Vec<String> = Vec::new();
+        for section in 0..document.sections.len().max(1) {
+            for variant in [
+                HeaderFooterVariant::Default,
+                HeaderFooterVariant::First,
+                HeaderFooterVariant::Even,
+            ] {
+                if let Some(reference) =
+                    hf_reference_for_section(document, section, HeaderFooterRole::Header, variant)
+                {
+                    if !references.contains(&reference) {
+                        references.push(reference);
+                    }
+                }
+            }
+        }
+        references
+    }
+
+    /// The headers pages show blank because no section up to theirs
+    /// declares one: the default header, the first-page header of a section
+    /// with a title page, and the even-page header with different odd and
+    /// even pages. Word's watermark command creates them; a header created
+    /// for the first section lacking one serves the linked sections after
+    /// it, so each is listed once.
+    fn missing_watermark_header_slots(&self) -> Vec<(usize, HeaderFooterVariant)> {
+        let Some(document) = self.document.as_deref() else {
+            return Vec::new();
+        };
+        let mut slots = Vec::new();
+        for variant in [
+            HeaderFooterVariant::Default,
+            HeaderFooterVariant::First,
+            HeaderFooterVariant::Even,
+        ] {
+            let first_in_use = (0..document.sections.len()).find(|&section| {
+                let in_use = match variant {
+                    HeaderFooterVariant::Default => true,
+                    HeaderFooterVariant::First => document.sections[section]
+                        .properties
+                        .as_ref()
+                        .is_some_and(|properties| properties.title_page),
+                    HeaderFooterVariant::Even => self.even_and_odd_headers,
+                };
+                in_use
+                    && hf_reference_for_section(
+                        document,
+                        section,
+                        HeaderFooterRole::Header,
+                        variant,
+                    )
+                    .is_none()
+            });
+            if let Some(section) = first_in_use {
+                slots.push((section, variant));
+            }
+        }
+        slots
     }
 
     fn watermark_from_loaded_headers(
@@ -10830,9 +10884,18 @@ impl WordDocument {
         variant: HeaderFooterVariant,
         watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
     ) -> Result<(), String> {
-        let text = watermark.map(|(text, _)| text.as_str());
         let part_path =
             self.resolve_header_footer_part_path_for(HeaderFooterRole::Header, variant)?;
+        self.sync_watermark_to_header_part(&part_path, watermark)
+    }
+
+    fn sync_watermark_to_header_part(
+        &mut self,
+        part_path: &str,
+        watermark: Option<&(String, jade_docx_reader::document::WatermarkStyle)>,
+    ) -> Result<(), String> {
+        let text = watermark.map(|(text, _)| text.as_str());
+        let part_path = part_path.to_string();
         let existing = self
             .read_xml_part_content(&part_path)
             .ok_or_else(|| format!("missing {part_path}"))?;
@@ -10910,7 +10973,11 @@ impl WordDocument {
 
         let serialized = xml.to_string().map_err(|error| error.to_string())?;
         self.upsert_xml_part_content(&part_path, serialized);
-        self.refresh_header_footer_lines_for(HeaderFooterRole::Header, variant, &part_path)
+        self.refresh_header_footer_lines_for(
+            HeaderFooterRole::Header,
+            HeaderFooterVariant::Default,
+            &part_path,
+        )
     }
 
     fn build_watermark_run(
