@@ -579,6 +579,7 @@ mod run_style_key;
 mod section_tests;
 mod structure;
 mod table;
+pub(crate) use table::windows_nested_resize_grid;
 #[cfg(test)]
 mod table_footer_tests;
 #[cfg(test)]
@@ -24486,20 +24487,36 @@ where
                 )
             });
         let lookahead = self.float_lookahead.take().filter(|_| spacing_eligible);
+        let float_word_compatibility = paragraph_style.east_asian_rules.compatibility_mode;
         if spacing_eligible
-            && !future_table_exclusions.is_empty()
-            && paragraph_style
-                .east_asian_rules
-                .compatibility_mode
-                .is_some_and(|mode| mode >= 15)
+            && (!future_table_exclusions.is_empty() || !self.active_float_exclusions.is_empty())
+            && paragraph_style.word_platform
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+            && matches!(float_word_compatibility, Some(12 | 14..))
         {
-            // Modern Word clears the floating table when its side cannot
-            // fit the next whole word. Keep any earlier lines beside it.
+            // Modern Word preserves whole words beside floating tables.
+            // Legacy Word shares that behavior when both sides leave room,
+            // advancing to the next usable line band below the table.
+            let legacy = float_word_compatibility.is_some_and(|mode| mode < 15);
             let content_right = column_right - paragraph_style.right_indent;
+            let mut blockers = floating_table_wrap::whole_word_blockers(
+                future_table_exclusions,
+                &self.active_float_exclusions,
+                self.current_page_number,
+                x,
+                content_right,
+            );
+            if legacy {
+                blockers.retain(|bounds| bounds.left > x && bounds.right < content_right);
+            }
             let numbering_ascent = pending_numbering
                 .as_ref()
                 .and_then(|numbering| self.numbering_first_line_ascent(numbering));
-            for _ in 0..future_table_exclusions.len() {
+            for _ in 0..blockers.len() {
                 let lines = self.wrap_text_into_lines_cached(
                     &layout_text,
                     &run_styles,
@@ -24529,9 +24546,12 @@ where
                         numbering_ascent,
                     )
                     + paragraph_style.skipped_float_height_before(line, line_height);
-                let Some(clearance) =
-                    floating_table_wrap::word_clearance(&future_table_exclusions, top, line_height)
-                else {
+                let Some(clearance) = floating_table_wrap::word_clearance(
+                    &blockers,
+                    top,
+                    line_height,
+                    legacy.then_some(self.current_y),
+                ) else {
                     break;
                 };
                 current_float_exclusions.push(clearance);

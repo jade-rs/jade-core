@@ -623,7 +623,7 @@ jobs:
       - name: Assert versioned Windows page breaks in paragraphs and tables
         run: |
           python scripts/word-oracle/check_windows_manual_page_breaks.py --native-executable target/windows-word-baselines/debug/examples/word_coordinates.exe --output-directory target/windows-manual-page-breaks
-          cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test manual_page_break
+          cargo test --manifest-path crates/jade-docx-native-render/Cargo.toml --locked --test manual_page_break --test nested_table_resize
       - name: Upload versioned Windows ZWNJ table results
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

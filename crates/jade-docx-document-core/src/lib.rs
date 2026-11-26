@@ -88,6 +88,15 @@ pub mod selection {
 #[path = "../../jade-docx-layout/src/section_transition.rs"]
 pub mod section_transition;
 
+// The renderer-free editor uses the widths stored in the document.
+pub(crate) fn windows_nested_resize_grid(
+    _elements: &[document::BodyElement],
+    _table: &document::Table,
+    _text_width: f32,
+) -> Option<(Vec<f32>, f32)> {
+    None
+}
+
 // The document core stays layout-free: fontTable substitutes are parsed into
 // `WordDocument::font_table_part` here, and the editor installs them into the
 // font resolver at its own boundary.

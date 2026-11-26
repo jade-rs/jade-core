@@ -155,10 +155,33 @@ pub(super) fn first_word_between_float_edges(
     })
 }
 
+pub(super) fn whole_word_blockers(
+    mut future: Vec<FloatExclusion>,
+    active: &[PageFloatExclusion],
+    page: usize,
+    content_left: f64,
+    content_right: f64,
+) -> Vec<FloatExclusion> {
+    // The one-twip contact tolerance applies to ordinary wrap bands. Moving
+    // a whole word below the table uses its actual lower edge.
+    for bounds in &mut future {
+        bounds.bottom += points_to_px(LOWER_EDGE_CONTACT_PT);
+    }
+    future.extend(
+        active
+            .iter()
+            .filter(|entry| entry.is_table && entry.page_number == page)
+            .map(|entry| entry.bounds.clone()),
+    );
+    future.retain(|bounds| bounds.left < content_right && bounds.right > content_left);
+    future
+}
+
 pub(super) fn word_clearance(
     bounds: &[FloatExclusion],
     line_top: f64,
     line_height: f64,
+    round_to_line: Option<f64>,
 ) -> Option<FloatExclusion> {
     let blocker = bounds
         .iter()
@@ -167,7 +190,10 @@ pub(super) fn word_clearance(
     Some(FloatExclusion {
         // Keep earlier lines that could use the side of this table.
         top: line_top.max(blocker.top) + 1.0e-6,
-        bottom: blocker.bottom + points_to_px(LOWER_EDGE_CONTACT_PT),
+        bottom: round_to_line.map_or(blocker.bottom, |origin| {
+            let bands = ((blocker.bottom - origin - 1.0e-6) / line_height).ceil();
+            origin + bands * line_height
+        }),
         left: f64::NEG_INFINITY,
         right: f64::INFINITY,
         ..blocker.clone()

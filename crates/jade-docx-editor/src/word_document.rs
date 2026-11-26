@@ -27419,47 +27419,64 @@ impl WordDocument {
         table_order_index: usize,
         widths: &[f32],
     ) -> Result<(), String> {
-        if widths.is_empty() {
-            return Err("set_table_column_widths requires at least one width".to_string());
-        }
-        if widths
-            .iter()
-            .any(|width| !width.is_finite() || *width < 0.0)
-        {
-            return Err("widths must be finite non-negative numbers".to_string());
-        }
-        let (table_id, columns_snapshot) = {
-            let table = self
-                .table_mut_by_order(table_order_index)
-                .ok_or_else(|| format!("table {table_order_index} was not found"))?;
-            // The grid has to keep describing the cells. Writing a different
-            // number of widths used to rewrite `w:tblGrid` to that arity and
-            // leave the rows as they were, which is a table Word has to repair.
-            // Adding or removing a column is `insert_table_column` /
-            // `delete_table_column`.
-            let column_count = Self::resolved_table_column_count(table);
-            if widths.len() != column_count {
-                return Err(format!(
-                    "table {table_order_index} has {column_count} columns but {} widths were given; \
-                     use insert_table_column / delete_table_column to change the column count",
-                    widths.len()
-                ));
-            }
-            table.columns = widths
-                .iter()
-                .map(|width| TableColumn {
-                    width: Some(whole_twips(width.max(MIN_TABLE_COLUMN_WIDTH_PT))),
-                })
-                .collect();
-            table.table_layout = Some(TableLayoutMode::Fixed);
-            (table.node_id, table.columns.clone())
+        use crate::commands::{
+            resize_table_column::ResizeTableColumnCommand, Command, CommandContext, CommandError,
         };
-        self.sync_table_grid(table_id, &columns_snapshot)
-            .map_err(|err| err.to_string())?;
-        self.sync_table_cell_widths(table_order_index)?;
-        self.sync_table_layout(table_id, Some(TableLayoutMode::Fixed))
-            .map_err(|err| err.to_string())?;
-        Ok(())
+        ResizeTableColumnCommand::all_columns(table_order_index, widths.to_vec())
+            .apply(&mut CommandContext::new(self, &mut None))
+            .map_err(|error| match error {
+                CommandError::Custom(message) if message == "target table not found" => {
+                    format!("table {table_order_index} was not found")
+                }
+                other => other.to_string(),
+            })
+    }
+
+    pub(crate) fn nested_resize_column_grid(&self, order: usize) -> Option<(Vec<f32>, f32)> {
+        let document = self.document.as_ref()?;
+        let table = self.table_by_order(order)?;
+        crate::windows_nested_resize_grid(
+            &document.body.as_ref()?.elements,
+            table,
+            self.text_column_width(),
+        )
+    }
+
+    pub(crate) fn sync_resized_nested_table_width(
+        &mut self,
+        order: usize,
+        cell_frame_width: f32,
+        previous_rendered_width: Option<f32>,
+    ) -> Result<(), String> {
+        let table = self.table_by_order(order).ok_or("target table not found")?;
+        let Some(width) = table.style.get("width") else {
+            return Ok(());
+        };
+        let total = table
+            .columns
+            .iter()
+            .filter_map(|column| column.width)
+            .sum::<f32>();
+        let resized = match Self::parse_table_width_spec(width) {
+            Ok(TableWidthSpec::Points(_)) => format!("{total:.2}pt"),
+            Ok(TableWidthSpec::Percent(percent)) => {
+                let frame = previous_rendered_width
+                    .filter(|_| percent > 0.0)
+                    .map(|previous| previous * 100.0 / percent)
+                    .filter(|width| width.is_finite() && *width > 0.0)
+                    .unwrap_or(cell_frame_width);
+                // Word saves an absolute width as soon as the new grid
+                // exceeds the enclosing cell's frame by a whole twip.
+                if (total * 20.0).round() > (frame * 20.0).round() {
+                    format!("{total:.2}pt")
+                } else {
+                    // Use the same fiftieths of a percent as tblW in the model.
+                    format!("{:.2}%", (5000.0 * total / frame).round() / 50.0)
+                }
+            }
+            _ => return Ok(()),
+        };
+        self.set_table_width(order, &resized)
     }
 
     /// Word's 表の分割: the rows from `row_index` on become a second table

@@ -68,6 +68,7 @@ def cases():
         ('right-border', placed('TWO', 24, align='right', rules=tuple(
             (side, 8) for side in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV')
         ))),
+        ('right-left-rule', placed('TWO', 24, align='right', rules=(('left', 8),))),
         ('right-right-rule', placed('TWO', 24, align='right', rules=(('right', 8),))),
         ('right-asymmetric-rules', placed('TWO', 24, align='right', rules=(('left', 4), ('right', 16)))),
     ]:

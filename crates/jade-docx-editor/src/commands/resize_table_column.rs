@@ -1,3 +1,4 @@
+use super::table_structure::TableStructureBackup;
 use super::{Command, CommandContext, CommandError, CommandResult};
 use crate::document::{TableColumn, TableLayoutMode};
 use crate::word_document::{whole_twips, WordDocument, MIN_TABLE_COLUMN_WIDTH_PT};
@@ -12,6 +13,8 @@ pub struct ResizeTableColumnCommand {
     preserve_rendered_widths: bool,
     previous_columns: Option<Vec<TableColumn>>,
     previous_layout: Option<Option<TableLayoutMode>>,
+    previous_rendered_width: Option<f32>,
+    nested_backup: Option<TableStructureBackup>,
 }
 
 impl ResizeTableColumnCommand {
@@ -31,6 +34,8 @@ impl ResizeTableColumnCommand {
             preserve_rendered_widths: false,
             previous_columns: None,
             previous_layout: None,
+            previous_rendered_width: None,
+            nested_backup: None,
         }
     }
 
@@ -45,6 +50,8 @@ impl ResizeTableColumnCommand {
             preserve_rendered_widths: false,
             previous_columns: None,
             previous_layout: None,
+            previous_rendered_width: None,
+            nested_backup: None,
         }
     }
 
@@ -60,6 +67,8 @@ impl ResizeTableColumnCommand {
             preserve_rendered_widths: false,
             previous_columns: None,
             previous_layout: None,
+            previous_rendered_width: None,
+            nested_backup: None,
         }
     }
 
@@ -70,6 +79,11 @@ impl ResizeTableColumnCommand {
         let mut command = Self::all_columns(table_order_index, widths);
         command.preserve_rendered_widths = true;
         command
+    }
+
+    pub fn with_previous_rendered_width(mut self, width_points: f32) -> Self {
+        self.previous_rendered_width = Some(width_points);
+        self
     }
 
     fn normalize_width(width: f32) -> CommandResult<f32> {
@@ -126,6 +140,13 @@ impl Command for ResizeTableColumnCommand {
             .map(Self::normalize_width)
             .transpose()?;
 
+        let order = self.table_order_index;
+        let sizing = ctx.document.nested_resize_column_grid(order);
+        let backup = sizing
+            .as_ref()
+            .map(|_| TableStructureBackup::capture(ctx.document, order))
+            .transpose()?;
+
         let (table_id, columns_snapshot) = {
             let table = ctx
                 .document
@@ -157,8 +178,10 @@ impl Command for ResizeTableColumnCommand {
                 }
             }
 
-            self.previous_columns = Some(table.columns.clone());
-            self.previous_layout = Some(table.table_layout);
+            if backup.is_none() {
+                self.previous_columns = Some(table.columns.clone());
+                self.previous_layout = Some(table.table_layout);
+            }
 
             if let Some(widths) = normalized_replacement {
                 table.columns = widths
@@ -166,6 +189,14 @@ impl Command for ResizeTableColumnCommand {
                     .map(|width| TableColumn { width: Some(width) })
                     .collect();
             } else {
+                if let Some((widths, _)) = &sizing {
+                    table.columns = widths
+                        .iter()
+                        .map(|width| TableColumn {
+                            width: Some(whole_twips(*width)),
+                        })
+                        .collect();
+                }
                 if table.columns.len() < column_count {
                     table.columns.resize(column_count, TableColumn::default());
                 }
@@ -183,28 +214,57 @@ impl Command for ResizeTableColumnCommand {
                     }
                 }
             }
-            // A pointer drag is an explicit grid decision. Keeping autofit
-            // enabled would immediately run content-based redistribution over
-            // these widths during the same mutation's repaint.
-            table.table_layout = Some(TableLayoutMode::Fixed);
+            // Word preserves the layout mode when the enclosing cell gives
+            // this nested grid a resolved frame. The other resize paths rely
+            // on fixed layout to prevent content-based redistribution.
+            if sizing.is_none() {
+                table.table_layout = Some(TableLayoutMode::Fixed);
+            }
 
             (table.node_id, table.columns.clone())
         };
 
-        ctx.document
-            .sync_table_grid(table_id, &columns_snapshot)
-            .map_err(|err| CommandError::Custom(err.to_string()))?;
-        ctx.document
-            .sync_table_cell_widths(self.table_order_index)
-            .map_err(CommandError::Custom)?;
-        ctx.document
-            .sync_table_layout(table_id, Some(TableLayoutMode::Fixed))
-            .map_err(|err| CommandError::Custom(err.to_string()))?;
-
-        Ok(())
+        // Word refreshes a stale saved grid even for a zero-distance resize,
+        // but keeps the independent cell and table width preferences.
+        let same_displayed_widths = sizing.as_ref().is_some_and(|(previous, _)| {
+            previous.len() == columns_snapshot.len()
+                && columns_snapshot
+                    .iter()
+                    .zip(previous)
+                    .all(|(column, width)| column.width == Some(whole_twips(*width)))
+        });
+        let result = (|| {
+            ctx.document
+                .sync_table_grid(table_id, &columns_snapshot)
+                .map_err(|err| CommandError::Custom(err.to_string()))?;
+            if !same_displayed_widths {
+                ctx.document
+                    .sync_table_cell_widths(order)
+                    .map_err(CommandError::Custom)?;
+                if let Some((_, frame)) = sizing {
+                    ctx.document
+                        .sync_resized_nested_table_width(order, frame, self.previous_rendered_width)
+                        .map_err(CommandError::Custom)?;
+                } else {
+                    ctx.document
+                        .sync_table_layout(table_id, Some(TableLayoutMode::Fixed))
+                        .map_err(|err| CommandError::Custom(err.to_string()))?;
+                }
+            }
+            Ok(())
+        })();
+        if result.is_ok() {
+            self.nested_backup = backup;
+        } else if let Some(backup) = backup {
+            backup.restore(ctx.document, order)?;
+        }
+        result
     }
 
     fn undo(&mut self, ctx: &mut CommandContext<'_>) -> CommandResult<()> {
+        if let Some(backup) = self.nested_backup.take() {
+            return backup.restore(ctx.document, self.table_order_index);
+        }
         let (table_id, restored_columns, restored_layout) = {
             let table = ctx
                 .document

@@ -1065,6 +1065,7 @@ struct PreparedCell {
     /// each prepared cell so page splits and repeated headers reuse identical
     /// geometry without consulting mutable document state.
     cell_spacing: f64,
+    row_height_is_exact: bool,
     blocks: Vec<CellBlock>,
     height: f64,
     background: Option<String>,
@@ -1102,6 +1103,24 @@ impl PreparedCell {
         horizontal_border_extent(&self.border_bottom, &self.border_bottom_segments)
     }
 
+    fn windows_spaced_row_clip(
+        &self,
+        y_top: f64,
+        row_height: f64,
+        padding: CellPadding,
+        bottom_band: f64,
+    ) -> Option<(f64, f64)> {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        (word_layout_platform() == WordLayoutPlatform::Windows
+            && self.has_separate_borders()
+            && cell_ink_projection_is_horizontal(self.text_direction))
+        .then(|| {
+            let top = (y_top + self.cell_spacing + padding.top).min(y_top + row_height);
+            let bottom = y_top + row_height - self.cell_spacing - padding.bottom - bottom_band;
+            (top, (bottom - top).max(0.0))
+        })
+    }
+
     /// A page fragment copies cell geometry, not discarded paragraph glyphs.
     fn fragment(&self, blocks: Vec<CellBlock>) -> Self {
         Self {
@@ -1118,6 +1137,7 @@ impl PreparedCell {
             border_tr2bl: self.border_tr2bl.clone(),
             padding: self.padding,
             cell_spacing: self.cell_spacing,
+            row_height_is_exact: self.row_height_is_exact,
             blocks,
             height: 0.0,
             background: self.background.clone(),
@@ -1653,10 +1673,43 @@ struct NestedTableLayout {
     column_positions: Vec<f64>,
     rows: Vec<NestedRowLayout>,
     width: f64,
+    windows_preferred_grid: bool,
     height: f64,
     margin_top: f64,
     margin_bottom: f64,
     line_height: f64,
+}
+
+impl NestedTableLayout {
+    fn uses_windows_inline_placement(&self) -> bool {
+        use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+        self.windows_preferred_grid
+            || (word_layout_platform() == WordLayoutPlatform::Windows
+                && !table_floats(&self.table)
+                && resolve_table_layout_mode(&self.table) == TableLayoutMode::Fixed
+                && absolute_table_width(&self.table).is_some())
+    }
+
+    fn x_in_cell(&self, content_left: f64, content_width: f64) -> f64 {
+        let windows_placement = self.uses_windows_inline_placement();
+        let left = compute_table_x_inner(
+            content_left,
+            content_width,
+            self.width,
+            &self.table,
+            0.0,
+            windows_placement,
+        );
+        // Word keeps the inner table's aligned position even when its
+        // frame extends beyond the content area of the enclosing cell.
+        if !windows_placement
+            && !table_floats(&self.table)
+            && left + self.width > content_left + content_width
+        {
+            return (content_left + content_width - self.width).max(content_left);
+        }
+        left
+    }
 }
 
 /// Prepared data for a single nested table row.
@@ -1797,6 +1850,12 @@ fn spacing_frame_width(row: &TableRow, table: &Table, side: TableBorderSide) -> 
         .unwrap_or(0.0)
 }
 
+fn windows_ltr_spaced_slots(table: &Table) -> bool {
+    !table.bidi_visual
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+}
+
 fn prepared_spacing_slot_scale(
     row: &TableRow,
     table: &Table,
@@ -1809,6 +1868,9 @@ fn prepared_spacing_slot_scale(
     let Some(last) = cells.last() else {
         return 1.0;
     };
+    if windows_ltr_spaced_slots(table) {
+        return spacing_slot_scale(width, first.cell_spacing, 0.0, 0.0, 0.0, 0.0);
+    }
     let (leading, trailing) = if table.bidi_visual {
         (&first.border_right, &last.border_left)
     } else {
@@ -2134,6 +2196,7 @@ struct TableLineWrapContext<'a, P: Painter> {
     ascii_measure_memo: RefCell<FxHashMap<(u32, u32), f64>>,
     wrap_cache: Option<Rc<RefCell<ParagraphWrapCache>>>,
     math: Option<TableMathContext>,
+    floating_border_insets_table: Option<&'a Table>,
 }
 
 impl<'a, P: Painter> TableLineWrapContext<'a, P> {
@@ -2161,6 +2224,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
             ascii_measure_memo: RefCell::new(FxHashMap::default()),
             wrap_cache: None,
             math: None,
+            floating_border_insets_table: None,
         };
         result.style = Rc::new(result.attach_font_ids((*result.style).clone()));
         result
@@ -2890,6 +2954,15 @@ where
         } else {
             TableLineWrapContext::new(&painter)
         };
+        let floating_border_insets = !self.pageless_mode
+            && !self.rendering_header_footer_story
+            && !self.rendering_note_story
+            && self.paragraph_frame_column.is_none()
+            && floating_table_uses_cell_border_insets(
+                table,
+                self.document_east_asian_rules.compatibility_mode,
+            );
+        table_wrap_context.floating_border_insets_table = floating_border_insets.then_some(table);
         table_wrap_context.arabic_cluster_measurer = self.host.arabic_cluster_measurer();
         if self.table_autofit_cache_enabled {
             table_wrap_context.wrap_cache = Some(Rc::clone(&self.paragraph_wrap_cache));
@@ -3486,7 +3559,14 @@ where
         );
         let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
         let floating_paint_shift = floating_table_x.map_or(0.0, |_| {
-            windows_modern_floating_table_paint_shift(table, compatibility_mode)
+            let shift = windows_modern_floating_table_paint_shift(table, compatibility_mode);
+            if floating_border_insets {
+                // Paint the grid on the center of the stroke. Each cell
+                // then insets its own text by half its actual border.
+                shift - leading_cell_border_half_px(table, false)
+            } else {
+                shift
+            }
         });
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
@@ -5644,18 +5724,11 @@ where
         let bottom_band = bands.content_bottom;
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
+        let allow_nested_overflow =
+            !cell.row_height_is_exact && cell_ink_projection_is_horizontal(cell.text_direction);
         let draw_enabled = self.should_draw_current_page_for_render();
-        let clip_content = jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            && cell.has_separate_borders()
-            && cell_ink_projection_is_horizontal(cell.text_direction);
-        let (clip_top, clip_height) = if clip_content {
-            let top = (y_top + cell.cell_spacing + padding.top).min(y_top + row_height);
-            let bottom = y_top + row_height - cell.cell_spacing - padding.bottom - bottom_band;
-            (top, (bottom - top).max(0.0))
-        } else {
-            (y_top, row_height)
-        };
+        let spaced_clip = cell.windows_spaced_row_clip(y_top, row_height, padding, bottom_band);
+        let (clip_top, clip_height) = spaced_clip.unwrap_or((y_top, row_height));
         let projection_clip =
             if self.auxiliary_story_capture_mode == AuxiliaryStoryCaptureMode::Full {
                 let local = (cell_width > 0.0
@@ -5675,15 +5748,16 @@ where
         // Named so the painter outlives the guard that borrows it, and owning so
         // the borrow is not of `self`.
         let clip_painter = self.host.painter();
-        let clip_guard = if draw_enabled {
-            if clip_content && clip_height <= 0.0 {
+        let cell_clip = |left, width| {
+            if !draw_enabled {
+                None
+            } else if spaced_clip.is_some() && clip_height <= 0.0 {
                 Some(ClipGuard::empty(&clip_painter))
             } else {
-                ClipGuard::new(&clip_painter, x_start, clip_top, cell_width, clip_height)
+                ClipGuard::new(&clip_painter, left, clip_top, width, clip_height)
             }
-        } else {
-            None
         };
+        let mut clip_guard = cell_clip(x_start, cell_width);
         // Offset the content downward for `w:vAlign="center"/"bottom"`. The
         // leftover space is the cell's inner height minus the total content
         // height; `vertical_align_share` decides how much of it sits above the
@@ -6194,11 +6268,23 @@ where
                     } else {
                         projection_right
                     };
+                    // An inner table can let its descendants paint past its
+                    // own frame as well. Keep the row's vertical clip while
+                    // painting nested tables in growing Windows rows.
+                    let content_left = x_start + pad_left + border_left_inset;
+                    let overflow =
+                        allow_nested_overflow && nested_table.uses_windows_inline_placement();
+                    let nested_clip = if overflow {
+                        drop(clip_guard.take());
+                        cell_clip(0.0, self.page_width)
+                    } else {
+                        None
+                    };
                     let nested_height = self.render_nested_table(
                         nested_table,
                         numbering_part,
                         numbering_counter,
-                        x_start + pad_left + border_left_inset,
+                        content_left,
                         block_top,
                         content_width,
                         TableProjectionClip {
@@ -6206,6 +6292,10 @@ where
                             right,
                         },
                     )?;
+                    drop(nested_clip);
+                    if overflow {
+                        clip_guard = cell_clip(x_start, cell_width);
+                    }
 
                     let consumed = nested_height.max(block.height.max(line_height));
                     block_top += consumed;
@@ -6990,8 +7080,19 @@ where
         let bottom_band = bands.content_bottom;
         let pad_left = padding.left;
         let pad_horizontal = padding.horizontal();
+        let allow_nested_overflow =
+            !cell.row_height_is_exact && cell_ink_projection_is_horizontal(cell.text_direction);
+        let spaced_clip = cell.windows_spaced_row_clip(y_top, row_height, padding, bottom_band);
+        let (clip_top, clip_height) = spaced_clip.unwrap_or((y_top, row_height));
         let clip_painter = self.host.painter();
-        let clip_guard = ClipGuard::new(&clip_painter, x_start, y_top, cell_width, row_height);
+        let cell_clip = |left, width| {
+            if spaced_clip.is_some() && clip_height <= 0.0 {
+                Some(ClipGuard::empty(&clip_painter))
+            } else {
+                ClipGuard::new(&clip_painter, left, clip_top, width, clip_height)
+            }
+        };
+        let mut clip_guard = cell_clip(x_start, cell_width);
         let text_color = cell.text_color.as_deref().unwrap_or("auto");
         #[allow(deprecated)]
         clip_painter.set_fill_style_str(self.resolve_text_fill_color(text_color).as_ref());
@@ -7056,12 +7157,24 @@ where
                 let content_width =
                     cell_width - pad_horizontal - border_left_inset - border_right_inset;
                 if content_width > 0.0 {
+                    let content_left = x_start + pad_left + border_left_inset;
+                    let overflow = allow_nested_overflow && nested.uses_windows_inline_placement();
+                    let nested_clip = if overflow {
+                        drop(clip_guard.take());
+                        cell_clip(0.0, self.page_width)
+                    } else {
+                        None
+                    };
                     self.draw_nested_table_visual_only(
                         nested,
-                        x_start + pad_left + border_left_inset,
+                        content_left,
                         block_top,
                         content_width,
                     )?;
+                    drop(nested_clip);
+                    if overflow {
+                        clip_guard = cell_clip(x_start, cell_width);
+                    }
                 }
                 block_top += block.height.max(line_height);
                 #[allow(deprecated)]
@@ -7299,11 +7412,11 @@ where
                                 &selection_line,
                                 TableLineClip {
                                     vertical: (
-                                        y_top,
+                                        clip_top,
                                         if self.pageless_mode {
-                                            y_top + row_height
+                                            clip_top + clip_height
                                         } else {
-                                            (y_top + row_height).min(self.page_height)
+                                            (clip_top + clip_height).min(self.page_height)
                                         },
                                     ),
                                     ancestor_right: None,
@@ -7365,9 +7478,8 @@ where
         if layout.rows.is_empty() {
             return Ok(());
         }
-        let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
-        let mut table_x = compute_floating_table_x_in_frames(
+        let table_x = compute_floating_table_x_in_frames(
             self.margin_left,
             page_margin_width,
             self.page_width,
@@ -7377,19 +7489,7 @@ where
             &layout.table,
             self.current_page_number,
         )
-        .unwrap_or_else(|| {
-            compute_table_x(
-                x_start,
-                available_width,
-                layout.width,
-                &layout.table,
-                // The parent cell already supplies its content-frame origin.
-                0.0,
-            )
-        });
-        if !is_floating_table && table_x + layout.width > x_start + available_width {
-            table_x = (x_start + available_width - layout.width).max(x_start);
-        }
+        .unwrap_or_else(|| layout.x_in_cell(x_start, available_width));
 
         let row_refs: Vec<&[PreparedCell]> =
             layout.rows.iter().map(|row| row.cells.as_slice()).collect();
@@ -9195,9 +9295,9 @@ where
         available_width: f64,
         ancestor_clip: TableProjectionClip,
     ) -> Result<f64, JsValue> {
-        let mut total_height = layout.margin_top + layout.margin_bottom;
+        let mut total_height = layout.margin_top;
         if layout.rows.is_empty() {
-            return Ok(total_height.max(layout.line_height));
+            return Ok((total_height + layout.margin_bottom).max(layout.line_height));
         }
 
         let painter = self.host.painter();
@@ -9206,7 +9306,7 @@ where
 
         let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
-        let mut table_x = compute_floating_table_x_in_frames(
+        let table_x = compute_floating_table_x_in_frames(
             self.margin_left,
             page_margin_width,
             self.page_width,
@@ -9216,20 +9316,7 @@ where
             &layout.table,
             self.current_page_number,
         )
-        .unwrap_or_else(|| {
-            compute_table_x(
-                x_start,
-                available_width,
-                layout.width,
-                &layout.table,
-                // The parent cell already supplies its content-frame origin.
-                0.0,
-            )
-        });
-
-        if !is_floating_table && table_x + layout.width > x_start + available_width {
-            table_x = (x_start + available_width - layout.width).max(x_start);
-        }
+        .unwrap_or_else(|| layout.x_in_cell(x_start, available_width));
 
         let order = layout.order.unwrap_or_else(|| {
             let order = self.table_counter;
@@ -10696,6 +10783,17 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
     outer_spacing
         + if table.bidi_visual {
             padding.right
+        } else if windows_ltr_spaced_slots(table)
+            && resolve_cell_spacing_px(row, table) > f64::EPSILON
+        {
+            padding.left + 2.0 * leading_cell_border_half_px(table, true)
+        } else if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !row_uses_separate_cell_borders(row, table)
+        {
+            // Word writes the resolved text-edge indent when it saves a
+            // legacy table. Measure that indent to the same edge on reopen.
+            padding.left.max(leading_cell_border_half_px(table, false))
         } else {
             padding.left
         }
@@ -10757,7 +10855,22 @@ fn leading_cell_border_half_px(table: &Table, include_spacing: bool) -> f64 {
         [true, visible_row_count == 1, left_col, right_col],
         cell_spacing,
     );
-    visible_border_width(&border) * 0.5
+    let painted_width = visible_border_width(&border);
+    let width = if include_spacing {
+        spaced_content_border_width(
+            cell,
+            row,
+            table,
+            &format,
+            side,
+            true,
+            cell_spacing,
+            painted_width,
+        )
+    } else {
+        painted_width
+    };
+    width * 0.5
 }
 
 fn trailing_cell_border_half_px(table: &Table) -> f64 {
@@ -10912,6 +11025,16 @@ fn compute_inline_body_table_x_inner(
         }
     }
     if !ignored_indent
+        && positive_spacing
+        && !centered
+        && !trailing
+        && (!has_indent || effective_indent == Some(0.0))
+        && windows_ltr_spaced_slots(table)
+        && compatibility_mode.is_some_and(|mode| mode >= 15)
+    {
+        return x + leading_cell_border_half_px(table, true);
+    }
+    if !ignored_indent
         && !table.bidi_visual
         && separated
         && !has_indent
@@ -10971,7 +11094,10 @@ fn compute_inline_body_table_x_inner(
             x + if table.bidi_visual {
                 -leading_text_inset
             } else {
-                leading_text_inset + border_bias
+                // The collapsed cell already reserves the leading half-rule
+                // if it exceeds the margin. An unindented legacy table keeps
+                // its outer grid at the base position.
+                leading_text_inset
             }
         }
         _ => x,
@@ -11060,6 +11186,24 @@ fn compute_table_x(
     table: &Table,
     leading_text_inset: f64,
 ) -> f64 {
+    compute_table_x_inner(
+        base_left,
+        available_width,
+        table_width,
+        table,
+        leading_text_inset,
+        false,
+    )
+}
+
+fn compute_table_x_inner(
+    base_left: f64,
+    available_width: f64,
+    table_width: f64,
+    table: &Table,
+    leading_text_inset: f64,
+    windows_nested: bool,
+) -> f64 {
     let (effective_indent, automatic_indent) = table_leading_indent(table);
     let indent = effective_indent.unwrap_or(0.0);
 
@@ -11069,14 +11213,14 @@ fn compute_table_x(
     }
 
     let remaining_width = available_width - table_width;
-    let align_offset = match table.style.get("text-align").map(|value| value.trim()) {
+    let (align_offset, leading) = match table.style.get("text-align").map(|value| value.trim()) {
         Some(value)
             if value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre") =>
         {
-            remaining_width / 2.0
+            (remaining_width / 2.0, false)
         }
         Some(value) if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") => {
-            if table.bidi_visual {
+            let offset = if table.bidi_visual {
                 -leading_text_inset
             } else if leading_text_inset > 0.0
                 && jade_docx_layout::line_metrics::word_layout_platform()
@@ -11090,20 +11234,33 @@ fn compute_table_x(
                 remaining_width + pre_2013_table_trailing_text_inset_px(table)
             } else {
                 remaining_width
-            }
+            };
+            (offset, false)
         }
         // OOXML reverses table justification when `w:bidiVisual` is active:
         // the default/left value is relative to the physical right text margin.
         // Cell model order stays logical; only the table box is repositioned.
         _ => {
-            if table.bidi_visual {
+            let offset = if table.bidi_visual {
                 remaining_width + leading_text_inset
             } else {
                 -leading_text_inset
-            }
+            };
+            (offset, true)
         }
     };
 
+    // A nested table in Windows Word accepts a nonnegative
+    // indent only at the leading edge of its parent cell.
+    let indent = if windows_nested {
+        if leading {
+            indent.max(0.0)
+        } else {
+            0.0
+        }
+    } else {
+        indent
+    };
     // `w:tblInd` is measured from the leading margin. That is physical left in
     // an ordinary table and physical right in a bidiVisual table, so the same
     // positive OOXML value moves in opposite canvas directions.
@@ -11186,6 +11343,29 @@ fn compute_floating_body_table_x(
         0.0,
     );
     Some(x - padding.left)
+}
+
+fn floating_table_uses_cell_border_insets(table: &Table, mode: Option<u32>) -> bool {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    word_layout_platform() == WordLayoutPlatform::Windows
+        && matches!(mode, Some(12 | 14..))
+        && table_floats(table)
+        && !table.bidi_visual
+        && table.cell_spacing.is_none_or(|spacing| spacing == 0.0)
+        && table
+            .style
+            .get("table-position-horizontal-anchor")
+            .is_none_or(|anchor| {
+                anchor.trim().eq_ignore_ascii_case("margin")
+                    || anchor.trim().eq_ignore_ascii_case("page")
+            })
+        && table
+            .style
+            .get("table-position-x-align")
+            .is_some_and(|align| {
+                align.trim().eq_ignore_ascii_case("right")
+                    || align.trim().eq_ignore_ascii_case("center")
+            })
 }
 
 fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -> f64 {
@@ -11853,6 +12033,26 @@ impl WindowsPositiveSpacingGrid {
                         physical_edges,
                         spacing,
                     ));
+                    let left = spaced_content_border_width(
+                        cell,
+                        row,
+                        table,
+                        &format,
+                        TableBorderSide::Left,
+                        physical_edges[2],
+                        spacing,
+                        left,
+                    );
+                    let right = spaced_content_border_width(
+                        cell,
+                        row,
+                        table,
+                        &format,
+                        TableBorderSide::Right,
+                        physical_edges[3],
+                        spacing,
+                        right,
+                    );
                     (padding.horizontal(), left, right)
                 })
                 .collect();
@@ -11864,10 +12064,17 @@ impl WindowsPositiveSpacingGrid {
                 return None;
             }
         }
-        let (leading, trailing) = if table.bidi_visual {
-            (metrics[0].2, metrics[columns - 1].1)
+        let (leading, trailing, frame_left, frame_right) = if table.bidi_visual {
+            (
+                metrics[0].2,
+                metrics[columns - 1].1,
+                spacing_frame_width(first, table, TableBorderSide::Left),
+                spacing_frame_width(first, table, TableBorderSide::Right),
+            )
         } else {
-            (metrics[0].1, metrics[columns - 1].2)
+            // The outside gaps reduce the total span. The rules only affect
+            // how the remaining span is distributed between the columns.
+            (0.0, 0.0, 0.0, 0.0)
         };
         Some(Self {
             spacing,
@@ -11881,8 +12088,8 @@ impl WindowsPositiveSpacingGrid {
                 .collect(),
             leading,
             trailing,
-            frame_left: spacing_frame_width(first, table, TableBorderSide::Left),
-            frame_right: spacing_frame_width(first, table, TableBorderSide::Right),
+            frame_left,
+            frame_right,
         })
     }
 
@@ -14071,7 +14278,10 @@ fn nested_border_frame_insets(
     left: &CellBorderSpec,
     right: &CellBorderSpec,
 ) -> [f64; 2] {
-    if enabled {
+    if enabled
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
         [
             visible_border_width(left) * 0.5,
             visible_border_width(right) * 0.5,
@@ -14079,6 +14289,15 @@ fn nested_border_frame_insets(
     } else {
         [0.0, 0.0]
     }
+}
+
+/// In a collapsed Windows cell the text starts inside the leading half-rule
+/// and the width reserves the larger of the two complete horizontal insets.
+fn windows_collapsed_cell_padding(mut padding: CellPadding, left: f64, right: f64) -> CellPadding {
+    let horizontal = padding.horizontal().max((left + right) * 0.5);
+    padding.left = padding.left.max(left * 0.5);
+    padding.right = horizontal - padding.left;
+    padding
 }
 
 /// Grows auto/at-least rows by their drawn horizontal borders, as Word does:
@@ -16739,6 +16958,35 @@ fn resolve_cell_border_side(
     }
 }
 
+/// Windows budgets the frame rule on an outside edge of a spaced cell.
+/// An inherited insideV may still paint there without using that width.
+#[allow(clippy::too_many_arguments)]
+fn spaced_content_border_width(
+    cell: &TableCell,
+    row: &TableRow,
+    table: &Table,
+    format: &TableStyleCellFormat,
+    side: TableBorderSide,
+    outside: bool,
+    spacing: f64,
+    painted_width: f64,
+) -> f64 {
+    if !outside || spacing <= f64::EPSILON || !windows_ltr_spaced_slots(table) {
+        return painted_width;
+    }
+    let name = if matches!(side, TableBorderSide::Left) {
+        "left"
+    } else {
+        "right"
+    };
+    if cell_border_property(cell, table, name, "style").is_some()
+        || table_style_border_for_side(format, side).is_some()
+    {
+        return painted_width;
+    }
+    spacing_frame_width(row, table, side)
+}
+
 /// Transforms a DOCX table row into drawable cells, measuring wrapped text and resolving styles.
 #[allow(clippy::too_many_arguments)]
 fn prepare_row_layout<P: Painter<Error: PainterError>>(
@@ -16823,6 +17071,69 @@ fn prepare_row_layout<P: Painter<Error: PainterError>>(
     Ok(cells)
 }
 
+fn table_row_slot_scale(
+    table: &Table,
+    row: &TableRow,
+    row_index: usize,
+    row_count: usize,
+    column_widths: &[f64],
+) -> f64 {
+    if !row_uses_separate_cell_borders(row, table) {
+        return 1.0;
+    }
+    let cell_spacing = resolve_cell_spacing_px(row, table);
+    if windows_ltr_spaced_slots(table) {
+        return spacing_slot_scale(column_widths.iter().sum(), cell_spacing, 0.0, 0.0, 0.0, 0.0);
+    }
+    let edge_width = |index: usize, name, side| {
+        row.cells
+            .get(index)
+            .map(|cell| {
+                let format = table.table_style_cell_format(table_style_cell_position(
+                    row, row_index, row_count, index,
+                ));
+                visible_border_width(&resolve_cell_border_side(
+                    cell,
+                    row,
+                    table,
+                    &format,
+                    name,
+                    side,
+                    [false; 4],
+                    cell_spacing,
+                ))
+            })
+            .unwrap_or(0.0)
+    };
+    let (leading, trailing) = if table.bidi_visual {
+        (
+            edge_width(0, "right", TableBorderSide::Right),
+            edge_width(
+                row.cells.len().saturating_sub(1),
+                "left",
+                TableBorderSide::Left,
+            ),
+        )
+    } else {
+        (
+            edge_width(0, "left", TableBorderSide::Left),
+            edge_width(
+                row.cells.len().saturating_sub(1),
+                "right",
+                TableBorderSide::Right,
+            ),
+        )
+    };
+    spacing_slot_scale(
+        column_widths.iter().sum(),
+        cell_spacing,
+        leading,
+        trailing,
+        spacing_frame_width(row, table, TableBorderSide::Left),
+        spacing_frame_width(row, table, TableBorderSide::Right),
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 fn prepare_row_cells<P: Painter<Error: PainterError>>(
     wrap_context: &TableLineWrapContext<'_, P>,
@@ -16846,57 +17157,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
     let cell_spacing = resolve_cell_spacing_px(row, table);
     let separated = row_uses_separate_cell_borders(row, table);
     let total_columns = column_widths.len();
-    let slot_scale = if separated {
-        let edge_width = |index: usize, name, side| {
-            row.cells
-                .get(index)
-                .map(|cell| {
-                    let format = table.table_style_cell_format(table_style_cell_position(
-                        row, row_index, row_count, index,
-                    ));
-                    visible_border_width(&resolve_cell_border_side(
-                        cell,
-                        row,
-                        table,
-                        &format,
-                        name,
-                        side,
-                        [false; 4],
-                        cell_spacing,
-                    ))
-                })
-                .unwrap_or(0.0)
-        };
-        let (leading, trailing) = if table.bidi_visual {
-            (
-                edge_width(0, "right", TableBorderSide::Right),
-                edge_width(
-                    row.cells.len().saturating_sub(1),
-                    "left",
-                    TableBorderSide::Left,
-                ),
-            )
-        } else {
-            (
-                edge_width(0, "left", TableBorderSide::Left),
-                edge_width(
-                    row.cells.len().saturating_sub(1),
-                    "right",
-                    TableBorderSide::Right,
-                ),
-            )
-        };
-        spacing_slot_scale(
-            column_widths.iter().sum(),
-            cell_spacing,
-            leading,
-            trailing,
-            spacing_frame_width(row, table, TableBorderSide::Left),
-            spacing_frame_width(row, table, TableBorderSide::Right),
-        )
-    } else {
-        1.0
-    };
+    let slot_scale = table_row_slot_scale(table, row, row_index, row_count, column_widths);
     if column_index > total_columns {
         column_index = total_columns;
     }
@@ -17042,6 +17303,29 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             config.padding_y,
         );
 
+        let edges = physical_edges(start, end);
+        let spacing_border_widths = [
+            spaced_content_border_width(
+                cell,
+                row,
+                table,
+                &style_format,
+                TableBorderSide::Left,
+                edges[2],
+                cell_spacing,
+                visible_border_width(&border_left),
+            ),
+            spaced_content_border_width(
+                cell,
+                row,
+                table,
+                &style_format,
+                TableBorderSide::Right,
+                edges[3],
+                cell_spacing,
+                visible_border_width(&border_right),
+            ),
+        ];
         let border_inset = if separated {
             let windows = jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
@@ -17056,8 +17340,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             } else {
                 0.5
             };
-            let left = visible_border_width(&border_left) * factor;
-            let right = visible_border_width(&border_right) * factor;
+            let [left, right] = spacing_border_widths.map(|width| width * factor);
             padding.left += left;
             padding.right += right;
             if windows {
@@ -17066,6 +17349,21 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                 left + right
             }
         } else {
+            if wrap_context
+                .floating_border_insets_table
+                .is_some_and(|body_table| std::ptr::eq(body_table, table))
+            {
+                padding.left += visible_border_width(&border_left) * 0.5;
+                padding.right += visible_border_width(&border_right) * 0.5;
+            } else if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                padding = windows_collapsed_cell_padding(
+                    padding,
+                    visible_border_width(&border_left),
+                    visible_border_width(&border_right),
+                );
+            }
             0.0
         };
 
@@ -17659,6 +17957,8 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             border_tr2bl,
             padding,
             cell_spacing,
+            row_height_is_exact: row.height_rule == Some(TableRowHeightRule::Exact)
+                && row.height.is_some(),
             blocks,
             height: cell_height,
             background,
@@ -17734,6 +18034,216 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
     Ok(layouts)
 }
 
+/// Returns the prior grid and the percentage reference frame in points for
+/// a column edit inside a table cell.
+pub(crate) fn windows_nested_resize_grid(
+    elements: &[BodyElement],
+    target: &Table,
+    text_width: f32,
+) -> Option<(Vec<f32>, f32)> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if word_layout_platform() != WordLayoutPlatform::Windows {
+        return None;
+    }
+
+    fn containing_cells<'a>(
+        elements: &'a [BodyElement],
+        target: &Table,
+        path: &mut Vec<(&'a Table, usize, usize)>,
+    ) -> bool {
+        for element in elements {
+            if let BodyElement::Table(table) = element {
+                if std::ptr::eq(table.as_ref(), target) {
+                    return true;
+                }
+                for (row_index, row) in table.rows.iter().enumerate() {
+                    for (cell_index, cell) in row.cells.iter().enumerate() {
+                        path.push((table, row_index, cell_index));
+                        if containing_cells(&cell.blocks, target, path) {
+                            return true;
+                        }
+                        path.pop();
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    let mut path = Vec::new();
+    if !containing_cells(elements, target, &mut path) || path.is_empty() {
+        return None;
+    }
+    let mut available = points_to_px(text_width);
+    for (depth, (table, row_index, cell_index)) in path.into_iter().enumerate() {
+        let count = compute_column_count(table).max(1);
+        let mut widths = if depth == 0 {
+            compute_column_widths(table, count, available)
+        } else {
+            word_windows_nested_grid(table, count, available)
+                .unwrap_or_else(|| compute_column_widths(table, count, available))
+        };
+        let default_x = table_default_horizontal_padding_px(table, WordLayoutPlatform::Windows);
+        if let Some(spaced) = WindowsPositiveSpacingGrid::resolve(table, count, default_x) {
+            spaced.adjust(&mut widths, None);
+        }
+        let row = &table.rows[row_index];
+        let cell = &row.cells[cell_index];
+        let start = row.grid_before.unwrap_or(0) as usize
+            + row.cells[..cell_index]
+                .iter()
+                .map(|cell| cell.span.unwrap_or(1).max(1) as usize)
+                .sum::<usize>();
+        let end = start + cell.span.unwrap_or(1).max(1) as usize;
+        let cell_width: f64 = widths.get(start..end)?.iter().sum();
+        let spacing = resolve_cell_spacing_px(row, table);
+        let mut padding = resolve_cell_padding(
+            cell.margins.as_ref(),
+            row.cell_margins.as_ref(),
+            table.effective_cell_margins(),
+            false,
+            default_x,
+            0.0,
+        );
+        let separated = row_uses_separate_cell_borders(row, table);
+        let [left, right] = {
+            let edges = [
+                row_index == 0,
+                row_index + 1 == table.rows.len(),
+                if table.bidi_visual {
+                    end == count
+                } else {
+                    start == 0
+                },
+                if table.bidi_visual {
+                    start == 0
+                } else {
+                    end == count
+                },
+            ];
+            let format = table.table_style_cell_format(table_style_cell_position(
+                row,
+                row_index,
+                table.rows.len(),
+                cell_index,
+            ));
+            let border_width = |name, side, outside| {
+                let painted = visible_border_width(&resolve_cell_border_side(
+                    cell, row, table, &format, name, side, edges, spacing,
+                ));
+                spaced_content_border_width(
+                    cell, row, table, &format, side, outside, spacing, painted,
+                )
+            };
+            [
+                border_width("left", TableBorderSide::Left, edges[2]),
+                border_width("right", TableBorderSide::Right, edges[3]),
+            ]
+        };
+        if separated {
+            let factor = if spacing > 0.0 { 1.0 } else { 0.5 };
+            padding.left += left * factor;
+            padding.right += right * factor;
+        } else {
+            padding = windows_collapsed_cell_padding(padding, left, right);
+        }
+        let slot_scale = table_row_slot_scale(table, row, row_index, table.rows.len(), &widths);
+        available = (cell_width * slot_scale - 2.0 * spacing - padding.horizontal()).max(1.0);
+    }
+    let widths = word_windows_nested_grid(target, compute_column_count(target).max(1), available)?;
+    Some((
+        widths
+            .into_iter()
+            .map(|width| (width * 0.75) as f32)
+            .collect(),
+        (available * 0.75) as f32,
+    ))
+}
+
+fn word_windows_nested_grid(
+    table: &Table,
+    column_count: usize,
+    available_width: f64,
+) -> Option<Vec<f64>> {
+    use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
+    if word_layout_platform() != WordLayoutPlatform::Windows || table_floats(table) {
+        return None;
+    }
+    let mut preferences = vec![(0.0_f64, 0.0_f64); column_count];
+    let mut rows = table.rows.iter().filter(|row| !table_row_is_hidden(row));
+    let first = rows.next()?;
+    for row in std::iter::once(first).chain(rows) {
+        if row.cells.len() != column_count
+            || row.grid_before.unwrap_or(0) != 0
+            || row.grid_after.unwrap_or(0) != 0
+        {
+            return None;
+        }
+        for (cell, (absolute, fraction)) in row.cells.iter().zip(&mut preferences) {
+            if cell.span.unwrap_or(1) != 1 || cell.vertical_merge.is_some() {
+                return None;
+            }
+            if let Some(width) = cell.style.get("width") {
+                if let Some(value) = preferred_width_px(width, 1.0) {
+                    if width.trim().ends_with('%') {
+                        *fraction = fraction.max(value);
+                    } else {
+                        *absolute = absolute.max(value);
+                    }
+                }
+            }
+        }
+    }
+
+    // The saved grid supplies columns without a cell preference. Word uses
+    // these same nested column boundaries with either tblLayout value.
+    for (index, (absolute, fraction)) in preferences.iter_mut().enumerate() {
+        if *fraction == 0.0 && *absolute == 0.0 {
+            *absolute = points_to_px(table.columns.get(index)?.width?);
+            if !absolute.is_finite() || *absolute <= 0.0 {
+                return None;
+            }
+        }
+    }
+    let fraction_total: f64 = preferences.iter().map(|(_, fraction)| fraction).sum();
+    let absolute_total: f64 = preferences
+        .iter()
+        .filter(|(_, fraction)| *fraction == 0.0)
+        .map(|(absolute, _)| absolute)
+        .sum();
+    let budget = table
+        .style
+        .get("width")
+        .and_then(|width| preferred_width_px(width, available_width))
+        .or_else(|| (fraction_total > 0.0).then_some(available_width))
+        .unwrap_or(absolute_total);
+    if !budget.is_finite() || budget <= 0.0 || (fraction_total >= 1.0 && absolute_total > 0.0) {
+        return None;
+    }
+    let fraction_scale = if absolute_total == 0.0 {
+        budget / fraction_total
+    } else {
+        budget
+    };
+    let absolute_scale = if absolute_total == 0.0 {
+        0.0
+    } else {
+        budget * (1.0 - fraction_total) / absolute_total
+    };
+    Some(
+        preferences
+            .into_iter()
+            .map(|(absolute, fraction)| {
+                if fraction > 0.0 {
+                    fraction * fraction_scale
+                } else {
+                    absolute * absolute_scale
+                }
+            })
+            .collect(),
+    )
+}
+
 fn layout_nested_table<P: Painter<Error: PainterError>>(
     wrap_context: &TableLineWrapContext<'_, P>,
     table: &Table,
@@ -17742,7 +18252,10 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
     field_value_for: &dyn Fn(&RunField) -> Option<String>,
 ) -> Result<NestedTableLayout, JsValue> {
     let column_count = compute_column_count(table).max(1);
-    let mut column_widths = compute_column_widths(table, column_count, available_width);
+    let preferred_grid = word_windows_nested_grid(table, column_count, available_width);
+    let windows_preferred_grid = preferred_grid.is_some();
+    let mut column_widths = preferred_grid
+        .unwrap_or_else(|| compute_column_widths(table, column_count, available_width));
     // Word for Mac keeps the authored grid width of a single-column auto-width
     // nested table even when its parent cell is narrower.
     let available_width = match table.columns.as_slice() {
@@ -17759,18 +18272,28 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         }
         _ => available_width,
     };
-    let (_, mut natural_paragraph_layouts) = apply_table_layout_width_for_table_with_content(
-        wrap_context,
-        table,
-        &mut column_widths,
-        available_width,
-        config.padding_x,
-        &|paragraph| config.line_height_for(paragraph),
-        None,
-        field_value_for,
-        Some(config),
-        false,
-    )?;
+    let mut natural_paragraph_layouts = if windows_preferred_grid {
+        if let Some(grid) =
+            WindowsPositiveSpacingGrid::resolve(table, column_count, config.padding_x)
+        {
+            grid.adjust(&mut column_widths, None);
+        }
+        NaturalParagraphLayoutCache::default()
+    } else {
+        apply_table_layout_width_for_table_with_content(
+            wrap_context,
+            table,
+            &mut column_widths,
+            available_width,
+            config.padding_x,
+            &|paragraph| config.line_height_for(paragraph),
+            None,
+            field_value_for,
+            Some(config),
+            false,
+        )?
+        .1
+    };
 
     adjust_windows_negative_spacing_columns(table, &mut column_widths);
 
@@ -17791,7 +18314,18 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         .style
         .get("margin-bottom")
         .and_then(|v| parse_length_to_px(v))
-        .unwrap_or(0.0);
+        .unwrap_or(0.0)
+        + if windows_preferred_grid {
+            // Windows includes the last separated row's outer gutter in
+            // the nested table's height, before the next enclosing-cell block.
+            table
+                .rows
+                .iter()
+                .rfind(|row| !table_row_is_hidden(row))
+                .map_or(0.0, |row| resolve_cell_spacing_px(row, table).max(0.0))
+        } else {
+            0.0
+        };
 
     let mut rows = Vec::with_capacity(table.rows.len());
     let mut total_height = margin_top;
@@ -17903,6 +18437,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
         column_positions,
         rows,
         width: table_width,
+        windows_preferred_grid,
         height: total_height.max(config.line_height),
         margin_top,
         margin_bottom,
@@ -25977,6 +26512,7 @@ mod tests {
                 bottom: 4.0,
             },
             cell_spacing: 0.0,
+            row_height_is_exact: false,
             blocks: Vec::new(),
             height: 0.0,
             background: None,
@@ -26013,6 +26549,7 @@ mod tests {
             column_positions: Vec::new(),
             rows: Vec::new(),
             width: 0.0,
+            windows_preferred_grid: false,
             height: 0.0,
             margin_top: 0.0,
             margin_bottom: 0.0,
