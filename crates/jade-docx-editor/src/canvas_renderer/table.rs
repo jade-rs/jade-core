@@ -2205,7 +2205,7 @@ struct TableLineWrapContext<'a, P: Painter> {
     ascii_measure_memo: RefCell<FxHashMap<(u32, u32), f64>>,
     wrap_cache: Option<Rc<RefCell<ParagraphWrapCache>>>,
     math: Option<TableMathContext>,
-    floating_border_insets_table: Option<&'a Table>,
+    floating_cell_text_frame: Option<(&'a Table, f64)>,
 }
 
 impl<'a, P: Painter> TableLineWrapContext<'a, P> {
@@ -2233,7 +2233,7 @@ impl<'a, P: Painter> TableLineWrapContext<'a, P> {
             ascii_measure_memo: RefCell::new(FxHashMap::default()),
             wrap_cache: None,
             math: None,
-            floating_border_insets_table: None,
+            floating_cell_text_frame: None,
         };
         result.style = Rc::new(result.attach_font_ids((*result.style).clone()));
         result
@@ -2963,15 +2963,25 @@ where
         } else {
             TableLineWrapContext::new(&painter)
         };
-        let floating_border_insets = !self.pageless_mode
+        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
+        let floating_cell_text_alignment = (!self.pageless_mode
             && !self.rendering_header_footer_story
             && !self.rendering_note_story
-            && self.paragraph_frame_column.is_none()
-            && floating_table_uses_cell_border_insets(
+            && self.paragraph_frame_column.is_none())
+        .then(|| windows_floating_cell_text_alignment(table, compatibility_mode))
+        .flatten();
+        let mut floating_paint_shift =
+            windows_modern_floating_table_paint_shift(table, compatibility_mode);
+        if let Some(alignment) = floating_cell_text_alignment {
+            if alignment != FloatingCellTextAlignment::Leading {
+                floating_paint_shift -= leading_cell_border_half_px(table, false);
+            }
+            table_wrap_context.floating_cell_text_frame = Some((
                 table,
-                self.document_east_asian_rules.compatibility_mode,
-            );
-        table_wrap_context.floating_border_insets_table = floating_border_insets.then_some(table);
+                windows_floating_cell_text_offset(table, compatibility_mode, alignment)
+                    - floating_paint_shift,
+            ));
+        }
         table_wrap_context.arabic_cluster_measurer = self.host.arabic_cluster_measurer();
         if self.table_autofit_cache_enabled {
             table_wrap_context.wrap_cache = Some(Rc::clone(&self.paragraph_wrap_cache));
@@ -3575,17 +3585,7 @@ where
             self.current_page_number,
             self.document_east_asian_rules.compatibility_mode,
         );
-        let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
-        let floating_paint_shift = floating_table_x.map_or(0.0, |_| {
-            let shift = windows_modern_floating_table_paint_shift(table, compatibility_mode);
-            if floating_border_insets {
-                // Paint the grid on the center of the stroke. Each cell
-                // then insets its own text by half its actual border.
-                shift - leading_cell_border_half_px(table, false)
-            } else {
-                shift
-            }
-        });
+        let floating_paint_shift = floating_table_x.map_or(0.0, |_| floating_paint_shift);
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode, true)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
         let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>, opening_page| {
@@ -4992,16 +4992,13 @@ where
                         bottom: first_floating_fragment_bottom.unwrap_or(frame.bottom),
                         ..frame
                     };
-                    wrap.record(
-                        body_element_index,
+                    let bounds = windows_floating_table_text_exclusion(
+                        table,
                         measured,
+                        compatibility_mode,
                         displaced_by_overlap,
-                        windows_floating_table_text_exclusion(
-                            table,
-                            measured,
-                            displaced_by_overlap,
-                        ),
                     );
+                    wrap.record(body_element_index, measured, displaced_by_overlap, bounds);
                 }
             }
             if let Some(rows) = repeated_floating_rows {
@@ -5038,7 +5035,12 @@ where
                 self.active_float_exclusions.push(PageFloatExclusion {
                     is_table: true,
                     page_number: final_frame.page_number,
-                    bounds: windows_floating_table_text_exclusion(table, final_frame, false),
+                    bounds: windows_floating_table_text_exclusion(
+                        table,
+                        final_frame,
+                        compatibility_mode,
+                        false,
+                    ),
                 });
             } else if self.current_page_number == frame.page_number {
                 // A floating table paints at its absolute frame but does not
@@ -5059,7 +5061,12 @@ where
                     is_table: true,
                     page_number: frame.page_number,
                     bounds: if floating_breaks {
-                        windows_floating_table_text_exclusion(table, frame, displaced_by_overlap)
+                        windows_floating_table_text_exclusion(
+                            table,
+                            frame,
+                            compatibility_mode,
+                            displaced_by_overlap,
+                        )
                     } else {
                         floating_table_text_exclusion(table, frame)
                     },
@@ -5086,7 +5093,12 @@ where
                     self.active_float_exclusions.push(PageFloatExclusion {
                         is_table: true,
                         page_number: final_frame.page_number,
-                        bounds: windows_floating_table_text_exclusion(table, final_frame, false),
+                        bounds: windows_floating_table_text_exclusion(
+                            table,
+                            final_frame,
+                            compatibility_mode,
+                            false,
+                        ),
                     });
                 }
             }
@@ -11340,29 +11352,27 @@ fn compute_floating_body_table_x(
     // placement, while mode 15 aligns the table frame. The paired horizontal
     // probes also establish absolute tblpX and asymmetric trailing padding.
     let alignment = table.style.get("table-position-x-align");
-    // The Windows legacy text-edge adjustment includes directly authored
-    // table rules. The captured TableGrid style aligns without that charge.
-    let border_halves = if windows && table.borders.is_some() {
-        leading_cell_border_half_px(table, false) + trailing_cell_border_half_px(table)
-    } else {
-        0.0
-    };
     if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("right")) {
-        return Some(x + pre_2013_table_trailing_text_inset_px(table) + border_halves);
+        return Some(x + legacy_floating_table_alignment_offset(table, true, windows));
     }
     if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("center")) {
-        return Some(x + border_halves * 0.5);
+        return Some(x + legacy_floating_table_alignment_offset(table, false, windows));
     }
     if alignment.is_some_and(|align| !align.trim().eq_ignore_ascii_case("left")) {
         return Some(x);
     }
-    let Some(row) = table.rows.first() else {
-        return Some(x);
+    Some(x - floating_table_leading_padding(table))
+}
+
+fn floating_table_leading_padding(table: &Table) -> f64 {
+    let Some((row, cell)) = table
+        .rows
+        .first()
+        .and_then(|row| row.cells.first().map(|cell| (row, cell)))
+    else {
+        return 0.0;
     };
-    let Some(cell) = row.cells.first() else {
-        return Some(x);
-    };
-    let padding = resolve_cell_padding(
+    resolve_cell_padding(
         cell.margins.as_ref(),
         row.cell_margins.as_ref(),
         table.effective_cell_margins(),
@@ -11372,31 +11382,68 @@ fn compute_floating_body_table_x(
             jade_docx_layout::line_metrics::word_layout_platform(),
         ),
         0.0,
-    );
-    Some(x - padding.left)
+    )
+    .left
 }
 
-fn floating_table_uses_cell_border_insets(table: &Table, mode: Option<u32>) -> bool {
+fn legacy_floating_table_alignment_offset(table: &Table, right: bool, windows: bool) -> f64 {
+    // The legacy wrap and paint frame includes directly authored Windows rules.
+    let border_halves = if windows && table.borders.is_some() {
+        leading_cell_border_half_px(table, false) + trailing_cell_border_half_px(table)
+    } else {
+        0.0
+    };
+    if right {
+        pre_2013_table_trailing_text_inset_px(table) + border_halves
+    } else {
+        border_halves * 0.5
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FloatingCellTextAlignment {
+    Leading,
+    Center,
+    Trailing,
+}
+
+fn windows_floating_cell_text_alignment(
+    table: &Table,
+    mode: Option<u32>,
+) -> Option<FloatingCellTextAlignment> {
     use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
-    word_layout_platform() == WordLayoutPlatform::Windows
-        && matches!(mode, Some(12 | 14..))
-        && table_floats(table)
-        && !table.bidi_visual
-        && table.cell_spacing.is_none_or(|spacing| spacing == 0.0)
-        && table
+    if word_layout_platform() != WordLayoutPlatform::Windows
+        || !matches!(mode, Some(12 | 14..))
+        || !table_floats(table)
+        || table.bidi_visual
+        || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
+        || table
             .style
             .get("table-position-horizontal-anchor")
-            .is_none_or(|anchor| {
-                anchor.trim().eq_ignore_ascii_case("margin")
-                    || anchor.trim().eq_ignore_ascii_case("page")
+            .is_some_and(|anchor| {
+                !anchor.trim().eq_ignore_ascii_case("margin")
+                    && !anchor.trim().eq_ignore_ascii_case("page")
             })
-        && table
-            .style
-            .get("table-position-x-align")
-            .is_some_and(|align| {
-                align.trim().eq_ignore_ascii_case("right")
-                    || align.trim().eq_ignore_ascii_case("center")
-            })
+    {
+        return None;
+    }
+    let alignment = table
+        .style
+        .get("table-position-x-align")
+        .map(|value| value.trim());
+    match alignment {
+        None => Some(FloatingCellTextAlignment::Leading),
+        Some(value) if value.eq_ignore_ascii_case("left") => {
+            Some(FloatingCellTextAlignment::Leading)
+        }
+        Some(value) if value.eq_ignore_ascii_case("center") => {
+            Some(FloatingCellTextAlignment::Center)
+        }
+        Some(value) if value.eq_ignore_ascii_case("right") => {
+            Some(FloatingCellTextAlignment::Trailing)
+        }
+        _ => None,
+    }
 }
 
 fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -> f64 {
@@ -11429,6 +11476,72 @@ fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -
     } else {
         (3.0 * leading - trailing) * 0.5
     }
+}
+
+fn windows_floating_cell_text_offset(
+    table: &Table,
+    mode: Option<u32>,
+    alignment: FloatingCellTextAlignment,
+) -> f64 {
+    let leading = leading_cell_border_half_px(table, false);
+    let legacy = matches!(mode, Some(12 | 14));
+    if alignment == FloatingCellTextAlignment::Leading {
+        if legacy {
+            let margin = floating_table_leading_padding(table);
+            return margin - margin.max(leading);
+        }
+        return leading;
+    }
+
+    let right = alignment == FloatingCellTextAlignment::Trailing;
+    let trailing = trailing_cell_border_half_px(table);
+    if legacy {
+        // Legacy right and center placement align the cell text edges.
+        let trailing = pre_2013_table_trailing_text_inset_px(table).max(trailing);
+        let offset = if right {
+            trailing
+        } else {
+            let leading = pre_2013_table_text_inset_px(table, mode, false);
+            (trailing - leading) * 0.5
+        };
+        return offset - legacy_floating_table_alignment_offset(table, right, true);
+    }
+
+    // Modern Word aligns the text grid to the outside half-rules. An explicit
+    // nil rule occupies zero space; an omitted rule uses the default setback.
+    let trailing = if trailing > 0.0 || floating_trailing_rule_is_hidden(table) {
+        trailing
+    } else {
+        points_to_px(0.75)
+    };
+    if right {
+        -trailing
+    } else {
+        (leading - trailing) * 0.5
+    }
+}
+
+fn floating_trailing_rule_is_hidden(table: &Table) -> bool {
+    let Some(row) = table.rows.iter().find(|row| !table_row_is_hidden(row)) else {
+        return false;
+    };
+    let Some(cell) = row.cells.last() else {
+        return false;
+    };
+    if let Some(style) = cell_border_property(cell, table, "right", "style") {
+        return matches!(parse_border_kind(Some(style)), BorderKind::None);
+    }
+    let spans = cell.span.unwrap_or(1) as usize >= compute_column_count(table);
+    effective_table_border_edge_for_side(
+        row,
+        table,
+        TableBorderSide::Right,
+        true,
+        table.rows.len() == 1,
+        spans,
+        true,
+    )
+    .is_some_and(|edge| !edge.is_visible())
 }
 
 /// Resolves the horizontal component of `w:tblpPr` floating-table placement.
@@ -11601,9 +11714,32 @@ fn floating_table_text_exclusion(table: &Table, frame: FloatingTableFrame) -> Fl
 fn windows_floating_table_text_exclusion(
     table: &Table,
     frame: FloatingTableFrame,
+    compatibility_mode: Option<u32>,
     displaced_by_overlap: bool,
 ) -> FloatExclusion {
     let mut bounds = floating_table_text_exclusion(table, frame);
+    if let Some(alignment) = (!displaced_by_overlap)
+        .then(|| windows_floating_cell_text_alignment(table, compatibility_mode))
+        .flatten()
+    {
+        let leading = leading_cell_border_half_px(table, false);
+        let trailing = trailing_cell_border_half_px(table);
+        if leading > 0.0 || trailing > 0.0 {
+            let offset = windows_floating_cell_text_offset(table, compatibility_mode, alignment);
+            // Word measures the authored gap from the outer rule of the
+            // text frame and preserves half a point of clearance.
+            let gap = |distance: f64, half_rule: f64| {
+                if half_rule > 0.0 {
+                    distance.max(points_to_px(0.5)) + half_rule
+                } else {
+                    (distance + points_to_px(0.85)).max(points_to_px(1.25))
+                }
+            };
+            bounds.left = frame.left + offset - gap(frame.left - bounds.left, leading);
+            bounds.right = frame.right + offset + gap(bounds.right - frame.right, trailing);
+            return bounds;
+        }
+    }
     // Word adds clearance to the authored horizontal wrap distance and
     // retains a minimum gap even when the distance is zero or omitted.
     let clearance =
@@ -17563,13 +17699,7 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                 left + right
             }
         } else {
-            if wrap_context
-                .floating_border_insets_table
-                .is_some_and(|body_table| std::ptr::eq(body_table, table))
-            {
-                padding.left += visible_border_width(&border_left) * 0.5;
-                padding.right += visible_border_width(&border_right) * 0.5;
-            } else if jade_docx_layout::line_metrics::word_layout_platform()
+            if jade_docx_layout::line_metrics::word_layout_platform()
                 == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
             {
                 padding = windows_collapsed_cell_padding(
@@ -17577,6 +17707,13 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                     visible_border_width(&border_left),
                     visible_border_width(&border_right),
                 );
+                if let Some((_, offset)) = wrap_context
+                    .floating_cell_text_frame
+                    .filter(|(body_table, _)| std::ptr::eq(*body_table, table))
+                {
+                    padding.left += offset;
+                    padding.right -= offset;
+                }
             }
             0.0
         };

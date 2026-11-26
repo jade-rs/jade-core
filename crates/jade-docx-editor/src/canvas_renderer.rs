@@ -43601,19 +43601,20 @@ where
         }
     }
 
-    /// The Mac mode-14 floating-order probe includes the paragraph's space
-    /// after when it checks a floating table above its first text row. Keep
-    /// this separate from drawing look-ahead and from the table's paint frame.
-    // Mac Word16.114 and Windows Word16.0.19127.20936, mode14, floating-order:
-    // paragraph-after spacing can reach a table above the last text line.
-    // Include it in wrap eligibility while retaining the table's actual frame.
+    /// Legacy Word includes paragraph-after spacing in wrap eligibility while
+    /// retaining the table's actual frame. Windows does this in modes 12 and 14.
     fn floating_table_space_after(
         &self,
         paragraph: &Paragraph,
         body_element_index: usize,
         line_height_points: f32,
     ) -> f64 {
-        if self.document_east_asian_rules.compatibility_mode != Some(14)
+        let mode = self.document_east_asian_rules.compatibility_mode;
+        let legacy_spacing = mode == Some(14)
+            || mode == Some(12)
+                && jade_docx_layout::line_metrics::word_layout_platform()
+                    == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
+        if !legacy_spacing
             || self.pageless_mode
             || self.rendering_header_footer_story
             || self.rendering_note_story

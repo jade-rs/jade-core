@@ -70,6 +70,26 @@ def inline_page_break_cases():
     }
 
 
+def floating_table_text_frame_cases():
+    origins = ('right-anchor-centered', 'right-anchor-left-text', 'right-anchor-right-text',
+               'left-anchor-centered', 'center-anchor-centered', 'absolute-anchor-centered',
+               'right-anchor-small-width', 'right-anchor-large-width', 'right-anchor-wide-width',
+               'right-anchor-explicit-margins', 'right-anchor-left-margins', 'right-anchor-style-removed')
+    alignments = ('left', 'center', 'right')
+    padding = ((0, 0), (5, 5), (20, 20), (108, 108), (0, 108), (108, 0))
+    margins = {'asym': padding, 'center': padding, 'missing-right': ((0, 0), (108, 108)),
+               'two-cols': ((0, 0), (108, 108), (0, 108))}
+    return ({f'origin-{case}' for case in origins}
+            | {f'borders-left-{left}-right-{right}-{alignment}'
+               for left, right in ((0, 8), (8, 0), (4, 12), (12, 4)) for alignment in alignments}
+            | {f'margins-{case}-pad-{left}-{right}-{alignment}'
+               for case, pairs in margins.items() for left, right in pairs for alignment in alignments}
+            | {f'leading-{anchor}-pad-{left}-{right}-{alignment}' for anchor in ('left', 'absolute')
+               for left, right in padding for alignment in alignments}
+            | {f'wrap-{anchor}-pad-{pad}-border-4-{right}' for anchor in alignments
+               for pad in (0, 108) for right in (4, 12)})
+
+
 def nested_resized_cases():
     return {f'{layout}-{width}' for layout in ('autofit', 'fixed')
             for width in ('absolute', 'auto', 'full')}
@@ -392,6 +412,8 @@ CAPTURES = (
      FLOATING_OVERLAP_PREFIX, floating_overlap_cases, ('--painted-table-headers',)),
     ('floating-table-word-wrap', 'b69afb991ee5fa5d2ca8983aee7597978a1e1e77f5ca3c3266ec383dcb7a5e1a',
      FLOATING_WORD_WRAP_PREFIX, floating_word_wrap_cases, ('--painted-table-headers',)),
+    ('floating-table-text-frames', '73b98153e96d25f8cf630eb7b4aa2492689e4c5e2d8491273252364fe17da6c2',
+     'word-windows-edge-floating-table-text-frame-', floating_table_text_frame_cases, ('--unclipped-tables',)),
 )
 
 
@@ -427,7 +449,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
         'nested-fixed-advances', 'nested-fixed-parent-widths', 'nested-fixed-grid-fit', 'nested-fixed-variable-rows',
         'nested-fixed-mixed-widths', 'nested-fixed-percent-limits', 'nested-fixed-minimum-widths',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
-        'floating-table-overlap', 'floating-table-word-wrap',
+        'floating-table-overlap', 'floating-table-word-wrap', 'floating-table-text-frames',
     )
     with ZipFile(capture_path) as bundle:
         capture = json.loads(bundle.read('word/capture.json').decode('utf-8-sig'))
