@@ -1680,18 +1680,9 @@ struct NestedTableLayout {
 }
 
 impl NestedTableLayout {
-    fn overflow_clip_width(
-        &self,
-        allow_overflow: bool,
-        content_offset: f64,
-        content_width: f64,
-        cell_width: f64,
-    ) -> Option<f64> {
+    fn windows_fixed_inline(&self) -> bool {
         use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
-        let end = content_offset + self.width;
-        (allow_overflow
-            && end > cell_width
-            && word_layout_platform() == WordLayoutPlatform::Windows
+        word_layout_platform() == WordLayoutPlatform::Windows
             && !table_floats(&self.table)
             && resolve_table_layout_mode(&self.table) == TableLayoutMode::Fixed
             && self
@@ -1699,8 +1690,46 @@ impl NestedTableLayout {
                 .style
                 .get("width")
                 .and_then(|width| parse_length_to_px(width))
-                .is_some_and(|width| width > content_width))
-        .then_some(end)
+                .is_some()
+    }
+
+    fn x_in_cell(&self, content_left: f64, content_width: f64) -> f64 {
+        let windows_fixed = self.windows_fixed_inline();
+        let left = compute_table_x_inner(
+            content_left,
+            content_width,
+            self.width,
+            &self.table,
+            0.0,
+            windows_fixed,
+        );
+        // Word keeps a fixed inner table's aligned position even when its
+        // frame extends beyond the content area of the enclosing cell.
+        if !windows_fixed
+            && !table_floats(&self.table)
+            && left + self.width > content_left + content_width
+        {
+            return (content_left + content_width - self.width).max(content_left);
+        }
+        left
+    }
+
+    fn overflow_clip(
+        &self,
+        allow_overflow: bool,
+        cell_left: f64,
+        content_left: f64,
+        content_width: f64,
+        cell_width: f64,
+    ) -> Option<(f64, f64)> {
+        if !allow_overflow || !self.windows_fixed_inline() {
+            return None;
+        }
+        let table_left = self.x_in_cell(content_left, content_width);
+        let cell_right = cell_left + cell_width;
+        let table_right = table_left + self.width;
+        (table_left < cell_left || table_right > cell_right)
+            .then(|| (table_left.min(cell_left), table_right.max(cell_right)))
     }
 }
 
@@ -5727,16 +5756,16 @@ where
         // Named so the painter outlives the guard that borrows it, and owning so
         // the borrow is not of `self`.
         let clip_painter = self.host.painter();
-        let cell_clip = |width| {
+        let cell_clip = |left, width| {
             if !draw_enabled {
                 None
             } else if spaced_clip.is_some() && clip_height <= 0.0 {
                 Some(ClipGuard::empty(&clip_painter))
             } else {
-                ClipGuard::new(&clip_painter, x_start, clip_top, width, clip_height)
+                ClipGuard::new(&clip_painter, left, clip_top, width, clip_height)
             }
         };
-        let mut clip_guard = cell_clip(cell_width);
+        let mut clip_guard = cell_clip(x_start, cell_width);
         // Offset the content downward for `w:vAlign="center"/"bottom"`. The
         // leftover space is the cell's inner height minus the total content
         // height; `vertical_align_share` decides how much of it sits above the
@@ -6249,22 +6278,23 @@ where
                     };
                     // Word paints a fixed-width inner table past the parent
                     // edge when the row can grow. Keep the vertical clip.
-                    let offset = pad_left + border_left_inset;
-                    let overflow = nested_table.overflow_clip_width(
+                    let content_left = x_start + pad_left + border_left_inset;
+                    let overflow = nested_table.overflow_clip(
                         allow_nested_overflow,
-                        offset,
+                        x_start,
+                        content_left,
                         content_width,
                         cell_width,
                     );
-                    let nested_clip = overflow.and_then(|width| {
+                    let nested_clip = overflow.and_then(|(left, right)| {
                         drop(clip_guard.take());
-                        cell_clip(width)
+                        cell_clip(left, right - left)
                     });
                     let nested_height = self.render_nested_table(
                         nested_table,
                         numbering_part,
                         numbering_counter,
-                        x_start + offset,
+                        content_left,
                         block_top,
                         content_width,
                         TableProjectionClip {
@@ -6274,7 +6304,7 @@ where
                     )?;
                     drop(nested_clip);
                     if overflow.is_some() {
-                        clip_guard = cell_clip(cell_width);
+                        clip_guard = cell_clip(x_start, cell_width);
                     }
 
                     let consumed = nested_height.max(block.height.max(line_height));
@@ -7065,14 +7095,14 @@ where
         let spaced_clip = cell.windows_spaced_row_clip(y_top, row_height, padding, bottom_band);
         let (clip_top, clip_height) = spaced_clip.unwrap_or((y_top, row_height));
         let clip_painter = self.host.painter();
-        let cell_clip = |width| {
+        let cell_clip = |left, width| {
             if spaced_clip.is_some() && clip_height <= 0.0 {
                 Some(ClipGuard::empty(&clip_painter))
             } else {
-                ClipGuard::new(&clip_painter, x_start, clip_top, width, clip_height)
+                ClipGuard::new(&clip_painter, left, clip_top, width, clip_height)
             }
         };
-        let mut clip_guard = cell_clip(cell_width);
+        let mut clip_guard = cell_clip(x_start, cell_width);
         let text_color = cell.text_color.as_deref().unwrap_or("auto");
         #[allow(deprecated)]
         clip_painter.set_fill_style_str(self.resolve_text_fill_color(text_color).as_ref());
@@ -7137,26 +7167,27 @@ where
                 let content_width =
                     cell_width - pad_horizontal - border_left_inset - border_right_inset;
                 if content_width > 0.0 {
-                    let offset = pad_left + border_left_inset;
-                    let overflow = nested.overflow_clip_width(
+                    let content_left = x_start + pad_left + border_left_inset;
+                    let overflow = nested.overflow_clip(
                         allow_nested_overflow,
-                        offset,
+                        x_start,
+                        content_left,
                         content_width,
                         cell_width,
                     );
-                    let nested_clip = overflow.and_then(|width| {
+                    let nested_clip = overflow.and_then(|(left, right)| {
                         drop(clip_guard.take());
-                        cell_clip(width)
+                        cell_clip(left, right - left)
                     });
                     self.draw_nested_table_visual_only(
                         nested,
-                        x_start + offset,
+                        content_left,
                         block_top,
                         content_width,
                     )?;
                     drop(nested_clip);
                     if overflow.is_some() {
-                        clip_guard = cell_clip(cell_width);
+                        clip_guard = cell_clip(x_start, cell_width);
                     }
                 }
                 block_top += block.height.max(line_height);
@@ -7461,9 +7492,8 @@ where
         if layout.rows.is_empty() {
             return Ok(());
         }
-        let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
-        let mut table_x = compute_floating_table_x_in_frames(
+        let table_x = compute_floating_table_x_in_frames(
             self.margin_left,
             page_margin_width,
             self.page_width,
@@ -7473,19 +7503,7 @@ where
             &layout.table,
             self.current_page_number,
         )
-        .unwrap_or_else(|| {
-            compute_table_x(
-                x_start,
-                available_width,
-                layout.width,
-                &layout.table,
-                // The parent cell already supplies its content-frame origin.
-                0.0,
-            )
-        });
-        if !is_floating_table && table_x + layout.width > x_start + available_width {
-            table_x = (x_start + available_width - layout.width).max(x_start);
-        }
+        .unwrap_or_else(|| layout.x_in_cell(x_start, available_width));
 
         let row_refs: Vec<&[PreparedCell]> =
             layout.rows.iter().map(|row| row.cells.as_slice()).collect();
@@ -9302,7 +9320,7 @@ where
 
         let is_floating_table = table_floats(&layout.table);
         let page_margin_width = (self.page_width - self.margin_left - self.margin_right).max(1.0);
-        let mut table_x = compute_floating_table_x_in_frames(
+        let table_x = compute_floating_table_x_in_frames(
             self.margin_left,
             page_margin_width,
             self.page_width,
@@ -9312,20 +9330,7 @@ where
             &layout.table,
             self.current_page_number,
         )
-        .unwrap_or_else(|| {
-            compute_table_x(
-                x_start,
-                available_width,
-                layout.width,
-                &layout.table,
-                // The parent cell already supplies its content-frame origin.
-                0.0,
-            )
-        });
-
-        if !is_floating_table && table_x + layout.width > x_start + available_width {
-            table_x = (x_start + available_width - layout.width).max(x_start);
-        }
+        .unwrap_or_else(|| layout.x_in_cell(x_start, available_width));
 
         let order = layout.order.unwrap_or_else(|| {
             let order = self.table_counter;
@@ -11156,6 +11161,24 @@ fn compute_table_x(
     table: &Table,
     leading_text_inset: f64,
 ) -> f64 {
+    compute_table_x_inner(
+        base_left,
+        available_width,
+        table_width,
+        table,
+        leading_text_inset,
+        false,
+    )
+}
+
+fn compute_table_x_inner(
+    base_left: f64,
+    available_width: f64,
+    table_width: f64,
+    table: &Table,
+    leading_text_inset: f64,
+    windows_nested_fixed: bool,
+) -> f64 {
     let (effective_indent, automatic_indent) = table_leading_indent(table);
     let indent = effective_indent.unwrap_or(0.0);
 
@@ -11165,14 +11188,14 @@ fn compute_table_x(
     }
 
     let remaining_width = available_width - table_width;
-    let align_offset = match table.style.get("text-align").map(|value| value.trim()) {
+    let (align_offset, leading) = match table.style.get("text-align").map(|value| value.trim()) {
         Some(value)
             if value.eq_ignore_ascii_case("center") || value.eq_ignore_ascii_case("centre") =>
         {
-            remaining_width / 2.0
+            (remaining_width / 2.0, false)
         }
         Some(value) if value.eq_ignore_ascii_case("right") || value.eq_ignore_ascii_case("end") => {
-            if table.bidi_visual {
+            let offset = if table.bidi_visual {
                 -leading_text_inset
             } else if leading_text_inset > 0.0
                 && jade_docx_layout::line_metrics::word_layout_platform()
@@ -11186,20 +11209,33 @@ fn compute_table_x(
                 remaining_width + pre_2013_table_trailing_text_inset_px(table)
             } else {
                 remaining_width
-            }
+            };
+            (offset, false)
         }
         // OOXML reverses table justification when `w:bidiVisual` is active:
         // the default/left value is relative to the physical right text margin.
         // Cell model order stays logical; only the table box is repositioned.
         _ => {
-            if table.bidi_visual {
+            let offset = if table.bidi_visual {
                 remaining_width + leading_text_inset
             } else {
                 -leading_text_inset
-            }
+            };
+            (offset, true)
         }
     };
 
+    // A fixed-width nested table in Windows Word accepts a nonnegative
+    // indent only at the leading edge of its parent cell.
+    let indent = if windows_nested_fixed {
+        if leading {
+            indent.max(0.0)
+        } else {
+            0.0
+        }
+    } else {
+        indent
+    };
     // `w:tblInd` is measured from the leading margin. That is physical left in
     // an ordinary table and physical right in a bidiVisual table, so the same
     // positive OOXML value moves in opposite canvas directions.
