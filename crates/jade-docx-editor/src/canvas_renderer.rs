@@ -3665,6 +3665,10 @@ fn paragraph_has_floating_or_math(paragraph: &Paragraph) -> bool {
         .any(|run| run.image.is_some() || run.text_box.is_some() || run.math.is_some())
 }
 
+/// How far (CSS px) a table's paint can reach past the paragraphs around
+/// it: the widest table border (6 pt).
+const BAND_TABLE_EDGE_REACH_PX: f64 = 6.0 * 96.0 / 72.0;
+
 /// How far (CSS px) a paragraph border can be drawn from the line it
 /// borders: the largest `w:space` (31 pt) and a thick border line.
 const BAND_BORDER_REACH_PX: f64 = 31.0 * 96.0 / 72.0 + 8.0;
@@ -15656,7 +15660,14 @@ where
             .chain(next_fill_top)
             .reduce(f64::min);
         let dpr = self.host.device_pixel_ratio();
-        if !self.band_preceding_lines_repaint(paragraph_at, edited, &layout, local_top, dpr) {
+        if !self.band_preceding_lines_repaint(
+            paragraph_at,
+            is_table_paragraph,
+            edited,
+            &layout,
+            local_top,
+            dpr,
+        ) {
             self.band_redraw_fallback_neighbor_ink
                 .set(self.band_redraw_fallback_neighbor_ink.get() + 1);
             return None;
@@ -15665,6 +15676,7 @@ where
         if band_clip_overlaps_neighbor_ink(local_top, local_bottom, dpr, None, next_ink_top) {
             match self.band_following_repaint_bottom(
                 paragraph_at,
+                is_table_paragraph,
                 edited,
                 &layout,
                 local_bottom,
@@ -16148,6 +16160,32 @@ where
         }
     }
 
+    /// Page-local edge of a table the band walk reached next to top-level
+    /// paragraph `index`: where that paragraph starts when the table lies
+    /// `above` it, where it ends otherwise. A table ends where the paragraph
+    /// after it starts and starts where the one before it ends. `None` when
+    /// `index` has no layout; an edge on another page than the band's lies
+    /// out of the clip's reach, at the far side of the page.
+    fn band_table_edge(
+        &self,
+        index: usize,
+        layout: &ParagraphLayoutResult,
+        above: bool,
+    ) -> Option<f64> {
+        let layouts = self.paragraph_layout_cache.borrow();
+        let own = layouts.get_entry(index)?;
+        let (page, y, offset) = if above {
+            (own.start_page, own.start_y, own.start_page_offset_y)
+        } else {
+            (own.end_page, own.end_y, own.end_page_offset_y)
+        };
+        Some(match page.cmp(&layout.start_page) {
+            std::cmp::Ordering::Equal => y - offset,
+            std::cmp::Ordering::Less => f64::NEG_INFINITY,
+            std::cmp::Ordering::Greater => f64::INFINITY,
+        })
+    }
+
     /// Page-local `(top, bottom)` of `line` when it lies in the band's page and
     /// column, which the band page's pass draws; `None` otherwise.
     fn band_neighbor_line_bounds(
@@ -16169,6 +16207,7 @@ where
     fn band_following_repaint_bottom<'a>(
         &self,
         paragraph_at: impl Fn(usize) -> Option<&'a Paragraph>,
+        is_table_paragraph: impl Fn(usize) -> bool,
         edited: usize,
         layout: &ParagraphLayoutResult,
         local_bottom: f64,
@@ -16176,6 +16215,21 @@ where
     ) -> Option<f64> {
         let mut paint_bottom = local_bottom;
         for index in edited + 1..=edited + BAND_MAX_REPAINTED_NEIGHBORS + 1 {
+            // The walk reached every paragraph between the band and this
+            // table, so the table may lie within the clip's reach. Its rows
+            // and borders are culled by the row top, not by the lines of its
+            // cells, so the clip must stop short of the table's top edge.
+            if is_table_paragraph(index) {
+                let top = self.band_table_edge(index - 1, layout, false)?;
+                let reached = band_clip_overlaps_neighbor_ink(
+                    0.0,
+                    local_bottom,
+                    device_pixel_ratio,
+                    None,
+                    Some(top - BAND_TABLE_EDGE_REACH_PX),
+                );
+                return (!reached).then_some(paint_bottom);
+            }
             let paragraph = paragraph_at(index);
             let reached =
                 self.band_neighbor_reached_lines(paragraph, index, layout, true, |top, _| {
@@ -16210,12 +16264,30 @@ where
     fn band_preceding_lines_repaint<'a>(
         &self,
         paragraph_at: impl Fn(usize) -> Option<&'a Paragraph>,
+        is_table_paragraph: impl Fn(usize) -> bool,
         edited: usize,
         layout: &ParagraphLayoutResult,
         local_top: f64,
         device_pixel_ratio: f64,
     ) -> bool {
         for (step, index) in (0..edited).rev().enumerate() {
+            // A table's rows are culled by their top: a row taller than
+            // `BAND_ABOVE_SLACK` is not repainted although its shading and
+            // borders reach the band. Its cells' lines stop above its bottom
+            // edge, so they cannot tell whether the clip reaches the table.
+            if is_table_paragraph(index) {
+                return self
+                    .band_table_edge(index + 1, layout, true)
+                    .is_some_and(|bottom| {
+                        !band_clip_overlaps_neighbor_ink(
+                            local_top,
+                            local_top,
+                            device_pixel_ratio,
+                            Some(bottom + BAND_TABLE_EDGE_REACH_PX),
+                            None,
+                        )
+                    });
+            }
             let paragraph = paragraph_at(index);
             let Some(reached) =
                 self.band_neighbor_reached_lines(paragraph, index, layout, false, |_, bottom| {
