@@ -291,31 +291,53 @@ where
     Ok(settled)
 }
 
-/// Leaves `pages` (0-based) dirty for the next payload to report, for a
-/// caller that settled them but reports no dirty regions itself.
-pub(super) fn keep_for_next_payload<P>(
-    renderer: &mut CanvasRenderer<P>,
+/// Pages (0-based) a pass settled that no payload has reported yet: a
+/// caller that drops its dirty regions keeps them here, outside the dirty
+/// tracker, so a capture that clears the tracker without reporting it
+/// (another unreported one) does not lose them. The next payload that is
+/// reported takes them ([`report_kept_pages`]).
+pub(super) type KeptPages = std::collections::BTreeSet<usize>;
+
+/// Keeps `pages` (0-based) for the next reported payload, for a caller that
+/// settled them but reports no dirty regions itself.
+pub(super) fn keep_for_next_payload(
+    kept: &mut KeptPages,
     pages: &std::collections::BTreeSet<usize>,
-) where
+) {
+    kept.extend(pages);
+}
+
+/// Hands the kept pages to the payload being built: each becomes a
+/// whole-page dirty rectangle (pages past the end are dropped), and `kept`
+/// is left empty.
+pub(super) fn report_kept_pages<P>(renderer: &mut CanvasRenderer<P>, kept: &mut KeptPages)
+where
     P: jade_painter::Painter,
     P::Error: jade_canvas_painter::PainterError,
 {
-    for rect in whole_page_rects(renderer, pages) {
+    if kept.is_empty() {
+        return;
+    }
+    let pages = std::mem::take(kept);
+    for rect in whole_page_rects(renderer, &pages) {
         renderer.mark_dirty_rect(rect);
     }
 }
 
 /// The dirty regions of a lazy-mode edit's payload, which the main thread
-/// fetches bitmaps for on demand: the pass's own, and the pages
-/// [`settle_drawn_pages`] draws again. Clears them.
+/// fetches bitmaps for on demand: the pass's own, the pages
+/// [`settle_drawn_pages`] draws again, and the `kept` pages earlier
+/// unreported passes settled. Clears them all.
 pub(super) fn take_lazy_payload_dirty_regions<P>(
     renderer: &mut CanvasRenderer<P>,
+    kept: &mut KeptPages,
 ) -> Result<Vec<DirtyRect>, JsValue>
 where
     P: jade_painter::Painter,
     P::Error: jade_canvas_painter::PainterError,
 {
     settle_drawn_pages(renderer)?;
+    report_kept_pages(renderer, kept);
     renderer.coalesce_dirty_regions();
     let dirty_regions = renderer.dirty_regions();
     renderer.clear_dirty_regions();
@@ -444,7 +466,7 @@ impl OffscreenDocumentView {
         if self.renderer.borrow().last_layout_complete() {
             return Ok(true);
         }
-        let (complete, metadata) = {
+        let (complete, metadata, settled) = {
             let state = self.state.borrow();
             let Some(word_doc) = state.word_doc.as_ref() else {
                 return Ok(false);
@@ -455,12 +477,13 @@ impl OffscreenDocumentView {
             // caller waits for them.
             let (complete, settled) =
                 complete_renderer_layout(&mut renderer, &state.options, word_doc)?;
-            // The pages the pass proved wrong go out with the payload of the
-            // command that follows.
-            keep_for_next_payload(&mut renderer, &settled.pages);
-            (complete, renderer.table_resize_metadata())
+            (complete, renderer.table_resize_metadata(), settled)
         };
-        self.state.borrow_mut().table_resize = metadata;
+        let mut state = self.state.borrow_mut();
+        state.table_resize = metadata;
+        // The pages the pass proved wrong go out with the payload of the
+        // command that follows.
+        keep_for_next_payload(&mut state.kept_settled_pages, &settled.pages);
         Ok(complete)
     }
 
