@@ -27439,7 +27439,6 @@ impl WordDocument {
             &document.body.as_ref()?.elements,
             table,
             self.text_column_width(),
-            document.east_asian_line_breaking.compatibility_mode,
         )
     }
 

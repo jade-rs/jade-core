@@ -66,6 +66,15 @@ def nested_resized_cases():
             for width in ('absolute', 'auto', 'full')}
 
 
+def collapsed_border_content_cases():
+    regular = ('no-rules', 'weak', 'strong', 'one-inside', 'one-outer',
+               'explicit-zero', 'explicit-small', 'explicit-large')
+    asymmetric = ('balanced-threshold', 'left-six', 'left-three',
+                  'only-inside-right-padding', 'right-six')
+    return ({f'plain-{case}' for case in regular}
+            | {f'{kind}-{case}' for kind in ('nested', 'resized') for case in regular + asymmetric})
+
+
 CAPTURES = (
     ('manual-page-breaks', 'f2c15c0c2414b557b653687f8bb355c59740163e6add384e1825a8a8d6394fdb',
      'word-windows-edge-page-break-', manual_cases, ()),
@@ -87,6 +96,8 @@ CAPTURES = (
      NESTED_PREFERRED_PREFIX, nested_preferred_cases, ('--unclipped-tables',)),
     ('nested-table-resize', '40be43660a428dc8783e2b16dbbc26f6883c73342cdda3762c00fa7ee5d62bfa',
      'word-windows-edge-nested-resized-', nested_resized_cases, ('--unclipped-tables',)),
+    ('table-cell-border-content', '3e90959682d1ef097e157ab2cbe17af8a996b66080be561e9fdd39b79c5108b4',
+     'word-windows-edge-border-content-', collapsed_border_content_cases, ('--unclipped-tables',)),
     ('vertical-table-breaks', '4a4efe07c6bfea1a917d769e8e83b03771e21c22346a401fd479ea617c9afdc3',
      VERTICAL_PREFIX, vertical_cases, ('--unclipped-tables',)),
     ('floating-table-breaks', '1248e0018b2b0be91b1edd5b979b885eb40b0bf29cf9c27119244c2b6974a04c',
@@ -119,7 +130,7 @@ def check_capture(capture_path, capture_hash, remaining, output_dir,
     check_screen = capture_path.parent.name in (
         'nested-table-page-breaks', 'nested-table-overflow', 'nested-table-row-heights',
         'nested-table-alignment', 'nested-table-depth', 'nested-table-preferred-widths',
-        'nested-table-resize',
+        'nested-table-resize', 'table-cell-border-content',
         'floating-table-breaks', 'floating-table-continuations', 'floating-table-wrap',
         'floating-table-overlap', 'floating-table-word-wrap',
     )

@@ -10770,6 +10770,13 @@ fn pre_2013_table_text_inset_px(table: &Table, compatibility_mode: Option<u32>) 
     outer_spacing
         + if table.bidi_visual {
             padding.right
+        } else if jade_docx_layout::line_metrics::word_layout_platform()
+            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            && !row_uses_separate_cell_borders(row, table)
+        {
+            // Word writes the resolved text-edge indent when it saves a
+            // legacy table. Measure that indent to the same edge on reopen.
+            padding.left.max(leading_cell_border_half_px(table, false))
         } else {
             padding.left
         }
@@ -11045,7 +11052,10 @@ fn compute_inline_body_table_x_inner(
             x + if table.bidi_visual {
                 -leading_text_inset
             } else {
-                leading_text_inset + border_bias
+                // The collapsed cell already reserves the leading half-rule
+                // if it exceeds the margin. An unindented legacy table keeps
+                // its outer grid at the base position.
+                leading_text_inset
             }
         }
         _ => x,
@@ -14199,7 +14209,10 @@ fn nested_border_frame_insets(
     left: &CellBorderSpec,
     right: &CellBorderSpec,
 ) -> [f64; 2] {
-    if enabled {
+    if enabled
+        && jade_docx_layout::line_metrics::word_layout_platform()
+            != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+    {
         [
             visible_border_width(left) * 0.5,
             visible_border_width(right) * 0.5,
@@ -14207,6 +14220,15 @@ fn nested_border_frame_insets(
     } else {
         [0.0, 0.0]
     }
+}
+
+/// In a collapsed Windows cell the text starts inside the leading half-rule
+/// and the width reserves the larger of the two complete horizontal insets.
+fn windows_collapsed_cell_padding(mut padding: CellPadding, left: f64, right: f64) -> CellPadding {
+    let horizontal = padding.horizontal().max((left + right) * 0.5);
+    padding.left = padding.left.max(left * 0.5);
+    padding.right = horizontal - padding.left;
+    padding
 }
 
 /// Grows auto/at-least rows by their drawn horizontal borders, as Word does:
@@ -17210,6 +17232,14 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
             {
                 padding.left += visible_border_width(&border_left) * 0.5;
                 padding.right += visible_border_width(&border_right) * 0.5;
+            } else if jade_docx_layout::line_metrics::word_layout_platform()
+                == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+            {
+                padding = windows_collapsed_cell_padding(
+                    padding,
+                    visible_border_width(&border_left),
+                    visible_border_width(&border_right),
+                );
             }
             0.0
         };
@@ -17887,7 +17917,6 @@ pub(crate) fn windows_nested_resize_grid(
     elements: &[BodyElement],
     target: &Table,
     text_width: f32,
-    compatibility_mode: Option<u32>,
 ) -> Option<(Vec<f32>, f32)> {
     use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
     if word_layout_platform() != WordLayoutPlatform::Windows {
@@ -17942,7 +17971,7 @@ pub(crate) fn windows_nested_resize_grid(
         let cell_width: f64 = widths.get(start..end)?.iter().sum();
         let spacing = resolve_cell_spacing_px(row, table);
         let default_x = table_default_horizontal_padding_px(table, WordLayoutPlatform::Windows);
-        let padding = resolve_cell_padding(
+        let mut padding = resolve_cell_padding(
             cell.margins.as_ref(),
             row.cell_margins.as_ref(),
             table.effective_cell_margins(),
@@ -17951,9 +17980,7 @@ pub(crate) fn windows_nested_resize_grid(
             0.0,
         );
         let separated = row_uses_separate_cell_borders(row, table);
-        let mut inset = 0.0;
-        let mut slot_scale = 1.0;
-        if separated || word_modern_nested_border_frame_enabled(compatibility_mode) {
+        let [left, right] = {
             let edges = [
                 row_index == 0,
                 row_index + 1 == table.rows.len(),
@@ -17979,15 +18006,20 @@ pub(crate) fn windows_nested_resize_grid(
                     cell, row, table, &format, name, side, edges, spacing,
                 ))
             };
-            inset = (border_width("left", TableBorderSide::Left)
-                + border_width("right", TableBorderSide::Right))
-                * if separated && spacing > 0.0 { 1.0 } else { 0.5 };
-            if separated {
-                slot_scale = table_row_slot_scale(table, row, row_index, table.rows.len(), &widths);
-            }
+            [
+                border_width("left", TableBorderSide::Left),
+                border_width("right", TableBorderSide::Right),
+            ]
+        };
+        if separated {
+            let factor = if spacing > 0.0 { 1.0 } else { 0.5 };
+            padding.left += left * factor;
+            padding.right += right * factor;
+        } else {
+            padding = windows_collapsed_cell_padding(padding, left, right);
         }
-        available =
-            (cell_width * slot_scale - 2.0 * spacing - padding.horizontal() - inset).max(1.0);
+        let slot_scale = table_row_slot_scale(table, row, row_index, table.rows.len(), &widths);
+        available = (cell_width * slot_scale - 2.0 * spacing - padding.horizontal()).max(1.0);
     }
     let widths = word_windows_nested_grid(target, compute_column_count(target).max(1), available)?;
     Some((

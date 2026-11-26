@@ -50,16 +50,26 @@ fn widths(document: &WordDocument) -> Widths {
 #[test]
 fn nested_right_edge_resize_matches_word_and_round_trips() {
     set_word_layout_platform(WordLayoutPlatform::Windows);
-    let archive = std::fs::read(repo_path(
-        "tests/word-oracle/windows/nested-table-resize/word-16.0.19127.20936.zip",
-    ))
+    verify_resizes("nested-table-resize", 18);
+    verify_resizes("table-cell-border-content", 39);
+}
+
+fn verify_resizes(capture: &str, expected_cases: usize) {
+    let archive = std::fs::read(repo_path(&format!(
+        "tests/word-oracle/windows/{capture}/word-16.0.19127.20936.zip",
+    )))
     .unwrap();
     let mut archive = ZipArchive::new(Cursor::new(archive)).unwrap();
     let manifest = archive.by_name("word/capture.json").unwrap();
     let manifest: serde_json::Value = serde_json::from_reader(manifest).unwrap();
     assert_eq!(manifest["product_version"], "16.0.19127.20936");
-    let cases = manifest["documents"].as_array().unwrap();
-    assert_eq!(cases.len(), 18);
+    let cases = manifest["documents"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|case| case.get("before_fixture").is_some())
+        .collect::<Vec<_>>();
+    assert_eq!(cases.len(), expected_cases);
 
     for case in cases {
         let before = case["before_fixture"].as_str().unwrap();
