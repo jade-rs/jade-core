@@ -23915,7 +23915,8 @@ where
         // gives a lone 20pt picture a 20pt line at single spacing and a
         // 21.8pt one at 1.15 lines of 10.5pt Arial.
         let has_inline_objects = !inline_images.is_empty() || !inline_text_boxes.is_empty();
-        if body_element_index != usize::MAX
+        if layout_text.starts_with(PAGE_BREAK_CHAR)
+            && body_element_index != usize::MAX
             && !self.pageless_mode
             && !self.rendering_header_footer_story
             && !self.rendering_note_story
@@ -26669,7 +26670,12 @@ where
         // and must never be split across pages (jade-docx-layout plans them).
         let band_starts = paragraph_style.float_band_starts(lines.len());
         let band_count = band_starts.len();
-        let first_band = paragraph_style.first_content_band(lines.len());
+        let leading_page_breaks = paragraph_style.leading_page_breaks;
+        let first_band = if leading_page_breaks == 0 {
+            0..band_starts.get(1).copied().unwrap_or(lines.len())
+        } else {
+            paragraph_style.first_content_band(lines.len())
+        };
         // Shared grid/auto plans consume the wrapper's existing font boxes.
         // Constant-height auto paragraphs do not allocate a line-height plan.
         let numbering_ascent = pending_numbering
@@ -27491,7 +27497,6 @@ where
                         .last()
                         .is_some_and(|cluster| cluster.text == "\u{ad}")
             });
-        let leading_page_breaks = paragraph_style.leading_page_breaks;
         let mut spacing_after_leading_breaks = if starts_section { spacing_before } else { 0.0 };
         for (line_index, wrapped_line) in lines.iter().enumerate() {
             if leading_page_breaks != 0 && line_index == 0 && spacing_advanced_page {
@@ -28262,6 +28267,25 @@ where
                 .iter()
                 .any(|cluster| matches!(cluster.kind, InlineClusterKind::InlineObject));
 
+            let tab_leaders = wrapped_line
+                .leaders
+                .iter()
+                .map(|leader| TabLeaderLayout {
+                    start_x: leader.start_x,
+                    end_x: leader.end_x,
+                    leader: Self::tab_leader_name(leader.leader).to_string(),
+                })
+                .collect();
+            let tab_stops = wrapped_line
+                .tab_stops
+                .iter()
+                .map(|tab| TabStopLayout {
+                    start_offset: tab.start_offset,
+                    end_offset: tab.end_offset,
+                    start_x: tab.start_x,
+                    end_x: tab.end_x,
+                })
+                .collect();
             if prepared_segments.is_empty() && !has_inline_objects {
                 let mut placeholder_width = 0.0;
                 if wrapped_line.break_range.is_some() {
@@ -28292,33 +28316,12 @@ where
                     content_height: line_height,
                     fragments: Rc::from([]),
                     break_range: wrapped_line.break_range,
-                    tab_leaders: Rc::from([]),
-                    tab_stops: Rc::from([]),
+                    tab_leaders,
+                    tab_stops,
                     column_index: self.column_index,
                     vertical: false,
                     vertical_reversed: false,
                 };
-                line_layout.tab_leaders = wrapped_line
-                    .leaders
-                    .iter()
-                    .map(|leader| TabLeaderLayout {
-                        start_x: leader.start_x,
-                        end_x: leader.end_x,
-                        leader: Self::tab_leader_name(leader.leader).to_string(),
-                    })
-                    .collect::<Vec<_>>()
-                    .into();
-                line_layout.tab_stops = wrapped_line
-                    .tab_stops
-                    .iter()
-                    .map(|tab| TabStopLayout {
-                        start_offset: tab.start_offset,
-                        end_offset: tab.end_offset,
-                        start_x: tab.start_x,
-                        end_x: tab.end_x,
-                    })
-                    .collect::<Vec<_>>()
-                    .into();
                 // Comment anchors are model offsets, which hold no character
                 // for an inline picture; the line itself keeps its object
                 // characters, so a caret can sit on either side of one.
@@ -28435,8 +28438,8 @@ where
                 content_height,
                 fragments: Rc::from([]),
                 break_range: None,
-                tab_leaders: Rc::from([]),
-                tab_stops: Rc::from([]),
+                tab_leaders,
+                tab_stops,
                 column_index: self.column_index,
                 vertical: false,
                 vertical_reversed: false,
@@ -28451,27 +28454,6 @@ where
                 })
                 .map(|cluster| cluster.width)
                 .unwrap_or(0.0);
-            line_layout.tab_leaders = wrapped_line
-                .leaders
-                .iter()
-                .map(|leader| TabLeaderLayout {
-                    start_x: leader.start_x,
-                    end_x: leader.end_x,
-                    leader: Self::tab_leader_name(leader.leader).to_string(),
-                })
-                .collect::<Vec<_>>()
-                .into();
-            line_layout.tab_stops = wrapped_line
-                .tab_stops
-                .iter()
-                .map(|tab| TabStopLayout {
-                    start_offset: tab.start_offset,
-                    end_offset: tab.end_offset,
-                    start_x: tab.start_x,
-                    end_x: tab.end_x,
-                })
-                .collect::<Vec<_>>()
-                .into();
 
             if !wrapped_line.leaders.is_empty() {
                 let context = self.host.painter();

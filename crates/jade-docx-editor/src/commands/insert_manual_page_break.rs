@@ -3,8 +3,8 @@ use super::insert_text::InsertTextCommand;
 use super::{Command, CommandContext, CommandError, CommandResult, HistoryRenderFootprint};
 use crate::word_document::{WordDocument, WordDocumentSnapshot};
 use jade_docx_headless_api::HeadlessCommand;
-use jade_docx_layout::line_metrics::{word_layout_platform, WordLayoutPlatform};
 use jade_docx_layout::selection::{SelectionRange, TextPosition};
+use jade_docx_reader::word_platform::{word_layout_platform, WordLayoutPlatform};
 use jade_docx_reader::PAGE_BREAK_STR;
 
 /// Windows Word inserts a dedicated paragraph for the ribbon/keyboard page break.
