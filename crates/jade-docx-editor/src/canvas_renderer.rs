@@ -582,6 +582,8 @@ mod table_footer_tests;
 mod table_row_clone_tests;
 #[cfg(test)]
 mod valign_justified_tests;
+#[cfg(test)]
+mod watermark_section_tests;
 
 // Word for Mac treats left and right as leading and trailing in bidi paragraphs.
 fn word_bidi_alignment(alignment: &str, bidi: bool, mac: bool) -> &str {
@@ -13412,6 +13414,40 @@ where
         Ok(())
     }
 
+    /// The text watermark `page` shows. Word keeps it in a header part, so
+    /// with per-section stories installed it is the one in the header the
+    /// page shows — that section's (after "link to previous") and that
+    /// variant's, picked as the header story is: a title page whose
+    /// first-page header has none, or a section whose own header has none,
+    /// shows none. Without them every page shows the document-wide one.
+    fn watermark_for_page(
+        &self,
+        page: usize,
+    ) -> Option<(&str, Option<&jade_docx_reader::document::WatermarkStyle>)> {
+        if self.section_header_footers.is_empty() {
+            return self
+                .watermark_text
+                .as_deref()
+                .map(|text| (text, self.watermark_style.as_ref()));
+        }
+        let section_index = self.section_index_for_page(page);
+        let section = self.section_header_footers.get(section_index)?;
+        // While a page's backing is created the walk has not moved onto it
+        // yet; `page_starts_border_section` reads the previous page as
+        // recorded then, as `is_first_page_of_section` does once it has.
+        let first_page_of_section = self.page_starts_border_section(page, section_index);
+        select_header_footer_variant_for_page(
+            page,
+            first_page_of_section,
+            section.title_page,
+            self.even_and_odd_headers,
+            section.header_watermark.as_deref(),
+            section.header_watermark_first.as_deref(),
+            section.header_watermark_even.as_deref(),
+        )
+        .map(|watermark| (watermark.text.as_str(), Some(&watermark.style)))
+    }
+
     /// Paints the normalized VML text watermark behind all document content.
     /// The operation intentionally redraws the whole shape even during a band
     /// repaint: the active canvas clip limits it to the erased band, restoring
@@ -13420,14 +13456,14 @@ where
         if self.pageless_mode || self.parity_filler_pages.contains(&page) {
             return Ok(());
         }
-        let Some(text) = self.watermark_text.as_deref() else {
+        let Some((text, style)) = self.watermark_for_page(page) else {
             return Ok(());
         };
         if text.is_empty() {
             return Ok(());
         }
 
-        let style = self.watermark_style.clone().unwrap_or_default();
+        let style = style.cloned().unwrap_or_default();
         let context = self.host.painter();
         let painter = self.host.painter();
         // Word centres the shape on the margin box

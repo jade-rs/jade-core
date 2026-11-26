@@ -2099,6 +2099,19 @@ struct HfStoryCacheEntry {
     body: Rc<Body>,
     /// The story flattened to `HeaderLine`s, built on first use.
     lines: Option<Vec<HeaderLine>>,
+    /// The text watermark the part's XML carries, read on first use. The
+    /// part's XML and its parse change together, so a fresh entry's answer
+    /// is the part's.
+    watermark: Option<Option<Rc<HeaderWatermark>>>,
+}
+
+/// A text watermark as one header part draws it: Word keeps it as a VML
+/// `v:textpath` shape inside that header, so it belongs to the pages showing
+/// that header and no others.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeaderWatermark {
+    pub text: String,
+    pub style: jade_docx_reader::document::WatermarkStyle,
 }
 
 /// Header/footer stories of one section after Word's "link to previous"
@@ -2121,6 +2134,12 @@ pub struct SectionHeaderFooters {
     pub footer_body_first: Option<Rc<Body>>,
     pub header_body_even: Option<Rc<Body>>,
     pub footer_body_even: Option<Rc<Body>>,
+    /// The text watermark each header variant carries, resolved through
+    /// "link to previous" like the stories: a section whose header has none
+    /// shows none, whatever another section's header holds.
+    pub header_watermark: Option<Rc<HeaderWatermark>>,
+    pub header_watermark_first: Option<Rc<HeaderWatermark>>,
+    pub header_watermark_even: Option<Rc<HeaderWatermark>>,
     pub title_page: bool,
 }
 
@@ -2380,6 +2399,7 @@ impl WordDocument {
                     source: Rc::clone(source),
                     body: Rc::new(body),
                     lines: None,
+                    watermark: None,
                 },
             );
         }
@@ -2391,6 +2411,43 @@ impl WordDocument {
                 .clone()
         });
         Some((Rc::clone(&entry.body), lines))
+    }
+
+    /// The text watermark the header part `relationship_id` points at
+    /// carries, if any. Answered from the story cache while the part is
+    /// unchanged, so the part's XML is read once per edit of it.
+    fn header_watermark_for_reference(&self, relationship_id: &str) -> Option<Rc<HeaderWatermark>> {
+        let path = self.hf_part_path_for_reference(relationship_id)?;
+        if let Some(part) = self.parts.get(&path) {
+            if let Some(source) = part.parsed_document.as_ref() {
+                if self
+                    .header_footer_story_for_reference(relationship_id, false)
+                    .is_some()
+                {
+                    let mut cache = self.hf_story_cache.borrow_mut();
+                    if let Some(entry) = cache
+                        .get_mut(&path)
+                        .filter(|entry| Rc::ptr_eq(&entry.source, source))
+                    {
+                        return entry
+                            .watermark
+                            .get_or_insert_with(|| Self::header_watermark_from_xml(&part.content))
+                            .clone();
+                    }
+                }
+            }
+            return Self::header_watermark_from_xml(&part.content);
+        }
+        let content = self.read_xml_part_content(&path)?;
+        Self::header_watermark_from_xml(&content)
+    }
+
+    fn header_watermark_from_xml(xml: &str) -> Option<Rc<HeaderWatermark>> {
+        // Most headers have no text path: skip parsing them.
+        if !xml.contains("textpath") {
+            return None;
+        }
+        Self::watermark_from_xml(xml).map(|(text, style)| Rc::new(HeaderWatermark { text, style }))
     }
 
     /// The package path of the header/footer part a main-document
@@ -2542,6 +2599,13 @@ impl WordDocument {
                 story(HeaderFooterRole::Header, HeaderFooterVariant::Even);
             let (footer_even, footer_body_even) =
                 story(HeaderFooterRole::Footer, HeaderFooterVariant::Even);
+            let watermark = |variant| {
+                hf_reference_for_section(document, index, HeaderFooterRole::Header, variant)
+                    .and_then(|reference| self.header_watermark_for_reference(&reference))
+            };
+            let header_watermark = watermark(HeaderFooterVariant::Default);
+            let header_watermark_first = watermark(HeaderFooterVariant::First);
+            let header_watermark_even = watermark(HeaderFooterVariant::Even);
             let title_page = document
                 .sections
                 .get(index)
@@ -2561,6 +2625,9 @@ impl WordDocument {
                 footer_body_first,
                 header_body_even,
                 footer_body_even,
+                header_watermark,
+                header_watermark_first,
+                header_watermark_even,
                 title_page,
             });
         }
