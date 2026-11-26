@@ -13265,6 +13265,7 @@ struct NaturalParagraphLayoutCache {
     paragraphs: Rc<Vec<NaturalParagraphLayout>>,
     nested: FxHashMap<*const Table, WindowsNestedAutofit>,
     fit_on_glyph_advances: bool,
+    fit_resolved_grid_on_glyph_advances: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -13804,6 +13805,7 @@ fn autofit_content_widths<C: TableAutofitContext>(
             paragraphs: Rc::new(natural_paragraph_layouts),
             nested,
             fit_on_glyph_advances: fit_nested_cell_text,
+            fit_resolved_grid_on_glyph_advances: false,
         },
     })
 }
@@ -17623,8 +17625,9 @@ fn prepare_row_cells<P: Painter<Error: PainterError>>(
                     BodyElement::Paragraph(paragraph) => {
                         let paragraph_line_height = config.line_height_for(paragraph);
                         let (left_inset, mut paragraph_style) = config.paragraph_style(paragraph);
-                        paragraph_style.fit_on_glyph_advances =
-                            fit_on_glyph_advances && cell_has_absolute_preferred_width(cell);
+                        paragraph_style.fit_on_glyph_advances = natural_paragraph_layouts
+                            .fit_resolved_grid_on_glyph_advances
+                            || (fit_on_glyph_advances && cell_has_absolute_preferred_width(cell));
                         let numbering = config.paragraph_numbering(paragraph);
                         let math_context = wrap_context.math.as_ref().filter(|_| {
                             !cell
@@ -18421,6 +18424,25 @@ fn word_windows_nested_grid(
         }
     }
 
+    let declared_budget = table
+        .style
+        .get("width")
+        .and_then(|width| preferred_width_px(width, available_width));
+    if round_fixed_grid
+        && column_count > 1
+        && !table.bidi_visual
+        && resolve_table_layout_mode(table) == TableLayoutMode::Fixed
+    {
+        if let Some(widths) = declared_budget
+            .and_then(|budget| round_windows_fixed_nested_grid(table, column_count, budget))
+        {
+            return Some(WindowsNestedGrid {
+                widths,
+                rounded_fixed: true,
+            });
+        }
+    }
+
     // The saved grid supplies columns without a cell preference. Word uses
     // these same nested column boundaries with either tblLayout value.
     for (index, (absolute, fraction)) in preferences.iter_mut().enumerate() {
@@ -18437,29 +18459,11 @@ fn word_windows_nested_grid(
         .filter(|(_, fraction)| *fraction == 0.0)
         .map(|(absolute, _)| absolute)
         .sum();
-    let declared_budget = table
-        .style
-        .get("width")
-        .and_then(|width| preferred_width_px(width, available_width));
     let budget = declared_budget
         .or_else(|| (fraction_total > 0.0).then_some(available_width))
         .unwrap_or(absolute_total);
     if !budget.is_finite() || budget <= 0.0 || (fraction_total >= 1.0 && absolute_total > 0.0) {
         return None;
-    }
-    if round_fixed_grid
-        && declared_budget.is_some()
-        && fraction_total == 0.0
-        && column_count > 1
-        && !table.bidi_visual
-        && resolve_table_layout_mode(table) == TableLayoutMode::Fixed
-    {
-        if let Some(widths) = round_windows_fixed_nested_grid(table, column_count, budget) {
-            return Some(WindowsNestedGrid {
-                widths,
-                rounded_fixed: true,
-            });
-        }
     }
     let fraction_scale = if absolute_total == 0.0 {
         budget / fraction_total
@@ -18491,6 +18495,13 @@ fn round_windows_fixed_nested_grid(
     column_count: usize,
     budget: f64,
 ) -> Option<Vec<f64>> {
+    // OOXML stores a full table width as 5000 fiftieths of a percent.
+    const FULL_WIDTH_PERCENT_UNITS: f64 = 5000.0;
+
+    let budget = (budget * 15.0).round();
+    if !budget.is_finite() || budget <= 0.0 {
+        return None;
+    }
     let default_padding = points_to_px(UNSTYLED_CELL_HORIZONTAL_PADDING_PT);
     let reserved_padding = |row: &TableRow, cell: &TableCell| {
         let padding = resolve_cell_padding(
@@ -18505,52 +18516,146 @@ fn round_windows_fixed_nested_grid(
         // addition to that cell's own margins when it shrinks a fixed grid.
         ((padding.horizontal() + 2.0 * default_padding) * 15.0).round()
     };
-    let mut widths = vec![0.0_f64; column_count];
-    let mut padding = vec![0.0_f64; column_count];
+    let mut preferences = vec![(0.0_f64, 0.0_f64, 0.0_f64); column_count];
     for row in table.rows.iter().filter(|row| !table_row_is_hidden(row)) {
         if row_uses_separate_cell_borders(row, table) {
             return None;
         }
-        let row_widths = absolute_fixed_row_widths(row, column_count)?;
         // The widest preference and greatest horizontal inset can come from
         // different rows in the same column.
-        for (index, (cell, width)) in row.cells.iter().zip(row_widths).enumerate() {
-            widths[index] = widths[index].max((width * 15.0).round());
-            padding[index] = padding[index].max(reserved_padding(row, cell));
+        for (index, (cell, (absolute, percent, padding))) in
+            row.cells.iter().zip(&mut preferences).enumerate()
+        {
+            match cell.style.get("width") {
+                Some(width) if width.trim().ends_with('%') => {
+                    let units =
+                        (preferred_width_px(width, 1.0)? * FULL_WIDTH_PERCENT_UNITS).round();
+                    if units <= 0.0 {
+                        return None;
+                    }
+                    *percent = percent.max(units);
+                }
+                width => {
+                    let width = match width {
+                        Some(width) if cell_has_absolute_preferred_width(cell) => {
+                            preferred_width_px(width, 1.0)?
+                        }
+                        Some(_) => return None,
+                        None => points_to_px(table.columns.get(index)?.width?),
+                    };
+                    let twips = (width * 15.0).round();
+                    if !twips.is_finite() || twips <= 0.0 {
+                        return None;
+                    }
+                    *absolute = absolute.max(twips);
+                }
+            }
+            *padding = padding.max(reserved_padding(row, cell));
         }
     }
 
-    let total: f64 = widths.iter().sum();
-    let budget = (budget * 15.0).round();
-    if !total.is_finite() || widths.iter().any(|width| *width <= 0.0) || !budget.is_finite() {
-        return None;
+    let mut absolute = Vec::new();
+    let mut percentage = Vec::new();
+    let mut percent_total = 0.0;
+    for (index, (width, units, padding)) in preferences.into_iter().enumerate() {
+        if units > 0.0 {
+            let capped = units.min(FULL_WIDTH_PERCENT_UNITS - percent_total);
+            if capped <= 0.0 {
+                return None;
+            }
+            percentage.push((index, capped));
+            percent_total += capped;
+        } else {
+            absolute.push((index, width, padding));
+        }
     }
-    if budget < total {
-        let total_padding: f64 = padding.iter().sum();
-        if budget <= total_padding
-            || widths
-                .iter()
-                .zip(&padding)
-                .any(|(width, inset)| width <= inset)
-        {
+
+    let mut widths = vec![0.0; column_count];
+    if percentage.is_empty() {
+        fit_windows_fixed_nested_absolute_columns(&mut widths, &absolute, budget)?;
+    } else {
+        let reference_units = if absolute.is_empty() {
+            percent_total
+        } else {
+            FULL_WIDTH_PERCENT_UNITS
+        };
+        let to_twips = |units: f64| (budget * units / reference_units + 0.5 + 1e-8).floor();
+        let remainder = to_twips(reference_units - percent_total);
+        let minimum: f64 = absolute.iter().map(|(_, _, padding)| padding).sum();
+        let absolute_budget = remainder.max(minimum);
+        let percentage_budget = budget - absolute_budget;
+        if percentage_budget <= 0.0 {
             return None;
         }
-        let reduction = (total - budget) / (total - total_padding);
-        for (width, inset) in widths.iter_mut().zip(padding).skip(1) {
-            *width -= ((*width - inset) * reduction + 0.5 + 1e-8).floor();
+        if !absolute.is_empty() {
+            fit_windows_fixed_nested_absolute_columns(&mut widths, &absolute, absolute_budget)?;
         }
-    } else {
-        let scale = budget / total;
-        for width in widths.iter_mut().skip(1) {
-            *width = (*width * scale + 0.5 + 1e-8).floor();
+        if let [(index, _)] = percentage.as_slice() {
+            widths[*index] = percentage_budget;
+            let allocated: f64 = absolute.iter().map(|(index, _, _)| widths[*index]).sum();
+            if let Some((first, _, _)) = absolute.first() {
+                widths[*first] += absolute_budget - allocated;
+            }
+        } else if minimum > remainder {
+            // Reserve absolute-cell insets in percentage units before projecting
+            // those columns back to twips.
+            let reserved = (minimum * reference_units / budget).round();
+            let reduction = (percent_total - (reference_units - reserved)) / percent_total;
+            for &(index, units) in &percentage {
+                widths[index] = to_twips(units - (units * reduction + 1e-8).round());
+            }
+            let allocated: f64 = percentage.iter().map(|(index, _)| widths[*index]).sum();
+            widths[percentage[0].0] += percentage_budget - allocated;
+        } else {
+            let requested = to_twips(percent_total);
+            let total: f64 = percentage.iter().map(|(_, units)| to_twips(*units)).sum();
+            for (index, units) in percentage {
+                let preferred = to_twips(units);
+                widths[index] = if requested > percentage_budget {
+                    (preferred * percentage_budget / total + 0.5 + 1e-8).floor()
+                } else {
+                    preferred
+                };
+            }
         }
     }
+
     widths[0] = budget - widths[1..].iter().sum::<f64>();
-    if widths.iter().any(|width| *width <= 0.0) {
+    if widths
+        .iter()
+        .any(|width| !width.is_finite() || *width <= 0.0)
+    {
         return None;
     }
     widths.iter_mut().for_each(|width| *width /= 15.0);
     Some(widths)
+}
+
+fn fit_windows_fixed_nested_absolute_columns(
+    widths: &mut [f64],
+    absolute: &[(usize, f64, f64)],
+    budget: f64,
+) -> Option<()> {
+    let total: f64 = absolute.iter().map(|(_, width, _)| width).sum();
+    if !total.is_finite() || total <= 0.0 {
+        return None;
+    }
+    if budget < total {
+        let minimum: f64 = absolute.iter().map(|(_, _, padding)| padding).sum();
+        if budget < minimum || absolute.iter().any(|(_, width, padding)| width <= padding) {
+            return None;
+        }
+        let reduction = (total - budget) / (total - minimum);
+        for &(index, width, padding) in absolute {
+            widths[index] = width - ((width - padding) * reduction + 0.5 + 1e-8).floor();
+        }
+    } else {
+        let scale = budget / total;
+        for &(index, width, _) in absolute {
+            widths[index] = (width * scale + 0.5 + 1e-8).floor();
+        }
+    }
+    Some(())
 }
 
 #[derive(Clone, Debug)]
@@ -18754,7 +18859,7 @@ fn layout_nested_table<P: Painter<Error: PainterError>>(
             NaturalParagraphLayoutCache {
                 // Word fits text by glyph advance after resolving a fixed
                 // nested grid, including tables with percentage widths.
-                fit_on_glyph_advances: windows_fixed_grid_rounded,
+                fit_resolved_grid_on_glyph_advances: windows_fixed_grid_rounded,
                 ..Default::default()
             }
         }
