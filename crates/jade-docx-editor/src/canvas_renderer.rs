@@ -23937,6 +23937,7 @@ where
                 })
             })
             .collect::<Vec<_>>();
+        let mut future_table_exclusions = Vec::new();
         if !self.measuring_keep_next
             && !self.rendering_header_footer_story
             && !self.rendering_note_story
@@ -23951,10 +23952,11 @@ where
                         && !self.mirror_margins
                         && current_float_exclusions.is_empty()
                         && self.active_float_exclusions.is_empty(),
-                    &mut current_float_exclusions,
+                    &mut future_table_exclusions,
                 );
             }
         }
+        current_float_exclusions.extend_from_slice(&future_table_exclusions);
         let paragraph_float_exclusions = paragraph_float_exclusions
             .into_iter()
             .map(|(bounds, _)| bounds)
@@ -24161,6 +24163,68 @@ where
                 )
             });
         let lookahead = self.float_lookahead.take().filter(|_| spacing_eligible);
+        if spacing_eligible
+            && !future_table_exclusions.is_empty()
+            && paragraph_style
+                .east_asian_rules
+                .compatibility_mode
+                .is_some_and(|mode| mode >= 15)
+        {
+            // Modern Word clears the floating table when its side cannot
+            // fit the next whole word. Keep any earlier lines beside it.
+            let content_right = column_right - paragraph_style.right_indent;
+            let numbering_ascent = pending_numbering
+                .as_ref()
+                .and_then(|numbering| self.numbering_first_line_ascent(numbering));
+            for _ in 0..future_table_exclusions.len() {
+                let lines = self.wrap_text_into_lines_cached(
+                    &layout_text,
+                    &run_styles,
+                    x,
+                    &paragraph_style,
+                    paragraph_offset,
+                    column_right,
+                )?;
+                let Some(mut line) = floating_table_wrap::first_word_between_float_edges(
+                    &layout_text,
+                    &lines,
+                    &paragraph_style,
+                    content_right - x,
+                ) else {
+                    break;
+                };
+                while paragraph_style.line_shares_float_band(line) {
+                    line -= 1;
+                }
+                let top = self.current_y
+                    + WrappedLine::physical_height_px(
+                        &lines[..line],
+                        &paragraph_style,
+                        line_height,
+                        paragraph_mark_font_box,
+                        object_line_extra_px,
+                        numbering_ascent,
+                    )
+                    + paragraph_style.skipped_float_height_before(line, line_height);
+                let Some(clearance) =
+                    floating_table_wrap::word_clearance(&future_table_exclusions, top, line_height)
+                else {
+                    break;
+                };
+                current_float_exclusions.push(clearance);
+                paragraph_style.float_line_segments = self.plan_paragraph_float_segments(
+                    self.current_y,
+                    line_height,
+                    x,
+                    content_right,
+                    &current_float_exclusions,
+                    contour_font_box,
+                    paragraph_style.word_grid_line_sizing.is_none(),
+                    None,
+                    float_line_bottom_leading,
+                );
+            }
+        }
         if spacing_eligible && (lookahead.is_some() || table_space_after > 0.0) {
             let natural_lines = self.wrap_text_into_lines_cached(
                 &layout_text,

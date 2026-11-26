@@ -4,11 +4,15 @@
 
 use super::*;
 
+// One twip of contact does not make a preceding line wrap.
+const LOWER_EDGE_CONTACT_PT: f32 = 0.05;
+
 #[derive(Clone, Debug, PartialEq)]
 struct TableWrapAnchor {
     element: usize,
     page: usize,
     top: f64,
+    displaced_by_overlap: bool,
     bounds: FloatExclusion,
 }
 
@@ -38,7 +42,7 @@ impl FloatingTableWrap {
         self.measuring = false;
     }
 
-    pub(super) fn pinned_top(&self, element: usize, page: usize) -> Option<f64> {
+    pub(super) fn pinned_placement(&self, element: usize, page: usize) -> Option<(f64, bool)> {
         if self.measuring {
             return None;
         }
@@ -47,13 +51,14 @@ impl FloatingTableWrap {
             .binary_search_by_key(&element, |anchor| anchor.element)
             .ok()
             .map(|index| &self.anchors[index])?;
-        (anchor.page == page).then_some(anchor.top)
+        (anchor.page == page).then_some((anchor.top, anchor.displaced_by_overlap))
     }
 
     pub(super) fn record(
         &mut self,
         element: usize,
         frame: table::FloatingTableFrame,
+        displaced_by_overlap: bool,
         bounds: FloatExclusion,
     ) {
         if !self.measuring {
@@ -63,6 +68,7 @@ impl FloatingTableWrap {
             element,
             page: frame.page_number,
             top: frame.top,
+            displaced_by_overlap,
             bounds,
         });
     }
@@ -101,7 +107,7 @@ impl FloatingTableWrap {
                     // in preceding text, matching the one-twip Word probes.
                     FloatExclusion {
                         top: anchor.bounds.top + shift,
-                        bottom: anchor.bounds.bottom + shift - points_to_px(0.05),
+                        bottom: anchor.bounds.bottom + shift - points_to_px(LOWER_EDGE_CONTACT_PT),
                         ..anchor.bounds.clone()
                     }
                 }),
@@ -134,6 +140,38 @@ impl FloatingTableWrap {
                 .last()
                 .is_some_and(|anchor| anchor.element > element)
     }
+}
+
+pub(super) fn first_word_between_float_edges(
+    text: &str,
+    lines: &[WrappedLine],
+    style: &ParagraphStyle,
+    full_width: f64,
+) -> Option<usize> {
+    lines.windows(2).enumerate().find_map(|(index, pair)| {
+        (style.line_base_width(full_width, index) + f64::EPSILON < full_width
+            && pair[0].splits_latin_word_before(text, &pair[1]))
+        .then_some(index)
+    })
+}
+
+pub(super) fn word_clearance(
+    bounds: &[FloatExclusion],
+    line_top: f64,
+    line_height: f64,
+) -> Option<FloatExclusion> {
+    let blocker = bounds
+        .iter()
+        .filter(|bounds| bounds.top < line_top + line_height && bounds.bottom > line_top)
+        .min_by(|left, right| left.bottom.total_cmp(&right.bottom))?;
+    Some(FloatExclusion {
+        // Keep earlier lines that could use the side of this table.
+        top: line_top.max(blocker.top) + 1.0e-6,
+        bottom: blocker.bottom + points_to_px(LOWER_EDGE_CONTACT_PT),
+        left: f64::NEG_INFINITY,
+        right: f64::INFINITY,
+        ..blocker.clone()
+    })
 }
 
 pub(super) fn document_may_wrap_before_floating_tables(document: &Document) -> bool {

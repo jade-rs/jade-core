@@ -4420,6 +4420,20 @@ pub struct LineHyphen {
 }
 
 impl WrappedLine {
+    /// Whether line fitting had to break inside a Latin word or number.
+    pub fn splits_latin_word_before(&self, text: &str, next: &Self) -> bool {
+        self.break_kind == LineBreakKind::Soft
+            && self.hyphen.is_none()
+            && self
+                .clusters
+                .len()
+                .checked_sub(1)
+                .is_some_and(|last| is_latin_word_cluster(self, last))
+            && (!next.clusters.is_empty() && is_latin_word_cluster(next, 0)
+                || closes_latin_word(self, next))
+            && line_break_splits_latin_word(text, self, next)
+    }
+
     /// The line's shared font box, excluding blank clusters when text is
     /// visible. Missing metrics retain the paragraph's conservative estimate.
     pub fn font_box_px(&self) -> Option<(f64, f64)> {

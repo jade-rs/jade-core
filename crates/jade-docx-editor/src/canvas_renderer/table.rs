@@ -3486,6 +3486,9 @@ where
             self.document_east_asian_rules.compatibility_mode,
         );
         let compatibility_mode = self.document_east_asian_rules.compatibility_mode;
+        let floating_paint_shift = floating_table_x.map_or(0.0, |_| {
+            windows_modern_floating_table_paint_shift(table, compatibility_mode)
+        });
         let text_inset = pre_2013_table_text_inset_px(table, compatibility_mode)
             - modern_leading_border_half_px(table, layout_config.word_modern_border_insets);
         let table_segment_edges = |renderer: &Self, alignment_width: Option<f64>, opening_page| {
@@ -3505,16 +3508,19 @@ where
             } else {
                 table_width
             };
-            let x = floating_table_x.unwrap_or_else(|| {
-                compute_inline_body_table_x(
-                    left,
-                    alignment_width,
-                    frame_width,
-                    table,
-                    text_inset,
-                    compatibility_mode,
-                )
-            });
+            let x = floating_table_x.map_or_else(
+                || {
+                    compute_inline_body_table_x(
+                        left,
+                        alignment_width,
+                        frame_width,
+                        table,
+                        text_inset,
+                        compatibility_mode,
+                    )
+                },
+                |nominal| nominal + floating_paint_shift,
+            );
             let x = if let Some((spacing, frame)) =
                 rtl_spaced_auto_grid.filter(|_| !windows_rtl_spaced_percentage_grid)
             {
@@ -3856,46 +3862,52 @@ where
                 self.configure_table_context();
             }
             let logical_y = self.current_y;
-            let requested_y = if wrap_before_table {
-                self.floating_table_wrap
-                    .as_ref()
-                    .and_then(|wrap| wrap.pinned_top(body_element_index, self.current_page_number))
-                    .unwrap_or_else(|| requested_y(self))
-            } else {
-                requested_y(self)
-            };
+            let pinned = self
+                .floating_table_wrap
+                .as_ref()
+                .filter(|_| wrap_before_table)
+                .and_then(|wrap| {
+                    wrap.pinned_placement(body_element_index, self.current_page_number)
+                });
+            let requested_y = pinned.map_or_else(|| requested_y(self), |(top, _)| top);
             let prevents_overlap = table
                 .style
                 .get("table-overlap")
                 .is_some_and(|value| value.eq_ignore_ascii_case("never"));
+            // Word aligns the logical wrap frame independently of the
+            // painted grid for right and centered floating tables.
+            let frame_x = table_x - floating_paint_shift;
             let requested_frame = FloatingTableFrame {
                 page_number: self.current_page_number,
-                left: table_x,
-                right: table_x + table_width,
+                left: frame_x,
+                right: frame_x + table_width,
                 top: requested_y,
                 bottom: requested_y + table_height,
                 prevents_overlap,
             };
+            let floor = if wrap_before_table || modern && floating_breaks && move_anchor {
+                requested_y
+            } else {
+                logical_y
+            };
             let resolved_y = resolve_floating_table_overlap_y(
                 requested_frame,
-                if wrap_before_table || modern && floating_breaks && move_anchor {
-                    requested_y
-                } else {
-                    logical_y
-                },
+                floor,
                 &self.floating_table_frames,
             );
+            let displaced_by_overlap = modern
+                && floating_breaks
+                && (resolved_y > requested_y.max(floor) + ROW_SPLIT_EPSILON
+                    || pinned.is_some_and(|(_, displaced)| displaced));
             self.current_y = resolved_y;
             Some((
                 FloatingTableFrame {
-                    page_number: self.current_page_number,
-                    left: table_x,
-                    right: table_x + table_width,
                     top: resolved_y,
                     bottom: resolved_y + table_height,
-                    prevents_overlap,
+                    ..requested_frame
                 },
                 logical_y,
+                displaced_by_overlap,
             ))
         } else {
             None
@@ -4206,10 +4218,10 @@ where
             loop {
                 // Word uses the body height for layout when a floating
                 // table starts above the top margin.
-                let opening_float = floating_table_frame.filter(|(frame, _)| {
+                let opening_float = floating_table_frame.filter(|(frame, _, _)| {
                     floating_breaks && frame.page_number == self.current_page_number
                 });
-                let floating_top_offset = opening_float.map_or(0.0, |(frame, logical)| {
+                let floating_top_offset = opening_float.map_or(0.0, |(frame, logical, _)| {
                     let layout_top = if wrap_before_table {
                         logical.max(self.effective_body_top())
                     } else {
@@ -4875,7 +4887,7 @@ where
             }
         }
 
-        if let Some((frame, logical_floor)) = floating_table_frame {
+        if let Some((frame, logical_floor, displaced_by_overlap)) = floating_table_frame {
             if wrap_before_table && frame.top + ROW_SPLIT_EPSILON < logical_floor {
                 if let Some(wrap) = self.floating_table_wrap.as_mut() {
                     let measured = FloatingTableFrame {
@@ -4885,7 +4897,12 @@ where
                     wrap.record(
                         body_element_index,
                         measured,
-                        windows_floating_table_text_exclusion(table, measured),
+                        displaced_by_overlap,
+                        windows_floating_table_text_exclusion(
+                            table,
+                            measured,
+                            displaced_by_overlap,
+                        ),
                     );
                 }
             }
@@ -4923,7 +4940,7 @@ where
                 self.active_float_exclusions.push(PageFloatExclusion {
                     is_table: true,
                     page_number: final_frame.page_number,
-                    bounds: windows_floating_table_text_exclusion(table, final_frame),
+                    bounds: windows_floating_table_text_exclusion(table, final_frame, false),
                 });
             } else if self.current_page_number == frame.page_number {
                 // A floating table paints at its absolute frame but does not
@@ -4944,7 +4961,7 @@ where
                     is_table: true,
                     page_number: frame.page_number,
                     bounds: if floating_breaks {
-                        windows_floating_table_text_exclusion(table, frame)
+                        windows_floating_table_text_exclusion(table, frame, displaced_by_overlap)
                     } else {
                         floating_table_text_exclusion(table, frame)
                     },
@@ -4971,7 +4988,7 @@ where
                     self.active_float_exclusions.push(PageFloatExclusion {
                         is_table: true,
                         page_number: final_frame.page_number,
-                        bounds: windows_floating_table_text_exclusion(table, final_frame),
+                        bounds: windows_floating_table_text_exclusion(table, final_frame, false),
                     });
                 }
             }
@@ -11103,10 +11120,10 @@ fn compute_floating_body_table_x(
         table,
         page_number,
     )?;
+    let windows = jade_docx_layout::line_metrics::word_layout_platform()
+        == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows;
     if compatibility_mode.is_none_or(|mode| mode >= 15)
-        || (jade_docx_layout::line_metrics::word_layout_platform()
-            == jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
-            && compatibility_mode != Some(14))
+        || (windows && !matches!(compatibility_mode, Some(12 | 14)))
         || table.bidi_visual
         || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
         || table
@@ -11119,16 +11136,21 @@ fn compute_floating_body_table_x(
     {
         return Some(x);
     }
-    // Word Mac 16.114.2 and Windows 16.0.19127.20936 mode 14 align
+    // Word Mac 16.114.2 and Windows 16.0.19127.20936 modes 12 and 14 align
     // the first/last cell's text edge for left/right
     // placement, while mode 15 aligns the table frame. The paired horizontal
     // probes also establish absolute tblpX and asymmetric trailing padding.
-    // Windows modes without a captured probe retain their frame policy.
-    // Center stays frame-centered. Other stories/anchors/bidi/spacing retain
-    // their policy until a Word capture establishes their text-edge behavior.
     let alignment = table.style.get("table-position-x-align");
+    let border_halves = if windows {
+        leading_cell_border_half_px(table, false) + trailing_cell_border_half_px(table)
+    } else {
+        0.0
+    };
     if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("right")) {
-        return Some(x + pre_2013_table_trailing_text_inset_px(table));
+        return Some(x + pre_2013_table_trailing_text_inset_px(table) + border_halves);
+    }
+    if alignment.is_some_and(|align| align.trim().eq_ignore_ascii_case("center")) {
+        return Some(x + border_halves * 0.5);
     }
     if alignment.is_some_and(|align| !align.trim().eq_ignore_ascii_case("left")) {
         return Some(x);
@@ -11151,6 +11173,38 @@ fn compute_floating_body_table_x(
         0.0,
     );
     Some(x - padding.left)
+}
+
+fn windows_modern_floating_table_paint_shift(table: &Table, mode: Option<u32>) -> f64 {
+    if jade_docx_layout::line_metrics::word_layout_platform()
+        != jade_docx_layout::line_metrics::WordLayoutPlatform::Windows
+        || mode.is_none_or(|mode| mode < 15)
+        || table.bidi_visual
+        || table.cell_spacing.is_some_and(|spacing| spacing != 0.0)
+    {
+        return 0.0;
+    }
+    let Some(alignment) = table.style.get("table-position-x-align") else {
+        return 0.0;
+    };
+    let alignment = alignment.trim();
+    if !alignment.eq_ignore_ascii_case("right") && !alignment.eq_ignore_ascii_case("center") {
+        return 0.0;
+    }
+    let leading = leading_cell_border_half_px(table, false);
+    let trailing = trailing_cell_border_half_px(table);
+    // Without a visible trailing rule Word uses a 0.75pt half-rule for the
+    // right edge of the painted grid. The body still wraps at the nominal edge.
+    let trailing = if trailing > 0.0 {
+        trailing
+    } else {
+        points_to_px(0.75)
+    };
+    if alignment.eq_ignore_ascii_case("right") {
+        leading - trailing
+    } else {
+        (3.0 * leading - trailing) * 0.5
+    }
 }
 
 /// Resolves the horizontal component of `w:tblpPr` floating-table placement.
@@ -11323,13 +11377,22 @@ fn floating_table_text_exclusion(table: &Table, frame: FloatingTableFrame) -> Fl
 fn windows_floating_table_text_exclusion(
     table: &Table,
     frame: FloatingTableFrame,
+    displaced_by_overlap: bool,
 ) -> FloatExclusion {
     let mut bounds = floating_table_text_exclusion(table, frame);
     // Word adds clearance to the authored horizontal wrap distance and
     // retains a minimum gap even when the distance is zero or omitted.
-    let clearance = |distance: f64| (distance + points_to_px(0.85)).max(points_to_px(1.25));
-    bounds.left = frame.left - clearance(frame.left - bounds.left);
-    bounds.right = frame.right + clearance(bounds.right - frame.right);
+    let clearance =
+        |distance: f64, extra, minimum| (distance + points_to_px(extra)).max(points_to_px(minimum));
+    let (left, right) = if displaced_by_overlap {
+        // In mode 15 a collision shifts the table down and leaves more room
+        // on each side of the wrap frame.
+        ((1.2, 1.75), (1.35, 1.875))
+    } else {
+        ((0.85, 1.25), (0.85, 1.25))
+    };
+    bounds.left = frame.left - clearance(frame.left - bounds.left, left.0, left.1);
+    bounds.right = frame.right + clearance(bounds.right - frame.right, right.0, right.1);
     bounds
 }
 
@@ -30054,16 +30117,16 @@ mod tests {
             .style
             .insert("table-position-horizontal-anchor".into(), "margin".into());
         set_word_layout_platform(WordLayoutPlatform::Windows);
-        for mode in [12, 13] {
+        assert_eq!(
+            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(13)),
+            Some(260.0)
+        );
+        for mode in [12, 14] {
             assert_eq!(
                 compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(mode)),
-                Some(260.0)
+                Some(260.0 + points_to_px(12.0))
             );
         }
-        assert_eq!(
-            compute_floating_body_table_x(100.0, 400.0, 600.0, 240.0, &table, 1, Some(14)),
-            Some(260.0 + points_to_px(12.0))
-        );
         set_word_layout_platform(previous);
     }
 
