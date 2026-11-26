@@ -238,11 +238,39 @@ fn text_wraps_around_a_floating_pictures_effect_extent() {
         "text clears r",
     );
     assert_near(text_x(0.0, [0.0, 0.0, -30.0, 0.0]), plain, "r below 0 is 0");
-    let rotated = text_x(90.0, [0.0; 4]);
     assert_near(
-        text_x(90.0, [0.0, 0.0, 5.0, 0.0]) - rotated,
-        5.0,
-        "r is added to the rotated bounds",
+        text_x(90.0, [0.0, 0.0, -5.0, 0.0]),
+        text_x(90.0, [0.0; 4]),
+        "an edge without effects stays at the rotated bounds",
+    );
+}
+
+/// A 200 by 100 picture at 30° whose effect extent already holds its
+/// rotated box (as Word likely writes it) wraps at the rotated bounds, not
+/// beyond them: each edge reaches the farther of the two, not their sum.
+#[test]
+fn a_rotated_floating_picture_counts_its_rotation_once() {
+    let (width, height) = (200.0_f64, 100.0_f64);
+    let radians = 30.0_f64.to_radians();
+    let grow_x = (width * radians.cos() + height * radians.sin() - width) / 2.0;
+    let grow_y = (width * radians.sin() + height * radians.cos() - height) / 2.0;
+    let text_x = |effects: [f64; 4]| {
+        let renderer = render(&format!(
+            r#"<w:p>{}<w:r><w:t>Host</w:t></w:r></w:p>"#,
+            floating(width, height, 30.0, effects)
+        ));
+        glyph(&renderer.host.painter().inner().ops(), "H").0
+    };
+    let rotated = text_x([0.0; 4]);
+    assert_near(
+        text_x([grow_x, grow_y, grow_x, grow_y]),
+        rotated,
+        "the extent's rotation is not added to the rotated bounds",
+    );
+    assert_near(
+        text_x([grow_x, grow_y, grow_x + 3.0, grow_y]) - rotated,
+        3.0,
+        "an effect beyond the rotated box still keeps text clear",
     );
 }
 

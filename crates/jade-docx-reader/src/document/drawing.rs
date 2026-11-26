@@ -442,8 +442,9 @@ pub struct AnchorOptions {
 
 /// The extra extent added to each edge of a drawing's `wp:extent` "to
 /// compensate for any drawing effects applied" (ECMA-376 Part 1
-/// §20.4.2.6): shadows, outlines, glow and the bounding box of a rotation.
-/// CSS pixels; an edge is negative where a rotation narrows the box.
+/// §20.4.2.6): shadows, outlines and glow. CSS pixels, each edge at least 0
+/// once read ([`EffectExtent::clamped`]); a drawing's rotation is laid out
+/// from its own transform, not from this extent.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
 pub struct EffectExtent {
     pub left: f64,
